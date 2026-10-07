@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Teams tab view (lazy-loaded from app.js). Lists the caller's teams, drills into
 // one to manage membership, and surfaces repertoires shared to a team.
 // Detail workspace follows the ui-prototype-v2 sheet: Members / Shared
@@ -10,7 +11,6 @@ import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.
 export function createTeamsView({
   appState,
   api,
-  escapeHtml,
   hideTeamDetail,
   openTeamDetail,
   loadSharedRepertoires,
@@ -90,7 +90,7 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
-    list.innerHTML = '<div class="empty-state">Loading…</div>';
+    list.innerHTML = html`<div class="empty-state">Loading…</div>`;
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
@@ -107,7 +107,7 @@ export function createTeamsView({
       }
     } catch (error) {
       if (!isCurrent()) return;
-      list.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+      list.innerHTML = html`<div class="empty-state">${error.message}</div>`;
     }
     if (isCurrent()) loadSharedRepertoires();
   }
@@ -148,7 +148,7 @@ export function createTeamsView({
 
 
   async function openInviteDialog(teamId) {
-    const ui = createInviteDialogUi({ escapeHtml, activateModal });
+    const ui = createInviteDialogUi({ activateModal });
     await runInviteDialog(teamId, {
       api,
       postJson,
@@ -183,20 +183,20 @@ export function createTeamsView({
       return;
     }
     if (!appState.teams.length) {
-      list.innerHTML = '<div class="empty-state">No teams yet.</div>';
+      list.innerHTML = html`<div class="empty-state">No teams yet.</div>`;
       return;
     }
     const query = (search?.value || "").trim().toLocaleLowerCase();
     const visibleTeams = appState.teams.filter((team) => team.name.toLocaleLowerCase().includes(query));
-    list.innerHTML = visibleTeams.length ? visibleTeams
+    list.innerHTML = visibleTeams.length ? html`${visibleTeams
       .map((team) => {
-        const id = escapeHtml(team.id);
-        const name = escapeHtml(team.name);
-        const role = escapeHtml(teamRoleLabel(team.role));
-        const countLabel = escapeHtml(teamMemberCountLabel(team.member_count));
+        const id = team.id;
+        const name = team.name;
+        const role = teamRoleLabel(team.role);
+        const countLabel = teamMemberCountLabel(team.member_count);
         const selectedCls = appState.selectedTeamId === team.id ? " is-selected" : "";
-        const roleKey = escapeHtml(team.role || "member");
-        return `
+        const roleKey = team.role || "member";
+        return html`
         <div class="team-row${selectedCls}" role="button" tabindex="0" data-team-id="${id}" aria-label="Open ${name}" aria-pressed="${appState.selectedTeamId === team.id}">
           <span class="tr-text">
             <span class="name">${name}</span>
@@ -204,8 +204,7 @@ export function createTeamsView({
           </span>
           <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
-      })
-      .join("") : '<div class="empty-state">No teams match your search.</div>';
+      })}` : html`<div class="empty-state">No teams match your search.</div>`;
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);
@@ -224,21 +223,21 @@ export function createTeamsView({
     if (!container) return;
     if (!sharedReps.length) {
       container.innerHTML =
-        '<div class="empty-state">No repertoires shared yet.</div>';
+        html`<div class="empty-state">No repertoires shared yet.</div>`;
       return;
     }
-    container.innerHTML = sharedReps
+    container.innerHTML = html`${sharedReps
       .map((item) => {
-        const id = escapeHtml(item.id);
-        const name = escapeHtml(item.name);
-        const color = escapeHtml(item.color);
-        const owner = escapeHtml(item.owner_display_name || "member");
+        const id = item.id;
+        const name = item.name;
+        const color = item.color;
+        const owner = item.owner_display_name || "member";
         const isMine = item.owner_user_id === appState.accountUserId;
         // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
         const action = isMine
-          ? `<button type="button" class="btn sm team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
-          : `<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>`;
-        return `
+          ? html`<button type="button" class="btn sm team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
+          : html`<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>`;
+        return html`
         <div class="mem-row team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
           <span class="color-dot ${color}"></span>
           <span class="mem-id">
@@ -247,8 +246,7 @@ export function createTeamsView({
           </span>
           <span class="team-member-tail">${action}</span>
         </div>`;
-      })
-      .join("");
+      })}`;
     container.querySelectorAll(".team-shared-rep-row").forEach((row) => {
       const open = () => editRepertoire(row.dataset.repertoireId);
       row.addEventListener("click", (event) => {
@@ -292,7 +290,7 @@ export function createTeamsView({
     const expiresDay = formatDay(invite.expires_at);
     const when = expiresDay ? ` · expires ${expiresDay}` : "";
     foot.innerHTML =
-      `Invite link active${when} · revoke from Invite`;
+      html`Invite link active${when} · revoke from Invite`;
     foot.hidden = false;
   }
 

@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Team invite-link dialog. Opening it must never rotate the link: the raw code is
 // hashed at rest (shown once, at mint time), so the dialog first reads the link's
 // *status* and only mints a new code when the manager explicitly asks — with a
@@ -85,20 +86,19 @@ export function inviteDialogModel({ status, url }) {
   };
 }
 
-export function inviteDialogBodyHtml(model, escapeHtml) {
+export function inviteDialogBodyHtml(model) {
   const field = model.url
-    ? `<label class="modal-field">
+    ? html`<label class="modal-field">
             <span>Invite link</span>
-            <input type="text" value="${escapeHtml(model.url)}" data-invite-url readonly />
+            <input type="text" value="${model.url}" data-invite-url readonly />
           </label>`
     : "";
   const buttons = model.actions
-    .map((a) => `<button class="btn ${a.kind}" data-action="${a.id}" type="button">${escapeHtml(a.label)}</button>`)
-    .join("");
-  return `
+    .map((a) => html`<button class="btn ${a.kind}" data-action="${a.id}" type="button">${a.label}</button>`);
+  return html`
         <div class="modal-title">Team invite link</div>
         <div class="modal-body">
-          <p class="modal-note muted" data-invite-note>${escapeHtml(model.note)}</p>
+          <p class="modal-note muted" data-invite-note>${model.note}</p>
           ${field}
         </div>
         <div class="modal-footer">${buttons}</div>`;
@@ -198,12 +198,12 @@ export async function runInviteDialog(teamId, {
 }
 
 // DOM implementation of `ui` for runInviteDialog.
-export function createInviteDialogUi({ escapeHtml, activateModal }) {
+export function createInviteDialogUi({ activateModal }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   // The name lives on the persistent dialog: replacing its body after a
   // generate/copy/revoke action cannot orphan an aria-labelledby reference.
-  overlay.innerHTML = '<div class="modal invite-modal" role="dialog" aria-modal="true" aria-label="Team invite link"></div>';
+  overlay.innerHTML = html`<div class="modal invite-modal" role="dialog" aria-modal="true" aria-label="Team invite link"></div>`;
   const dialog = overlay.querySelector(".modal");
   let pending = null;
   const resolveWith = (value) => {
@@ -229,7 +229,7 @@ export function createInviteDialogUi({ escapeHtml, activateModal }) {
         document.body.appendChild(overlay);
         document.addEventListener("keydown", onKey);
       }
-      dialog.innerHTML = inviteDialogBodyHtml(model, escapeHtml);
+      dialog.innerHTML = inviteDialogBodyHtml(model);
       dialog.querySelectorAll("[data-action]").forEach((btn) => {
         btn.addEventListener("click", () => resolveWith(btn.dataset.action));
       });

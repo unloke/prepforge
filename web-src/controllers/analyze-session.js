@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Analyze: whole-game analysis runs, the move list and variations, the position coach
 // and its Maia read, saving and the handoff to a new repertoire. Lazy-loaded by app.js
 // with the Analyze view. The startup recovery check for unsaved runs stays in app.js.
@@ -20,7 +21,7 @@ import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-co
 let accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
   boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
   defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-  engineLifecycleMark, engineWidget, ensureAnalyzeView, escapeHtml, hideAnalysisRetrySave,
+  engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
   importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
   maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
   refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
@@ -33,7 +34,7 @@ export function createAnalyzeSession(deps) {
     accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
     boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
     defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
-    engineLifecycleMark, engineWidget, ensureAnalyzeView, escapeHtml, hideAnalysisRetrySave,
+    engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
     importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
     maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
     refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
@@ -636,18 +637,13 @@ function paintMaiaCoachLine(model) {
   el.hidden = false;
   el.title = `How ${who} choose here (Maia 3)`;
   el.innerHTML =
-    `<span class="hp-label">Humans</span>` +
-    picks
+    html`<span class="hp-label">Humans</span>${picks
       .map((p) => {
         const notes = [p.played ? "played" : "", p.best ? "engine's choice" : ""].filter(Boolean).join(", ");
         return (
-          `<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" ` +
-          `data-uci="${escapeHtml(p.uci)}" style="--p:${Math.min(100, Math.max(0, p.pct))}%" ` +
-          `title="${escapeHtml(`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`)}">` +
-          `<b>${escapeHtml(p.san)}</b><span class="hp-pct">${pct(p)}</span></button>`
+          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" style="--p:${Math.min(100, Math.max(0, p.pct))}%" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
         );
-      })
-      .join("");
+      })}`;
   paintPhaseChip(model.phase, model.title);
 }
 
@@ -1155,17 +1151,11 @@ function renderImportPicker(summary, mode) {
     `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"} — ${g.status}${g.error ? ` (${g.error})` : ""}`;
   host.hidden = false;
   host.innerHTML =
-    `<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span>` +
-    `<select id="analysis-import-select" aria-label="Choose analyzed game">` +
-    games
+    html`<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span><select id="analysis-import-select" aria-label="Choose analyzed game">${games
       .map(
         (g) =>
-          `<option value="${g.index}"${g.index === summary.selected_index ? " selected" : ""}${
-            g.status === "failed" ? " disabled" : ""
-          }>${escapeHtml(label(g))}</option>`,
-      )
-      .join("") +
-    `</select>`;
+          html`<option value="${g.index}"${g.index === summary.selected_index ? " selected" : ""}${g.status === "failed" ? " disabled" : ""}>${label(g)}</option>`,
+      )}</select>`;
   const select = host.querySelector("#analysis-import-select");
   if (select) {
     select.addEventListener("change", () => {

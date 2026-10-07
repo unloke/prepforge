@@ -13,7 +13,7 @@ import { createDashboardView } from "./dashboard.js";
 
 function makeContainer() {
   return {
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     querySelectorAll: vi.fn(() => []),
     addEventListener: vi.fn(),
     setAttribute: vi.fn(),
@@ -50,14 +50,14 @@ describe("dashboard setup checklist", () => {
     container = makeContainer();
     todayCard = {
       hidden: true,
-      innerHTML: "",
+      get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       querySelectorAll: vi.fn(() => []),
       querySelector: vi.fn(() => null),
       addEventListener: vi.fn(),
     };
     steps = {
       hidden: true,
-      innerHTML: "",
+      get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       querySelectorAll: vi.fn(() => []),
       addEventListener: vi.fn(),
     };
@@ -95,7 +95,6 @@ describe("dashboard setup checklist", () => {
       appState,
       api,
       postJson: noop,
-      escapeHtml: (s) => s,
       setStatus: noop,
       localDateString: () => "2026-09-25",
       goToSmartTraining: noop,
@@ -116,19 +115,19 @@ describe("dashboard setup checklist", () => {
 
   it("shows all three setup steps for a brand-new account", async () => {
     await view.loadDashboard();
-    expect(container.innerHTML).toContain('class="empty-state big"');
-    expect(container.innerHTML).not.toContain("step-n");
+    expect(String(container.innerHTML)).toContain('class="empty-state big"');
+    expect(String(container.innerHTML)).not.toContain("step-n");
     expect(steps.hidden).toBe(false);
-    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
-    expect(steps.innerHTML).toContain("0 of 3 done");
+    expect(String(steps.innerHTML)).toContain("<h2>Get started</h2>");
+    expect(String(steps.innerHTML)).toContain("0 of 3 done");
     for (const id of ["repertoire", "lichess", "train"]) {
-      expect(steps.innerHTML).toContain(`data-setup-step="${id}"`);
+      expect(String(steps.innerHTML)).toContain(`data-setup-step="${id}"`);
     }
     // One entry point per job: the repertoire step doesn't repeat Import PGN
     // (the empty state and the list header already carry it).
-    expect(steps.innerHTML).not.toContain('data-lib-action="import"');
+    expect(String(steps.innerHTML)).not.toContain('data-lib-action="import"');
     // Training is locked until there is something to train.
-    expect(steps.innerHTML).toMatch(/data-lib-action="train" disabled/);
+    expect(String(steps.innerHTML)).toMatch(/data-lib-action="train" disabled/);
   });
 
   it("keeps Link Lichess on the card after the first repertoire exists", async () => {
@@ -137,21 +136,21 @@ describe("dashboard setup checklist", () => {
     ]);
     await view.loadDashboard();
     expect(steps.hidden).toBe(false);
-    expect(steps.innerHTML).toContain("1 of 3 done");
-    expect(steps.innerHTML).toMatch(/data-setup-step="repertoire"[^>]*>.*Done/s);
-    expect(steps.innerHTML).toContain('data-lib-action="lichess"');
-    expect(steps.innerHTML).not.toMatch(/data-lib-action="train" disabled/);
-    expect(container.innerHTML).not.toContain("step-n");
+    expect(String(steps.innerHTML)).toContain("1 of 3 done");
+    expect(String(steps.innerHTML)).toMatch(/data-setup-step="repertoire"[^>]*>.*Done/s);
+    expect(String(steps.innerHTML)).toContain('data-lib-action="lichess"');
+    expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
+    expect(String(container.innerHTML)).not.toContain("step-n");
   });
 
   it("ticks Link Lichess from the linked accounts and re-renders on refreshSetup", async () => {
     mockDashboard({ repertoires: 1 });
     await view.loadDashboard();
-    expect(steps.innerHTML).toContain('data-lib-action="lichess"');
+    expect(String(steps.innerHTML)).toContain('data-lib-action="lichess"');
     appState.lichessAccounts = [{ id: "a1", username: "me", is_primary: true }];
     view.refreshSetup();
-    expect(steps.innerHTML).toContain("2 of 3 done");
-    expect(steps.innerHTML).not.toContain('data-lib-action="lichess"');
+    expect(String(steps.innerHTML)).toContain("2 of 3 done");
+    expect(String(steps.innerHTML)).not.toContain('data-lib-action="lichess"');
   });
 
   it("hides the card once every setup step is done", async () => {
@@ -159,25 +158,25 @@ describe("dashboard setup checklist", () => {
     mockDashboard({ repertoires: 2, training_sessions: 1 });
     await view.loadDashboard();
     expect(steps.hidden).toBe(true);
-    expect(steps.innerHTML).toBe("");
+    expect(String(steps.innerHTML)).toBe("");
   });
 
   it("does not repeat New repertoire on the checklist (the empty state has it)", async () => {
     await view.loadDashboard();
-    expect(steps.innerHTML).not.toContain('data-lib-action="new"');
-    expect(container.innerHTML).toContain('data-lib-action="new"');
+    expect(String(steps.innerHTML)).not.toContain('data-lib-action="new"');
+    expect(String(container.innerHTML)).toContain('data-lib-action="new"');
   });
 
   it("offers a dismiss and stays hidden once dismissed", async () => {
     mockDashboard({ repertoires: 1 });
     await view.loadDashboard();
-    expect(steps.innerHTML).toContain("data-setup-dismiss");
+    expect(String(steps.innerHTML)).toContain("data-setup-dismiss");
     const store = new Map([["prepforge.setup_dismissed", "1"]]);
     globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v) };
     try {
       await view.loadDashboard();
       expect(steps.hidden).toBe(true);
-      expect(steps.innerHTML).toBe("");
+      expect(String(steps.innerHTML)).toBe("");
     } finally {
       delete globalThis.localStorage;
     }
@@ -193,11 +192,11 @@ describe("dashboard setup checklist", () => {
       ],
     });
     await view.loadDashboard();
-    expect(steps.innerHTML).not.toContain("rec-cta");
-    expect(steps.innerHTML).not.toContain("due now");
-    expect(steps.innerHTML).not.toContain("weak spots");
+    expect(String(steps.innerHTML)).not.toContain("rec-cta");
+    expect(String(steps.innerHTML)).not.toContain("due now");
+    expect(String(steps.innerHTML)).not.toContain("weak spots");
     // The Today strip keeps the Train entry point.
-    expect(todayCard.innerHTML).toContain("dashboard-train-now");
+    expect(String(todayCard.innerHTML)).toContain("dashboard-train-now");
   });
 
   it("Today strip separates clear reviews from new moves still to learn (P1-4)", async () => {
@@ -209,10 +208,10 @@ describe("dashboard setup checklist", () => {
       ],
     );
     await view.loadDashboard();
-    expect(todayCard.innerHTML).toContain("Reviews clear");
-    expect(todayCard.innerHTML).toContain("41 new moves to learn");
-    expect(todayCard.innerHTML).not.toContain("Queue is clear");
-    expect(todayCard.innerHTML).toContain("Learn new moves");
+    expect(String(todayCard.innerHTML)).toContain("Reviews clear");
+    expect(String(todayCard.innerHTML)).toContain("41 new moves to learn");
+    expect(String(todayCard.innerHTML)).not.toContain("Queue is clear");
+    expect(String(todayCard.innerHTML)).toContain("Learn new moves");
   });
 
   it("Today strip does not call reviews clear while a weak spot waits (UX 2026-10-01 P1-1)", async () => {
@@ -221,11 +220,11 @@ describe("dashboard setup checklist", () => {
       { id: "rep-2", name: "off", color: "white", is_active: false, health: { untrained: 0, weak: 4 } },
     ]);
     await view.loadDashboard();
-    expect(todayCard.innerHTML).not.toContain("Reviews clear");
-    expect(todayCard.innerHTML).not.toContain("Queue is clear");
-    expect(todayCard.innerHTML).toContain("<b>1 weak spot to review</b>");
-    expect(todayCard.innerHTML).toContain("33 new moves to learn");
-    expect(todayCard.innerHTML).not.toContain("Learn new moves");
+    expect(String(todayCard.innerHTML)).not.toContain("Reviews clear");
+    expect(String(todayCard.innerHTML)).not.toContain("Queue is clear");
+    expect(String(todayCard.innerHTML)).toContain("<b>1 weak spot to review</b>");
+    expect(String(todayCard.innerHTML)).toContain("33 new moves to learn");
+    expect(String(todayCard.innerHTML)).not.toContain("Learn new moves");
   });
 
   it("Today strip only says the queue is clear when nothing is due or new", async () => {
@@ -233,8 +232,8 @@ describe("dashboard setup checklist", () => {
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 0, due: 0 } },
     ]);
     await view.loadDashboard();
-    expect(todayCard.innerHTML).toContain("Queue is clear");
-    expect(todayCard.innerHTML).toMatch(/data-testid="dashboard-train-now">Train</);
+    expect(String(todayCard.innerHTML)).toContain("Queue is clear");
+    expect(String(todayCard.innerHTML)).toMatch(/data-testid="dashboard-train-now">Train</);
   });
 
   it("due reviews stay the headline, with new moves as a secondary count", async () => {
@@ -242,22 +241,22 @@ describe("dashboard setup checklist", () => {
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 5, due: 3 } },
     ]);
     await view.loadDashboard();
-    expect(todayCard.innerHTML).toContain("<b>3 due now</b>");
-    expect(todayCard.innerHTML).toContain("5 new moves to learn");
-    expect(todayCard.innerHTML).toMatch(/data-testid="dashboard-train-now">Train</);
+    expect(String(todayCard.innerHTML)).toContain("<b>3 due now</b>");
+    expect(String(todayCard.innerHTML)).toContain("5 new moves to learn");
+    expect(String(todayCard.innerHTML)).toMatch(/data-testid="dashboard-train-now">Train</);
   });
 
   it("renders the signed-out Library as the onboarding card without any API call", () => {
     view.renderSignedOut();
     expect(api).not.toHaveBeenCalled();
-    expect(container.innerHTML).toContain('data-testid="library-signed-out"');
-    expect(container.innerHTML).toContain('data-lib-action="signin"');
+    expect(String(container.innerHTML)).toContain('data-testid="library-signed-out"');
+    expect(String(container.innerHTML)).toContain('data-lib-action="signin"');
     expect(todayCard.hidden).toBe(true);
     expect(steps.hidden).toBe(false);
-    expect(steps.innerHTML).toContain("<h2>Get started</h2>");
+    expect(String(steps.innerHTML)).toContain("<h2>Get started</h2>");
     // One Sign in on the page: the empty state has it, the checklist doesn't repeat it.
     expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(2);
-    expect(steps.innerHTML).not.toContain('data-lib-action="signin"');
+    expect(String(steps.innerHTML)).not.toContain('data-lib-action="signin"');
   });
 
   it.each(["resolve", "reject"])("ignores an older listing's late %s after a mutation refresh", async (outcome) => {
@@ -275,10 +274,10 @@ describe("dashboard setup checklist", () => {
     else reject(new Error("Old load failed"));
     await oldLoad;
     expect(appState.repertoireList).toEqual([newRep]);
-    expect(container.innerHTML).toContain("Current repertoire");
-    expect(container.innerHTML).not.toContain("Old load failed");
-    expect(todayCard.innerHTML).toContain("1 weak spot to review");
-    expect(todayCard.innerHTML).toContain("2 new moves to learn");
+    expect(String(container.innerHTML)).toContain("Current repertoire");
+    expect(String(container.innerHTML)).not.toContain("Old load failed");
+    expect(String(todayCard.innerHTML)).toContain("1 weak spot to review");
+    expect(String(todayCard.innerHTML)).toContain("2 new moves to learn");
   });
 
   it("does not restore owner data when a dashboard response lands after sign-out", async () => {
@@ -289,7 +288,7 @@ describe("dashboard setup checklist", () => {
     view.renderSignedOut();
     resolve(dashboardPayload({ repertoires: 3, due_reviews: 8 }));
     await load;
-    expect(container.innerHTML).toContain('data-testid="library-signed-out"');
+    expect(String(container.innerHTML)).toContain('data-testid="library-signed-out"');
     expect(todayCard.hidden).toBe(true);
     expect(api).toHaveBeenCalledTimes(3);
   });

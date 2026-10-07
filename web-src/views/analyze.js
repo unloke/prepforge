@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Analyze tab rendering (lazy-loaded from app.js). Classification bars, eval chart,
 // move tree, and results orchestration.
 
@@ -8,7 +9,6 @@ import { treeToMovetext } from "../analyze-pgn.js";
 
 export function createAnalyzeView({
   appState,
-  escapeHtml,
   START_FEN,
   showAnalysisPly,
   selectAnalysisNode,
@@ -16,7 +16,7 @@ export function createAnalyzeView({
   onEvalChartRendered = () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
-    createMoveTreeRenderer({ escapeHtml });
+    createMoveTreeRenderer();
 
   // Chart colours come from CSS theme tokens (styles.css, .eval-chart rules), so
   // the graph follows light/dark like the rest of the app — no hardcoded hex in
@@ -108,12 +108,10 @@ export function createAnalyzeView({
     const raw = String(point.classification || "").toLowerCase();
     const label = raw ? raw.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : "";
     const glyph = raw ? classBadgeSymbol(point.classification) : "";
-    const san = escapeHtml(String(point.san || "?"));
+    const san = String(point.san || "?");
     const moveNo = point.ply > 0 ? `${Math.ceil(point.ply / 2)}${point.ply % 2 ? "." : "…"} ` : "";
     return (
-      `${moveNo}<b>${san}</b> · ${formatPointEval(point)}` +
-      (label ? ` · ${glyph} ${escapeHtml(label)}` : "") +
-      (isCurrent ? " · current" : "")
+      html`${moveNo}<b>${san}</b> · ${formatPointEval(point)}${label ? ` · ${glyph} ${label}` : ""}${isCurrent ? " · current" : ""}`
     );
   }
 
@@ -151,27 +149,17 @@ export function createAnalyzeView({
         .map((g) => {
           const n = counts[g.key];
           return (
-            `<button class="cbar-seg seg-${g.key}" style="flex:${n}" ` +
-            `data-side="${side}" data-group="${g.key}" ` +
-            `title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}">` +
-            `<span class="cbar-seg-n">${n}</span></button>`
+            html`<button class="cbar-seg seg-${g.key}" style="flex:${n}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${n}</span></button>`
           );
-        })
-        .join("");
-      const track = total ? segs : '<span class="cbar-empty">no scored moves</span>';
+        });
+      const track = total ? segs : html`<span class="cbar-empty">no scored moves</span>`;
       return (
-        `<div class="cbar-row">` +
-        `<span class="cbar-side">${label}</span>` +
-        `<span class="cbar-track">${track}</span>` +
-        `</div>`
+        html`<div class="cbar-row"><span class="cbar-side">${label}</span><span class="cbar-track">${track}</span></div>`
       );
     };
 
     host.innerHTML =
-      `<div class="class-bars">` +
-      rowHtml("white", "White") +
-      rowHtml("black", "Black") +
-      `</div>`;
+      html`<div class="class-bars">${rowHtml("white", "White")}${rowHtml("black", "Black")}</div>`;
 
     host.querySelectorAll(".cbar-seg").forEach((seg) => {
       seg.addEventListener("click", () => {
@@ -335,7 +323,7 @@ export function createAnalyzeView({
     const hasContent = (tree.root.children || []).length > 0;
     if (!hasContent) {
       container.innerHTML =
-        '<div class="empty-state">Play on the board, or analyze a PGN.</div>';
+        html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;
       return;
     }
     const panel = document.getElementById("analysis-results");
@@ -353,7 +341,7 @@ export function createAnalyzeView({
         const glyph = group ? classBadgeSymbol(cls) : "";
         return {
           classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
-          suffix: glyph ? `<i class="mtree-glyph">${glyph}</i>` : "",
+          suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",
           title: cls,
         };
       },
@@ -464,9 +452,9 @@ export function createAnalyzeView({
     const span = Math.max(1, list.length - 1);
     const xOf = (i) => ((i / span) * EVAL_CHART_W).toFixed(1);
     const line = (cls, x1, y1, x2, y2) =>
-      `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" vector-effect="non-scaling-stroke"/>`;
+      html`<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" vector-effect="non-scaling-stroke"/>`;
     const poly = (cls, pts) =>
-      pts.length > 1 ? `<polyline class="${cls}" points="${pts.join(" ")}" vector-effect="non-scaling-stroke"/>` : "";
+      pts.length > 1 ? html`<polyline class="${cls}" points="${pts.join(" ")}" vector-effect="non-scaling-stroke"/>` : "";
     let phase = "stockfish";
     let ratio = 0;
     let frame = 0;
@@ -491,17 +479,10 @@ export function createAnalyzeView({
         const x = ratio * EVAL_CHART_W;
         const read = pts.filter((p) => Number(p.split(",")[0]) <= x + 0.05);
         overlay =
-          poly("eval-maia-line", read) +
-          `<rect class="eval-maia-band" x="${Math.max(0, x - 48).toFixed(1)}" y="0" width="${Math.min(48, x).toFixed(1)}" height="${EVAL_CHART_H}"/>` +
-          line("eval-maia-front", x.toFixed(1), 0, x.toFixed(1), EVAL_CHART_H);
+          html`${poly("eval-maia-line", read)}<rect class="eval-maia-band" x="${Math.max(0, x - 48).toFixed(1)}" y="0" width="${Math.min(48, x).toFixed(1)}" height="${EVAL_CHART_H}"/>${line("eval-maia-front", x.toFixed(1), 0, x.toFixed(1), EVAL_CHART_H)}`;
       }
       svg.innerHTML =
-        `<defs><linearGradient id="eval-maia-glow" x1="0" x2="1" y1="0" y2="0">` +
-        `<stop offset="0" stop-color="currentColor" stop-opacity="0"/>` +
-        `<stop offset="1" stop-color="currentColor" stop-opacity="0.35"/></linearGradient></defs>` +
-        line("eval-axis", 0, centerY, EVAL_CHART_W, centerY) +
-        poly("eval-line", pts) +
-        overlay;
+        html`<defs><linearGradient id="eval-maia-glow" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="currentColor" stop-opacity="0"/><stop offset="1" stop-color="currentColor" stop-opacity="0.35"/></linearGradient></defs>${line("eval-axis", 0, centerY, EVAL_CHART_W, centerY)}${poly("eval-line", pts)}${overlay}`;
     };
     const schedule = () => {
       if (!frame) frame = (globalThis.requestAnimationFrame || setTimeout)(draw);

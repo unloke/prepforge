@@ -5,13 +5,7 @@ import { buildExplorerReads } from "./scout-explorer.js";
 import { fenAfterLine } from "./scout.js";
 import { buildScoutStats } from "./scout-stats.js";
 
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+
 
 function game(overrides = {}) {
   return {
@@ -231,7 +225,7 @@ describe("buildScoutSectionSummary", () => {
 
 describe("buildColorRecommendationBanner", () => {
   it("returns empty string when no recommendation", () => {
-    expect(buildColorRecommendationBanner(null, escapeHtml)).toBe("");
+    expect(buildColorRecommendationBanner(null)).toBe("");
   });
 
   it("renders insufficient comparison banner without a pick", () => {
@@ -243,11 +237,10 @@ describe("buildColorRecommendationBanner", () => {
         blackGames: 1,
         confidence: { level: "low", label: "low confidence", n: 1 },
       },
-      escapeHtml,
     );
-    expect(html).toContain("Too few games to compare colours");
-    expect(html).not.toContain("take White");
-    expect(html).not.toContain("()");
+    expect(String(html)).toContain("Too few games to compare colours");
+    expect(String(html)).not.toContain("take White");
+    expect(String(html)).not.toContain("()");
   });
 
   it("renders pick banner with escaped html", () => {
@@ -259,23 +252,21 @@ describe("buildColorRecommendationBanner", () => {
         otherScore: 55,
         confidence: { level: "medium", label: "moderate confidence", n: 10 },
       },
-      escapeHtml,
     );
-    expect(html).toContain("scout-color-rec");
-    expect(html).toContain("White");
-    expect(html).not.toContain("<script");
+    expect(String(html)).toContain("scout-color-rec");
+    expect(String(html)).toContain("White");
+    expect(String(html)).not.toContain("<script");
   });
 });
 
 describe("colour banner wording", () => {
-  const escapeHtml = (s) => String(s).replace(/</g, "&lt;");
+
   it("never prints an empty () for a confident even read, and names the player", () => {
     const html = buildColorRecommendationBanner(
       { pick: null, theirWeakColor: null, weakScore: 80, otherScore: 81, confidence: { level: "high", n: 300 } },
-      escapeHtml,
       { username: "rival" },
     );
-    expect(html).not.toContain("()");
-    expect(html).toContain("rival");
+    expect(String(html)).not.toContain("()");
+    expect(String(html)).toContain("rival");
   });
 });

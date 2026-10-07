@@ -41,7 +41,7 @@ import { createScoutView } from "./scout.js";
 
 function makeEl(id, props = {}) {
   return {
-    id, value: "", textContent: "0", disabled: false, hidden: false, innerHTML: "",
+    id, value: "", textContent: "0", disabled: false, hidden: false, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {}, classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
     focus: vi.fn(), addEventListener: vi.fn(), ...props,
   };
@@ -128,7 +128,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
 
     view = createScoutView({
-      escapeHtml: (s) => s, setStatus: vi.fn(), switchView: vi.fn(),
+      setStatus: vi.fn(), switchView: vi.fn(),
       api: vi.fn(async (url) => (url === "/api/repertoires" ? { repertoires: [] } : { nodes: [{ id: "root", depth: 0, parent_id: null, uci: null }] })),
       showInputModal: vi.fn(), createRepertoirePrompt: vi.fn(), editRepertoire: vi.fn(),
       boardAfterMove: vi.fn(), buildProvisionalNode: vi.fn(), hardFlushBuild: vi.fn(),
@@ -163,15 +163,15 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
     await flushDeferredTimers();
 
     const html = elements.get("scout-results").innerHTML;
-    const displayedRows = (html.match(/scout-add-icon/g) || []).length;
-    const maiaRows = (html.match(/scout-maia-estimate/g) || []).length;
+    const displayedRows = (String(html).match(/scout-add-icon/g) || []).length;
+    const maiaRows = (String(html).match(/scout-maia-estimate/g) || []).length;
 
     // The slate is filled even when no line is a weak spot; Maia reads a bounded subset.
     expect(displayedRows).toBeGreaterThan(0);
     expect(wdlReadMock.mock.calls.length).toBeGreaterThan(0);
     expect(wdlReadMock.mock.calls.length).toBeLessThanOrEqual(64);
     expect(maiaRows).toBeGreaterThan(0);
-    expect(html).not.toContain("No reachable weak spots in these games");
+    expect(String(html)).not.toContain("No reachable weak spots in these games");
     },
     15_000,
   );

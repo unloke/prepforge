@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 import { loadTeamDirectory } from "../team-directory.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
@@ -52,7 +53,6 @@ export function createDashboardView({
   appState,
   api,
   postJson,
-  escapeHtml,
   setStatus,
   setStatusError = (message) => setStatus(message),
   localDateString,
@@ -97,7 +97,7 @@ export function createDashboardView({
       const status = document.getElementById("library-refresh-status");
       if (status) {
         status.hidden = false;
-        status.innerHTML = `${escapeHtml(message)} <button class="btn sm" type="button">Retry</button>`;
+        status.innerHTML = html`${message} <button class="btn sm" type="button">Retry</button>`;
         status.querySelector("button")?.addEventListener("click", loadDashboardRepertoires);
       }
     }
@@ -224,28 +224,20 @@ export function createDashboardView({
       return;
     }
     card.innerHTML =
-      `<header class="card-head"><h2>Get started</h2>` +
-      `<span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span>` +
-      `<button type="button" class="ib setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" ` +
-      `aria-label="Hide Get started" title="Hide this checklist">&times;</button></header>` +
-      `<div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>` +
-      steps
+      html`<header class="card-head"><h2>Get started</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="ib setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide Get started" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
         .map((step, i) => {
           const mark = step.done
-            ? `<span class="step-n is-done" aria-hidden="true">✓</span>`
-            : `<span class="step-n" aria-hidden="true">${i + 1}</span>`;
+            ? html`<span class="step-n is-done" aria-hidden="true">✓</span>`
+            : html`<span class="step-n" aria-hidden="true">${i + 1}</span>`;
           const cta = step.done
-            ? `<span class="step-done">Done</span>`
+            ? html`<span class="step-done">Done</span>`
             : !step.action
             ? ""
-            : `<button type="button" class="btn sm" data-lib-action="${step.action}"` +
-              `${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${escapeHtml(step.label)}</button>`;
+            : html`<button type="button" class="btn sm" data-lib-action="${step.action}"${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${step.label}</button>`;
           return (
-            `<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}` +
-            `<div class="step-text"><b>${escapeHtml(step.title)}</b>${step.detail ? `<p>${escapeHtml(step.detail)}</p>` : ""}</div>${cta}</div>`
+            html`<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}<div class="step-text"><b>${step.title}</b>${step.detail ? html`<p>${step.detail}</p>` : ""}</div>${cta}</div>`
           );
-        })
-        .join("");
+        })}`;
     card.hidden = false;
   }
 
@@ -281,16 +273,16 @@ export function createDashboardView({
   // moves are reported separately.
   function todayQueueText(due, soon, newMoves, weak = 0) {
     const bits = [];
-    if (due > 0) bits.push(`<b>${due} due now</b>`);
-    else if (weak > 0) bits.push(`<b>${weak} weak spot${weak === 1 ? "" : "s"} to review</b>`);
+    if (due > 0) bits.push(html`<b>${due} due now</b>`);
+    else if (weak > 0) bits.push(html`<b>${weak} weak spot${weak === 1 ? "" : "s"} to review</b>`);
     else bits.push("Reviews clear");
     if (newMoves > 0) {
       const label = `${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`;
-      bits.push(due > 0 || weak > 0 ? label : `<b>${label}</b>`);
+      bits.push(due > 0 || weak > 0 ? label : html`<b>${label}</b>`);
     }
     if (soon > 0) bits.push(`${soon} coming up in 24h`);
     if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0) return "Queue is clear";
-    return bits.join(" &middot; ");
+    return html`${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}`;
   }
 
   let lastTodayPayload = null;
@@ -319,10 +311,10 @@ export function createDashboardView({
         const h = Math.floor(msLeft / 3600000);
         const m = Math.floor((msLeft % 3600000) / 60000);
         const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        warningHtml = `<div class="today-warning" role="alert">⏰ ${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
+        warningHtml = html`<div class="today-warning" role="alert">⏰ ${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
       }
     }
-    const best = streak.best > 1 ? `<small>best ${streak.best}</small>` : "";
+    const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
     const queueText = todayQueueText(due, soon, newMoves, weak);
@@ -334,32 +326,32 @@ export function createDashboardView({
       const delta = (n, goodWhenUp) => {
         if (!n) return "";
         const cls = (n > 0) === goodWhenUp ? "up" : "down";
-        return ` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
+        return html` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
       };
       const bits = [
         `${recap.reviews_7d} review${recap.reviews_7d === 1 ? "" : "s"} this week`,
-        `${recap.mastered_now} mastered${delta(recap.mastered_delta, true)}`,
+        html`${recap.mastered_now} mastered${delta(recap.mastered_delta, true)}`,
       ];
       if (recap.weak_now > 0 || recap.weak_delta !== 0) {
         bits.push(
-          `${recap.weak_now} weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`,
+          html`${recap.weak_now} weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`,
         );
       }
-      recapHtml = `<div class="today-recap">${bits.join(" &middot; ")}</div>`;
+      recapHtml = html`<div class="today-recap">${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</div>`;
     }
     // Counters from the real dashboard payload; "Due review" is a shortcut into
     // the smart queue when something is waiting (same action as Train).
     const metric = (label, value, dueShortcut) =>
       dueShortcut
-        ? `<button type="button" class="metric is-due" data-action="due-review"><b>${value}</b><span>${label}</span></button>`
-        : `<div class="metric"><b>${value}</b><span>${label}</span></div>`;
+        ? html`<button type="button" class="metric is-due" data-action="due-review"><b>${value}</b><span>${label}</span></button>`
+        : html`<div class="metric"><b>${value}</b><span>${label}</span></div>`;
     const metricsHtml = [
       metric("Games", payload.games || 0, false),
       metric("Repertoires", payload.repertoires || 0, false),
       metric("Sessions", payload.training_sessions || 0, false),
       metric("Due review", due, due > 0),
-    ].join("");
-    card.innerHTML = `
+    ];
+    card.innerHTML = html`
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
          title="Calendar days with at least one graded move">
       <span class="today-flame" aria-hidden="true">\u{1F525}</span>
@@ -367,7 +359,7 @@ export function createDashboardView({
       <span class="today-unit">day streak${best}</span>
     </div>
     <div class="today-body">
-      ${warningHtml || `<div class="today-note">${note}</div>`}
+      ${warningHtml || html`<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
       ${recapHtml}
     </div>
@@ -393,15 +385,15 @@ export function createDashboardView({
   function renderSharedFallbackRows(container, rows) {
     // No own repertoires but team shares exist: surface them read-only so
     // the Library still offers something to open.
-    container.innerHTML = rows
+    container.innerHTML = html`${rows
       .map(
-        (item) => `
-          <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${escapeHtml(item.id)}" data-shared="1">
+        (item) => html`
+          <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${item.id}" data-shared="1">
             <span class="lib-opt" role="option" aria-selected="false">
               <span class="lib-cell-rep">
-                <span class="color-dot ${escapeHtml(item.color)}"></span>
+                <span class="color-dot ${item.color}"></span>
                 <span class="lib-name">
-                  <span class="lib-name-line"><b class="name">${escapeHtml(item.name)}</b><span class="lib-chip is-shared">shared</span></span>
+                  <span class="lib-name-line"><b class="name">${item.name}</b><span class="lib-chip is-shared">shared</span></span>
                   <small class="rep-sub">${String(item.color) === "black" ? "Black" : "White"} · read-only</small>
                 </span>
               </span>
@@ -409,8 +401,7 @@ export function createDashboardView({
               <span class="lib-cell-queue"><span class="muted">—</span></span>
             </span>
           </div>`,
-      )
-      .join("");
+      )}`;
     container.querySelectorAll(".lib-row").forEach((row) => {
       const open = () => editRepertoire(row.dataset.repertoireId);
       row.addEventListener("click", open);
@@ -442,11 +433,11 @@ export function createDashboardView({
     if (!selectedRepId || !visible.some((item) => String(item.id) === selectedRepId)) {
       selectedRepId = String(visible[0].id);
     }
-    container.innerHTML = visible
+    container.innerHTML = html`${visible
       .map((item) => {
-        const id = escapeHtml(item.id);
-        const name = escapeHtml(item.name);
-        const color = escapeHtml(item.color);
+        const id = item.id;
+        const name = item.name;
+        const color = item.color;
         const active = item.is_active !== false;
         const cls = [
           "lib-row",
@@ -456,17 +447,14 @@ export function createDashboardView({
           .filter(Boolean)
           .join(" ");
         const chipsHtml =
-          (active ? "" : '<span class="lib-chip">disabled</span>') +
-          (item.visibility === "team" && item.team_id
-            ? `<span class="lib-chip is-shared" title="Shared with ${escapeHtml(
-                (appState.teams.find((tm) => tm.id === item.team_id) || {}).name || "team",
-              )}">shared</span>`
-            : "");
+          html`${active ? "" : html`<span class="lib-chip">disabled</span>`}${item.visibility === "team" && item.team_id
+            ? html`<span class="lib-chip is-shared" title="Shared with ${(appState.teams.find((tm) => tm.id === item.team_id) || {}).name || "team"}">shared</span>`
+            : ""}`;
         const health = item.health;
         const pct = health ? health.mastery_pct || 0 : null;
         // Two layers from the left: mastered moves on top, every move trained at least
         // once behind it, so practice shows before mastery catches up.
-        let mastery = '<span class="lib-mastery lib-mastery-none">no moves trained yet</span>';
+        let mastery = html`<span class="lib-mastery lib-mastery-none">no moves trained yet</span>`;
         if (pct != null) {
           const count = (k) => Number(health[k]) || 0;
           const started = count("mastered") + count("learning") + count("due") + count("weak");
@@ -474,28 +462,27 @@ export function createDashboardView({
           const startedPct = total ? Math.max(pct, Math.round((started / total) * 100)) : pct;
           const label = `${count("mastered")} mastered · ${started - count("mastered")} learning · ${count("untrained")} new`;
           mastery =
-            `<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained">` +
-            `<i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
+            html`<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained"><i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
         }
         const queue = [];
         if (health && health.weak) {
-          queue.push(`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
+          queue.push(html`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
         }
         if (health && health.due) {
-          queue.push(`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
+          queue.push(html`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
         }
         if (health && health.untrained) {
-          queue.push(`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
+          queue.push(html`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
         }
-        const queueHtml = queue.length ? queue.join("") : '<span class="muted">—</span>';
-        return `
+        const queueHtml = queue.length ? queue : html`<span class="muted">—</span>`;
+        return html`
           <div class="${cls}" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
             <span class="lib-opt" role="option" aria-selected="${String(item.id) === selectedRepId}">
               <span class="lib-cell-rep">
                 <span class="color-dot ${color}"></span>
                 <span class="lib-name">
                   <span class="lib-name-line"><b class="name">${name}</b>${chipsHtml}</span>
-                  <small class="rep-sub">${escapeHtml(repSubline(item))}</small>
+                  <small class="rep-sub">${repSubline(item)}</small>
                 </span>
               </span>
               <span class="lib-cell-mastery">${mastery}</span>
@@ -504,8 +491,7 @@ export function createDashboardView({
             <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
           </div>
         `;
-      })
-      .join("");
+      })}`;
     applySelectionHighlight();
     container.querySelectorAll(".lib-row").forEach((row) => {
       const repId = row.dataset.repertoireId;
@@ -566,11 +552,11 @@ export function createDashboardView({
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true, { error: true });
-    container.innerHTML = `
+    container.innerHTML = html`
       <div class="empty-state is-error" role="alert" data-testid="library-list-error">
         <div class="es-mark" aria-hidden="true">!</div>
         <h3>Could not refresh your repertoires.</h3>
-        <p>${escapeHtml(String(message || "The server did not respond."))}</p>
+        <p>${String(message || "The server did not respond.")}</p>
         <div class="row gap">
           <button type="button" class="btn primary" data-lib-action="retry-list">Try again</button>
         </div>
@@ -598,7 +584,7 @@ export function createDashboardView({
     });
     if (!universe.length) {
       setListboxRole(container, false);
-      container.innerHTML = `
+      container.innerHTML = html`
         <div class="empty-state big">
           <div class="es-mark" aria-hidden="true">♜</div>
           <h3>No repertoires yet.</h3>
@@ -615,7 +601,7 @@ export function createDashboardView({
       // Non-empty list narrowed to nothing by the filter/search.
       setListboxRole(container, false);
       container.innerHTML =
-        '<div class="empty-state">No repertoires match this filter.</div>';
+        html`<div class="empty-state">No repertoires match this filter.</div>`;
       selectedRepId = null;
       return;
     }
@@ -726,7 +712,7 @@ export function createDashboardView({
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true);
-    container.innerHTML = `
+    container.innerHTML = html`
       <div class="empty-state big" data-testid="library-signed-out">
         <div class="es-mark" aria-hidden="true">♜</div>
         <h3>Sign in to start your library.</h3>
@@ -757,15 +743,11 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
     card.innerHTML =
-      `<header class="card-head"><h2>Get started</h2></header>` +
-      steps
+      html`<header class="card-head"><h2>Get started</h2></header>${steps
         .map(
           ([title, detail, action, label], i) =>
-            `<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span>` +
-            `<div class="step-text"><b>${escapeHtml(title)}</b>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}</div>` +
-            `<button type="button" class="btn sm" data-lib-action="${action}">${escapeHtml(label)}</button></div>`,
-        )
-        .join("");
+            html`<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,
+        )}`;
     card.hidden = false;
   }
 
@@ -786,7 +768,7 @@ export function createDashboardView({
         const today = document.getElementById("dashboard-today");
         if (today) {
           today.hidden = false;
-          today.innerHTML = `<div role="alert">${escapeHtml(error.message)} <button class="btn sm">Retry</button></div>`;
+          today.innerHTML = html`<div role="alert">${error.message} <button class="btn sm">Retry</button></div>`;
           today.querySelector("button")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
         }
         throw error;

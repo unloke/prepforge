@@ -1,3 +1,4 @@
+import { html } from "./html.js";
 // Command palette (Ctrl/Cmd+K). Pure ranking lives here so vitest can drive
 // it without the DOM; createCommandPalette wires the overlay.
 
@@ -90,26 +91,14 @@ export function filterPaletteItems(items, query) {
 
 export function renderPaletteItems(items, activeIndex = 0) {
   if (!items.length) {
-    return '<div class="empty-state">No matching commands</div>';
+    return html`<div class="empty-state">No matching commands</div>`;
   }
-  return items
+  return html`${items
     .map((item, index) => {
       const active = index === activeIndex ? " is-active" : "";
       const hint = item.kind === "repertoire" ? "Open in Repertoire" : item.group;
       return (
-        `<button type="button" role="option" id="palette-option-${index}" aria-selected="${index === activeIndex}" class="palette-item${active}" data-palette-id="${item.id}" data-index="${index}">` +
-        `<span class="palette-item-label">${escapePalette(item.label)}</span>` +
-        `<span class="palette-item-hint">${escapePalette(hint)}</span>` +
-        `</button>`
+        html`<button type="button" role="option" id="palette-option-${index}" aria-selected="${index === activeIndex}" class="palette-item${active}" data-palette-id="${item.id}" data-index="${index}"><span class="palette-item-label">${item.label}</span><span class="palette-item-hint">${hint}</span></button>`
       );
-    })
-    .join("");
-}
-
-function escapePalette(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    })}`;
 }

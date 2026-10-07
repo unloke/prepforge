@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Settings → Account: the self-service side of the account backend — profile,
 // password, plan/billing, data export and account deletion. The card reads top
 // to bottom as "who you are → the chess accounts that are you → your data":
@@ -17,7 +18,6 @@ export function createAccountSection({
   api,
   postJson,
   setStatus,
-  escapeHtml = escapeText,
   showConfirmModal,
   signOut = async () => {},
   openAuthModal = () => {},
@@ -40,15 +40,14 @@ export function createAccountSection({
   // Row detail is available on demand through its tooltip.
   function row(label, action, note = "") {
     return (
-      `<div class="set-row acct-row"${note ? ` title="${escapeHtml(note)}"` : ""}><span class="acct-row-text"><span>${label}</span>` +
-      `</span>${action}</div>`
+      html`<div class="set-row acct-row"${note ? html` title="${note}"` : ""}><span class="acct-row-text"><span>${label}</span></span>${action}</div>`
     );
   }
 
   // The avatar mark: first letter of the display name (or the email).
   function initialOf(text) {
     const first = Array.from(String(text || "").trim())[0] || "?";
-    return escapeHtml(first.toUpperCase());
+    return first.toUpperCase();
   }
 
   function render() {
@@ -57,75 +56,50 @@ export function createAccountSection({
     if (!el) return;
     if (!appState.signedIn) {
       el.innerHTML =
-        '<div class="acct-guest">' +
-        '<div class="acct-actions">' +
-        '<button type="button" class="btn sm primary" data-acct="signin">Sign in</button>' +
-        '<button type="button" class="btn sm" data-acct="register">Create account</button>' +
-        "</div></div>";
+        html`<div class="acct-guest"><div class="acct-actions"><button type="button" class="btn sm primary" data-acct="signin">Sign in</button><button type="button" class="btn sm" data-acct="register">Create account</button></div></div>`;
       if (data) data.innerHTML = "";
       return;
     }
     const account = appState.account || {};
     const rawEmail = account.email || appState.accountUsername || "";
-    const email = escapeHtml(rawEmail);
+    const email = rawEmail;
     const displayName = account.displayName || "";
     const shownName = displayName
-      ? escapeHtml(displayName)
-      : escapeHtml(rawEmail.split("@")[0] || "Your account");
+      ? displayName
+      : rawEmail.split("@")[0] || "Your account";
     const method = account.hasPassword ? "Email sign-in" : "Google sign-in";
     const plan = (billing && billing.plan) || account.plan || "free";
-    const planTag = `<span class="status-pill ${plan === "pro" ? "ok" : ""}">${plan === "pro" ? "Pro" : "Free"} plan</span>`;
+    const planTag = html`<span class="status-pill ${plan === "pro" ? "ok" : ""}">${plan === "pro" ? "Pro" : "Free"} plan</span>`;
     let planRow = "";
     if (billing && billing.billing_enabled) {
       if (plan === "pro") {
         planRow = row(
           "PrepForge Pro",
-          '<button type="button" class="btn sm" data-acct="portal">Manage subscription</button>',
+          html`<button type="button" class="btn sm" data-acct="portal">Manage subscription</button>`,
           "Invoices, payment method and cancellation are handled on the billing page.",
         );
       } else if (billing.price_configured) {
         planRow = row(
           "PrepForge Pro",
-          '<button type="button" class="btn sm primary" data-acct="upgrade">Upgrade</button>',
+          html`<button type="button" class="btn sm primary" data-acct="upgrade">Upgrade</button>`,
           "You're on the free plan.",
         );
       }
     }
     el.innerHTML =
-      '<div class="acct-id">' +
-      `<span class="acct-avatar" aria-hidden="true">${initialOf(displayName || rawEmail)}</span>` +
-      '<div class="acct-id-text">' +
-      '<div class="acct-id-name">' +
-      `<b data-acct-name${displayName ? "" : ' class="is-placeholder" title="No display name set: this part of your email is shown"'}>${shownName}</b>` +
-      '<button type="button" class="btn sm ghost acct-edit" data-acct="rename" aria-label="Edit display name">Edit</button>' +
-      "</div>" +
-      `<div class="acct-id-email">${email}</div>` +
-      `<div class="acct-id-meta"><span class="acct-tag">${escapeHtml(method)}</span>${planTag}</div>` +
-      "</div>" +
-      '<button type="button" class="btn sm acct-signout" data-acct="signout">Sign out</button>' +
-      "</div>" +
-      (account.hasPassword
+      html`<div class="acct-id"><span class="acct-avatar" aria-hidden="true">${initialOf(displayName || rawEmail)}</span><div class="acct-id-text"><div class="acct-id-name"><b data-acct-name${displayName ? "" : html` class="is-placeholder" title="No display name set: this part of your email is shown"`}>${shownName}</b><button type="button" class="btn sm ghost acct-edit" data-acct="rename" aria-label="Edit display name">Edit</button></div><div class="acct-id-email">${email}</div><div class="acct-id-meta"><span class="acct-tag">${method}</span>${planTag}</div></div><button type="button" class="btn sm acct-signout" data-acct="signout">Sign out</button></div>${account.hasPassword
         ? row(
           "Password",
-          '<button type="button" class="btn sm" data-acct="password">Change password</button>',
+          html`<button type="button" class="btn sm" data-acct="password">Change password</button>`,
           "Changing it signs out your other devices.",
         )
-        : "") +
-      planRow;
+        : ""}${planRow}`;
     const dataHtml =
-      '<div class="acct-block-head"><b>Your data</b></div>' +
-      row(
+      html`<div class="acct-block-head"><b>Your data</b></div>${row(
         "Download a copy",
-        '<button type="button" class="btn sm" data-acct="export">Download</button>',
+        html`<button type="button" class="btn sm" data-acct="export">Download</button>`,
         "Profile, games (PGN), repertoires and training history in one JSON file.",
-      ) +
-      '<details class="acct-danger-zone">' +
-      "<summary>Delete account</summary>" +
-      '<div class="acct-danger">' +
-      '<p class="muted small">Removes the account and everything it owns. ' +
-      "Copies other people already made of your shared repertoires stay theirs. This cannot be undone.</p>" +
-      '<button type="button" class="btn sm danger" data-acct="delete">Delete account…</button>' +
-      "</div></details>";
+      )}<details class="acct-danger-zone"><summary>Delete account</summary><div class="acct-danger"><p class="muted small">Removes the account and everything it owns. Copies other people already made of your shared repertoires stay theirs. This cannot be undone.</p><button type="button" class="btn sm danger" data-acct="delete">Delete account…</button></div></details>`;
     // Unit tests (and any host without the data slot) get everything in one place.
     if (data) data.innerHTML = dataHtml;
     else el.innerHTML += dataHtml;
@@ -268,21 +242,11 @@ export function createAccountSection({
       const overlay = document.createElement("div");
       overlay.className = "modal-overlay";
       overlay.innerHTML =
-        `<div class="modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(title)}">` +
-        `<div class="modal-title">${escapeHtml(title)}</div><div class="modal-body">` +
-        fields
+        html`<div class="modal" role="dialog" aria-modal="true" aria-label="${title}"><div class="modal-title">${title}</div><div class="modal-body">${fields
           .map(
             (f) =>
-              `<label class="modal-field"><span>${escapeHtml(f.label)}</span>` +
-              `<input name="${escapeHtml(f.name)}" type="${f.type === "password" ? "password" : "text"}"` +
-              ` value="${escapeHtml(f.value || "")}"` +
-              (f.maxLength ? ` maxlength="${f.maxLength}"` : "") +
-              ` autocomplete="${escapeHtml(f.autocomplete || "off")}" /></label>`,
-          )
-          .join("") +
-        '<p class="auth-error" data-form-error role="alert" hidden></p></div>' +
-        '<div class="modal-footer"><button class="btn ghost" data-form="cancel" type="button">Cancel</button>' +
-        `<button class="btn ${tone === "danger" ? "danger" : "primary"}" data-form="ok" type="button">${escapeHtml(okLabel)}</button></div></div>`;
+              html`<label class="modal-field"><span>${f.label}</span><input name="${f.name}" type="${f.type === "password" ? "password" : "text"}" value="${f.value || ""}"${f.maxLength ? html` maxlength="${f.maxLength}"` : ""} autocomplete="${f.autocomplete || "off"}" /></label>`,
+          )}<p class="auth-error" data-form-error role="alert" hidden></p></div><div class="modal-footer"><button class="btn ghost" data-form="cancel" type="button">Cancel</button><button class="btn ${tone === "danger" ? "danger" : "primary"}" data-form="ok" type="button">${okLabel}</button></div></div>`;
       document.body.appendChild(overlay);
       const first = overlay.querySelector("input");
       first?.focus();
@@ -349,13 +313,4 @@ function downloadBlob(blob, filename) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function escapeText(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }

@@ -84,7 +84,7 @@ function makeEl(id, props = {}) {
     textContent: "0",
     disabled: false,
     hidden: false,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
     focus: vi.fn(),
@@ -149,7 +149,6 @@ describe("scout explorer enrichment generation", () => {
     elements.set("scout-profile", makeEl("scout-profile", { hidden: true }));
 
     view = createScoutView({
-      escapeHtml: (s) => s,
       setStatus: vi.fn(),
       switchView: vi.fn(),
       api: vi.fn(async (url) => {
@@ -212,14 +211,14 @@ describe("scout explorer enrichment generation", () => {
     await vi.runOnlyPendingTimersAsync();
 
     const results = elements.get("scout-results");
-    expect(results.innerHTML).not.toContain("STALE_ALL");
+    expect(String(results.innerHTML)).not.toContain("STALE_ALL");
 
     await vi.advanceTimersByTimeAsync(EXPLORER_ENRICH_DEBOUNCE_MS);
     expect(pendingExplorerFetches).toHaveLength(1);
     resolveNextExplorerFetch("FRESH_BLITZ");
     await vi.runOnlyPendingTimersAsync();
 
-    expect(results.innerHTML).toContain("FRESH_BLITZ");
+    expect(String(results.innerHTML)).toContain("FRESH_BLITZ");
   });
 
   it("drops a stale explorer response when a new streamed game arrives", async () => {
@@ -241,13 +240,13 @@ describe("scout explorer enrichment generation", () => {
     await vi.runOnlyPendingTimersAsync();
 
     const results = elements.get("scout-results");
-    expect(results.innerHTML).not.toContain("STALE_G1");
+    expect(String(results.innerHTML)).not.toContain("STALE_G1");
 
     await vi.advanceTimersByTimeAsync(EXPLORER_ENRICH_DEBOUNCE_MS);
     expect(pendingExplorerFetches).toHaveLength(1);
     resolveNextExplorerFetch("FRESH_G2");
     await vi.runOnlyPendingTimersAsync();
 
-    expect(results.innerHTML).toContain("FRESH_G2");
+    expect(String(results.innerHTML)).toContain("FRESH_G2");
   });
 });

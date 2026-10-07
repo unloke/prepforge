@@ -80,7 +80,7 @@ describe("library filter wiring", () => {
 
   function makeContainer() {
     return {
-      innerHTML: "",
+      get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       querySelectorAll: vi.fn(() => []),
       addEventListener: vi.fn(),
       setAttribute: vi.fn(),
@@ -107,7 +107,6 @@ describe("library filter wiring", () => {
       appState: { signedIn: true, teams: [], pendingRepDeletes: new Set() },
       api,
       postJson: vi.fn(),
-      escapeHtml: (s) => String(s),
       setStatus: vi.fn(),
       localDateString: () => "2026-09-28",
       goToSmartTraining: vi.fn(),
@@ -128,32 +127,32 @@ describe("library filter wiring", () => {
 
   it("renders every row under All and narrows the table per filter without refetching", async () => {
     await view.loadDashboardRepertoires();
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-2"');
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-2"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-3"');
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(3);
     const callsAfterLoad = api.mock.calls.length;
 
     view.setLibraryFilter("black");
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-1"');
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
-    expect(container.innerHTML).not.toContain('data-repertoire-id="rep-2"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-3"');
+    expect(String(container.innerHTML)).not.toContain('data-repertoire-id="rep-2"');
     expect(api.mock.calls.length).toBe(callsAfterLoad);
 
     view.setLibraryFilter("disabled");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-3"');
 
     view.setLibraryFilter("shared");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-2"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-2"');
   });
 
   it("searches repertoire names from the same cached listing", async () => {
     await view.loadDashboardRepertoires();
     view.setLibraryQuery("qgd");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-3"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-3"');
     view.setLibraryQuery("");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(3);
   });
@@ -162,15 +161,15 @@ describe("library filter wiring", () => {
     await view.loadDashboardRepertoires();
     // Default selection is the first row (rep-1, black). The option role sits
     // on the inner .lib-opt so the ⋯ menu button stays outside the option.
-    expect(container.innerHTML).toMatch(
+    expect(String(container.innerHTML)).toMatch(
       /class="lib-row[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-1"/,
     );
-    expect(container.innerHTML).toContain('class="lib-opt" role="option"');
-    expect(container.innerHTML).not.toMatch(
+    expect(String(container.innerHTML)).toContain('class="lib-opt" role="option"');
+    expect(String(container.innerHTML)).not.toMatch(
       /role="option"[^>]*aria-haspopup/, // button must not live inside an option
     );
     view.setLibraryFilter("white");
-    expect(container.innerHTML).toMatch(
+    expect(String(container.innerHTML)).toMatch(
       /class="lib-row[^"]*is-selected[^"]*"[^>]*data-repertoire-id="rep-2"/,
     );
     expect(container.innerHTML.match(/aria-selected="true"/g) || []).toHaveLength(2);
@@ -179,10 +178,10 @@ describe("library filter wiring", () => {
   it("shows a filter empty state and clears it when a filter matches again", async () => {
     await view.loadDashboardRepertoires();
     view.setLibraryQuery("no such repertoire");
-    expect(container.innerHTML).toContain("No repertoires match this filter.");
-    expect(container.innerHTML).not.toContain('role="option"');
+    expect(String(container.innerHTML)).toContain("No repertoires match this filter.");
+    expect(String(container.innerHTML)).not.toContain('role="option"');
     view.setLibraryQuery("");
-    expect(container.innerHTML).toContain('data-repertoire-id="rep-2"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-2"');
   });
 
   it("keeps the shared read-only fallback behaviour under filters", async () => {
@@ -197,15 +196,15 @@ describe("library filter wiring", () => {
       };
     });
     await view.loadDashboardRepertoires();
-    expect(container.innerHTML).toContain('data-shared="1"');
-    expect(container.innerHTML).toContain("read-only");
+    expect(String(container.innerHTML)).toContain('data-shared="1"');
+    expect(String(container.innerHTML)).toContain("read-only");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(2);
 
     view.setLibraryFilter("shared");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(2);
     view.setLibraryFilter("black");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(1);
-    expect(container.innerHTML).toContain('data-repertoire-id="s2"');
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="s2"');
   });
 
   it("gives the role=option rows a real listbox container and drops it for empty states", async () => {

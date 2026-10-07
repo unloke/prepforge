@@ -13,7 +13,7 @@ function makeDoc() {
   const popoverStyle = { style: {} };
   const overlay = {
     className: "",
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     _boxes: new Map(),
     querySelector: (sel) => {
@@ -75,19 +75,18 @@ describe("source composer popover", () => {
         document: doc,
         selection: { linkedMode: "subset", accountIds: ["b"], external: ["Hikaru"] },
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onChange: (sel) => changes.push(sel),
         onClose: () => {},
       });
-      expect(overlay.innerHTML).toContain("Self");
-      expect(overlay.innerHTML).toContain("accountA");
-      expect(overlay.innerHTML).toContain("accountB");
-      expect(overlay.innerHTML).toContain('aria-checked="mixed"');
-      expect(overlay.innerHTML).toContain("data-src-external");
-      expect(overlay.innerHTML).toContain("Hikaru");
-      expect(overlay.innerHTML).toContain("External");
-      expect(overlay.innerHTML).toContain("Add Lichess username");
-      expect(overlay.innerHTML).toContain("Done");
+      expect(String(overlay.innerHTML)).toContain("Self");
+      expect(String(overlay.innerHTML)).toContain("accountA");
+      expect(String(overlay.innerHTML)).toContain("accountB");
+      expect(String(overlay.innerHTML)).toContain('aria-checked="mixed"');
+      expect(String(overlay.innerHTML)).toContain("data-src-external");
+      expect(String(overlay.innerHTML)).toContain("Hikaru");
+      expect(String(overlay.innerHTML)).toContain("External");
+      expect(String(overlay.innerHTML)).toContain("Add Lichess username");
+      expect(String(overlay.innerHTML)).toContain("Done");
       expect(changes).toEqual([]);
     } finally {
       restore();
@@ -103,7 +102,6 @@ describe("source composer popover", () => {
         document: doc,
         selection: { linkedMode: "all", external: [] },
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onChange: (sel, meta) => {
           changes.push(sel);
           metas.push(meta);
@@ -116,7 +114,7 @@ describe("source composer popover", () => {
       expect(changes).toHaveLength(1);
       expect(changes[0]).toEqual({ linkedMode: "none", accountIds: [], external: [] });
       expect(metas[0]).toEqual({ selfState: "none" });
-      expect(overlay.innerHTML).not.toContain("checked");
+      expect(String(overlay.innerHTML)).not.toContain("checked");
       listeners.change({
         target: {
           closest: (sel) => (sel === "[data-src-self-checkbox]" ? { checked: false } : null),
@@ -146,7 +144,6 @@ describe("source composer popover", () => {
         anchor,
         selection: { linkedMode: "all" },
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onChange: () => {},
         onClose: () => {},
       });
@@ -188,7 +185,6 @@ describe("source composer popover", () => {
         anchor,
         selection: { linkedMode: "all" },
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onChange: () => {},
         onClose: () => {},
       });
@@ -220,7 +216,6 @@ describe("source composer popover", () => {
         anchor: opener,
         selection: null,
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onClose: (sel) => closed.push(sel),
       });
       listeners.keydown({ key: "Escape", preventDefault: vi.fn(), stopPropagation: vi.fn() });
@@ -245,7 +240,6 @@ describe("source composer popover", () => {
         document: doc,
         selection: null,
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onChange: (sel) => changes.push(sel),
         onClose: () => {},
       });
@@ -256,7 +250,7 @@ describe("source composer popover", () => {
         target: { matches: (sel) => sel === "[data-src-add]" },
       });
       expect(changes[0].external).toEqual(["Hikaru"]);
-      expect(overlay.innerHTML).toContain('aria-label="Remove Hikaru"');
+      expect(String(overlay.innerHTML)).toContain('aria-label="Remove Hikaru"');
       listeners.click({
         target: {
           closest: (sel) =>
@@ -277,11 +271,10 @@ describe("source composer popover", () => {
         document: doc,
         selection: { linkedMode: "none", external: ["Hikaru"] },
         linkedAccounts: linked,
-        escapeHtml: (s) => String(s),
         onChange: (sel) => changes.push(sel),
         onClose: () => {},
       });
-      expect(overlay.innerHTML).toContain("data-src-external-checkbox");
+      expect(String(overlay.innerHTML)).toContain("data-src-external-checkbox");
       listeners.change({
         target: {
           closest: (sel) =>

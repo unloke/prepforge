@@ -12,7 +12,7 @@ import {
 // switch is visibility-only (sections keep their computed line state), and the
 // active colour survives re-renders via the results element's dataset.
 
-const escapeHtml = (s) => String(s);
+
 
 function makeResultsEl({ tabs, sections, active = null }) {
   const el = { dataset: active ? { scoutTab: active } : {} };
@@ -57,29 +57,28 @@ const profile = {
 
 describe("scout colour tabs", () => {
   it("renders both tabs with real per-colour game counts", () => {
-    const html = renderScoutColorTabsHtml(profile, escapeHtml);
-    expect(html).toContain('data-scout-tab="white"');
-    expect(html).toContain('data-scout-tab="black"');
-    expect(html).toContain("With White");
-    expect(html).toContain("With Black");
-    expect(html).toContain("312 games");
-    expect(html).toContain("287 games");
+    const html = renderScoutColorTabsHtml(profile);
+    expect(String(html)).toContain('data-scout-tab="white"');
+    expect(String(html)).toContain('data-scout-tab="black"');
+    expect(String(html)).toContain("With White");
+    expect(String(html)).toContain("With Black");
+    expect(String(html)).toContain("312 games");
+    expect(String(html)).toContain("287 games");
   });
 
   it("initial HTML selects exactly one tab and applies roving tabindex", () => {
-    const html = renderScoutColorTabsHtml(profile, escapeHtml);
+    const html = renderScoutColorTabsHtml(profile);
     // Exactly one aria-selected="true" in the served markup.
-    expect(html.match(/aria-selected="true"/g) || []).toHaveLength(1);
+    expect(String(html).match(/aria-selected="true"/g) || []).toHaveLength(1);
     // Roving tabindex: only the active tab is tabbable (no tabindex attr = 0).
-    expect(html).toContain('data-scout-tab="white" aria-selected="true" aria-controls=');
-    expect(html).toContain('data-scout-tab="black" aria-selected="false" tabindex="-1"');
+    expect(String(html)).toContain('data-scout-tab="white" aria-selected="true" aria-controls=');
+    expect(String(html)).toContain('data-scout-tab="black" aria-selected="false" tabindex="-1"');
     // Single-colour history: the lone tab is selected and tabbable.
     const solo = renderScoutColorTabsHtml(
       { colorStats: { white: { games: 0 }, black: { games: 5 } } },
-      escapeHtml,
     );
-    expect(solo.match(/aria-selected="true"/g) || []).toHaveLength(1);
-    expect(solo).not.toContain('tabindex="-1"');
+    expect(String(solo).match(/aria-selected="true"/g) || []).toHaveLength(1);
+    expect(String(solo)).not.toContain('tabindex="-1"');
   });
 
   it("applyScoutColorTabs keeps roving tabindex in sync with selection", () => {
@@ -98,16 +97,15 @@ describe("scout colour tabs", () => {
   });
 
   it("renders the streaming variant hidden and honours single-colour histories", () => {
-    const hidden = renderScoutColorTabsHtml(profile, escapeHtml, { hidden: true });
-    expect(hidden).toContain(" hidden>");
+    const hidden = renderScoutColorTabsHtml(profile, { hidden: true });
+    expect(String(hidden)).toContain(" hidden>");
     const onlyBlack = renderScoutColorTabsHtml(
       { colorStats: { white: { games: 0 }, black: { games: 5 } } },
-      escapeHtml,
     );
-    expect(onlyBlack).toContain('data-scout-tab="black"');
-    expect(onlyBlack).not.toContain('data-scout-tab="white"');
+    expect(String(onlyBlack)).toContain('data-scout-tab="black"');
+    expect(String(onlyBlack)).not.toContain('data-scout-tab="white"');
     // No data at all → no bar (the stacked sections stay as-is).
-    expect(renderScoutColorTabsHtml(null, escapeHtml)).toBe("");
+    expect(String(renderScoutColorTabsHtml(null))).toBe("");
   });
 
   it("switches visibility only and defaults to the first tab", () => {
@@ -265,18 +263,18 @@ describe("scout colour tabs", () => {
 // overflow of 113px). The wording must stay in the title / accessible name.
 describe("scout colour tab label width", () => {
   it("keeps the visible label short but retains the colour context accessibly", () => {
-    const html = renderScoutColorTabsHtml(profile, escapeHtml, { username: "scouttarget" });
-    expect(html).toContain("<small>312 games</small>");
-    expect(html).toContain("<small>287 games</small>");
-    expect(html).not.toContain("games &middot;");
-    expect(html).not.toContain("games ·");
+    const html = renderScoutColorTabsHtml(profile, { username: "scouttarget" });
+    expect(String(html)).toContain("<small>312 games</small>");
+    expect(String(html)).toContain("<small>287 games</small>");
+    expect(String(html)).not.toContain("games &middot;");
+    expect(String(html)).not.toContain("games ·");
     // The wording itself is preserved in the tooltip and the accessible name.
-    expect(html).toContain("you have Black");
-    expect(html).toContain("you have White");
-    expect(html).toContain(
+    expect(String(html)).toContain("you have Black");
+    expect(String(html)).toContain("you have White");
+    expect(String(html)).toContain(
       'title="scouttarget with White: 312 games; in these games you have Black"',
     );
-    expect(html).toContain(
+    expect(String(html)).toContain(
       'aria-label="scouttarget with Black: 287 games; in these games you have White"',
     );
   });

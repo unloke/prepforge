@@ -1,8 +1,8 @@
+import { html } from "../html.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 export function createBuildView({
   appState,
-  escapeHtml,
   boards,
   getMoveTreeRenderer,
   ensureMoveTreeRenderer,
@@ -56,9 +56,7 @@ export function createBuildView({
       return;
     }
     nameEl.innerHTML =
-      `<span class="color-dot ${escapeHtml(appState.build.color)}"></span>` +
-      `<b>${escapeHtml(appState.build.name)}</b>` +
-      `<span class="rep-color-sub"> · ${escapeHtml(appState.build.color)}</span>`;
+      html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span>`;
   }
 
   // Position trail: Start › 1.e4 › c6 › … — every crumb jumps to that node.
@@ -66,26 +64,22 @@ export function createBuildView({
     const root = appState.build && appState.build.nodes.find((n) => n.depth === 0);
     const path = buildPath(appState.buildCurrentNodeId).filter((n) => n.depth > 0);
     const start = root
-      ? `<button class="mtree-crumb${path.length ? "" : " is-current"}" data-node-id="${escapeHtml(String(root.id))}">Start</button>`
-      : '<span class="crumb-empty">Start</span>';
+      ? html`<button class="mtree-crumb${path.length ? "" : " is-current"}" data-node-id="${String(root.id)}">Start</button>`
+      : html`<span class="crumb-empty">Start</span>`;
     const inner = path
       .map((node, i) => {
         const prev = i > 0 ? path[i - 1] : null;
         const isWhite = node.move_side === "white";
         const needNumber = i === 0 || isWhite || !prev || prev.move_side !== "white";
         const numberHtml = needNumber
-          ? `<span class="mtree-num">${node.move_number}${isWhite ? "." : "…"}</span>`
+          ? html`<span class="mtree-num">${node.move_number}${isWhite ? "." : "…"}</span>`
           : "";
         const cur = node.id === appState.buildCurrentNodeId ? " is-current" : "";
         return (
-          '<span class="crumb-sep" aria-hidden="true">›</span>' +
-          numberHtml +
-          `<button class="mtree-crumb${cur}" data-node-id="${escapeHtml(node.id)}">` +
-          `${escapeHtml(node.san)}</button>`
+          html`<span class="crumb-sep" aria-hidden="true">›</span>${numberHtml}<button class="mtree-crumb${cur}" data-node-id="${node.id}">${node.san}</button>`
         );
-      })
-      .join("");
-    return `<nav class="crumbs" aria-label="Position">${start}${inner}</nav>`;
+      });
+    return html`<nav class="crumbs" aria-label="Position">${start}${inner}</nav>`;
   }
 
   function renderBuildBranchBar() {
@@ -110,29 +104,23 @@ export function createBuildView({
         ]
           .filter(Boolean)
           .join(" ");
-        const mainMark = n.is_mainline ? '<i title="Mainline">★</i>' : "";
+        const mainMark = n.is_mainline ? html`<i title="Mainline">★</i>` : "";
         // Practical share: the server's real Maia probability for this move
         // (human-likeness at the repertoire's rating). Manual/imported moves have
         // none — show nothing rather than a made-up number.
         const share =
           typeof n.maia_probability === "number" && n.maia_probability > 0
-            ? `<small>${Math.round(n.maia_probability * 100)}%</small>`
+            ? html`<small>${Math.round(n.maia_probability * 100)}%</small>`
             : "";
         return (
-          `<button class="${cls}" type="button" data-node-id="${escapeHtml(String(n.id))}" ` +
-          `title="Play ${escapeHtml(n.san)}"><span class="mtree-num">${num}</span>` +
-          `${escapeHtml(n.san)}${mainMark}${share}</button>`
+          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="Play ${n.san}"><span class="mtree-num">${num}</span>${n.san}${mainMark}${share}</button>`
         );
-      })
-      .join("");
+      });
     bar.hidden = false;
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      `<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b>` +
-      `<span class="count">${ctx.options.length}</span>` +
-      `</div>` +
-      `<div class="fork-chips">${chips}</div>`;
+      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${ctx.options.length}</span></div><div class="fork-chips">${chips}</div>`;
     bar.querySelectorAll(".fork-chip[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});
@@ -168,7 +156,7 @@ export function createBuildView({
     if (!appState.build) {
       renderTreeMeta();
       container.innerHTML =
-        '<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>';
+        html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
       onTreeRendered();
@@ -177,7 +165,7 @@ export function createBuildView({
     const root = buildNormalizedTree();
     if (!root || !root.children.length) {
       renderTreeMeta();
-      container.innerHTML = '<div class="tree-empty">Play a move to add it to this line.</div>';
+      container.innerHTML = html`<div class="tree-empty">Play a move to add it to this line.</div>`;
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
       onTreeRendered();

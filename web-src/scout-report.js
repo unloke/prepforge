@@ -1,3 +1,4 @@
+import { html } from "./html.js";
 // Scout report rendering + delegated interaction handlers (testable without app.js).
 
 import { Chess } from "chess.js";
@@ -66,7 +67,7 @@ function findLineByKey(sections, color, lineKey) {
   return null;
 }
 
-export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false, username = "" } = {}) {
+export function renderScoutColorTabsHtml(profile, { hidden = false, username = "" } = {}) {
   const colors = ["white", "black"].filter(
     (c) => profile?.colorStats?.[c] && profile.colorStats[c].games > 0,
   );
@@ -81,16 +82,15 @@ export function renderScoutColorTabsHtml(profile, escapeHtml, { hidden = false, 
       const label = c === "white" ? "With White" : "With Black";
       const you = c === "white" ? "you have Black" : "you have White";
       const selected = i === 0 ? "true" : "false";
-      const tabindex = i === 0 ? "" : ' tabindex="-1"';
+      const tabindex = i === 0 ? "" : html` tabindex="-1"`;
       const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${countOf(stats.games, "game")}; in these games ${you}`;
       // The "you have <Colour>" clause lives in `title` only. Inlining it in the
       // always-visible label made each tab ~246px wide, and the nowrap flex row
       // then pushed the whole page to 503px at 390px. Keeping it in the tooltip
       // (and the a11y name) preserves the wording without the overflow.
-      return `<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${escapeHtml(label)} <small>${countOf(stats.games, "game")}</small></button>`;
-    })
-    .join("");
-  return `<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
+      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(stats.games, "game")}</small></button>`;
+    });
+  return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
 }
 
 // Tab switch = visibility only: the sections keep their computed line state
@@ -251,7 +251,7 @@ export function scoutCoverageTone(prepared, total) {
 // Win/draw/loss as three small pills. Used in the roomy section header.
 export function scoutWdlHtml(w, d, l, { compact = false } = {}) {
   const cls = compact ? "scout-wdl scout-wdl-compact" : "scout-wdl";
-  return `<span class="${cls}" aria-label="${w} wins, ${d} draws, ${l} losses">
+  return html`<span class="${cls}" aria-label="${w} wins, ${d} draws, ${l} losses">
     <span class="scout-wdl-pill scout-wdl-w" title="Wins">W${w}</span>
     <span class="scout-wdl-pill scout-wdl-d" title="Draws">D${d}</span>
     <span class="scout-wdl-pill scout-wdl-l" title="Losses">L${l}</span>
@@ -271,8 +271,8 @@ export function scoutWdlBar(w, d, l, { maiaEstimate = false, counts = true } = {
   // as "a white bar" with no meaning until the numbers sat next to it.
   const nums = maiaEstimate || !counts
     ? ""
-    : `<span class="scout-wdlbar-nums" aria-hidden="true"><span class="n-w">${w}W</span><span class="n-d">${d}D</span><span class="n-l">${l}L</span></span>`;
-  return `<span class="scout-wdlbar-wrap"><span class="scout-wdlbar${cls}" title="${title}" aria-label="${title}">
+    : html`<span class="scout-wdlbar-nums" aria-hidden="true"><span class="n-w">${w}W</span><span class="n-d">${d}D</span><span class="n-l">${l}L</span></span>`;
+  return html`<span class="scout-wdlbar-wrap"><span class="scout-wdlbar${cls}" title="${title}" aria-label="${title}">
     <span class="scout-wdlbar-w" style="width:${pct(w)}"></span>
     <span class="scout-wdlbar-d" style="width:${pct(d)}"></span>
     <span class="scout-wdlbar-l" style="width:${pct(l)}"></span>
@@ -284,7 +284,7 @@ export function scoutSparkline(
   { width = 80, height = 24, min = null, max = null, className = "" } = {},
 ) {
   if (!points?.length) {
-    return `<svg class="scout-sparkline ${className}" width="${width}" height="${height}" aria-hidden="true"></svg>`;
+    return html`<svg class="scout-sparkline ${className}" width="${width}" height="${height}" aria-hidden="true"></svg>`;
   }
   const lo = min ?? Math.min(...points);
   const hi = max ?? Math.max(...points);
@@ -294,7 +294,7 @@ export function scoutSparkline(
     const y = height - 1 - ((v - lo) / range) * (height - 2);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
-  return `<svg class="scout-sparkline ${className}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+  return html`<svg class="scout-sparkline ${className}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
     <polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
   </svg>`;
 }
@@ -302,11 +302,11 @@ export function scoutSparkline(
 // A mini chart with its axes spelled out: the y range on the left, what the
 // x axis runs over underneath. Charts without them read as decoration.
 function scoutAxisChart(plotHtml, { yTop, yBottom, xStart, xEnd, yTitle }) {
-  return `<div class="scout-axis-chart">
+  return html`<div class="scout-axis-chart">
       <span class="scout-axis-y" aria-hidden="true"><span>${yTop}</span><span>${yBottom}</span></span>
       <span class="scout-axis-plot">${plotHtml}</span>
       <span class="scout-axis-x" aria-hidden="true"><span>${xStart}</span><span>${xEnd}</span></span>
-      ${yTitle ? `<span class="scout-axis-title">${yTitle}</span>` : ""}
+      ${yTitle ? html`<span class="scout-axis-title">${yTitle}</span>` : ""}
     </div>`;
 }
 
@@ -332,11 +332,10 @@ function scoutWeeklyColumns(buckets, { weeks = 12, bucketDays = 7 } = {}) {
   const cols = slots
     .map((s) => {
       const h = s.count ? Math.max(6, Math.round((s.count / max) * 100)) : 0;
-      return `<i style="height:${h}%" title="${s.count} game${s.count === 1 ? "" : "s"} · week of ${formatShortDate(s.datestamp)}"></i>`;
-    })
-    .join("");
+      return html`<i style="height:${h}%" title="${s.count} game${s.count === 1 ? "" : "s"} · week of ${formatShortDate(s.datestamp)}"></i>`;
+    });
   return {
-    html: `<span class="scout-columns">${cols}</span>`,
+    html: html`<span class="scout-columns">${cols}</span>`,
     max,
     start: slots[0].datestamp,
     end: slots[slots.length - 1].datestamp,
@@ -356,9 +355,6 @@ export function scoutSvgBar(
     labelKey = "san",
     maxValue = 100,
     valueSuffix = "%",
-    escapeHtml,
-    // Colour by what the value means for YOU: "low-good" (their score: low is
-    // good news) or "high-good" (their error rate: high is good news).
     tone = "low-good",
     // Optional reference line (e.g. their overall score) drawn on every track.
     reference = null,
@@ -366,7 +362,7 @@ export function scoutSvgBar(
   } = {},
 ) {
   if (!items?.length) {
-    return `<div class="scout-bar-chart scout-bar-empty muted hint">No family data yet.</div>`;
+    return html`<div class="scout-bar-chart scout-bar-empty muted hint">No family data yet.</div>`;
   }
   const scale = maxValue > 0 ? maxValue : 100;
   const refPct = reference != null ? Math.max(0, Math.min(100, (reference / scale) * 100)) : null;
@@ -378,21 +374,21 @@ export function scoutSvgBar(
     const good = tone === "high-good" ? high : low;
     const bad = tone === "high-good" ? low : high;
     const toneCls = good ? " is-good" : bad ? " is-bad" : "";
-    const label = escapeHtml ? escapeHtml(String(item[labelKey] || "?")) : String(item[labelKey] || "?");
-    const count = countKey && item[countKey] != null ? `<span class="scout-bar-n">${item[countKey]}</span>` : "";
-    const ref = refPct != null ? `<span class="scout-bar-ref" style="left:${refPct}%"></span>` : "";
-    return `<div class="scout-bar-row${toneCls}${count ? " has-n" : ""}">
+    const label = String(item[labelKey] || "?");
+    const count = countKey && item[countKey] != null ? html`<span class="scout-bar-n">${item[countKey]}</span>` : "";
+    const ref = refPct != null ? html`<span class="scout-bar-ref" style="left:${refPct}%"></span>` : "";
+    return html`<div class="scout-bar-row${toneCls}${count ? " has-n" : ""}">
       <span class="scout-bar-label">${label}</span>
       <span class="scout-bar-track"><span class="scout-bar-fill" style="width:${pct}%"></span>${ref}</span>
       <span class="scout-bar-val">${val}${valueSuffix}</span>${count}
     </div>`;
-  }).join("");
-  return `<div class="scout-bar-chart">${rows}</div>`;
+  });
+  return html`<div class="scout-bar-chart">${rows}</div>`;
 }
 
-export function renderScoutEnginePanel(engineAgg, escapeHtml) {
+export function renderScoutEnginePanel(engineAgg) {
   if (!engineAgg) {
-    return `<div class="scout-engine-panel muted hint">Not scanned yet.</div>`;
+    return html`<div class="scout-engine-panel muted hint">Not scanned yet.</div>`;
   }
   if (!engineAgg.sufficient) {
     const analyzed = engineAgg.analyzedGames ?? 0;
@@ -400,12 +396,11 @@ export function renderScoutEnginePanel(engineAgg, escapeHtml) {
     const coverage = engineAgg.coveragePct ?? 0;
     const staleNote =
       engineAgg.status === "stale" ? " — new games arrived, re-run Deep scan" : "";
-    return `<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage — need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${escapeHtml(staleNote)}</div>`;
+    return html`<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage — need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${staleNote}</div>`;
   }
   const families = engineAgg.families?.slice(0, 6) || [];
   const maxAcpl = Math.max(120, ...families.map((f) => f.acpl || 0));
   const bars = scoutSvgBar(families, {
-    escapeHtml,
     valueKey: "acpl",
     maxValue: maxAcpl,
     valueSuffix: " cp",
@@ -421,11 +416,11 @@ export function renderScoutEnginePanel(engineAgg, escapeHtml) {
       ? ` — based on latest ${engineAgg.maxGames} games`
       : "";
   const summary = worst
-    ? `<div class="scout-engine-summary muted hint">Most mistakes after 1.${escapeHtml(worst.san)}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${escapeHtml(scopeNote)}</div>`
+    ? html`<div class="scout-engine-summary muted hint">Most mistakes after 1.${worst.san}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
     : engineAgg.scopeLimited && engineAgg.maxGames
-      ? `<div class="scout-engine-summary muted hint">Based on latest ${engineAgg.maxGames} games</div>`
+      ? html`<div class="scout-engine-summary muted hint">Based on latest ${engineAgg.maxGames} games</div>`
       : "";
-  return `<div class="scout-engine-panel">${bars}${summary}</div>`;
+  return html`<div class="scout-engine-panel">${bars}${summary}</div>`;
 }
 
 function formatRefutationLine(pathSans) {
@@ -457,15 +452,14 @@ export function refutationA11ySummary(refutations) {
   return `Engine refutations: ${parts.join("; ")}.`;
 }
 
-export function renderScoutRefutationGapActions(actions, escapeHtml) {
+export function renderScoutRefutationGapActions(actions) {
   if (!actions?.length) return "";
   const buttons = actions
     .map(
       (action) =>
-        `<button type="button" class="scout-btn btn sm scout-refutation-gap-btn" data-refutation-gap="${escapeHtml(action.id)}" data-testid="${escapeHtml(action.testId)}" aria-label="${escapeHtml(action.ariaLabel)}">${escapeHtml(action.label)}</button>`,
-    )
-    .join("");
-  return `<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions" title="Engine refutations for these lines need a Stockfish pass">${buttons}</div>`;
+        html`<button type="button" class="scout-btn btn sm scout-refutation-gap-btn" data-refutation-gap="${action.id}" data-testid="${action.testId}" aria-label="${action.ariaLabel}">${action.label}</button>`,
+    );
+  return html`<div class="scout-refutation-gap-actions" role="group" aria-label="Refutation preparation actions" title="Engine refutations for these lines need a Stockfish pass">${buttons}</div>`;
 }
 
 export function handleScoutRefutationGapClick(event, { callbacks } = {}) {
@@ -491,73 +485,72 @@ function formatReplyLabel(reply) {
   return reply.san || reply.uci || "?";
 }
 
-export function renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard } = {}) {
+export function renderInlineRefutationCard(line, oppColor, { renderBoard } = {}) {
   const ref = line.refutation;
   if (!ref?.suggestedUci) return "";
   const playerColor = oppColor === "white" ? "black" : "white";
   const theirMove = ref.playedSan || ref.playedUci || "?";
   const cpSwing = ref.cpLoss != null ? formatPlayerSwingFromCpLoss(ref.cpLoss) : null;
-  const replyLabel = escapeHtml(ref.suggestedSan || line.suggestedReply?.san || ref.suggestedUci);
+  const replyLabel = ref.suggestedSan || line.suggestedReply?.san || ref.suggestedUci;
   const recurrence = line.enginePattern?.occurrences || line.refutationGames || null;
   const recurrenceNote =
-    recurrence != null ? `In ${countOf(recurrence, "game")} here they played …${escapeHtml(theirMove)}` : `They played …${escapeHtml(theirMove)}`;
-  const swingNote = cpSwing ? ` <span class="scout-refutation-swing">(${cpSwing})</span>` : "";
+    recurrence != null ? `In ${countOf(recurrence, "game")} here they played …${theirMove}` : `They played …${theirMove}`;
+  const swingNote = cpSwing ? html` <span class="scout-refutation-swing">(${cpSwing})</span>` : "";
   const replyFen = fenAfterLine([...(line.ucis || []), ref.suggestedUci].filter(Boolean));
   const boardHtml = renderBoard
-    ? `<div class="scout-refutation-card-board">${renderBoard(replyFen, playerColor)}</div>`
+    ? html`<div class="scout-refutation-card-board">${renderBoard(replyFen, playerColor)}</div>`
     : "";
-  return `<div class="scout-refutation-card" data-testid="scout-refutation-card">
+  return html`<div class="scout-refutation-card" data-testid="scout-refutation-card">
     <div class="scout-refutation-card-copy">${recurrenceNote}${swingNote}. You answer <strong class="scout-refutation-reply-san">${replyLabel}</strong>.</div>
     ${boardHtml}
   </div>`;
 }
 
-export function renderScoutRefutationPanel(refutations, escapeHtml) {
+export function renderScoutRefutationPanel(refutations) {
   const hits = (refutations || []).filter((r) => r.refutation).slice(0, 3);
   if (!hits.length) {
     const actions = collectActionableRefutationGapActions(refutations);
     if (!actions.length) {
-      return `<div class="scout-refutation-panel muted hint">No refutation lines yet.</div>`;
+      return html`<div class="scout-refutation-panel muted hint">No refutation lines yet.</div>`;
     }
-    const gapActions = renderScoutRefutationGapActions(actions, escapeHtml);
+    const gapActions = renderScoutRefutationGapActions(actions);
     const labels = collectActionableRefutationGaps(refutations)
-      .map((gap) => escapeHtml(gap))
+      .map((gap) => gap)
       .join(" · ");
-    return `<div class="scout-refutation-panel scout-refutation-gaps" role="region" aria-label="Refutation preparation gaps">
+    return html`<div class="scout-refutation-panel scout-refutation-gaps" role="region" aria-label="Refutation preparation gaps">
       <p class="scout-refutation-gaps-copy muted hint">${labels}</p>
       ${gapActions}
     </div>`;
   }
   const rows = hits
     .map((item) => {
-      const line = escapeHtml(formatRefutationLine(item.candidate?.pathSans));
-      const reply = escapeHtml(item.refutation.suggestedUci || "?");
+      const line = formatRefutationLine(item.candidate?.pathSans);
+      const reply = item.refutation.suggestedUci || "?";
       const engineEv = item.evidence?.find((e) => e.layer === "engine");
       const explorerEv = item.evidence?.find((e) => e.layer === "explorer");
       const acpl =
         engineEv?.acpl != null
-          ? `<span class="scout-refutation-stat">${engineEv.acpl} cp ACPL</span>`
+          ? html`<span class="scout-refutation-stat">${engineEv.acpl} cp ACPL</span>`
           : "";
       const sample =
         engineEv?.analyzedGames != null
-          ? `<span class="scout-refutation-stat">n=${engineEv.analyzedGames}</span>`
+          ? html`<span class="scout-refutation-stat">n=${engineEv.analyzedGames}</span>`
           : "";
       const masters =
         explorerEv?.mastersSharePct != null
-          ? `<span class="scout-refutation-stat">${explorerEv.mastersSharePct}% masters</span>`
+          ? html`<span class="scout-refutation-stat">${explorerEv.mastersSharePct}% masters</span>`
           : "";
       const scopeNote =
         engineEv?.scopeLimited && engineEv?.maxGames
-          ? `<span class="scout-refutation-stat">latest ${engineEv.maxGames} games</span>`
+          ? html`<span class="scout-refutation-stat">latest ${engineEv.maxGames} games</span>`
           : "";
-      return `<div class="scout-refutation-hit" data-testid="scout-refutation-hit">
+      return html`<div class="scout-refutation-hit" data-testid="scout-refutation-hit">
         <div class="scout-refutation-line">${line}</div>
         <div class="scout-refutation-reply muted hint">Play <code class="scout-refutation-uci">${reply}</code></div>
-        <div class="scout-refutation-meta">${[acpl, sample, masters, scopeNote].filter(Boolean).join("")}</div>
+        <div class="scout-refutation-meta">${[acpl, sample, masters, scopeNote].filter(Boolean)}</div>
       </div>`;
-    })
-    .join("");
-  return `<div class="scout-refutation-panel">${rows}</div>`;
+    });
+  return html`<div class="scout-refutation-panel">${rows}</div>`;
 }
 
 function engineA11ySummary(engineAgg) {
@@ -662,7 +655,7 @@ function explorerA11ySummary(explorerReads) {
   return parts.join(" ");
 }
 
-function renderScoutExplorerReads(explorerReads, escapeHtml) {
+function renderScoutExplorerReads(explorerReads) {
   if (!explorerReads?.available) return "";
   const chips = [];
 
@@ -672,7 +665,7 @@ function renderScoutExplorerReads(explorerReads, escapeHtml) {
       readChip(
         `How often they choose it (${dev.games} games) vs how often masters do in the same position`,
         "More than the book",
-        `${escapeHtml(dev.label)} ${dev.opponentSharePct}% vs masters ${dev.mastersSharePct}%`,
+        `${dev.label} ${dev.opponentSharePct}% vs masters ${dev.mastersSharePct}%`,
       ),
     );
   }
@@ -680,25 +673,25 @@ function renderScoutExplorerReads(explorerReads, escapeHtml) {
   const rare = explorerReads.rareWeapons?.items?.[0];
   if (explorerReads.rareWeapons?.available && rare) {
     chips.push(
-      readChip("Low masters share, strong results", "Rare", `${escapeHtml(rare.label)} ${rare.scorePct}% · masters ${rare.mastersSharePct}%`),
+      readChip("Low masters share, strong results", "Rare", `${rare.label} ${rare.scorePct}% · masters ${rare.mastersSharePct}%`),
     );
   }
 
   if (explorerReads.offBook?.available && explorerReads.offBook.sharePct > 0) {
     const top = explorerReads.offBook.items?.[0];
-    const move = top ? ` · ${escapeHtml(top.label)}` : "";
+    const move = top ? ` · ${top.label}` : "";
     chips.push(
       readChip("Moves under 5% in masters", "Off-book", `${explorerReads.offBook.sharePct}%${move}`),
     );
   }
 
   if (!chips.length) return "";
-  return `<div class="scout-repertoire-reads scout-explorer-reads">${chips.join("")}</div>`;
+  return html`<div class="scout-repertoire-reads scout-explorer-reads">${chips}</div>`;
 }
 
 // Two-line chip: small label over the value (prototype read-chip).
 function readChip(title, label, value) {
-  return `<span class="scout-read-chip" title="${title}"><small>${label}</small>${value}</span>`;
+  return html`<span class="scout-read-chip" title="${title}"><small>${label}</small>${value}</span>`;
 }
 
 const AGGRESSION_WORD = { aggressive: "attacking", passive: "quiet", balanced: "balanced" };
@@ -714,7 +707,7 @@ const TRADE_WORD = { simplifier: "trades queens early", complicator: "keeps quee
 // that back it. (Replaced: "Favourite first move" / "Top 3 lines" / "First moves
 // used", which restated the first-move bars below them, and with Black described
 // the OTHER player's first move.)
-function renderScoutRepertoireReads(stats, escapeHtml) {
+function renderScoutRepertoireReads(stats) {
   const chips = [];
   const black = stats?.oppColor === "black";
   const expect = expectationText(stats?.firstChoices);
@@ -723,7 +716,7 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
       readChip(
         black ? "Their usual reply to each first move they face" : "Their first move, most common first",
         black ? "Their replies" : "Expect",
-        escapeHtml(expect),
+        expect,
       ),
     );
   }
@@ -733,7 +726,7 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
       readChip(
         "The route most of their games follow, as far as at least 1 in 10 of their games still share it",
         "Predictable until",
-        `${escapeHtml(main.label)} · ${Math.round(main.share * 100)}% of games`,
+        `${main.label} · ${Math.round(main.share * 100)}% of games`,
       ),
     );
   }
@@ -745,7 +738,7 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
       readChip(
         `Common in their last ${recent} games, almost never in the ${fresh.previousWindow} before`,
         "New lately",
-        `${escapeHtml(top.label || `1.${top.san}`)} · ${top.recentGames} of ${recent}`,
+        `${top.label || `1.${top.san}`} · ${top.recentGames} of ${recent}`,
       ),
     );
   }
@@ -761,7 +754,7 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
       readChip(
         "A setup they reach regardless of your moves",
         "System",
-        escapeHtml(persona.systemSetup.name || persona.systemSetup.label),
+        persona.systemSetup.name || persona.systemSetup.label,
       ),
     );
   } else if (persona?.games >= 5) {
@@ -770,38 +763,35 @@ function renderScoutRepertoireReads(stats, escapeHtml) {
       CASTLING_WORD[persona.castling?.label] || persona.castling?.label,
       TRADE_WORD[persona.tradeSpeed?.label] || persona.tradeSpeed?.label,
     ].filter(Boolean);
-    chips.push(readChip("Opening style tendencies", "Style", escapeHtml(parts.join(" · "))));
+    chips.push(readChip("Opening style tendencies", "Style", parts.join(" · ")));
   }
   if (!chips.length) return "";
-  return `<div class="scout-repertoire-reads">${chips.join("")}</div>`;
+  return html`<div class="scout-repertoire-reads">${chips}</div>`;
 }
 
 export function renderScoutIntelSummary(
   stats,
   summary,
-  escapeHtml,
   { explorerReads = null } = {},
 ) {
   // Supporting notes ride on the headline's tooltip, not as a standing list.
   const notes = (summary?.notes || (summary?.bullets || []).slice(1)).filter(Boolean).join("\n");
-  const headline = summary?.headline ? escapeHtml(summary.headline) : "";
-  const repertoireReads = renderScoutRepertoireReads(stats, escapeHtml);
-  const explorerReadsHtml = renderScoutExplorerReads(explorerReads, escapeHtml);
-  return `
-      <p class="scout-intel-headline headline"${notes ? ` title="${escapeHtml(notes)}"` : ""}>${headline}</p>
+  const headline = summary?.headline ? summary.headline : "";
+  const repertoireReads = renderScoutRepertoireReads(stats);
+  const explorerReadsHtml = renderScoutExplorerReads(explorerReads);
+  return html`
+      <p class="scout-intel-headline headline"${notes ? html` title="${notes}"` : ""}>${headline}</p>
       ${repertoireReads}
       ${explorerReadsHtml}`;
 }
 
 export function renderScoutIntelChartsStrip(
   stats,
-  escapeHtml,
   { engineAgg = null, explorerReads = null, refutations = null, username = "", baseline = null } = {},
 ) {
-  const who = escapeHtml(username || "Opponent");
+  const who = username || "Opponent";
   const families = stats?.scoreByFamily?.families?.slice(0, 6) || [];
   const scoreBars = scoutSvgBar(families, {
-    escapeHtml,
     valueKey: "scorePct",
     reference: baseline,
     countKey: "games",
@@ -812,7 +802,7 @@ export function renderScoutIntelChartsStrip(
       scoutSparkline(repPoints, { min: 0, max: 100, className: "scout-repchange-spark" }),
       { yTop: "100%", yBottom: "0%", xStart: "older games", xEnd: "newer" },
     )
-    : '<div class="muted hint">Needs more dated games.</div>';
+    : html`<div class="muted hint">Needs more dated games.</div>`;
   const weekly = scoutWeeklyColumns(stats?.activitySeries?.buckets || [], {
     bucketDays: stats?.activitySeries?.bucketDays || 7,
   });
@@ -823,7 +813,7 @@ export function renderScoutIntelChartsStrip(
       xStart: formatShortDate(weekly.start),
       xEnd: formatShortDate(weekly.end),
     })
-    : '<div class="muted hint">No dated games.</div>';
+    : html`<div class="muted hint">No dated games.</div>`;
   const chartSummary = [
     buildScoutIntelligenceA11ySummary(stats),
     explorerA11ySummary(explorerReads),
@@ -833,9 +823,9 @@ export function renderScoutIntelChartsStrip(
     .filter(Boolean)
     .join(" ");
   const a11yBlock = chartSummary
-    ? `<p class="visually-hidden">${escapeHtml(chartSummary)}</p>`
+    ? html`<p class="visually-hidden">${chartSummary}</p>`
     : "";
-  const enginePanel = renderScoutEnginePanel(engineAgg, escapeHtml);
+  const enginePanel = renderScoutEnginePanel(engineAgg);
 
   // With Black the first move is the other player's, so the same bars answer
   // "which first move should I play against them".
@@ -843,11 +833,11 @@ export function renderScoutIntelChartsStrip(
     stats?.oppColor === "black"
       ? `${who}'s score against each first move`
       : `${who}'s score by first move`;
-  return `
+  return html`
       ${a11yBlock}
       <div class="scout-intel-charts charts">
         <div class="scout-intel-panel card chart">
-          <h3 class="scout-col-label"${baseline != null ? ` title="Their average ${baseline}%"` : ""}>${byFirstTitle}</h3>
+          <h3 class="scout-col-label"${baseline != null ? html` title="Their average ${baseline}%"` : ""}>${byFirstTitle}</h3>
           ${scoreBars}
         </div>
         <div class="scout-intel-panel card chart">
@@ -869,14 +859,14 @@ export function renderScoutIntelChartsStrip(
 export function scoutScoreCell(scorePct, games, { baseline, showGap = false, maiaEstimate = false, showN = true } = {}) {
   const gap =
     showGap && baseline != null && baseline > scorePct
-      ? `<span class="scout-gap" title="They usually score ${baseline}%">usually ${baseline}%</span>`
+      ? html`<span class="scout-gap" title="They usually score ${baseline}%">usually ${baseline}%</span>`
       : "";
-  const estTitle = maiaEstimate ? ' title="Maia strength estimate"' : "";
+  const estTitle = maiaEstimate ? html` title="Maia strength estimate"` : "";
   const estCls = maiaEstimate ? " scout-maia-estimate" : "";
   const n = games === 1 ? "1 game" : `${games} games`;
-  return `<span class="scout-score-cell${estCls}"${estTitle}>
+  return html`<span class="scout-score-cell${estCls}"${estTitle}>
       <span class="scout-score-pct">${scorePct}%</span>
-      ${showN ? `<span class="scout-n">${n}</span>` : ''}${gap}
+      ${showN ? html`<span class="scout-n">${n}</span>` : ''}${gap}
     </span>`;
 }
 
@@ -890,16 +880,16 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
   const ranks = orientation === "black" ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
   const files = orientation === "black" ? [7, 6, 5, 4, 3, 2, 1, 0] : [0, 1, 2, 3, 4, 5, 6, 7];
   const labels = ["a", "b", "c", "d", "e", "f", "g", "h"];
-  let html = '<div class="scout-miniboard" aria-hidden="true">';
+  const squares = [];
   for (const rank of ranks) {
     for (const fi of files) {
       const sq = `${labels[fi]}${rank}`;
       const dark = (rank + fi) % 2 === 1;
       const p = pieces[sq];
-      html += `<div class="scout-minisquare ${dark ? "dark" : "light"}${last?.has(sq) ? " last" : ""}">${p ? pieceSvg(p) : ""}</div>`;
+      squares.push(html`<div class="scout-minisquare ${dark ? "dark" : "light"}${last?.has(sq) ? " last" : ""}">${p ? pieceSvg(p) : ""}</div>`);
     }
   }
-  return `${html}</div>`;
+  return html`<div class="scout-miniboard" aria-hidden="true">${squares}</div>`;
 }
 
 // Games in the rendered report. The live fetch total lives in the toolbar
@@ -909,19 +899,18 @@ export function scoutAnalyzedLabel(analyzed) {
   return `${a} game${a === 1 ? "" : "s"} analyzed`;
 }
 
-export function renderScoutProfile(profile, username, activeSpeed, escapeHtml, { colorRecHtml = "" } = {}) {
+export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "" } = {}) {
   const speeds = ["bullet", "blitz", "rapid", "classical"];
   const chips = speeds
     .filter((s) => (profile.speedCounts[s] || 0) >= 5)
     .map(
       (s) =>
-        `<button type="button" class="scout-speed-chip speed${activeSpeed === s ? " is-on" : ""}" data-speed="${s}" aria-pressed="${activeSpeed === s}">${s.charAt(0).toUpperCase() + s.slice(1)} <small class="scout-speed-n">${profile.speedCounts[s]}</small></button>`,
-    )
-    .join("");
-  return `
+        html`<button type="button" class="scout-speed-chip speed${activeSpeed === s ? " is-on" : ""}" data-speed="${s}" aria-pressed="${activeSpeed === s}">${s.charAt(0).toUpperCase() + s.slice(1)} <small class="scout-speed-n">${profile.speedCounts[s]}</small></button>`,
+    );
+  return html`
     <div class="prof-row">
       <div class="prof-id scout-profile-main">
-        <a class="scout-username-link prof-name" data-username="${escapeHtml(username)}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${escapeHtml(username)} ↗</a>
+        <a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>
         <span class="scout-profile-games faint">${scoutAnalyzedLabel(profile.total)}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
@@ -972,43 +961,42 @@ export function scoutRouteReasonText(line, baseline) {
   return parts.join(" · ");
 }
 
-export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine, renderBoard, escapeHtml, baseline = null }) {
+export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine, renderBoard, baseline = null }) {
   const fen = fenAfterLine(line.ucis);
   // The board sits on the preparing player's side (opposite the scouted colour).
   const viewColor = oppColor === "white" ? "black" : "white";
   const status = scoutPrepStatus(line);
   const statusLine = status.text
-    ? `<div class="scout-line-status line-status ${status.tone}">${escapeHtml(status.text)}</div>`
+    ? html`<div class="scout-line-status line-status ${status.tone}">${status.text}</div>`
     : "";
   const reason = rowKind === "prep" || rowKind === "weakness" ? scoutRouteReasonText(line, baseline ?? line.baselineScorePct) : "";
   const reasonLine = reason
-    ? `<p class="scout-line-reason note">${escapeHtml(reason)}</p>`
+    ? html`<p class="scout-line-reason note">${reason}</p>`
     : "";
   const replyNote = line.suggestedReply?.uci
-    ? `<p class="scout-line-reply note good">Suggested reply: <strong>${escapeHtml(formatReplyLabel(line.suggestedReply))}</strong> (${escapeHtml(line.suggestedReply.source || "engine")})</p>`
+    ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${formatReplyLabel(line.suggestedReply)}</strong> (${line.suggestedReply.source || "engine"})</p>`
     : line.needsPrep
-      ? `<p class="scout-line-reply note warn">No reply in your prep yet — run Deep scan or extend repertoire</p>`
+      ? html`<p class="scout-line-reply note warn">No reply in your prep yet — run Deep scan or extend repertoire</p>`
       : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
-      ? `<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: …${escapeHtml(line.enginePattern.playedSan)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
+      ? html`<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: …${line.enginePattern.playedSan} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
       : line.hasEngineMistake || line.refutation
-        ? `<p class="scout-engine-note note eng">Engine refutation available</p>`
+        ? html`<p class="scout-engine-note note eng">Engine refutation available</p>`
         : "";
   const subLines =
     line.subLines && line.subLines.length
-      ? `<div class="subvars"><small class="scout-sublines-label faint">Sub-variations</small>
+      ? html`<div class="subvars"><small class="scout-sublines-label faint">Sub-variations</small>
          <div class="scout-sublines">${line.subLines
            .map((sub) => {
              const grey = sub.share < 0.03 ? " muted" : "";
              const pct = Math.round((sub.share || 0) * 100);
-             return `<div class="scout-subline sv${grey}"><span>${escapeHtml(scoutLineText(sub.sans))}</span><i style="width:${Math.max(pct, 2)}%"></i><b>${pct}%</b></div>`;
-           })
-           .join("")}</div></div>`
+             return html`<div class="scout-subline sv${grey}"><span>${scoutLineText(sub.sans)}</span><i style="width:${Math.max(pct, 2)}%"></i><b>${pct}%</b></div>`;
+           })}</div></div>`
       : "";
-  return `
+  return html`
       <div class="eyebrow">Line detail</div>
-      <h2 class="line-title">${escapeHtml(scoutLineText(line.sans))}</h2>
+      <h2 class="line-title">${scoutLineText(line.sans)}</h2>
       <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
       ${reasonLine}
@@ -1060,15 +1048,15 @@ export function scoutDisplayDistribution(node, moveDistribution, { limit = 4 } =
 }
 
 // First-move distribution row: move, frequency bar + share, score.
-export function scoutDistRowHtml(m, escapeHtml, { clickable = true } = {}) {
+export function scoutDistRowHtml(m, { clickable = true } = {}) {
   const heat = m.scorePct >= 55 ? " is-hot" : m.scorePct <= 45 ? " is-cold" : "";
   const clickAttrs = clickable && m.uci
-    ? ` data-first-uci="${escapeHtml(m.uci)}" role="button" tabindex="0" title="Show the replies to ${escapeHtml(m.san)}"`
+    ? html` data-first-uci="${m.uci}" role="button" tabindex="0" title="Show the replies to ${m.san}"`
     : "";
   const games = m.gameCount ?? m.count;
-  return `
+  return html`
       <div class="scout-dist-row fm${heat}"${clickAttrs}>
-        <b class="scout-dist-san">${escapeHtml(m.san)}</b>
+        <b class="scout-dist-san">${m.san}</b>
         <span class="scout-dist-bar share"><i style="width:${Math.round(m.share * 100)}%"></i></span>
         <span class="scout-dist-share" title="${games} game${games === 1 ? "" : "s"}">${formatSharePct(m.share)}</span>
         <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small>${m.scorePct}%</span>
@@ -1093,25 +1081,25 @@ export function scoutRowPlyLimit(line) {
   return Math.min(total, limit);
 }
 
-function scoutPrepFramingHtml(line, escapeHtml) {
+function scoutPrepFramingHtml(line) {
   // The line holds BOTH sides' moves, so it is "after", not "when they play".
   const fullLine = scoutLineText(line.sans);
   const shown = scoutRowPlyLimit(line);
   const hidden = (line.sans?.length || 0) - shown;
   const theirLine = hidden > 0 ? `${scoutLineText(line.sans.slice(0, shown))} …` : fullLine;
   const more = hidden > 0
-    ? ` <span class="scout-line-more faint">+${Math.ceil(hidden / 2)} more move${Math.ceil(hidden / 2) === 1 ? "" : "s"}</span>`
+    ? html` <span class="scout-line-more faint">+${Math.ceil(hidden / 2)} more move${Math.ceil(hidden / 2) === 1 ? "" : "s"}</span>`
     : "";
   const reply = line.suggestedReply;
-  const when = `<span class="when" title="${escapeHtml(fullLine)}">After <b class="scout-prep-them">${escapeHtml(theirLine)}</b>${more}</span>`;
+  const when = html`<span class="when" title="${fullLine}">After <b class="scout-prep-them">${theirLine}</b>${more}</span>`;
   if (reply?.uci) {
-    const replyLabel = escapeHtml(formatReplyLabel(reply));
-    return `<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> your move: <b class="scout-prep-you">${replyLabel}</b></span></span>`;
+    const replyLabel = formatReplyLabel(reply);
+    return html`<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> your move: <b class="scout-prep-you">${replyLabel}</b></span></span>`;
   }
   if (line.needsPrep) {
-    return `<span class="scout-prep-framing">${when}<span class="then needs"><span class="scout-prep-arrow">→</span> <span class="scout-prep-needs">no answer in your prep</span></span></span>`;
+    return html`<span class="scout-prep-framing">${when}<span class="then needs"><span class="scout-prep-arrow">→</span> <span class="scout-prep-needs">no answer in your prep</span></span></span>`;
   }
-  return `<span title="${escapeHtml(fullLine)}">${escapeHtml(theirLine)}</span>`;
+  return html`<span title="${fullLine}">${theirLine}</span>`;
 }
 
 // A rare line (1 game in a big sample) is a real prep target, not noise — show "<1%"
@@ -1124,10 +1112,10 @@ function formatSharePct(share) {
 
 function scoutPrepCategoryBadge(line) {
   if (line.prepCategory === "attack") {
-    return '<span class="scout-prep-chip scout-prep-chip-attack cat c-attack" title="They score below their usual result here">weak spot</span>';
+    return html`<span class="scout-prep-chip scout-prep-chip-attack cat c-attack" title="They score below their usual result here">weak spot</span>`;
   }
   if (line.prepCategory === "weapon") {
-    return '<span class="scout-prep-chip scout-prep-chip-weapon cat c-main" title="A line they play often and score well in: have an answer ready">main line</span>';
+    return html`<span class="scout-prep-chip scout-prep-chip-weapon cat c-main" title="A line they play often and score well in: have an answer ready">main line</span>`;
   }
   return "";
 }
@@ -1138,37 +1126,36 @@ function scoutLineRowHtml(
   i,
   oppColor,
   baseline,
-  escapeHtml,
   { rowKind = "line", renderBoard = null, rank = null } = {},
 ) {
   const weakness = rowKind === "weakness" || rowKind === "prep";
   const status = scoutPrepStatus(line);
-  const framing = scoutPrepFramingHtml(line, escapeHtml);
+  const framing = scoutPrepFramingHtml(line);
   // Real integer game count for display — never the recency-weighted `count`, which
   // decays toward 0 for old lines and would render a true n=1 line as "n=0".
   const rawCount = line.routeSupportGames ?? line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
   const engineFlag = line.hasEngineMistake || line.refutation
-    ? '<i class="scout-err-marker eng" title="Engine-backed refutation available">⚠</i>'
+    ? html`<i class="scout-err-marker eng" title="Engine-backed refutation available">⚠</i>`
     : "";
   // Path guard (flagged prototype): a kept line whose earlier position fails the leaf gate.
   const pathFlag = line.pathStatus === "risk"
-    ? '<i class="scout-err-marker path-risk" title="Your side is worse than −0.75 at an earlier move of this line (depth 8)">!</i>'
+    ? html`<i class="scout-err-marker path-risk" title="Your side is worse than −0.75 at an earlier move of this line (depth 8)">!</i>`
     : "";
-  const pathAttr = line.pathStatus ? ` data-path-status="${escapeHtml(line.pathStatus)}"` : "";
+  const pathAttr = line.pathStatus ? html` data-path-status="${line.pathStatus}"` : "";
   const lineKey = scoutLineKey(line.ucis);
-  const rowTitle = status.text ? ` title="${escapeHtml(status.text)}"` : "";
+  const rowTitle = status.text ? html` title="${status.text}"` : "";
   const lastSeenBadge = line.lastSeen
-    ? `<span class="scout-last-seen seen">${escapeHtml(formatLastSeenLabel(line.lastSeen))}</span>`
+    ? html`<span class="scout-last-seen seen">${formatLastSeenLabel(line.lastSeen)}</span>`
     : "";
   const categoryBadge = weakness ? scoutPrepCategoryBadge(line) : "";
   const refCard =
     weakness && line.refutation
-      ? renderInlineRefutationCard(line, oppColor, escapeHtml, { renderBoard })
+      ? renderInlineRefutationCard(line, oppColor, { renderBoard })
       : "";
   const addTitle = line.suggestedReply?.uci
     ? `Add your reply ${formatReplyLabel(line.suggestedReply)} to prep`
     : "Add this line to a repertoire";
-  const addBtn = `<button type="button" class="scout-add-icon scout-action-add-prep add" title="${escapeHtml(addTitle)}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
+  const addBtn = html`<button type="button" class="scout-add-icon scout-action-add-prep add" title="${addTitle}" aria-label="Add to prep" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}">+</button>`;
   const maiaEstimate = line.maiaScorePct != null;
   const displayScore = maiaEstimate ? line.maiaScorePct : (line.routeScorePct ?? line.scorePct);
   const wdl = scoutLineWdlCounts(line);
@@ -1179,11 +1166,11 @@ function scoutLineRowHtml(
     // show score + n with a label-free W/D/L bar (counts in its tooltip).
     const oneGame = !maiaEstimate && rawCount === 1;
     const scoreHtml = oneGame
-      ? `<span class="scout-score-cell scout-one-game" title="Their result in the only game">${wdl.w ? "Won" : wdl.l ? "Lost" : "Drew"}</span>`
+      ? html`<span class="scout-score-cell scout-one-game" title="Their result in the only game">${wdl.w ? "Won" : wdl.l ? "Lost" : "Drew"}</span>`
       : scoutScoreCell(displayScore, rawCount, { baseline, showGap: line.belowBaseline > 0, maiaEstimate, showN: rawCount > 1 });
     const wdlHtml = oneGame ? "" : scoutWdlBar(wdl.w, wdl.d, wdl.l, { maiaEstimate, counts: false });
-    return `
-      <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${pathAttr} role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+    return html`
+      <div class="scout-line scout-line-row line-row ${status.cls} scout-weakness-row scout-ranked-row" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}"${pathAttr} role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         <div class="scout-lr-main lr-main">
           <span class="scout-line-eco"></span>
           <span class="scout-line-moves">${framing}</span>
@@ -1195,9 +1182,9 @@ function scoutLineRowHtml(
         <span class="scout-lr-action lr-flags">${pathFlag}${engineFlag}${addBtn}</span>
       </div>`;
   }
-  const countCell = `<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
-  return `
-      <div class="scout-line scout-line-row ${status.cls}" data-line-key="${escapeHtml(lineKey)}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
+  const countCell = html`<span class="scout-lr-count" title="${rawCount} of their games">&times;${rawCount}</span>`;
+  return html`
+      <div class="scout-line scout-line-row ${status.cls}" data-line-key="${lineKey}" data-row-kind="${rowKind}" data-row-idx="${i}" data-color="${oppColor}" role="button" tabindex="0" aria-expanded="false"${rowTitle}>
         ${countCell}
         <div class="scout-lr-main">
           <span class="scout-line-eco"></span>
@@ -1209,8 +1196,8 @@ function scoutLineRowHtml(
       </div>`;
 }
 
-function scoutWeaknessRowHtml(target, i, oppColor, baseline, escapeHtml, opts = {}) {
-  return scoutLineRowHtml(target, i, oppColor, baseline, escapeHtml, {
+function scoutWeaknessRowHtml(target, i, oppColor, baseline, opts = {}) {
+  return scoutLineRowHtml(target, i, oppColor, baseline, {
     rowKind: "prep",
     rank: i,
     ...opts,
@@ -1248,7 +1235,6 @@ export function buildScoutSectionReport(
   myLookups,
   {
     speedFilter = "all",
-    escapeHtml,
     enginePatterns = null,
     explorerReads = null,
     engineAgg = null,
@@ -1361,8 +1347,8 @@ export function buildScoutSectionReport(
     prepTargets,
     lastSeenByLine,
   });
-  const intelSummary = renderScoutIntelSummary(stats, summary, escapeHtml, { explorerReads });
-  const intelCharts = renderScoutIntelChartsStrip(stats, escapeHtml, {
+  const intelSummary = renderScoutIntelSummary(stats, summary, { explorerReads });
+  const intelCharts = renderScoutIntelChartsStrip(stats, {
     explorerReads,
     engineAgg,
     refutations,
@@ -1398,38 +1384,35 @@ export function buildScoutSectionReport(
   const coverageLabel = myLookups.length
     ? `your prep follows ${covPct}% of their games to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}`
     : `no ${oppColor === "white" ? "Black" : "White"} repertoire to compare`;
-  const prepareAll = `<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`;
+  const prepareAll = html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`;
 
   const trending = profile.recentlyChanged[oppColor]
-    ? '<span class="scout-trending kchip k-due" title="Their recent games show a different opening">⚡ Recently changed</span>'
+    ? html`<span class="scout-trending kchip k-due" title="Their recent games show a different opening">⚡ Recently changed</span>`
     : "";
 
   const firstMoves = scoutDisplayDistribution(trie, scoutModule.moveDistribution)
-    .map((m) => scoutDistRowHtml(m, escapeHtml))
-    .join("");
+    .map((m) => scoutDistRowHtml(m));
   const refutationGaps = collectActionableRefutationGapActions(refutations);
   const gapActionsHtml = refutationGaps.length
-    ? renderScoutRefutationGapActions(refutationGaps, escapeHtml)
+    ? renderScoutRefutationGapActions(refutationGaps)
     : "";
 
-  const prepRows = prepTargets
-    .map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline, escapeHtml))
-    .join("");
+  const prepRows = prepTargets.map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline));
   const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
     prefilterState: prefilterEnrichState,
   });
-  const who = escapeHtml(username || "Opponent");
+  const who = username || "Opponent";
   const yourSide = oppColor === "white" ? "Black" : "White";
-  const planHead = `<div class="scout-game-plan-head plan-head">
+  const planHead = html`<div class="scout-game-plan-head plan-head">
             <b class="scout-col-label">Your game plan as ${yourSide}</b>
           </div>`;
-  const firstMovesHtml = `<div class="scout-first-moves">
+  const firstMovesHtml = html`<div class="scout-first-moves">
             <span class="scout-sub-label">${who}'s first moves</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
-  const listHead = `<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
-  const prepPanel = prepRows
-    ? `<div class="scout-game-plan plan">
+  const listHead = html`<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
+  const prepPanel = prepRows.length
+    ? html`<div class="scout-game-plan plan">
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
@@ -1437,7 +1420,7 @@ export function buildScoutSectionReport(
           <div class="scout-lines scout-ranked-list lines" role="list">${prepRows}</div>
           ${rankedNote}
         </div>`
-    : `<div class="scout-game-plan plan">
+    : html`<div class="scout-game-plan plan">
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
@@ -1445,18 +1428,18 @@ export function buildScoutSectionReport(
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";
-  const html = `
+  const markup = html`
     <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
       <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${countOf(trie.gameCount, "game")}</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
           <span class="scout-section-who">${who} with ${oppColor === "white" ? "White" : "Black"}</span>
-          <span class="scout-section-wdl wdl-compact" title="${escapeHtml(countOf(colorWdl.games, "game"))}">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })}</span>
+          <span class="scout-section-wdl wdl-compact" title="${countOf(colorWdl.games, "game")}">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })}</span>
           <span class="scout-section-score faint" title="Wins plus half the draws">scores ${baseline}%</span>
           ${trending}
           <span class="spacer"></span>
           <div class="scout-coverage-bar-row cov"${coverage.games ? "" : " hidden"}>
-            ${myLookups.length ? `<div class="scout-coverage-bar hbar">
+            ${myLookups.length ? html`<div class="scout-coverage-bar hbar">
               <div class="scout-coverage-fill ${covTone}" style="width:${covPct}%"></div>
             </div>` : ""}
             <span class="scout-coverage-label" title="${coverage.followed} of ${coverage.games} games: your repertoire has every move of the game up to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}">${coverageLabel}</span>
@@ -1469,7 +1452,7 @@ export function buildScoutSectionReport(
       <div class="scout-intel-charts-strip">${intelCharts}</div>
     </div>
   `;
-  return { html, sectionData };
+  return { html: markup, sectionData };
 }
 
 export function mergeEnginePatternsIntoSections(sections, engineByColor, { speedFilter = "all" } = {}) {

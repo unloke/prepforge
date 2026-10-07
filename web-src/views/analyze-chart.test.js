@@ -148,7 +148,6 @@ function setup() {
   const showAnalysisPly = vi.fn(async () => {});
   const view = createAnalyzeView({
     appState,
-    escapeHtml: (s) => String(s),
     START_FEN: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     showAnalysisPly,
     selectAnalysisNode: vi.fn(async () => {}),
@@ -286,11 +285,11 @@ describe("eval chart mouse behaviour", () => {
     view.renderEvalChart(POINTS);
     chart.dispatch("mousemove", { clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
-    expect(tooltip.innerHTML).toContain("<b>Nc6</b>");
-    expect(tooltip.innerHTML).toContain("−1.2");
-    expect(tooltip.innerHTML).not.toContain("win chance");
-    expect(tooltip.innerHTML).toContain("Mistake");
-    expect(tooltip.innerHTML).toContain("?"); // glyph — a non-colour cue
+    expect(String(tooltip.innerHTML)).toContain("<b>Nc6</b>");
+    expect(String(tooltip.innerHTML)).toContain("−1.2");
+    expect(String(tooltip.innerHTML)).not.toContain("win chance");
+    expect(String(tooltip.innerHTML)).toContain("Mistake");
+    expect(String(tooltip.innerHTML)).toContain("?"); // glyph — a non-colour cue
     chart.dispatch("mouseleave");
     expect(tooltip.hidden).toBe(true);
   });
@@ -347,26 +346,26 @@ describe("eval chart helpers", () => {
   it("evalChartTooltipHtml carries the full text readout", () => {
     const { view } = setup();
     const html = view.evalChartTooltipHtml(POINTS[3], { isCurrent: true });
-    expect(html).toContain("2… <b>Nc6</b>");
-    expect(html).toContain("−1.2");
-    expect(html).toContain("Mistake");
-    expect(html).toContain("current");
-    expect(view.evalChartTooltipHtml(POINTS[0])).toContain("1. <b>e4</b> · +0.3");
+    expect(String(html)).toContain("2… <b>Nc6</b>");
+    expect(String(html)).toContain("−1.2");
+    expect(String(html)).toContain("Mistake");
+    expect(String(html)).toContain("current");
+    expect(String(view.evalChartTooltipHtml(POINTS[0]))).toContain("1. <b>e4</b> · +0.3");
     expect(
-      view.evalChartTooltipHtml({ ply: 9, san: "Qh5", score_cp: null, bounded_score_cp: 1000, classification: "best" }),
+      String(view.evalChartTooltipHtml({ ply: 9, san: "Qh5", score_cp: null, bounded_score_cp: 1000, classification: "best" })),
     ).toContain("+M");
   });
 
   it("names the mate distance and a checkmate on the board", () => {
     const { view } = setup();
     expect(
-      view.evalChartTooltipHtml({ ply: 78, san: "Qf4", score_cp: null, mate_in: 1, bounded_score_cp: 1000, classification: "best" }),
+      String(view.evalChartTooltipHtml({ ply: 78, san: "Qf4", score_cp: null, mate_in: 1, bounded_score_cp: 1000, classification: "best" })),
     ).toContain("· #1");
     const mated = view.evalChartTooltipHtml({ ply: 79, san: "Qxf4#", score_cp: 100000, mate_in: null, bounded_score_cp: 1000, classification: "best" });
-    expect(mated).toContain("· 1-0");
-    expect(mated).not.toContain("1000");
+    expect(String(mated)).toContain("· 1-0");
+    expect(String(mated)).not.toContain("1000");
     expect(
-      view.evalChartTooltipHtml({ ply: 80, san: "Qxf2#", score_cp: -100000, mate_in: null, bounded_score_cp: -1000, classification: "best" }),
+      String(view.evalChartTooltipHtml({ ply: 80, san: "Qxf2#", score_cp: -100000, mate_in: null, bounded_score_cp: -1000, classification: "best" })),
     ).toContain("· 0-1");
   });
 });

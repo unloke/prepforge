@@ -213,7 +213,7 @@ function e2eEngineScan() {
 }
 
 /** Full Scout section HTML via buildScoutSectionReport (real prep-row IA). */
-export function buildE2ePrepSection(scenarioId, escapeHtml) {
+export function buildE2ePrepSection(scenarioId) {
   const games = scoutE2eWeaknessGames();
   const profile = scoutModule.opponentProfile(games);
   const base = {
@@ -223,7 +223,6 @@ export function buildE2ePrepSection(scenarioId, escapeHtml) {
   };
   const common = {
     speedFilter: "all",
-    escapeHtml,
     explorerReads: { available: false, reason: "auth" },
   };
 

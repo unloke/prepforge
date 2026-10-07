@@ -80,7 +80,6 @@ function makeHarness(overrides = {}) {
   const view = createTeamsView({
     appState: { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
     api: async () => ({ teams: [] }),
-    escapeHtml: (s) => String(s),
     hideTeamDetail: () => {},
     openTeamDetail: async () => {},
     loadSharedRepertoires: () => {},
@@ -148,13 +147,13 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
     view.renderTeamInviteFooter({ invite: { exists: true, created_at: "2026-09-01T00:00:00Z", expires_at: null } });
     expect(foot.hidden).toBe(false);
-    expect(foot.innerHTML).toContain("Invite link active");
-    expect(foot.innerHTML).toContain("revoke from Invite");
-    expect(foot.innerHTML).not.toContain("expires");
+    expect(String(foot.innerHTML)).toContain("Invite link active");
+    expect(String(foot.innerHTML)).toContain("revoke from Invite");
+    expect(String(foot.innerHTML)).not.toContain("expires");
 
     view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T00:00:00Z" } });
-    expect(foot.innerHTML).toContain("expires");
-    expect(foot.innerHTML).not.toContain("· revoke from Invite ·");
+    expect(String(foot.innerHTML)).toContain("expires");
+    expect(String(foot.innerHTML)).not.toContain("· revoke from Invite ·");
   });
 
   it("shared repertoires tab count mirrors the rendered list length", () => {
@@ -205,7 +204,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     });
     await view.loadTeams();
     expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
-    expect(byId("teams-shared").innerHTML).toBe("");
+    expect(String(byId("teams-shared").innerHTML)).toBe("");
   });
   it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
     const guest = makeHarness({ appState: { signedIn: false, teams: [], selectedTeamId: null } });
@@ -224,7 +223,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     // app.js hideTeamDetail() calls renderTeamsList() after the signed-out paint.
     view.renderTeamsList();
     // The main card carries the one Sign in; the list doesn't repeat it.
-    expect(byId("teams-list").innerHTML).toBe("");
+    expect(String(byId("teams-list").innerHTML)).toBe("");
   });
   it("search visibility follows the team collection, including an unmatched typed filter", () => {
     const appState = { signedIn: true, teams: [], selectedTeamId: null };
@@ -238,22 +237,22 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     appState.teams = [{ id: "a", name: "Club", role: "owner", member_count: 1 }];
     view.renderTeamsList();
     expect(field.hidden).toBe(false);
-    expect(byId("teams-list").innerHTML).toContain("No teams match your search");
+    expect(String(byId("teams-list").innerHTML)).toContain("No teams match your search");
     search.value = "";
     search.__listeners.input.forEach((fn) => fn());
-    expect(byId("teams-list").innerHTML).toContain('data-team-id="a"');
+    expect(String(byId("teams-list").innerHTML)).toContain('data-team-id="a"');
     appState.teams = [];
     view.renderTeamsList();
     expect(field.hidden).toBe(true);
     appState.signedIn = false;
     view.renderTeamsList();
-    expect(byId("teams-list").innerHTML).toBe("");
+    expect(String(byId("teams-list").innerHTML)).toBe("");
   });
   it("invite expiry reads in English whatever the browser locale (UX 2026-10-01 P2-13)", () => {
     const { view, byId } = makeHarness();
     view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T12:00:00Z" } });
-    expect(byId("team-invite-foot").innerHTML).toContain("expires Oct 4");
-    expect(byId("team-invite-foot").innerHTML).not.toMatch(/月|日/);
+    expect(String(byId("team-invite-foot").innerHTML)).toContain("expires Oct 4");
+    expect(String(byId("team-invite-foot").innerHTML)).not.toMatch(/月|日/);
   });
 
   it("the signed-out empty card offers a Sign in button (UX 2026-10-01 P2-10)", () => {

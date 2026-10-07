@@ -12,7 +12,7 @@ function makeSettingsView(overrides = {}) {
     addEventListener: vi.fn(),
   };
   elements["settings-lichess-accounts"] = {
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     addEventListener: (name, handler) => {
       listeners[name] = handler;
     },
@@ -64,15 +64,15 @@ describe("settings connections", () => {
     await view.refreshConnections();
 
     const html = elements["settings-lichess-accounts"].innerHTML;
-    expect(html).toContain("account_a");
-    expect(html).toContain('class="conn-primary">Primary</span>');
-    expect(html).not.toContain("account_a — Primary");
-    expect(html).toContain("account_b");
-    expect(html).toContain('data-account-id="b"');
-    expect(html).toContain('data-conn-action="menu"');
-    expect(html).toContain('aria-label="Account actions for account_b"');
-    expect(html.match(/data-conn-action="primary"/g) || []).toHaveLength(1);
-    expect(html).toContain('data-conn-action="unlink"');
+    expect(String(html)).toContain("account_a");
+    expect(String(html)).toContain('class="conn-primary">Primary</span>');
+    expect(String(html)).not.toContain("account_a — Primary");
+    expect(String(html)).toContain("account_b");
+    expect(String(html)).toContain('data-account-id="b"');
+    expect(String(html)).toContain('data-conn-action="menu"');
+    expect(String(html)).toContain('aria-label="Account actions for account_b"');
+    expect(String(html).match(/data-conn-action="primary"/g) || []).toHaveLength(1);
+    expect(String(html)).toContain('data-conn-action="unlink"');
   });
 
   it("sets a new primary through the API and refreshes", async () => {
@@ -124,9 +124,9 @@ describe("settings connections", () => {
     expect(appState.lichessUsername).toBe("account_b");
     expect(onAccountsChanged).toHaveBeenCalled();
     const html = elements["settings-lichess-accounts"].innerHTML;
-    expect(html).toContain("account_b");
-    expect(html).toContain('class="conn-primary">Primary</span>');
-    expect(html).not.toContain("account_b — Primary");
+    expect(String(html)).toContain("account_b");
+    expect(String(html)).toContain('class="conn-primary">Primary</span>');
+    expect(String(html)).not.toContain("account_b — Primary");
   });
 
   it("unlinks through the CSRF-aware api DELETE path", async () => {

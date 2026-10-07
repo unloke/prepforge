@@ -8,7 +8,7 @@ import { createTrainView } from "./train.js";
 //  - hidden when there is no session, no queue, or the card is the last one.
 
 function makeHost() {
-  return { hidden: true, innerHTML: "" };
+  return { hidden: true, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
 }
 
 function makeElements() {
@@ -16,7 +16,7 @@ function makeElements() {
     "train-upnext": makeHost(),
     "train-line-label": { textContent: "" },
     "train-progress-fill": { style: {} },
-    "train-card-dots": { innerHTML: "" },
+    "train-card-dots": { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } },
   };
 }
 
@@ -29,7 +29,6 @@ function makeView(appState, elements) {
   return createTrainView({
     appState,
     boards: {},
-    escapeHtml: (s) => String(s),
     renderSyncChip: () => {},
     setTrainBanner: () => {},
     updateTrainTurnBadge: () => {},
@@ -85,10 +84,10 @@ describe("train up-next preview", () => {
     const host = elements["train-upnext"];
     expect(host.hidden).toBe(false);
     expect((host.innerHTML.match(/un-row/g) || []).length).toBe(3);
-    expect(host.innerHTML).toContain("Weak spot");
-    expect(host.innerHTML).toContain("London System");
-    expect(host.innerHTML).toContain("Najdorf");
-    expect(host.innerHTML).toContain("color-dot black");
+    expect(String(host.innerHTML)).toContain("Weak spot");
+    expect(String(host.innerHTML)).toContain("London System");
+    expect(String(host.innerHTML)).toContain("Najdorf");
+    expect(String(host.innerHTML)).toContain("color-dot black");
   });
 
   it("never prints the answer of an upcoming recall card (UX 2026-10-01 P1-2)", () => {
@@ -107,10 +106,10 @@ describe("train up-next preview", () => {
     const view = makeView(appState, elements);
     view.renderSmartProgress({ total_cards: 4, card_index: 0, kind: "new", targets_total: 1, target_index: 0 });
     const html = elements["train-upnext"].innerHTML;
-    expect(html).not.toContain("Qxb7");
-    expect(html).not.toContain("Bd3");
+    expect(String(html)).not.toContain("Qxb7");
+    expect(String(html)).not.toContain("Bd3");
     // A new move is demonstrated by its card anyway, so it may be previewed.
-    expect(html).toContain("Be7");
+    expect(String(html)).toContain("Be7");
   });
 
   it("hides entirely on the last card", () => {
@@ -130,7 +129,7 @@ describe("train up-next preview", () => {
     view.renderSmartProgress({ total_cards: 4, card_index: 3, kind: "polish", targets_total: 1, target_index: 0 });
     const host = elements["train-upnext"];
     expect(host.hidden).toBe(true);
-    expect(host.innerHTML).toBe("");
+    expect(String(host.innerHTML)).toBe("");
   });
 
   it("hides when no smart session exists (setup screen, legacy line mode)", () => {
@@ -138,6 +137,6 @@ describe("train up-next preview", () => {
     view.renderSmartProgress({ total_cards: 2, card_index: 0, kind: "due", targets_total: 1, target_index: 0 });
     const host = elements["train-upnext"];
     expect(host.hidden).toBe(true);
-    expect(host.innerHTML).toBe("");
+    expect(String(host.innerHTML)).toBe("");
   });
 });

@@ -1,7 +1,7 @@
+import { html } from "./html.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
-  bookState, appState, currentOwnerId, api, loadCoach, escapeHtml,
-  rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
+  bookState, appState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
 }) {
 async function ensureBookLoaded() {
   if (bookState.loaded) return;
@@ -146,8 +146,7 @@ async function updateBookline() {
       expectedSan: prescribed.san,
     });
     el.innerHTML =
-      `${escapeHtml(text)} ` +
-      `<button class="coach-bookaction" type="button" data-act="train">Train it<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+      html`${`${text} `}<button class="coach-bookaction" type="button" data-act="train">Train it<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
     el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
       const btn = event.currentTarget;
@@ -190,8 +189,7 @@ async function updateBookline() {
       repName: rep.name,
     });
     el.innerHTML =
-      `${escapeHtml(text)} ` +
-      `<button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+      html`${`${text} `}<button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
     el.querySelector('[data-act="build"]').addEventListener("click", () => {
       // F-06: Analyze→Repertoire handoff — the novelty line + anchor position

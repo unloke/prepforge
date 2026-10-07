@@ -8,7 +8,7 @@ function el(extra = {}) {
   const classes = new Set();
   return {
     textContent: "",
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     style: { setProperty() {} },
     classList: {
@@ -38,7 +38,6 @@ function setup() {
   const appState = { evalChartPoints: [], analysisPly: 0 };
   const view = createAnalyzeView({
     appState,
-    escapeHtml: (s) => String(s),
     START_FEN: "",
     showAnalysisPly: () => {},
     selectAnalysisNode: async () => {},
@@ -104,8 +103,8 @@ describe("live whole-game progress chart", () => {
     const { view, ids } = setup();
     const onResult = view.liveEvalChart(["p0", "p1", "p2", "p3"]);
     const svg = ids["eval-chart-live"];
-    expect(svg.innerHTML).toContain("eval-axis");
-    expect(svg.innerHTML).not.toContain("polyline");
+    expect(String(svg.innerHTML)).toContain("eval-axis");
+    expect(String(svg.innerHTML)).not.toContain("polyline");
     onResult("p2", { score_cp: 120 });
     onResult("p0", { score_cp: 0 });
     onResult("unknown", { score_cp: 999 });
@@ -114,7 +113,7 @@ describe("live whole-game progress chart", () => {
     expect(points).toHaveLength(2);
     expect(points[0].startsWith("0.0,")).toBe(true);
     // The front marks the furthest finished position (p2 of 0..3).
-    expect(svg.innerHTML).toMatch(/class="eval-front" x1="426.7"/);
+    expect(String(svg.innerHTML)).toMatch(/class="eval-front" x1="426.7"/);
   });
 
   it("animates Maia's read on the finished curve: a sweep up to its front", async () => {
@@ -124,13 +123,13 @@ describe("live whole-game progress chart", () => {
     live.phase("maia", 1, 2);
     await new Promise((r) => setTimeout(r, 30));
     const html = ids["eval-chart-live"].innerHTML;
-    expect(html).not.toContain("eval-front");
-    expect(html).toMatch(/class="eval-maia-front" x1="320.0"/);
+    expect(String(html)).not.toContain("eval-front");
+    expect(String(html)).toMatch(/class="eval-maia-front" x1="320.0"/);
     // Only the part of the curve Maia has read is recoloured.
     expect(/class="eval-maia-line" points="([^"]+)"/.exec(html)[1].split(" ")).toHaveLength(2);
     live.phase("maia-load");
     await new Promise((r) => setTimeout(r, 30));
-    expect(ids["eval-chart-live"].innerHTML).not.toMatch(/eval-maia-(line|front)/);
+    expect(String(ids["eval-chart-live"].innerHTML)).not.toMatch(/eval-maia-(line|front)/);
   });
 
   it("maps mates to the edge of the chart instead of a flat line", async () => {

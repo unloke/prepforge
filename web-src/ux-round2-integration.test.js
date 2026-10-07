@@ -1,9 +1,11 @@
+import { html } from "./html.js";
 import { describe, expect, it, vi } from "vitest";
 import { selectionChips } from "./views/shared/source-composer.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
 function compile(marker, deps, prelude = "") {
+  deps = { html, ...deps };
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `${prelude}\nreturn (${source.slice(start, end)});`)(...Object.values(deps));
@@ -18,8 +20,8 @@ describe("Recent analyses refresh ordering", () => {
   it.each(["success", "failure"])("an older %s cannot overwrite the post-save list", async (outcome) => {
     const old = deferred();
     const fresh = deferred();
-    const host = { innerHTML: "", querySelectorAll: () => [], querySelector: () => null };
-    const deps = { appState: {}, currentOwnerId: () => "owner", document: { getElementById: () => host }, escapeHtml: String, localDayOf: (iso) => String(iso || "").slice(0, 10),
+    const host = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [], querySelector: () => null };
+    const deps = { appState: {}, currentOwnerId: () => "owner", document: { getElementById: () => host }, localDayOf: (iso) => String(iso || "").slice(0, 10),
       api: vi.fn().mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise) };
     const load = compile("async function loadAnalysisHistory(", deps, "let analysisHistorySeq = 0;");
     const first = load();
@@ -29,7 +31,7 @@ describe("Recent analyses refresh ordering", () => {
     if (outcome === "success") old.resolve({ analyses: [] });
     else old.reject(new Error("old network failure"));
     await first;
-    expect(host.innerHTML).toContain('data-game-id="new"');
+    expect(String(host.innerHTML)).toContain('data-game-id="new"');
   });
 });
 
@@ -84,16 +86,16 @@ describe("Library initial chunk failure", () => {
   it("replaces the spinner with an actionable error and can retry as a guest", async () => {
     const classes = new Set(["is-loading"]);
     const retry = { addEventListener: vi.fn() };
-    const host = { innerHTML: "spinner", querySelector: () => retry };
+    const host = { get innerHTML() { return this._html ?? "spinner"; }, set innerHTML(value) { this._html = String(value); }, querySelector: () => retry };
     const card = { classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) } };
     const view = { renderSignedOut: vi.fn(), loadDashboard: vi.fn() };
     const ensureDashboardView = vi.fn().mockRejectedValueOnce(new Error("chunk missing")).mockResolvedValue(view);
     const deps = { appState: { signedIn: false }, ensureDashboardView, setStatusError: vi.fn(),
-      escapeHtml: String, document: { getElementById: () => host, querySelector: () => card } };
+      document: { getElementById: () => host, querySelector: () => card } };
     const load = compile("async function loadDashboard(", deps);
     await load();
     expect(classes.has("is-loading")).toBe(false);
-    expect(host.innerHTML).toMatch(/Could not load your library/);
+    expect(String(host.innerHTML)).toMatch(/Could not load your library/);
     expect(retry.addEventListener).toHaveBeenCalledWith("click", expect.any(Function));
     await retry.addEventListener.mock.calls[0][1]();
     expect(view.renderSignedOut).toHaveBeenCalled();
@@ -108,23 +110,21 @@ describe("Games link chip respects explicit Self selection", () => {
     ["subset", [], "No sources"],
     ["subset", ["unlinked-id"], "No sources"],
   ])("%s with %j and no linked accounts", (linkedMode, accountIds, expected) => {
-    const tray = { innerHTML: "" };
+    const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     const paint = compile("function paintGamesSource(", {
-      appState: { signedIn: true }, document: { getElementById: () => tray }, selectionChips, escapeHtml: String,
-      lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
+      appState: { signedIn: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
     });
     paint();
-    expect(tray.innerHTML).toContain(expected);
-    expect(tray.innerHTML).not.toContain("Self · all linked");
+    expect(String(tray.innerHTML)).toContain(expected);
+    expect(String(tray.innerHTML)).not.toContain("Self · all linked");
   });
   it("external usernames stay usable without linking", () => {
-    const tray = { innerHTML: "" };
+    const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     compile("function paintGamesSource(", {
-      appState: { signedIn: true }, document: { getElementById: () => tray }, selectionChips, escapeHtml: String,
-      lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
+      appState: { signedIn: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
     })();
-    expect(tray.innerHTML).toContain("Foe");
-    expect(tray.innerHTML).not.toContain("data-games-link");
+    expect(String(tray.innerHTML)).toContain("Foe");
+    expect(String(tray.innerHTML)).not.toContain("data-games-link");
   });
 });
 

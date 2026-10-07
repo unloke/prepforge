@@ -38,17 +38,17 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
   };
   const bar = {
     hidden: true,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     setAttribute: vi.fn(),
     querySelectorAll: vi.fn(() => []),
   };
   const meta = {
     hidden: true,
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     querySelectorAll: vi.fn(() => []),
   };
   const container = {
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     querySelector: vi.fn(() => null),
     querySelectorAll: vi.fn((sel) => {
       if (sel.startsWith(".mtree-collapse")) return [];
@@ -57,7 +57,7 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
     }),
   };
   const elements = {
-    "build-rep-name": { innerHTML: "" },
+    "build-rep-name": { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } },
     "build-branchbar": bar,
     "build-tree-meta": meta,
     "builder-tree": container,
@@ -69,7 +69,6 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
   const boards = { build: { setBranchArrows: vi.fn() } };
   const view = createBuildView({
     appState,
-    escapeHtml: (s) => String(s),
     boards,
     getMoveTreeRenderer: () => ({
       renderMoveTree: () => '<div class="mtree"></div>',
@@ -115,8 +114,8 @@ describe("build branch bar — practical share", () => {
     });
     view.renderBuildBranchBar();
     expect(bar.hidden).toBe(false);
-    expect(bar.innerHTML).toContain("48%");
-    expect(bar.innerHTML).toContain("31%");
+    expect(String(bar.innerHTML)).toContain("48%");
+    expect(String(bar.innerHTML)).toContain("31%");
   });
 
   it("omits the share when the server has no probability (manual moves)", () => {
@@ -133,7 +132,7 @@ describe("build branch bar — practical share", () => {
       currentNodeId: "root",
     });
     view.renderBuildBranchBar();
-    expect(bar.innerHTML).not.toContain("<small>");
+    expect(String(bar.innerHTML)).not.toContain("<small>");
   });
 });
 
@@ -159,8 +158,8 @@ describe("build tree — mastery legend", () => {
       currentNodeId: "e5",
     });
     view.renderBuilderTree();
-    expect(meta.innerHTML).toContain('aria-label="Position"');
-    expect(meta.innerHTML).not.toContain("legend");
+    expect(String(meta.innerHTML)).toContain('aria-label="Position"');
+    expect(String(meta.innerHTML)).not.toContain("legend");
   });
 
   it("omits the legend when nothing is trained yet", () => {
@@ -173,6 +172,6 @@ describe("build tree — mastery legend", () => {
       currentNodeId: "root",
     });
     view.renderBuilderTree();
-    expect(meta.innerHTML).not.toContain("legend");
+    expect(String(meta.innerHTML)).not.toContain("legend");
   });
 });

@@ -1,3 +1,4 @@
+import { html } from "./html.js";
 // Scout v2 — natural-language readouts from scout-stats output only.
 import { choose } from "./coach/voice.js";
 import { scoutLineText } from "./scout.js";
@@ -454,7 +455,7 @@ export function buildScoutSectionSummary(
   }
 }
 
-export function buildColorRecommendationBanner(rec, escapeHtml, { username = "" } = {}) {
+export function buildColorRecommendationBanner(rec, { username = "" } = {}) {
   if (!rec) return "";
   const name = username || "The opponent";
   if (rec.insufficient) {
@@ -463,7 +464,7 @@ export function buildColorRecommendationBanner(rec, escapeHtml, { username = "" 
       wN: rec.whiteGames ?? 0,
       bN: rec.blackGames ?? 0,
     });
-    return `<div class="scout-color-rec scout-color-rec-muted">${escapeHtml(text)}</div>`;
+    return html`<div class="scout-color-rec scout-color-rec-muted">${text}</div>`;
   }
   if (!rec.pick) {
     const qual = qualifier(rec.confidence);
@@ -476,7 +477,7 @@ export function buildColorRecommendationBanner(rec, escapeHtml, { username = "" 
             qualifier: qual,
           })
         : choose({ san: "even" }, "scout-color-even", COLOR_EVEN, { name, qualifier: qual });
-    return `<div class="scout-color-rec scout-color-rec-muted">${escapeHtml(text)}</div>`;
+    return html`<div class="scout-color-rec scout-color-rec-muted">${text}</div>`;
   }
   const qual = qualifier(rec.confidence);
   const weak =
@@ -492,5 +493,5 @@ export function buildColorRecommendationBanner(rec, escapeHtml, { username = "" 
     otherScore: rec.otherScore,
     qualifier: qual,
   });
-  return `<div class="scout-color-rec">${escapeHtml(text)}</div>`;
+  return html`<div class="scout-color-rec">${text}</div>`;
 }

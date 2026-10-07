@@ -1,76 +1,66 @@
+import { html } from "../../html.js";
 // Shared move-tree HTML renderer (lazy-loaded from app.js for Build; static import
 // from analyze.js). Pure render + click binding — no appState or navigation.
 
-export function createMoveTreeRenderer({ escapeHtml }) {
+export function createMoveTreeRenderer() {
   function renderMoveToken(node, opts, forceNumber) {
     const isWhite = node.side === "white";
     const numHtml =
       isWhite || forceNumber
-        ? `<span class="mtree-num">${node.moveNumber}${isWhite ? "." : "…"}</span>`
+        ? html`<span class="mtree-num">${node.moveNumber}${isWhite ? "." : "…"}</span>`
         : "";
     const deco = (opts.decorate && opts.decorate(node)) || {};
     const classes = ["mtree-move"];
     if (deco.classes) classes.push(...deco.classes);
     if (node.id === opts.currentId) classes.push("is-current");
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
-    const title = deco.title ? ` title="${escapeHtml(String(deco.title))}"` : "";
+    const title = deco.title ? html` title="${String(deco.title)}"` : "";
     return (
-      `${numHtml}<button class="${classes.join(" ")}" data-node-id="${escapeHtml(
-        String(node.id)
-      )}"${title}><span class="mtree-san">${escapeHtml(node.san)}</span>${
-        deco.suffix || ""
-      }</button>`
+      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}</button>`
     );
   }
 
   function renderMoveLine(startNode, opts) {
-    let html = "";
+    const markup = [];
     let cur = startNode;
     let forceNumber = true;
     while (cur) {
-      html += renderMoveToken(cur, opts, forceNumber);
+      markup.push(renderMoveToken(cur, opts, forceNumber));
       forceNumber = false;
       const kids = cur.children || [];
       const main = kids[0] || null;
       for (let i = 1; i < kids.length; i += 1) {
-        html += renderMoveVariation(kids[i], opts);
+        markup.push(renderMoveVariation(kids[i], opts));
         forceNumber = true;
       }
       cur = main;
     }
-    return html;
+    return html`${markup}`;
   }
 
   function renderMoveVariation(firstNode, opts) {
     const collapsed =
       opts.collapsible && opts.isCollapsed && opts.isCollapsed(firstNode);
     const toggle = opts.collapsible
-      ? `<button class="mtree-collapse" type="button" data-collapse-id="${escapeHtml(
-          String(firstNode.id)
-        )}" title="${collapsed ? "Expand" : "Collapse"} variation">${
-          collapsed ? "▸" : "▾"
-        }</button>`
+      ? html`<button class="mtree-collapse" type="button" data-collapse-id="${String(firstNode.id)}" title="${collapsed ? "Expand" : "Collapse"} variation">${collapsed ? "▸" : "▾"}</button>`
       : "";
     const inner = collapsed
-      ? '<span class="mtree-collapsed">…</span>'
+      ? html`<span class="mtree-collapsed">…</span>`
       : renderMoveLine(firstNode, opts);
-    return `<div class="mtree-var">${toggle}${inner}</div>`;
+    return html`<div class="mtree-var">${toggle}${inner}</div>`;
   }
 
   function renderMoveTree(root, opts) {
     const kids = root.children || [];
     if (!kids.length) {
       return (
-        '<div class="mtree"><div class="empty-state">' +
-        escapeHtml(opts.emptyText || "No moves yet.") +
-        "</div></div>"
+        html`<div class="mtree"><div class="empty-state">${opts.emptyText || "No moves yet."}</div></div>`
       );
     }
     const main = kids[0];
     const alts = kids.slice(1);
-    let body = renderMoveLine(main, opts);
-    for (const alt of alts) body += renderMoveVariation(alt, opts);
-    return `<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
+    const body = [renderMoveLine(main, opts), ...alts.map((alt) => renderMoveVariation(alt, opts))];
+    return html`<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
   }
 
   // Brings el into view inside the nearest box that scrolls: the container itself, or

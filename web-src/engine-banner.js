@@ -1,3 +1,4 @@
+import { html } from "./html.js";
 // Engine-unavailable banner model. Analyze and Build engine actions use this
 // instead of failing silently when browser Stockfish cannot run.
 
@@ -32,11 +33,9 @@ export function engineUnavailableBanner({
   };
 }
 
-export function engineBannerHtml(model, { escapeHtml = (s) => String(s) } = {}) {
+export function engineBannerHtml(model) {
   if (!model || !model.visible) return "";
   return (
-    `<div class="engine-banner-title">${escapeHtml(model.title)}</div>` +
-    `<p class="engine-banner-why">${escapeHtml(model.why)}</p>` +
-    `<p class="engine-banner-action">${escapeHtml(model.action)}</p>`
+    html`<div class="engine-banner-title">${model.title}</div><p class="engine-banner-why">${model.why}</p><p class="engine-banner-action">${model.action}</p>`
   );
 }

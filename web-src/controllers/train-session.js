@@ -1,3 +1,4 @@
+import { html } from "../html.js";
 // Train sessions: the smart queue, line rehearsal, practice games and Feeling Lucky.
 // Lazy-loaded by app.js the first time Train is used. The functions stay at module
 // level; createTrainSession binds the app.js state and helpers they share, once.
@@ -14,8 +15,7 @@ import { formatPlayTrail, playSessionPgn, resolvePlayColor, takebackToUserMove }
 import { trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
-  currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, escapeHtml,
-  flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
+  currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
   loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
   optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
   refreshAuthStatus, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
@@ -26,7 +26,7 @@ export function createTrainSession(deps) {
   ({
     accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo,
     boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
-    escapeHtml, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
+    flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
     queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
@@ -139,14 +139,14 @@ async function loadTrainRepertoireOptions() {
     const options = active.length
       ? active.map(
           (r) =>
-            `<option value="${escapeHtml(r.id)}">${escapeHtml(r.name)} (${escapeHtml(r.color)})</option>`,
+            html`<option value="${r.id}">${r.name} (${r.color})</option>`,
         )
       : [
           appState.signedIn
-            ? '<option value="" disabled selected>Create a repertoire first</option>'
-            : '<option value="" disabled selected>Sign in to train your repertoires</option>',
+            ? html`<option value="" disabled selected>Create a repertoire first</option>`
+            : html`<option value="" disabled selected>Sign in to train your repertoires</option>`,
         ];
-    select.innerHTML = options.join("");
+    select.innerHTML = html`${options}`;
     const valid = new Set(active.map((r) => r.id));
     select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";
     appState.trainingRepertoireId = select.value || null;
@@ -228,18 +228,17 @@ function renderPlayRepertoirePicker(active = null) {
   const summary = document.getElementById("train-repertoire-summary-label");
   const selected = new Set(selectedTrainRepertoireIds());
   if (host) {
-    host.innerHTML = list
+    host.innerHTML = html`${list
       .map((rep) => {
-        const id = escapeHtml(rep.id);
+        const id = rep.id;
         const checked = selected.has(String(rep.id)) ? " checked" : "";
         const color = rep.color === "black" ? "Black" : "White";
-        return `<label class="train-repertoire-option" data-repertoire-id="${id}">
+        return html`<label class="train-repertoire-option" data-repertoire-id="${id}">
           <input type="checkbox" data-repertoire-id="${id}"${checked} />
-          <span class="rep-option-name">${escapeHtml(rep.name || "Untitled repertoire")}</span>
+          <span class="rep-option-name">${rep.name || "Untitled repertoire"}</span>
           <span class="rep-option-color">${color}</span>
         </label>`;
-      })
-      .join("");
+      })}`;
   }
   if (empty) empty.hidden = list.length > 0;
   if (selectAll) {
@@ -650,8 +649,8 @@ function renderPlayTrail() {
     ? formatPlayTrail(play.history, play.startFen)
     : "";
   el.innerHTML = text
-    ? `<span class="play-trail-sans">${escapeHtml(text)}</span>`
-    : `<span class="trail-empty">No moves yet</span>`;
+    ? html`<span class="play-trail-sans">${text}</span>`
+    : html`<span class="trail-empty">No moves yet</span>`;
   const chip = document.getElementById("train-play-chip");
   if (chip) {
     const reason = play && play.luckyReason;

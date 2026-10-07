@@ -144,7 +144,7 @@ function createStubElement(tag = "div") {
   const attrs = {};
   const el = {
     tagName: tag.toUpperCase(),
-    innerHTML: "",
+    get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     dataset: {},
     nextElementSibling: null,
     get className() {
@@ -218,7 +218,7 @@ function createStubElement(tag = "div") {
 
 function stubFromHtml(html) {
   const root = createStubElement("div");
-  if (html.includes('class="scout-speed-chip"') && html.includes('data-speed="blitz"')) {
+  if (String(html).includes('class="scout-speed-chip"') && String(html).includes('data-speed="blitz"')) {
     const chip = createStubElement("button");
     chip.classList.add("scout-speed-chip");
     chip.dataset.speed = "blitz";
@@ -272,7 +272,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
     const key = scoutLineKey(line.ucis);
@@ -302,7 +302,6 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
           { expandedKeys: new Set([key]), scrollTop: 0 },
           {
             scoutModule,
-            escapeHtml,
             ecoCache: new Map([[key, rejected]]),
             createElement: createStubElement,
             callbacks: {
@@ -354,7 +353,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
     const key = scoutLineKey(line.ucis);
@@ -377,7 +376,6 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       { expandedKeys: new Set([key]), scrollTop: 88 },
       {
         scoutModule,
-        escapeHtml,
         sideEl,
         ecoCache: new Map(),
         createElement: createStubElement,
@@ -390,7 +388,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     expect(lineEl.classList.contains("is-expanded")).toBe(true);
     expect(lineEl.getAttribute("aria-expanded")).toBe("true");
     // The open line's detail is painted into the side panel, not after the row.
-    expect(sideEl.innerHTML).toContain("scout-miniboard");
+    expect(String(sideEl.innerHTML)).toContain("scout-miniboard");
     expect(sideEl.hidden).toBe(false);
     expect(sideEl.dataset.lineKey).toBe(key);
     expect(results.scrollTop).toBe(88);
@@ -405,7 +403,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const line = sectionData.prepTargets?.[0] || sectionData.gradedLines[0];
     const key = scoutLineKey(line.ucis);
@@ -430,7 +428,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const lineElAfter = createStubElement("div");
     lineElAfter.classList.add("scout-line");
@@ -450,7 +448,6 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
       captured,
       {
         scoutModule,
-        escapeHtml,
         sideEl: sideAfter,
         ecoCache: new Map(),
         createElement: createStubElement,
@@ -462,7 +459,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     );
 
     expect(lineElAfter.classList.contains("is-expanded")).toBe(true);
-    expect(sideAfter.innerHTML).toContain("scout-miniboard");
+    expect(String(sideAfter.innerHTML)).toContain("scout-miniboard");
     expect(resultsAfter.scrollTop).toBe(64);
   });
 });
@@ -473,11 +470,10 @@ describe("scout-report rendering", () => {
       { total: 40, ratingMin: 1700, ratingMax: 1900, speedCounts: { blitz: 30 } },
       "rival",
       "blitz",
-      escapeHtml,
     );
-    expect(html).toContain('data-speed="blitz"');
-    expect(html).toContain('scout-speed-chip speed is-on" data-speed="blitz"');
-    expect(html).not.toContain('scout-speed-chip speed is-on" data-speed="all"');
+    expect(String(html)).toContain('data-speed="blitz"');
+    expect(String(html)).toContain('scout-speed-chip speed is-on" data-speed="blitz"');
+    expect(String(html)).not.toContain('scout-speed-chip speed is-on" data-speed="all"');
   });
 
   it("shows integer game counts in section HTML while weighting internally", () => {
@@ -491,12 +487,12 @@ describe("scout-report rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
-    expect(html).toContain('<span class="scout-games-count">15 games</span>');
-    expect(html).not.toContain("scout-lr-rank");
-    expect(html).toContain("scout-n");
-    expect(html).not.toMatch(/games-count">\d+\.\d/);
+    expect(String(html)).toContain('<span class="scout-games-count">15 games</span>');
+    expect(String(html)).not.toContain("scout-lr-rank");
+    expect(String(html)).toContain("scout-n");
+    expect(String(html)).not.toMatch(/games-count">\d+\.\d/);
   });
 
   it("gives each colour section the id its tab's aria-controls targets", () => {
@@ -510,10 +506,10 @@ describe("scout-report rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
-    expect(html).toContain('id="scout-section-white"');
-    expect(html).toContain('data-scout-color="white"');
+    expect(String(html)).toContain('id="scout-section-white"');
+    expect(String(html)).toContain('data-scout-color="white"');
   });
 
   it("builds Analyze PGN with the scouted player on the correct side", () => {
@@ -562,11 +558,10 @@ describe("scout-report rendering", () => {
       fenAfterLine: scoutModule.fenAfterLine,
       renderBoard: (fen, orientation) =>
         `<board fen="${fen}" orient="${orientation}"></board>`,
-      escapeHtml,
     });
-    expect(html).toContain("scout-miniboard-wrap");
-    expect(html).toContain("scout-action-add-prep");
-    expect(html).toContain('data-row-idx="0"');
+    expect(String(html)).toContain("scout-miniboard-wrap");
+    expect(String(html)).toContain("scout-action-add-prep");
+    expect(String(html)).toContain('data-row-idx="0"');
   });
 
   it("uses the speed-filtered colour baseline, not all-speed profile stats", () => {
@@ -622,7 +617,7 @@ describe("scout-report rendering", () => {
       },
       "white",
       [],
-      { speedFilter: "blitz", escapeHtml },
+      { speedFilter: "blitz" },
     );
     expect(sectionData.baselineScorePct).toBe(100);
     expect(sectionData.prepTargets).toEqual([]);
@@ -656,12 +651,11 @@ describe("scout-report rendering", () => {
       {
         fenAfterLine: scoutModule.fenAfterLine,
         renderBoard: () => "<board></board>",
-        escapeHtml,
         baseline: 50,
       },
     );
-    expect(html).toContain("scout-line-reason");
-    expect(html).toContain("Maia estimates they score 38%");
+    expect(String(html)).toContain("scout-line-reason");
+    expect(String(html)).toContain("Maia estimates they score 38%");
   });
 
   it("uses profile colour baseline instead of weighted trie score", () => {
@@ -679,7 +673,7 @@ describe("scout-report rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     expect(sectionData.baselineScorePct).toBe(55);
   });
@@ -699,15 +693,15 @@ describe("scout-report rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
-    expect(html).toContain("Your game plan");
-    expect(html).toContain("After <b");
-    expect(html).not.toContain("When they play");
-    expect(html).toContain("Their score");
-    expect(html).toContain("scout-ranked-list");
-    expect(html).not.toContain("scout-lr-rank");
-    expect(html).toContain("scout-n");
+    expect(String(html)).toContain("Your game plan");
+    expect(String(html)).toContain("After <b");
+    expect(String(html)).not.toContain("When they play");
+    expect(String(html)).toContain("Their score");
+    expect(String(html)).toContain("scout-ranked-list");
+    expect(String(html)).not.toContain("scout-lr-rank");
+    expect(String(html)).toContain("scout-n");
   });
 
   it("ranked prep rows expose four grid cells (no count/share) for desktop layout", () => {
@@ -725,11 +719,11 @@ describe("scout-report rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
-    const rowStart = html.indexOf("scout-ranked-row");
+    const rowStart = String(html).indexOf("scout-ranked-row");
     expect(rowStart).toBeGreaterThan(-1);
-    const rowSlice = html.slice(rowStart, rowStart + 2500);
+    const rowSlice = String(html).slice(rowStart, rowStart + 2500);
     // Game-plan rows drop ×N count and share% — both are always trivially 1 / <1% on
     // deep lines. Four cells remain: moves, score, wdl, action.
     expect(rowSlice).not.toContain("scout-lr-rank");
@@ -754,9 +748,9 @@ describe("scout-report rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
-    const rows = html.split('class="scout-line scout-line-row').slice(1);
+    const rows = String(html).split('class="scout-line scout-line-row').slice(1);
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
       // Label-free bars: the counts live in the bar's tooltip, never as "0W 0D 1L" text.
@@ -770,7 +764,7 @@ describe("scout-report rendering", () => {
         expect(score).toMatch(/\d+ games/);
       }
     }
-    expect(html).toContain("<span>Their result</span>");
+    expect(String(html)).toContain("<span>Their result</span>");
   });
 });
 
@@ -788,7 +782,6 @@ describe("scout-report interactions", () => {
     const onSpeedChange = vi.fn(() => {
       buildScoutSectionReport(scoutModule, state, "white", LOOKUPS.black, {
         speedFilter: state.activeSpeed,
-        escapeHtml,
       });
     });
 
@@ -819,7 +812,7 @@ describe("scout-report interactions", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const state = {
       username: "rival",
@@ -847,7 +840,6 @@ describe("scout-report interactions", () => {
       {
         getState: () => state,
         scoutModule,
-        escapeHtml,
         getSideEl: () => sideEl,
         createElement: createStubElement,
         callbacks: {
@@ -865,7 +857,7 @@ describe("scout-report interactions", () => {
 
     expect(lineEl.classList.contains("is-expanded")).toBe(true);
     expect(sideEl.hidden).toBe(false);
-    expect(sideEl.innerHTML).toContain("scout-miniboard");
+    expect(String(sideEl.innerHTML)).toContain("scout-miniboard");
   });
 
   it("routes Analyze, Add to prep, and Prepare all actions to callbacks", async () => {
@@ -877,7 +869,7 @@ describe("scout-report interactions", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const state = {
       username: "rival",
@@ -898,7 +890,6 @@ describe("scout-report interactions", () => {
     const ctx = {
       getState: () => state,
       scoutModule,
-      escapeHtml,
       createElement: createStubElement,
       callbacks,
     };
@@ -955,8 +946,8 @@ describe("Maia estimate rendering", () => {
     });
     expect(counts).toEqual({ w: 150, d: 250, l: 600 });
     const bar = scoutWdlBar(counts.w, counts.d, counts.l, { maiaEstimate: true });
-    expect(bar).toContain('style="width:15%"');
-    expect(bar).toContain('style="width:60%"');
+    expect(String(bar)).toContain('style="width:15%"');
+    expect(String(bar)).toContain('style="width:60%"');
   });
 
   it("re-render keeps Maia WDL after section rebuild with maiaResults cache", () => {
@@ -979,7 +970,6 @@ describe("Maia estimate rendering", () => {
     };
     const opts = {
       speedFilter: "all",
-      escapeHtml,
       maiaResults,
       maiaRatings: { white: 1800, black: 1800 },
       maiaEnrichState: MAIA_ENRICH_READY,
@@ -993,9 +983,9 @@ describe("Maia estimate rendering", () => {
     );
     expect(firstRow?.maiaScorePct).toBe(27);
     expect(secondRow?.maiaScorePct).toBe(27);
-    expect(first.html).toContain("scout-maia-estimate");
-    expect(second.html).toContain('style="width:70%"');
-    expect(second.html).toContain("scout-maia-estimate");
+    expect(String(first.html)).toContain("scout-maia-estimate");
+    expect(String(second.html)).toContain('style="width:70%"');
+    expect(String(second.html)).toContain("scout-maia-estimate");
   });
 
   it("re-ranks prep rows when Maia scores change exploitability", () => {
@@ -1021,7 +1011,6 @@ describe("Maia estimate rendering", () => {
       LOOKUPS.black,
       {
         speedFilter: "all",
-        escapeHtml,
         maiaResults,
         maiaRatings: { white: 1800, black: 1800 },
         maiaEnrichState: MAIA_ENRICH_READY,
@@ -1041,17 +1030,17 @@ describe("Maia estimate rendering", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml, maiaEnrichState: MAIA_ENRICH_LOADING },
+      { speedFilter: "all", maiaEnrichState: MAIA_ENRICH_LOADING },
     );
-    expect(html).not.toContain("Evaluating");
-    expect(html).not.toContain("score/WDL are Maia estimates");
+    expect(String(html)).not.toContain("Evaluating");
+    expect(String(html)).not.toContain("score/WDL are Maia estimates");
   });
 
   it("scoutScoreCell and scoutWdlBar tag Maia estimates", () => {
-    expect(scoutScoreCell(42, 5, { maiaEstimate: true })).toContain("scout-maia-estimate");
-    expect(scoutScoreCell(42, 5, { maiaEstimate: true })).toContain("Maia strength estimate");
-    expect(scoutWdlBar(300, 200, 500, { maiaEstimate: true })).toContain("scout-maia-estimate");
-    expect(scoutWdlBar(300, 200, 500, { maiaEstimate: true })).toContain("Maia W/D/L estimate");
+    expect(String(scoutScoreCell(42, 5, { maiaEstimate: true }))).toContain("scout-maia-estimate");
+    expect(String(scoutScoreCell(42, 5, { maiaEstimate: true }))).toContain("Maia strength estimate");
+    expect(String(scoutWdlBar(300, 200, 500, { maiaEstimate: true }))).toContain("scout-maia-estimate");
+    expect(String(scoutWdlBar(300, 200, 500, { maiaEstimate: true }))).toContain("Maia W/D/L estimate");
   });
 
 });
@@ -1067,25 +1056,25 @@ describe("scout intelligence panel", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
-    expect(html).toContain("scout-intel-summary-only");
-    expect(html).toContain("scout-intel-charts-strip");
-    expect(html).toContain("scout-ranked-list");
-    expect(html).not.toContain("scout-ranked-note");
-    expect(html).not.toContain("scout-chart-sub");
-    expect(html).toContain("scout-chart-title");
-    expect(html).not.toContain("scout-lr-rank");
-    expect(html).toContain("score by first move");
-    expect(html).toContain("Games per week");
-    expect(html).toContain("scout-axis-chart");
-    expect(html).toContain("scout-sparkline");
-    expect(html).toContain("scout-bar-chart");
-    expect(html).toContain("visually-hidden");
-    expect(html).toContain("scout-repertoire-reads");
-    expect(html).toContain("scout-read-chip");
-    expect(html).toContain("makes mistakes");
-    expect(html).toContain("Not scanned yet");
+    expect(String(html)).toContain("scout-intel-summary-only");
+    expect(String(html)).toContain("scout-intel-charts-strip");
+    expect(String(html)).toContain("scout-ranked-list");
+    expect(String(html)).not.toContain("scout-ranked-note");
+    expect(String(html)).not.toContain("scout-chart-sub");
+    expect(String(html)).toContain("scout-chart-title");
+    expect(String(html)).not.toContain("scout-lr-rank");
+    expect(String(html)).toContain("score by first move");
+    expect(String(html)).toContain("Games per week");
+    expect(String(html)).toContain("scout-axis-chart");
+    expect(String(html)).toContain("scout-sparkline");
+    expect(String(html)).toContain("scout-bar-chart");
+    expect(String(html)).toContain("visually-hidden");
+    expect(String(html)).toContain("scout-repertoire-reads");
+    expect(String(html)).toContain("scout-read-chip");
+    expect(String(html)).toContain("makes mistakes");
+    expect(String(html)).toContain("Not scanned yet");
     expect(sectionData.stats).toBeDefined();
     expect(sectionData.summary?.headline).toBeTruthy();
   });
@@ -1100,18 +1089,18 @@ describe("scout intelligence panel", () => {
       },
       "white",
       LOOKUPS.black,
-      { speedFilter: "all", escapeHtml },
+      { speedFilter: "all" },
     );
     const headline = sectionData.summary.headline;
-    const bulletItems = html.match(/<li>[\s\S]*?<\/li>/g) || [];
+    const bulletItems = String(html).match(/<li>[\s\S]*?<\/li>/g) || [];
     // The headline shows once in .scout-intel-headline; it must not also appear as a <li>.
     expect(bulletItems.some((li) => li.includes(escapeHtml(headline)))).toBe(false);
   });
 
   it("renderScoutEnginePanel shows insufficient coverage or ACPL bars", () => {
-    expect(renderScoutEnginePanel(null, escapeHtml)).toContain("Not scanned yet.");
+    expect(String(renderScoutEnginePanel(null))).toContain("Not scanned yet.");
     expect(
-      renderScoutEnginePanel(
+      String(renderScoutEnginePanel(
         {
           sufficient: false,
           analyzedGames: 1,
@@ -1120,28 +1109,25 @@ describe("scout intelligence panel", () => {
           minAnalyzedGames: 3,
           minCoveragePct: 60,
         },
-        escapeHtml,
-      ),
+      )),
     ).toContain("coverage insufficient");
     expect(
-      renderScoutEnginePanel(
+      String(renderScoutEnginePanel(
         {
           sufficient: true,
           families: [{ san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 }],
         },
-        escapeHtml,
-      ),
+      )),
     ).toContain("42 cp");
     expect(
-      renderScoutEnginePanel(
+      String(renderScoutEnginePanel(
         {
           sufficient: true,
           scopeLimited: true,
           maxGames: 60,
           families: [{ san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 }],
         },
-        escapeHtml,
-      ),
+      )),
     ).toContain("based on latest 60 games");
   });
 
@@ -1157,11 +1143,10 @@ describe("scout intelligence panel", () => {
           { san: "d4", acpl: 18, firstInaccuracyPly: 2, analyzedGames: 12 },
         ],
       },
-      escapeHtml,
     );
-    expect(html).toContain("has-n");
-    expect(html).toContain(">5</span>");
-    expect(html).toContain(">12</span>");
+    expect(String(html)).toContain("has-n");
+    expect(String(html)).toContain(">5</span>");
+    expect(String(html)).toContain(">12</span>");
   });
 
   it("renderScoutRefutationPanel shows only confirmed refutations", () => {
@@ -1180,15 +1165,14 @@ describe("scout intelligence panel", () => {
           blockedBy: [{ layer: "engine", code: "no-scan" }],
         },
       ],
-      escapeHtml,
     );
-    expect(html).toContain("scout-refutation-hit");
-    expect(html).toContain("1.e4 c5");
-    expect(html).toContain("b1c3");
-    expect(html).toContain("42 cp ACPL");
-    expect(html).toContain("12% masters");
-    expect(html).toContain("latest 60 games");
-    expect(html).not.toContain("no-scan");
+    expect(String(html)).toContain("scout-refutation-hit");
+    expect(String(html)).toContain("1.e4 c5");
+    expect(String(html)).toContain("b1c3");
+    expect(String(html)).toContain("42 cp ACPL");
+    expect(String(html)).toContain("12% masters");
+    expect(String(html)).toContain("latest 60 games");
+    expect(String(html)).not.toContain("no-scan");
   });
 
   it("renderScoutRefutationPanel shows actionable gaps instead of blocked refutations", () => {
@@ -1199,13 +1183,12 @@ describe("scout intelligence panel", () => {
           blockedBy: [{ layer: "engine", code: "no-scan" }],
         },
       ],
-      escapeHtml,
     );
-    expect(html).toContain("Run Deep scan");
-    expect(html).toContain('data-testid="scout-refutation-gap-deep-scan"');
-    expect(html).toContain('data-refutation-gap="deep-scan"');
-    expect(html).toContain('aria-label="Run deep engine scan to generate refutations"');
-    expect(html).not.toContain("scout-refutation-hit");
+    expect(String(html)).toContain("Run Deep scan");
+    expect(String(html)).toContain('data-testid="scout-refutation-gap-deep-scan"');
+    expect(String(html)).toContain('data-refutation-gap="deep-scan"');
+    expect(String(html)).toContain('aria-label="Run deep engine scan to generate refutations"');
+    expect(String(html)).not.toContain("scout-refutation-hit");
   });
 
   it("renderScoutRefutationPanel omits obsolete pool connection CTA", () => {
@@ -1216,10 +1199,9 @@ describe("scout intelligence panel", () => {
           blockedBy: [{ layer: "explorer", code: "auth" }],
         },
       ],
-      escapeHtml,
     );
-    expect(html).not.toContain("connect-lichess");
-    expect(html).toContain("No refutation lines yet");
+    expect(String(html)).not.toContain("connect-lichess");
+    expect(String(html)).toContain("No refutation lines yet");
   });
 
   it("handleScoutRefutationGapClick delegates deep scan only", () => {
@@ -1294,11 +1276,18 @@ describe("scout intelligence panel", () => {
   });
 
   it("scoutSparkline emits inline SVG and scoutSvgBar emits HTML bars", () => {
-    expect(scoutSparkline([40, 55, 30])).toContain("<polyline");
-    const bars = scoutSvgBar([{ san: "e4", scorePct: 42 }], { escapeHtml });
-    expect(bars).toContain("scout-bar-fill");
-    expect(bars).toContain("scout-bar-row");
-    expect(bars).not.toContain("<svg");
+    expect(String(scoutSparkline([40, 55, 30]))).toContain("<polyline");
+    const bars = scoutSvgBar([{ san: "e4", scorePct: 42 }]);
+    expect(String(bars)).toContain("scout-bar-fill");
+    expect(String(bars)).toContain("scout-bar-row");
+    expect(String(bars)).not.toContain("<svg");
+  });
+
+  it("escapes bar labels without an injected escaper", () => {
+    const san = '<img src=x onerror="alert(1)">';
+    const markup = scoutSvgBar([{ san, scorePct: 42 }]);
+    expect(String(markup)).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(String(markup)).not.toContain(san);
   });
 
   it("renderInlineRefutationCard shows positive swing for a black opponent blunder", () => {
@@ -1313,12 +1302,11 @@ describe("scout intelligence panel", () => {
         },
       },
       "black",
-      escapeHtml,
     );
-    expect(html).toContain("scout-refutation-card");
-    expect(html).toContain("+0.4");
-    expect(html).not.toContain("-0.4");
-    expect(html).toContain("Nc3");
+    expect(String(html)).toContain("scout-refutation-card");
+    expect(String(html)).toContain("+0.4");
+    expect(String(html)).not.toContain("-0.4");
+    expect(String(html)).toContain("Nc3");
   });
 });
 
@@ -1350,10 +1338,9 @@ describe("scout engine panel move numbering", () => {
           sufficient: true,
           families: [{ san: "e4", acpl: 42, firstInaccuracyPly: ply, analyzedGames: 5 }],
         },
-        escapeHtml,
       );
-      expect(html).toContain("first slip around move " + (Math.floor(ply / 2) + 1));
-      expect(html).not.toContain("move 0");
+      expect(String(html)).toContain("first slip around move " + (Math.floor(ply / 2) + 1));
+      expect(String(html)).not.toContain("move 0");
     }
   });
 
@@ -1363,9 +1350,8 @@ describe("scout engine panel move numbering", () => {
         sufficient: true,
         families: [{ san: "e4", acpl: 42, firstInaccuracyPly: null, analyzedGames: 5 }],
       },
-      escapeHtml,
     );
-    expect(html).toContain("42 cp");
-    expect(html).not.toContain("first slip");
+    expect(String(html)).toContain("42 cp");
+    expect(String(html)).not.toContain("first slip");
   });
 });

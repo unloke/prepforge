@@ -1,7 +1,5 @@
-let escapeHtml;
-
-export function createToastStack(deps) {
-  ({ escapeHtml } = deps);
+import { html } from "../html.js";
+export function createToastStack() {
   return new ToastStack();
 }
 
@@ -88,26 +86,14 @@ class Toast {
     el.setAttribute("aria-live", "polite");
     el.setAttribute("aria-atomic", "true");
     const stopBtn = this.onCancel
-      ? '<button class="job-toast-stop" type="button">Stop</button>'
+      ? html`<button class="job-toast-stop" type="button">Stop</button>`
       : "";
     if (this.variant === "job") {
       el.innerHTML =
-        '<div class="job-toast-head">' +
-        `<span class="job-toast-title">${escapeHtml(title)}</span>` +
-        '<span class="job-toast-message">Queued</span>' +
-        stopBtn +
-        "</div>" +
-        '<div class="job-toast-track"><div class="job-toast-fill"></div></div>';
+        html`<div class="job-toast-head"><span class="job-toast-title">${title}</span><span class="job-toast-message">Queued</span>${stopBtn}</div><div class="job-toast-track"><div class="job-toast-fill"></div></div>`;
     } else {
       el.innerHTML =
-        '<div class="job-toast-head">' +
-        '<span class="job-toast-icon" aria-hidden="true"></span>' +
-        `<span class="job-toast-title">${escapeHtml(title)}</span>` +
-        '<button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize">_</button>' +
-        "</div>" +
-        '<div class="job-toast-body">' +
-        `<div class="job-toast-message">${escapeHtml(message || "")}</div>` +
-        '<div class="job-toast-actions"></div></div>';
+        html`<div class="job-toast-head"><span class="job-toast-icon" aria-hidden="true"></span><span class="job-toast-title">${title}</span><button class="job-toast-collapse" type="button" title="Minimize" aria-label="Minimize">_</button></div><div class="job-toast-body"><div class="job-toast-message">${message || ""}</div><div class="job-toast-actions"></div></div>`;
     }
     this.titleEl = el.querySelector(".job-toast-title");
     this.messageEl = el.querySelector(".job-toast-message");
