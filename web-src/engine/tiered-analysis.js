@@ -1,10 +1,10 @@
 // Two-tier whole-game analysis. Every position is searched SCREEN_DEPTH_DROP below the
-// analysis depth (Settings → Stockfish depth); then both positions of any move whose
-// win-chance loss at that depth is at least DEEP_LOSS_FLAG points, or that shows a mate, are
-// searched again at the full depth. A quiet best-or-near-best move keeps its screen read.
-// Measured on 14 games (research/analyze-speed/RESULTS.md, arm tiered1): 0.78× the wall time
-// and 0.71× the nodes of a full-depth pass, with grades that track the depth-20 reference as
-// closely as the full-depth pass does.
+// analysis depth (Settings → Stockfish depth); then the positions whose grade could hinge on
+// the full depth are searched again at it. At the default depth 16 a trained model picks them
+// (deepening-router.js). At other depths, where the model was not trained, both positions of
+// any move whose win-chance loss at the screen depth is at least DEEP_LOSS_FLAG points, or
+// that shows a mate, are deepened (research/analyze-speed/RESULTS.md, arm tiered1).
+import { ROUTER_DEPTH, routerFlags } from "./deepening-router.js";
 
 export const SCREEN_DEPTH_DROP = 4;
 export const SCREEN_MIN_DEPTH = 8;
@@ -61,8 +61,14 @@ export async function analyzeTiered({ analyze, positions, moves, depth, onResult
     });
     return { evals, screenDepth: null };
   }
-  const screened = await analyze({ positions, depth: screenDepth, shouldCancel, onProgress: progress("screen"), onResult: result });
-  const flagged = deepFlags(moves, screened);
+  const routed = Number(depth) === ROUTER_DEPTH;
+  // The router reads each position's own search history, so every screen read starts from
+  // an empty hash, as in training.
+  const [screened, model] = await Promise.all([
+    analyze({ positions, depth: screenDepth, newGame: routed, shouldCancel, onProgress: progress("screen"), onResult: result }),
+    routed ? import("./deepening-router-model.json").then((m) => m.default) : null,
+  ]);
+  const flagged = routed ? routerFlags(model, moves, screened) : deepFlags(moves, screened);
   // A read the store already had at full depth (reused in the screen pass) needs no second search.
   const deep = positions.filter((fen) => flagged.has(fen) && !((screened.get(fen)?.depth ?? 0) >= depth));
   const pending = new Set(deep);
