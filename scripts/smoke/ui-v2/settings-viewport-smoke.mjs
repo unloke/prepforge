@@ -1,6 +1,6 @@
 // Settings viewport smoke — fixture-backed (same stack as the teams smokes).
 // Serves the committed static/ tree, intercepts /api/*, and at
-// 1440x900 / 1180x900 / 390x844 checks:
+// 1440x900 / 1180x900 / 390x844 / 320x660 checks:
 //   - no horizontal overflow, no console errors
 //   - section nav (prototype 180px): lists all sections, marks the active one,
 //     and scroll-spies as the user clicks through sections
@@ -118,6 +118,9 @@ async function runViewport(vp) {
     { timeout: 10000 },
   );
 
+  // Exercise wider font metrics as well as the platform default.
+  if (vp.font) await page.addStyleTag({ content: `:root { --font: ${vp.font}; }` });
+
   await shot("top");
 
   // Section nav (prototype 180px column): all prototype sections present, first active.
@@ -229,6 +232,7 @@ try {
     { name: "desktop-1440", width: 1440, height: 900 },
     { name: "laptop-1180", width: 1180, height: 900 },
     { name: "mobile-390", width: 390, height: 844 },
+    { name: "mobile-320-wide-font", width: 320, height: 660, font: "Arial, sans-serif" },
   ]) await runViewport(vp);
 } finally {
   await browser.close();
@@ -239,4 +243,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[settings-smoke] ok — all three viewports render Settings (section nav, theme segment, engine/Maia3 real status, switches) with no overflow and no console errors.");
+console.log("[settings-smoke] ok — all four viewports render Settings (section nav, theme segment, engine/Maia3 real status, switches) with no overflow and no console errors.");
