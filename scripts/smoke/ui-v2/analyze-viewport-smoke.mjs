@@ -357,7 +357,8 @@ async function runViewport(vp) {
       panelNextToBoard: window.innerWidth > 860 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
     };
   });
-  check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
+  // Phones hide the move grid; the eval chart steps through the game instead.
+  if (vp.width > 760) check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
   await checkPanelHead("results");
   check(layout.panelHead, "the panel head should carry the game title");
   check(layout.glyphs >= 1, "classified moves should carry a glyph");
@@ -373,27 +374,17 @@ async function runViewport(vp) {
   // full-width row and the mainline resumes in its own columns afterwards.
   await page.locator('[data-testid="analysis-board"] [data-square="d7"]').click();
   await page.locator('[data-testid="analysis-board"] [data-square="d5"]').click();
-  await page.waitForSelector("#analysis-moves .mtree-var", { timeout: 5000 });
+  await page.waitForSelector("#analysis-moves .mtree-var", { state: "attached", timeout: 5000 });
   const variation = await page.evaluate(() => {
     const grid = document.querySelector("#analysis-moves .mtree-line.is-main").getBoundingClientRect();
     const v = document.querySelector("#analysis-moves .mtree-var").getBoundingClientRect();
     const blacks = [...document.querySelectorAll("#analysis-moves .mtree-line.is-main > .mtree-move.is-black")].map((el) => el.getBoundingClientRect().left);
-    const box = document.querySelector("#analysis-moves").getBoundingClientRect();
-    const tops = [...document.querySelectorAll("#analysis-moves .mtree-move")].map((el) => el.getBoundingClientRect().top);
-    const cur = document.querySelector("#analysis-moves .mtree-move.is-current")?.getBoundingClientRect();
     return {
-      strip: window.innerWidth <= 760,
-      oneLine: tops.every((t) => Math.abs(t - tops[0]) < 2),
-      currentInView: !!cur && cur.left >= box.left - 1 && cur.right <= box.right + 1,
       fullWidth: v.width > grid.width * 0.8,
       blackAligned: blacks.every((l) => Math.abs(l - blacks[0]) < 2),
     };
   });
-  if (variation.strip) {
-    // Phones: one sticky strip; the variation stays on its line and the current move is in view.
-    check(variation.oneLine, "the phone move strip should stay on one line around a variation");
-    check(variation.currentInView, "the phone move strip should keep the current move in view");
-  } else {
+  if (vp.width > 760) {
     check(variation.fullWidth, "a variation should span the full grid width");
     check(variation.blackAligned, "Black moves should stay in one column around a variation");
   }
@@ -485,9 +476,9 @@ async function runViewport(vp) {
       const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
       const board = document.getElementById("analysis-board").getBoundingClientRect();
       const coach = document.getElementById("analysis-explain").getBoundingClientRect();
-      const strip = document.getElementById("analysis-moves").getBoundingClientRect();
+      const chart = document.getElementById("eval-chart").getBoundingClientRect();
       return { tabbarHidden: getComputedStyle(tabbar).visibility === "hidden",
-        oneScreen: strip.top >= 0 && strip.bottom <= board.top + 1 && coach.top >= board.bottom - 1 && coach.bottom <= bar.top + 1,
+        oneScreen: chart.top >= 0 && chart.bottom <= board.top + 1 && coach.top >= board.bottom - 1 && coach.bottom <= bar.top + 1,
         barAtBottom: Math.abs(bar.bottom - window.innerHeight) < 2,
         boardFullWidth: board.width >= window.innerWidth - 1 || board.height >= window.innerHeight * 0.5,
         board: [Math.round(board.width), Math.round(board.height)], viewport: [window.innerWidth, window.innerHeight],
@@ -495,7 +486,7 @@ async function runViewport(vp) {
     });
     check(bars.tabbarHidden && bars.barAtBottom, `the board bar should be the only bottom bar: ${JSON.stringify(bars)}`);
     check(bars.boardFullWidth, `the phone board should take the width: ${JSON.stringify(bars)}`);
-    check(bars.oneScreen, `move strip over the board and coach under it, on one screen: ${JSON.stringify(bars)}`);
+    check(bars.oneScreen, `eval chart over the board and coach under it, on one screen: ${JSON.stringify(bars)}`);
     await page.locator("#view-analyze [data-phone-nav]").click();
     await page.waitForTimeout(300);
     const raised = await page.evaluate(() => {

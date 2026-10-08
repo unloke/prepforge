@@ -752,7 +752,7 @@
    report and the game sources are sheets; the sources fill the screen under
    the board while no game is loaded. */
 @media (max-width: 760px) {
-  #view-analyze { --phone-reserve: 236px; }
+  #view-analyze { --phone-reserve: 222px; }
   #analyze-sidebar :is(.panel-scroll, .analyze-main),
   #analysis-eval-card,
   #analysis-results:not([hidden]) { display: contents; }
@@ -792,9 +792,11 @@
   #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
 
-  /* Game graph on top, at a fixed height so the board never moves. */
+  /* Game graph on top, at a fixed height so the board never moves. It is
+     the move list too: a tap jumps to that move. */
   #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; }
-  #analysis-eval-card .eval-chart { height: 52px; border-radius: 0; }
+  #analysis-eval-card .eval-chart { height: 84px; border-radius: 0; touch-action: pan-y; }
+  #analysis-results > .moves-grid { display: none; }
 
   /* Under the board: eval, win meter, Report, Engine; then the best line. */
   #analysis-eval-card > .ev-head {
@@ -833,60 +835,6 @@
   #analysis-job-dock { padding: 0 12px 4px; }
   .analysis-retry-save:not([hidden]),
   .analysis-import-picker:not([hidden]) { margin: 0 12px 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
-
-  /* Move strip: one swipeable row of chips, under the graph. */
-  #analysis-results:not([hidden]) > .moves-grid {
-    order: 0;
-    display: flex;
-    align-items: center;
-    height: 46px;
-    max-height: none;
-    margin: 0;
-    padding: 0 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    border: 0;
-    border-radius: 0;
-    background: var(--bg);
-    scrollbar-width: none;
-  }
-  .moves-grid::-webkit-scrollbar { display: none; }
-  .moves-grid .mtree-line.is-main {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 2px;
-    width: max-content;
-  }
-  .moves-grid .mtree-line.is-main > .mtree-num {
-    padding: 0 2px 0 10px;
-    background: none;
-    color: var(--faint);
-    font-size: 13px;
-  }
-  .moves-grid .mtree-line.is-main > .mtree-move,
-  .moves-grid .mtree-var .mtree-move {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    min-height: 34px;
-    padding: 0 9px;
-    border-radius: 10px;
-    font-size: 15px;
-    white-space: nowrap;
-  }
-  .moves-grid .mtree-line.is-main > .mtree-move.is-current { background: var(--accent); color: var(--accent-ink); }
-  .moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
-  .moves-grid .mtree-var {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    margin: 0 6px;
-    padding: 0 4px;
-    border-radius: 10px;
-    background: var(--surface-3);
-    white-space: nowrap;
-  }
 
   /* Report sheet: move quality and the handoff. Games sheet: where games
      come from. */

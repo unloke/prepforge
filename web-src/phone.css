@@ -757,7 +757,7 @@
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
-  .context-menu:not([hidden]) {
+  .context-menu:not([hidden], .account-menu) {
     top: auto !important;
     left: 8px !important;
     right: 8px;

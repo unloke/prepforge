@@ -164,51 +164,54 @@ async function runViewport(vp) {
   const isOn = await maiaSwitch.evaluate((el) => el.classList.contains("is-on"));
   check((after === "true") === isOn, "aria-checked and the is-on class must agree");
 
-  // Section nav click: the target section must actually scroll into view and
-  // the nav must stay operable. The active marker follows the visible section
-  // (scrollspy) — we don't assert the animation path or that the marker equals
-  // the clicked label at every instant.
-  // (Connections merged into the Account card — "Chess accounts" is a block
-  // inside it now, navigated via its own deep link, see states-smoke.)
-  await page.locator('.settings-nav .settings-nav-link', { hasText: "Board" }).click();
-  await page.waitForTimeout(900); // smooth-scroll settles
-  const boardActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
-  check(/Board|Playing strength/.test(boardActive || ""), `nav should remain operable with a sane active section, got "${boardActive}"`);
-  // Jump back to Account: the Chess accounts block must come on screen.
-  await page.locator('.settings-nav .settings-nav-link', { hasText: "Account" }).click();
-  await page.waitForTimeout(900);
-  await shot("connections");
-  // True viewport intersection: after the nav click the target card must be on
-  // screen (top above the fold line, bottom below the top edge). The card fully
-  // fits on desktop when the page can scroll far enough — assert full visibility
-  // only when the document actually allows it.
-  const connVis = await page.locator('[data-testid="settings-connections"]').evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const intersects = r.top < window.innerHeight && r.bottom > 0;
-    const fullyVisible = r.top >= 0 && r.bottom <= window.innerHeight;
-    const canFullyScroll = document.documentElement.scrollHeight - window.innerHeight >= Math.max(0, r.top);
-    return { intersects, fullyVisible, canFullyScroll };
-  });
-  check(connVis.intersects, "Connections card should intersect the viewport after the nav click");
-  if (connVis.canFullyScroll) {
-    check(connVis.fullyVisible, "Connections card should be fully visible when scroll room allows");
+  // Phones hide the section nav and stack the cards as one grouped list.
+  if (vp.width > 760) {
+    // Section nav click: the target section must actually scroll into view and
+    // the nav must stay operable. The active marker follows the visible section
+    // (scrollspy) — we don't assert the animation path or that the marker equals
+    // the clicked label at every instant.
+    // (Connections merged into the Account card — "Chess accounts" is a block
+    // inside it now, navigated via its own deep link, see states-smoke.)
+    await page.locator('.settings-nav .settings-nav-link', { hasText: "Board" }).click();
+    await page.waitForTimeout(900); // smooth-scroll settles
+    const boardActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
+    check(/Board|Playing strength/.test(boardActive || ""), `nav should remain operable with a sane active section, got "${boardActive}"`);
+    // Jump back to Account: the Chess accounts block must come on screen.
+    await page.locator('.settings-nav .settings-nav-link', { hasText: "Account" }).click();
+    await page.waitForTimeout(900);
+    await shot("connections");
+    // True viewport intersection: after the nav click the target card must be on
+    // screen (top above the fold line, bottom below the top edge). The card fully
+    // fits on desktop when the page can scroll far enough — assert full visibility
+    // only when the document actually allows it.
+    const connVis = await page.locator('[data-testid="settings-connections"]').evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const intersects = r.top < window.innerHeight && r.bottom > 0;
+      const fullyVisible = r.top >= 0 && r.bottom <= window.innerHeight;
+      const canFullyScroll = document.documentElement.scrollHeight - window.innerHeight >= Math.max(0, r.top);
+      return { intersects, fullyVisible, canFullyScroll };
+    });
+    check(connVis.intersects, "Connections card should intersect the viewport after the nav click");
+    if (connVis.canFullyScroll) {
+      check(connVis.fullyVisible, "Connections card should be fully visible when scroll room allows");
+    }
+    // Grid sanity (single-column via grid-template-columns computed style, not a
+    // media-query guess): on desktop every card sits right of the nav column; in
+    // the stacked single-column layout every card starts BELOW the chip row.
+    // Measured in document coordinates so page scroll doesn't skew them.
+    const columnBug = await page.evaluate(() => {
+      const nav = document.querySelector(".settings-nav").getBoundingClientRect();
+      const navDocBottom = nav.bottom + window.scrollY;
+      const singleColumn = getComputedStyle(document.querySelector("#view-settings .settings")).gridTemplateColumns.split(" ").length === 1;
+      return [...document.querySelectorAll("#view-settings .settings-content .card[id]")]
+        .map((c) => {
+          const r = c.getBoundingClientRect();
+          return { id: c.id, left: Math.round(r.left), docTop: Math.round(r.top + window.scrollY) };
+        })
+        .filter((c) => (singleColumn ? c.docTop < navDocBottom : c.left < nav.right));
+    });
+    check(columnBug.length === 0, `all cards should sit in the content column, offending: ${JSON.stringify(columnBug)}`);
   }
-  // Grid sanity (single-column via grid-template-columns computed style, not a
-  // media-query guess): on desktop every card sits right of the nav column; in
-  // the stacked single-column layout every card starts BELOW the chip row.
-  // Measured in document coordinates so page scroll doesn't skew them.
-  const columnBug = await page.evaluate(() => {
-    const nav = document.querySelector(".settings-nav").getBoundingClientRect();
-    const navDocBottom = nav.bottom + window.scrollY;
-    const singleColumn = getComputedStyle(document.querySelector("#view-settings .settings")).gridTemplateColumns.split(" ").length === 1;
-    return [...document.querySelectorAll("#view-settings .settings-content .card[id]")]
-      .map((c) => {
-        const r = c.getBoundingClientRect();
-        return { id: c.id, left: Math.round(r.left), docTop: Math.round(r.top + window.scrollY) };
-      })
-      .filter((c) => (singleColumn ? c.docTop < navDocBottom : c.left < nav.right));
-  });
-  check(columnBug.length === 0, `all cards should sit in the content column, offending: ${JSON.stringify(columnBug)}`);
   const connRow = await page.locator("#settings-lichess-accounts .conn-row").first().textContent().catch(() => "");
   check(/me_user/.test(connRow || ""), `connections should list the real linked account, got "${connRow}"`);
 
