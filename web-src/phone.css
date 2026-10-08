@@ -234,7 +234,7 @@
 
   /* Settings: one grouped list per section, like the iOS Settings app. Every
      row is 48px, actions are tinted text, sliders get the row's full width. */
-  #view-settings .settings { display: flex; flex-direction: column; gap: 0; }
+  #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
   #view-settings .settings-nav { display: none; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }

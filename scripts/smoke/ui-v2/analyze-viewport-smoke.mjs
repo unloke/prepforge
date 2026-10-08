@@ -317,18 +317,18 @@ async function runViewport(vp) {
     await page.waitForFunction((text) => document.getElementById("coach-prose").textContent !== text, instant, { timeout: 15000 });
   } catch { check(false, "Coach must produce an engine verdict after rapid stepping stops"); }
   const engineLayout = await page.evaluate(() => {
-    const panel = document.getElementById("analysis-eval-card").getBoundingClientRect();
     // The docked engine dissolves into the card (display: contents): measure its lines,
     // and require its depth ring and line stepper on the card's header row. Phones
-    // show the best line alone under the eval row.
+    // dissolve the card too and show the best line alone under the eval row.
     const phone = window.innerWidth <= 760;
+    const panel = phone ? { left: 0, right: window.innerWidth } : document.getElementById("analysis-eval-card").getBoundingClientRect();
     const engine = document.getElementById(phone ? "analysis-engine-slot" : "engine-window-pvs").getBoundingClientRect();
     const coach = document.getElementById("analysis-explain").getBoundingClientRect();
     const head = ["#analysis-chart-caption", "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
       .map((sel) => document.querySelector(sel).getBoundingClientRect());
     const oneRow = head.every((r) => r.width > 0 && Math.abs((r.top + r.bottom) / 2 - (head[0].top + head[0].bottom) / 2) < 4 &&
       r.left >= panel.left && r.right <= panel.right + 1);
-    return { fits: engine.width > 0 && engine.left >= panel.left && engine.right <= panel.right + 1 && oneRow, oneRow, coachHeight: coach.height,
+    return { fits: engine.width > 0 && engine.left >= panel.left && engine.right <= panel.right + 1 && oneRow, oneRow, coachHeight: phone ? 0 : coach.height,
       scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
   });
   check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
@@ -345,8 +345,8 @@ async function runViewport(vp) {
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
-    // Phones dissolve the sidebar box (display: contents); the eval strip opens the panel.
-    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#analysis-eval-card");
+    // Phones dissolve the sidebar box (display: contents); the eval row starts the panel.
+    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#view-analyze .ev-head");
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
