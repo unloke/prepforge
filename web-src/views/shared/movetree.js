@@ -2,6 +2,12 @@ import { html } from "../../html.js";
 // Shared move-tree HTML renderer (lazy-loaded from app.js for Build; static import
 // from analyze.js). Pure render + click binding — no appState or navigation.
 
+let lastPointer = "mouse";
+const swallowClick = (event) => {
+  event.stopPropagation();
+  event.preventDefault();
+};
+
 export function createMoveTreeRenderer() {
   function renderMoveToken(node, opts, forceNumber) {
     const isWhite = node.side === "white";
@@ -88,18 +94,51 @@ export function createMoveTreeRenderer() {
     box.scrollTop += overTop < 0 ? overTop : overBottom;
   }
 
+  // Touch screens have no right-click (iOS fires no contextmenu at all), so a
+  // long press, or a tap on the move already shown, opens the move menu there.
   function bindMoveTreeClicks(container, onSelect, onContext) {
     container.querySelectorAll(".mtree-move[data-node-id]").forEach((button) => {
+      const id = button.dataset.nodeId;
+      let press = 0;
+      let pressed = false;
+      let start = null;
       button.addEventListener("click", (event) => {
-        onSelect(button.dataset.nodeId);
+        if (onContext && lastPointer === "touch" && button.classList.contains("is-current")) {
+          // The menu's outside-click close listens on document; keep this tap off it.
+          event.stopPropagation();
+          onContext(event, id);
+          return;
+        }
+        onSelect(id);
         event.currentTarget.blur();
       });
-      if (onContext) {
-        // The move menu has no visible button; the tooltip says where it is.
-        if (!button.title) button.title = "Right-click for move options";
-        button.addEventListener("contextmenu", (event) =>
-          onContext(event, button.dataset.nodeId)
-        );
+      if (!onContext) return;
+      // The move menu has no visible button; the tooltip says where it is.
+      if (!button.title) button.title = "Right-click for move options";
+      button.addEventListener("contextmenu", (event) => {
+        if (pressed) event.preventDefault();
+        else onContext(event, id);
+      });
+      button.addEventListener("pointerdown", (event) => {
+        lastPointer = event.pointerType;
+        pressed = false;
+        if (event.pointerType !== "touch") return;
+        clearTimeout(press);
+        start = event;
+        press = setTimeout(() => {
+          pressed = true;
+          // Letting go clicks wherever the finger is (the tree may have
+          // redrawn under it); that click must not close the menu it opened.
+          document.addEventListener("click", swallowClick, { capture: true, once: true });
+          setTimeout(() => document.removeEventListener("click", swallowClick, true), 1000);
+          onContext(start, id);
+        }, 450);
+      });
+      for (const type of ["pointerup", "pointercancel", "pointermove"]) {
+        button.addEventListener(type, (event) => {
+          if (type === "pointermove" && start && Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) < 8) return;
+          clearTimeout(press);
+        });
       }
     });
   }

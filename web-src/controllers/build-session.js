@@ -147,7 +147,12 @@ function openBuildMenu(event) {
     ? (appState.repertoireList || []).find((r) => String(r.id) === String(repId))
     : null;
   const isActive = !meta || meta.is_active !== false;
-  const items = buildMenuItems({ hasRep, isActive });
+  // The shown move's own menu, for screens without a right-click.
+  const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
+  const items = [
+    ...(node?.san ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
+    ...buildMenuItems({ hasRep, isActive }),
+  ];
   menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
@@ -159,10 +164,14 @@ function openBuildMenu(event) {
   menu.style.left = `${Math.max(8, Math.min(anchor.right - rect.width, window.innerWidth - rect.width - 8))}px`;
   menu.style.top = `${Math.min(anchor.bottom + 4, window.innerHeight - rect.height - 8)}px`;
   menu.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", async (event) => {
       closeRepertoireContextMenu();
       const action = button.dataset.action;
-      if (action === "build-rename") await renameRepertoire();
+      if (action === "build-node-menu") {
+        // The document's outside-click handler would close the menu this opens.
+        event.stopPropagation();
+        openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
+      } else if (action === "build-rename") await renameRepertoire();
       else if (action === "build-export-pgn") await exportBuild("pgn");
       else if (action === "build-new-rep") {
         await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });

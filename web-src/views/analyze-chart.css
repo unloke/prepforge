@@ -745,33 +745,38 @@
 }
 
 /* ---- Phone ------------------------------------------------------------
-   Shell, thumb bar and sheet in phone.css. One screen, no scrolling: the
-   coach over the board; under it one Evaluation strip (eval, Engine, the game
-   graph, the best line) and the move strip. The report and game sources live
-   in the Report sheet, or fill the screen under the board while no game is
-   loaded. */
+   Shell, thumb bar and sheets in phone.css. One screen, no page scroll, and
+   nothing above the board changes height between moves: the game graph and
+   the move strip on top, the board, then the eval row and the engine's best
+   line, and the coach last, scrolling inside whatever height is left. The
+   report and the game sources are sheets; the sources fill the screen under
+   the board while no game is loaded. */
 @media (max-width: 760px) {
-  #view-analyze { --phone-reserve: 196px; }
+  #view-analyze { --phone-reserve: 236px; }
   #analyze-sidebar :is(.panel-scroll, .analyze-main),
+  #analysis-eval-card,
   #analysis-results:not([hidden]) { display: contents; }
   #analyze-sidebar .panel-scroll > *,
   .analyze-main > *,
+  #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: the verdict and why, above the board. */
+  /* Coach: under the engine, in the height the screen has left. */
   #analysis-explain {
-    order: 0;
-    flex: 0 1 auto;
+    order: 3;
+    flex: 1 1 0;
     display: block;
     height: auto;
     min-height: 0;
     margin: 0;
-    padding: 10px 14px 8px;
+    padding: 8px 14px 10px;
     border: 0;
+    border-top: 1px solid var(--line);
     border-radius: 0;
     background: var(--bg);
     box-shadow: none;
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
   #analysis-explain::after { content: ""; display: block; clear: both; }
   #analysis-explain .cc-head { float: right; flex-wrap: nowrap; gap: 6px; min-height: 0; margin: 0 0 2px 10px; }
@@ -787,32 +792,51 @@
   #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
 
-  /* Evaluation strip under the board. */
-  #analysis-eval-card {
-    row-gap: 4px;
-    column-gap: 8px;
-    margin: 0;
-    padding: 6px 14px;
-    border: 0;
-    border-radius: 0;
+  /* Game graph on top, at a fixed height so the board never moves. */
+  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; }
+  #analysis-eval-card .eval-chart { height: 52px; border-radius: 0; }
+
+  /* Under the board: eval, win meter, Report, Engine; then the best line. */
+  #analysis-eval-card > .ev-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 12px 0 14px;
     background: var(--bg);
-    box-shadow: none;
   }
   #analysis-eval-card .ev-title { color: var(--muted); }
-  #analysis-eval-card .eval-now { min-width: 56px; font-size: 16px; }
-  #analysis-eval-card .ev-meter { height: 6px; }
-  #analysis-eval-card .ev-engine { height: 30px; padding: 0 11px 0 9px; font-size: 13px; }
-  /* The graph takes the height the screen has to spare. */
-  #analysis-eval-card .eval-chart { --spare: calc(100dvh - min(100vw, 100dvh - 252px) - 222px); height: clamp(28px, var(--spare), 150px); }
-  #analysis-eval-card.is-engine .eval-chart { height: clamp(28px, var(--spare) - 30px, 150px); }
+  #analysis-eval-card .eval-now { min-width: 60px; font-size: 16px; }
+  #analysis-eval-card .ev-meter { flex: 1 1 auto; min-width: 24px; height: 6px; }
+  #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
+  #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  #analysis-engine-slot { display: block; padding: 0 12px 4px 10px; }
+  #analysis-engine-slot > .engine-window:not([hidden]) { display: block; }
+  #analysis-engine-slot .engine-window-head,
   #analysis-engine-slot .engine-pv:not(.is-top) { display: none; }
-  #analysis-engine-slot .engine-pv.is-top { height: 26px; min-height: 26px; font-size: 13px; }
-  #analysis-engine-slot .engine-pv-line { line-height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 28px; font-size: 14px; }
+  #analysis-engine-slot .engine-pv-line { line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #analysis-job-dock:empty { display: none; }
+  #analysis-job-dock { padding: 0 12px 4px; }
   .analysis-retry-save:not([hidden]),
   .analysis-import-picker:not([hidden]) { margin: 0 12px 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
 
-  /* Move strip: one swipeable row of chips. */
+  /* Move strip: one swipeable row of chips, under the graph. */
   #analysis-results:not([hidden]) > .moves-grid {
+    order: 0;
     display: flex;
     align-items: center;
     height: 46px;
@@ -822,7 +846,6 @@
     overflow-x: auto;
     overflow-y: hidden;
     border: 0;
-    border-top: 1px solid var(--line);
     border-radius: 0;
     background: var(--bg);
     scrollbar-width: none;
@@ -865,10 +888,13 @@
     white-space: nowrap;
   }
 
-  /* Report sheet: move quality, the handoff, then where games come from. */
-  #view-analyze:has(#analysis-results:not([hidden])) #analyze-sheet:not(.is-open) { display: none; }
+  /* Report sheet: move quality and the handoff. Games sheet: where games
+     come from. */
+  #analyze-sheet:not(.is-open),
+  #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { visibility: hidden; }
   #analysis-summary:empty { display: none; }
-  #analyze-sheet :is(#analysis-summary, #pgn-drawer, #history-drawer:not([hidden])) {
+  :is(#analyze-sheet, #analyze-open) :is(#analysis-summary, #pgn-drawer, #history-drawer:not([hidden])) {
     margin: 0;
     padding: 10px 14px;
     border: 0;
@@ -878,7 +904,7 @@
   }
   #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
   #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
-  #analyze-sheet > :is(.drawer) > summary {
+  #analyze-open > .drawer > summary {
     display: flex;
     align-items: center;
     min-height: 40px;
@@ -887,12 +913,13 @@
     font-weight: 600;
   }
   #pgn-input { min-height: 120px; border-radius: 10px; }
-  #analyze-sheet .pgn-file-row { display: none; }
-  #analyze-sheet .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
-  #analyze-sheet .history-item .hi-meta { font-size: 13px; }
+  #analyze-open .pgn-file-row { display: none; }
+  #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
+  #analyze-open .history-item .hi-meta { font-size: 13px; }
 
   /* No game yet: the sources fill the screen under the board. */
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-sheet {
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open {
+    order: 3;
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
@@ -901,6 +928,8 @@
     padding: 4px 12px 16px;
     overflow-y: auto;
   }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-sheet > * { flex: none; }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-sheet :is(.sheet-rows, #pgn-drawer, #history-drawer:not([hidden])) { background: var(--panel); }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open > * { flex: none; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open :is(.sheet-rows, #pgn-drawer, #history-drawer:not([hidden])) { background: var(--panel); }
+  /* …and the coach keeps to its few lines above them. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain { flex: none; max-height: 96px; }
 }

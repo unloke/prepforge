@@ -499,13 +499,13 @@ export function createScoutView(deps) {
       });
     }
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
-    const progressHtml = document.getElementById("scout-engine-progress")?.outerHTML ||
-      html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
+    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
     if (results) {
       const shownBefore = planRowKeys(results);
       results.innerHTML = sections.length
         ? html`${progressHtml}${tabsHtml}${sections}`
         : html`${progressHtml}<div class="empty-state">Not enough opening data in these games.</div>`;
+      patchEngineProgressUI();
       if (sections.length) applyScoutColorTabs(results);
       markEnteringPlanRows(results, shownBefore);
       if (captured) {

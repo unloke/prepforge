@@ -102,10 +102,10 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
-// Phones keep the report and game sources in the Report sheet once a game is
-// loaded; raise it when its button is on screen and the sheet is down.
-async function openReportSheet(page) {
-  const button = page.locator('#view-analyze [data-sheet-open="analyze-sheet"]');
+// Phones keep the game sources in the Games sheet once a game is loaded;
+// raise it when its button is on screen and the sheet is down.
+async function openGamesSheet(page) {
+  const button = page.locator('#view-analyze [data-sheet-open="analyze-open"]');
   if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true" &&
     !(await page.locator("#history-drawer").isVisible())) await button.click();
 }
@@ -118,12 +118,12 @@ async function runViewport(vp) {
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
   const checkPanelHead = async (state) => {
     if (vp.width <= 760) {
-      // Phones: Analyze is the pill in the thumb bar; Last game is a row in the Report sheet.
+      // Phones: Analyze is the pill in the thumb bar; Last game is a row in the Games sheet.
       const phone = await page.evaluate(() => {
         const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
         const pill = document.getElementById("run-analysis").getBoundingClientRect();
         return { inBar: pill.width > 0 && pill.top >= bar.top - 1 && pill.bottom <= bar.bottom + 1 && pill.left >= bar.left && pill.right <= bar.right,
-          lastGame: !!document.querySelector('#analyze-sheet [data-mirror="#fetch-my-game"]'), pill: pill.toJSON() };
+          lastGame: !!document.querySelector('#analyze-open [data-mirror="#fetch-my-game"]'), pill: pill.toJSON() };
       });
       check(phone.inBar && phone.lastGame, `${state}: Analyze must sit in the thumb bar and Last game in the sheet: ${JSON.stringify(phone)}`);
       return phone.pill;
@@ -319,10 +319,12 @@ async function runViewport(vp) {
   const engineLayout = await page.evaluate(() => {
     const panel = document.getElementById("analysis-eval-card").getBoundingClientRect();
     // The docked engine dissolves into the card (display: contents): measure its lines,
-    // and require its depth ring and line stepper on the card's header row.
-    const engine = document.getElementById("engine-window-pvs").getBoundingClientRect();
+    // and require its depth ring and line stepper on the card's header row. Phones
+    // show the best line alone under the eval row.
+    const phone = window.innerWidth <= 760;
+    const engine = document.getElementById(phone ? "analysis-engine-slot" : "engine-window-pvs").getBoundingClientRect();
     const coach = document.getElementById("analysis-explain").getBoundingClientRect();
-    const head = ["#analysis-chart-caption", "#analysis-eval-meter", "#engine-window-depth-readout", "#engine-window .engine-lines", "#open-engine-widget"]
+    const head = ["#analysis-chart-caption", "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
       .map((sel) => document.querySelector(sel).getBoundingClientRect());
     const oneRow = head.every((r) => r.width > 0 && Math.abs((r.top + r.bottom) / 2 - (head[0].top + head[0].bottom) / 2) < 4 &&
       r.left >= panel.left && r.right <= panel.right + 1);
@@ -438,11 +440,11 @@ async function runViewport(vp) {
     await recallGate;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(api("/api/analyses/g1")) });
   });
-  await openReportSheet(page);
+  await openGamesSheet(page);
   await page.locator('.history-item[data-game-id="g1"]').focus();
   await page.keyboard.press("Enter");
   await recallRequested;
-  await openReportSheet(page);
+  await openGamesSheet(page);
   await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
   await page.locator("#pgn-input").fill("1. d4 d5");
   await page.waitForFunction(() => document.getElementById("analysis-moves").textContent.includes("d4"));
@@ -454,7 +456,7 @@ async function runViewport(vp) {
   check((await page.locator("#analysis-moves").textContent()).includes("d4"), "pending recall must not replace the pasted move tree");
 
   // The history row supplies Black's linked identity, so recall uses that side.
-  await openReportSheet(page);
+  await openGamesSheet(page);
   await page.locator('.history-item[data-game-id="g2"]').focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => /opp_two/.test(document.getElementById("analysis-game-title").textContent));
@@ -473,7 +475,7 @@ async function runViewport(vp) {
     // Phones: one bottom bar. The tab bar waits under it until the views button raises it.
     await page.keyboard.press("Escape");
     await page.waitForTimeout(250);
-    check(!(await page.locator("#analyze-sheet").evaluate((el) => el.classList.contains("is-open"))), "Escape should lower the Report sheet");
+    check(!(await page.locator("#analyze-open").evaluate((el) => el.classList.contains("is-open"))), "Escape should lower the Games sheet");
     // A recalled Black game flips the board; measure once it has settled.
     await page.evaluate(() => Promise.all(document.getAnimations()
       .filter((a) => a.effect?.getTiming().iterations !== Infinity)
@@ -485,7 +487,7 @@ async function runViewport(vp) {
       const coach = document.getElementById("analysis-explain").getBoundingClientRect();
       const strip = document.getElementById("analysis-moves").getBoundingClientRect();
       return { tabbarHidden: getComputedStyle(tabbar).visibility === "hidden",
-        oneScreen: coach.top >= 0 && coach.bottom <= board.top + 1 && strip.bottom <= bar.top + 1,
+        oneScreen: strip.top >= 0 && strip.bottom <= board.top + 1 && coach.top >= board.bottom - 1 && coach.bottom <= bar.top + 1,
         barAtBottom: Math.abs(bar.bottom - window.innerHeight) < 2,
         boardFullWidth: board.width >= window.innerWidth - 1 || board.height >= window.innerHeight * 0.5,
         board: [Math.round(board.width), Math.round(board.height)], viewport: [window.innerWidth, window.innerHeight],
@@ -493,7 +495,7 @@ async function runViewport(vp) {
     });
     check(bars.tabbarHidden && bars.barAtBottom, `the board bar should be the only bottom bar: ${JSON.stringify(bars)}`);
     check(bars.boardFullWidth, `the phone board should take the width: ${JSON.stringify(bars)}`);
-    check(bars.oneScreen, `coach, board and move strip should share one screen: ${JSON.stringify(bars)}`);
+    check(bars.oneScreen, `move strip over the board and coach under it, on one screen: ${JSON.stringify(bars)}`);
     await page.locator("#view-analyze [data-phone-nav]").click();
     await page.waitForTimeout(300);
     const raised = await page.evaluate(() => {
