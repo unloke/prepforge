@@ -138,7 +138,7 @@
             </div>
           </div>
 
-          <aside class="sidebar panel" id="analyze-sidebar" data-phone-active="coach">
+          <aside class="sidebar panel" id="analyze-sidebar">
             <div class="engine-banner" id="analyze-engine-banner" data-testid="analyze-engine-banner" hidden></div>
             <div class="panel-head">
               <div class="game-id">
@@ -151,14 +151,8 @@
               </span>
             </div>
             <div class="panel-scroll">
-              <div class="phone-tabs" role="tablist" aria-label="Analysis panel">
-                <button type="button" role="tab" data-phone-tab="coach" aria-selected="true">Coach</button>
-                <button type="button" role="tab" data-phone-tab="engine" aria-selected="false">Engine</button>
-                <button type="button" role="tab" data-phone-tab="report" aria-selected="false">Report</button>
-                <button type="button" role="tab" data-phone-tab="game" aria-selected="false">Game</button>
-              </div>
               <div class="analyze-main" id="analyze-main">
-                <section class="coach-card" id="analysis-explain" data-testid="analysis-explain" data-phone-pane="coach">
+                <section class="coach-card" id="analysis-explain" data-testid="analysis-explain">
                   <header class="cc-head">
                     <b>Coach</b>
                     <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
@@ -174,7 +168,7 @@
                 <!-- One Evaluation card: current eval + win meter, the live engine's
                      depth, line count and lines, the game graph, and the whole-game
                      progress all live here, so there is one place to look. -->
-                <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation" data-phone-pane="engine">
+                <section class="res-block eval-card" id="analysis-eval-card" data-testid="analysis-eval-card" aria-label="Evaluation">
                   <div class="rb-head ev-head">
                     <b class="ev-title">Evaluation</b>
                     <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
@@ -193,18 +187,18 @@
                 </section>
                 <!-- F-03: finished-but-unsaved analysis: the compute lives on this
                      device; Retry save re-posts it without re-analyzing. -->
-                <div class="analysis-retry-save" id="analysis-retry-save" data-testid="analysis-retry-save" data-phone-pane="coach" hidden>
+                <div class="analysis-retry-save" id="analysis-retry-save" data-testid="analysis-retry-save" hidden>
                   <span class="pf-row-text" id="analysis-retry-save-text"></span>
                   <button type="button" class="btn sm primary" id="analysis-retry-save-btn" data-testid="analysis-retry-save-btn">Retry save</button>
                   <button type="button" class="btn sm ghost" id="analysis-retry-save-discard">Discard</button>
                 </div>
                 <!-- F-04: after a batch import — what was stored, and which game
                      this report covers (switchable). -->
-                <div class="analysis-import-picker" id="analysis-import-picker" data-testid="analysis-import-picker" data-phone-pane="game" hidden></div>
+                <div class="analysis-import-picker" id="analysis-import-picker" data-testid="analysis-import-picker" hidden></div>
                 <div class="res-stack" id="analysis-results" hidden>
                   <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
-                  <section class="res-block" id="analysis-summary" data-phone-pane="report"></section>
-                  <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" data-phone-pane="report" hidden>
+                  <section class="res-block" id="analysis-summary"></section>
+                  <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
                     <button
                       class="btn primary"
                       id="create-repertoire-from-game"
@@ -216,7 +210,7 @@
                   </div>
                 </div>
               </div>
-              <details class="drawer" id="pgn-drawer" data-phone-pane="game">
+              <details class="drawer" id="pgn-drawer">
                 <summary>Analyze source · PGN</summary>
                 <textarea
                   id="pgn-input"
@@ -231,7 +225,7 @@
                   <input type="file" id="pgn-file-input" accept=".pgn,application/x-chess-pgn,text/plain" hidden />
                 </div>
               </details>
-              <details class="drawer" id="history-drawer" data-testid="history-drawer" data-phone-pane="game" open hidden>
+              <details class="drawer" id="history-drawer" data-testid="history-drawer" open hidden>
                 <summary>Recent analyses</summary>
                 <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
               </details>

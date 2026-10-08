@@ -12,6 +12,7 @@ const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
 const analyzeCss = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
+const phoneCss = readFileSync(join(root, "phone.css"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
@@ -268,7 +269,7 @@ describe("workspace chrome layout", () => {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
-    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar" data-phone-active="coach">');
+    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
     expect(view).toContain('id="analysis-game-title"');
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
@@ -309,19 +310,18 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain("explain-card");
   });
 
-  it("splits the phone study panels into tabs over tagged panes", () => {
+  it("keeps Analyze one phone scroller and splits only Repertoire into tabs", () => {
     const analyze = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
     const build = html.slice(html.indexOf('id="view-build"'), html.indexOf('id="view-train"'));
-    for (const tab of ["coach", "engine", "report", "game"]) {
-      expect(analyze).toContain(`data-phone-tab="${tab}"`);
-      expect(analyze).toContain(`data-phone-pane="${tab}"`);
-    }
+    // Analyze: coach, eval, report and game sources stay together in one column.
+    expect(analyze).not.toContain("phone-tabs");
+    expect(analyze).not.toContain("data-phone-pane");
+    expect(analyzeCss).toMatch(/#analysis-explain \{ order: 2;/);
+    expect(analyzeCss).toMatch(/#analysis-eval-card \{\s*order: 3;/);
     for (const tab of ["tree", "explorer", "coverage"]) expect(build).toContain(`data-phone-tab="${tab}"`);
     expect(build).toContain('data-dock-tab="build-tool-explorer"');
     expect(build).toContain('data-phone-pane="explorer coverage"');
-    // The move strip has no pane: it stays above the tabs.
-    expect(analyze).not.toMatch(/id="analysis-moves"[^>]*data-phone-pane/);
-    expect(css).toMatch(/\.phone-tabs \{ display: none; \}/);
+    expect(phoneCss).toMatch(/\.phone-tabs \{ display: none; \}/);
     expect(app).toContain("function wirePhonePanelTabs()");
   });
 

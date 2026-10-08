@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { discoverStockfishBuild, syncStockfish } from "./sync-stockfish.mjs";
+import { capSharedHeap, discoverStockfishBuild, syncStockfish } from "./sync-stockfish.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -39,6 +39,12 @@ describe("Stockfish package synchronization", () => {
     expect(manifest.files.wasm.bundled).toBe("stockfish-lite.wasm");
     expect(manifest.files.script.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(manifest.files.wasm.sha256).toMatch(/^[a-f0-9]{64}$/);
+    const script = readFileSync(join(root, "web-src", "public", "engine", "stockfish-lite.js"), "utf8");
+    expect(script).toContain("maximum:4096,shared:!0");
+  });
+
+  it("refuses a script whose shared heap declaration it cannot cap", () => {
+    expect(() => capSharedHeap("new WebAssembly.Memory({initial:1})")).toThrow(/changed upstream/);
   });
 
   it("keeps runtime URLs stable and renders the bundled manifest version", () => {

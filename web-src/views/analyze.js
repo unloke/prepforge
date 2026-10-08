@@ -49,9 +49,11 @@ export function createAnalyzeView({
 
   function measurePlotPads(svg) {
     const rect = svg && svg.getBoundingClientRect ? svg.getBoundingClientRect() : null;
-    const padY = rect && rect.height > 0 ? (EVAL_CHART_INSET_PX * EVAL_CHART_H) / rect.height : plotPadY;
+    // Clamp before comparing: a short chart always hits the cap, and comparing the
+    // raw value would report a change on every redraw and recurse forever.
+    const padY = Math.min(rect && rect.height > 0 ? (EVAL_CHART_INSET_PX * EVAL_CHART_H) / rect.height : plotPadY, EVAL_CHART_H / 4);
     const changed = Math.abs(padY - plotPadY) > 0.5;
-    plotPadY = Math.min(padY, EVAL_CHART_H / 4);
+    plotPadY = padY;
     return changed;
   }
 

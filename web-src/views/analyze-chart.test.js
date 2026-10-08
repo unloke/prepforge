@@ -83,7 +83,7 @@ class FakeElement {
   }
 
   getBoundingClientRect() {
-    return { left: 0, top: 0, width: this.rectWidth, height: 96 };
+    return { left: 0, top: 0, width: this.rectWidth, height: this.rectHeight ?? 96 };
   }
 
   querySelectorAll(selector) {
@@ -189,6 +189,16 @@ describe("eval chart tooltip boundaries", () => {
       expect(left - 90).toBeGreaterThanOrEqual(0);
       expect(left + 90).toBeLessThanOrEqual(width);
     }
+  });
+});
+
+describe("eval chart sizing", () => {
+  it("draws a short phone chart once instead of redrawing itself forever", () => {
+    const { chart, appState, view } = setup();
+    chart.rectHeight = 30;
+    appState.evalChartPoints = POINTS;
+    expect(() => view.renderEvalChart(POINTS)).not.toThrow();
+    expect(chart.querySelectorAll(".eval-marker").length).toBeGreaterThan(0);
   });
 });
 

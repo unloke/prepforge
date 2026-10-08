@@ -1,0 +1,450 @@
+/* Phone layout (≤760px).
+   The study views (Analyze, Repertoire, Train) own the screen: the board edge
+   to edge at the top, one scroller of cards under it, and one thumb bar at the
+   bottom. The bar is icon buttons on the left, the view's main action as a pill
+   in the middle and the move arrows on the right, so no label can wrap. The app
+   tab bar slides up over it from the Menu button. Analyze's panel internals are
+   styled in views/analyze-chart.css, which loads with that view. */
+
+.bb-views { display: none; }
+.phone-tabs { display: none; }
+.sidebar > .panel-body { display: contents; }
+
+@media (max-width: 760px) {
+  :root {
+    --phone-bar-h: 56px;
+    --phone-panel-min: max(180px, 32dvh);
+    --phone-gutter: 12px;
+    --phone-card-radius: 14px;
+  }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  /* iOS zooms the page into any field set below 16px. */
+  input:not([type="checkbox"], [type="radio"], [type="range"]),
+  select,
+  textarea { font-size: 16px; }
+
+  /* ---- Study shell ------------------------------------------------------ */
+  .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) {
+    position: fixed;
+    inset: 0;
+    max-width: none;
+    padding: 0;
+    overflow: hidden;
+  }
+  :is(#view-analyze, #view-build, #view-train) .study {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    height: 100%;
+    padding-top: env(safe-area-inset-top);
+    background: var(--bg);
+  }
+  .study > .board-area { display: contents; }
+  .study .board-stack {
+    order: 1;
+    flex: none;
+    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-panel-min)));
+    max-width: none;
+    margin: 0 auto;
+    border-width: 0;
+    border-radius: 0;
+  }
+
+  /* The scroller under the board: cards on the page colour. */
+  #analyze-sidebar,
+  #build-sidebar { display: contents; }
+  :is(#analyze-sidebar, #build-sidebar) > .engine-banner { order: 0; flex: none; }
+  #view-analyze { --phone-panel-min: max(240px, 36dvh); }
+  #analyze-sidebar > .panel-scroll,
+  #build-sidebar > .panel-body,
+  #view-train .study > .train-sidebar {
+    order: 2;
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0 var(--phone-gutter) 16px;
+    border: 0;
+    border-radius: 0;
+    background: var(--bg);
+    box-shadow: none;
+    font-size: 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* ---- Thumb bar ---------------------------------------------------------
+     [Menu][Flip] [ action pill ] [◀][▶]   Train: label in the middle, Hint/Skip right. */
+  .study .board-bar {
+    position: relative;
+    order: 3;
+    flex: none;
+    display: grid;
+    grid-template-columns: 44px 44px minmax(0, 1fr) 52px 52px;
+    column-gap: 4px;
+    align-items: center;
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    padding: 0 10px env(safe-area-inset-bottom);
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .study .board-bar :is(.bb-nav, .bb-right) { display: contents; }
+  .study .board-bar .bb-views { display: flex; grid-column: 1; grid-row: 1; }
+  .study .board-bar [id$="-flip"] { grid-column: 2; grid-row: 1; }
+  .study .board-bar :is(.board-label, .pv-exit) {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: center;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
+  :is(#view-analyze, #view-build) .board-bar .board-label { display: none; }
+  .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
+  .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { grid-column: 4; grid-row: 1; }
+  .study .board-bar :is(#analysis-next, #build-next, #train-skip) { grid-column: 5; grid-row: 1; }
+  :is(#analysis-start, #analysis-end, #build-root, #build-end) { display: none !important; }
+
+  /* Icon buttons: the label stays in title / aria-label. */
+  .study .board-bar .ib,
+  :is(#analyze-sidebar, #build-sidebar) > .panel-head :is(#fetch-my-game, #build-menu) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 0;
+    height: 44px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+    font-size: 0;
+  }
+  .study .board-bar .bl,
+  :is(#analyze-sidebar, #build-sidebar) > .panel-head :is(#fetch-my-game, #build-menu) .bl { display: none; }
+  .study .board-bar :is(.bi, .bb-views svg),
+  #fetch-my-game .bi { display: block; width: 22px; height: 22px; }
+  .bb-views svg { fill: none; stroke: currentColor; stroke-width: 1.7; }
+  #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
+  .bb-views[aria-expanded="true"] { color: var(--accent-strong) !important; }
+  .study .board-bar #train-hint:disabled { opacity: 0.4; }
+
+  /* Move arrows: one split control, drawn chevrons (the ◀ ▶ glyphs render as
+     emoji on some iPhones). */
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) {
+    width: 52px;
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  .study .board-bar :is(#analysis-prev, #build-parent) { border-radius: 12px 4px 4px 12px; }
+  .study .board-bar :is(#analysis-next, #build-next) { border-radius: 4px 12px 12px 4px; }
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next)::before {
+    content: "";
+    width: 9px;
+    height: 9px;
+    border: solid currentColor;
+    border-width: 0 0 2.5px 2.5px;
+    transform: translateX(2px) rotate(45deg);
+  }
+  .study .board-bar :is(#analysis-next, #build-next)::before { transform: translateX(-2px) rotate(-135deg); }
+
+  /* Touch screens keep :hover after a tap; show the press instead. */
+  .study .board-bar .ib:hover,
+  :is(#analyze-sidebar, #build-sidebar) > .panel-head .btn:hover { filter: none; }
+  .study .board-bar .ib:hover,
+  :is(#fetch-my-game, #build-menu):hover { background: none; }
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):hover { background: var(--surface-3); }
+  .study .board-bar .ib:active,
+  :is(#fetch-my-game, #build-menu):active { background: var(--surface-3); }
+  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):active { background: var(--line-strong); }
+
+  /* The panel head becomes the bar's middle: a secondary icon and the pill. */
+  :is(#analyze-sidebar, #build-sidebar) > .panel-head {
+    position: absolute;
+    z-index: 6;
+    left: 106px;
+    right: 122px;
+    bottom: env(safe-area-inset-bottom);
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: var(--phone-bar-h);
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  :is(#analyze-sidebar, #build-sidebar) > .panel-head :is(.game-id, .rep-name, .rep-stats) { display: none; }
+  .study:has(.pv-exit:not([hidden])) :is(#analyze-sidebar, #build-sidebar) > .panel-head { display: none; }
+  #analyze-actions { display: contents; }
+  :is(#analyze-sidebar, #build-sidebar) > .panel-head :is(#run-analysis, #build-generate-node) {
+    flex: 0 1 auto;
+    min-width: 0;
+    height: 40px;
+    min-height: 0;
+    margin: 0;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 15px;
+    font-weight: 650;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  :is(#run-analysis, #build-generate-node) .bi { display: none; }
+  :is(#run-analysis, #build-generate-node) .bl { display: inline; }
+  :is(#run-analysis, #build-generate-node):active { filter: brightness(0.92); }
+  :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--faint); }
+  .study .board-bar .build-sync {
+    position: absolute;
+    top: 9px;
+    left: 82px;
+    z-index: 1;
+    width: 9px;
+    height: 9px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 2px solid var(--panel);
+    border-radius: 50%;
+    font-size: 0;
+    background: currentColor;
+  }
+  .study .board-bar .build-sync::before { content: none; }
+  .study .board-bar .build-sync.is-saved { display: none; }
+
+  /* The app tab bar waits under the thumb bar; Menu raises it. */
+  body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    height: 64px;
+    padding-bottom: 0;
+    border: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.3);
+    transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
+    visibility: hidden;
+    transition: transform 180ms ease, visibility 0s linear 180ms;
+  }
+  body.phone-nav-open:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
+    transform: none;
+    visibility: visible;
+    transition: transform 180ms ease;
+  }
+  body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .toast-stack {
+    bottom: calc(var(--phone-bar-h) + 10px + env(safe-area-inset-bottom));
+  }
+
+  /* ---- Panel switcher (Repertoire) --------------------------------------- */
+  .phone-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    order: 1;
+    flex: none;
+    display: flex;
+    gap: 2px;
+    margin: 0 calc(-1 * var(--phone-gutter));
+    padding: 8px var(--phone-gutter);
+    background: var(--bg);
+  }
+  .phone-tabs [role="tab"] {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 34px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--surface-3);
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .phone-tabs [role="tab"]:first-child { border-radius: 9px 3px 3px 9px; }
+  .phone-tabs [role="tab"]:last-child { border-radius: 3px 9px 9px 3px; }
+  .phone-tabs [role="tab"][aria-selected="true"] { background: var(--accent-soft); color: var(--accent-strong); }
+  :is([data-phone-active="tree"] [data-phone-pane]:not([data-phone-pane~="tree"]),
+      [data-phone-active="explorer"] [data-phone-pane]:not([data-phone-pane~="explorer"]),
+      [data-phone-active="coverage"] [data-phone-pane]:not([data-phone-pane~="coverage"])) { display: none !important; }
+
+  /* ---- Repertoire --------------------------------------------------------- */
+  #build-sidebar > .panel-body > * { flex: none !important; order: 2; }
+  #build-sidebar > .panel-body > .phone-tabs { order: 1; }
+  #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty),
+  #build-sidebar > .panel-body > .shared-banner:not([hidden]) {
+    border: 0;
+    border-radius: var(--phone-card-radius);
+    background: var(--panel);
+  }
+  #view-build .tree-wrap { max-height: none; padding: 10px 12px; overflow: visible; line-height: 1.6; }
+  #view-build .dock-resizer,
+  #build-inspector .dock-tabs { display: none; }
+  #build-inspector { height: auto !important; max-height: none; margin: 0; overflow: hidden; }
+  #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
+  #build-inspector .inspector-panel { overflow: visible; }
+  #build-inspector .dock-tools { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px; }
+  #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 32px; height: 32px; padding: 0 10px; font-size: 13px; }
+  #build-inspector .inspector-info { width: 32px; height: 32px; }
+  #view-build :is(.tree-meta, .forkbar) { font-size: 13px; }
+  #view-build .build-empty { padding: 24px 16px; }
+  #view-build .build-empty .row { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  #view-build .build-empty .btn { min-height: 40px; height: 40px; }
+
+  /* ---- Train -------------------------------------------------------------
+     The prompt stays pinned at the top of the scroller; during a session the
+     mode switch moves below the cards, since it is for between sessions. */
+  #view-train .train-sidebar > .panel-scroll { display: contents; }
+  #view-train .train-sidebar > * { flex: none; }
+  #view-train .train-sidebar > .panel-scroll > * { order: 1; }
+  #view-train .train-coach {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    order: 0;
+    height: auto;
+    min-height: 56px;
+    margin: 0 calc(-1 * var(--phone-gutter));
+    padding: 8px var(--phone-gutter);
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  #view-train .train-coach-icon { width: 32px; height: 32px; flex: none; }
+  #view-train .train-coach-title { font-size: 16px; }
+  #view-train .train-sidebar > .panel-head {
+    order: -1;
+    min-height: 0;
+    margin: 0 calc(-1 * var(--phone-gutter));
+    padding: 10px var(--phone-gutter) 0;
+    border: 0;
+    background: none;
+  }
+  #view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { order: 9; padding: 0 var(--phone-gutter); }
+  #view-train #train-modes { display: flex; width: 100%; }
+  #view-train #train-modes .seg-btn { flex: 1 1 0; min-width: 0; min-height: 34px; height: 34px; padding: 0 4px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; }
+  #view-train .seg-btn { min-height: 34px; height: 34px; font-size: 14px; }
+  #view-train .train-sidebar .tcard {
+    margin: 0;
+    padding: 14px;
+    border: 0;
+    border-radius: var(--phone-card-radius);
+    background: var(--panel);
+    box-shadow: none;
+    font-size: 14px;
+  }
+  #view-train .train-sidebar .tcard:first-child { margin-top: 10px; }
+  #view-train .train-start-row .btn { flex: 1 1 140px; min-height: 44px; }
+
+  /* Session card: head, progress, then one row each for queue, stats, trail. */
+  #view-train .train-progress-panel { display: flex; flex-direction: column; gap: 10px; }
+  #view-train .train-progress-panel .prog-head { min-height: 0; gap: 8px; }
+  #view-train .train-progress-panel .qstrip { display: flex; align-items: center; gap: 8px; }
+  #view-train .train-progress-panel .qstrip .qbar { flex: 1 1 auto; }
+  #view-train .train-progress-panel .qstrip .chips { justify-content: flex-start; flex-wrap: nowrap; overflow: hidden; }
+  #view-train .train-progress-panel .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-radius: 10px; background: var(--panel-soft); }
+  #view-train .train-progress-panel .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    min-height: 0;
+    padding: 8px 4px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  #view-train .train-progress-panel .stat + .stat { box-shadow: inset 1px 0 0 var(--line); }
+  #view-train .train-progress-panel .stat b { font-size: 20px; line-height: 1.2; }
+  #view-train .train-progress-panel .trail { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 13px; text-align: left; }
+  #view-train .train-progress-panel .trail .pips { flex: 1 1 auto; justify-content: flex-start; }
+  #view-train .train-progress-panel .card-dots:empty { display: none; }
+  #view-train .train-progress-panel .upnext { min-height: 0; }
+  #view-train .train-progress-panel > .row { justify-content: flex-start; }
+  .sum-cells { grid-template-columns: repeat(2, 1fr); }
+
+  /* ---- Status pill: a small notice at the top edge -------------------- */
+  .topbar-status-slot,
+  .topbar-status-slot:has(.status:empty),
+  .topbar-status-slot:has(.status:not(.is-fresh)) {
+    top: calc(8px + env(safe-area-inset-top));
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    width: max-content;
+    max-width: calc(100vw - 24px);
+    padding: 6px 12px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+  }
+  .topbar-status-slot:has(.status:empty),
+  .topbar-status-slot:has(.status:not(.is-fresh)) { transform: translate(-50%, -6px); }
+  .topbar-status-slot .status-close { width: 32px; height: 32px; }
+
+  /* ---- Pages: Library, Games, Teams, Settings ---------------------------- */
+  .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
+  .workspace:has(> .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings)) {
+    max-width: none;
+    padding: calc(12px + env(safe-area-inset-top)) 12px calc(76px + env(safe-area-inset-bottom));
+  }
+  .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings) .card {
+    border: 0;
+    border-radius: var(--phone-card-radius);
+    box-shadow: none;
+  }
+  .btn.sm { min-height: 36px; height: 36px; }
+  .job-toast button { min-width: 44px; min-height: 44px; }
+
+  /* Library: one streak line, the queue line and its button; dense rows. */
+  #view-dashboard .lib { gap: 12px; }
+  #view-dashboard .today.card { padding: 14px; }
+  #view-dashboard .today-body { gap: 6px; }
+  #view-dashboard .today-streak { gap: 8px; }
+  #view-dashboard .today-flame { width: 22px; height: 22px; }
+  #view-dashboard .today-count { font-size: 24px; }
+  #view-dashboard .today-note { font-size: 13px; }
+  #view-dashboard .today-queue { font-size: 15px; }
+  #view-dashboard .today .btn.lg { min-height: 46px; height: 46px; border-radius: 12px; font-size: 16px; }
+  #view-dashboard .card-head { min-height: 0; margin-bottom: 8px; gap: 10px; }
+  #view-dashboard .lib-list .seg { display: flex; max-width: none; margin: 0 -2px; overflow-x: auto; scrollbar-width: none; }
+  #view-dashboard .lib-list .seg::-webkit-scrollbar { display: none; }
+  #view-dashboard .lib-list .seg-btn,
+  #view-dashboard .lib-list .chip { flex: none; min-height: 32px; height: 32px; padding: 0 12px; font-size: 14px; }
+  #view-dashboard .search-field input { min-height: 40px; height: 40px; }
+  #view-dashboard .lib-row { padding: 12px 14px; gap: 4px 8px; }
+  #view-dashboard .lib-name { font-size: 16px; }
+  #view-dashboard .rep-sub { font-size: 13px; }
+  #view-dashboard .step { min-height: 0; padding: 10px 14px; gap: 10px; }
+  #view-dashboard .step-text { font-size: 14px; }
+  #view-dashboard .step .btn { min-height: 36px; height: 36px; font-size: 14px; }
+  #dashboard-steps .card-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
+  #dashboard-steps .setup-dismiss { width: 32px; min-width: 32px; height: 32px; min-height: 32px; }
+  .lib-actions { width: 100%; }
+  .lib-actions .btn { flex: 1; }
+
+  /* The app tab bar. */
+  .tabbar { height: calc(56px + env(safe-area-inset-bottom)); }
+  .tabbar .tabbar-item { min-height: 0; height: 56px; gap: 3px; font-size: 11px; font-weight: 600; }
+  .tabbar .tabbar-item svg { width: 22px; height: 22px; }
+}

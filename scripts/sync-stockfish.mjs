@@ -23,6 +23,18 @@ function fail(message) {
   throw new Error(`[sync-stockfish] ${message}`);
 }
 
+// The upstream script asks for a shared WASM heap with a 2 GB maximum. WebKit reserves a
+// shared memory's whole maximum up front, so on iOS three or four engines (analysis pool plus
+// the live board) exhaust the address space and abort with "OOM" on a phone with RAM to spare.
+// The lite engine runs in its 128 MB initial heap; 256 MB leaves room to grow.
+const MAX_HEAP_PAGES = 4096;
+const UPSTREAM_MEMORY = "maximum:32768,shared:!0";
+
+export function capSharedHeap(script) {
+  if (!script.includes(UPSTREAM_MEMORY)) fail("shared WebAssembly.Memory declaration changed upstream");
+  return script.replace(UPSTREAM_MEMORY, `maximum:${MAX_HEAP_PAGES},shared:!0`);
+}
+
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
@@ -62,7 +74,11 @@ export function syncStockfish() {
   mkdirSync(dstDir, { recursive: true });
   for (const output of outputs) {
     const destination = join(dstDir, output.bundled);
-    copyFileSync(join(srcDir, output.source), destination);
+    if (output.bundled.endsWith(".js")) {
+      writeFileSync(destination, capSharedHeap(readFileSync(join(srcDir, output.source), "utf8")));
+    } else {
+      copyFileSync(join(srcDir, output.source), destination);
+    }
     // npm preserves executable bits for some package files on Linux. Browser
     // assets are data, so keep their committed permissions platform-independent.
     chmodSync(destination, 0o644);

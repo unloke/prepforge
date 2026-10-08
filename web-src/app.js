@@ -3,6 +3,7 @@ import { MAX_FETCH } from "./generated/shared-constants.js";
 
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
+import "./phone.css";
 import { createToastStack } from "./controllers/toast-stack.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
 import { classBadgeSymbol } from "./move-grades.js";
@@ -2732,7 +2733,7 @@ async function loadAnalysisHistory() {
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
       host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} ? ${localDayOf(a.analyzed_at)}</span></button>`
+        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button>`
       )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;
@@ -3937,8 +3938,8 @@ function showAnalysisRetrySave(checkpoint, message) {
     const black = checkpoint.pgn?.match(/\[Black "([^"\n]*)"\]/)?.[1];
     const game = white || black ? `${white || "?"} vs ${black || "?"}` : checkpoint.gameId;
     text.textContent = checkpoint.serverSaved
-      ? `${game} ? Analysis saved. Device cleanup failed ? retry cleanup.`
-      : `${game} ? ${message || "Unsaved analysis"} ? ${checkpoint.inMemoryOnly ? "Kept in this page only" : "Kept on this device"}`;
+      ? `${game} · Analysis saved. Device cleanup failed, retry cleanup.`
+      : `${game} · ${message || "Unsaved analysis"} · ${checkpoint.inMemoryOnly ? "Kept in this page only" : "Kept on this device"}`;
   }
   const button = document.getElementById("analysis-retry-save-btn");
   if (button) button.textContent = checkpoint.serverSaved ? "Retry cleanup" : "Retry save";
