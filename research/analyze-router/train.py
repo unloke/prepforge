@@ -400,6 +400,8 @@ def bootstrap(games, S, D, flagged, n=500, seed=7):
 
 # ---- main ---------------------------------------------------------------------------------------
 SHARDS = ('whole', 'gamesA', 'gamesB')
+# Screen reads: lite12 (a fresh hash per position) or lite12h (the browser's carried hash, amendment 7).
+SCREEN = os.environ.get('ROUTER_SCREEN', 'lite12')
 
 
 def load_shards(shards):
@@ -410,7 +412,7 @@ def load_shards(shards):
         if not gj:
             log(missingShard=shard)
             continue
-        s, _ = load_runs(find_input(f'{shard}-lite12.ndjson'))
+        s, _ = load_runs(find_input(f'{shard}-{SCREEN}.ndjson'))
         d, _ = load_runs(find_input(f'{shard}-lite16.ndjson'))
         S.update(s); L16.update(d)
         for g in whole_games(gj[0]):

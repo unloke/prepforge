@@ -343,3 +343,26 @@ screen pass:
 Same flag rate, but only 85.1% of moves get the same decision, so router reads with a carried hash are
 not the reads it was validated on. Production clears the hash before every screen read (`newGame`),
 which costs about 4% screen CPU and up to 12% screen wall time against the old pass.
+
+## Amendment 7 (2026-10-08, before any carried-hash read exists): retrain on the browser's screen reads
+
+The hash bench shows the router's inputs depend on the engine hash, and the browser carries it.
+Rather than clear the hash in production (4% screen CPU, up to 12% screen wall), the screen reads are
+regenerated the way the browser makes them and the router is retrained on them.
+
+- Screen reads (`screen-carried.mjs`, kernels `carried1..5`): for every game of every shard (whole,
+  gamesA, gamesB, holdA..holdF), its distinct positions in order through one shared queue to four lite
+  engines (hash 16 MB, depth 12, 1.5M nodes); each engine keeps its hash between positions and starts
+  the game empty; checkmate and stalemate never reach an engine. A FEN in several games keeps its first
+  game's read. Deep reads (lite 16, fresh hash) and everything derived from them are unchanged; the
+  core and Great/Brilliant labels are recomputed against the new screen reads, and tiered1 is scored on
+  the same new screen reads.
+- Round 3 (`round3`): round 2's procedure unchanged (`round2.py` with `ROUTER_SCREEN=lite12h`,
+  `ROUTER_ROUND=3`): same development games and split, candidates, guard, dev-test pass conditions and
+  automatic selection.
+- Holdout (`holdout3`): holdC..holdF again, read once, with the same four decision rules. These games
+  were the round 2 holdout. Reusing them is accepted because no choice in round 3 depends on them:
+  the procedure is fixed above and its only input change (the hash) came from production, not from
+  holdout results. Fresh games would need new depth-16 reads, the slowest step of the data kernels.
+- If round 3 ships, production drops the per-position hash clear; if it fails, the round 2 router stays
+  with the clear.

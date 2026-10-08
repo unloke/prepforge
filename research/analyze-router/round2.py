@@ -6,7 +6,7 @@
 
 Runs on Kaggle (job.py round2|holdout2), never locally.
 """
-import json, pathlib, subprocess, sys, time
+import json, os, pathlib, subprocess, sys, time
 
 if __name__ == '__main__':
     mode = sys.argv[1]
@@ -23,6 +23,8 @@ FRESH = ('holdC', 'holdD', 'holdE', 'holdF')
 CORE_MIN = 0.85     # validation core recall floor (tiered1 is ~0.76)
 GB_MARGIN = 0.01    # validation Great/Brilliant recall must beat tiered1 by this much
 WALL_MARGIN = 0.005  # dev-test wall must be this far under tiered1 to be selected
+# Output names: round 2 (fresh-hash screen reads) or round 3 (carried hash, amendment 7, same procedure).
+R = os.environ.get('ROUTER_ROUND', '2')
 GBT = {'small': dict(max_iter=60, max_depth=3, learning_rate=0.1), 'big': dict(max_iter=200, max_depth=4, learning_rate=0.05)}
 
 
@@ -135,24 +137,24 @@ def dev():
     chosen = max(passing, key=lambda n: (report[n]['diff']['recallGB']['ci'][0], -report[n]['test']['wallVsFull'])) if passing else None
     result = dict(constants=dict(CORE_MIN=CORE_MIN, GB_MARGIN=GB_MARGIN, WALL_MARGIN=WALL_MARGIN, GBT=GBT),
                   split={k: len(v) for k, v in G.items()}, tiered1=base, candidates=report, chosen=chosen)
-    (T.out / 'ROUND2-DEV.json').write_text(json.dumps(result, indent=1))
+    (T.out / f'ROUND{R}-DEV.json').write_text(json.dumps(result, indent=1))
     T.log(chosen=chosen)
     if not chosen:
         return
     rule = report[chosen]['rule']
     exported = {n: E[n] for n, _ in rule}
-    path = T.out / 'frozen2-models.json'
+    path = T.out / f'frozen{R}-models.json'
     path.write_text(json.dumps(exported))
     frozen = dict(router=chosen, rule=rule, modelsSha=H.sha(path), featuresSha=H.sha(T.HERE / 'features.mjs'),
                   predictSha=H.sha(T.HERE / 'predict.mjs'), devGameIds=sorted(g['id'] for g in games),
                   devMoveSeqs=sorted({H.h_moves(g) for g in games}), dev=report[chosen])
-    (T.out / 'frozen2.json').write_text(json.dumps(frozen, indent=1))
+    (T.out / f'frozen{R}.json').write_text(json.dumps(frozen, indent=1))
     T.log(frozen={k: v for k, v in frozen.items() if k not in ('devGameIds', 'devMoveSeqs')})
 
 
 def evaluate():
-    frozen = json.loads(T.find_input('frozen2.json').read_text())
-    path = T.find_input('frozen2-models.json')
+    frozen = json.loads(T.find_input(f'frozen{R}.json').read_text())
+    path = T.find_input(f'frozen{R}-models.json')
     assert H.sha(path) == frozen['modelsSha'], 'frozen models changed'
     assert H.sha(T.HERE / 'features.mjs') == frozen['featuresSha'], 'feature code changed since the freeze'
     assert H.sha(T.HERE / 'predict.mjs') == frozen['predictSha'], 'predict code changed since the freeze'
@@ -191,7 +193,7 @@ def evaluate():
     decision['ship'] = all(decision.values())
     result = dict(frozen={k: frozen[k] for k in ('router', 'rule', 'modelsSha', 'featuresSha', 'predictSha')},
                   holdoutGames=len(fresh), router=router, tiered1=base, diff=diff, cost=cost, decision=decision)
-    (T.out / 'HOLDOUT2.json').write_text(json.dumps(result, indent=1))
+    (T.out / f'HOLDOUT{R}.json').write_text(json.dumps(result, indent=1))
     T.log(cost=cost, decision=decision)
 
 

@@ -46,7 +46,7 @@ def gbt_score(m, X):
 def features(shard_of):
     pf = {}
     for shard in sorted(set(shard_of.values())):
-        pf.update(T.position_features(T.find_input(f'{shard}-lite12.ndjson')))
+        pf.update(T.position_features(T.find_input(f'{shard}-{T.SCREEN}.ndjson')))
     return pf
 
 

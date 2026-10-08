@@ -10,6 +10,9 @@ holdA..holdF    500 whole games each (lite 12 + lite 16); A/B were the amendment
 holdout         the frozen router against tiered1 on the holdout, once (PROTOCOL.md amendment 5)
 round2          round 2 candidates on all development games and the frozen choice (amendment 6)
 holdout2        the round 2 router against tiered1 on holdC..holdF, once
+carried1..5     the browser's carried-hash depth-12 screen reads for every shard (amendment 7)
+round3          round 2's procedure on the carried-hash screen reads (amendment 7)
+holdout3        the round 3 router against tiered1 on holdC..holdF, once
 hashbench       the shipped router's screen pass, a fresh hash per position against a carried one
 cancelled       a no-op version that stops a running kernel (used for the dropped scout screen run)
 """
@@ -43,15 +46,18 @@ exec(compile((root/'research/analyze-router/job.py').read_text(),'job.py','exec'
 '''
 (out / 'job.py').write_text(job, encoding='utf-8')
 k_ = lambda *names: [f'vexylon/analyze-router-{n}-{DATE}' for n in names]
+CARRIED = tuple(f'carried{i}' for i in range(1, 6))
 DATA = ('whole', 'gamesA', 'gamesB', 'holdA', 'holdB', 'holdC', 'holdD', 'holdE', 'holdF')
 sources = {'scout': [], 'cancelled': [], 'whole': [TEACHER], **{k: [] for k in DATA[1:]},
            'train': k_('whole', 'gamesa', 'gamesb'), 'freeze': k_('whole', 'gamesa', 'gamesb', 'train'),
            'holdout': k_('freeze', 'holda', 'holdb'),
            'round2': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb'),
-           'holdout2': k_('round2', 'holdc', 'holdd', 'holde', 'holdf'), 'hashbench': []}[kind]
+           'holdout2': k_('round2', 'holdc', 'holdd', 'holde', 'holdf'), 'hashbench': [], **{k: [] for k in CARRIED},
+           'round3': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb', 'carried1', 'carried2', 'carried3'),
+           'holdout3': k_('round3', 'holdc', 'holdd', 'holde', 'holdf', 'carried4', 'carried5')}[kind]
 (out / 'kernel-metadata.json').write_text(json.dumps({
     'id': slug, 'title': slug.split('/')[1], 'code_file': 'job.py', 'language': 'python', 'kernel_type': 'script',
     'is_private': 'true', 'enable_gpu': 'false', 'enable_internet': 'true',
-    'dataset_sources': ['datasnaek/chess'] if kind in (*DATA, 'hashbench') else [],
+    'dataset_sources': ['datasnaek/chess'] if kind in (*DATA, *CARRIED, 'hashbench') else [],
     'competition_sources': [], 'kernel_sources': sources}, indent=2))
 print(json.dumps({'kind': kind, 'slug': slug, 'files': len(files), 'zipBytes': len(buf.getvalue()), 'out': str(out)}))

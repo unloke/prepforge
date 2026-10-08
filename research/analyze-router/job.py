@@ -14,6 +14,9 @@ WORKERS = os.cpu_count() or 4
 # (now development data); holdC..holdF are the round 2 holdout (amendment 6).
 SHARDS = {'gamesA': (348, 1000), 'gamesB': (1348, 1000), 'holdA': (2348, 500), 'holdB': (2848, 500),
           'holdC': (3348, 500), 'holdD': (3848, 500), 'holdE': (4348, 500), 'holdF': (4848, 500)}
+# Amendment 7 carried-hash screen kernels: about 1,000 games each, under five concurrent sessions.
+CARRIED = {'carried1': ('whole', 'holdA', 'holdB'), 'carried2': ('gamesA',), 'carried3': ('gamesB',),
+           'carried4': ('holdC', 'holdD'), 'carried5': ('holdE', 'holdF')}
 
 
 def log(**kw):
@@ -138,6 +141,26 @@ elif kind == 'round2':
 elif kind == 'holdout2':
     npm()
     subprocess.run([sys.executable, str(HERE / 'round2.py'), 'eval', str(root), str(out)], cwd=root, check=True)
+elif kind in CARRIED:
+    # Amendment 7: the browser's carried-hash screen reads for every shard's games (deep reads unchanged).
+    npm()
+    csv = find_input('games.csv')
+    for shard in CARRIED[kind]:
+        offset, count = (48, 300) if shard == 'whole' else SHARDS[shard]
+        subprocess.run(['node', str(HERE / 'games.mjs'), str(csv), str(out / shard), str(count), str(offset)], cwd=root, check=True)
+        t0 = time.time()
+        subprocess.run(['node', str(HERE / 'screen-carried.mjs'), str(out / shard / 'games.json'), str(out / f'{shard}-lite12h.ndjson'),
+                        '--budget', '330'], cwd=root, check=True)
+        log(stage=f'{shard}-lite12h', seconds=round(time.time() - t0))
+        # The data kernels already hold this shard's games.json.
+        shutil.rmtree(out / shard)
+elif kind in ('round3', 'holdout3'):
+    os.environ.update(ROUTER_SCREEN='lite12h', ROUTER_ROUND='3')
+    npm()
+    if kind == 'round3':
+        fill_dev(None)
+    subprocess.run([sys.executable, str(HERE / 'round2.py'), 'dev' if kind == 'round3' else 'eval', str(root), str(out)],
+                   cwd=root, check=True, env=os.environ)
 elif kind == 'hashbench':
     # 100 round 2 holdout games (holdC): fresh against carried screen hash for the shipped router.
     npm()
