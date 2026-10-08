@@ -7,7 +7,7 @@
     "script": {
       "bundled": "stockfish-lite.js",
       "source": "stockfish-19-lite.js",
-      "sha256": "2f98d35d20bf435c16925f8955fe4b0c2062e66962799a407667218ff9ea709d"
+      "sha256": "83c0d55a84eaf05d0aff888e4dec278b60da1fe37f25854807a7237b4619fbfd"
     },
     "wasm": {
       "bundled": "stockfish-lite.wasm",

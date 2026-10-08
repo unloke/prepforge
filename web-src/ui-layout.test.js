@@ -145,7 +145,7 @@ describe("workspace chrome layout", () => {
     expect(lib).toContain('id="dashboard-import-pgn"');
     expect(lib).toContain('id="dashboard-new-rep"');
     expect(lib).not.toContain('id="lib-preview"');
-    expect(html).toContain('data-lib-mirror="dashboard-new-rep"');
+    expect(html).toContain('data-mirror="#dashboard-new-rep"');
     expect(html).toContain('data-lib-mirror="dashboard-import-pgn"');
     // Rail buttons drop pointer focus so a later arrow key cannot expand the rail.
     expect(app).toContain('getElementById("app-rail")?.addEventListener("click"');
@@ -310,19 +310,21 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain("explain-card");
   });
 
-  it("keeps Analyze one phone scroller and splits only Repertoire into tabs", () => {
+  it("builds the phone study screens without panel tabs", () => {
     const analyze = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
-    const build = html.slice(html.indexOf('id="view-build"'), html.indexOf('id="view-train"'));
-    // Analyze: coach, eval, report and game sources stay together in one column.
-    expect(analyze).not.toContain("phone-tabs");
-    expect(analyze).not.toContain("data-phone-pane");
-    expect(analyzeCss).toMatch(/#analysis-explain \{ order: 2;/);
-    expect(analyzeCss).toMatch(/#analysis-eval-card \{\s*order: 3;/);
-    for (const tab of ["tree", "explorer", "coverage"]) expect(build).toContain(`data-phone-tab="${tab}"`);
-    expect(build).toContain('data-dock-tab="build-tool-explorer"');
-    expect(build).toContain('data-phone-pane="explorer coverage"');
-    expect(phoneCss).toMatch(/\.phone-tabs \{ display: none; \}/);
-    expect(app).toContain("function wirePhonePanelTabs()");
+    const tabbar = html.slice(html.indexOf('id="app-tabbar"'), html.indexOf("</nav>", html.indexOf('id="app-tabbar"')));
+    // Five tabs; Repertoire opens from the Library.
+    expect(tabbar.match(/class="tab tabbar-item"/g)).toHaveLength(5);
+    expect(tabbar).not.toContain('data-view="build"');
+    expect(html).not.toContain("phone-tabs");
+    expect(html).not.toContain("data-phone-pane");
+    // Analyze: coach over the board; report and sources in the Report sheet.
+    const sheet = analyze.slice(analyze.indexOf('id="analyze-sheet"'));
+    for (const id of ["analysis-summary", "analysis-handoff", "pgn-drawer", "history-drawer"]) expect(sheet).toContain(`id="${id}"`);
+    expect(analyze).toContain('data-sheet-open="analyze-sheet"');
+    expect(analyzeCss).toMatch(/#analysis-explain \{\s*order: 0;/);
+    expect(phoneCss).toMatch(/\.phone-sheet \{ display: contents; \}/);
+    expect(app).toContain("function wirePhoneSheets()");
   });
 
   it("composes Teams as directory | detail | incoming shares", () => {
