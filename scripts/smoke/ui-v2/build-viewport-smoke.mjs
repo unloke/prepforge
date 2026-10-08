@@ -121,13 +121,6 @@ if (!browser) { console.error("[build-smoke] no chromium-based browser available
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
-// Phones show the study panel as tabs; open one when its tab bar is on screen.
-async function phoneTab(page, name) {
-  const tab = page.locator(`.view.is-active .phone-tabs [data-phone-tab="${name}"]`);
-  if (await tab.isVisible()) { await tab.click(); return true; }
-  return false;
-}
-
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
   const consoleErrors = [];
@@ -221,11 +214,11 @@ async function runViewport(vp) {
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
-  if (!(await phoneTab(page, "coverage"))) await page.locator('[data-testid="build-tool-coverage"]').click();
+  await page.locator('[data-testid="build-tool-coverage"]').click();
   await page.waitForTimeout(300);
   check((await page.locator("#coverage-drawer:not([hidden])").count()) === 1 && (await page.locator("#explorer-drawer[hidden]").count()) === 1, "coverage should replace explorer");
   check((await page.locator("#coverage-run:visible").count()) === 1, "Scan should show on the Coverage tab");
-  if (!(await phoneTab(page, "explorer"))) await page.locator('[data-testid="build-tool-explorer"]').click();
+  await page.locator('[data-testid="build-tool-explorer"]').click();
   await page.waitForTimeout(300);
   check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer should return");
 
