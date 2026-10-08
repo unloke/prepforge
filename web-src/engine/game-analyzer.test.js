@@ -66,7 +66,7 @@ const NON_TERMINAL = [
 // position in `order` as its score so deterministic ordering can be asserted.
 // `delays` (optional, keyed by fen) lets a position resolve asynchronously so we
 // can exercise concurrent workers pulling from the shared queue.
-function makeFakeProviderFactory({ order, delays = {}, onCreate, opensThrow, reads } = {}) {
+function makeFakeProviderFactory({ order, delays = {}, onCreate, opensThrow } = {}) {
   return function createFakeProvider() {
     if (onCreate) onCreate();
     let snap = { running: false, current_depth: 0, pvs: [], error: null, fen: null };
@@ -82,12 +82,10 @@ function makeFakeProviderFactory({ order, delays = {}, onCreate, opensThrow, rea
       };
     }
     return {
-      async open({ fen, newGame }) {
-        reads?.push({ fen, newGame });
+      async open({ fen }) {
         await ready(fen);
       },
-      async update({ fen, newGame }) {
-        reads?.push({ fen, newGame });
+      async update({ fen }) {
         await ready(fen);
       },
       snapshot() {
@@ -118,18 +116,6 @@ describe("analyzeGamePositions (worker pool)", () => {
     });
     expect(out.size).toBe(0);
     expect(created).toBe(0);
-  });
-
-  it("asks for an empty hash on every search when newGame is set", async () => {
-    const reads = [];
-    await analyzeGamePositions({
-      positions: NON_TERMINAL,
-      depth: 12,
-      concurrency: 1,
-      newGame: true,
-      createProvider: makeFakeProviderFactory({ order: NON_TERMINAL, reads }),
-    });
-    expect(reads).toEqual(NON_TERMINAL.map((fen) => ({ fen, newGame: true })));
   });
 
   it("evaluates every position, keyed by fen, regardless of worker count", async () => {

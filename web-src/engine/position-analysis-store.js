@@ -405,7 +405,7 @@ export function createPositionAnalysisStore({
     // already answer at this depth are reused, and every finished eval is published.
     // multipv > 1 (the brilliant check's best-other-move read) runs on the same
     // dedicated pool but neither reuses nor publishes: the game channel is single-line.
-    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, newGame }) {
+    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult }) {
       const single = multipv <= 1;
       return analyzeFn({
         positions,
@@ -414,7 +414,6 @@ export function createPositionAnalysisStore({
         concurrency,
         onProgress,
         shouldCancel,
-        newGame,
         reuse: single ? (fen) => reusableGameEval(fen, depth) : null,
         onResult: (fen, ev) => {
           if (single) publishGame(fen, ev, depth);

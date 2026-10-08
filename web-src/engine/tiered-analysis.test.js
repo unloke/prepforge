@@ -61,18 +61,18 @@ describe("analyzeTiered", () => {
     expect(evals.get("A").depth).toBe(16);
     expect(evals.get("C").score_cp).toBe(150);
   });
-  it("lets the router pick the deep positions at depth 16, screening from an empty hash", async () => {
+  it("lets the router pick the deep positions at depth 16", async () => {
     const moves = fixture.games[0];
     const positions = [...new Set(moves.flatMap((m) => [m.fen_before, m.fen_after]))];
     const calls = [];
-    const analyze = async ({ positions: fens, depth, newGame }) => {
-      calls.push({ n: fens.length, depth, newGame });
+    const analyze = async ({ positions: fens, depth }) => {
+      calls.push({ n: fens.length, depth });
       return new Map(fens.map((f) => [f, depth === 12 ? fixture.evals[f] : ev(0, { depth })]));
     };
     const { evals, screenDepth } = await analyzeTiered({ analyze, positions, moves, depth: 16 });
     const want = routerFlags(model, moves, new Map(Object.entries(fixture.evals)));
     expect(screenDepth).toBe(12);
-    expect(calls).toEqual([{ n: positions.length, depth: 12, newGame: true }, { n: want.size, depth: 16, newGame: undefined }]);
+    expect(calls).toEqual([{ n: positions.length, depth: 12 }, { n: want.size, depth: 16 }]);
     expect(positions.filter((f) => evals.get(f).depth === 16)).toEqual(positions.filter((f) => want.has(f)));
   });
   it("runs one full-depth pass when the depth is too low to tier", async () => {

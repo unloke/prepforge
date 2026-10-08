@@ -62,10 +62,8 @@ export async function analyzeTiered({ analyze, positions, moves, depth, onResult
     return { evals, screenDepth: null };
   }
   const routed = Number(depth) === ROUTER_DEPTH;
-  // The router reads each position's own search history, so every screen read starts from
-  // an empty hash, as in training.
   const [screened, model] = await Promise.all([
-    analyze({ positions, depth: screenDepth, newGame: routed, shouldCancel, onProgress: progress("screen"), onResult: result }),
+    analyze({ positions, depth: screenDepth, shouldCancel, onProgress: progress("screen"), onResult: result }),
     routed ? import("./deepening-router-model.json").then((m) => m.default) : null,
   ]);
   const flagged = routed ? routerFlags(model, moves, screened) : deepFlags(moves, screened);

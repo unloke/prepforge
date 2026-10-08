@@ -178,7 +178,6 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
  *   createProvider?: (opts: { maxDepth: number, maxNodes: number }) => object,
  *   reuse?: (fen: string) => object | null,
  *   onResult?: (fen: string, evalResult: object) => void,
- *   newGame?: boolean,
  * }} opts
  */
 export async function analyzeGamePositions({
@@ -197,8 +196,6 @@ export async function analyzeGamePositions({
   // Called once per distinct FEN as soon as its eval is known (reused or searched), so
   // a consumer can show results while the rest of the game is still running.
   onResult = null,
-  // Clear the engine hash before every search, so a read depends on its FEN alone.
-  newGame = false,
 }) {
   const targetDepth = Math.max(1, Math.min(Number(depth) || 16, 60));
   const total = positions.length;
@@ -297,10 +294,10 @@ export async function analyzeGamePositions({
         // Reuse this worker's session across its positions: open the first,
         // update the rest.
         if (!opened) {
-          await startRead(() => provider.open({ fen, multipv, depth: targetDepth, newGame }));
+          await startRead(() => provider.open({ fen, multipv, depth: targetDepth }));
           opened = true;
         } else {
-          await startRead(() => provider.update({ fen, multipv, depth: targetDepth, newGame }));
+          await startRead(() => provider.update({ fen, multipv, depth: targetDepth }));
         }
 
         record(fen, await waitForEval(provider, fen, targetDepth, cancelled));

@@ -366,3 +366,40 @@ regenerated the way the browser makes them and the router is retrained on them.
   holdout results. Fresh games would need new depth-16 reads, the slowest step of the data kernels.
 - If round 3 ships, production drops the per-position hash clear; if it fails, the round 2 router stays
   with the clear.
+
+### Round 3 development result (kernel `analyze-router-round3-20261007`, 2026-10-08)
+
+Carried-hash screen reads for all 6,300 games (`carried1..5`, every game complete). Same 3,184
+development games and split. Dev-test vs tiered1 (core 0.749, GB 0.838, wall 0.867):
+
+| Candidate | Core | GB | Wall | GB diff CI | Passes |
+|---|---|---|---|---|---|
+| v1 (reference) | 0.900 | 0.821 | 0.865 | [−0.032, −0.001] | no (wall, GB) |
+| core-small+guard | 0.901 | 0.825 | 0.867 | [−0.028, +0.003] | no (wall, GB) |
+| core-big+guard | 0.931 | 0.839 | 0.895 | [−0.015, +0.017] | no (wall, GB) |
+| **joint-small+guard** | 0.858 | 0.916 | 0.847 | [+0.067, +0.089] | **yes, chosen** |
+| joint-big+guard | 0.852 | 0.910 | 0.827 | [+0.060, +0.084] | yes |
+| two-small | 0.864 | 0.826 | 0.830 | [−0.025, +0.003] | no (GB) |
+| two-big | 0.860 | 0.859 | 0.822 | [+0.008, +0.035] | yes |
+
+Frozen automatically: `joint-small+guard` (60 iterations, depth 3), threshold 0.5475, models sha
+`ad90c1c4…`.
+
+### Round 3 holdout result (kernel `analyze-router-holdout3-20261007`, run once, 2026-10-08)
+
+1,917 holdC..holdF games (123,283 moves), carried-hash screen reads for both arms:
+
+| | Router | tiered1 | Diff [95% CI] |
+|---|---|---|---|
+| Core recall | 0.855 | 0.760 | +0.095 [+0.088, +0.103] |
+| Core recall without best-move flips | 0.914 | 0.903 | +0.012 [+0.003, +0.021] |
+| Great/Brilliant check | 0.907 | 0.843 | +0.064 [+0.057, +0.072] |
+| Positions left shallow | 0.288 | 0.233 | +0.055 |
+| Wall time vs all-deep | 0.849 | 0.891 | −0.042 [−0.048, −0.035] |
+| Nodes vs all-deep | 0.847 | 0.865 | −0.018 [−0.024, −0.011] |
+
+Browser cost: features 379 µs + model 2.2 µs per position against a 60 ms lite-12 read (0.63%); model
+JSON 38 KB (23 KB as shipped).
+
+Decision: all four rules pass. Production ships the round 3 model and drops the per-position hash
+clear; the browser's screen pass is unchanged from tiered1.

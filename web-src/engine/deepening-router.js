@@ -3,10 +3,11 @@ import { Chess } from "chess.js";
 // Which moves of a depth-16 analysis need their depth-16 read. Every position is first
 // searched at depth 12 (tiered-analysis.js); this boosted-tree model scores each move from
 // its two screen reads (the FEN and the search's per-depth history) and deepens both
-// positions of every move it scores at or above the threshold. Trained and frozen in
-// research/analyze-router (PROTOCOL.md, round 2): on 1,917 fresh games it caught 0.855 of
-// the moves whose grade changes at depth 16 (loss rule: 0.760) and 0.903 of the
-// Great/Brilliant flips (0.835) in 0.831x the engine time of a full-depth pass (0.897x).
+// positions of every move it scores at or above the threshold. Trained on screen reads made
+// like the browser's (hash carried between a worker's positions) and frozen in
+// research/analyze-router (PROTOCOL.md, round 3): on 1,917 holdout games it caught 0.855 of
+// the moves whose grade changes at depth 16 (loss rule: 0.760) and 0.907 of the
+// Great/Brilliant flips (0.843) in 0.849x the engine time of a full-depth pass (0.891x).
 // The model and features are a port of research/analyze-router/{features,predict}.mjs;
 // deepening-router.test.js checks both against those files.
 

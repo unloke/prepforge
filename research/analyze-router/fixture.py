@@ -5,7 +5,7 @@ for the position features, train.py's own move functions for the move features, 
 predict.mjs on the frozen model for the score. The browser test replays the same games
 from browser-shaped evals and must reproduce the rows and scores.
 
-    python fixture.py <frozen2-models.json> <out.json>
+    python fixture.py <frozen3-models.json> <out.json>
 """
 import ast, json, math, pathlib, random, subprocess, sys, tempfile
 
@@ -107,7 +107,7 @@ for moves in games:
 with tempfile.TemporaryDirectory() as tmp:
     xp = pathlib.Path(tmp, 'rows.json')
     xp.write_text(json.dumps(rows))
-    model = json.loads(pathlib.Path(models_path).read_text())['joint-big']
+    (model,) = json.loads(pathlib.Path(models_path).read_text()).values()  # the frozen rule's one model
     mp = pathlib.Path(tmp, 'model.json')
     mp.write_text(json.dumps(model))
     res = subprocess.run(['node', str(HERE / 'predict.mjs'), str(mp), str(xp)], cwd=ROOT, check=True, capture_output=True, text=True)
@@ -131,4 +131,4 @@ def browser_eval(fen, it):
 pathlib.Path(out_path).write_text(json.dumps(dict(
     games=fixture_games, evals={f: browser_eval(f, it) for f, it in reads.items()}, rows=rows, scores=scores,
 )))
-print(json.dumps(dict(moves=len(rows), positions=len(reads), flagged=sum(s >= 0.5458186251590941 for s in scores))))
+print(json.dumps(dict(moves=len(rows), positions=len(reads))))
