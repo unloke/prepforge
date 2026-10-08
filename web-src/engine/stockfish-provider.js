@@ -184,6 +184,9 @@ export function createStockfishWasmProvider({
     current_depth: 0,
     nodes: 0,
     pvs: [],
+    // The search's exact line-1 result per completed depth, side-to-move POV:
+    // { depth, cp, mate, best, nodes, seldepth } (the deepening router's input).
+    iterations: [],
     running: false,
     error: null,
   };
@@ -265,12 +268,16 @@ export function createStockfishWasmProvider({
     let scoreCp = null;
     let mateIn = null;
     let nodes = null;
+    let seldepth = null;
+    let bound = false;
     let pv = [];
     for (let i = 1; i < parts.length; i += 1) {
       const tok = parts[i];
       if (tok === "depth") depth = Number(parts[i + 1]);
       else if (tok === "multipv") multipv = Number(parts[i + 1]);
       else if (tok === "nodes") nodes = Number(parts[i + 1]);
+      else if (tok === "seldepth") seldepth = Number(parts[i + 1]);
+      else if (tok === "lowerbound" || tok === "upperbound") bound = true;
       else if (tok === "score") {
         if (parts[i + 1] === "cp") scoreCp = Number(parts[i + 2]);
         else if (parts[i + 1] === "mate") mateIn = Number(parts[i + 2]);
@@ -280,6 +287,11 @@ export function createStockfishWasmProvider({
       }
     }
     if (!pv.length) return;
+    if (multipv === 1 && !bound && depth !== null) {
+      const row = { depth, cp: scoreCp, mate: mateIn, best: pv[0], nodes, seldepth };
+      if (state.iterations.at(-1)?.depth === depth) state.iterations[state.iterations.length - 1] = row;
+      else state.iterations.push(row);
+    }
 
     // UCI reports from the side-to-move's POV; the rest of the app expects
     // White's POV (matches the server's EngineSession), so flip for Black.
@@ -439,6 +451,7 @@ export function createStockfishWasmProvider({
     state.current_depth = 0;
     state.nodes = 0;
     state.pvs = [];
+    state.iterations = [];
     state.running = true;
     state.error = null;
     // `newGame` clears the hash so a caller can read one line at a time (Scout's path guard).
@@ -495,7 +508,7 @@ export function createStockfishWasmProvider({
       });
     },
     snapshot() {
-      return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })) };
+      return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })), iterations: state.iterations.slice() };
     },
     // Resolve when the in-flight search finishes (worker `info`/`bestmove` driven).
     // A 1s cancel poll is the only timer — Chromium clamps hidden-tab timers to ≥1s anyway,

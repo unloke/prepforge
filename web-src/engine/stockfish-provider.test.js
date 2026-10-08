@@ -114,6 +114,24 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(snap.pvs[0].pv_uci).toEqual(["e2e4", "e7e5"]);
   });
 
+  it("keeps the exact line-1 result of each depth in side-to-move POV, and clears it per search", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_B, multipv: 2 });
+    fake.emit("info depth 1 seldepth 2 multipv 1 score cp 20 nodes 30 pv e7e5");
+    fake.emit("info depth 1 seldepth 2 multipv 2 score cp 10 nodes 30 pv d7d5");
+    fake.emit("info depth 2 seldepth 4 multipv 1 score cp 50 lowerbound nodes 70 pv c7c5");
+    fake.emit("info depth 2 seldepth 5 multipv 1 score mate 3 nodes 90 pv d7d5");
+    const snap = provider.snapshot();
+    expect(snap.pvs[0].mate_in).toBe(-3);
+    expect(snap.iterations).toEqual([
+      { depth: 1, cp: 20, mate: null, best: "e7e5", nodes: 30, seldepth: 2 },
+      { depth: 2, cp: null, mate: 3, best: "d7d5", nodes: 90, seldepth: 5 },
+    ]);
+    fake.emit("bestmove d7d5");
+    await provider.update({ fen: FEN_A, multipv: 1 });
+    expect(provider.snapshot().iterations).toEqual([]);
+  });
+
   it("restricts the root moves with searchmoves when given candidates", async () => {
     const { provider, fake } = makeProvider();
     await provider.open({ fen: FEN_A, multipv: 3, searchmoves: ["e2e4", "d2d4", "bogus", "g1f3"] });
