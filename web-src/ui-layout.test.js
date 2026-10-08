@@ -12,6 +12,7 @@ const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
 const analyzeCss = readFileSync(join(root, "views", "analyze-chart.css"), "utf8");
+const phoneCss = readFileSync(join(root, "phone.css"), "utf8");
 const settingsView = readFileSync(join(root, "views", "settings.js"), "utf8");
 const scoutView = readFileSync(join(root, "views", "scout.js"), "utf8");
 const composer = readFileSync(join(root, "views", "shared", "source-composer.js"), "utf8");
@@ -144,7 +145,7 @@ describe("workspace chrome layout", () => {
     expect(lib).toContain('id="dashboard-import-pgn"');
     expect(lib).toContain('id="dashboard-new-rep"');
     expect(lib).not.toContain('id="lib-preview"');
-    expect(html).toContain('data-lib-mirror="dashboard-new-rep"');
+    expect(html).toContain('data-mirror="#dashboard-new-rep"');
     expect(html).toContain('data-lib-mirror="dashboard-import-pgn"');
     // Rail buttons drop pointer focus so a later arrow key cannot expand the rail.
     expect(app).toContain('getElementById("app-rail")?.addEventListener("click"');
@@ -268,7 +269,7 @@ describe("workspace chrome layout", () => {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
-    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar" data-phone-active="coach">');
+    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
     expect(view).toContain('id="analysis-game-title"');
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
@@ -309,20 +310,21 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain("explain-card");
   });
 
-  it("splits the phone study panels into tabs over tagged panes", () => {
+  it("builds the phone study screens without panel tabs", () => {
     const analyze = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
-    const build = html.slice(html.indexOf('id="view-build"'), html.indexOf('id="view-train"'));
-    for (const tab of ["coach", "engine", "report", "game"]) {
-      expect(analyze).toContain(`data-phone-tab="${tab}"`);
-      expect(analyze).toContain(`data-phone-pane="${tab}"`);
-    }
-    for (const tab of ["tree", "explorer", "coverage"]) expect(build).toContain(`data-phone-tab="${tab}"`);
-    expect(build).toContain('data-dock-tab="build-tool-explorer"');
-    expect(build).toContain('data-phone-pane="explorer coverage"');
-    // The move strip has no pane: it stays above the tabs.
-    expect(analyze).not.toMatch(/id="analysis-moves"[^>]*data-phone-pane/);
-    expect(css).toMatch(/\.phone-tabs \{ display: none; \}/);
-    expect(app).toContain("function wirePhonePanelTabs()");
+    const tabbar = html.slice(html.indexOf('id="app-tabbar"'), html.indexOf("</nav>", html.indexOf('id="app-tabbar"')));
+    // Five tabs; Repertoire opens from the Library.
+    expect(tabbar.match(/class="tab tabbar-item"/g)).toHaveLength(5);
+    expect(tabbar).not.toContain('data-view="build"');
+    expect(html).not.toContain("phone-tabs");
+    expect(html).not.toContain("data-phone-pane");
+    // Analyze: coach over the board; report and sources in the Report sheet.
+    const sheet = analyze.slice(analyze.indexOf('id="analyze-sheet"'));
+    for (const id of ["analysis-summary", "analysis-handoff", "pgn-drawer", "history-drawer"]) expect(sheet).toContain(`id="${id}"`);
+    expect(analyze).toContain('data-sheet-open="analyze-sheet"');
+    expect(analyzeCss).toMatch(/#analysis-explain \{\s*order: 0;/);
+    expect(phoneCss).toMatch(/\.phone-sheet \{ display: contents; \}/);
+    expect(app).toContain("function wirePhoneSheets()");
   });
 
   it("composes Teams as directory | detail | incoming shares", () => {

@@ -153,7 +153,7 @@ try {
       scrollWidth: document.documentElement.scrollWidth,
     };
   });
-  if (!mobileCheck.tabbarVisible || mobileCheck.itemCount !== 6) {
+  if (!mobileCheck.tabbarVisible || mobileCheck.itemCount !== 5) {
     throw new Error(`390px bottom tab bar wrong: ${JSON.stringify(mobileCheck)}`);
   }
   if (mobileCheck.hasTopbar || mobileCheck.workspaceTop !== 0) {

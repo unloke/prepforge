@@ -1399,7 +1399,7 @@ export function createScoutView(deps) {
     }
     jobToast.completeJob({
       title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
-      message: `Wrote ${written} line${written === 1 ? "" : "s"} into prep${failed ? ` ? ${failed} failed` : ""}`,
+      message: `Wrote ${written} line${written === 1 ? "" : "s"} into prep${failed ? ` · ${failed} failed` : ""}`,
     });
   }
 

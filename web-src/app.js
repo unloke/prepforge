@@ -3,6 +3,7 @@ import { MAX_FETCH } from "./generated/shared-constants.js";
 
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
+import "./phone.css";
 import { createToastStack } from "./controllers/toast-stack.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
 import { classBadgeSymbol } from "./move-grades.js";
@@ -1611,7 +1612,7 @@ function syncAnalyzeHead() {
 
 // Per-view heads that live inside the pages: Analyze's game identity, the
 // Repertoire header's size summary, and (phones) the More sheet's Library
-// mirrors of Import / New.
+// mirror of Import.
 function syncViewHeads() {
   document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
     item.hidden = appState.currentView !== "dashboard";
@@ -2732,7 +2733,7 @@ async function loadAnalysisHistory() {
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
       host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} ? ${localDayOf(a.analyzed_at)}</span></button>`
+        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button>`
       )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;
@@ -3937,8 +3938,8 @@ function showAnalysisRetrySave(checkpoint, message) {
     const black = checkpoint.pgn?.match(/\[Black "([^"\n]*)"\]/)?.[1];
     const game = white || black ? `${white || "?"} vs ${black || "?"}` : checkpoint.gameId;
     text.textContent = checkpoint.serverSaved
-      ? `${game} ? Analysis saved. Device cleanup failed ? retry cleanup.`
-      : `${game} ? ${message || "Unsaved analysis"} ? ${checkpoint.inMemoryOnly ? "Kept in this page only" : "Kept on this device"}`;
+      ? `${game} · Analysis saved. Device cleanup failed, retry cleanup.`
+      : `${game} · ${message || "Unsaved analysis"} · ${checkpoint.inMemoryOnly ? "Kept in this page only" : "Kept on this device"}`;
   }
   const button = document.getElementById("analysis-retry-save-btn");
   if (button) button.textContent = checkpoint.serverSaved ? "Retry cleanup" : "Retry save";
@@ -6175,7 +6176,7 @@ function wireMobileNav() {
     if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
   });
   wirePhoneStudyNav();
-  wirePhonePanelTabs();
+  wirePhoneSheets();
 }
 
 // Phone study views (Analyze, Repertoire, Train) hide the tab bar so the board
@@ -6202,22 +6203,42 @@ function wirePhoneStudyNav() {
   });
 }
 
-// Phone panel tabs (Analyze, Repertoire): the panel shows the blocks whose
-// data-phone-pane names the active tab. A tab mirroring an inspector tab
-// (data-dock-tab) also selects it, so the inspector loads what it shows.
-function wirePhonePanelTabs() {
-  for (const bar of document.querySelectorAll(".phone-tabs")) {
-    const host = bar.closest("[data-phone-active]");
-    bar.addEventListener("click", (event) => {
-      const tab = event.target.closest("[data-phone-tab]");
-      if (!tab || !host) return;
-      host.dataset.phoneActive = tab.dataset.phoneTab;
-      for (const other of bar.querySelectorAll("[data-phone-tab]")) other.setAttribute("aria-selected", String(other === tab));
-      const dock = tab.dataset.dockTab && document.getElementById(tab.dataset.dockTab);
-      if (dock && dock.getAttribute("aria-selected") !== "true") dock.click();
-      bar.parentElement.scrollTop = 0;
-    });
-  }
+// Phone sheets (Analyze's report): a [data-sheet-open] button raises the sheet
+// it names over the screen; Done, a tap outside or Escape lowers it. A
+// [data-mirror] button clicks the control its selector names (phones hide some
+// controls and offer them where the thumb is) and lowers any open sheet.
+function wirePhoneSheets() {
+  const close = () => {
+    const open = document.querySelector(".phone-sheet.is-open");
+    if (!open) return;
+    open.classList.remove("is-open");
+    document.querySelector(`[data-sheet-open="${open.id}"]`)?.setAttribute("aria-expanded", "false");
+  };
+  document.addEventListener("click", (event) => {
+    const opener = event.target.closest?.("[data-sheet-open]");
+    if (opener) {
+      const sheet = document.getElementById(opener.dataset.sheetOpen);
+      const wasOpen = sheet?.classList.contains("is-open");
+      close();
+      if (sheet && !wasOpen) {
+        sheet.classList.add("is-open");
+        opener.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+    const mirror = event.target.closest?.("[data-mirror]");
+    if (mirror) {
+      close();
+      document.querySelector(mirror.dataset.mirror)?.click();
+      return;
+    }
+    // The dim backdrop is the sheet's ::before, so a tap on it lands above the sheet's top.
+    const sheet = event.target.closest?.(".phone-sheet");
+    if (event.target.closest?.("[data-sheet-close]") || !sheet || event.clientY < sheet.getBoundingClientRect().top) close();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") close();
+  });
 }
 
 function bindEvents() {

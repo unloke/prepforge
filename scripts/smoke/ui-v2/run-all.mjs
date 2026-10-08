@@ -16,6 +16,8 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 const DIR = fileURLToPath(new URL(".", import.meta.url));
+// A smoke stuck waiting on the page fails instead of holding the CI job open.
+const SMOKE_TIMEOUT_MS = 5 * 60_000;
 
 // The view order follows the app's page order. "build" is the Repertoire
 // workspace (the Build view).
@@ -41,7 +43,13 @@ function runOne([label, file]) {
       stdio: "inherit",
       env: process.env,
     });
+    const timer = setTimeout(() => {
+      process.stdout.write(`[ui-v2-smoke] ${label} timed out after ${SMOKE_TIMEOUT_MS / 60_000} min
+`);
+      child.kill();
+    }, SMOKE_TIMEOUT_MS);
     child.on("exit", (code) => {
+      clearTimeout(timer);
       resolve({ label, file, ok: code === 0, ms: Date.now() - started });
     });
     child.on("error", () => resolve({ label, file, ok: false, ms: Date.now() - started }));
