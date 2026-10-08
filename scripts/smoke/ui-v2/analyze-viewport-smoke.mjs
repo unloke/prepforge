@@ -102,6 +102,13 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
+// Phones show the study panel as tabs; open one when its tab bar is on screen.
+async function phoneTab(page, name) {
+  const tab = page.locator(`.view.is-active .phone-tabs [data-phone-tab="${name}"]`);
+  if (await tab.isVisible()) { await tab.click(); return true; }
+  return false;
+}
+
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
   const consoleErrors = [];
@@ -121,15 +128,14 @@ async function runViewport(vp) {
         bounds: rect.toJSON() };
       });
       return { buttons, head: bounds.toJSON(),
-        // Phones: the head leads until a game is on the board, then follows the coach.
+        // Phones: the head's actions sit inside the thumb bar under the panel.
         bodyBelow: window.innerWidth <= 760
-          ? (document.getElementById("analysis-results").hidden
-            ? document.getElementById("analysis-explain").getBoundingClientRect().top >= bounds.bottom - 1
-            : document.getElementById("analysis-explain").getBoundingClientRect().bottom <= bounds.top + 1)
+          ? (() => { const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
+            return bounds.top >= bar.top - 1 && bounds.bottom <= bar.bottom + 1; })()
           : document.querySelector("#analyze-sidebar > .panel-scroll").getBoundingClientRect().top >= bounds.bottom - 1 };
     });
     check(layout.buttons.every((b) => b.inHead) && layout.bodyBelow,
-      `${state}: My last game / Analyze must fit inside the panel head: ${JSON.stringify(layout)}`);
+      `${state}: Last game / Analyze must fit inside the panel head: ${JSON.stringify(layout)}`);
     return layout.head;
   };
 
@@ -281,6 +287,7 @@ async function runViewport(vp) {
 
   // Exercise shared live evaluation and rapid forward/back navigation with the
   // real worker, not a mirrored test implementation.
+  await phoneTab(page, "engine");
   await page.locator("#open-engine-widget").click();
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await page.evaluate(async () => {
@@ -290,6 +297,7 @@ async function runViewport(vp) {
     }
   });
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  await phoneTab(page, "coach");
   await page.locator("#explain-engine-toggle").click();
   // Use the board navigation's real async path, allowing each render to settle.
   await page.evaluate(() => document.getElementById("analysis-start").click());
@@ -302,6 +310,7 @@ async function runViewport(vp) {
   try {
     await page.waitForFunction((text) => document.getElementById("coach-prose").textContent !== text, instant, { timeout: 15000 });
   } catch { check(false, "Coach must produce an engine verdict after rapid stepping stops"); }
+  await phoneTab(page, "engine");
   const engineLayout = await page.evaluate(() => {
     const panel = document.getElementById("analysis-eval-card").getBoundingClientRect();
     // The docked engine dissolves into the card (display: contents): measure its lines,
@@ -318,6 +327,7 @@ async function runViewport(vp) {
   check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
   check(engineLayout.coachHeight <= 160, "Coach must remain compact");
   await shot("engine");
+  await phoneTab(page, "engine");
   await page.locator("#open-engine-widget").click();
   await page.evaluate(() => document.getElementById("analysis-start").click());
 
@@ -329,7 +339,8 @@ async function runViewport(vp) {
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
-    const panel = box("#analyze-sidebar");
+    // Phones dissolve the sidebar box (display: contents); its scroller is the panel.
+    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#analyze-sidebar > .panel-scroll");
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
@@ -423,6 +434,7 @@ async function runViewport(vp) {
     await recallGate;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(api("/api/analyses/g1")) });
   });
+  await phoneTab(page, "game");
   await page.locator('.history-item[data-game-id="g1"]').focus();
   await page.keyboard.press("Enter");
   await recallRequested;

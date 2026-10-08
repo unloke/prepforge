@@ -268,7 +268,7 @@ describe("workspace chrome layout", () => {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
-    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
+    expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar" data-phone-active="coach">');
     expect(view).toContain('id="analysis-game-title"');
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
@@ -307,6 +307,22 @@ describe("workspace chrome layout", () => {
     expect(css).not.toContain(".reveal");
     expect(css).not.toContain(".movelist");
     expect(html).not.toContain("explain-card");
+  });
+
+  it("splits the phone study panels into tabs over tagged panes", () => {
+    const analyze = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
+    const build = html.slice(html.indexOf('id="view-build"'), html.indexOf('id="view-train"'));
+    for (const tab of ["coach", "engine", "report", "game"]) {
+      expect(analyze).toContain(`data-phone-tab="${tab}"`);
+      expect(analyze).toContain(`data-phone-pane="${tab}"`);
+    }
+    for (const tab of ["tree", "explorer", "coverage"]) expect(build).toContain(`data-phone-tab="${tab}"`);
+    expect(build).toContain('data-dock-tab="build-tool-explorer"');
+    expect(build).toContain('data-phone-pane="explorer coverage"');
+    // The move strip has no pane: it stays above the tabs.
+    expect(analyze).not.toMatch(/id="analysis-moves"[^>]*data-phone-pane/);
+    expect(css).toMatch(/\.phone-tabs \{ display: none; \}/);
+    expect(app).toContain("function wirePhonePanelTabs()");
   });
 
   it("composes Teams as directory | detail | incoming shares", () => {

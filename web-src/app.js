@@ -4709,6 +4709,7 @@ function renderSyncChip(el, state, scope = "repertoire") {
   el.hidden = false;
   el.className = `build-sync ${v.cls}`;
   el.textContent = v.text;
+  el.title = v.text;
 }
 
 function renderBuildSync() {
@@ -6174,6 +6175,7 @@ function wireMobileNav() {
     if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
   });
   wirePhoneStudyNav();
+  wirePhonePanelTabs();
 }
 
 // Phone study views (Analyze, Repertoire, Train) hide the tab bar so the board
@@ -6198,6 +6200,24 @@ function wirePhoneStudyNav() {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && isOpen()) setOpen(false);
   });
+}
+
+// Phone panel tabs (Analyze, Repertoire): the panel shows the blocks whose
+// data-phone-pane names the active tab. A tab mirroring an inspector tab
+// (data-dock-tab) also selects it, so the inspector loads what it shows.
+function wirePhonePanelTabs() {
+  for (const bar of document.querySelectorAll(".phone-tabs")) {
+    const host = bar.closest("[data-phone-active]");
+    bar.addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-phone-tab]");
+      if (!tab || !host) return;
+      host.dataset.phoneActive = tab.dataset.phoneTab;
+      for (const other of bar.querySelectorAll("[data-phone-tab]")) other.setAttribute("aria-selected", String(other === tab));
+      const dock = tab.dataset.dockTab && document.getElementById(tab.dataset.dockTab);
+      if (dock && dock.getAttribute("aria-selected") !== "true") dock.click();
+      bar.parentElement.scrollTop = 0;
+    });
+  }
 }
 
 function bindEvents() {
