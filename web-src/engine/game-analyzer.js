@@ -126,6 +126,7 @@ function evalFromSnapshot(fen, snapshot) {
     pv_san: top.pv_san ? top.pv_san.slice() : [],
     depth: (snapshot && snapshot.current_depth) || top.depth || 0,
     nodes: (snapshot && snapshot.nodes) ?? null,
+    iterations: snapshot.iterations,
     // The second line of a MultiPV >= 2 search (the best OTHER move), when there is one.
     second: lineAt(snapshot, 1),
     third: lineAt(snapshot, 2),
