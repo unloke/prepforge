@@ -747,67 +747,33 @@
 /* ---- Responsive ------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  /* Phone: under the pinned board the panel is one scroller. With a game on the
-     board it reads: the evaluation (sticky: eval, graph and engine line keep
-     their place while the coach's text grows and shrinks under them), the coach
-     on that move, the move strip and the per-side bars; the game title and its
-     actions, then the drawers, come last. With no game yet the title and actions
-     lead. */
-  #analyze-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 0 12px 12px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  #analyze-sidebar > .panel-scroll,
-  #analyze-sidebar .analyze-main,
-  #analysis-results:not([hidden]) { display: contents; }
-  #analyze-sidebar > *,
+  /* Phone (shell in styles.css): actions in the thumb bar under the board;
+     under it the move strip stays put, then Coach / Engine / Report / Game. */
+  #analyze-actions { display: contents; }
   #analyze-sidebar .panel-scroll > *,
   .analyze-main > *,
-  #analysis-results > * { flex: none; order: 3; }
-  #analyze-sidebar > .engine-banner { order: -2; margin: 0 -12px; }
-  #analyze-sidebar > .panel-head {
-    order: -1;
-    flex-wrap: wrap;
-    min-height: 0;
-    margin: 0 -12px;
-    padding: 8px 12px;
-  }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) > .panel-head {
-    order: 4;
-    margin: 4px 0 0;
-    padding: 10px 0 0;
-    border-top: 1px solid var(--line);
-    border-bottom: 0;
-  }
-  #analyze-sidebar .game-id { flex: 1 1 100%; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  #analyze-actions { flex: 1 1 100%; flex-wrap: nowrap; gap: 8px; }
-  #analyze-actions .btn { flex: 1; min-height: 40px; }
-  #analyze-sidebar .drawer { order: 5; }
-  .analyze-main > #analysis-eval-card { order: 0; }
-  .analyze-main > #analysis-explain { order: 1; }
-  #analysis-results > .moves-grid { order: 2; }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #analysis-eval-card {
+  #analysis-results > * { flex: none; order: 2; }
+  #analyze-sidebar .analyze-main,
+  #analysis-results:not([hidden]) { display: contents; }
+  #analyze-sidebar .panel-scroll > .phone-tabs { order: 1; }
+  #analysis-results:not([hidden]) > .moves-grid {
     position: sticky;
     top: 0;
-    z-index: 3;
-    margin: 0 -12px;
-    padding: 6px 12px 8px;
-    row-gap: 6px;
-    border-width: 0 0 1px;
-    border-radius: 0;
-    box-shadow: 0 6px 10px -8px rgba(0, 0, 0, 0.5);
+    z-index: 5;
+    order: 0;
+    height: 36px;
   }
-  #analysis-eval-card .eval-chart { height: 44px; }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) .phone-tabs { top: 36px; }
+  #analyze-sidebar:not(:has(#analysis-results:not([hidden]))) [data-phone-tab="report"] { display: none; }
+  /* Tab content sits flat on the panel: the tab already frames it. */
+  :is(#analysis-explain, #analysis-eval-card, #analysis-summary) { margin: 0; padding: 4px 0 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  #analysis-explain .cc-head > b { display: none; }
   .moves-grid {
     max-height: none;
     margin: 0 -12px;
     overflow-x: auto;
     overflow-y: hidden;
-    border-width: 1px 0;
+    border-width: 0 0 1px;
     border-radius: 0;
     background: var(--panel);
     scrollbar-width: none;
@@ -826,8 +792,9 @@
   }
   .moves-grid .mtree-line.is-main > .mtree-move {
     gap: 2px;
-    min-height: 44px;
-    padding: 0 7px;
+    min-height: 28px;
+    padding: 0 6px;
+    font-size: 13px;
     border-radius: 8px;
     white-space: nowrap;
   }
@@ -838,11 +805,10 @@
     margin: 0 6px;
     white-space: nowrap;
   }
-  .moves-grid .mtree-var .mtree-move { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; }
-  /* Room for the head, two lines of prose and the Humans row, so stepping
-     through quiet moves doesn't make the panel jump. */
-  .coach-card { height: auto; min-height: 112px; padding: 10px 12px; }
+  .moves-grid .mtree-var .mtree-move { display: inline-flex; align-items: center; min-height: 28px; padding: 0 5px; font-size: 13px; }
+  .coach-card { height: auto; }
   .coach-card .cc-head { min-height: 0; }
   .explain-review { margin-left: auto; }
-  .drawer summary { min-height: 44px; }
+  .drawer summary { min-height: 36px; }
+  #analysis-explain .coach-prose { font-size: 14px; }
 }
