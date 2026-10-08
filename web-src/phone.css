@@ -12,6 +12,8 @@
 .bb-views,
 .board-bar .bb-sheet,
 .page-head,
+.phone-panes,
+.ev-report,
 .phone-back,
 .phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
 .phone-sheet { display: contents; }
@@ -34,7 +36,12 @@
 
   /* ---- Pages ------------------------------------------------------------- */
   .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
+  /* Pages grow with their content so the document scrolls to the last row;
+     a flex-shrunk workspace left its bottom padding a screen up, under the
+     tab bar's last rows. */
   .workspace:has(> .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings)) {
+    flex: none;
+    min-height: 100dvh;
     max-width: none;
     padding: calc(8px + env(safe-area-inset-top)) var(--phone-gutter) calc(80px + env(safe-area-inset-bottom));
   }
@@ -64,31 +71,46 @@
   }
   .page-head-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 
-  /* Library: Today, filter chips, the repertoire list, setup steps left. */
-  #view-dashboard .lib { gap: 16px; }
-  #view-dashboard .lib-grid { gap: 16px; }
+  /* Library: Today as one row, filter chips, the repertoire list, setup
+     steps left. */
+  #view-dashboard .lib { gap: 14px; }
+  #view-dashboard .lib-grid { gap: 14px; }
   #view-dashboard .today.card {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 16px;
-    background: var(--accent-soft);
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 64px;
+    padding: 10px 12px 10px 14px;
+    background: var(--panel);
   }
-  #view-dashboard .today-streak { order: 0; justify-content: flex-start; gap: 6px; font-size: 13px; color: var(--muted); }
-  #view-dashboard .today-flame { width: 16px; height: 16px; font-size: 14px; }
+  #view-dashboard .today-streak {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--surface-3);
+    line-height: 1;
+  }
+  #view-dashboard .today-flame { width: auto; height: auto; font-size: 13px; }
   #view-dashboard .today-count { font-size: 13px; font-weight: 700; }
-  #view-dashboard .today-unit { font-size: 13px; }
-  #view-dashboard .today-body { order: 1; gap: 4px; }
+  #view-dashboard .today-unit,
   #view-dashboard .today-note,
+  #view-dashboard .today-recap,
   #view-dashboard .today-metrics { display: none; }
-  #view-dashboard .today-queue { color: var(--text); font-size: 21px; font-weight: 700; line-height: 1.25; }
+  #view-dashboard .today > * { grid-column: auto; grid-row: 1; }
+  #view-dashboard .today-body { gap: 2px; min-width: 0; }
+  #view-dashboard .today-warning { font-size: 12px; }
+  #view-dashboard .today-queue { color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.3; }
   #view-dashboard .today-queue b { font: inherit; }
-  #view-dashboard .today-recap { font-size: 13px; }
-  #view-dashboard .today .btn.lg { order: 2; width: 100%; min-height: 48px; height: 48px; border-radius: 12px; font-size: 16px; }
+  #view-dashboard .today .btn.lg { min-height: 36px; height: 36px; padding: 0 14px; border-radius: 18px; font-size: 14px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
-  #view-dashboard .lib-list .card-head { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; }
+  #view-dashboard .lib-list .card-head { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }
   #view-dashboard .lib-list .card-head h2,
   #view-dashboard .lib-actions,
   #view-dashboard .lib-cols { display: none; }
@@ -117,7 +139,19 @@
     font-weight: 600;
   }
   #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--bg); }
-  #view-dashboard .search-field input { min-height: 40px; height: 40px; border: 0; border-radius: 10px; background: var(--surface-3); }
+  .search-field {
+    width: 100%;
+    height: 40px;
+    margin: 0;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--surface-3);
+    box-shadow: none;
+  }
+  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--faint); }
+  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
   #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -153,9 +187,10 @@
   #view-dashboard .step-text { font-size: 15px; }
   #view-dashboard .step .btn { min-height: 36px; height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
-  /* Games: sources and sample as one grouped card. */
-  #view-replay .games-panel:not([hidden]) { display: flex; flex-direction: column; gap: 14px; }
-  #view-replay .games-panel > .toolbar {
+  /* Games and Scout: the same grouped card — where the games come from, one
+     choice row, then the action across the card. */
+  #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: 14px; height: auto; }
+  #view-replay :is(.games-panel, .scout-panel) > .toolbar {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -167,20 +202,96 @@
     background: var(--panel);
     box-shadow: none;
   }
-  #view-replay .games-panel > .toolbar > :is(.src, .inline-field) {
-    display: flex;
-    flex-wrap: wrap;
+  #view-replay .toolbar > .src {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+    gap: 6px 8px;
+    min-height: 52px;
+    margin: 0;
+    padding: 10px 0;
+  }
+  #view-replay .toolbar > .src > .src-label { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+  #view-replay .toolbar > .src > .src-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  #view-replay .toolbar > .src > .btn { min-height: 36px; height: 36px; padding: 0 6px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
+  #view-replay .toolbar > .inline-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
     min-height: 52px;
     margin: 0;
-    padding: 8px 0;
+    padding: 6px 0;
+    box-shadow: inset 0 1px 0 var(--line);
+    font-size: 16px;
   }
-  #view-replay .games-panel > .toolbar > .inline-field { justify-content: space-between; box-shadow: inset 0 1px 0 var(--line); }
-  #view-replay .games-panel > .toolbar .inline-field select { width: auto; min-width: 120px; }
-  #view-replay .games-panel > .toolbar > .spacer { display: none; }
-  #view-replay .games-panel > .toolbar > #lichess-compare-btn { justify-content: center; width: 100%; min-height: 44px; margin: 4px 0 14px; border-radius: 12px; }
-  #view-replay .games-panel > .toolbar > .sum-chips:not([hidden]) { padding-bottom: 12px; }
+  #view-replay .toolbar > .inline-field select { width: auto; min-width: 120px; height: 40px; border: 0; background-color: var(--surface-3); }
+  #view-replay .toolbar > .spacer { display: none; }
+  #view-replay .toolbar > :is(#lichess-compare-btn, #scout-btn) { justify-content: center; width: 100%; min-height: 46px; margin: 4px 0 14px; border-radius: 12px; font-size: 16px; }
+  #view-replay .toolbar > #scout-reset-btn:not([hidden]) { min-height: 40px; margin: -8px 0 10px; border: 0; color: var(--accent-strong); }
+  #view-replay .toolbar > .counter { margin: -6px 0 12px; color: var(--muted); font-size: 13px; text-align: center; }
+  #view-replay .toolbar > .sum-chips:not([hidden]) { padding-bottom: 12px; }
+
+  /* Settings: one grouped list per section, like the iOS Settings app. Every
+     row is 48px, actions are tinted text, sliders get the row's full width. */
+  #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
+  #view-settings .settings-nav { display: none; }
+  #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
+  #view-settings .set { padding: 0 16px; }
+  #view-settings .set h2 {
+    min-height: 44px;
+    margin: 0;
+    padding: 6px 0 0;
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  #view-settings :is(.set-row, .pf-row, .acct-row, .conn-row) {
+    flex-wrap: nowrap;
+    min-height: 48px;
+    padding: 6px 0;
+    border-top: 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 16px;
+  }
+  #view-settings .set > :last-child,
+  #view-settings .set > :last-child > :last-child { border-bottom: 0; }
+  #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
+  #view-settings .set :is(.btn, .btn.sm):not(.primary) {
+    min-height: 36px;
+    height: 36px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--accent-strong);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
+  #view-settings .set .seg-btn { min-height: 32px; height: 32px; }
+  #view-settings .status-pill { font-size: 12px; }
+  #view-settings .set .faint,
+  #view-settings .set .note { margin: 8px 0; font-size: 13px; }
+  #view-settings .acct-id { gap: 12px; padding: 12px 0; flex-wrap: nowrap; }
+  #view-settings .acct-signout { align-self: center; margin: 0; }
+  #view-settings .acct-block { margin-top: 0; }
+  #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  #view-settings .acct-block > .btn { margin: 4px 0; }
+  #view-settings #settings-account-data { padding-top: 0; border-top: 0; }
+  #view-settings .acct-danger-zone { margin: 0; padding: 12px 0; }
+  #view-settings .acct-danger-zone > summary { font-size: 15px; }
+  /* Sliders: the label on its own line, the control under it full width. */
+  #view-settings .set-row:has(.slider) { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 0; }
+  #view-settings .slider { gap: 12px; }
+  #view-settings .slider input[type="range"] { flex: 1 1 auto; width: auto; min-width: 0; }
+  #view-settings .set-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
+  #view-settings #piece-style-picker { flex-wrap: nowrap; gap: 8px; padding: 0; border: 0; background: none; }
+  #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 44px; height: auto; padding: 6px 8px 6px 6px; border-radius: 10px; background: var(--surface-3); }
+  #view-settings .sw-grid { display: block; }
 
   /* ---- Study screens ---------------------------------------------------- */
   .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) {
@@ -252,7 +363,13 @@
     padding: 0 10px env(safe-area-inset-bottom);
     border-top: 1px solid var(--line);
     background: var(--panel);
+    /* A held arrow repeats; it must not start a text selection or callout. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
+  .study .board-bar button { touch-action: none; }
+  .mtree-move { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   #view-analyze .board-bar { grid-template-columns: 44px 44px 44px minmax(0, 1fr) 52px 52px; }
   .study .board-bar :is(.bb-nav, .bb-right) { display: contents; }
   .study .board-bar :is(.bb-views, .bb-sheet) { display: flex; }
@@ -488,7 +605,7 @@
   /* ---- Repertoire ------------------------------------------------------
      Header (back, name, size, ⋯) over the board; under it the Explorer —
      the next moves, yours dotted, a tap adds one — then the line tree. */
-  #view-build { --phone-reserve: max(200px, 34dvh); }
+  #view-build { --phone-reserve: max(244px, 40dvh); }
   #build-rep-header {
     order: 0;
     flex: none;
@@ -510,8 +627,38 @@
   #build-rep-header #build-menu { grid-column: 3; grid-row: 1 / 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
+  /* Under the board one pane at a time — the line tree, Explorer or Coverage
+     — so stepping through the tree scrolls the tree and nothing else. */
+  #build-panes {
+    position: sticky;
+    top: -10px;
+    z-index: 2;
+    display: flex;
+    gap: 2px;
+    margin: -10px -12px 0;
+    padding: 8px 12px;
+    background: var(--bg);
+  }
+  #build-panes > button {
+    flex: 1 1 0;
+    min-height: 32px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--surface-3);
+    color: var(--muted);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  #build-panes > button[aria-selected="true"] { background: var(--line-strong); color: var(--text); }
+  #view-build:has(#build-empty:not([hidden])) #build-panes,
+  #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
+  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-tree-meta, #build-branchbar, #builder-tree),
+  #build-inspector .dock-tabs { display: none !important; }
+  #build-inspector .dock-tools { padding-top: 12px; }
+
   #build-sidebar > .panel-body > * { order: 3; }
-  #build-sidebar > .panel-body > .shared-banner { order: 0; }
+  #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
   #build-sidebar > .panel-body > #build-inspector { order: 1; }
   #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty),
   #build-sidebar > .panel-body > .shared-banner:not([hidden]) {
@@ -608,6 +755,33 @@
   #view-train .train-progress-panel .upnext { min-height: 0; }
   #view-train .train-progress-panel > .row { justify-content: flex-start; }
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
+
+  /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
+  .context-menu:not([hidden], .account-menu) {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: 72dvh;
+    padding: 6px 0;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+    animation: phone-sheet-up 180ms ease-out;
+  }
+  .context-menu button {
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 0;
+    font-size: 16px;
+  }
+  /* Groups split by a rule instead of a caption, so Delete stays in view. */
+  .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
+  .context-menu .context-section { display: none; }
+  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
   .sheet-scrim { background: rgba(0, 0, 0, 0.45); }

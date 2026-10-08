@@ -214,13 +214,16 @@ async function runViewport(vp) {
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
-  await page.locator('[data-testid="build-tool-coverage"]').click();
+  // Phones switch panes with the segmented control above the tree.
+  const tool = (name) => page.locator(vp.width <= 760 ? `#build-panes [data-pane="${name}"]` : `[data-testid="build-tool-${name}"]`);
+  await tool("coverage").click();
   await page.waitForTimeout(300);
   check((await page.locator("#coverage-drawer:not([hidden])").count()) === 1 && (await page.locator("#explorer-drawer[hidden]").count()) === 1, "coverage should replace explorer");
   check((await page.locator("#coverage-run:visible").count()) === 1, "Scan should show on the Coverage tab");
-  await page.locator('[data-testid="build-tool-explorer"]').click();
+  await tool("explorer").click();
   await page.waitForTimeout(300);
   check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer should return");
+  if (vp.width <= 760) await tool("moves").click();
 
   // Keyboard: ↓ moves the fork pick onto the next chip.
   await page.locator("#build-branchbar .fork-chip.is-active").focus();

@@ -6177,6 +6177,41 @@ function wireMobileNav() {
   });
   wirePhoneStudyNav();
   wirePhoneSheets();
+  wireHoldRepeat();
+}
+
+// Holding a move arrow steps on repeat, like a held arrow key. The click that
+// ends a hold is dropped so letting go doesn't step once more.
+function wireHoldRepeat() {
+  for (const id of ["analysis-prev", "analysis-next", "build-parent", "build-next"]) {
+    const button = document.getElementById(id);
+    if (!button) continue;
+    let delay = 0;
+    let timer = 0;
+    let repeated = false;
+    const stop = () => {
+      clearTimeout(delay);
+      clearInterval(timer);
+    };
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      stop();
+      repeated = false;
+      delay = setTimeout(() => {
+        timer = setInterval(() => {
+          repeated = true;
+          button.click();
+        }, 110);
+      }, 380);
+    });
+    for (const type of ["pointerup", "pointercancel", "pointerleave"]) button.addEventListener(type, stop);
+    button.addEventListener("click", (event) => {
+      if (!event.isTrusted || !repeated) return;
+      repeated = false;
+      event.stopImmediatePropagation();
+    }, true);
+    button.addEventListener("contextmenu", (event) => event.preventDefault());
+  }
 }
 
 // Phone study views (Analyze, Repertoire, Train) hide the tab bar so the board
@@ -6369,7 +6404,17 @@ function bindEvents() {
     });
   }
   document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
-  const dockTabs = { explorer: "build-tool-explorer", coverage: "build-tool-coverage" };
+  // Phones show one of the line tree, Explorer or Coverage under the board.
+  const panes = document.getElementById("build-panes");
+  panes?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-pane]");
+    if (!button) return;
+    const pane = button.dataset.pane;
+    document.getElementById("view-build").dataset.pane = pane;
+    panes.querySelectorAll("[data-pane]").forEach((b) => b.setAttribute("aria-selected", String(b === button)));
+    if (pane !== "moves" && buildDockTab !== pane) setBuildInspector(pane);
+  });
+  const dockTabs ={ explorer: "build-tool-explorer", coverage: "build-tool-coverage" };
   Object.entries(dockTabs).forEach(([name, id]) => {
     const tab = document.getElementById(id);
     if (!tab) return;

@@ -615,6 +615,18 @@ export function createAnalyzeView({
       selectEvalChartIdx(evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX)));
     });
 
+    // A finger dragged along the graph scrubs through the game.
+    let scrubIdx = -1;
+    chart.addEventListener("pointermove", (event) => {
+      const points = appState.evalChartPoints || [];
+      if (event.pointerType !== "touch" || !points.length) return;
+      const idx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
+      if (idx === scrubIdx) return;
+      scrubIdx = idx;
+      selectEvalChartIdx(idx);
+    });
+    chart.addEventListener("pointerup", () => { scrubIdx = -1; });
+
     chart.addEventListener("mousemove", (event) => {
       const points = appState.evalChartPoints || [];
       if (!points.length) return;

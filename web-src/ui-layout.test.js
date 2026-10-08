@@ -310,7 +310,7 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain("explain-card");
   });
 
-  it("builds the phone study screens without panel tabs", () => {
+  it("builds the phone study screens", () => {
     const analyze = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
     const tabbar = html.slice(html.indexOf('id="app-tabbar"'), html.indexOf("</nav>", html.indexOf('id="app-tabbar"')));
     // Five tabs; Repertoire opens from the Library.
@@ -318,11 +318,17 @@ describe("workspace chrome layout", () => {
     expect(tabbar).not.toContain('data-view="build"');
     expect(html).not.toContain("phone-tabs");
     expect(html).not.toContain("data-phone-pane");
-    // Analyze: coach over the board; report and sources in the Report sheet.
-    const sheet = analyze.slice(analyze.indexOf('id="analyze-sheet"'));
-    for (const id of ["analysis-summary", "analysis-handoff", "pgn-drawer", "history-drawer"]) expect(sheet).toContain(`id="${id}"`);
+    // Analyze: the coach under the engine; the report and the game sources
+    // are separate sheets.
+    const report = analyze.slice(analyze.indexOf('id="analyze-sheet"'), analyze.indexOf('id="analyze-open"'));
+    const sources = analyze.slice(analyze.indexOf('id="analyze-open"'));
+    for (const id of ["analysis-summary", "analysis-handoff"]) expect(report).toContain(`id="${id}"`);
+    for (const id of ["pgn-drawer", "history-drawer"]) expect(sources).toContain(`id="${id}"`);
     expect(analyze).toContain('data-sheet-open="analyze-sheet"');
-    expect(analyzeCss).toMatch(/#analysis-explain \{\s*order: 0;/);
+    expect(analyze).toContain('data-sheet-open="analyze-open"');
+    expect(analyzeCss).toMatch(/#analysis-explain \{\s*order: 3;/);
+    // Repertoire: one pane at a time under the board.
+    expect(html).toContain('id="build-panes"');
     expect(phoneCss).toMatch(/\.phone-sheet \{ display: contents; \}/);
     expect(app).toContain("function wirePhoneSheets()");
   });
