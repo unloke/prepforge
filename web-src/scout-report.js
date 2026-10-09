@@ -4,7 +4,7 @@ import { html } from "./html.js";
 import { Chess } from "chess.js";
 import { countOf } from "./plural.js";
 
-import { engineScanPatterns } from "./scout-engine.js";
+import { engineScanPatterns, SCOUT_ENGINE_DEFAULT_GAMES } from "./scout-engine.js";
 import {
   buildRefutations,
   collectActionableRefutationGapActions,
@@ -922,7 +922,7 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
       </div>
       <span class="spacer"></span>
       <button type="button" class="btn sm" id="scout-share-btn" title="Copy scout summary">Copy report</button>
-      <button type="button" class="btn sm" id="scout-deep-scan-btn" title="Stockfish scan of their opening mistakes">Deep scan ▾</button>
+      <button type="button" class="btn sm" id="scout-deep-scan-btn" title="Stockfish scan of their opening mistakes · last ${SCOUT_ENGINE_DEFAULT_GAMES} games per color">Deep scan</button>
     </div>
     ${colorRecHtml}`;
 }

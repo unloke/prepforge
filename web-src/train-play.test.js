@@ -136,7 +136,21 @@ describe("playSessionPgn", () => {
       history: [{ san: "e4", by: "user" }],
     });
     expect(pgn).toContain('[White "You"]');
-    expect(pgn).toContain('[Black "Opponent"]');
+    expect(pgn).toContain('[Black "Lichess explorer"]');
     expect(pgn).toContain("1. e4");
+  });
+
+  it("names the opponent book and keeps a resigned result", () => {
+    const pgn = playSessionPgn({
+      book: "maia",
+      rating: 1500,
+      userColor: "black",
+      result: "1-0",
+      startFen: START_FEN,
+      history: [{ san: "e4", by: "opp" }],
+    });
+    expect(pgn).toContain('[White "Maia 1500"]');
+    expect(pgn).toContain('[Result "1-0"]');
+    expect(pgn.trim().endsWith("1. e4 1-0")).toBe(true);
   });
 });

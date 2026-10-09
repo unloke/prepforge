@@ -218,6 +218,7 @@ describe("Explorer add / mutation integration", () => {
       normalizeUci, localBoardInfo, setStatus: status,
       isBuildReadOnly: () => false, optimisticBoardMove: async () => false, selectBuildNode,
       setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
+      queueBuildAdd: (node) => appState.buildPending.push({ uci: node.uci, node, repertoire_id: appState.build.repertoire_id }),
       buildProvisionalNode: (p, u, after) => ({ id: "new", parent_id: p.id, uci: u, fen: after.board.fen }),
     };
     const make = new Function(...Object.keys(deps), `

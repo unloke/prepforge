@@ -25,8 +25,20 @@ describe("atomic Coverage preview plan", () => {
     expect(result.plan.rootNodeId).toBe("e4");
     expect(result.plan.changes[0]).toMatchObject({ parentRef: "e4", moveUci: "e7e5", tempId: "tmp-coverage-opponent" });
     expect(result.plan.changes[1].parentRef).toBe("tmp-coverage-opponent");
-    expect(result.sans).toEqual(["Nf3", "Nc6", "Bc4"]);
+    expect(result.line).toBe("1... e5 2. Nf3 Nc6 3. Bc4");
     expect(result.addedMoves).toBe(4);
+  });
+  it("shows sibling replies as variations, not one sequence", async () => {
+    const f = fixture();
+    const branching = async ({ rootNodeId }) => ({ rootNodeId, changes: [
+      { action: "planned_add", tempId: "tmp-1", parentRef: rootNodeId, moveUci: "g1f3" },
+      { action: "planned_add", tempId: "tmp-2", parentRef: "tmp-1", moveUci: "b8c6" },
+      { action: "planned_add", tempId: "tmp-3", parentRef: "tmp-1", moveUci: "g8f6" },
+      { action: "planned_add", tempId: "tmp-4", parentRef: "tmp-2", moveUci: "f1b5" },
+      { action: "planned_add", tempId: "tmp-5", parentRef: "tmp-3", moveUci: "f3e5" },
+    ] });
+    const result = await prepareCoverageReply({ ...f, gap: { ...f.gap, pathSans: ["e4"] }, generate: branching });
+    expect(result.line).toBe("1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Nxe5) 3. Bb5");
   });
   it("does not duplicate an existing opponent branch", async () => {
     const f = fixture(true);

@@ -40,7 +40,7 @@ export async function previewCoverageReplies(gaps, { isValid }, deps) {
     }
     if (!ready.length) throw new Error(failures.join("; ") || "No replies generated");
     jobToast.completeJob({ title: "Replies previewed", message: `${ready.length} ready${failures.length ? `, ${failures.length} failed` : ""}` });
-    const text = ready.map((r) => `${r.gap.pathSans.join(" ")} ${r.gap.moveSan}: ${r.sans.join(" ")} (+${r.addedMoves} moves)`).join("\n");
+    const text = ready.map((r) => `${r.line} (+${r.addedMoves} moves)`).join("\n");
     const approved = await showConfirmModal({ title: "Add prepared replies?",
       body: text + (failures.length ? `\nFailed: ${failures.join("; ")}` : ""), okLabel: "Add replies" });
     if (!approved) return;

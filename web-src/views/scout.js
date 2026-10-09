@@ -141,8 +141,7 @@ export function createScoutView(deps) {
     pieceSvg,
     getBuildState,
     getBuildNodeById,
-    setBuildPending,
-    pushBuildNode,
+    queueBuildAdd,
     loadPgnIntoAnalyze,
     rememberHandoff = () => {},
     effectiveMaiaRating,
@@ -1308,8 +1307,7 @@ export function createScoutView(deps) {
         break;
       }
       const node = buildProvisionalNode(parent, uci, after);
-      pushBuildNode(node);
-      setBuildPending({ tempId: node.id, parentRef: parentId, uci, node });
+      queueBuildAdd(node);
       parentId = node.id;
       parent = node;
       lastNodeId = node.id;

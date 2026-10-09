@@ -245,6 +245,7 @@ export function createTrainView({
       [acc, "first try"],
       [stats.best || 0, "best in a row"],
     ];
+    if (stats.skipped) statCells.push([stats.skipped, "skipped"]);
     const day = dayStreak;
     if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
     document.getElementById("train-summary-stats").innerHTML = html`${statCells

@@ -65,19 +65,27 @@ export function takebackToUserMove(history) {
   };
 }
 
+export function playBookName(book) {
+  return book === "repertoire" ? "My repertoire" : book === "maia" ? "Maia" : "Lichess explorer";
+}
+
 export function playSessionPgn(play) {
   const session = play || {};
   const startFen = session.startFen || START_FEN;
   const trail = formatPlayTrail(session.history, startFen);
   const youWhite = session.userColor !== "black";
+  const book = playBookName(session.book);
+  const opponent = session.rating ? `${book} ${session.rating}` : book;
+  const result = session.result || "*";
   const headers = [
     `[Event "Practice game"]`,
-    `[White "${youWhite ? "You" : "Opponent"}"]`,
-    `[Black "${youWhite ? "Opponent" : "You"}"]`,
+    `[White "${youWhite ? "You" : opponent}"]`,
+    `[Black "${youWhite ? opponent : "You"}"]`,
+    `[Result "${result}"]`,
   ];
   const placement = String(startFen).trim().split(/\s+/)[0];
   if (placement && placement !== START_FEN.split(" ")[0]) {
     headers.push(`[FEN "${startFen}"]`, `[SetUp "1"]`);
   }
-  return `${headers.join("\n")}\n\n${trail || "*"} *`;
+  return `${headers.join("\n")}\n\n${trail ? `${trail} ` : ""}${result}`;
 }

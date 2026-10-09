@@ -160,6 +160,17 @@ def test_targeted_practice_reserves_review_capacity():
     assert {card.first_target_id for card in plan.cards if card.kind == CARD_NEW} <= set(targets)
 
 
+def test_targeted_practice_opens_on_the_requested_move():
+    # Games "Train" on a missed move: card 1 must start AT that move, never
+    # folded into an earlier card on the same path or shuffled behind review.
+    rep, ids = _build_wide_tree()
+    progress = {node_id: _progress(node_id, **WEAK) for node_id in ids.values()}
+    for seed in range(20):
+        plan = build_session_plan(rep.root_node, rep.color, progress, seed=seed,
+                                  target_node_ids=[ids["bb5"]], now=NOW)
+        assert plan.cards[0].first_target_id == ids["bb5"]
+
+
 def test_targeted_practice_rejects_opponent_and_disabled_nodes():
     import pytest
 

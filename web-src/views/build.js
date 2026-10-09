@@ -139,8 +139,9 @@ export function createBuildView({
     const meta = document.getElementById("build-tree-meta");
     if (!meta) return;
     meta.hidden = !appState.build;
+    const comment = appState.build && appState.buildNodeById.get(appState.buildCurrentNodeId)?.comment;
     meta.innerHTML = appState.build
-      ? renderBuildBreadcrumb()
+      ? html`${renderBuildBreadcrumb()}${comment ? html`<p class="build-comment">${comment}</p>` : ""}`
       : "";
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
@@ -193,7 +194,8 @@ export function createBuildView({
         if (b.is_mainline) classes.push("is-main");
         if (b.move_side !== appState.build.color) classes.push("is-opp");
         if (b.is_prepared) classes.push("is-prep");
-        return { classes };
+        if (!b.comment) return { classes };
+        return { classes, title: b.comment, suffix: html`<i class="mtree-note" aria-label="Has comment"></i>` };
       },
     });
     renderTreeMeta();
