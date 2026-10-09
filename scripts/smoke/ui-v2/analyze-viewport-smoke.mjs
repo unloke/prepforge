@@ -314,7 +314,7 @@ async function runViewport(vp) {
     const panel = phone ? { left: 0, right: window.innerWidth } : document.getElementById("analysis-eval-card").getBoundingClientRect();
     const engine = document.getElementById(phone ? "analysis-engine-slot" : "engine-window-pvs").getBoundingClientRect();
     const coach = document.getElementById("analysis-explain").getBoundingClientRect();
-    const head = ["#analysis-chart-caption", "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
+    const head = ["#analysis-chart-caption", phone ? "#analysis-ev-move" : "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
       .map((sel) => document.querySelector(sel).getBoundingClientRect());
     const oneRow = head.every((r) => r.width > 0 && Math.abs((r.top + r.bottom) / 2 - (head[0].top + head[0].bottom) / 2) < 4 &&
       r.left >= panel.left && r.right <= panel.right + 1);
