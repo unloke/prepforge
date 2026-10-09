@@ -2576,6 +2576,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .tree-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -2609,6 +2610,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .crumbs .mtree-num { padding: 0; margin: 0; font-size: inherit; }
 .crumb-sep { color: var(--label); font-size: 10px; padding: 0 1px; }
 .crumb-empty { color: var(--label); padding: 2px 4px; }
+.build-comment {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 0 12px 8px;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mtree-note {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 3px;
+  vertical-align: super;
+  border-radius: 50%;
+  background: currentColor;
+}
 
 .forkbar {
   padding: 8px 12px;
