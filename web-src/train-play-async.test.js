@@ -59,7 +59,7 @@ describe("Play opponent response ownership", () => {
     const paint = vi.fn();
     const deps = {
       appState, START_FEN: FEN, playBook: () => "maia", playPickerColor: () => "white",
-      resolvePlayColor: () => "white", boardInfo: () => info.promise,
+      resolvePlayColor: () => "white", effectiveMaiaRating: () => 1500, boardInfo: () => info.promise,
       document: { getElementById: () => ({ hidden: false }) }, boards: { train: { setOrientation: vi.fn() } },
       paintPlayPosition: paint, playBookLabel: () => "Maia", isStartFen: () => true,
       sideToMoveFromFen: () => "white", setStatus: vi.fn(), setStatusError: vi.fn(),

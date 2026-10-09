@@ -8,7 +8,7 @@ function asInt(value, fallback = 0) {
 }
 
 function emptyStats() {
-  return { correct: 0, mistakes: 0, streak: 0, best: 0, history: [], lastStreak: 0 };
+  return { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0 };
 }
 
 export function isSmartPayload(payload) {

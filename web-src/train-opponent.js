@@ -207,6 +207,8 @@ export function playPositionAfterReply(board) {
       active: false,
       legalMoves: [],
       banner: mate ? "Checkmate" : "Draw",
+      // The side to move is the one mated.
+      result: !mate ? "1/2-1/2" : String(board.fen || "").split(" ")[1] === "b" ? "1-0" : "0-1",
     };
   }
   return {

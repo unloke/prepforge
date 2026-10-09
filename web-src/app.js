@@ -3704,9 +3704,8 @@ async function trainRepertoire(repertoireId, options = {}) {
   }
   appState.trainingRepertoireId = repertoireId;
   switchView("train");
-  await startTraining(options.targetNodeIds?.length ? "smart" : undefined, {
-    ...options, repertoireId,
-  });
+  // A repertoire's own Train drills that repertoire, never the mixed queue.
+  await startTraining("smart", { ...options, repertoireId });
 }
 
 let repertoireMenuOpener = null;

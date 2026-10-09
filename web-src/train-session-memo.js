@@ -37,7 +37,7 @@ export function loadSessionMemo(ownerId, sessionId, generation = "", storage = d
     if (!memo || memo.sessionId !== String(sessionId)) return null;
     const stats = memo.stats;
     if (!stats || !Array.isArray(stats.history)) return null;
-    if (!["correct", "mistakes", "streak", "best", "lastStreak"].every((name) =>
+    if (!["correct", "mistakes", "skipped", "streak", "best", "lastStreak"].every((name) =>
       Number.isInteger(stats[name]) && stats[name] >= 0)) return null;
     if (!stats.history.every((value) => typeof value === "boolean")) return null;
     if (!Array.isArray(memo.queue) || !memo.queue.length || memo.queue.some((card) =>

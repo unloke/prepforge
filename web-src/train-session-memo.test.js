@@ -12,7 +12,7 @@ function memoryStorage() {
   };
 }
 
-const stats = { correct: 1, mistakes: 1, streak: 0, best: 1, history: [true, false], lastStreak: 0 };
+const stats = { skipped: 0, correct: 1, mistakes: 1, streak: 0, best: 1, history: [true, false], lastStreak: 0 };
 
 const progress = { queue: [{ encoded: "card", targets: [{ uci: "e2e4" }] }], cardIndex: 0, targetIndex: 0, cardsDone: 0, attempt: 1, retriesFixed: 0, timeouts: 0 };
 

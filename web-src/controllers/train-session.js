@@ -11,7 +11,7 @@ import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "..
 import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
-import { formatPlayTrail, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
+import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
@@ -454,7 +454,7 @@ function selectedTrainRepertoireId() {
 }
 
 function trainStatsReset() {
-  appState.trainStats = { correct: 0, mistakes: 0, streak: 0, best: 0, history: [], lastStreak: 0 };
+  appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0 };
   appState.trainReview = { queue: [], index: 0, active: false, savedStreak: 0, recovered: 0 };
 }
 
@@ -628,8 +628,7 @@ function paintPlayBookHint() {
 
 function playBookLabel(play) {
   const session = play || appState.play;
-  const book =
-    session && session.book === "repertoire" ? "My repertoire" : session && session.book === "maia" ? "Maia" : "Lichess explorer";
+  const book = playBookName(session && session.book);
   const color = session && session.userColor === "black" ? "Black" : "White";
   const they = session && session.lastOppSan ? ` · they ${session.lastOppSan}` : "";
   const reps =
@@ -918,6 +917,7 @@ async function startPlaySession({
     fen: info.fen,
     startFen: info.fen,
     book,
+    rating: book === "repertoire" ? null : effectiveMaiaRating(),
     userColor,
     nodeId,
     rootNodeId: nodeId,
@@ -991,6 +991,7 @@ async function playOpponentReply() {
   const alreadyOver = playPositionAfterReply(info);
   if (alreadyOver.terminal) {
     play.active = false;
+    play.result = alreadyOver.result;
     updateTrainTurnBadge(null);
     setTrainBanner("done", alreadyOver.banner, "Start or Feeling Lucky for another round");
     boards.train.setPosition({ fen: info.fen, legalMoves: [], lastMove: null });
@@ -1068,6 +1069,7 @@ async function playOpponentReply() {
   const ended = playPositionAfterReply(after.board);
   if (ended.terminal) {
     play.active = false;
+    play.result = ended.result;
     updateTrainTurnBadge(null);
     boards.train.setPosition({
       fen: after.board.fen,
@@ -1132,6 +1134,7 @@ async function submitPlayMove(playedUci) {
   const ended = playPositionAfterReply(after.board);
   if (ended.terminal) {
     play.active = false;
+    play.result = ended.result;
     updateTrainTurnBadge(null);
     setTrainBanner("done", ended.banner, after.move.san);
     syncTrainSessionControls();
@@ -1221,6 +1224,7 @@ async function takebackPlaySession() {
   const undone = takebackToUserMove(play.history);
   play.history = undone.history;
   play.active = true;
+  play.result = null;
   play.fen = undone.fen || play.startFen;
   play.nodeId = undone.nodeId || play.rootNodeId;
   if (play.repertoires?.length) {
@@ -1251,6 +1255,7 @@ function resignPlaySession() {
   const play = appState.play;
   if (!play || !play.active) return;
   play.active = false;
+  play.result = play.userColor === "black" ? "1-0" : "0-1";
   updateTrainTurnBadge(null);
   const last = play.history && play.history[play.history.length - 1];
   boards.train.setPosition({
@@ -1503,6 +1508,7 @@ function finishReviewRound() {
   } else {
     setTrainBanner("done", "All cleaned up!", `Fixed ${countOf(review.recovered, "missed move")}`);
   }
+  updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "Session complete";
   celebrate();
 }
@@ -1513,6 +1519,7 @@ function finishTrainingSession() {
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
   setTrainBanner("done", "Session complete!", `${stats.correct} correct · ${countOf(stats.mistakes, "mistake")} · best run ${stats.best}`);
+  updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "Session complete";
   syncTrainSessionControls();
   celebrate();
@@ -1694,15 +1701,17 @@ async function startSmartTraining(options = {}) {
   let payload;
   let trainResume;
   try {
-    // mixed: one queue over ALL active repertoires (the picker only matters
-    // for line rehearsal). fresh: always rebuild the queue from the current
-    // tree + SR state — a resumed stale queue is exactly the desync this avoids.
+    // mixed: one queue over ALL active repertoires, unless the entry named one
+    // repertoire (its own Train action). fresh: always rebuild the queue from
+    // the current tree + SR state — a resumed stale queue is exactly the desync
+    // this avoids.
     trainResume = await loadTrainResume();
     const targets = options.targetNodeIds || [];
     payload = await postJson("/api/train/smart/start", {
-      mixed: !targets.length,
+      mixed: !options.repertoireId,
       fresh: fresh || !!targets.length,
-      ...(targets.length ? { repertoire_id: options.repertoireId, target_node_ids: targets } : {}),
+      ...(options.repertoireId ? { repertoire_id: options.repertoireId } : {}),
+      ...(targets.length ? { target_node_ids: targets } : {}),
     });
   } catch (error) {
     if (!isCurrent()) return;
@@ -2168,6 +2177,7 @@ async function skipSmartCard() {
   }
   if (appState.trainBusy) return;
   clearBlitzTimer();
+  appState.trainStats.skipped += 1;
   // Local advance — the position syncs with the next debounced flush.
   smart.cardIndex += 1;
   smart.targetIndex = 0;
@@ -2225,6 +2235,7 @@ async function finishSmartSession() {
   clearBlitzTimer();
   setBlitzBarVisible(false);
   boards.train.setEngineArrow(null);
+  updateTrainTurnBadge(null);
   document.getElementById("train-progress-fill").style.width = "100%";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
@@ -2233,7 +2244,7 @@ async function finishSmartSession() {
   setTrainBanner(
     "done",
     smart.blitz ? "Blitz session complete!" : "Session complete!",
-    `${stats.correct || 0} first-try correct · ${stats.mistakes || 0} missed${blitzed}${fixed}`
+    `${stats.correct || 0} first-try correct · ${stats.mistakes || 0} missed${blitzed}${fixed}${stats.skipped ? ` · ${stats.skipped} skipped` : ""}`
   );
   // End on the last card's final position (its last answer, plus the reply when the
   // line has one) instead of wherever the board happened to be mid-line.

@@ -15,7 +15,7 @@ function deferred() {
   const promise = new Promise((yes) => { resolve = yes; });
   return { promise, resolve };
 }
-const stats = { correct: 3, mistakes: 1, streak: 2, best: 2, history: [true, false, true, true], lastStreak: 0 };
+const stats = { skipped: 0, correct: 3, mistakes: 1, streak: 2, best: 2, history: [true, false, true, true], lastStreak: 0 };
 const queue = [0, 1, 2].map((i) => ({ encoded: `card-${i}`, targets: [{ uci: "e2e4" }, { uci: "d2d4" }] }));
 const memo = { stats, seed: 7, generation: "start-1", healthBefore: { new: 20 }, queue, cardIndex: 1, targetIndex: 1, attempt: 2,
   cardsDone: 1, retriesFixed: 1, timeouts: 1 };
@@ -155,7 +155,7 @@ describe("Smart memo integration at Start", () => {
     const finish = compile("async function finishSmartSession(", {
       ...h.deps, document: { getElementById: () => ({ style: {}, innerHTML: "" }) },
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
-      syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(),
+      syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(),
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
     });
     await finish();
