@@ -59,6 +59,8 @@
 6. 用 More actions 的 FEN／Line／Branch PGN 等項目複製或匯出。
 7. 等待保存狀態，返回 Library 再重新開啟，核對內容。
 
+有註解的走法在樹上帶一個小圓點（hover 顯示註解）；選到該走法時，註解顯示在 Position 路徑下方。
+
 完成判準：棋盤、Position 路徑與樹一致，保存狀態顯示 Saved；註解重新打開仍在；重新開啟後內容相同。
 
 ## 4. Generate
