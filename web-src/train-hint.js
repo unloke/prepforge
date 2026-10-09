@@ -1,4 +1,4 @@
-// Sub-line under "Not that one - try again" after a first miss in the Smart
+// Sub-line under "Not your prep · try again" after a first miss in the Smart
 // queue. A hint the user already asked for must survive the miss: falling back
 // to a generic phase tip ("Develop your pieces…") after "Hint 2 · Piece" took
 // the help away exactly when it was needed (UX walkthrough 2026-10-01 P1-4).

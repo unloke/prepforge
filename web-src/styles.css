@@ -3017,6 +3017,25 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
 .train-accuracy { color: var(--good-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+/* The line to the position, its end in view: rtl puts the ellipsis first. */
+.train-line-path {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: var(--fs-xs) var(--mono);
+  direction: rtl;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.train-line-path bdi { direction: ltr; unicode-bidi: isolate; }
+.train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
+.train-line-path[hidden] { display: none; }
 .card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs-xs); }
 .card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
 .card-dots i.done { background: var(--good); }

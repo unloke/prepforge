@@ -170,7 +170,11 @@ class TrainingService:
         self.repository.save_training_session(updated)
         return self._prompt_for_session(repertoire, updated)
 
-    def submit_move(self, session_id: str, played_uci: str) -> TrainingAttemptResult:
+    def submit_move(
+        self, session_id: str, played_uci: str, *, hinted: bool = False
+    ) -> TrainingAttemptResult:
+        """Grade a move. A correct move after a hint still advances the line,
+        but spaced repetition records it as a miss: it was not recalled."""
         with self.repository.engine.begin() as conn:
             session = self.repository.lock_training_session(conn, session_id=session_id)
             if session is None:
@@ -192,7 +196,7 @@ class TrainingService:
                 session=session,
                 progress=progress,
                 node_id=prompt.expected_node_id,
-                correct=correct,
+                correct=correct and not hinted,
             )
 
             completed_line = False

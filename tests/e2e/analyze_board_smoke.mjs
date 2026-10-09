@@ -10,7 +10,7 @@
 //   3. clicking an engine line plays it on the board (accent frame + "Line 1 · …"
 //      label) while the row stays one line, the arrow keys and board-bar arrows step
 //      through it, and the game (ply) is untouched;
-//   4. "Back to game" and Esc restore the exact game position.
+//   4. "Exit line" and Esc restore the exact game position.
 //
 // Env:
 //   E2E_BASE_URL — default http://127.0.0.1:9876
@@ -145,7 +145,7 @@ async function main() {
       .waitForFunction(() => document.getElementById("analysis-board").classList.contains("is-previewing"), null, { timeout: 5_000 })
       .catch(() => fail("clicking an engine line did not put it on the board"));
     check((await label()).startsWith(`Line 1 · 4.${firstMove} · 1/`), `label names the previewed move (got ${await label()})`);
-    check(!(await page.locator("#analysis-pv-exit").isHidden()), "Back to game is shown");
+    check(!(await page.locator("#analysis-pv-exit").isHidden()), "Exit line is shown");
     check(
       (await e2e(() => document.querySelector("#engine-window-pvs .engine-pv[data-line='0']").offsetHeight)) === rowHeight,
       "the previewed row stays one line",
@@ -168,8 +168,8 @@ async function main() {
 
     // --- 4. Back to the game. ---
     await page.click("#analysis-pv-exit");
-    check((await label()) === gameLabel, "Back to game restores the game label");
-    check((await boardPieces()) === gamePieces, "Back to game restores the exact position");
+    check((await label()) === gameLabel, "Exit line restores the game label");
+    check((await boardPieces()) === gamePieces, "Exit line restores the exact position");
     check(
       !(await e2e(() => document.getElementById("analysis-board").classList.contains("is-previewing"))),
       "the preview frame is removed",

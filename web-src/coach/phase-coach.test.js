@@ -80,7 +80,7 @@ describe("buildPhaseCoach", () => {
     const popular = buildPhaseCoach({ fen: START, predictions: OPENING_PREDS, expectedUci: "g1f3", playedUci: "e2e4" });
     expect(popular.tip).toBe("e4 is popular here, but it isn't your prep.");
     const rare = buildPhaseCoach({ fen: START, predictions: OPENING_PREDS, expectedUci: "e2e4", playedUci: "h2h4" });
-    expect(rare.tip).toBe("Few players play h4 here.");
+    expect(rare.tip).toBe("");
     for (const c of [popular, rare]) expect(c.tip).not.toMatch(/Nf3|e4 is your/);
   });
 

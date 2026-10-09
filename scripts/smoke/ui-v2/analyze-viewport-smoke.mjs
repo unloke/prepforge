@@ -111,6 +111,7 @@ async function openGamesSheet(page) {
 }
 
 async function runViewport(vp) {
+  console.log(`[analyze-smoke] ${vp.name}`); // names the viewport a thrown step dies in
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
@@ -285,6 +286,13 @@ async function runViewport(vp) {
 
   // Exercise shared live evaluation and rapid forward/back navigation with the
   // real worker, not a mirrored test implementation.
+  const engineSpot = await page.evaluate(() => {
+    const r = document.getElementById("open-engine-widget").getBoundingClientRect();
+    const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    const coach = document.getElementById("analysis-explain").getBoundingClientRect();
+    return { engine: r.toJSON(), top: top && (top.id || top.className), coach: coach.toJSON() };
+  });
+  console.log(`[analyze-smoke] engine button: ${JSON.stringify(engineSpot)}`);
   await page.locator("#open-engine-widget").click();
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await page.evaluate(async () => {
@@ -314,7 +322,7 @@ async function runViewport(vp) {
     const panel = phone ? { left: 0, right: window.innerWidth } : document.getElementById("analysis-eval-card").getBoundingClientRect();
     const engine = document.getElementById(phone ? "analysis-engine-slot" : "engine-window-pvs").getBoundingClientRect();
     const coach = document.getElementById("analysis-explain").getBoundingClientRect();
-    const head = ["#analysis-chart-caption", "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
+    const head = ["#analysis-chart-caption", phone ? "#analysis-ev-move" : "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
       .map((sel) => document.querySelector(sel).getBoundingClientRect());
     const oneRow = head.every((r) => r.width > 0 && Math.abs((r.top + r.bottom) / 2 - (head[0].top + head[0].bottom) / 2) < 4 &&
       r.left >= panel.left && r.right <= panel.right + 1);

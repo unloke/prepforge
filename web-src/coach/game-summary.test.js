@@ -21,22 +21,26 @@ const GAME = [
 
 describe("buildGameSummary", () => {
   it("summarises both sides from the saved classifications", () => {
-    expect(buildGameSummary({ moves: GAME })).toBe(
-      "White: 1 blunder, 1 inaccuracy. Black: 2 mistakes. Turning point: 14.a3.",
-    );
+    expect(buildGameSummary({ moves: GAME })).toEqual({
+      text: "White: 1 blunder, 1 inaccuracy. Black: 2 mistakes.",
+      turningPoint: { ply: 27, label: "14.a3" },
+    });
   });
 
   it("speaks to the user and points at their own first error when they played a side", () => {
-    expect(buildGameSummary({ moves: GAME, selfSide: "black" })).toBe(
-      "You: 2 mistakes. Opponent: 1 blunder, 1 inaccuracy. Turning point: 15...Bd6.",
-    );
+    expect(buildGameSummary({ moves: GAME, selfSide: "black" })).toEqual({
+      text: "You: 2 mistakes. Opponent: 1 blunder, 1 inaccuracy.",
+      turningPoint: { ply: 30, label: "15...Bd6" },
+    });
   });
 
   it("credits a clean side and stays empty for an unclassified game", () => {
-    expect(buildGameSummary({ moves: [mv(1, "e4", "best"), mv(2, "e5", "blunder")] })).toBe(
-      "White: no errors. Black: 1 blunder. Turning point: 1...e5.",
-    );
-    expect(buildGameSummary({ moves: [mv(1, "e4", null)] })).toBe("");
+    expect(buildGameSummary({ moves: [mv(1, "e4", "best"), mv(2, "e5", "blunder")] })).toEqual({
+      text: "White: no errors. Black: 1 blunder.",
+      turningPoint: { ply: 2, label: "1...e5" },
+    });
+    expect(buildGameSummary({ moves: [mv(1, "e4", "best")] }).turningPoint).toBeNull();
+    expect(buildGameSummary({ moves: [mv(1, "e4", null)] })).toBeNull();
     expect(hasClassifiedMoves({ moves: [mv(1, "e4", null)] })).toBe(false);
     expect(hasClassifiedMoves({ moves: GAME })).toBe(true);
   });

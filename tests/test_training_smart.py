@@ -7,6 +7,7 @@ multi-target cards, resume/rebuild, and stale-card skipping.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -521,6 +522,39 @@ def test_mixed_single_active_repertoire_delegates_to_plain_start():
     assert session.repertoire_id == white.id
     cards = [decode_card(raw) for raw in session.line_order]
     assert all(card is not None and card.repertoire_id == white.id for card in cards)
+
+
+def test_next_session_counts_match_the_queue_start_serves():
+    repository = _repository()
+    white, _ = _build(repository)
+    black = _build_black(repository)
+    owner = "owner-preview"
+    _claim(repository, owner, white, black)
+    service = SmartTrainingService(repository, owner)
+    preview = service.next_session_counts(owner)
+    assert preview["resumed"] == 0
+    session = service.start_or_resume_mixed(owner, seed=5)
+    assert {k: v for k, v in preview.items() if k != "resumed"} == service.counts(session)
+    # A started session is what the next Start resumes: count what is left.
+    session = replace(session, current_index=1)
+    repository.save_training_session(session)
+    left = service.next_session_counts(owner)
+    assert left["resumed"] == 1
+    assert left["cards"] == len(session.line_order) - 1
+
+
+def test_bundle_targets_carry_the_numbered_line_to_their_position():
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    _seed_progress(
+        repository,
+        repertoire.id,
+        [_due(ids["bb5"])] + [_mastered(ids[k]) for k in ("e4", "nf3", "d4", "c4")],
+    )
+    service = SmartTrainingService(repository, "t-owner")
+    session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
+    [card] = service.session_card_bundle(session, repertoire)
+    assert card["targets"][0]["line"] == "1.e4 e5 2.Nf3 Nc6"
 
 
 def test_mixed_sync_routes_progress_to_each_repertoire():

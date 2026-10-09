@@ -715,8 +715,18 @@ function renderInstantCoach() {
     // of the empty-board invitation.
     const summary = hasClassifiedMoves(appState.analysis)
       ? buildGameSummary({ moves: appState.analysis.moves, selfSide: analysisSelfSide() })
-      : "";
-    setCoachProse(summary || "Make a move and I'll tell you what I think.", "info");
+      : null;
+    setCoachProse(summary?.text || "Make a move and I'll tell you what I think.", "info");
+    const turn = summary?.turningPoint;
+    if (turn) {
+      const prose = document.getElementById("coach-prose");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "coach-bookaction";
+      button.textContent = `Turning point ${turn.label}`;
+      button.addEventListener("click", () => void showAnalysisPly(turn.ply).catch(() => {}));
+      prose?.append(" ", button);
+    }
   }
 }
 

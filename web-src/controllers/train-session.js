@@ -331,8 +331,7 @@ function syncTrainPickerVisibility() {
   void refreshTrainSessionPreview().catch(() => {});
 }
 
-// Before Start: show review moves and available new moves from the health summary.
-// The scheduler merges targets and adds polish, so these are not card counts. Cached briefly
+// Before Start: the card counts of the queue Start will serve. Cached briefly
 // so the many syncTrainPickerVisibility() calls don't each refetch.
 const trainPreviewCache = { at: 0, text: "", loading: null };
 function invalidateTrainSessionPreview() {
@@ -358,9 +357,9 @@ async function refreshTrainSessionPreview() {
     trainPreviewCache.loading = (async () => {
       const [mod, payload] = await Promise.all([
         preloadTrainView(),
-        api(`/api/train/smart/summary?mixed=true&local_date=${encodeURIComponent(localDateString())}`),
+        api(`/api/train/smart/summary?mixed=true&preview=true&local_date=${encodeURIComponent(localDateString())}`),
       ]);
-      trainPreviewCache.text = mod.sessionPreviewText(payload && payload.health);
+      trainPreviewCache.text = mod.sessionPreviewText(payload && payload.next_session);
       trainPreviewCache.at = Date.now();
     })().finally(() => {
       trainPreviewCache.loading = null;
@@ -1308,6 +1307,8 @@ async function submitTrainingMove(playedUci) {
   // Land the dragged move on the board right away; the server response below
   // decides whether it advances (correct) or resets (wrong).
   await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
+  // An answer after a hint advances the line but is graded as a miss.
+  const hinted = appState.trainHintLevel > 0;
   let result;
   try {
     result = await api("/api/train/move", {
@@ -1315,6 +1316,7 @@ async function submitTrainingMove(playedUci) {
       body: JSON.stringify({
         session_id: prompt.session_id,
         played_uci: playedUci,
+        hinted,
         local_date: localDateString(),
       }),
     });
@@ -1374,10 +1376,16 @@ async function submitTrainingMove(playedUci) {
     return;
   }
 
-  stats.correct += 1;
-  stats.streak += 1;
-  stats.best = Math.max(stats.best, stats.streak);
-  stats.history.push(true);
+  if (hinted) {
+    stats.mistakes += 1;
+    stats.streak = 0;
+    stats.history.push(false);
+  } else {
+    stats.correct += 1;
+    stats.streak += 1;
+    stats.best = Math.max(stats.best, stats.streak);
+    stats.history.push(true);
+  }
   await renderTrainStats();
   if (appState.training) appState.training.prompt = result.prompt;
   appState.trainBusy = true;
@@ -1389,7 +1397,7 @@ async function submitTrainingMove(playedUci) {
     legalMoves: [],
     lastMove: result.played_uci,
   });
-  setTrainBanner("correct", "Correct!", result.played_san ? `You played ${result.played_san}` : "");
+  setTrainBanner("correct", hinted ? "Correct, with a hint" : "Correct!", result.played_san ? `You played ${result.played_san}` : "");
 
   // 2) After a beat, let the opponent reply as its own animated step.
   if (result.reply_uci && result.fen_after_reply) {
@@ -1721,6 +1729,7 @@ async function startSmartTraining(options = {}) {
   const mapped = trainResume.mapTrainUiSession(payload, { fresh });
   // A resumed session without a memo must not inherit unrelated counters.
   trainStatsReset();
+  invalidateTrainSessionPreview(); // the queue it described is being played now
   appState.training = null; // leave line rehearsal if it was active
   // A restart can interrupt an in-flight run-in; its early-return leaves the
   // busy flag set, so clear it before the new session takes the board.
@@ -1978,7 +1987,12 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // repertoire). Only the first attempt writes spaced repetition; it lands on
   // the server in the next debounced /smart/sync batch, not per move.
   const correct = playedUci === prompt.expected_uci;
-  if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct);
+  // Recall means unaided: an answer after a hint is graded as a miss, and a new
+  // move's demonstration (the arrow shows it) is not a recall at all, so it stays
+  // out of the first-try stats. Its SR write still marks it learned.
+  const hinted = appState.trainHintLevel > 0;
+  const scored = prompt.kind !== "new";
+  if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct && !hinted);
   if (correct) trackPreparationPractice({
     repertoireId: smart.queue[smart.cardIndex]?.repertoire_id || smart.repertoireId,
     nodeId: prompt.expected_node_id, fen: prompt.fen_before, completed: true,
@@ -1989,10 +2003,12 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     // Only the first answer is graded (matches the synced SR write); the
     // accuracy chips therefore never count retries.
     if (attempt === 1) {
-      stats.mistakes += 1;
-      // A first-try miss ends the run, same as Line rehearsal.
-      stats.streak = 0;
-      stats.history.push(false);
+      if (scored) {
+        stats.mistakes += 1;
+        // A first-try miss ends the run, same as Line rehearsal.
+        stats.streak = 0;
+        stats.history.push(false);
+      }
       rememberSmartSession({ attempt: attempt + 1 });
       await renderTrainStats();
     }
@@ -2016,7 +2032,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
       const cached = prompt.phaseCoach;
       setTrainBanner(
         "wrong",
-        timedOut ? "Time's up · try again" : "Not that one · try again",
+        timedOut ? "Time's up · try again" : "Not your prep · try again",
         wrongMoveTip({
           hintLevel: appState.trainHintLevel,
           hint: prompt.hint,
@@ -2040,7 +2056,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
             if (!model.tip) return;
             setTrainBanner(
               "wrong",
-              timedOut ? "Time's up · try again" : "Not that one · try again",
+              timedOut ? "Time's up · try again" : "Not your prep · try again",
               model.tip,
             );
           }
@@ -2081,13 +2097,17 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     return;
   }
 
-  if (attempt === 1) {
+  if (attempt > 1) {
+    smart.retriesFixed += 1;
+  } else if (scored && hinted) {
+    stats.mistakes += 1;
+    stats.streak = 0;
+    stats.history.push(false);
+  } else if (scored) {
     stats.correct += 1;
     stats.streak += 1;
     stats.best = Math.max(stats.best, stats.streak);
     stats.history.push(true);
-  } else {
-    smart.retriesFixed += 1;
   }
   // Store the next cursor before animating an already-counted answer.
   rememberSmartSession({ advance: true });
@@ -2105,7 +2125,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     lastMove: playedUci,
   });
   const praise =
-    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned!" : "Correct!";
+    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned!" : hinted ? "Correct, with a hint" : "Correct!";
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);

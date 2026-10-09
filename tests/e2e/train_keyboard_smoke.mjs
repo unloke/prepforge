@@ -155,9 +155,10 @@ async function main() {
       .waitFor({ state: "detached", timeout: 10_000 })
       .catch(() => fail("some square keeps aria-pressed=true after the move"));
 
+    // A new move's demonstration is not a recall, so it leaves the first-try count alone.
     const statsCorrect = ((await page.locator('#train-stat-correct').textContent()) || "").trim();
-    if (statsCorrect !== "1") {
-      fail(`correct counter should be 1 after the keyboard move (got: ${statsCorrect || "(empty)"})`);
+    if (statsCorrect !== "0") {
+      fail(`a demonstrated new move must not count as first-try correct (got: ${statsCorrect || "(empty)"})`);
     }
 
     // --- Roving focus: the board is ONE tab stop, never 64. ---

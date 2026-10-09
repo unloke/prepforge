@@ -146,7 +146,7 @@ async function updateBookline() {
       expectedSan: prescribed.san,
     });
     el.innerHTML =
-      html`${`${text} `}<button class="coach-bookaction" type="button" data-act="train">Train it<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+      html`${`${text} `}<button class="coach-bookaction" type="button" data-act="train">Add to training</button>`;
     el.hidden = false;
     el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
       const btn = event.currentTarget;
@@ -172,7 +172,7 @@ async function updateBookline() {
           repertoire_id: rep.id,
           node_id: prescribed.id,
         });
-        btn.textContent = "Queued ✓";
+        btn.textContent = "Added ✓";
         setStatus(`${prescribed.san} will lead your next smart session`);
       } catch (error) {
         btn.disabled = false;

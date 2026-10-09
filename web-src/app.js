@@ -50,7 +50,6 @@ import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createBoardController } from "./board/board-controller.js";
 import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
-import { buildGameSummary, hasClassifiedMoves } from "./coach/game-summary.js";
 import { classifySyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
 import { withRequestDeadline } from "./sync-queue.js";
@@ -858,7 +857,7 @@ async function maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }) {
 // in-book state never held, so nothing nags (and in-book shows nothing at all).
 //   - opponent leaves the book → "Add it in Build" inline action at the
 //     departure node
-//   - the player leaves their own book → "Train it" records one recall miss
+//   - the player leaves their own book → "Add to training" records one recall miss
 //     (POST /api/train/record-miss) so the move leads the next smart session
 // ---------------------------------------------------------------------------
 const bookState = {
@@ -2806,6 +2805,8 @@ async function recallAnalysis(gameId, listItem = null) {
     view.renderAnalysis(payload);
     syncViewHeads();
     revealAnalysisResults();
+    // The list sits at the panel's foot; open the new game at its summary.
+    document.querySelector("#analyze-sidebar .panel-scroll")?.scrollTo({ top: 0 });
     await syncPgnFromTree();
     if (seq !== analysisRecallSeq) return;
     setStatus(`Recalled analysis: ${payload.moves.length} plies`);
@@ -6189,6 +6190,18 @@ function wireMobileNav() {
   wirePhoneStudyNav();
   wirePhoneSheets();
   wireHoldRepeat();
+  mirrorAnalysisLabel();
+}
+
+// Phones hide the board bar's label (the thumb bar has no room), so Analyze's
+// eval row repeats it: which move, and whether it is a variation or engine line.
+function mirrorAnalysisLabel() {
+  const label = document.getElementById("analysis-board-label");
+  const copy = document.getElementById("analysis-ev-move");
+  if (!label || !copy) return;
+  const mirror = () => { copy.textContent = label.textContent; };
+  new MutationObserver(mirror).observe(label, { childList: true, characterData: true, subtree: true });
+  mirror();
 }
 
 // Holding a move arrow steps on repeat, like a held arrow key. The click that

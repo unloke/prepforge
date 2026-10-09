@@ -306,7 +306,7 @@ class EngineWidget {
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
     // A line is for the board: clicking it (or one of its moves) plays it out there,
-    // ◀ ▶ / ← → step through it, and "Back to game" (or Esc) returns. The game, the
+    // ◀ ▶ / ← → step through it, and "Exit line" (or Esc) returns. The game, the
     // analysis tree and repertoires are never touched.
     this.pvsEl.addEventListener("click", (event) => {
       const row = event.target.closest(".engine-pv[data-line]");
@@ -477,7 +477,7 @@ class EngineWidget {
     );
     let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
     if (previewing) cls += " is-previewing";
-    const title = previewing ? "Back to game" : "Show on board";
+    const title = previewing ? "Exit line" : "Show on board";
     return (
       html`<div class="${cls}" data-line="${index}" role="button" tabindex="0" aria-pressed="${!!previewing}" title="${title}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );

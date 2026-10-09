@@ -26,7 +26,7 @@ function harness(realBoard = false) {
   const realView = createAnalyzeView({ appState, START_FEN });
   view.serializeAnalysisPgn = realView.serializeAnalysisPgn;
   view.adaptParsedTree = realView.adaptParsedTree;
-  const doc = { getElementById: () => input, activeElement: null };
+  const doc = { getElementById: () => input, querySelector: () => null, activeElement: null };
   const deps = {
     appState, document: doc, START_FEN, parsePgn,
     api: () => pending.promise, ensureAnalyzeView: vi.fn(async () => view),

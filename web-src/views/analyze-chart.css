@@ -234,6 +234,7 @@
 .ev-head.has-eval .ev-title { display: none; }
 #analysis-chart-caption { grid-area: 1 / 1; }
 .ev-meter { grid-area: 1 / 2; }
+.ev-move { display: none; }
 #analysis-engine-slot .engine-head-depth { grid-area: 1 / 3; }
 #analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
 .ev-engine { grid-area: 1 / 5; }
@@ -585,11 +586,12 @@
   border-radius: 3px;
 }
 .cbar-seg {
-  /* Room for a two-digit count, so a 1-move segment is never squeezed to an
-     unlabelled sliver. */
+  /* The grade's glyph and count always fit, so a 1-move segment is never
+     squeezed to an unlabelled sliver and the grade never rests on colour. */
   flex-basis: 0;
-  min-width: 20px;
-  padding: 0;
+  min-width: max-content;
+  padding: 0 4px;
+  white-space: nowrap;
   border: 0;
   color: var(--accent-ink);
   font-size: 10px;
@@ -809,7 +811,18 @@
   }
   #analysis-eval-card .ev-title { color: var(--muted); }
   #analysis-eval-card .eval-now { min-width: 60px; font-size: 16px; }
-  #analysis-eval-card .ev-meter { flex: 1 1 auto; min-width: 24px; height: 6px; }
+  #analysis-eval-card .ev-meter { display: none; }
+  #analysis-eval-card .ev-move {
+    display: block;
+    flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
+    min-width: 0;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
   #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
     display: inline-flex;
@@ -880,4 +893,11 @@
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open :is(.sheet-rows, #pgn-drawer, #history-drawer:not([hidden])) { background: var(--panel); }
   /* …and the coach keeps to its few lines above them. */
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain { flex: none; max-height: 96px; }
+}
+
+/* While an engine line is on the board, the coach still speaks about the game
+   position, not the one shown: set it back until the line is left. */
+#view-analyze .study:has(#analysis-pv-exit:not([hidden])) #analysis-explain {
+  opacity: 0.4;
+  pointer-events: none;
 }
