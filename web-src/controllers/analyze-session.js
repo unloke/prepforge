@@ -1097,7 +1097,6 @@ async function runAnalysis(options = {}) {
     } catch (_) {
       /* logging only */
     }
-    setStatus(`Analysis ready: ${payload.moves.length} plies`, { severity: "success" });
     complete(true);
     appState.analysisSourcePgn = pgn;
     revealAnalysisResults();

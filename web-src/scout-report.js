@@ -899,7 +899,7 @@ export function scoutAnalyzedLabel(analyzed) {
   return `${a} game${a === 1 ? "" : "s"} analyzed`;
 }
 
-export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "" } = {}) {
+export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "", usernames = [] } = {}) {
   const speeds = ["bullet", "blitz", "rapid", "classical"];
   const chips = speeds
     .filter((s) => (profile.speedCounts[s] || 0) >= 5)
@@ -910,7 +910,10 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
   return html`
     <div class="prof-row">
       <div class="prof-id scout-profile-main">
-        <a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>
+        ${usernames.length > 1
+          // "self (2 accounts)" is a label, not a Lichess user: no profile link.
+          ? html`<span class="prof-name" title="${usernames.join(", ")}">${username}</span>`
+          : html`<a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>`}
         <span class="scout-profile-games faint">${scoutAnalyzedLabel(profile.total)}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">

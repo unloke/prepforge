@@ -473,6 +473,7 @@ export function createScoutView(deps) {
         scoutState.username,
         scoutState.activeSpeed,
         {
+          usernames: scoutState.usernames,
           colorRecHtml: buildColorRecommendationBanner(
             colorRecommendation(scoutState.games),
             { username: scoutState.username },

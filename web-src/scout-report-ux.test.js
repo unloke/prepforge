@@ -64,6 +64,16 @@ describe("scout lines table", () => {
     expect(String(html)).not.toMatch(/ of \d+ games analyzed/);
   });
 
+  it("links a single Lichess user but never an aggregated self label", () => {
+    const one = String(renderScoutProfile({ total: 5, speedCounts: {} }, "DrNykterstein", "all"));
+    expect(one).toContain('href="https://lichess.org/@/DrNykterstein"');
+    const self = String(
+      renderScoutProfile({ total: 5, speedCounts: {} }, "self (2 accounts)", "all", { usernames: ["a1", "b2"] }),
+    );
+    expect(self).not.toContain("lichess.org/@/");
+    expect(self).toContain('title="a1, b2"');
+  });
+
   it("system setups get display names, not lowercase ids", () => {
     expect(systemSetupName("kia")).toBe("King's Indian Attack");
     expect(systemSetupName("london")).toBe("London");
