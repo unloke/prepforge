@@ -111,6 +111,7 @@ async function openGamesSheet(page) {
 }
 
 async function runViewport(vp) {
+  console.log(`[analyze-smoke] ${vp.name}`); // names the viewport a thrown step dies in
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
@@ -285,6 +286,13 @@ async function runViewport(vp) {
 
   // Exercise shared live evaluation and rapid forward/back navigation with the
   // real worker, not a mirrored test implementation.
+  const engineSpot = await page.evaluate(() => {
+    const r = document.getElementById("open-engine-widget").getBoundingClientRect();
+    const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    const coach = document.getElementById("analysis-explain").getBoundingClientRect();
+    return { engine: r.toJSON(), top: top && (top.id || top.className), coach: coach.toJSON() };
+  });
+  console.log(`[analyze-smoke] engine button: ${JSON.stringify(engineSpot)}`);
   await page.locator("#open-engine-widget").click();
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await page.evaluate(async () => {
