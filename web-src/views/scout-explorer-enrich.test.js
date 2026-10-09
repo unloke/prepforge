@@ -169,8 +169,7 @@ describe("scout explorer enrichment generation", () => {
       pieceSvg: vi.fn(() => ""),
       getBuildState: vi.fn(),
       getBuildNodeById: vi.fn(),
-      setBuildPending: vi.fn(),
-      pushBuildNode: vi.fn(),
+      queueBuildAdd: vi.fn(),
       scoutPickedUsernames: () => ["rival"],
     });
     view.bindControls();

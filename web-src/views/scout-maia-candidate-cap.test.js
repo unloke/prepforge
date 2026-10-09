@@ -135,7 +135,7 @@ describe("scout maia enrichment — high-variety 1.d4 opponent (> candidate cap)
       selectBuildNode: vi.fn(), resolveBuildId: vi.fn(), setBuildSync: vi.fn(),
       jobToast: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})), pieceSvg: vi.fn(() => ""),
-      getBuildState: vi.fn(), getBuildNodeById: vi.fn(), setBuildPending: vi.fn(), pushBuildNode: vi.fn(),
+      getBuildState: vi.fn(), getBuildNodeById: vi.fn(), queueBuildAdd: vi.fn(),
       scoutPickedUsernames: () => ["rival"],
     });
     view.bindControls();

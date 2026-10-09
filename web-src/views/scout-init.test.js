@@ -97,8 +97,7 @@ describe("scout view initialization reentrancy", () => {
       pieceSvg: vi.fn(() => ""),
       getBuildState: vi.fn(),
       getBuildNodeById: vi.fn(),
-      setBuildPending: vi.fn(),
-      pushBuildNode: vi.fn(),
+      queueBuildAdd: vi.fn(),
       scoutPickedUsernames: () => pickedUsernames,
     });
     view.bindControls();

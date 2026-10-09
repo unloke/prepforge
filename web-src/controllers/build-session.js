@@ -24,7 +24,7 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
   hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
-  openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen,
+  openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
   reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
   renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
   sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError, showInputModal,
@@ -39,7 +39,7 @@ export function createBuildSession(deps) {
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
     hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
-    openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen,
+    openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
     reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
     renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
     sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError,
@@ -939,18 +939,7 @@ async function onBuildBoardMove(moveUci) {
   }
 
   const node = buildProvisionalNode(parent, moveUci, after);
-  appState.build.nodes.push(node);
-  appState.buildNodeById.set(node.id, node);
-  appState.buildPending.push({
-    tempId: node.id,
-    base_revision: appState.build?.revision,
-    parentRef: parentId,
-    uci: moveUci,
-    node,
-    // R-02: the target travels with the op, so a reload/restored queue can
-    // never be flushed into whichever repertoire happens to be open.
-    repertoire_id: appState.build ? appState.build.repertoire_id : null,
-  });
+  queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");
   scheduleBuildFlush();

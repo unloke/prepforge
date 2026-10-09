@@ -158,7 +158,7 @@ it("the application wires Scout's handoff recorder", async () => {
     "createRepertoirePrompt", "editRepertoire", "boardAfterMove", "buildProvisionalNode", "hardFlushBuild",
     "selectBuildNode", "resolveBuildId", "setBuildSync", "jobToast", "parseFenBoard", "pieceSvg",
     "startLichessOAuth", "loadPgnIntoAnalyze", "effectiveMaiaRating", "maiaAnalysisEnabled",
-    "scoutPickedUsernames", "requireSignIn", "effectiveStockfishDepth"].map((key) => [key, noop]));
+    "scoutPickedUsernames", "requireSignIn", "effectiveStockfishDepth", "queueBuildAdd"].map((key) => [key, noop]));
   const run = compile("async function ensureScoutView(", { ...deps, rememberHandoff,
     preloadScoutView: async () => ({ createScoutView }) }, "let scoutView = null");
   await run();
@@ -340,4 +340,17 @@ it("smart requeues use the session gap and keep one pending retry", () => {
   expect(requeue(smart)).toBe(true);
   expect(smart.queue.map((card) => card.encoded)).toEqual(["a", "b", "c", "d", "a", "e"]);
   expect(requeue(smart)).toBe(false);
+});
+
+it("a Scout line queued into the open repertoire is flushed by that repertoire", () => {
+  // 2026-10-08 audit: Scout pushed untagged ops, so every flush deferred them as
+  // "edits for another repertoire" and Add to prep never saved.
+  const appState = { build: { repertoire_id: "rep", revision: 3, nodes: [] }, buildNodeById: new Map(), buildPending: [] };
+  const queueBuildAdd = compile("function queueBuildAdd(", { appState });
+  const matches = compile("function buildOpMatchesRepertoire(", {});
+  queueBuildAdd({ id: "tmp-1", parent_id: "root", uci: "e2e4" });
+  expect(appState.buildPending[0]).toMatchObject({ tempId: "tmp-1", parentRef: "root", uci: "e2e4", base_revision: 3 });
+  expect(matches(appState.buildPending[0], "rep")).toBe(true);
+  const scout = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8");
+  expect(scout).not.toMatch(/buildPending/);
 });

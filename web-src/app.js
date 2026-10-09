@@ -4189,7 +4189,7 @@ function loadBuildSession() {
       engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
       isBuildReadOnly, jobToast, normalizeUci, openSettingsSection, optimisticBoardMove,
-      postJson, preloadBuildGen, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+      postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
       refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
       requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
       setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,
@@ -4666,6 +4666,21 @@ function queueBuildDelete(nodeId) {
     id: nodeId,
     base_revision: appState.build?.revision,
     repertoire_id: appState.build ? appState.build.repertoire_id : null,
+  });
+}
+
+// Insert a provisional node and queue its add. R-02: the target repertoire
+// travels with the op, so a restored queue never lands in another tree.
+function queueBuildAdd(node) {
+  appState.build.nodes.push(node);
+  appState.buildNodeById.set(node.id, node);
+  appState.buildPending.push({
+    tempId: node.id,
+    base_revision: appState.build.revision,
+    parentRef: node.parent_id,
+    uci: node.uci,
+    node,
+    repertoire_id: appState.build.repertoire_id,
   });
 }
 
@@ -5888,13 +5903,7 @@ async function ensureScoutView() {
       pieceSvg,
       getBuildState: () => appState.build,
       getBuildNodeById: (id) => appState.buildNodeById.get(id),
-      setBuildPending: (entry) => {
-        appState.buildPending.push(entry);
-      },
-      pushBuildNode: (node) => {
-        appState.build.nodes.push(node);
-        appState.buildNodeById.set(node.id, node);
-      },
+      queueBuildAdd,
       connectLichess: startLichessOAuth,
       loadPgnIntoAnalyze,
       rememberHandoff,
