@@ -814,7 +814,7 @@
   #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .ev-move {
     display: block;
-    flex: 1 1 auto;
+    flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
     min-width: 0;
     overflow: hidden;
     color: var(--muted);
