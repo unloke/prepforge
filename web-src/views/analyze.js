@@ -126,7 +126,13 @@ export function createAnalyzeView({
     const match =
       moves.find((m) => Number(m.ply) > current && matches(m)) ||
       moves.find((m) => Number(m.ply) <= current && matches(m));
-    if (match) showAnalysisPly(Number(match.ply));
+    if (!match) return;
+    showAnalysisPly(Number(match.ply));
+    // The bars sit below the coach: bring its read of the move into view (on
+    // phones the Report sheet covers it, so lower the sheet).
+    const sheet = document.getElementById("analyze-sheet");
+    if (sheet?.classList.contains("is-open")) sheet.querySelector("[data-sheet-close]")?.click();
+    else document.getElementById("analysis-explain")?.scrollIntoView({ block: "nearest" });
   }
 
   function renderClassificationBars(moves) {
@@ -151,7 +157,7 @@ export function createAnalyzeView({
         .map((g) => {
           const n = counts[g.key];
           return (
-            html`<button class="cbar-seg seg-${g.key}" style="flex:${n}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${n}</span></button>`
+            html`<button class="cbar-seg seg-${g.key}" style="flex:${n}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${classBadgeSymbol(g.members[0])} ${n}</span></button>`
           );
         });
       const track = total ? segs : html`<span class="cbar-empty">no scored moves</span>`;

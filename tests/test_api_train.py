@@ -141,6 +141,31 @@ def test_wrong_move_is_marked_incorrect(client):
     assert body["mistakes"]
 
 
+def test_hinted_correct_move_advances_but_grades_as_a_miss(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _start(client, rep).json()["session_id"]
+    body = client.post(
+        "/api/train/move",
+        json={"session_id": session_id, "played_uci": "e2e4", "hinted": True},
+        headers=csrf_headers(client),
+    ).json()
+    assert body["correct"] is True
+    assert body["completed_line"] is True
+    assert body["progress"]["attempts"] == 1
+    assert body["progress"]["correct_attempts"] == 0
+
+
+def test_smart_summary_preview_counts_the_next_queue(client):
+    _register(client, "a@example.com")
+    _white_repertoire_with_e4(client)
+    body = client.get("/api/train/smart/summary?mixed=true&preview=true").json()
+    assert body["next_session"] == {
+        "weak": 0, "due": 0, "new": 1, "polish": 0, "cards": 1, "resumed": 0,
+    }
+    assert "next_session" not in client.get("/api/train/smart/summary?mixed=true").json()
+
+
 def test_hint_reveals_expected_move(client):
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)

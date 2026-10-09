@@ -185,21 +185,9 @@ class SmartTrainingService:
             self.resumed = True
             return existing
 
-        progress_by_id = {
-            p.node_id: p
-            for p in self.repository.list_training_progress(
-                repertoire_id, owner_user_id=self._owner_or_raise()
-            )
-        }
         actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-        kwargs = {"seed": actual_seed}
-        if session_size is not None:
-            kwargs["session_size"] = session_size
-        if new_cap is not None:
-            kwargs["new_cap"] = new_cap
-        plan: SessionPlan = build_session_plan(
-            repertoire.root_node, repertoire.color, progress_by_id,
-            target_node_ids=target_node_ids, **kwargs
+        plan = self._plan_single(
+            repertoire, actual_seed, session_size, new_cap, target_node_ids
         )
         if not plan.cards:
             raise ValueError("repertoire has no trainable moves yet")
@@ -282,39 +270,7 @@ class SmartTrainingService:
             return existing
 
         actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-        # Split the session budget across repertoires (ceil, so small counts
-        # still get a slot); build_session_plan handles the per-rep urgency.
-        total_size = session_size if session_size is not None else DEFAULT_SESSION_SIZE
-        total_new = new_cap if new_cap is not None else DEFAULT_NEW_CAP
-        remaining_size = max(0, total_size)
-        remaining_new = max(0, total_new)
-        plans: List[tuple[str, SessionPlan]] = []
-        for index, rep in enumerate(reps):
-            remaining_reps = len(reps) - index
-            per_size = -(-remaining_size // remaining_reps)
-            per_new = -(-remaining_new // remaining_reps)
-            progress_by_id = {
-                p.node_id: p
-                for p in self.repository.list_training_progress(
-                    rep.id, owner_user_id=self._owner_or_raise()
-                )
-            }
-            plans.append(
-                (
-                    rep.id,
-                    build_session_plan(
-                        rep.root_node,
-                        rep.color,
-                        progress_by_id,
-                        seed=actual_seed + index,
-                        session_size=per_size,
-                        new_cap=per_new,
-                    ),
-                )
-            )
-            remaining_size -= plans[-1][1].counts.get("targets", 0)
-            remaining_new -= plans[-1][1].counts.get("new", 0)
-        mixed = mix_plans(plans, seed=actual_seed)
+        mixed = self._plan_mixed(reps, actual_seed, session_size, new_cap)
         if not mixed.cards:
             raise ValueError("repertoires have no trainable moves yet")
 
@@ -342,6 +298,79 @@ class SmartTrainingService:
             )
         self.repository.restart_training_session(session, self.owner_user_id)
         return session
+
+    def _progress_by_id(self, repertoire_id: str) -> Dict[str, TrainingProgress]:
+        return {
+            p.node_id: p
+            for p in self.repository.list_training_progress(
+                repertoire_id, owner_user_id=self._owner_or_raise()
+            )
+        }
+
+    def _plan_single(
+        self,
+        repertoire: Repertoire,
+        seed: int,
+        session_size: Optional[int] = None,
+        new_cap: Optional[int] = None,
+        target_node_ids: Optional[List[str]] = None,
+    ) -> SessionPlan:
+        return build_session_plan(
+            repertoire.root_node,
+            repertoire.color,
+            self._progress_by_id(repertoire.id),
+            seed=seed,
+            session_size=session_size if session_size is not None else DEFAULT_SESSION_SIZE,
+            new_cap=new_cap if new_cap is not None else DEFAULT_NEW_CAP,
+            target_node_ids=target_node_ids,
+        )
+
+    def _plan_mixed(
+        self,
+        reps: List[Repertoire],
+        seed: int,
+        session_size: Optional[int] = None,
+        new_cap: Optional[int] = None,
+    ) -> SessionPlan:
+        # Split the session budget across repertoires (ceil, so small counts
+        # still get a slot); build_session_plan handles the per-rep urgency.
+        remaining_size = max(0, session_size if session_size is not None else DEFAULT_SESSION_SIZE)
+        remaining_new = max(0, new_cap if new_cap is not None else DEFAULT_NEW_CAP)
+        plans: List[tuple[str, SessionPlan]] = []
+        for index, rep in enumerate(reps):
+            remaining_reps = len(reps) - index
+            plan = self._plan_single(
+                rep,
+                seed + index,
+                -(-remaining_size // remaining_reps),
+                -(-remaining_new // remaining_reps),
+            )
+            plans.append((rep.id, plan))
+            remaining_size -= plan.counts.get("targets", 0)
+            remaining_new -= plan.counts.get("new", 0)
+        return mix_plans(plans, seed=seed)
+
+    def next_session_counts(self, owner_user_id: str) -> Dict[str, int]:
+        """Card counts of the queue a plain Start would serve: what is left of
+        a resumable session, else a freshly planned one. Planning is
+        deterministic in everything but card order, so the counts match."""
+        reps = self.active_repertoires(owner_user_id)
+        if not reps:
+            return {**card_counts([]), "resumed": 0}
+        anchor = reps[0] if len(reps) == 1 else min(reps, key=lambda rep: rep.id)
+        existing = self.repository.load_latest_training_session(anchor.id, TrainingMode.SMART)
+        resumable = existing is not None and (
+            self._resumable(existing, anchor) if len(reps) == 1
+            else self._resumable_mixed(existing, reps)
+        )
+        if resumable:
+            counts = card_counts(
+                decode_card(raw) for raw in existing.line_order[existing.current_index:]
+            )
+        else:
+            plan = self._plan_single(anchor, 0) if len(reps) == 1 else self._plan_mixed(reps, 0)
+            counts = card_counts(plan.cards)
+        return {**counts, "resumed": int(resumable)}
 
     def _resumable_mixed(
         self, session: TrainingSession, reps: List[Repertoire]
@@ -602,6 +631,8 @@ class SmartTrainingService:
                         "fen_before": move.fen_before,
                         "fen_after": move.fen_after,
                         "start_fen": run_in[0].move.fen_before if run_in else move.fen_before,
+                        # How the position arose: "1.e4 c6 2.d4 d5 …" up to this move.
+                        "line": _numbered_line(path[:path_pos]),
                         "run_in": [
                             {"uci": p.move.uci, "san": p.move.san} for p in run_in
                         ],
@@ -972,3 +1003,19 @@ class SmartTrainingService:
         if not self.owner_user_id:
             raise ValueError("training service requires an owner")
         return self.owner_user_id
+
+
+def _numbered_line(nodes: List[OpeningNode]) -> str:
+    """Numbered SAN of a path ("1.e4 c6 2.d4", "5...exd4 6.Nxd4")."""
+    parts: List[str] = []
+    for node in nodes:
+        move = node.move
+        if move is None:
+            continue
+        fields = move.fen_before.split()
+        number = fields[5] if len(fields) > 5 else "1"
+        if len(fields) > 1 and fields[1] == "b":
+            parts.append(move.san if parts else "{0}...{1}".format(number, move.san))
+        else:
+            parts.append("{0}.{1}".format(number, move.san))
+    return " ".join(parts)

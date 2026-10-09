@@ -1,18 +1,30 @@
 import { html } from "../html.js";
-import { SMART_NEW_CAP } from "../generated/shared-constants.js";
 // Train tab rendering (lazy-loaded from app.js).
 
-// Health counts moves, not cards. The scheduler merges consecutive review
-// moves into cards and may add polish, so only name the available moves here.
-export function sessionPreviewText(health) {
-  if (!health) return "";
-  const reviews = (Number(health.weak) || 0) + (Number(health.due) || 0);
-  const fresh = Number(health.untrained) || 0;
-  const parts = [];
-  if (reviews) parts.push(`${reviews} review move${reviews === 1 ? "" : "s"} ready`);
-  if (fresh) parts.push(`${fresh} new available (up to ${Math.min(SMART_NEW_CAP, fresh)} this session)`);
-  if (!parts.length) return health.trainable > 0 ? "Nothing due — polish available" : "No moves to train yet";
-  return parts.join(" · ");
+// The queue a plain Start serves, in the same terms as the in-session chips:
+// "11 cards · 1 weak · 4 new · 6 polish", or what is left of a resumable one.
+export function sessionPreviewText(next) {
+  if (!next) return "";
+  const cards = Number(next.cards) || 0;
+  if (!cards) return "No moves to train yet";
+  const parts = ["weak", "due", "new", "polish"]
+    .filter((kind) => Number(next[kind]) > 0)
+    .map((kind) => `${next[kind]} ${kind}`);
+  const total = `${cards} card${cards === 1 ? "" : "s"}${next.resumed ? " left" : ""}`;
+  return [total, ...parts].join(" · ");
+}
+
+// The last plies of a numbered line ("1.e4 c6 2.d4 d5" → "2.d4 d5"): which
+// position a card asks about, without its answer.
+export function lineTail(line, plies = 2) {
+  const tokens = String(line || "").split(" ").filter(Boolean);
+  const from = Math.max(0, tokens.length - plies);
+  const tail = tokens.slice(from);
+  if (tail.length && !/^\d+\./.test(tail[0])) {
+    const number = from > 0 && /^(\d+)\./.exec(tokens[from - 1]);
+    if (number) tail[0] = `${number[1]}...${tail[0]}`;
+  }
+  return tail.join(" ");
 }
 
 export function createTrainView({
@@ -23,6 +35,11 @@ export function createTrainView({
   updateTrainTurnBadge,
   onStreakRendered,
 }) {
+  document.getElementById("train-line-path")?.addEventListener("click", (event) => {
+    const el = event.currentTarget;
+    el.setAttribute("aria-expanded", String(el.getAttribute("aria-expanded") !== "true"));
+  });
+
   function renderTrainSync() {
     const el = document.getElementById("train-sync");
     if (!el) return;
@@ -84,6 +101,10 @@ export function createTrainView({
     document.getElementById("train-line-label").textContent =
       `Line ${(prompt.current_index || 0) + 1} / ${total}`;
     paintCardKind(null);
+    renderLinePath("");
+    // Rehearsal has no queue: drop a smart session's "Up next" rows.
+    const upnext = document.getElementById("train-upnext");
+    if (upnext) upnext.hidden = true;
     document.getElementById("train-progress-fill").style.width =
       `${Math.round(((prompt.current_index || 0) / Math.max(1, total)) * 100)}%`;
     const progress = document.getElementById("train-progress");
@@ -158,13 +179,11 @@ export function createTrainView({
           const kind = smart.cardKinds[card.kind]?.label || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
           const dot = card.color === "black" ? "black" : "white";
-          // Only a new move is shown before it is asked (the card demonstrates
-          // it anyway). Weak/due/polish cards test recall, so printing their
-          // answer here would give it away (UX walkthrough 2026-10-01 P1-2).
-          const target = card.kind === "new" && card.targets && card.targets[0];
-          const lineTail = target && target.san ? target.san : "";
+          // Name the position, never the answer: every card can come back as
+          // a recall test.
+          const tail = lineTail(card.targets?.[0]?.line);
           return (
-            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${lineTail}</span></div>`
+            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${tail}</span></div>`
           );
         })}`;
   }
@@ -178,7 +197,18 @@ export function createTrainView({
     chip.textContent = kind ? appState.smart.cardKinds[kind]?.label || kind : "";
   }
 
+  // How the card's position arose. One line showing its end; a tap shows it all.
+  function renderLinePath(line) {
+    const el = document.getElementById("train-line-path");
+    if (!el) return;
+    el.hidden = !line;
+    el.setAttribute("aria-expanded", "false");
+    el.title = line || "";
+    el.innerHTML = line ? html`<bdi>${line}</bdi>` : "";
+  }
+
   function renderSmartProgress(prompt) {
+    renderLinePath(prompt.target?.line || "");
     const total = Math.max(1, prompt.total_cards);
     document.getElementById("train-line-label").textContent =
       `Card ${Math.min(prompt.card_index + 1, total)} / ${total}`;

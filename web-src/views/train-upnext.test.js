@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createTrainView } from "./train.js";
+import { createTrainView, lineTail } from "./train.js";
 
 // Characterization for the ui-prototype-v2 "Up next" preview on Train:
 //  - the rows come from the live smart queue only (appState.smart.queue);
@@ -40,12 +40,12 @@ function makeView(appState, elements) {
   });
 }
 
-function card(kind, rep, color, san) {
+function card(kind, rep, color, san, line = "1.e4 c6 2.d4 d5") {
   return {
     kind,
     repertoire_name: rep,
     color,
-    targets: [{ san }],
+    targets: [{ san, line }],
   };
 }
 
@@ -93,26 +93,32 @@ describe("train up-next preview", () => {
     expect(String(host.innerHTML)).toContain("color-dot black");
   });
 
-  it("never prints the answer of an upcoming recall card (UX 2026-10-01 P1-2)", () => {
+  it("names each upcoming position, never its answer, new moves included", () => {
     const appState = {
       smart: {
         cardIndex: 0,
         repertoireName: "Caro-Kann: Advance",
         queue: [
           card("new", "Caro-Kann: Advance", "white", "Nc3"),
-          card("weak", "London System", "white", "Qxb7"),
+          card("weak", "London System", "white", "Qxb7", "1.d4 d5 2.Bf4 c5 3.e3 Qb6"),
           card("due", "Caro-Kann: Advance", "white", "Bd3"),
-          card("new", "Najdorf — 6.Bg5 prep", "black", "Be7"),
+          card("new", "Najdorf — 6.Bg5 prep", "black", "Be7", "5.Nc3 a6 6.Bg5 e6 7.f4"),
         ],
       },
     };
     const view = makeView(appState, elements);
     view.renderSmartProgress({ total_cards: 4, card_index: 0, kind: "new", targets_total: 1, target_index: 0 });
-    const html = elements["train-upnext"].innerHTML;
-    expect(String(html)).not.toContain("Qxb7");
-    expect(String(html)).not.toContain("Bd3");
-    // A new move is demonstrated by its card anyway, so it may be previewed.
-    expect(String(html)).toContain("Be7");
+    const html = String(elements["train-upnext"].innerHTML);
+    for (const answer of ["Qxb7", "Bd3", "Be7"]) expect(html).not.toContain(answer);
+    expect(html).toContain("3.e3 Qb6");
+    expect(html).toContain("6...e6 7.f4");
+  });
+
+  it("lineTail keeps the move number of a black move", () => {
+    expect(lineTail("1.e4 c6 2.d4 d5")).toBe("2.d4 d5");
+    expect(lineTail("1.e4 c6 2.d4 d5 3.e5")).toBe("2...d5 3.e5");
+    expect(lineTail("5...exd4")).toBe("5...exd4");
+    expect(lineTail("")).toBe("");
   });
 
   it("hides entirely on the last card", () => {

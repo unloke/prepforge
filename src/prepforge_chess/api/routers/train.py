@@ -341,21 +341,24 @@ def smart_start(
 def smart_summary(
     repertoire_id: str | None = None,
     mixed: bool = False,
+    preview: bool = False,
     local_date: str | None = None,
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Fresh health + tomorrow's due forecast for the end-of-session screen.
-    ``mixed=true`` aggregates over all the caller's active repertoires.
+    ``mixed=true`` aggregates over all the caller's active repertoires;
+    ``preview=true`` adds ``next_session``, the card counts a mixed Start serves.
 
     Carries the authoritative ``day_streak`` so the summary screen renders the
     server's truth rather than a possibly-stale client cache: the final sync
     before this fetch usually writes no new attempts, so ``/smart/sync`` returns
     ``day_streak: null`` and never refreshes the client value."""
     if mixed:
-        payload = _mixed_summary_payload(
-            repo, SmartTrainingService(repo, owner).active_repertoires(owner), owner
-        )
+        service = SmartTrainingService(repo, owner)
+        payload = _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
+        if preview:
+            payload["next_session"] = service.next_session_counts(owner)
     elif not repertoire_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -558,6 +561,8 @@ def hint(
 class MoveBody(BaseModel):
     session_id: str
     played_uci: str
+    # A hint was shown before this answer: it advances but grades as a miss.
+    hinted: bool = False
     # Same daily-streak day hint as SmartMoveBody — rehearsal counts as training.
     local_date: str | None = None
 
@@ -572,7 +577,9 @@ def move(
     return the result with the opponent's reply so the UI can animate both plies."""
     _owned_session(repo, body.session_id, owner)
     try:
-        result = TrainingService(repo, owner).submit_move(body.session_id, body.played_uci)
+        result = TrainingService(repo, owner).submit_move(
+            body.session_id, body.played_uci, hinted=body.hinted
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {

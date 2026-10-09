@@ -134,7 +134,7 @@
                 <button class="ib" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
               </div>
               <span class="board-label" id="analysis-board-label">Initial position</span>
-              <button class="pv-exit" id="analysis-pv-exit" type="button" title="Back to game (Esc)" hidden>Back to game</button>
+              <button class="pv-exit" id="analysis-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <button class="ib bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>
                 <button class="ib bb-sheet" type="button" data-sheet-open="analyze-open" title="Games" aria-label="Games" aria-expanded="false" aria-controls="analyze-open"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5H10l2 2h6.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/></svg></button>
@@ -178,6 +178,7 @@
                     <b class="ev-title">Evaluation</b>
                     <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
                     <span class="ev-meter" id="analysis-eval-meter" aria-hidden="true"><i></i></span>
+                    <span class="ev-move" id="analysis-ev-move" aria-hidden="true"></span>
                     <button class="ev-report" type="button" data-sheet-open="analyze-sheet" aria-expanded="false" aria-controls="analyze-sheet">Report</button>
                     <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Engine</button>
                   </div>
@@ -273,7 +274,7 @@
                 <button class="ib" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
               </div>
               <span class="board-label" id="build-board-label">No repertoire</span>
-              <button class="pv-exit" id="build-pv-exit" type="button" title="Back to the repertoire position (Esc)" hidden>Back to game</button>
+              <button class="pv-exit" id="build-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <span class="build-sync" id="build-sync" aria-live="polite" hidden></span>
                 <button class="ib bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>
@@ -481,8 +482,9 @@
                   <b id="train-line-label">Card 1 / 1</b>
                   <span class="kchip" id="train-card-kind" hidden></span>
                   <span class="spacer"></span>
-                  <span class="train-accuracy" id="train-accuracy" title="Share of moves you got right on the first try this session">—</span>
+                  <span class="train-accuracy" id="train-accuracy" title="Share of review moves you got right on the first try, without a hint">—</span>
                 </div>
+                <button class="train-line-path" id="train-line-path" type="button" aria-expanded="false" hidden></button>
                 <div class="card-dots" id="train-card-dots" title="Moves in this card"></div>
                 <div class="prog" id="train-progress" role="progressbar" aria-label="Cards done this session" title="Cards done this session"><i id="train-progress-fill"></i></div>
                 <div class="qstrip" id="train-queue" hidden>
@@ -494,13 +496,13 @@
                     <b id="train-stat-streak">0</b>
                     <span>In a row</span>
                   </div>
-                  <div class="stat" title="Correct on the first try">
+                  <div class="stat" title="Correct on the first try, without a hint">
                     <b class="good" id="train-stat-correct">0</b>
                     <span>Correct</span>
                   </div>
-                  <div class="stat" title="Wrong on the first try; retries don't count">
+                  <div class="stat" title="Wrong on the first try or answered after a hint">
                     <b class="bad" id="train-stat-mistakes">0</b>
-                    <span>Mistakes</span>
+                    <span>Missed</span>
                   </div>
                 </div>
                 <div class="trail">

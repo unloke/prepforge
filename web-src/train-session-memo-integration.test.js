@@ -36,6 +36,7 @@ function harness(overrides = {}) {
     loadTrainResume: async () => ({ mapTrainUiSession, shouldResetTrainStats }),
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
+    invalidateTrainSessionPreview: () => {},
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},

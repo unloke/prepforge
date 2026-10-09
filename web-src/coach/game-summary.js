@@ -44,10 +44,11 @@ export function hasClassifiedMoves(analysis) {
   return moves.some((m) => m && m.classification);
 }
 
-// buildGameSummary({ moves, selfSide }) -> string ("" when there is nothing classified).
+// buildGameSummary({ moves, selfSide }) -> { text, turningPoint } (null when nothing is
+// classified). turningPoint is { ply, label } for the move to jump to, or null.
 //   selfSide — "white" | "black" when the user played one side, else null.
 export function buildGameSummary({ moves = [], selfSide = null } = {}) {
-  if (!moves.length || !moves.some((m) => m && m.classification)) return "";
+  if (!moves.length || !moves.some((m) => m && m.classification)) return null;
   const sides = selfSide ? [selfSide, selfSide === "white" ? "black" : "white"] : ["white", "black"];
   const label = (side) => {
     if (selfSide) return side === selfSide ? "You" : "Opponent";
@@ -62,6 +63,8 @@ export function buildGameSummary({ moves = [], selfSide = null } = {}) {
     key = reviewed.find((m) => String(m.classification || "").toLowerCase() === cls);
     if (key) break;
   }
-  const pointer = key ? ` Turning point: ${moveRef(key)}.` : "";
-  return `${lines.join(" ")}${pointer}`;
+  return {
+    text: lines.join(" "),
+    turningPoint: key ? { ply: Number(key.ply), label: moveRef(key) } : null,
+  };
 }
