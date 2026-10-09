@@ -18,7 +18,8 @@ export function createCoverageController({
     document.querySelector("#coverage-scope .is-active")?.dataset.scope === "branch" ? "branch" : "repertoire";
   const maxDepth = () => Number(document.getElementById("coverage-depth")?.value) || 16;
   const host = () => document.getElementById("coverage-gaps");
-  const pct = (n) => `${(n * 100).toFixed(1)}%`;
+  // A rare but real gap reads "<0.1%", never a misleading "0.0%".
+  const pct = (n) => (n > 0 && n < 0.0005 ? "<0.1%" : `${(n * 100).toFixed(1)}%`);
 
   function previewGap(gap) {
     const board = getBoard();

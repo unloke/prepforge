@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { formatPlayTrail } from "./train-play.js";
 
 export async function prepareCoverageReply({ build, gap, generate, signal, rating, depth }) {
   const parent = build.nodes.find((n) => n.id === gap.nodeId);
@@ -31,7 +32,7 @@ export async function prepareCoverageReply({ build, gap, generate, signal, ratin
     })),
   ] };
   const fens = new Map([[anchor.id, anchor.fen]]);
-  const sans = [];
+  const moves = [{ id: anchor.id, parentId: parent.id, san: move.san, before: parent.fen }];
   const ownNodeRefs = [];
   for (const change of additions) {
     const before = fens.get(change.parentRef) || snapshot.nodes.find((n) => n.id === change.parentRef)?.fen;
@@ -39,9 +40,33 @@ export async function prepareCoverageReply({ build, gap, generate, signal, ratin
     const game = new Chess(before);
     const m = game.move({ from: change.moveUci.slice(0, 2), to: change.moveUci.slice(2, 4), promotion: change.moveUci[4] });
     fens.set(change.tempId, game.fen());
-    sans.push(m.san);
+    moves.push({ id: change.tempId, parentId: change.parentRef, san: m.san, before });
     if ((new Chess(before).turn() === "w" ? "white" : "black") === build.color) ownNodeRefs.push(change.tempId);
   }
+  const rootFen = build.nodes.find((n) => n.depth === 0)?.fen;
+  const path = formatPlayTrail((gap.pathSans || []).map((san) => ({ san })), rootFen);
+  const line = [path, movetext(moves, parent.id, !path)].filter(Boolean).join(" ");
   return { gap, plan, rootNodeId: parent.id, fenAfter: anchor.fen,
-    sans, ownNodeRefs, addedMoves: plan.changes.filter((c) => c.action === "planned_add").length };
+    line, ownNodeRefs, addedMoves: plan.changes.filter((c) => c.action === "planned_add").length };
+}
+
+// PGN movetext of a move tree: the first child continues the line, siblings
+// are (variations), so alternative replies never read as one sequence.
+function movetext(moves, rootId, numberFirst) {
+  const kids = new Map();
+  for (const m of moves) kids.set(m.parentId, [...(kids.get(m.parentId) || []), m]);
+  const num = (fen, force) => {
+    const [, side, , , , full] = fen.split(" ");
+    return side === "w" ? `${full}. ` : force ? `${full}... ` : "";
+  };
+  const walk = (id, force) => {
+    const [main, ...alts] = kids.get(id) || [];
+    if (!main) return [];
+    return [
+      `${num(main.before, force)}${main.san}`,
+      ...alts.map((alt) => `(${[`${num(alt.before, true)}${alt.san}`, ...walk(alt.id, false)].join(" ")})`),
+      ...walk(main.id, alts.length > 0),
+    ];
+  };
+  return walk(rootId, numberFirst).join(" ");
 }
