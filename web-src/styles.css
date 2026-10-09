@@ -217,6 +217,9 @@
   --explorer-draw-ink: #111315;
 }
 
+/* `hidden` always wins: no view's display rule can resurrect a hidden element. */
+[hidden] { display: none !important; }
+
 * {
   box-sizing: border-box;
 }
@@ -490,10 +493,6 @@ h2 {
   border-color: var(--line-strong);
 }
 
-.status-close[hidden] {
-  display: none;
-}
-
 /* Primary navigation items: rail rows on desktop, bottom tabs on mobile.
    Icons never move between states; labels fade in when the rail overlays. */
 .tab {
@@ -577,10 +576,6 @@ h2 {
   justify-content: center;
 }
 
-.sheet-scrim[hidden] {
-  display: none;
-}
-
 .sheet {
   width: 100%;
   background: var(--panel);
@@ -601,7 +596,6 @@ h2 {
   margin: 2px auto 6px;
 }
 
-.sheet-item[hidden] { display: none; }
 .sheet-item {
   display: flex;
   align-items: center;
@@ -751,10 +745,6 @@ h2 {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.src-chips[hidden] {
-  display: none;
 }
 
 .src-empty {
@@ -1152,14 +1142,6 @@ h2 {
   line-height: 1.5;
 }
 
-.pf-info-pop[hidden] {
-  display: none;
-}
-
-.pf-select-native[hidden] {
-  display: none;
-}
-
 /* Modal select field */
 .modal-field select {
   height: 32px;
@@ -1264,10 +1246,6 @@ h2 {
   cursor: not-allowed;
 }
 
-.ib[hidden] {
-  display: none;
-}
-
 /* Compute actions whose engine is unavailable in this browser: clearly inert
    rather than looking like a live button that errors on click. Covers the
    primary `.btn` (Analyze, Build → Generate moves) and icon buttons. */
@@ -1370,7 +1348,6 @@ h2 {
   gap: 18px;
 }
 .lib .today { padding: 12px 14px; }
-.today[hidden] { display: none; }
 .today-streak {
   display: flex;
   align-items: center;
@@ -1454,7 +1431,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .steps { grid-column: 2; grid-row: 1; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
-.search-field[hidden] { display: none; }
 .search-field {
   display: flex;
   align-items: center;
@@ -1497,7 +1473,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
   font-weight: 600;
 }
-.lib-cols[hidden] { display: none; }
 /* Empty library (signed out / no repertoires): the onboarding card has no
    filter chips or column header — only the search stays. */
 .lib-list.is-empty .card-head .seg,
@@ -2375,7 +2350,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: 12px;
   line-height: 1.35;
 }
-.train-repertoire-empty[hidden] { display: none; }
 /* Confetti */
 .confetti-layer {
   position: fixed;
@@ -2511,7 +2485,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   cursor: pointer;
 }
 .pv-exit:hover { background: var(--accent); color: var(--accent-ink); }
-.pv-exit[hidden] { display: none; }
 
 .board-label {
   flex: 1;
@@ -2540,9 +2513,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--surface-3);
   white-space: nowrap;
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
-}
-.build-sync[hidden] {
-  display: none;
 }
 .build-sync.is-saved {
   color: var(--good-text);
@@ -2579,8 +2549,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   box-shadow: var(--shadow-1);
   overflow: hidden;
 }
-.panel > [hidden],
-.panel > .panel-body > [hidden] { display: none; }
 #view-build .sidebar { gap: 0; }
 
 .panel-head {
@@ -2753,7 +2721,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .dock-resizer:focus-visible::after,
 .dock-resizer.is-dragging::after { opacity: 1; background: var(--accent); }
 .dock-resizer:focus-visible { outline: none; }
-.dock-resizer[hidden] { display: none; }
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-tabs .dock-fold {
   margin-left: auto;
@@ -2777,12 +2744,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
   margin-bottom: 6px;
 }
-.dock-tools[hidden] { display: none; }
 .dock-tools .spacer { flex: 1; }
-.dock-tools .seg[hidden],
-.dock-tools .btn[hidden],
-.dock-tools .ib[hidden],
-.dock-tools .dock-select[hidden] { display: none; }
 .dock-select {
   min-height: 26px;
   padding: 0 6px;
@@ -2819,7 +2781,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
 }
 .inspector-panel { min-width: 0; }
-.inspector-panel[hidden] { display: none; }
 
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
@@ -2877,7 +2838,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: color-mix(in srgb, var(--text) 20%, transparent);
   pointer-events: none;
 }
-.blitz-bar[hidden] { display: none; }
 .blitz-bar i { display: block; height: 100%; width: 100%; background: var(--k-due); }
 
 /* Coach banner: a strip under the mode control; data-state tints it. */
@@ -2958,7 +2918,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border: 1px solid var(--line-strong);
   border-radius: 6px;
 }
-.train-turn-badge[hidden] { display: none; }
 /* Contrasting disc so the side-to-move's king always pops. */
 .train-turn-badge[data-side="white"] { background: var(--text); }
 .train-turn-badge[data-side="black"] { background: var(--dot-white); }
@@ -2966,18 +2925,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Cards */
 .tcard { display: flex; flex-direction: column; gap: 10px; }
-.tcard[hidden] { display: none; }
 .tcard h3 { margin: 0; font-size: 14px; }
 .tcard p { margin: 0; font-size: var(--fs-s); }
 .tcard .field,
 .train-play-setup { display: flex; flex-direction: column; gap: 10px; }
 .tcard .field { gap: 4px; }
-.tcard .field[hidden],
-.train-play-setup[hidden],
-.train-picker-label[hidden],
-.train-setup select[hidden],
-.train-blitz-row[hidden],
-.train-start-row[hidden] { display: none; }
 .train-picker-label { color: var(--muted); font-size: var(--fs-s); font-weight: 550; }
 .train-setup select {
   width: 100%;
@@ -3011,7 +2963,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-xs);
   font-weight: 650;
 }
-.train-play-chip[hidden] { display: none; }
 
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
@@ -3035,7 +2986,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .train-line-path bdi { direction: ltr; unicode-bidi: isolate; }
 .train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
-.train-line-path[hidden] { display: none; }
 .card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs-xs); }
 .card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
 .card-dots i.done { background: var(--good); }
@@ -3044,12 +2994,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
 .prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 320ms ease; }
 .qstrip { display: flex; flex-direction: column; gap: 6px; }
-.qstrip[hidden] { display: none; }
 .qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
-/* views/train.js hides the bar when the queue has no composition to show; the
-   flex display above would otherwise beat the UA [hidden] rule and leave an
-   empty grey strip under the progress bar. */
-.qbar[hidden] { display: none; }
 .qbar i { display: block; min-width: 4px; }
 .qbar i.k-weak, .tsum-row i.k-weak { background: var(--k-weak); }
 .qbar i.k-due, .tsum-row i.k-due { background: var(--k-due); }
@@ -3061,10 +3006,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-learning { color: var(--accent-text); background: color-mix(in srgb, var(--k-learning) 13%, transparent); }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
-.kchip[hidden] { display: none; }
 
 .train-session-preview { margin: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
-.train-session-preview[hidden] { display: none; }
 
 /* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
 .stats { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3094,7 +3037,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .trail-empty { color: var(--label); font-size: var(--fs-xs); }
 
 .upnext { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
-.upnext[hidden] { display: none; }
 .un-row {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr) auto;
@@ -3178,7 +3120,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex-direction: column;
   gap: 12px;
 }
-.games-panel[hidden] { display: none; }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -3203,7 +3144,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 12px;
 }
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.sum-chips[hidden] { display: none; }
 .sum-chip {
   height: 26px;
   padding: 0 10px;
@@ -3238,7 +3178,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex-direction: column;
   gap: 12px;
 }
-.scout-panel[hidden] { display: none; }
 .scout-grid {
   flex: 1 1 auto;
   min-height: 0;
@@ -3255,7 +3194,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
 .scout-side { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
-.scout-side[hidden] { display: none; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
 .scout-panel:not(:has(.scout-section)) .scout-side { display: none; }
@@ -3603,7 +3541,6 @@ body.is-guest .replay-results:empty::before {
   font-size: var(--fs-s);
   color: var(--text);
 }
-.inline-undo[hidden] { display: none; }
 /* Repertoire loading skeleton (editRepertoire → setBuildLoading). */
 .tree-skeleton {
   display: grid;
@@ -3704,7 +3641,6 @@ body.is-guest .replay-results:empty::before {
   align-items: center;
   gap: 6px;
 }
-.dock-engine-switch[hidden] { display: none; }
 .dock-engine-switch .pf-row-label { font-size: var(--fs-s); color: var(--label); font-weight: 600; }
 
 .explorer-bar-d { background: var(--explorer-draw); color: var(--explorer-draw-ink); }
@@ -4773,10 +4709,6 @@ body.is-guest .replay-results:empty::before {
   transition: opacity 200ms ease, transform 200ms ease;
 }
 
-.engine-window[hidden] {
-  display: none;
-}
-
 /* Docked in the Repertoire inspector's Engine tab: in flow, no chrome. */
 .engine-window.is-docked {
   position: static;
@@ -5250,10 +5182,6 @@ body.is-guest .replay-results:empty::before {
   border-radius: 0;
 }
 
-.engine-banner[hidden] {
-  display: none;
-}
-
 .engine-banner-title {
   font-weight: 700;
   color: var(--accent-strong);
@@ -5289,10 +5217,6 @@ body.is-guest .replay-results:empty::before {
   align-items: flex-start;
   justify-content: center;
   padding: 12vh 16px 16px;
-}
-
-.palette[hidden] {
-  display: none;
 }
 
 .palette-panel {
@@ -5374,7 +5298,6 @@ body.is-guest .replay-results:empty::before {
   border-radius: var(--radius-card);
   background: var(--panel);
 }
-.status[hidden] { display: none; }
 .topbar-status-slot .status:not([hidden]) {
   margin: 0;
   padding: 0;

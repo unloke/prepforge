@@ -90,17 +90,8 @@ describe("visual system tokens", () => {
     expect(sub).toMatch(/-webkit-line-clamp:\s*2/);
     // The blitz clock is absolutely positioned over the board's edge: hiding it never reflows.
     expect(ruleBody(".blitz-bar")).toMatch(/position:\s*absolute/);
-    expect(ruleBody(".blitz-bar[hidden]")).toMatch(/display:\s*none/);
-    const badgeHidden = ruleBody(".train-turn-badge[hidden]");
-    expect(badgeHidden).toMatch(/display:\s*none/);
-    const ibHidden = ruleBody(".ib[hidden]");
-    expect(ibHidden).toMatch(/display:\s*none/);
-    const syncHidden = ruleBody(".build-sync[hidden]");
-    expect(syncHidden).toMatch(/display:\s*none/);
-    const engineHidden = ruleBody(".engine-banner[hidden]");
-    expect(engineHidden).toMatch(/display:\s*none/);
-    const todayHidden = ruleBody(".today[hidden]");
-    expect(todayHidden).toMatch(/display:\s*none/);
+    // Hidden chrome (blitz clock, turn badge, sync chip…) relies on the global [hidden] rule.
+    expect(css).toMatch(/\[hidden\] \{ display: none !important; \}/);
     const coverage = ruleBody(".coverage-gaps");
     expect(coverage).not.toMatch(/overflow-y/);
     expect(coverage).not.toMatch(/max-height/);
@@ -209,7 +200,6 @@ describe("seven views share chrome families", () => {
     expect(srs).toBeGreaterThan(blitz);
     const pickerBody = setup.slice(picker, blitz);
     expect(pickerBody).toContain('id="train-repertoire-select"');
-    expect(css).toContain(".tcard .field[hidden]");
     expect(ruleBody(".tcard .field")).toMatch(/gap:\s*4px/);
   });
 
