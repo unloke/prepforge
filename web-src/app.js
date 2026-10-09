@@ -168,6 +168,19 @@ window.addEventListener("error", (e) => {
     t: Date.now(),
   });
 });
+// A deploy renames every hashed chunk, so a tab opened before it fails its next
+// lazy import. Reload once to pick up the new build; the timestamp guard stops a
+// loop when a chunk is genuinely missing (and no storage means no reload).
+window.addEventListener("vite:preloadError", () => {
+  const key = "prepforge.chunk_reload_at";
+  try {
+    if (Date.now() - (Number(sessionStorage.getItem(key)) || 0) < 60_000) return;
+    sessionStorage.setItem(key, String(Date.now()));
+  } catch {
+    return;
+  }
+  location.reload();
+});
 window.addEventListener("unhandledrejection", (e) => {
   reportClientError({
     kind: "rejection",
@@ -939,9 +952,9 @@ function setStatus(message, { severity = "info" } = {}) {
   const showNow = !!text && text !== "Ready" && !inProgress;
   status.classList.toggle("is-fresh", showNow);
   if (slot) slot.classList.toggle("is-idle", !showNow);
-  // Error pills are dropped on navigation (clearStaleStatusOnNavigate); note
-  // when this one was raised so an error set by the navigation itself stays.
-  setStatus._errorAt = isError && text ? Date.now() : 0;
+  // Pills are dropped on navigation (clearStaleStatusOnNavigate); note when
+  // this one was raised so a message set by the navigation itself stays.
+  setStatus._at = text ? Date.now() : 0;
   if (inProgress && typeof window !== "undefined") {
     setStatus._showTimer = window.setTimeout(() => {
       if (status.textContent === text) {
@@ -972,7 +985,7 @@ function clearStatus() {
     window.clearTimeout(setStatus._timer);
     window.clearTimeout(setStatus._showTimer);
   }
-  setStatus._errorAt = 0;
+  setStatus._at = 0;
   if (status) {
     status.textContent = "";
     status.title = "";
@@ -985,13 +998,11 @@ function clearStatus() {
   if (closeBtn) closeBtn.hidden = true;
 }
 
-// An error belongs to the page it happened on: leaving that page drops it,
+// A pill belongs to the page it was raised on: leaving that page drops it,
 // unless it was raised a moment ago by the very action that is navigating.
-const STATUS_ERROR_NAV_GRACE_MS = 400;
+const STATUS_NAV_GRACE_MS = 400;
 function clearStaleStatusOnNavigate() {
-  const status = document.getElementById("app-status");
-  if (!status || status.dataset.state !== "error") return;
-  if (shouldClearStatusOnNavigate(setStatus._errorAt, Date.now(), STATUS_ERROR_NAV_GRACE_MS)) clearStatus();
+  if (shouldClearStatusOnNavigate(setStatus._at, Date.now(), STATUS_NAV_GRACE_MS)) clearStatus();
 }
 
 // Keep the floating status pill out of the way: it rides above the job-toast

@@ -1097,8 +1097,16 @@ async function runAnalysis(options = {}) {
     } catch (_) {
       /* logging only */
     }
-    setStatus(`Analysis ready: ${payload.moves.length} plies`, { severity: "success" });
     complete(true);
+    // The docked job toast goes with the Analyze panel; a run that finishes
+    // after the user left gets a card in the stack instead.
+    if (activeViewName() !== "analyze") {
+      jobToast.notify({
+        title: "Analysis ready",
+        message: `${payload.moves.length} plies classified`,
+        actions: [{ label: "Open", primary: true, onClick: () => switchView("analyze") }],
+      });
+    }
     appState.analysisSourcePgn = pgn;
     revealAnalysisResults();
     // The source has done its job — fold it away so the report gets the room.

@@ -166,15 +166,17 @@
     box-shadow: none;
   }
   #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); }
-  #view-dashboard .lib-row .lib-opt { display: flex; flex: 1 1 auto; align-items: center; gap: 10px; min-width: 0; }
-  #view-dashboard .lib-row .lib-cell-rep { display: flex; flex: 1 1 auto; align-items: center; gap: 12px; min-width: 0; }
+  #view-dashboard .lib-row .lib-opt { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+  #view-dashboard .lib-row .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
   #view-dashboard .lib-row .color-dot { flex: none; width: 26px; height: 26px; }
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
   #view-dashboard .lib-row .name { font-size: 17px; font-weight: 600; }
   #view-dashboard .lib-row .rep-sub { font-size: 13px; }
   #view-dashboard .lib-row .lib-cell-mastery { display: none; }
-  #view-dashboard .lib-row .lib-cell-queue { display: flex; flex: none; gap: 4px; }
-  #view-dashboard .lib-row .lib-cell-queue .muted { display: none; }
+  /* Queue chips get their own line under the name (indented past the dot) so
+     they never squeeze the name to zero width. */
+  #view-dashboard .lib-row .lib-cell-queue { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
+  #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 40px; height: 40px; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }

@@ -265,25 +265,15 @@ async function runViewport(vp) {
   await page.locator("#pgn-input").evaluate((el, pgn) => { el.value = pgn; }, DEMO_PGN_MOVETEXT);
   await page.evaluate(() => document.getElementById("run-analysis").click());
   // Stockfish at depth 4 over ~5 positions finishes in well under a second;
-  // wait on the RESULTS (not a fixed sleep) and grab the transient success
-  // status early — setStatus clears non-error text after ~6s.
-  let sawReadyStatus = false;
-  try {
-    await page.waitForFunction(
-      () => /Analysis ready/.test(document.querySelector('[data-testid="app-status"]')?.textContent || ""),
-      null,
-      { timeout: 20000 },
-    );
-    sawReadyStatus = true;
-  } catch { /* status may have flashed before render assertions below */ }
+  // wait on the RESULTS, not a fixed sleep.
   await page.waitForFunction(
     () =>
       !document.getElementById("analysis-results").hidden &&
-      document.querySelectorAll("#analysis-moves .mtree-move").length >= 5,
+      document.querySelectorAll("#analysis-moves .mtree-move").length >= 5 &&
+      document.querySelectorAll("#analysis-summary .cbar-row").length > 0,
     null,
-    { timeout: 10000 },
+    { timeout: 20000 },
   );
-  check(sawReadyStatus, "status should confirm 'Analysis ready' after the run");
   const chartKids = await page.locator("#eval-chart *").count();
   check(chartKids > 0, "eval chart should have rendered the eval graph");
   const movesRows = await page.locator("#analysis-moves .mtree-move").count();
