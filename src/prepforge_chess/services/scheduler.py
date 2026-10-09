@@ -30,7 +30,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 from prepforge_chess.services.progress import (
@@ -330,8 +330,10 @@ def build_session_plan(
     take(polish, CARD_POLISH)
     take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 
-    cards = _merge_into_cards(candidates, selected_kind, max_targets_per_card, root.repertoire_id)
+    cards = _merge_into_cards(candidates, selected_kind, max_targets_per_card, root.repertoire_id, requested)
     ordered = _order_cards(cards, {c.node.id: c for c in candidates}, rng)
+    # Explicit practice opens the session: the move the user asked for is card 1.
+    ordered.sort(key=lambda card: card.first_target_id not in requested)
     counts = card_counts(ordered)
     counts["targets"] = len(selected_kind)
     return SessionPlan(cards=ordered, counts=counts)
@@ -350,13 +352,15 @@ def _merge_into_cards(
     selected_kind: Dict[str, str],
     max_targets_per_card: int,
     repertoire_id: str,
+    requested: Set[str] = frozenset(),
 ) -> List[TrainingCard]:
     """Fold consecutive selected own moves on one path into multi-target cards.
 
     Candidates arrive in preorder, so an ancestor is always processed before
     its descendants; keying drafts by their current tail means a second branch
     hanging off the same ancestor finds the tail already moved and starts its
-    own card. ``new`` targets never merge — they are taught one at a time.
+    own card. ``new`` targets never merge — they are taught one at a time — and
+    a requested target always starts its own card.
     """
     drafts: List[_CardDraft] = []
     draft_by_tail: Dict[str, _CardDraft] = {}
@@ -367,6 +371,7 @@ def _merge_into_cards(
         draft = draft_by_tail.get(cand.prev_own_id) if cand.prev_own_id else None
         if (
             draft is not None
+            and cand.node.id not in requested
             and kind != CARD_NEW
             and draft.kind != CARD_NEW
             and draft.targets < max_targets_per_card
