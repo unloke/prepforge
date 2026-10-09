@@ -2,6 +2,7 @@
 
 Use these documents to navigate the current implementation:
 
+- [Current user operations](user-operations.md): desktop/mobile entry points and end-to-end operating steps, checked against current source and the running UI on 2026-10-08.
 - [Architecture snapshot](archive/history/2026-09-29/ARCHITECTURE.md): historical runtime map; verify against source.
 - [Roadmap snapshot](archive/history/2026-09-29/ROADMAP.md): historical checks and candidate improvements.
 - [Deployment](DEPLOYMENT.md): environment variables and operational setup.
