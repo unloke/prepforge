@@ -131,7 +131,7 @@ function bestLineText(f, outcome, byColor) {
 }
 
 // Everything the wording needs, computed once.
-function readFacts(f) {
+export function readFacts(f) {
   const m = f.mover === "white" ? "w" : "b";
   const opp = m === "w" ? "b" : "w";
   const played = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 8 });
@@ -177,7 +177,7 @@ function withThreat(f, phrase) {
 // The one point worth making about a sound move, as a verb phrase ("wins a pawn",
 // "trades rooks", "develops the knight", "defends the pawn on b7"), or "". `words` names
 // whose pieces a proven reason talks about (see reasonPhrase).
-function goodPoint(f, x, words) {
+export function goodPoint(f, x, words) {
   if (f.hasMateAfter && Number.isFinite(f.mateAfter)) return `forces ${mateCount(f.mateAfter)}`;
   const capture = /x/.test(f.san || "");
   if (capture && x.recapture) {
