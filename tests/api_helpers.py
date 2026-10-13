@@ -14,3 +14,15 @@ def csrf_headers(client: TestClient) -> dict[str, str]:
     """Bootstrap a CSRF token and return the header the SPA would send."""
     client.get("/api/csrf")
     return {"X-CSRF-Token": client.cookies["pf_csrf"]}
+
+
+def insert_users(engine, *ids: str) -> None:
+    """Create bare users rows so owner foreign keys hold in tests on a real schema."""
+    from prepforge_chess.storage import sa_tables
+
+    users = sa_tables.users
+    with engine.begin() as conn:
+        have = set(conn.execute(users.select().with_only_columns(users.c.id).where(users.c.id.in_(ids))).scalars())
+        new = [{"id": i, "email": f"{i}@x.test"} for i in ids if i not in have]
+        if new:
+            conn.execute(users.insert(), new)

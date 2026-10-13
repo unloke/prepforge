@@ -418,3 +418,57 @@ describe("bucket", () => {
     expect([90, 70, 60, 50, 40, 20, 5].map(bucket)).toEqual([3, 2, 1, 0, -1, -2, -3]);
   });
 });
+
+// Stockfish depth-22 reads (side-to-move POV) taken in the coach-v5 SFT experiment (2026-10-11).
+function fromRead(fen, uci, before, after) {
+  const pov = (f, r) => (f.split(" ")[1] === "b" ? -r : r);
+  const c = new Chess(fen);
+  const mv = c.move({ from: uci.slice(0, 2), to: uci.slice(2, 4) });
+  const fenAfter = c.fen();
+  const sans = (f, pv) => {
+    const b = new Chess(f);
+    return pv.map((u) => b.move({ from: u.slice(0, 2), to: u.slice(2, 4) }).san);
+  };
+  return buildMoveFeatures({
+    mover: mv.color === "w" ? "white" : "black",
+    uci,
+    san: mv.san,
+    fenBefore: fen,
+    fenAfter,
+    beforeEval: { lines: [{ uci: before.pv[0], san: sans(fen, before.pv)[0], cp: before.cp === null ? null : pov(fen, before.cp), mate: before.mate === null ? null : pov(fen, before.mate), pvUci: before.pv, pvSan: sans(fen, before.pv) }] },
+    afterEval: { cp: after.cp === null ? null : pov(fenAfter, after.cp), mate: after.mate === null ? null : pov(fenAfter, after.mate), pvUci: after.pv, pvSan: sans(fenAfter, after.pv) },
+  });
+}
+const read = (...a) => buildCommentary(fromRead(...a), { selfSide: "white" }).prose;
+
+describe("mate lines and static costs", () => {
+  it("writes out the whole missed mate", () => {
+    const prose = read("r1bq1rk1/pppp2p1/2n4p/2bNppN1/2B5/8/PPPP1PPP/R1BQK2R w KQ - 0 9", "d5c7",
+      { cp: null, mate: 2, pv: ["d5e7", "g8h8", "e7g6"] }, { cp: -425, mate: null, pv: ["g8h8", "d1h5", "d7d5", "c4d5"] });
+    expect(prose).toBe("Mistake. Nxc7+ misses mate in 2: 9.Ne7+ Kh8 10.Ng6#.");
+  });
+
+  it("writes out the whole mate an error allows", () => {
+    const prose = read("r3k2r/1pp5/p2p2p1/3Np2p/4PPbq/P6n/1PPBBP1K/R2QR3 w kq - 1 21", "d2e3",
+      { cp: -678, mate: null, pv: ["h2g2", "h4f2", "g2h1", "f2h4"] }, { cp: null, mate: 4, pv: ["h3f2", "h2g2", "h4h3", "g2f2", "h3h2", "f2f1", "g4h3"] });
+    expect(prose).toMatch(/^Be3 allows mate in 4: 21\.\.\.Nxf2\+ 22\.Kg2 Qh3\+ 23\.Kxf2 Qh2\+ 24\.Kf1 Bh3#\./);
+  });
+
+  it("does not praise a move when every move is mated", () => {
+    const prose = read("r1b1k2r/pp1p1p1p/4p3/6K1/3PPn2/1P3P2/P5P1/RNq5 w kq - 1 21", "g5h6",
+      { cp: null, mate: -5, pv: ["g5h6", "h8g8", "b1d2", "c1a1"] }, { cp: null, mate: 6, pv: ["f4d5", "b1d2", "c1d2", "h6g7"] });
+    expect(prose).toBe("Nothing helps here: mate in 6 is coming whatever you play.");
+  });
+
+  it("names a bishop the move shuts in", () => {
+    const prose = read("rnbqkbnr/ppp3pp/8/3p1p2/8/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 0 5", "d1e2",
+      { cp: 117, mate: null, pv: ["d2d4", "g8f6", "f1d3", "c7c6"] }, { cp: -10, mate: null, pv: ["f8e7", "d2d4", "g8f6", "e2d1"] });
+    expect(prose).toMatch(/^Qe2\+ is slightly inaccurate: it shuts in the bishop on f1\. d4 was better\./);
+  });
+
+  it("names the centre the opponent takes", () => {
+    const prose = buildCommentary(fromRead("r2qkbnr/1pp2ppp/p1n1p3/5b2/2BP1B2/2N1PN2/PP3PPP/R2QK2R b KQkq - 1 7", "c6b4",
+      { cp: -64, mate: null, pv: ["f8d6", "f4g5", "g8e7", "a1c1"] }, { cp: 345, mate: null, pv: ["e3e4", "f5g4", "e1g1", "f8d6"] }), { selfSide: "black" }).prose;
+    expect(prose).toMatch(/^Blunder\. Nb4 lets the opponent take the centre with pawns on d4 and e4\./);
+  });
+});

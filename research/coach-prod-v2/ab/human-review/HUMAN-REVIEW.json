@@ -1,0 +1,442 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab",
+  "blind_data_sha256": "1cf800efcb4e2fedf2157eb0482d004acb6fe45a5934c8ac0061ebd29994a2c7",
+  "pairs_total": 30,
+  "completed": 30,
+  "updated_at": "2026-10-12T10:50:43.301Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "7d0f602e9faf79bd8c1cf0c32c97df5d1bd26c0a4d736dc0457183b083fe1b59",
+        "B": "2883244c4a0b2038fb97d8b4caf50047cd6db86f2ae43f39b85831c527b2c51f"
+      },
+      "updated_at": "2026-10-12T10:40:55.323Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "winning a pawn how?",
+      "content_sha256": {
+        "A": "948c99c5ef187968678e9233e60e4890943d802a1641de686b19750adb5bede9",
+        "B": "9a2d4a7f4f1cac8cdfb45d1cee39e05db299c65a680bf017c1f872041e957141"
+      },
+      "updated_at": "2026-10-12T10:42:18.894Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "206e5f0ce3f7fbf1c119003d53f7eaad96c7dda4e0cac3e0a410a79eb841a64f",
+        "B": "b43ee04ad0586e2e4db813dd72cd5fcb9ed600632d2cbf1baaefb38a987455e4"
+      },
+      "updated_at": "2026-10-12T10:42:30.292Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "a83aaabb24904cd83326bb1e0aaae89a580a2e7a7a67649be63f0230b2b3f8ed",
+        "B": "189ee36cef50fc871be93120b5c0ab71b1838c1aed2c763987182704d65fd6c3"
+      },
+      "updated_at": "2026-10-12T10:42:54.305Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "fbbc2a70cdba8bdff74e473cc3ded400bcbd4a75f0e0a5738eb23abe800b13e7",
+        "B": "95dbdce1b3bc20c2fc09c0c2aeab3de14819063daf7fc3760a751792a99315f1"
+      },
+      "updated_at": "2026-10-12T10:43:11.809Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "cc402d8718b3ba6b40e94061ce2f5bb9e3b64785f1cec42cba057fdd9d0e5310",
+        "B": "8ae21507d568e56ae335ca1ddcceeaffa4252147e046e7184b9c2ad9174f7913"
+      },
+      "updated_at": "2026-10-12T10:44:10.994Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "1930220cae6a3cd2b27a8786292f49273e5ac746ca1a86aeeb0b598a1fa0bdd7",
+        "B": "c9d8cc57f936f34c98fa624b30c057c9c5fa33418bdf6bcf9ba574bbee5b869b"
+      },
+      "updated_at": "2026-10-12T10:44:17.967Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "c92add22921be86bca06262594898027ea0db599f7d3962a793a2aec516d4afe",
+        "B": "5682c3add566e4bab829e7c473661bdfdbc428e4c34ff6d785c94aa26175c2c7"
+      },
+      "updated_at": "2026-10-12T10:45:08.490Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "61043474fe90afa11cdd4349eaa14831f1fab4bd446cda00468c6fb60f863a4a",
+        "B": "58bfbc7868be37347720b147f6af187f5aafc79a9602e765b9556f058636a4c0"
+      },
+      "updated_at": "2026-10-12T10:46:15.097Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "2f5eca16f749f4997fe682d9cb95f6aca0c3dae3479d33c3c8207826e8563e57",
+        "B": "b297d8a25f952c6acf1bf620473ebbae1cf40d1e6b5bfa31f7bc44b193e8764f"
+      },
+      "updated_at": "2026-10-12T10:46:30.133Z"
+    },
+    {
+      "pair_id": "pair-011",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "19714f5e8f64595222bc9a1d45b17333262dd3eba066242063af089537ea8a17",
+        "B": "ceee69ea18c0c7623537aeabf281f514e8e4528a63e210cce205b22fa80492e1"
+      },
+      "updated_at": "2026-10-12T10:46:44.631Z"
+    },
+    {
+      "pair_id": "pair-012",
+      "verdict": "tie",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "2cc53a74fc7aed709e3fce988c0531cf709613d659981751055e90ba671e850c",
+        "B": "aae029d6d0580b1015ed23e8b7527fd089297ae3d832468a6501f629d8c0a9b7"
+      },
+      "updated_at": "2026-10-12T10:47:10.912Z"
+    },
+    {
+      "pair_id": "pair-013",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "09b74658bebfa394df0a4d4b6a25042b666fb37752d7254217f938d3ae18ba8b",
+        "B": "90cc41876cb1323d6e175c49c17c9f15eb6a57a070fd9b0617709ee4deb6e3d9"
+      },
+      "updated_at": "2026-10-12T10:47:32.605Z"
+    },
+    {
+      "pair_id": "pair-014",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "4344018b41e4464cddf1af9e8e1878000391eab23f7d7ebd4f663ee71aafd59a",
+        "B": "e1a7657fb69d8832704e7f5858744eede735ea8c0c6e2c499ad44fd7f53f56d1"
+      },
+      "updated_at": "2026-10-12T10:47:38.028Z"
+    },
+    {
+      "pair_id": "pair-015",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "10e16cde058720b01193521168aa8bf2d55b23c73eb2e488a6996a500c194bb1",
+        "B": "e1a7657fb69d8832704e7f5858744eede735ea8c0c6e2c499ad44fd7f53f56d1"
+      },
+      "updated_at": "2026-10-12T10:47:43.154Z"
+    },
+    {
+      "pair_id": "pair-016",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "89d7aae83f8974c35de4aac16989572c7ed1e05fd8b820a850d027cd88dca760",
+        "B": "a72036603ad0ece3d0cb03225b20802b4b938aaa7f7a28b7258e4cb942828f65"
+      },
+      "updated_at": "2026-10-12T10:47:52.040Z"
+    },
+    {
+      "pair_id": "pair-017",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "4c60f40089b08fda142beffe3fbde689c26cf9a33d56dd49749ce95efdc86f13",
+        "B": "e3f92aa3981959a539f1f8d61c4cc9a1d5b411743cf36dee0f61d90ac7eccc36"
+      },
+      "updated_at": "2026-10-12T10:47:58.699Z"
+    },
+    {
+      "pair_id": "pair-018",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "54d274519bab8ff8b4ae5ddc99aadc13e4f5dec66bc5dc3b7503a2e90f857381",
+        "B": "ea9bdf103b026897030b63f9d037d824a85b7e7b6c0b2ac898dbf0e4b949f1ce"
+      },
+      "updated_at": "2026-10-12T10:48:07.763Z"
+    },
+    {
+      "pair_id": "pair-019",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "bc0ef40323962055a122ed16313d6e73b0cae1baeba1354f3e77512b31d4d2c6",
+        "B": "b366b47dc8f7a88da03adaf6d31d188bc4448b78ea9b0c704f34954e47e982e1"
+      },
+      "updated_at": "2026-10-12T10:48:16.975Z"
+    },
+    {
+      "pair_id": "pair-020",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "cf124c201cdde36aeb8a35f374088c7331f92e69789458b4c34ca56a662f838d",
+        "B": "f7aae396343929400357893dea0021fe9122a4825ea316cc8d70622ffe656c09"
+      },
+      "updated_at": "2026-10-12T10:48:25.923Z"
+    },
+    {
+      "pair_id": "pair-021",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "95819eba6ecb0a6dbdb08b0bb16551a84b001424548998d6284ca92fc51a5aaa",
+        "B": "77dbda1993e8c38f59865e720b02fe53e66c16bb70c08bcd3ba92191d36ed8fd"
+      },
+      "updated_at": "2026-10-12T10:48:37.395Z"
+    },
+    {
+      "pair_id": "pair-022",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "f8511b109fbf5fd94df20d6554a52999594e90796b8ac67815d09eb1162e5d8b",
+        "B": "ed067011a2ee78d9fa32f1439b78c03cdc0b1447cda90a2d68a4e7f57fd7136e"
+      },
+      "updated_at": "2026-10-12T10:48:45.117Z"
+    },
+    {
+      "pair_id": "pair-023",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "9eecf09f8c0bba6b9dbece560a55b7f825cdc81328ee1823079a4452bfdeaa3d",
+        "B": "2c7446cad860c9557a2736cf3a611d8c78a4a36cb7110caba5ed6bd6e27deee3"
+      },
+      "updated_at": "2026-10-12T10:48:52.775Z"
+    },
+    {
+      "pair_id": "pair-024",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "c212a738946300f50a462035ff3cbceb55567081b6b5565ad64091f10634b2a5",
+        "B": "e588597f902f0230fdc5980ce6d588736a14e9bd4572cbb77d7da85d31c3602e"
+      },
+      "updated_at": "2026-10-12T10:48:58.506Z"
+    },
+    {
+      "pair_id": "pair-025",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "86a87a028b8fa7817f03507b8817d96e4773f44666c0b3e16b7aa561fa238710",
+        "B": "163bc2ae36f8337e67455cb30d9af86e5f28e6e9f171a13f1b6b8bfb87c20dd3"
+      },
+      "updated_at": "2026-10-12T10:49:05.449Z"
+    },
+    {
+      "pair_id": "pair-026",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "這個主要是d4可以搶中心 和是否擋住主教無關 然後打馬是沒錯但是不是重點 不會期待對手呆呆的讓你吃吧",
+      "content_sha256": {
+        "A": "1ffafc8d053828ddc252c2ebb2058225daf3d16ef9977046e1dbe6562c1064fb",
+        "B": "7ee8a9e3d0286aac60535f751beb8e67f6cecf1a0680fc2fa15c00d339162a94"
+      },
+      "updated_at": "2026-10-12T10:50:16.662Z"
+    },
+    {
+      "pair_id": "pair-027",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "9cb8e1a46bdca76d357d02283757e980820246cb39fdd67fee3666ed07645bdc",
+        "B": "978c1b3d0f1cf0952b2de917fa7b4d1e5029a978e8cf9a3e6a1215dbd5ac25e9"
+      },
+      "updated_at": "2026-10-12T10:50:25.639Z"
+    },
+    {
+      "pair_id": "pair-028",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "2f231fa3f466974ac0f94b7ef6ed8eeeb4e24c854abba15bca740781e245c607",
+        "B": "91f6ed7e9959099e0a9b5affb62807c3556bfef3b4392293194943b5a90b12ac"
+      },
+      "updated_at": "2026-10-12T10:50:29.080Z"
+    },
+    {
+      "pair_id": "pair-029",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "9802c8775b24b0e81bfcde0851ac5860b73d87ba7befb23dfdbeb1ad16e9135e",
+        "B": "5bd66cc85fafd735223ac504a03f4f37526ce51e454997273e3edf0b740d4826"
+      },
+      "updated_at": "2026-10-12T10:50:32.724Z"
+    },
+    {
+      "pair_id": "pair-030",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "f723b4bfe67a0d44eea1f66b23c6699624e1abd8e819ac26cd3e46beb0ac98ea",
+        "B": "cdf166715f394dd5e3d40b1795ec79c029e08c4db432239012243161d5a5c79f"
+      },
+      "updated_at": "2026-10-12T10:50:43.301Z"
+    }
+  ]
+}

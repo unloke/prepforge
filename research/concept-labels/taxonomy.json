@@ -1,0 +1,74 @@
+{
+ "Tactical": {
+  "threat": "a direct threat to win material next move, or a piece that is attacked and must move or be defended",
+  "defense": "defending an attacked piece, pawn or square, or parrying a threat",
+  "pin": "a piece cannot or should not move because a more valuable piece or the king stands behind it; breaking a pin",
+  "fork": "one piece or pawn attacks two or more targets at once (double attack)",
+  "skewer": "a valuable piece is attacked and moving it exposes a piece behind it on the same line",
+  "discovered_attack": "moving one piece uncovers an attack or check by another",
+  "removing_defender": "capturing, deflecting, decoying or overloading a defender",
+  "hanging_piece": "an undefended piece or pawn that can simply be taken",
+  "trapped_piece": "a piece with no safe square that can be won",
+  "combination": "a forcing sequence of checks, captures and threats that wins something",
+  "sacrifice": "material deliberately given up for an attack, initiative or other gain"
+ },
+ "King": {
+  "mate_threat": "checkmate is threatened, forced or close (mating net, mate in N)",
+  "back_rank": "a king trapped on its back rank by its own pawns; back-rank mate threats",
+  "king_attack": "an attack aimed at the king and its shelter",
+  "king_safety": "how safe a king is: exposed, weakened or well protected shelter",
+  "castling": "castling, the side to castle on, losing or preventing castling",
+  "perpetual_check": "an endless series of checks forcing a draw"
+ },
+ "Positional": {
+  "outpost": "a strong square for a piece, usually a knight, that enemy pawns cannot attack",
+  "weak_square": "a hole or weak square or colour complex the opponent can use",
+  "center_control": "control or occupation of the central squares, including a pawn center",
+  "space": "having more space or being cramped",
+  "open_file": "an open or half-open file and the rooks or queen using it",
+  "seventh_rank": "a rook or queen on the opponent's second rank",
+  "diagonal": "a bishop or queen on an open or long diagonal, or a battery along it",
+  "piece_activity": "how active pieces are: their scope, mobility and good squares",
+  "passive_piece": "a passive, misplaced or restricted piece with little scope",
+  "bad_bishop": "a bishop hemmed in by its own pawns on its colour",
+  "bishop_pair": "having both bishops against bishop and knight or two knights",
+  "piece_coordination": "pieces working together: connected or doubled rooks, batteries",
+  "prophylaxis": "a move made mainly to stop the opponent's idea before it happens"
+ },
+ "Dynamics": {
+  "development": "bringing pieces into play in the opening; a lead or lag in development",
+  "tempo": "gaining or losing time, e.g. developing with an attack or wasting moves",
+  "initiative": "one side dictates play, making threats the other must answer",
+  "pressure": "sustained pressure on a target (pawn, square, file or king) without an immediate win",
+  "counterplay": "the defending side's own active chances or counterattack",
+  "trades": "exchanging pieces or queens, simplifying or liquidating",
+  "complications": "a sharp, unclear or double-edged position"
+ },
+ "Pawns": {
+  "pawn_structure": "the pawn structure as a whole, its strengths and weaknesses",
+  "weak_pawn": "a pawn that is hard to defend and can be targeted",
+  "isolated_pawn": "a pawn with no friendly pawns on the adjacent files",
+  "doubled_pawns": "two pawns of one side on the same file",
+  "passed_pawn": "a pawn with no enemy pawns ahead of it on its own or adjacent files",
+  "promotion": "a pawn about to queen, the queening square, or a pawn race",
+  "pawn_break": "a pawn advance that challenges or opens the pawn structure",
+  "pawn_storm": "advancing several pawns against the enemy king",
+  "pawn_majority": "more pawns on one wing, or a minority attack",
+  "blockade": "a piece standing in front of an enemy pawn to stop it"
+ },
+ "Material": {
+  "material_advantage": "one side is ahead in material",
+  "winning_material": "the move or a forced line wins material",
+  "compensation": "non-material assets that make up for missing material",
+  "blunder": "the move is a serious mistake that loses material or the game",
+  "advantage": "one side is clearly better or winning, beyond counting material",
+  "draw": "a drawn or drawish position: repetition, fortress, stalemate, equality"
+ },
+ "Endgame": {
+  "endgame": "the endgame itself or steering into one",
+  "king_activity": "an active king used as a fighting piece, usually in the endgame",
+  "opposition": "kings facing each other with one square between them",
+  "zugzwang": "any move worsens the position of the side to move",
+  "opposite_bishops": "bishops of opposite colours"
+ }
+}

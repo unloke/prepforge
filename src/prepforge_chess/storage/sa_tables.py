@@ -105,7 +105,7 @@ team_invites = Table(
 
 user_settings = Table(
     'user_settings', metadata,
-    Column('user_id', String(length=32), primary_key=True),
+    Column('user_id', String(length=32), ForeignKey('users.id', ondelete='CASCADE', name='fk_user_settings_user_id'), primary_key=True),
     Column('key', String(length=120), primary_key=True),
     Column('value_json', Text(), nullable=False, default='null'),
     Column('updated_at', UTCDateTime(), nullable=False, default=_now),
@@ -167,7 +167,7 @@ games = Table(
     Column("played_at", UTCDateTime()),
     Column("lichess_id", Text),
     Column("tags_json", Text, nullable=False),
-    Column("owner_user_id", Text),
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_games_owner_user_id")),
     Column("created_at", UTCDateTime(), nullable=False),
     Column("updated_at", UTCDateTime(), nullable=False),
     Index("idx_games_owner", "owner_user_id"),
@@ -260,7 +260,7 @@ repertoires = Table(
     "repertoires",
     metadata,
     Column("id", Text, primary_key=True),
-    Column("owner_user_id", Text),
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_repertoires_owner_user_id")),
     Column("name", Text, nullable=False),
     Column("color", Text, nullable=False),
     Column("root_fen", Text, nullable=False),
@@ -351,7 +351,7 @@ training_progress = Table(
     "training_progress",
     metadata,
     Column("id", Text, primary_key=True),
-    Column("owner_user_id", Text),
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_progress_owner_user_id")),
     Column(
         "repertoire_id",
         Text,

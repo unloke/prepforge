@@ -20,12 +20,24 @@ export const FEATURES = [
   "logNodes", "branch", "seldepthGap", "legal", "inCheck", "captures", "checks", "material", "balance", "queens", "ply",
 ];
 
+// Legal moves, captures and checking moves of the side to move. Counted from chess.js's
+// internal moves: game.moves() builds SAN, which runs a mate search after every check.
+export function moveCounts(game) {
+  let captures = 0, checks = 0;
+  const moves = game._moves({ legal: true });
+  for (const m of moves) {
+    if (m.flags & 10) captures += 1; // capture | en passant
+    game._makeMove(m);
+    if (game.isCheck()) checks += 1;
+    game._undoMove();
+  }
+  return [moves.length, captures, checks];
+}
+
 // it: rows [depth, cp, mate, best, nodes, timeMs, seldepth, bounds], side-to-move POV.
 export function positionFeatures(fen, it) {
   const game = new Chess(fen);
-  // Plain SAN, not verbose moves: verbose objects cost ~10x more, and SAN alone gives captures
-  // ("x") and checks ("+"/"#").
-  const moves = game.moves();
+  const [legal, captures, checks] = moveCounts(game);
   let material = 0, balance = 0, queens = 0;
   const stm = game.turn();
   for (const row of game.board()) for (const sq of row) {
@@ -50,7 +62,7 @@ export function positionFeatures(fen, it) {
     changes, stable,
     Math.log10(Math.max(1, last[4] ?? 1)), Math.log2(Math.max(1, last[4] ?? 1) / Math.max(1, prev[4] ?? 1)),
     (last[6] ?? last[0]) - last[0],
-    moves.length, game.inCheck() ? 1 : 0, moves.filter((m) => m.includes("x")).length, moves.filter((m) => m.includes("+") || m.includes("#")).length,
+    legal, game.inCheck() ? 1 : 0, captures, checks,
     material, balance, queens, Number(fen.split(" ")[5]) * 2 - (stm === "w" ? 2 : 1),
   ];
 }

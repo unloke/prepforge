@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coach A/B review</title>
+    <script type="module" src="./review.js"></script>
+  </head>
+  <body class="abr">
+    <header class="abr-top">
+      <div class="abr-title">
+        <strong>Coach A/B review</strong>
+        <span class="abr-exp" id="abr-exp"></span>
+      </div>
+      <div class="abr-progress" title="Reviewed pairs">
+        <span id="abr-count">0 / 80</span>
+        <span class="abr-track"><span class="abr-fill" id="abr-fill"></span></span>
+      </div>
+      <span class="abr-save" id="abr-save" role="status" aria-live="polite"></span>
+      <button class="btn ghost abr-help-btn" id="abr-help-btn" type="button" aria-expanded="false" aria-controls="abr-help" title="Keyboard shortcuts">?</button>
+      <button class="btn primary" id="abr-export" type="button" disabled title="Available when all pairs are reviewed">Export JSON</button>
+    </header>
+
+    <div class="abr-help" id="abr-help" hidden>
+      <dl>
+        <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>T</kbd> <kbd>X</kbd></dt><dd>A better · B better · Tie · Both bad</dd>
+        <dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd>Issue on answer A</dd>
+        <dt><kbd>7</kbd>–<kbd>0</kbd></dt><dd>Issue on answer B</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous · next pair</dd>
+        <dt><kbd>Enter</kbd></dt><dd>Next unreviewed pair</dd>
+        <dt><kbd>V</kbd></dt><dd>Before / after the move</dd>
+        <dt><kbd>F</kbd></dt><dd>Flip board</dd>
+        <dt><kbd>N</kbd></dt><dd>Note · <kbd>Esc</kbd> leaves it</dd>
+      </dl>
+    </div>
+
+    <main class="abr-main" id="abr-main" hidden>
+      <section class="abr-board-col" aria-label="Position">
+        <div class="abr-pos-head">
+          <span class="abr-pair" id="abr-pair"></span>
+          <span class="abr-move" id="abr-move"></span>
+        </div>
+        <div class="board-stack">
+          <div class="chessboard" id="abr-board"></div>
+          <svg class="annotations" id="abr-annotations"></svg>
+        </div>
+        <div class="abr-board-bar">
+          <div class="seg" role="group" aria-label="Position shown">
+            <button class="seg-btn" type="button" data-view="before">Before <kbd>V</kbd></button>
+            <button class="seg-btn" type="button" data-view="after">After</button>
+          </div>
+          <button class="btn ghost" id="abr-flip" type="button" title="Flip board (F)">Flip</button>
+        </div>
+      </section>
+
+      <section class="abr-review-col" aria-label="Answers">
+        <ul class="abr-facts" id="abr-facts" aria-label="Facts given to the model"></ul>
+        <div class="abr-answers">
+          <article class="abr-answer" data-slot="A">
+            <header><span class="abr-slot">A</span><span class="abr-unfinished" hidden>Unfinished</span></header>
+            <p class="abr-text"></p>
+            <div class="abr-issues" role="group" aria-label="Issues in answer A"></div>
+          </article>
+          <article class="abr-answer" data-slot="B">
+            <header><span class="abr-slot">B</span><span class="abr-unfinished" hidden>Unfinished</span></header>
+            <p class="abr-text"></p>
+            <div class="abr-issues" role="group" aria-label="Issues in answer B"></div>
+          </article>
+        </div>
+
+        <div class="abr-verdicts" role="radiogroup" aria-label="Verdict">
+          <button type="button" role="radio" data-verdict="A">A better <kbd>A</kbd></button>
+          <button type="button" role="radio" data-verdict="B">B better <kbd>B</kbd></button>
+          <button type="button" role="radio" data-verdict="tie">Tie <kbd>T</kbd></button>
+          <button type="button" role="radio" data-verdict="both_bad">Both bad <kbd>X</kbd></button>
+          <button type="button" role="radio" data-verdict="ok">OK <kbd>G</kbd></button>
+          <button type="button" role="radio" data-verdict="bad">Bad <kbd>X</kbd></button>
+        </div>
+
+        <textarea id="abr-note" class="abr-note" rows="2" placeholder="Note" aria-label="Note"></textarea>
+
+        <nav class="abr-nav">
+          <button class="btn" id="abr-prev" type="button">← Prev</button>
+          <button class="btn" id="abr-next" type="button">Next →</button>
+          <button class="btn primary" id="abr-next-open" type="button">Next unreviewed <kbd>Enter</kbd></button>
+        </nav>
+
+        <ol class="abr-map" id="abr-map" aria-label="All pairs"></ol>
+      </section>
+    </main>
+
+    <div class="abr-done" id="abr-done" hidden></div>
+    <p class="abr-error" id="abr-error" role="alert" hidden></p>
+  </body>
+</html>

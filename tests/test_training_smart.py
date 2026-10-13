@@ -18,6 +18,7 @@ from prepforge_chess.services.scheduler import CARD_DUE, decode_card
 from prepforge_chess.services.training_smart import REQUEUE_GAP, SmartTrainingService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from api_helpers import insert_users
 
 
 # start_or_resume schedules against the real clock, so due/mastered fixtures
@@ -706,6 +707,7 @@ def test_postgres_concurrent_attempt_receipt():
         repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-concurrent-owner"
+        insert_users(engine, owner)
         _claim(repo, owner, repertoire)
         service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)
@@ -824,6 +826,7 @@ def test_postgres_interleaved_attempts_never_lose_an_update():
         repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-interleave-owner"
+        insert_users(engine, owner)
         _claim(repo, owner, repertoire)
         service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)
@@ -920,6 +923,7 @@ def test_postgres_concurrent_sync_different_uuids_do_not_lose_updates():
         repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-lost-update-owner"
+        insert_users(engine, owner)
         _claim(repo, owner, repertoire)
         service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)
@@ -1039,7 +1043,8 @@ def test_postgres_interleaved_session_updates_never_lose_one():
         sa_tables.metadata.create_all(engine)
         repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
-        owner = "postgres-session-interleave-owner"
+        owner = "postgres-session-ileave-owner"
+        insert_users(engine, owner)
         _claim(repo, owner, repertoire)
         service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)
@@ -1133,6 +1138,7 @@ def test_postgres_concurrent_sync_session_state_keeps_every_update():
         repo = WorkspaceRepository(engine)
         repertoire, node_ids = _build(repo)
         owner = "postgres-session-race-owner"
+        insert_users(engine, owner)
         _claim(repo, owner, repertoire)
         service = SmartTrainingService(repo, owner)
         session = service.start_or_resume(repertoire.id, seed=5)

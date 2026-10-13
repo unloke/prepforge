@@ -13,6 +13,10 @@
 //   attack  - a move newly attacks a piece it can win, or a pawn that drives a piece back
 //             (best-move and reply reasons)
 //   stops   - the better move makes the opponent's reply illegal ("stops 28.f5")
+//   pinned  - an error leaves one of the mover's pieces pinned to its king to the end of
+//             the engine line ("leaves the bishop on e2 pinned", "steps into a pin")
+//   shut    - an error lands a piece where its own bishop needed to go ("shuts in the bishop on f1")
+//   centre  - an error lets the opponent end the line with two centre pawns against none
 import { Chess } from "chess.js";
 import { playUci, winnableTargets } from "./move-facts.js";
 import { seeCapture, PIECE_NAME, PIECE_VALUE } from "./material.js";
@@ -129,6 +133,105 @@ function blockReason(fen, uci, pv) {
     if (stopped) continue;
     if (!stays(fen, pv, p.square, p, 4) || !stays(fen, pv, mv.to, { type: mv.piece, color: mv.color }, 4)) continue;
     return { kind: "block", type: "p", square: p.square };
+  }
+  return null;
+}
+
+// The board after the first `plies` moves of `pv` from `fen`, or null if the line is shorter.
+function lineEnd(fen, pv, plies) {
+  const b = board(fen);
+  if (!b || !pv || pv.length < plies) return null;
+  for (const u of pv.slice(0, plies)) if (!playUci(b, u)) return null;
+  return b;
+}
+
+function kingSquare(b, color) {
+  return pieces(b).find((p) => p.type === "k" && p.color === color)?.square || null;
+}
+
+// Pieces of `color` that alone shield their king from an enemy attack.
+function pinnedSquares(b, color) {
+  const k = kingSquare(b, color);
+  if (!k || b.isAttacked(k, other(color))) return new Set();
+  const out = new Set();
+  for (const p of pieces(b)) {
+    if (p.color !== color || p.type === "k") continue;
+    const work = board(b.fen());
+    work.remove(p.square);
+    if (work.isAttacked(k, other(color))) out.add(p.square);
+  }
+  return out;
+}
+
+// Squares the bishop on `sq` reaches: empty ones and the first enemy piece on each diagonal.
+function bishopReach(b, sq, color) {
+  let n = 0;
+  for (const [df, dr] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+    let f = sq.charCodeAt(0) - 97 + df;
+    let r = Number(sq[1]) + dr;
+    while (f >= 0 && f < 8 && r >= 1 && r <= 8) {
+      const p = b.get(String.fromCharCode(97 + f) + r);
+      if (p) {
+        if (p.color !== color) n += 1;
+        break;
+      }
+      n += 1;
+      f += df;
+      r += dr;
+    }
+  }
+  return n;
+}
+
+const CENTRE = ["d4", "e4", "d5", "e5"];
+const centrePawns = (b, color) => CENTRE.filter((sq) => {
+  const p = b.get(sq);
+  return p && p.type === "p" && p.color === color;
+});
+
+// An error that costs the mover something the board shows to the end of the engine line,
+// when the better move does not: a pinned piece, a bishop shut in, or the centre.
+export function costReason(f) {
+  if (!f || !isError(f) || f.isBest || !f.bestUci || f.bestUci === f.uci) return null;
+  const before = board(f.fenBefore);
+  const played = after(f.fenBefore, f.uci);
+  const best = after(f.fenBefore, f.bestUci);
+  const pv = f.playedPvUci || [];
+  const end = lineEnd(f.fenBefore, pv, Math.min(pv.length, 4));
+  if (!before || !played || !best || !end || played.move.captured || played.move.san.startsWith("O-O")) return null;
+  const c = played.move.color;
+  // Pinned: newly pinned by the move, the same piece still pinned where the line ends.
+  const was = pinnedSquares(before, c);
+  const now = pinnedSquares(played.board, c);
+  const later = pinnedSquares(end, c);
+  const fine = pinnedSquares(best.board, c);
+  for (const sq of now) {
+    const p = played.board.get(sq);
+    const q = end.get(sq);
+    if (was.has(sq) || fine.has(sq) || !later.has(sq) || !q || q.type !== p.type || q.color !== c) continue;
+    return { kind: "pinned", type: p.type, square: sq, moved: sq === played.move.to };
+  }
+  // Shut in: an own bishop loses three or more squares because the move landed in its path,
+  // and the blocker is still there where the line ends.
+  if (played.move.piece !== "b") {
+    for (const p of pieces(before)) {
+      if (p.type !== "b" || p.color !== c) continue;
+      if (!before.attackers(played.move.to, c).includes(p.square)) continue;
+      if (bishopReach(before, p.square, c) - bishopReach(played.board, p.square, c) < 3) continue;
+      const blocker = end.get(played.move.to);
+      const bishop = end.get(p.square);
+      if (!blocker || blocker.color !== c || blocker.type !== played.move.piece || !bishop || bishop.type !== "b") continue;
+      if (bishopReach(best.board, p.square, c) < bishopReach(before, p.square, c)) continue;
+      return { kind: "shut", type: "b", square: p.square };
+    }
+  }
+  // Centre: the opponent ends the played line with two centre pawns and the mover with none;
+  // the better line does not end that way.
+  const bpv = f.bestPvUci || [];
+  const bestEnd = lineEnd(f.fenBefore, bpv, Math.min(bpv.length, 4));
+  const theirs = centrePawns(end, other(c));
+  if (bestEnd && theirs.length >= 2 && !centrePawns(end, c).length) {
+    if (!(centrePawns(bestEnd, other(c)).length >= 2 && !centrePawns(bestEnd, c).length)) return { kind: "centre", squares: theirs };
   }
   return null;
 }
@@ -265,6 +368,9 @@ export function reasonPhrase(r, { mine = "the", theirs = "the" } = {}) {
   if (r.kind === "block") return `blocks ${theirs} passed pawn on ${r.square}`;
   if (r.kind === "attack") return `attacks ${theirs} ${name} on ${r.square}`;
   if (r.kind === "stops") return `stops ${r.reply}`;
+  if (r.kind === "pinned") return r.moved ? `puts the ${name} in a pin` : `leaves ${mine} ${name} on ${r.square} pinned`;
+  if (r.kind === "shut") return `shuts in ${mine} bishop on ${r.square}`;
+  if (r.kind === "centre") return `lets the opponent take the centre with pawns on ${r.squares.join(" and ")}`;
   return "";
 }
 
