@@ -21,6 +21,7 @@ from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
     OpeningBuilderService,
 )
+from prepforge_chess.storage import sa_tables
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
@@ -226,9 +227,12 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
     snapshot-then-write flow deducted them a second time."""
     engine = connect_database(tmp_path / "interleave.sqlite3")
     apply_schema(engine)
+    owner = "miss-interleave-owner"
+    # user_settings and training rows reference users (FK enforced on this file DB).
+    with engine.begin() as conn:
+        conn.execute(sa_tables.users.insert().values(id=owner, email=f"{owner}@x.test"))
     repository = WorkspaceRepository(engine)
     repertoire, node_id = _repertoire_with_target(repository)
-    owner = "miss-interleave-owner"
 
     raced = {"done": False}
     original_get = WorkspaceRepository.get_user_setting

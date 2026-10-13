@@ -12,7 +12,7 @@ from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.common import _bool_to_int, _insert, _int_to_bool, _json_dump, _json_load, _upsert
 from prepforge_chess.storage.repositories.evaluations import EvaluationRepository
 from prepforge_chess.storage.repositories.training import TrainingRepository
-from prepforge_chess.storage.repositories.settings import REVIEW_ARCHIVE_KEY, prune_review_archive
+from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 
 
 # Tree hydration does not use node timestamps. Avoid decoding two per node.
@@ -613,8 +613,50 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             )
 
     def delete_repertoire(self, repertoire_id: str) -> None:
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         with self.engine.begin() as conn:
+            # The dashboard counts sessions and this week's reviews through the
+            # repertoire's rows, so deleting the repertoire must move those
+            # counts into the owner's archives first (same as deleting nodes).
+            owner = conn.scalar(
+                select(t.repertoires.c.owner_user_id).where(t.repertoires.c.id == repertoire_id)
+            )
+            tp = t.training_progress
+            reviewed = conn.execute(
+                select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(
+                    tp.c.repertoire_id == repertoire_id,
+                    tp.c.last_reviewed_at.is_not(None),
+                    tp.c.last_reviewed_at >= week_ago,
+                )
+            ).all()
+            self._archive_reviews(conn, reviewed, week_ago)
+            if owner:
+                sessions = conn.scalar(
+                    select(func.count()).select_from(t.training_sessions).where(
+                        t.training_sessions.c.repertoire_id == repertoire_id
+                    )
+                ) or 0
+                if sessions:
+                    cur = self.lock_user_setting(conn, owner, PLAYED_SESSIONS_KEY, 0)
+                    self.write_user_setting(
+                        conn, owner, PLAYED_SESSIONS_KEY,
+                        (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
+                    )
             conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
+
+    def _archive_reviews(self, conn: Connection, reviewed, week_ago: datetime) -> None:
+        """Keep this week's review timestamps of rows about to be deleted, so the
+        dashboard's 7-day review count does not drop. ``reviewed`` rows are
+        ``(owner_user_id, last_reviewed_at)``."""
+        by_owner: Dict[str, List[str]] = {}
+        for owner, stamp in reviewed:
+            if owner:
+                by_owner.setdefault(owner, []).append(stamp.isoformat())
+        for owner, stamps in sorted(by_owner.items()):
+            cur = self.lock_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, [])
+            self.write_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, prune_review_archive(
+                (cur if isinstance(cur, list) else []) + stamps, week_ago.isoformat()
+            ))
 
     def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str], *, receipt: Optional[tuple] = None) -> None:
         if not node_ids:
@@ -649,15 +691,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             self._bump_revision(conn, repertoire_id)
             if receipt is not None:
                 self.write_user_setting(conn, *receipt)
-            by_owner: Dict[str, List[str]] = {}
-            for owner, stamp in reviewed:
-                if owner:
-                    by_owner.setdefault(owner, []).append(stamp.isoformat())
-            for owner, stamps in sorted(by_owner.items()):
-                cur = self.lock_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, [])
-                self.write_user_setting(conn, owner, REVIEW_ARCHIVE_KEY, prune_review_archive(
-                    (cur if isinstance(cur, list) else []) + stamps, week_ago.isoformat()
-                ))
+            self._archive_reviews(conn, reviewed, week_ago)
 
     def _save_opening_node(
         self,
