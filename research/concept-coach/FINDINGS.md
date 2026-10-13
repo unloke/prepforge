@@ -101,3 +101,29 @@ executes them. Widening these to "threatens or prepares" is the other half of th
 
 Order: king_activity, pawn_break, then widening promotion/passed pawn and mate threat, then
 sacrifice. The router is evidence of what is learnable, not a runtime component (no ONNX).
+
+## 6. Spatial probe: is pooling the bottleneck? (probe-spatial/RESULTS.json)
+
+`spatial_job.py` reads Maia's 64 square tokens (layers 5 and last, 1024 dims) through one
+transformer layer and one attention query per concept, instead of mean/max pooling them. Same
+labels, split and bootstrap.
+
+| router | test macro AUC |
+|---|---|
+| spatial (after the move) | 0.717 |
+| spatial-move (adds after-minus-before tokens and a move token) | 0.704 |
+| pooled maia-mlp, retrained in the same run with the same recipe | 0.705 |
+| pooled maia-mlp from probe v1 (its own recipe) | 0.725 |
+
+- Against the same-recipe pooled baseline, spatial is better: +0.007…+0.018, with 14 outputs
+  better and 2 worse. The gains are on weak_square (+0.06), piece_coordination, pawn_structure,
+  blunder, material_advantage and defense.
+- It does not beat the best pooled router: 0.717 against 0.725.
+- Pin, the concept spatial reading should help most, got worse (0.69 against 0.76 pooled).
+  king_activity also dropped.
+- Adding the move again does not help (−0.018…−0.008 against spatial).
+
+Conclusion: pooling costs a little on square-bound concepts, but it is not the main ceiling.
+With 30k comment labels at about 77% agreement, the labels are. The next step should not depend
+on these labels: engine-grounded targets (Stockfish 11 eval-term deltas), and concepts
+discovered from Maia itself (sparse autoencoder) named by those targets and the comments.

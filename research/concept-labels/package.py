@@ -5,6 +5,7 @@ python research/concept-labels/package.py phrases|label|probe <kernel-dir> [--sm
 phrases  GameKnot comments -> open-vocabulary idea phrases and their clusters (GPU, Qwen3-4B)
 label    GameKnot comments -> taxonomy.json concepts (GPU, Qwen3-4B), labels.jsonl
 probe    DeepSeek labels (freebuff.py) -> board audit, Maia3/plain routers, concepts for the production Coach positions
+spatial  the same labels -> per-square attention probe on Maia3 tokens vs the pooled router
 """
 import json
 import pathlib
@@ -26,6 +27,10 @@ if "model" in opts:
 if "tp" in opts:
     common = re.sub(r'^TP = 1 ', lambda _: f'TP = {int(opts["tp"])} ', common, count=1, flags=re.M)
 src = re.sub(r"^from common import .*$", lambda _: common, src, count=1, flags=re.M)
+probe = (HERE / "probe_job.py").read_text(encoding="utf-8").split('if __name__ == "__main__":')[0]
+src = re.sub(r"^from probe_job import .*$", lambda _: probe, src, count=1, flags=re.M)
+if kind == "spatial" and smoke:
+    src = src.replace("LIMIT = 0", "LIMIT = 3000", 1).replace("EPOCHS = 80", "EPOCHS = 2", 1)
 if kind == "phrases" and smoke:
     src = src.replace("LIMIT = 30000", "LIMIT = 600")
 if kind == "label":
@@ -42,6 +47,6 @@ out.mkdir(parents=True, exist_ok=True)
 (out / "kernel-metadata.json").write_text(json.dumps({
     "id": name(kind), "title": name(kind).split("/")[1], "code_file": "job.py", "language": "python",
     "kernel_type": "script", "is_private": "true", "enable_gpu": "true", "machine_shape": "NvidiaTeslaT4",
-    "enable_internet": "true", "dataset_sources": [LABELS] if kind == "probe" else [], "competition_sources": [],
+    "enable_internet": "true", "dataset_sources": [LABELS] if kind in ("probe", "spatial") else [], "competition_sources": [],
     "kernel_sources": []}, indent=2))
 print(json.dumps({"kind": kind, "slug": name(kind), "bytes": len(src)}))
