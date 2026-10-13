@@ -23,11 +23,12 @@ import {
   describeMove,
   threatPhrase,
   hasCaptures,
+  playUci,
 } from "./move-facts.js";
 import { motifPhrase, participle, hangingCapture } from "./motifs.js";
 import { Chess } from "chess.js";
 import { PIECE_VALUE, PIECE_NAME } from "./material.js";
-import { soundReason, replyReason, betterReason, reasonPhrase, reasonParticiple } from "./reasons.js";
+import { soundReason, replyReason, betterReason, costReason, reasonPhrase, reasonParticiple } from "./reasons.js";
 
 const TYPES = ["q", "r", "b", "n", "p"];
 
@@ -160,6 +161,26 @@ export function readFacts(f) {
   // so material the best line would grab elsewhere never reads as dropped.
   const lost = bestTakesBack ? rel : played && played.quiet ? negate(netFor(played, m)) : null;
   return { m, opp, played, own, best, playedNet, bestNet, rel, relValue, lost, prevWasCapture, recapture, bestTakesBack };
+}
+
+// The engine line to mate, numbered: "20...Nd4+ 21.Kd2 Qc2+ 22.Ke1 Qc1#". `fen` is where
+// `ucis` starts; "" unless the line really ends in mate within eight moves.
+function mateLine(fen, ucis, mate) {
+  const n = Math.abs(Number(mate) || 0);
+  if (!n || 2 * n - 1 > 8 || !ucis || ucis.length < 2 * n - 1) return "";
+  const b = new Chess(fen);
+  const sans = [];
+  for (const u of ucis.slice(0, 2 * n - 1)) {
+    const mv = playUci(b, u);
+    if (!mv) return "";
+    sans.push(mv.san);
+  }
+  return sans.length === 2 * n - 1 && sans[sans.length - 1].endsWith("#") ? numberLine(fen, sans) : "";
+}
+
+// The mover is already being mated, whatever they play.
+function lostAnyway(f) {
+  return f.inMateNet && Number.isFinite(f.mateBefore) && !f.hadMateBefore;
 }
 
 // --- Good moves --------------------------------------------------------------
@@ -305,13 +326,13 @@ function replyTrade(f, x) {
 // the better line, then the reply it allows and how the position changed.
 function errorConsequence(f, x, v) {
   if (f.missedMate && f.bestSan) {
-    const n = Number.isFinite(f.mateBefore) ? ` in ${Math.abs(f.mateBefore)}` : "";
-    return { text: `${f.san} misses mate: ${f.bestSan} mates${n}.`, namedBest: true };
+    const line = mateLine(f.fenBefore, f.bestPvUci, f.mateBefore);
+    const n = Math.abs(f.mateBefore);
+    if (n === 1) return { text: `${f.san} misses mate in one: ${line || f.bestSan}.`, namedBest: true };
+    return { text: `${f.san} misses mate in ${n}${line ? `: ${line}` : ` with ${f.bestSan}`}.`, namedBest: true };
   }
-  const alreadyMated = Number.isFinite(f.mateBefore) && !f.hadMateBefore;
-  if (f.inMateNet && !alreadyMated) {
-    const out = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6 });
-    const line = out ? numberLine(f.fenAfter, out.sans.slice(1, 4)) : "";
+  if (f.inMateNet && !lostAnyway(f)) {
+    const line = mateLine(f.fenAfter, (f.playedPvUci || []).slice(1), f.mateAfter);
     return { text: `${f.san} allows ${mateCount(f.mateAfter)}${line ? `: ${line}` : ""}.` };
   }
   // Traded into opposite-coloured bishops while the better line avoids it.
@@ -358,17 +379,19 @@ function errorConsequence(f, x, v) {
     const reply = numberLine(f.fenAfter, [f.replySan]);
     const trade = replyTrade(f, x);
     const did = trade ? "" : describeMove(f.fenAfter, f.replyUci, f.replySan);
+    const shown = did && !/^takes the/.test(did) ? did : "";
+    const why = trade || shown ? "" : reasonPhrase(replyReason(f));
+    // A static cost (pin, shut-in bishop, centre) when the reply threatens nothing.
+    const cost = trade || why || /attacks|hits|forks|promotes|mate/.test(shown) ? "" : reasonPhrase(costReason(f));
     if (trade) text = `${f.san} allows ${reply} and ${trade}.`;
-    else if (did && !/^takes the/.test(did)) text = `${f.san} allows ${reply}, which ${did}.`;
-    else {
-      const why = reasonPhrase(replyReason(f));
-      if (why) {
-        const change = changeSentence(f, v);
-        const said = `${f.san} allows ${reply}, which ${why}.`;
-        return { text: change ? `${said} ${change}` : said, reason: why, reply };
-      }
-      text = `${f.san} allows ${reply}.`;
-    }
+    else if (why) {
+      const change = changeSentence(f, v);
+      const said = `${f.san} allows ${reply}, which ${why}.`;
+      return { text: change ? `${said} ${change}` : said, reason: why, reply };
+    } else if (cost) {
+      const change = changeSentence(f, v);
+      return { text: `${f.san} ${cost}.${change ? ` ${change}` : ""}`, cost };
+    } else text = shown ? `${f.san} allows ${reply}, which ${shown}.` : `${f.san} allows ${reply}.`;
   } else {
     text = `${f.san} isn't the right idea here.`;
   }
@@ -378,15 +401,19 @@ function errorConsequence(f, x, v) {
 
 function errorProse(f, x, v) {
   const code = f.classification.code;
-  const { text, namedBest, reason, reply } = errorConsequence(f, x, v);
+  const { text, namedBest, reason, reply, cost } = errorConsequence(f, x, v);
   const better = namedBest ? "" : betterSentence(f, x, v);
   if (code === "inaccuracy") {
     // Gentler: a small slip only needs the fix and, if it tipped the balance, that. One
     // reason at most: what the reply it allows does, else what the better move does.
     if (/ (loses|hangs|allows mate|misses)/.test(text)) return `${text}${better ? ` ${better}` : ""}`;
     const change = changeSentence(f, v);
-    const head = reason ? `${f.san} is slightly inaccurate: it allows ${reply}, which ${reason}.` : `${f.san} is slightly inaccurate.`;
-    const why = reason ? "" : reasonPhrase(betterReason(f));
+    const head = cost
+      ? `${f.san} is slightly inaccurate: it ${cost}.`
+      : reason
+        ? `${f.san} is slightly inaccurate: it allows ${reply}, which ${reason}.`
+        : `${f.san} is slightly inaccurate.`;
+    const why = reason || cost ? "" : reasonPhrase(betterReason(f));
     const fix = f.bestSan && !f.isBest ? ` ${f.bestSan} was better${why ? `: it ${why}` : ""}.` : "";
     return `${head}${fix}${change ? ` ${change}` : ""}`;
   }
@@ -401,7 +428,13 @@ function buildProse(f, opts) {
   const code = f.classification.code;
   if (/#/.test(f.san || "")) return v.me === "you" ? "Checkmate. Well played." : "Checkmate.";
   if (code === "forced") return `${f.san} was the only legal move.`;
+  if (lostAnyway(f)) return `Nothing helps here: ${mateCount(f.mateAfter)} is coming whatever ${v.me === "you" ? "you play" : `${v.me} plays`}.`;
   const x = readFacts(f);
+  if (f.inMateNet && !["inaccuracy", "mistake", "blunder"].includes(code)) {
+    const line = mateLine(f.fenAfter, (f.playedPvUci || []).slice(1), f.mateAfter);
+    const alt = f.bestSan && !f.isBest ? ` ${f.bestSan} held out longer.` : "";
+    return `${f.san} allows ${mateCount(f.mateAfter)}${line ? `: ${line}` : ""}.${alt}`;
+  }
   if (code === "brilliant") return brilliantProse(f, x);
   if (code === "great") return greatProse(f, x);
   if (code === "best") return bestProse(f, x);
