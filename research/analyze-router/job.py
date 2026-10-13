@@ -17,6 +17,10 @@ SHARDS = {'gamesA': (348, 1000), 'gamesB': (1348, 1000), 'holdA': (2348, 500), '
 # Amendment 7 carried-hash screen kernels: about 1,000 games each, under five concurrent sessions.
 CARRIED = {'carried1': ('whole', 'holdA', 'holdB'), 'carried2': ('gamesA',), 'carried3': ('gamesB',),
            'carried4': ('holdC', 'holdD'), 'carried5': ('holdE', 'holdF')}
+# Round 4 holdout (amendment 8): fresh games, browser carried-hash screen reads and lite 16 deep reads.
+# holdK..holdN: the round 9 holdout (amendment 13), the last unread games of the dataset.
+FRESH4 = {'holdG': (5348, 500), 'holdH': (5848, 500), 'holdI': (6348, 500), 'holdJ': (6848, 500),
+          'holdK': (7348, 500), 'holdL': (7848, 500), 'holdM': (8348, 500), 'holdN': (8848, 500)}
 
 
 def log(**kw):
@@ -154,6 +158,16 @@ elif kind in CARRIED:
         log(stage=f'{shard}-lite12h', seconds=round(time.time() - t0))
         # The data kernels already hold this shard's games.json.
         shutil.rmtree(out / shard)
+elif kind in FRESH4:
+    npm()
+    offset, count = FRESH4[kind]
+    subprocess.run(['node', str(HERE / 'games.mjs'), str(find_input('games.csv')), str(out / kind), str(count), str(offset)],
+                   cwd=root, check=True)
+    t0 = time.time()
+    subprocess.run(['node', str(HERE / 'screen-carried.mjs'), str(out / kind / 'games.json'), str(out / f'{kind}-lite12h.ndjson'),
+                    '--budget', '150'], cwd=root, check=True)
+    log(stage=f'{kind}-lite12h', seconds=round(time.time() - t0))
+    run(out / kind / 'fens.txt', out / f'{kind}-lite16.ndjson', 'lite', 16, 1500000, 16, 520)
 elif kind in ('round3', 'holdout3'):
     os.environ.update(ROUTER_SCREEN='lite12h', ROUTER_ROUND='3')
     npm()
@@ -161,6 +175,28 @@ elif kind in ('round3', 'holdout3'):
         fill_dev(None)
     subprocess.run([sys.executable, str(HERE / 'round2.py'), 'dev' if kind == 'round3' else 'eval', str(root), str(out)],
                    cwd=root, check=True, env=os.environ)
+elif kind in ('round6', 'holdout6', 'round7', 'holdout7', 'round9', 'holdout9'):
+    # Amendments 10, 11 and 13: two-wave routing, pruning round 3, the no-best-status operating point.
+    os.environ.update(ROUTER_SCREEN='lite12h', ROUTER_ROUND=kind[-1])
+    npm()
+    if kind.startswith('round'):
+        fill_dev(None)
+    subprocess.run([sys.executable, str(HERE / f'round{kind[-1]}.py'), 'dev' if kind.startswith('round') else 'eval', str(root), str(out)],
+                   cwd=root, check=True, env=os.environ)
+elif kind in ('round4', 'round5', 'holdout4', 'holdout5'):
+    # Amendments 8 and 9: position routers against the shipped round 3 router (carried-hash screen reads).
+    os.environ.update(ROUTER_SCREEN='lite12h', ROUTER_ROUND=kind[-1])
+    npm()
+    if kind.startswith('round'):
+        fill_dev(None)
+    subprocess.run([sys.executable, str(HERE / 'round4.py'), 'dev' if kind.startswith('round') else 'eval', str(root), str(out)],
+                   cwd=root, check=True, env=os.environ)
+elif kind in ('frontier', 'round8', 'cost9'):
+    os.environ.update(ROUTER_SCREEN='lite12h')
+    npm()
+    if kind != 'cost9':
+        fill_dev(None)
+    subprocess.run([sys.executable, str(HERE / f'{kind}.py'), str(root), str(out)], cwd=root, check=True, env=os.environ)
 elif kind == 'hashbench':
     # 100 round 2 holdout games (holdC): fresh against carried screen hash for the shipped router.
     npm()

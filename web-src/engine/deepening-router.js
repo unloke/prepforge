@@ -5,9 +5,10 @@ import { Chess } from "chess.js";
 // its two screen reads (the FEN and the search's per-depth history) and deepens both
 // positions of every move it scores at or above the threshold. Trained on screen reads made
 // like the browser's (hash carried between a worker's positions) and frozen in
-// research/analyze-router (PROTOCOL.md, round 3): on 1,917 holdout games it caught 0.855 of
-// the moves whose grade changes at depth 16 (loss rule: 0.760) and 0.907 of the
-// Great/Brilliant flips (0.843) in 0.849x the engine time of a full-depth pass (0.891x).
+// research/analyze-router (PROTOCOL.md, round 9). It does not chase Best/Excellent swaps
+// between near-equal moves: on 1,905 holdout games it caught 0.926 of the other grade
+// changes at depth 16 and 0.827 of the Great/Brilliant flips in 0.752x the engine time of a
+// full-depth pass (round 3: 0.919, 0.902, 0.845x).
 // The model and features are a port of research/analyze-router/{features,predict}.mjs;
 // deepening-router.test.js checks both against those files.
 
@@ -30,10 +31,24 @@ function whiteWin(ev) {
 
 const NO_ROW = { depth: 0, cp: 0, mate: null, best: null, nodes: 1, seldepth: 0 };
 
+// Legal moves, captures and checking moves of the side to move. Counted from chess.js's
+// internal moves: game.moves() builds SAN, which runs a mate search after every check.
+function moveCounts(game) {
+  let captures = 0, checks = 0;
+  const moves = game._moves({ legal: true });
+  for (const m of moves) {
+    if (m.flags & 10) captures += 1; // capture | en passant
+    game._makeMove(m);
+    if (game.isCheck()) checks += 1;
+    game._undoMove();
+  }
+  return [moves.length, captures, checks];
+}
+
 // The 21 features of one position. `it`: the screen search's rows per completed depth,
 // { depth, cp, mate, best, nodes, seldepth }, side-to-move POV (stockfish-provider.js).
 function positionFeatures(game, fen, it) {
-  const moves = game.moves();
+  const [legal, captures, checks] = moveCounts(game);
   let material = 0, balance = 0, queens = 0;
   const stm = game.turn();
   for (const row of game.board()) for (const sq of row) {
@@ -57,7 +72,7 @@ function positionFeatures(game, fen, it) {
     changes, stable,
     Math.log10(Math.max(1, last.nodes ?? 1)), Math.log2(Math.max(1, last.nodes ?? 1) / Math.max(1, prev.nodes ?? 1)),
     (last.seldepth ?? last.depth) - last.depth,
-    moves.length, game.inCheck() ? 1 : 0, moves.filter((m) => m.includes("x")).length, moves.filter((m) => m.includes("+") || m.includes("#")).length,
+    legal, game.inCheck() ? 1 : 0, captures, checks,
     material, balance, queens, Number(fen.split(" ")[5]) * 2 - (stm === "w" ? 2 : 1),
   ];
 }

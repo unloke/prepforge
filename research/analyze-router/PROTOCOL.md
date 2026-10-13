@@ -403,3 +403,229 @@ JSON 38 KB (23 KB as shipped).
 
 Decision: all four rules pass. Production ships the round 3 model and drops the per-position hash
 clear; the browser's screen pass is unchanged from tiered1.
+
+## Amendment 8 (2026-10-12, before any round 4 result): route positions, not moves
+
+In production the round 3 router deepens about 70–90% of a game's positions, and the user wants it
+cheaper or more accurate. It deepens both positions of every move it flags, but a move's grade often
+needs only one of the two deep reads. Round 1 tried position routers only at 99% recall, where nothing
+saves much; at the shipped operating point (core about 0.85) they were never tried.
+
+- **Label** (`round4.py`, per position): a position is needed when an adjacent move is critical
+  (core or Great/Brilliant flip, screen against lite 16) and stays wrong unless this position is deep.
+  When either position alone fixes the move, the one whose win chance moved more is the needed one.
+- **Features:** the position's own screen features, its two neighbours' (zeros at the ends), the round 1
+  position extras and the two adjacent moves' extras; 92 numbers, all from the screen pass, no Maia.
+- **Candidates:** HistGradientBoosting small/big (round 2 settings) on the development games and split
+  of rounds 2/3, carried-hash screen reads. Two thresholds each, the highest on validation such that
+  (`guard3`) round 3's guard holds (core ≥ 0.85, GB ≥ tiered1 + 0.01) or (`match3`) core and GB recall
+  are at least the shipped round 3 router's.
+- **Dev-test pass** against the shipped round 3 router (paired game bootstrap, 2000): core and GB CI
+  lower bounds ≥ −0.01 and wall CI upper bound < 0. The frozen choice is the passing candidate with the
+  lowest dev-test wall; none passing means no holdout run. `frozen4.json` is written automatically.
+- **Holdout** (`holdout4`), run once: holdG..holdJ, 2,000 new datasnaek games (hash-order offsets
+  5348..7347) never read before, carried-hash screen reads and lite 16 deep reads made the same way as
+  for round 3. Ship only if all hold against round 3: core CI lower ≥ −0.01, GB CI lower ≥ −0.01, wall
+  CI upper < 0, and browser cost < 1% of a lite-12 read.
+
+### Round 4 development result (kernel `analyze-router-round4-20261012`, 2026-10-12)
+
+Same 3,184 development games and split. Dev-test against the shipped round 3 router (core 0.858,
+GB 0.916, wall 0.847, 29.2% shallow):
+
+| Candidate | Core | GB | Wall | Shallow | Core diff CI | GB diff CI | Wall diff CI | Passes |
+|---|---|---|---|---|---|---|---|---|
+| pos-small+guard3 | 0.849 | 0.866 | 0.789 | 0.363 | [−0.015, −0.001] | [−0.057, −0.041] | [−0.063, −0.053] | no (core, GB) |
+| pos-small+match3 | 0.895 | 0.918 | 0.849 | 0.300 | [+0.030, +0.044] | [−0.004, +0.011] | [−0.003, +0.006] | no (wall) |
+| pos-big+guard3 | 0.855 | 0.878 | 0.770 | 0.375 | [−0.010, +0.005] | [−0.046, −0.029] | [−0.083, −0.070] | no (GB) |
+| pos-big+match3 | 0.885 | 0.912 | 0.814 | 0.331 | [+0.020, +0.034] | [−0.011, +0.005] | [−0.039, −0.027] | no (GB, by 0.001) |
+
+No candidate passes, so no round 4 holdout run. The position routers buy core recall or wall time but
+give back Great/Brilliant recall, and their core recall without best-move flips is lower than round
+3's (0.86–0.90 against 0.917): the gain is concentrated in best-status flips.
+
+## Amendment 9 (2026-10-12, after the round 4 result, before any round 5 result)
+
+Round 5 (`ROUTER_ROUND=5`, kernel `analyze-router-round5-20261012`) keeps round 4's data, split,
+features, pass rule and selection, and adds two candidates per size aimed at the Great/Brilliant loss:
+
+- `hybrid-<size>+match3`: the position router OR the round 3 move rule raised so it leaves out 70, 80,
+  85, 90 or 95% of validation moves; for each, the highest position threshold meeting `match3`; the
+  cheapest on validation is kept.
+- `two-<size>+match3`: a core-needed position model OR a Great/Brilliant-needed one (labels as in
+  amendment 8 with only that half of the critical set); for GB thresholds at the 50–95% quantiles of
+  its validation scores, the highest core threshold meeting `match3`; the cheapest on validation.
+
+The round 4 candidates are refit and re-reported in round 5 (same seed, so the same models). Dev-test
+has now been looked at once; selection on it again is a mild optimism that the untouched holdG..holdJ
+holdout (amendment 8 rules) guards against.
+
+### Round 5 development result (kernel `analyze-router-round5-20261012`, 2026-10-12)
+
+Round 4's four candidates came out identical. The new ones, against round 3 on dev-test (NB = core
+recall without best-move flips; round 3: core 0.858, NB 0.917, GB 0.916, wall 0.847):
+
+| Candidate | Core | NB | GB | Wall | Core diff CI | GB diff CI | Wall diff CI | Passes |
+|---|---|---|---|---|---|---|---|---|
+| hybrid-small+match3 | 0.895 | 0.908 | 0.914 | 0.849 | [+0.031, +0.044] | [−0.008, +0.006] | [−0.003, +0.006] | no (wall) |
+| hybrid-big+match3 | 0.885 | 0.896 | 0.911 | 0.812 | [+0.021, +0.035] | [−0.013, +0.003] | [−0.040, −0.029] | no (GB) |
+| two-small+match3 | 0.849 | 0.859 | 0.907 | 0.807 | [−0.016, −0.001] | [−0.016, −0.000] | [−0.046, −0.034] | no (core, GB) |
+| two-big+match3 | 0.851 | 0.865 | 0.913 | 0.792 | [−0.014, +0.001] | [−0.011, +0.005] | [−0.061, −0.049] | no (core, GB) |
+
+No candidate passes. Every position router lands at the margin: what it gains in wall or core recall it
+gives back in GB recall or in NB, about one point. With screen-only features the router seems to have
+reached what those features can tell (round 1: AUC about 0.78).
+
+## Amendment 10 (2026-10-12, after round 5, before any round 6 result): two waves
+
+Round 6 (`round6.py`, kernel `analyze-router-round6-20261012`) adds information the screen pass does
+not have: wave 1 deepens the positions `pos-big` scores highest (10, 20, 30 or 40% of validation
+positions; training-game scores cross-fitted over two halves), then a wave 2 model (GBT big) scores the
+rest with round 4's features plus what wave 1 learned around each position: for each neighbour whether
+it was deepened, its win-chance change, best-move change and mate-state change; for each adjacent move
+whether its core output or Great/Brilliant inputs changed and how much its loss moved. Wave 2's label
+is the amendment 8 rule applied to the moves still wrong after wave 1. Wall time puts a barrier between
+the waves (each game's deep wall is wave 1's pool wall plus wave 2's).
+
+- Thresholds: wave 2's highest on validation such that core, NB and GB recall are each at least round
+  3's (`match3` now includes NB, which rounds 4–5 showed can drop unnoticed).
+- Dev-test pass against round 3: core, NB and GB CI lower bounds ≥ −0.01, wall CI upper < 0. The lowest
+  wall among passing candidates is frozen (`frozen6.json`); none passing means no holdout run.
+- Holdout (`holdout6`), once, on holdG..holdJ: the same four rules plus NB.
+
+### Round 6 development result (kernel `analyze-router-round6-20261012`, 2026-10-12)
+
+Per-game simulation from here on (each game routed and pooled alone, as in the browser; rounds 2–5
+used one flag set across all games, which shares deep reads between games that reach the same FEN).
+Round 3 on dev-test this way: core 0.851, NB 0.916, GB 0.908, wall 0.835.
+
+| Wave 1 share | Core | NB | GB | Wall | Core diff CI | NB diff CI | GB diff CI | Wall diff CI |
+|---|---|---|---|---|---|---|---|---|
+| 10% | 0.904 | 0.911 | 0.930 | 0.888 | [+0.046, +0.061] | [−0.014, +0.004] | [+0.014, +0.030] | [+0.048, +0.060] |
+| 20% | 0.902 | 0.909 | 0.931 | 0.894 | [+0.044, +0.059] | [−0.016, +0.001] | [+0.016, +0.031] | [+0.052, +0.065] |
+| 30% | 0.891 | 0.903 | 0.922 | 0.873 | [+0.033, +0.047] | [−0.022, −0.004] | [+0.007, +0.022] | [+0.032, +0.045] |
+| 40% | 0.890 | 0.904 | 0.923 | 0.875 | [+0.032, +0.046] | [−0.021, −0.004] | [+0.008, +0.023] | [+0.034, +0.047] |
+
+No candidate passes (all slower, NB lower). Two waves buy core and GB recall but the barrier between the
+waves costs more wall than the second look saves. Training logs: the needed-position rate is 31.8%
+(core 23.0%, GB 13.0%), against about 70% deepened by round 3 — the oracle has room the screen features
+cannot find.
+
+## Amendment 11 (2026-10-12, after round 6, before any round 7 result): prune round 3
+
+Round 7 (`round7.py`) keeps round 3's flags and drops the flagged positions the amendment 8 position
+model (small or big, refit) scores below a threshold: the highest threshold (within the lowest 90% of
+validation scores) at which validation core, NB and GB recall all stay at least round 3's. Per-game
+simulation; same pass rule and selection as round 6; holdout7 on holdG..holdJ with round 6's rules.
+
+### Round 7 development result (kernel `analyze-router-round7-20261012`, 2026-10-12)
+
+Both pruned routers keep round 3's recall only by pruning almost nothing: prune-small leaves 30.9% of
+positions shallow against round 3's 30.6%, wall 0.835 against 0.835 (diff CI [−0.0004, −0.0000]).
+`frozen7.json` was written because the pass rule does not ask for a minimum effect, but the effect is
+zero for practical purposes and shipping it would add a model for nothing, so holdout7 is not run.
+
+Reading of rounds 4–7: every reallocation of the deep reads lands on round 3's frontier. The oracle
+deepens 31.8% of positions; round 3 deepens about 70% to reach 0.85 core recall, and screen-pass
+features do not separate the rest. Best-status flips (a move switching between Best and Excellent
+because two near-equal moves swap at depth 16) are the largest and most expensive part of the core
+label: round 3's core recall is 0.85, its recall without them 0.92.
+
+## Amendment 12 (2026-10-12, before any round 8 or frontier result): price of best-status flips
+
+- `frontier.py` (kernel `analyze-router-frontier-20261012`): dev-test curves of round 3's model, the
+  amendment 8 position model and a no-best-status move model, at 20–95% of positions deepened.
+  Exploration only.
+- `round8.py` (kernel `analyze-router-round8-20261012`): the no-best-status router (core minus
+  bestStatus ∪ GB label, GBT small, round 3's move features) with the highest validation threshold at
+  which NB and GB recall are at least round 3's. Chosen on validation only, then scored once against
+  round 3 on dev-test and on the fresh holdout holdG..holdJ (never read before), with core recall
+  reported alongside. Ready to ship under that definition if on the holdout NB and GB CI lower bounds
+  are ≥ −0.01, wall CI upper < 0 and browser cost < 1%. Whether best-status flips may go
+  unchecked is the user's decision, not this protocol's.
+
+### Round 8 result (kernel `analyze-router-round8-20261012`, 2026-10-12)
+
+Frozen on validation (threshold 0.397), then scored once. Holdout holdG..holdJ, 1,912 games, against
+round 3 (per-game simulation):
+
+| | Round 8 | Round 3 | Diff [95% CI] |
+|---|---|---|---|
+| Core recall | 0.795 | 0.841 | [−0.052, −0.041] |
+| Recall without best-status flips (NB) | 0.960 | 0.916 | [+0.040, +0.049] |
+| Great/Brilliant check | 0.896 | 0.895 | [−0.005, +0.006] |
+| Wall vs all-deep | 0.824 | 0.833 | [−0.013, −0.005] |
+
+Browser cost 0.67%. Under amendment 12's definition it passes all four rules, but it is barely faster:
+with GB held at round 3's level the GB check, not the best-status flips, sets the cost.
+
+### Frontier (kernel `analyze-router-frontier-20261012` v2, dev-test, per-game)
+
+Shipped round 3: core 0.851, NB 0.916, GB 0.908, wall 0.835. tiered1: core 0.732, NB 0.900, GB 0.835,
+wall 0.828 — per game, round 3 is not faster than tiered1 (the global-flag simulation of rounds 2–5
+shared opening reads between games and flattered both arms differently). Selected points:
+
+| Router @ score percentile | Core | NB | GB | Shallow | Wall |
+|---|---|---|---|---|---|
+| round 3 model @55 | 0.805 | 0.885 | 0.860 | 0.360 | 0.785 |
+| round 3 model @60 | 0.749 | 0.839 | 0.804 | 0.422 | 0.725 |
+| no-best model @55 | 0.768 | 0.955 | 0.874 | 0.344 | 0.788 |
+| no-best model @60 | 0.716 | 0.930 | 0.826 | 0.398 | 0.735 |
+| no-best model @65 | 0.649 | 0.876 | 0.765 | 0.461 | 0.678 |
+| position model @45 | 0.777 | 0.786 | 0.804 | 0.450 | 0.706 |
+
+The no-best model dominates the others on NB at every cost.
+
+## Amendment 13 (2026-10-12, after the frontier, before any holdK..holdN read): a faster operating point
+
+- Router: the round 8 model recipe (refit, same seed) at the highest validation threshold where NB
+  recall ≥ round 3's and GB recall ≥ tiered1's. The operating point was picked by looking at the
+  dev-test frontier above; the threshold itself is chosen on validation only.
+- Holdout: holdK..holdN, the dataset's last 2,000 unread eligible games (offsets 7348..9347), made like
+  holdG..holdJ. Read once by `holdout9`.
+- Ready to ship if, on the holdout: NB CI lower bound vs round 3 ≥ −0.01, GB CI lower bound vs tiered1
+  ≥ −0.01, wall vs round 3 CI upper < −0.05 (at least 5 points faster), browser cost < 1%. Core
+  recall is reported: this router does not try to catch Best/Excellent swaps, and accepting that is the
+  user's call.
+
+### Round 9 result (kernels `analyze-router-round9-20261012`, `analyze-router-holdout9-20261007`, 2026-10-12)
+
+Threshold 0.4769 (validation). Holdout: 1,905 fresh games, per-game simulation.
+
+| Arm | Core | NB | GB | Shallow | Wall |
+|---|---|---|---|---|---|
+| round 9 | 0.715 | 0.926 | 0.827 | 0.390 | 0.752 |
+| round 3 (shipped) | 0.850 | 0.919 | 0.902 | 0.303 | 0.845 |
+| tiered1 | 0.732 | 0.895 | 0.830 | 0.285 | 0.839 |
+
+- NB vs round 3: +0.007 [+0.002, +0.012] — pass.
+- GB vs tiered1: −0.004 [−0.010, +0.003] — pass.
+- Wall vs round 3: −0.093 [−0.098, −0.088] — pass (11% less wall than round 3, 10% less than tiered1).
+- Browser cost: 1.07% — fails the 1% bar. The model is 2.0 µs (round 3: 2.2 µs); features are 528 µs
+  against a 49 ms screen read on this machine, where earlier holdouts measured 380–420 µs against
+  60–75 ms. The feature code is round 3's, so the shipped router already pays the same cost.
+- Core vs round 3: −0.135; vs tiered1: −0.017 [−0.024, −0.010]. The core loss is Best/Excellent swaps.
+
+Pre-registered decision: not ready to ship (cost bar). Shipping it is the user's call on two points:
+the cost bar miss is a machine-timing artefact of unchanged feature code, and Best/Excellent swaps go
+unchecked. Browser model and rebuilt parity fixture (test passing) are in
+`artifacts/benchmarks/analyze-router-20261007/round9-output/ship-round9.patch`.
+
+Cost recheck (kernel `analyze-router-cost9-20261012`, cost only, no recall read): round 3 and round 9 timed
+together on one machine, 400 holdK screen reads, three runs. Median share round 3 1.008%, round 9 1.007%
+(model 2.1 µs vs 2.3 µs; features 500–584 µs shared; screen 50 ms). The shipped router sits at the same
+share on this machine, so the 1% miss is the machine, not round 9.
+
+## Amendment 14 (2026-10-12): cheaper move counts
+
+Router features counted legal moves, captures and checks from chess.js SAN, which runs a mate search
+after every checking move. `moveCounts` (features.mjs and deepening-router.js) counts them from
+chess.js's internal moves instead. Same values: 0 mismatches on all 112,175 distinct holdK..holdN
+positions (`counts-check.mjs`, in kernel `analyze-router-cost9-20261012` v2) and the parity fixture.
+
+Cost after the change (same kernel, three runs, 400 holdK screen reads at 55.8 ms): features 421–451 µs,
+share 0.76% for both round 3 and round 9 (max 0.81%). Round 9 now meets all four amendment 13 rules.
+
+Applied 2026-10-12 (uncommitted): round 9 model and parity fixture, `moveCounts`, and the built assets
+(built from HEAD plus these changes only). Revert with `git apply -R` on
+`artifacts/benchmarks/analyze-router-20261007/round9-output/ship-round9-assets.patch` and `ship-round9.patch`.

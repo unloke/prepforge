@@ -13,6 +13,16 @@ holdout2        the round 2 router against tiered1 on holdC..holdF, once
 carried1..5     the browser's carried-hash depth-12 screen reads for every shard (amendment 7)
 round3          round 2's procedure on the carried-hash screen reads (amendment 7)
 holdout3        the round 3 router against tiered1 on holdC..holdF, once
+holdG..holdN    500 fresh games each, carried-hash lite 12 + lite 16 (G..J: round 4 holdout; K..N: round 9)
+round4, round5  position routers on the development games, frozen against the shipped round 3 router
+round6          two-wave position routing (amendment 10)
+round7          the round 3 router pruned by a position model (amendment 11)
+frontier        cost/recall curves of round 3, a position model and a no-best-status router (dev-test)
+round8          a router that ignores best-status flips: frozen on validation, scored on dev-test and holdG..holdJ
+round9          the no-best-status router at NB ≥ round 3 and GB ≥ tiered1, frozen on validation (amendment 13)
+holdout9        the round 9 router against round 3 and tiered1 on holdK..holdN, once
+cost9           browser cost of round 3 and round 9 timed together on one machine
+holdout4..7     the frozen round 4..7 router against round 3 and tiered1 on holdG..holdJ, once
 hashbench       the shipped router's screen pass, a fresh hash per position against a carried one
 cancelled       a no-op version that stops a running kernel (used for the dropped scout screen run)
 """
@@ -48,16 +58,27 @@ exec(compile((root/'research/analyze-router/job.py').read_text(),'job.py','exec'
 k_ = lambda *names: [f'vexylon/analyze-router-{n}-{DATE}' for n in names]
 CARRIED = tuple(f'carried{i}' for i in range(1, 6))
 DATA = ('whole', 'gamesA', 'gamesB', 'holdA', 'holdB', 'holdC', 'holdD', 'holdE', 'holdF')
+FRESH4 = ('holdG', 'holdH', 'holdI', 'holdJ', 'holdK', 'holdL', 'holdM', 'holdN')
 sources = {'scout': [], 'cancelled': [], 'whole': [TEACHER], **{k: [] for k in DATA[1:]},
            'train': k_('whole', 'gamesa', 'gamesb'), 'freeze': k_('whole', 'gamesa', 'gamesb', 'train'),
            'holdout': k_('freeze', 'holda', 'holdb'),
            'round2': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb'),
-           'holdout2': k_('round2', 'holdc', 'holdd', 'holde', 'holdf'), 'hashbench': [], **{k: [] for k in CARRIED},
+           'holdout2': k_('round2', 'holdc', 'holdd', 'holde', 'holdf'), 'hashbench': [], **{k: [] for k in CARRIED}, **{k: [] for k in FRESH4},
            'round3': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb', 'carried1', 'carried2', 'carried3'),
-           'holdout3': k_('round3', 'holdc', 'holdd', 'holde', 'holdf', 'carried4', 'carried5')}[kind]
+           'holdout3': k_('round3', 'holdc', 'holdd', 'holde', 'holdf', 'carried4', 'carried5'),
+           **{f'round{r}': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb', 'carried1', 'carried2', 'carried3', 'round3')
+              for r in (4, 5, 6, 7)},
+           'round9': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb', 'carried1', 'carried2', 'carried3', 'round3'),
+           'holdout9': k_('round3') + [f'vexylon/analyze-router-{n}-20261012' for n in ('round9', 'holdk', 'holdl', 'holdm', 'holdn')],
+           'cost9': k_('round3') + [f'vexylon/analyze-router-{n}-20261012' for n in ('round9', 'holdk', 'holdl', 'holdm', 'holdn')],
+           'frontier': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb', 'carried1', 'carried2', 'carried3', 'round3'),
+           'round8': k_('whole', 'gamesa', 'gamesb', 'holda', 'holdb', 'carried1', 'carried2', 'carried3', 'round3') +
+                     [f'vexylon/analyze-router-{n}-20261012' for n in ('holdg', 'holdh', 'holdi', 'holdj')],
+           **{f'holdout{r}': k_('round3') + [f'vexylon/analyze-router-{n}-20261012' for n in (f'round{r}', 'holdg', 'holdh', 'holdi', 'holdj')]
+              for r in (4, 5, 6, 7)}}[kind]
 (out / 'kernel-metadata.json').write_text(json.dumps({
     'id': slug, 'title': slug.split('/')[1], 'code_file': 'job.py', 'language': 'python', 'kernel_type': 'script',
     'is_private': 'true', 'enable_gpu': 'false', 'enable_internet': 'true',
-    'dataset_sources': ['datasnaek/chess'] if kind in (*DATA, *CARRIED, 'hashbench') else [],
+    'dataset_sources': ['datasnaek/chess'] if kind in (*DATA, *CARRIED, *FRESH4, 'hashbench') else [],
     'competition_sources': [], 'kernel_sources': sources}, indent=2))
 print(json.dumps({'kind': kind, 'slug': slug, 'files': len(files), 'zipBytes': len(buf.getvalue()), 'out': str(out)}))
