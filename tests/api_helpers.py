@@ -20,5 +20,9 @@ def insert_users(engine, *ids: str) -> None:
     """Create bare users rows so owner foreign keys hold in tests on a real schema."""
     from prepforge_chess.storage import sa_tables
 
+    users = sa_tables.users
     with engine.begin() as conn:
-        conn.execute(sa_tables.users.insert(), [{"id": i, "email": f"{i}@x.test"} for i in ids])
+        have = set(conn.execute(users.select().with_only_columns(users.c.id).where(users.c.id.in_(ids))).scalars())
+        new = [{"id": i, "email": f"{i}@x.test"} for i in ids if i not in have]
+        if new:
+            conn.execute(users.insert(), new)

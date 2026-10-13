@@ -20,6 +20,7 @@ from prepforge_chess.core.models import (
     TrainingSession,
 )
 from prepforge_chess.storage import sa_tables
+from api_helpers import insert_users
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
@@ -705,8 +706,9 @@ def test_list_repertoires_postgres(monkeypatch):
         pytest.skip("TEST_POSTGRES_URL is not configured")
     engine = create_engine(_psycopg3_url(url), future=True)
     sa_tables.metadata.create_all(engine)
-    repo = WorkspaceRepository(engine)
-    _exercise_list_repertoires(repo, owner="u-list-" + uuid.uuid4().hex[:8])
+    owner = "u-list-" + uuid.uuid4().hex[:8]
+    insert_users(engine, owner, "someone-else")
+    _exercise_list_repertoires(WorkspaceRepository(engine), owner=owner)
 
 def test_load_game_renders_pgn_only_when_requested(monkeypatch):
     from prepforge_chess.storage import codec
