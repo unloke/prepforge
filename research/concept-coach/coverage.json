@@ -1,0 +1,415 @@
+{
+ "open_file": {
+  "labelled": 949,
+  "named": 689,
+  "both": 102,
+  "recall": 0.107,
+  "precision": 0.148
+ },
+ "development": {
+  "labelled": 2241,
+  "named": 3368,
+  "both": 918,
+  "recall": 0.41,
+  "precision": 0.273
+ },
+ "weak_square": {
+  "labelled": 485,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "threat": {
+  "labelled": 3413,
+  "named": 6876,
+  "both": 1489,
+  "recall": 0.436,
+  "precision": 0.217
+ },
+ "mate_threat": {
+  "labelled": 1423,
+  "named": 288,
+  "both": 130,
+  "recall": 0.091,
+  "precision": 0.451
+ },
+ "defense": {
+  "labelled": 2462,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "pin": {
+  "labelled": 924,
+  "named": 783,
+  "both": 143,
+  "recall": 0.155,
+  "precision": 0.183
+ },
+ "draw": {
+  "labelled": 662,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "endgame": {
+  "labelled": 485,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "castling": {
+  "labelled": 1240,
+  "named": 598,
+  "both": 330,
+  "recall": 0.266,
+  "precision": 0.552
+ },
+ "material_advantage": {
+  "labelled": 1264,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "trades": {
+  "labelled": 2341,
+  "named": 1764,
+  "both": 168,
+  "recall": 0.072,
+  "precision": 0.095
+ },
+ "other": {
+  "labelled": 0,
+  "named": 5608,
+  "both": 0,
+  "recall": null,
+  "precision": 0
+ },
+ "sacrifice": {
+  "labelled": 774,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "piece_coordination": {
+  "labelled": 504,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "tempo": {
+  "labelled": 1134,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "center_control": {
+  "labelled": 1297,
+  "named": 2121,
+  "both": 369,
+  "recall": 0.285,
+  "precision": 0.174
+ },
+ "prophylaxis": {
+  "labelled": 1006,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "pawn_structure": {
+  "labelled": 609,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "counterplay": {
+  "labelled": 424,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "king_safety": {
+  "labelled": 1380,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "piece_activity": {
+  "labelled": 1222,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "advantage": {
+  "labelled": 1697,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "weak_pawn": {
+  "labelled": 484,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "passed_pawn": {
+  "labelled": 541,
+  "named": 316,
+  "both": 53,
+  "recall": 0.098,
+  "precision": 0.168
+ },
+ "back_rank": {
+  "labelled": 155,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "pawn_storm": {
+  "labelled": 207,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "king_attack": {
+  "labelled": 1567,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "pressure": {
+  "labelled": 764,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "perpetual_check": {
+  "labelled": 71,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "skewer": {
+  "labelled": 31,
+  "named": 114,
+  "both": 3,
+  "recall": 0.097,
+  "precision": 0.026
+ },
+ "winning_material": {
+  "labelled": 1383,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "blockade": {
+  "labelled": 148,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "king_activity": {
+  "labelled": 442,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "blunder": {
+  "labelled": 1736,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "initiative": {
+  "labelled": 385,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "outpost": {
+  "labelled": 212,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "hanging_piece": {
+  "labelled": 588,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "fork": {
+  "labelled": 547,
+  "named": 181,
+  "both": 55,
+  "recall": 0.101,
+  "precision": 0.304
+ },
+ "promotion": {
+  "labelled": 488,
+  "named": 38,
+  "both": 24,
+  "recall": 0.049,
+  "precision": 0.632
+ },
+ "combination": {
+  "labelled": 209,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "diagonal": {
+  "labelled": 744,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "complications": {
+  "labelled": 292,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "trapped_piece": {
+  "labelled": 275,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "bishop_pair": {
+  "labelled": 191,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "space": {
+  "labelled": 560,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "removing_defender": {
+  "labelled": 152,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "passive_piece": {
+  "labelled": 972,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "doubled_pawns": {
+  "labelled": 235,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "bad_bishop": {
+  "labelled": 220,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "seventh_rank": {
+  "labelled": 103,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "isolated_pawn": {
+  "labelled": 184,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "compensation": {
+  "labelled": 201,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "pawn_break": {
+  "labelled": 278,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "discovered_attack": {
+  "labelled": 215,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "zugzwang": {
+  "labelled": 53,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "pawn_majority": {
+  "labelled": 86,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "opposite_bishops": {
+  "labelled": 28,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ },
+ "opposition": {
+  "labelled": 23,
+  "named": 0,
+  "both": 0,
+  "recall": 0,
+  "precision": null
+ }
+}

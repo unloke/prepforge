@@ -1,0 +1,860 @@
+{"id":"0B0hS70K/19","code":"inaccuracy","prose":"Nxc6 is slightly inaccurate: it allows 10...Qxc6, which attacks the pawn on c3. O-O was better.","candidates":[{"side":"played","phrase":"attacks the pawn on c3","concept":"threat"}]}
+{"id":"4PajUOj7/42","code":"good","prose":"Ne7 allows mate in 6. h6 held out longer.","candidates":[]}
+{"id":"7BpSGg8i/79","code":"forced","prose":"Kh3 was the only legal move.","candidates":[]}
+{"id":"88wbCaFC/9","code":"best","prose":"Best move. Nxc6 wins a knight.","candidates":[{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"9o2K8tQf/70","code":"forced","prose":"Kc6 was the only legal move.","candidates":[]}
+{"id":"CWUiHxhc/63","code":"inaccuracy","prose":"Rxa4 is slightly inaccurate. Qa3 was better: it attacks the pawn on a4. You were winning; now you are clearly better.","candidates":[{"side":"best","phrase":"attacks the pawn on a4","concept":"threat"}]}
+{"id":"FVAINHA2/12","code":"best","prose":"Exactly right. Nc6 develops the knight.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"FVAINHA2/27","code":"best","prose":"Good move. Nxe5 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/42","code":"best","prose":"Accurate. O-O castles.","candidates":[{"side":"played","phrase":"castles","concept":"castling"},{"side":"played","phrase":"trades bishops","concept":"trades"}]}
+{"id":"GMWOlwjP/39","code":"best","prose":"Nothing helps here: mate in 2 is coming whatever you play.","candidates":[{"side":"played","phrase":"attacks the knight on f4","concept":"threat"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"IZexjDK9/20","code":"blunder","prose":"Blunder. g6 allows 11.Qe5, which hits the rook on h8 and the pawn on c7. White is winning now. O-O was the move, keeping it level.","candidates":[{"side":"played","phrase":"pins the bishop to the king","concept":"pin"}]}
+{"id":"Ielcto2n/38","code":"forced","prose":"Kh8 was the only legal move.","candidates":[]}
+{"id":"LABc7BKr/72","code":"best","prose":"bxa6 allows mate in 5. Nxe5+ held out longer.","candidates":[{"side":"played","phrase":"wins the exchange","concept":"winning_material"}]}
+{"id":"N2XZNEWU/43","code":"inaccuracy","prose":"Rhb1 misses mate in one: 22.Qe7#.","candidates":[]}
+{"id":"UEJnPpXc/39","code":"blunder","prose":"Blunder. Nc3 allows mate next move: 20...Qxg2#. Qf3 was the move, defending the pawn on g2.","candidates":[{"side":"best","phrase":"defends the pawn on g2","concept":"defense"}]}
+{"id":"WEn30u09/58","code":"best","prose":"Good move. Rxc4 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"WEn30u09/75","code":"forced","prose":"Kf2 was the only legal move.","candidates":[]}
+{"id":"XczitvvJ/32","code":"blunder","prose":"Blunder. e5 loses four pawns after 17.Nxd5 Qg7 18.dxe5 g4 19.exf6. Qg7 was the move, keeping the material.","candidates":[]}
+{"id":"cLMSAWe9/63","code":"mistake","prose":"Mistake. bxa5 allows 32...Nxa5. Black is slightly better now. b5 was the move, keeping it level.","candidates":[]}
+{"id":"fFpgwcvI/48","code":"best","prose":"Exactly right. Rxb2 forces mate in 5.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"attacks the pawn on a2","concept":"threat"},{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"gxtaeLqK/20","code":"best","prose":"Accurate. Bb4+ develops the bishop and gives check.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"gxtaeLqK/42","code":"inaccuracy","prose":"Rac8 is slightly inaccurate. Rfc8 was better. White is slightly better now.","candidates":[]}
+{"id":"iArVE2ut/64","code":"best","prose":"Kf4 is the best move here.","candidates":[]}
+{"id":"lMOYqBtd/46","code":"forced","prose":"Kg8 was the only legal move.","candidates":[]}
+{"id":"ne1TIdVV/27","code":"blunder","prose":"Blunder. d4 misses Qxg7+, which pins the king to the knight and wins a pawn.","candidates":[{"side":"best","phrase":"pins the king to the knight","concept":"pin"}]}
+{"id":"oNDS70sU/30","code":"blunder","prose":"Blunder. Kb8 loses a pawn after 16.c3 Be8. Be8 was the move, keeping the material.","candidates":[]}
+{"id":"rB8i6Dzx/76","code":"blunder","prose":"Blunder. Rxc7 allows mate in 3: 39.Rxg6+ Kh8 40.Rg8+ Kh7 41.Qg6#. Bf3+ was the move, forking the king and the rook on c6 and winning a rook.","candidates":[{"side":"best","phrase":"forks the king and the rook on c6","concept":"fork"}]}
+{"id":"utif1iXA/71","code":"blunder","prose":"Blunder. Rd8+ misses mate in one: 36.Ne6#.","candidates":[]}
+{"id":"z9OcZ3xh/39","code":"forced","prose":"Ke5 was the only legal move.","candidates":[]}
+{"id":"O19cdLX2/22","code":"best","prose":"Best move. Nxd5 trades knights.","candidates":[{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"tCCTuCwb/38","code":"inaccuracy","prose":"axb5 loses a pawn after 20.Nxe5 Nxe5 21.Qxe5 bxc4 22.dxc4. Ng4 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the queen on f7","concept":"threat"},{"side":"best","phrase":"attacks the queen on e3","concept":"threat"}]}
+{"id":"nJF0hHw4/41","code":"mistake","prose":"Mistake. Bg4 misses Bxf7+, which wins a pawn.","candidates":[]}
+{"id":"uWrTW7LU/55","code":"blunder","prose":"Blunder. Kf2 misses Bc4, which wins a pawn (28.Bc4 Rd2 29.gxf5).","candidates":[{"side":"played","phrase":"leaves the bishop on e2 pinned","concept":"pin"},{"side":"best","phrase":"attacks the rook on a2","concept":"threat"}]}
+{"id":"E11tE0QG/41","code":"blunder","prose":"Blunder. Bh6 misses Bg5, which pins the knight to the queen and wins a pawn.","candidates":[{"side":"best","phrase":"pins the knight to the queen","concept":"pin"}]}
+{"id":"tCCTuCwb/24","code":"blunder","prose":"Blunder. f4 loses a pawn after 13.gxf4 Nbd7 14.c5 Bb8 15.cxd6. Nbd7 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"DNhhypWP/22","code":"mistake","prose":"Mistake. Bc5 loses a pawn after 12.dxc4 bxc4 13.Bxc4. Qc7 was the move, keeping the material.","candidates":[]}
+{"id":"Ck0ZuPRy/32","code":"mistake","prose":"Mistake. O-O-O loses a pawn after 17.Qxe5. Qg4 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the rook on g7","concept":"threat"},{"side":"best","phrase":"attacks the queen on h5","concept":"threat"}]}
+{"id":"Tj6OIJg9/31","code":"blunder","prose":"Blunder. Nfe5 loses a bishop after 16...Nxe5 17.Nxe5 b5 18.Re3 bxc4. d4 was the move, keeping the material.","candidates":[]}
+{"id":"fzAc6oKG/22","code":"mistake","prose":"Mistake. h5 allows 12.a4, which attacks the pawn on b5. White was slightly better; now White is clearly better. Qd8 was the move, limiting the damage.","candidates":[]}
+{"id":"dzU99BFv/46","code":"blunder","prose":"Blunder. Rxf5 allows 24.Rxf5 and a trade of rooks. White was slightly better; now White is clearly better. c6 was the move, attacking the knight on d5.","candidates":[{"side":"best","phrase":"attacks the knight on d5","concept":"threat"}]}
+{"id":"jCsNuxY4/40","code":"blunder","prose":"Blunder. c6 misses Nd6, which wins a pawn.","candidates":[]}
+{"id":"DNhhypWP/75","code":"best","prose":"Good move. Bxg6 takes the pawn on g6.","candidates":[]}
+{"id":"xfJxYqQh/83","code":"inaccuracy","prose":"Kf4 loses two pawns after 42...Ne2+ 43.Ke3 Nxd4 44.Rxe7 Nxf5+. Kd3 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the knight on c3","concept":"threat"}]}
+{"id":"DNhhypWP/55","code":"inaccuracy","prose":"h4 is slightly inaccurate. Nf6+ was better.","candidates":[]}
+{"id":"BO7hKPSE/59","code":"good","prose":"Qc6 allows mate in 4: 30...Qxd1+ 31.Bd2 Qf1+ 32.Kc2 Ra2+ 33.Kb3 Qb1#. Ke2 held out longer.","candidates":[{"side":"played","phrase":"attacks the pawn on c7","concept":"threat"}]}
+{"id":"Q5HSsAlS/58","code":"best","prose":"Exactly right. Ka6 attacks the rook on b7.","candidates":[{"side":"played","phrase":"attacks the rook on b7","concept":"threat"}]}
+{"id":"r0KurW3d/18","code":"good","prose":"dxc3 allows mate in 4: 10.Ne5+ Ke7 11.Qf7+ Kd6 12.Nc4+ Kc5 13.Qd5#. hxg6 held out longer.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"4kJcM5Zl/3","code":"best","prose":"c4 is the best move here.","candidates":[]}
+{"id":"HOBJLqgZ/47","code":"good","prose":"Kg2 is fine. Kf1 was slightly more precise.","candidates":[{"side":"played","phrase":"wins a queen for a bishop","concept":"winning_material"}]}
+{"id":"GkNVnmLX/56","code":"inaccuracy","prose":"Na7 is slightly inaccurate. g6 was better. You were slightly better; now it's level.","candidates":[]}
+{"id":"6OZRJJLW/17","code":"mistake","prose":"Mistake. f4 allows 9...Be6, which develops the bishop. Black is slightly better now. dxc5 was the move, keeping it level.","candidates":[]}
+{"id":"O7aY10fj/33","code":"mistake","prose":"Mistake. g6 allows 17...f6. Qd4 was the move.","candidates":[]}
+{"id":"QYMM5YTe/33","code":"blunder","prose":"Blunder. Bb5+ misses Nb3, which wins a queen for two pieces.","candidates":[{"side":"best","phrase":"attacks the queen on a5","concept":"threat"}]}
+{"id":"ZkzVaz0B/95","code":"forced","prose":"Kxh7 was the only legal move.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"1EJx9nca/53","code":"best","prose":"Kh1 is accurate.","candidates":[]}
+{"id":"4tS7nXwb/84","code":"blunder","prose":"Blunder. Rd2 misses mate in one: 42...Nf2#.","candidates":[{"side":"played","phrase":"attacks the pawn on g6","concept":"threat"},{"side":"played","phrase":"pins the knight to the rook","concept":"pin"}]}
+{"id":"7BpSGg8i/81","code":"best","prose":"Kg2 is accurate.","candidates":[]}
+{"id":"8XT0CJsq/51","code":"best","prose":"Good move. Rf7+ gives check and hits the queen on e7.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"hits the queen on e7","concept":"threat"},{"side":"played","phrase":"wins a queen for a rook and a knight","concept":"winning_material"}]}
+{"id":"9o2K8tQf/71","code":"best","prose":"Best move. Qe8+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"CWUiHxhc/64","code":"inaccuracy","prose":"Rb8 is slightly inaccurate. Ng6 was better. White was clearly better; now White is winning.","candidates":[]}
+{"id":"FVAINHA2/13","code":"mistake","prose":"Mistake. a3 loses a bishop after 7...h6 8.O-O Nf6 9.Nh4 Nxd5. Ng5 was the move, keeping the material.","candidates":[]}
+{"id":"FVAINHA2/28","code":"best","prose":"Accurate. d6 attacks the knight on e5.","candidates":[{"side":"played","phrase":"attacks the knight on e5","concept":"threat"}]}
+{"id":"FVAINHA2/44","code":"good","prose":"gxh6 allows mate in 10. Qxg4 held out longer.","candidates":[{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"GMWOlwjP/40","code":"best","prose":"Good move. Qc1 forces mate in 5.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"wins a rook for a pawn","concept":"winning_material"},{"side":"played","phrase":"pins the knight to the rook","concept":"pin"}]}
+{"id":"IZexjDK9/21","code":"good","prose":"Reasonable. Nxd4 wins a pawn. Qe5 was slightly more precise.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"Ielcto2n/55","code":"mistake","prose":"Mistake. g4 allows 28...Bh4. Black was slightly better; now Black is clearly better. Rh1 was the move, limiting the damage.","candidates":[]}
+{"id":"MCIbrN0I/20","code":"inaccuracy","prose":"O-O hangs the bishop on e7 to 11.Rxe7. Kf8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on b7","concept":"threat"}]}
+{"id":"N3Cyi0ps/50","code":"best","prose":"Rf8 allows mate in 2: 26.Rxf8 a6 27.Qf6#. Qg7 held out longer.","candidates":[{"side":"played","phrase":"takes the open f-file","concept":"open_file"}]}
+{"id":"UgQdSMSf/46","code":"best","prose":"Accurate. Qxh1+ gives up a queen for a rook and a knight.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"WEn30u09/59","code":"best","prose":"Best move. Re2 attacks the rook on a2.","candidates":[{"side":"played","phrase":"attacks the rook on a2","concept":"threat"},{"side":"played","phrase":"trades rooks","concept":"trades"}]}
+{"id":"WEn30u09/76","code":"blunder","prose":"Blunder. Rh2 loses a rook for a pawn after 39.Kg1 Rhxg2+ 40.Rxg2. Rg7 was the move, keeping the material.","candidates":[{"side":"best","phrase":"stops 39.Kg1","concept":"prophylaxis"}]}
+{"id":"XczitvvJ/60","code":"best","prose":"b6 allows mate next move: 31.Qxc7#. Ne2+ held out longer.","candidates":[{"side":"played","phrase":"attacks the queen on c5","concept":"threat"}]}
+{"id":"cLMSAWe9/66","code":"mistake","prose":"Mistake. Kf8 allows 34.Rc5, which attacks the pawn on c7. You were slightly better; now it's level. Nc4 was the move, attacking the bishop on b2.","candidates":[{"side":"best","phrase":"attacks the bishop on b2","concept":"threat"}]}
+{"id":"fFpgwcvI/49","code":"best","prose":"Nothing helps here: mate in 5 is coming whatever you play.","candidates":[]}
+{"id":"gxtaeLqK/21","code":"best","prose":"Exactly right. Bd2 develops the bishop and attacks the bishop on b4.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"attacks the bishop on b4","concept":"threat"}]}
+{"id":"gxtaeLqK/46","code":"blunder","prose":"Blunder. Rxc7 allows 24.dxc7, which attacks the rook on d8. White was slightly better; now White is winning. Kf8 was the move, limiting the damage.","candidates":[{"side":"played","phrase":"attacks the rook on d8","concept":"threat"}]}
+{"id":"ifUMWtVj/59","code":"best","prose":"Best move. Re8+ forces mate in 4.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"laldo4k0/38","code":"good","prose":"Na5 allows mate next move: 20.Qb8#. Rxd6 held out longer.","candidates":[{"side":"played","phrase":"attacks the queen on b3","concept":"threat"}]}
+{"id":"ne1TIdVV/28","code":"blunder","prose":"Blunder. Rhg8 allows 15.dxe5 and a trade of pawns. Qg4 was the move, attacking the queen on g5.","candidates":[{"side":"best","phrase":"attacks the queen on g5","concept":"threat"}]}
+{"id":"oNDS70sU/31","code":"blunder","prose":"Blunder. Qd2 misses c3, which wins a pawn.","candidates":[]}
+{"id":"rBQ0hb3h/41","code":"good","prose":"Good. Nxd8 wins a queen. Qg5# was slightly more precise.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"v8hrURkg/24","code":"best","prose":"d6 allows mate in 7. e6 held out longer.","candidates":[{"side":"played","phrase":"attacks the knight on e5","concept":"threat"}]}
+{"id":"zyYqMNVY/89","code":"blunder","prose":"Blunder. h4 allows mate in 3: 45...Rf1+ 46.Rf2 Rxf2+ 47.Nf4 Rxf4#. Ng7 was the move, winning a pawn.","candidates":[]}
+{"id":"TMhkCy7Z/47","code":"good","prose":"Good. Bxb6+ wins a knight and a pawn for a bishop. Ree6 was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a knight and a pawn for a bishop","concept":"winning_material"}]}
+{"id":"noNiTGVe/41","code":"blunder","prose":"Blunder. Rg4 misses Re3, which wins a pawn (21.Re3 f5 22.Bg3 h5 23.dxe5).","candidates":[]}
+{"id":"jCsNuxY4/37","code":"mistake","prose":"Mistake. Rxd8+ misses Rxc7, which wins a pawn (19.Rxc7 Nd6 20.Ng3 Rf7 21.Rxf7).","candidates":[]}
+{"id":"CaKTqCEQ/84","code":"inaccuracy","prose":"Rxd1+ misses Rd6, which wins a pawn (42...Rd6 43.cxb4+ Kxb4 44.a3+ Kxa3).","candidates":[]}
+{"id":"xWktiJvc/58","code":"blunder","prose":"Blunder. Bh4 misses Rxa8, which wins a rook and a knight for a bishop (29...Rxa8 30.fxg5 Ra2 31.Kf3 Rxb2).","candidates":[]}
+{"id":"BwYLFRtr/53","code":"blunder","prose":"Blunder. Kg4 loses a pawn after 27...Rd2 28.g3 Rxa2. Kf3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on g2","concept":"threat"}]}
+{"id":"1HZPejLy/21","code":"mistake","prose":"Mistake. O-O-O loses a pawn after 11...Bxf2. a4 was the move, keeping the material.","candidates":[]}
+{"id":"MqOhP9JT/30","code":"blunder","prose":"Blunder. Kd6 loses a rook after 16.Nb5+ Ke7 17.Nc7 Nc6 18.Nxa8. Bxc3 was the move, keeping the material.","candidates":[]}
+{"id":"DNhhypWP/76","code":"good","prose":"Kf8 is fine. Rxc3 was slightly more precise.","candidates":[]}
+{"id":"kuUD842n/36","code":"inaccuracy","prose":"d4 is slightly inaccurate. Ng5 was better. White was slightly better; now White is clearly better.","candidates":[]}
+{"id":"E11tE0QG/24","code":"good","prose":"Good. Bd7 develops the bishop. Nf6 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"1HZPejLy/23","code":"mistake","prose":"Mistake. Bh4 allows 12...d6. Black is slightly better now. Be3 was the move, keeping it level.","candidates":[]}
+{"id":"llzca2RX/61","code":"blunder","prose":"Blunder. gxf3 allows 31...Rc8. Black was clearly better; now Black is winning. Qxf3 was the move, attacking the queen on d1.","candidates":[{"side":"best","phrase":"attacks the queen on d1","concept":"threat"}]}
+{"id":"nfeAc1Cz/21","code":"blunder","prose":"Blunder. Bh4 allows 11...Be6, which develops the bishop and attacks the pawn on a2. Black is clearly better now. Qh5+ was the move, keeping it level.","candidates":[{"side":"played","phrase":"attacks the pawn on a2","concept":"threat"}]}
+{"id":"xfJxYqQh/84","code":"blunder","prose":"Blunder. Nb5 misses Ne2+, which wins two pawns (42...Ne2+ 43.Ke3 Nxd4 44.Rxe7 Nxf5+).","candidates":[]}
+{"id":"BO7hKPSE/61","code":"forced","prose":"Bd2 was the only legal move.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"QIrUtZaz/32","code":"blunder","prose":"Blunder. a5 allows 17.d5, which attacks the knight on c6. White was slightly better; now White is winning. Ne7 was the move, limiting the damage.","candidates":[{"side":"played","phrase":"attacks the knight on c6","concept":"threat"}]}
+{"id":"r0KurW3d/19","code":"best","prose":"Best move. Nxh8+ wins a rook and a pawn.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a rook and a pawn","concept":"winning_material"}]}
+{"id":"yhlqqmAc/24","code":"best","prose":"Exactly right. Bxf6 wins a bishop and attacks the pawn on d4.","candidates":[{"side":"played","phrase":"attacks the pawn on d4","concept":"threat"},{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"AfKwADa8/23","code":"best","prose":"Exactly right. Bg5 develops the bishop.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"BvQR69NU/9","code":"inaccuracy","prose":"Bb5 is slightly inaccurate. Nf3 was better.","candidates":[]}
+{"id":"KsP36zNZ/19","code":"mistake","prose":"Mistake. c4 allows 10...Nd3+, which gives check. Black is slightly better now. O-O was the move, keeping it level.","candidates":[]}
+{"id":"Cl6CjCfP/8","code":"good","prose":"Good. Bg4 develops the bishop. h6 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"HT9jGdjU/38","code":"inaccuracy","prose":"Rxd5 hangs the rook to 20.Bxd5. Qd7 was the move, keeping the material.","candidates":[]}
+{"id":"XtqNppi9/85","code":"forced","prose":"Kh3 was the only legal move.","candidates":[]}
+{"id":"1EJx9nca/57","code":"best","prose":"Rc7 is the right move.","candidates":[]}
+{"id":"4xnw9D2K/49","code":"best","prose":"Kxf1 allows mate next move: 25...Qxf2#. Nxg4 held out longer.","candidates":[]}
+{"id":"7BpSGg8i/82","code":"best","prose":"Accurate. Ra1 defends the pawn on a4.","candidates":[{"side":"played","phrase":"defends the pawn on a4","concept":"defense"}]}
+{"id":"9cKrtYER/16","code":"forced","prose":"Kxd8 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"A0ABE4mU/31","code":"blunder","prose":"Blunder. Bd5 allows mate in 2: 16...Qxf2+ 17.Kh1 Qxe1#. d4 was the move, attacking the bishop on c5.","candidates":[{"side":"played","phrase":"forks the king and the rook on e1","concept":"fork"},{"side":"best","phrase":"attacks the bishop on c5","concept":"threat"}]}
+{"id":"CWUiHxhc/68","code":"good","prose":"Fine move. Ne7 develops the knight and attacks the rook on c6. g6 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"},{"side":"played","phrase":"attacks the rook on c6","concept":"threat"}]}
+{"id":"FVAINHA2/14","code":"blunder","prose":"Blunder. b4 misses h6, which wins a bishop (7...h6 8.O-O Nf6 9.Nh4 Nxd5).","candidates":[{"side":"played","phrase":"attacks the pawn on f7","concept":"threat"}]}
+{"id":"FVAINHA2/29","code":"best","prose":"Good move. Qa4+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"FVAINHA2/45","code":"best","prose":"Exactly right. Nf6+ forces mate in 8.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"forks the king and the queen on d7","concept":"fork"},{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"GMWOlwjP/41","code":"best","prose":"Nothing helps here: mate in 6 is coming whatever you play.","candidates":[]}
+{"id":"IZexjDK9/22","code":"inaccuracy","prose":"Bf5 loses a bishop and a pawn for a knight after 12.Nxf5 gxf5 13.Qxb7. O-O was the move, keeping the material.","candidates":[]}
+{"id":"Ielcto2n/56","code":"inaccuracy","prose":"d5 is slightly inaccurate. Bh4 was better. You were clearly better; now you are slightly better.","candidates":[]}
+{"id":"MCIbrN0I/54","code":"good","prose":"Nxf4 allows mate next move: 28.Rh8#. Kg8 held out longer.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"N3PBJ07V/59","code":"blunder","prose":"Blunder. fxe3 allows 30...f3+, which pushes the passed pawn and gives check. You were clearly better; now it's level. Kg1 was the move, keeping you clearly better.","candidates":[]}
+{"id":"WEn30u09/10","code":"blunder","prose":"Blunder. Nf6 loses a knight for a pawn after 6.d4 Bb6. a6 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the bishop on b5","concept":"threat"}]}
+{"id":"WEn30u09/60","code":"best","prose":"Exactly right. Ra1+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"WEn30u09/77","code":"blunder","prose":"Blunder. Rg3 misses Kg1, which wins a rook for a pawn (39.Kg1 Rhxg2+ 40.Rxg2).","candidates":[{"side":"best","phrase":"attacks the rook on h2","concept":"threat"}]}
+{"id":"YT53T6Rz/54","code":"inaccuracy","prose":"e5 allows mate in 4: 28.Bxe5 Rf8 29.h3+ Kg5 30.Rg1+ Bg4 31.Rxg4#. Ra7 was the move, keeping the material.","candidates":[{"side":"best","phrase":"pins the bishop to the rook","concept":"pin"}]}
+{"id":"cLMSAWe9/67","code":"blunder","prose":"Blunder. f5 allows 34...Nc4, which attacks the bishop on b2. Black is clearly better now. Rc5 was the move, keeping it level.","candidates":[{"side":"played","phrase":"attacks the bishop on b2","concept":"threat"}]}
+{"id":"fFpgwcvI/50","code":"best","prose":"Accurate. O-O forces mate in 2.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"castles","concept":"castling"}]}
+{"id":"gxtaeLqK/22","code":"best","prose":"Exactly right. Be7 moves the bishop out of attack.","candidates":[{"side":"played","phrase":"moves the bishop out of attack","concept":"defense"}]}
+{"id":"gxtaeLqK/5","code":"best","prose":"Accurate. e5 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"j99HTPWR/18","code":"best","prose":"Be7 allows mate in 3: 10.Qh5+ Kd7 11.Bb5+ c6 12.e6#. Qxd1 held out longer.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"attacks the knight on g5","concept":"threat"}]}
+{"id":"laldo4k0/39","code":"best","prose":"Exactly right. Qb6 wins the exchange (20...Rxd6 21.Qxd6).","candidates":[{"side":"played","phrase":"hits the knight on a5 and the pawn on a6","concept":"threat"},{"side":"played","phrase":"wins the exchange","concept":"winning_material"}]}
+{"id":"ne1TIdVV/29","code":"blunder","prose":"Blunder. d5 allows 15...Qg4, which attacks the queen on g5. dxe5 was the move.","candidates":[]}
+{"id":"oNDS70sU/32","code":"blunder","prose":"Blunder. e5 loses a bishop after 17.Qa5 Bb4+ 18.Qxb4. b6 was the move, keeping the material.","candidates":[]}
+{"id":"rBYD0HJ1/86","code":"inaccuracy","prose":"Ba3 allows mate in 7. Rc4+ was the move, keeping the material.","candidates":[]}
+{"id":"v8hrURkg/29","code":"best","prose":"Accurate. Qf5+ forces mate in 7.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"hits the pawn on a5","concept":"threat"}]}
+{"id":"xWktiJvc/40","code":"best","prose":"Accurate. Nxd2 gives a knight for a bishop.","candidates":[{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"u88kT8Dm/24","code":"mistake","prose":"Mistake. d5 allows 13.cxd5 and a trade of knights. White was slightly better; now White is clearly better. Ng8 was the move, limiting the damage.","candidates":[]}
+{"id":"BwYLFRtr/69","code":"blunder","prose":"Blunder. Rf2 allows 35...Kf5. You were clearly better; now it's level. Rd1 was the move, keeping you clearly better.","candidates":[]}
+{"id":"BwYLFRtr/54","code":"blunder","prose":"Blunder. Ke6 misses Rd2, which wins a pawn (27...Rd2 28.g3 Rxa2).","candidates":[{"side":"best","phrase":"attacks the pawn on a2","concept":"threat"}]}
+{"id":"l7zAZuwu/37","code":"mistake","prose":"Mistake. exd4 misses Qxc5, which wins two pawns (19.Qxc5 Qe7 20.Qxe7 Rxe7 21.Nxd4).","candidates":[]}
+{"id":"u88kT8Dm/30","code":"blunder","prose":"Blunder. Qd7 misses Qxg2, which wins a knight and a pawn for a bishop (15...Qxg2 16.Rf1 Bxg5).","candidates":[{"side":"best","phrase":"attacks the rook on h1","concept":"threat"}]}
+{"id":"gmHfEniu/21","code":"blunder","prose":"Blunder. Nf3 misses Nf5, which wins a bishop and a pawn for a knight (11.Nf5 g6 12.Nxd6).","candidates":[]}
+{"id":"1HZPejLy/57","code":"inaccuracy","prose":"a5+ loses a knight after 29...Kb7 30.Rf8 bxc3. Ne2 was the move, keeping the material.","candidates":[]}
+{"id":"Zg31DglY/49","code":"blunder","prose":"Blunder. Qh7+ allows 25...Rg7, which hits the queen on h7 and the pawn on g3. You were winning; now it's level. Kg2 was the move, keeping you winning.","candidates":[]}
+{"id":"yZwB2tve/19","code":"blunder","prose":"Blunder. d3 loses a bishop for a pawn after 10...f5 11.Bxf4 fxe4. O-O was the move, keeping the material.","candidates":[]}
+{"id":"l7zAZuwu/33","code":"inaccuracy","prose":"O-O is slightly inaccurate. Rd2 was better.","candidates":[]}
+{"id":"dzU99BFv/25","code":"blunder","prose":"Blunder. g4 misses Nxg5, which wins a pawn.","candidates":[]}
+{"id":"MqOhP9JT/41","code":"mistake","prose":"Mistake. Nc7 loses a pawn after 21...Nxc7 22.Rxc7 f4 23.Nf3 fxe3. Kf1 was the move, keeping the material.","candidates":[]}
+{"id":"uWrTW7LU/25","code":"blunder","prose":"Blunder. d5 loses a bishop and two pawns for a knight after 13...cxd5 14.Qf2 Nxc4 15.Bxc4 dxc4. b3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on c4","concept":"threat"}]}
+{"id":"SNSTLokN/70","code":"mistake","prose":"Mistake. Ke5 hangs the bishop on h4 to 36.Rxh4. Kc3 was the move, keeping the material.","candidates":[]}
+{"id":"28YiE76s/56","code":"blunder","prose":"Blunder. Qg3 allows mate in 4: 29.Qxa8+ Bc8 30.Qxc8+ Bd8 31.Qxd8+ Rf8 32.Qxf8#. Be6+ was the move, keeping you winning.","candidates":[{"side":"played","phrase":"forks the king and the pawn on a7","concept":"fork"}]}
+{"id":"CCFDPDNh/42","code":"best","prose":"Nd7 allows mate in 3: 22.Bc4+ Ka5 23.Bd2+ Ka4 24.Rxa7#. Rd7 held out longer.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"QIrUtZaz/6","code":"best","prose":"Exactly right. c5 challenges the centre.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"}]}
+{"id":"tGUixiIG/16","code":"best","prose":"Accurate. Bxf3 gives a bishop for a knight.","candidates":[{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"}]}
+{"id":"5ktAEPNj/38","code":"best","prose":"Rd6 is the right move.","candidates":[]}
+{"id":"3ium8obe/14","code":"best","prose":"Qb6 is exactly right.","candidates":[]}
+{"id":"qZI6oQpg/25","code":"inaccuracy","prose":"Qf3 misses g3, which wins a queen for a knight (13.g3 Qe7 14.Nxe7).","candidates":[{"side":"best","phrase":"attacks the queen on h4","concept":"threat"}]}
+{"id":"zGncM82V/10","code":"inaccuracy","prose":"Bg4 is slightly inaccurate. f5 was better: it attacks the knight on e4. You were slightly better; now it's level.","candidates":[{"side":"played","phrase":"attacks the bishop on g4","concept":"threat"},{"side":"best","phrase":"attacks the knight on e4","concept":"threat"}]}
+{"id":"2LYR9SEP/74","code":"good","prose":"Kb6 is fine. g5 was slightly more precise.","candidates":[]}
+{"id":"Gff1fDGw/51","code":"blunder","prose":"Blunder. Kc3 allows 26...b5. Black is clearly better now. Kc1 was the move, keeping it level.","candidates":[]}
+{"id":"vSXfVGeX/42","code":"forced","prose":"Kh6 was the only legal move.","candidates":[]}
+{"id":"1EJx9nca/65","code":"best","prose":"Nothing helps here: mate in 3 is coming whatever you play.","candidates":[]}
+{"id":"5lmqe0aT/16","code":"mistake","prose":"Mistake. h6 allows mate in 2: 9.Ne7+ Kh8 10.Ng6#. Qxg5 was the move, limiting the damage.","candidates":[]}
+{"id":"7BpSGg8i/83","code":"best","prose":"Qd4 allows mate next move: 42...Qf1#. Qf4 held out longer.","candidates":[{"side":"played","phrase":"attacks the rook on a1","concept":"threat"}]}
+{"id":"9cKrtYER/58","code":"best","prose":"Re2 is spot on.","candidates":[]}
+{"id":"BTgoPbQe/8","code":"mistake","prose":"Mistake. e5 loses a pawn after 5.Nxe5 Bd6 6.Nxc6. g6 was the move, keeping the material.","candidates":[]}
+{"id":"DaH7VoPi/32","code":"best","prose":"g4 is the best move here.","candidates":[]}
+{"id":"FVAINHA2/15","code":"best","prose":"Accurate. axb4 trades pawns.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"FVAINHA2/3","code":"best","prose":"Exactly right. Nf3 develops the knight and attacks the pawn on e5.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"},{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"FVAINHA2/5","code":"good","prose":"Fine move. Nc3 develops the knight. d4 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"GMWOlwjP/44","code":"best","prose":"Best move. Rf8 forces mate in 4.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"IZexjDK9/3","code":"inaccuracy","prose":"Nc3 is slightly inaccurate: it allows 2...d4, which attacks the knight on c3. exd5 was better.","candidates":[{"side":"played","phrase":"attacks the knight on c3","concept":"threat"}]}
+{"id":"Ielcto2n/61","code":"blunder","prose":"Blunder. Rf4 loses the exchange to 31...Bg5, which pins the rook to the king. Rde1 was the move, keeping the material.","candidates":[{"side":"played","phrase":"pins the rook to the king","concept":"pin"}]}
+{"id":"MZ3hV53l/11","code":"mistake","prose":"Mistake. e4 allows 6...Ndb4. You were slightly better; now it's level. h3 was the move, attacking the bishop on g4.","candidates":[{"side":"best","phrase":"attacks the bishop on g4","concept":"threat"}]}
+{"id":"N3PBJ07V/61","code":"blunder","prose":"Blunder. Kf3 allows mate next move: 31...Bg4#. Kg1 was the move, keeping you winning.","candidates":[]}
+{"id":"WEn30u09/11","code":"blunder","prose":"Blunder. Re1 misses d4, which wins a knight for a pawn.","candidates":[{"side":"best","phrase":"attacks the bishop on c5","concept":"threat"}]}
+{"id":"WEn30u09/61","code":"best","prose":"Kf2 is accurate.","candidates":[]}
+{"id":"WEn30u09/78","code":"blunder","prose":"Blunder. Rf4+ allows 40.Kg1, which attacks the rook on h2. White is clearly better now. Rg7 was the move, keeping it level.","candidates":[]}
+{"id":"YzrWlckd/48","code":"inaccuracy","prose":"b6 allows mate next move: 25.Bxa6#. axb5 was the move.","candidates":[]}
+{"id":"cLMSAWe9/70","code":"blunder","prose":"Blunder. Ra5 allows mate next move: 36.Rd8#. Nd6 was the move, attacking the pawn on f5.","candidates":[{"side":"best","phrase":"attacks the pawn on f5","concept":"threat"}]}
+{"id":"fFpgwcvI/51","code":"best","prose":"Nothing helps here: mate in 2 is coming whatever you play.","candidates":[]}
+{"id":"gxtaeLqK/23","code":"best","prose":"Good move. O-O castles.","candidates":[{"side":"played","phrase":"castles","concept":"castling"}]}
+{"id":"gxtaeLqK/50","code":"good","prose":"Be7 is fine. Bd8 was slightly more precise.","candidates":[]}
+{"id":"j99HTPWR/19","code":"best","prose":"Accurate. Qh5+ forces mate in 2.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"hits the pawn on h7","concept":"threat"}]}
+{"id":"laldo4k0/40","code":"best","prose":"Rhe8 allows mate next move: 21.Qc7#. Rxd6 held out longer.","candidates":[{"side":"played","phrase":"takes the open e-file","concept":"open_file"}]}
+{"id":"ne1TIdVV/34","code":"best","prose":"Best move. cxd5 trades pawns.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"oNDS70sU/33","code":"blunder","prose":"Blunder. dxe5 misses Qa5, which wins a bishop (17.Qa5 Bb4+ 18.Qxb4).","candidates":[{"side":"played","phrase":"attacks the pawn on b5","concept":"threat"}]}
+{"id":"rJcEBJBt/59","code":"blunder","prose":"Blunder. Rxd6 loses a queen for a rook and a pawn to 30...Rbxd6, which skewers the queen and the rook behind it. Qe2 was the move, keeping the material.","candidates":[{"side":"played","phrase":"skewers the queen and the rook behind it","concept":"skewer"}]}
+{"id":"v8hrURkg/39","code":"best","prose":"Good move. Rc8+ forces mate in 4.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"hits the rook on a8","concept":"threat"},{"side":"played","phrase":"pins the king to the rook","concept":"pin"}]}
+{"id":"KCv5tbnu/46","code":"good","prose":"Reasonable. Rf8 takes the open f-file and attacks the queen on f3. Qxb2 was slightly more precise.","candidates":[{"side":"played","phrase":"takes the open f-file","concept":"open_file"},{"side":"played","phrase":"attacks the queen on f3","concept":"threat"},{"side":"played","phrase":"skewers the queen and the bishop behind it","concept":"skewer"}]}
+{"id":"E11tE0QG/22","code":"inaccuracy","prose":"Ng4 is slightly inaccurate. O-O was better. White is slightly better now.","candidates":[]}
+{"id":"FpZiajAh/35","code":"inaccuracy","prose":"O-O-O loses a pawn after 18...e4 19.Nd2 Rxf2 20.Nxe4 Rxg2. Nd2 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the knight on f3","concept":"threat"}]}
+{"id":"2J0zuNpC/41","code":"mistake","prose":"Mistake. Qc4 misses Rab1, which wins a bishop and a pawn for a knight (21.Rab1 Be7 22.Rxb6).","candidates":[]}
+{"id":"q5sOl72s/19","code":"inaccuracy","prose":"O-O misses e5, which wins a pawn (10.e5 Nfd7 11.Bxe7 Qxe7 12.Qxb7).","candidates":[]}
+{"id":"Tj6OIJg9/52","code":"inaccuracy","prose":"Bxd5 misses Rf4, which wins a queen for a rook and a bishop (26...Rf4 27.Bxc6 Rxe4).","candidates":[{"side":"best","phrase":"attacks the queen on e4","concept":"threat"}]}
+{"id":"GhsZZFkY/56","code":"mistake","prose":"Mistake. Rxd3 misses Rxf6, which wins a bishop.","candidates":[]}
+{"id":"mIgTK3WY/21","code":"blunder","prose":"Blunder. e4 loses two pawns after 11...Bxe5 12.Bxe5 Nxe5 13.Be2 dxe4. Ngf3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"shuts in the bishop on d3","concept":"passive_piece"}]}
+{"id":"7ylmLTvM/23","code":"blunder","prose":"Blunder. Re1 allows 12...Bxb4, which attacks the knight on c3. You were clearly better; now you are slightly better. a3 was the move, defending the pawn on b4.","candidates":[{"side":"played","phrase":"attacks the knight on c3","concept":"threat"},{"side":"played","phrase":"pins the knight to the rook","concept":"pin"},{"side":"best","phrase":"defends the pawn on b4","concept":"defense"}]}
+{"id":"q5sOl72s/49","code":"blunder","prose":"Blunder. Bd3 loses a bishop after 25...Rd2 26.Bc4 Rxa7 27.Bxe6 Rxf2. Bd4 was the move, keeping the material.","candidates":[]}
+{"id":"4EPuGhYq/33","code":"inaccuracy","prose":"Nd2 is slightly inaccurate. exd6 was better.","candidates":[]}
+{"id":"urdHwpWQ/33","code":"mistake","prose":"Mistake. dxc5 allows 17...dxc4. You were slightly better; now it's level. Bxe4 was the move, keeping you slightly better.","candidates":[]}
+{"id":"xneKFk4A/35","code":"mistake","prose":"Mistake. e5 allows 18...d5. Black was slightly better; now Black is clearly better. Rfe1 was the move, limiting the damage.","candidates":[]}
+{"id":"4q388Xq8/26","code":"blunder","prose":"Blunder. Bc8 allows 14.a4, which attacks the pawn on b5. You were slightly better; now it's level. Qf6 was the move, keeping you slightly better.","candidates":[{"side":"played","phrase":"attacks the pawn on b5","concept":"threat"}]}
+{"id":"SNSTLokN/85","code":"blunder","prose":"Blunder. Rc5 allows 43...b3, which pushes the passed pawn. You were winning; now it's level. Rhe4 was the move, keeping you winning.","candidates":[]}
+{"id":"8nHOVQF6/12","code":"forced","prose":"Kxd8 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen for a pawn","concept":"winning_material"}]}
+{"id":"Gidrnr39/40","code":"mistake","prose":"Mistake. d5 allows mate in 5. Re6 was the move, pinning the bishop to the rook and winning a pawn.","candidates":[{"side":"best","phrase":"pins the bishop to the rook","concept":"pin"}]}
+{"id":"QIrUtZaz/65","code":"blunder","prose":"Blunder. Qf1 allows 33...Qxf1+ and a trade of queens. You were winning; now you are clearly better. f3 was the move, keeping you winning.","candidates":[]}
+{"id":"yMOpMpne/49","code":"good","prose":"Good. Nge7+ gives check. Qh8+ was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"jyiWZNxs/39","code":"best","prose":"Rd4 is the best move here.","candidates":[]}
+{"id":"2LCcFkzv/31","code":"good","prose":"Fine move. Nxg5 gives a knight for a bishop. Kh1 was slightly more precise.","candidates":[{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"OHVh1oko/35","code":"good","prose":"Fine move. Rb1 attacks the pawn on b7. Nf4 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on b7","concept":"threat"}]}
+{"id":"un86XZiS/30","code":"mistake","prose":"Mistake. e5 misses Rxa1, which wins a pawn (15...Rxa1 16.Qxa1 exd5 17.Re1 dxe4).","candidates":[]}
+{"id":"SH4pFiWX/64","code":"good","prose":"Good. Re7 attacks the knight on d7. Rxd7 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the knight on d7","concept":"threat"}]}
+{"id":"g2lUIoKU/32","code":"blunder","prose":"Blunder. f6 loses a pawn after 17.Qxe6+. O-O was the move, keeping the material.","candidates":[]}
+{"id":"pBuPv1LC/36","code":"forced","prose":"Qf8 was the only legal move.","candidates":[{"side":"played","phrase":"attacks the queen on e8","concept":"threat"}]}
+{"id":"1QEYIDAb/55","code":"best","prose":"Qc6 allows mate in 5. c4 held out longer.","candidates":[{"side":"played","phrase":"attacks the bishop on e6","concept":"threat"}]}
+{"id":"5lmqe0aT/17","code":"mistake","prose":"Mistake. Nxc7+ misses mate in 2: 9.Ne7+ Kh8 10.Ng6#.","candidates":[]}
+{"id":"7BpSGg8i/86","code":"best","prose":"Good move. Qb1+ forces mate next move.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"9kHtte6M/54","code":"blunder","prose":"Blunder. a4 allows 28.bxa4 and a trade of pawns. White was slightly better; now White is clearly better. g6 was the move, limiting the damage.","candidates":[]}
+{"id":"CLaooF3B/19","code":"best","prose":"Good move. Qxd8+ forces mate in 8.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"E0kPh6JS/16","code":"mistake","prose":"Mistake. d4 loses a pawn after 9.exd4. O-O was the move, keeping the material.","candidates":[]}
+{"id":"FVAINHA2/16","code":"blunder","prose":"Blunder. Nxb4 misses cxb4, which wins a pawn.","candidates":[]}
+{"id":"FVAINHA2/30","code":"best","prose":"Good move. Bd7 develops the bishop and attacks the queen on a4.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"attacks the queen on a4","concept":"threat"}]}
+{"id":"FVAINHA2/6","code":"best","prose":"c5 is accurate.","candidates":[]}
+{"id":"GMWOlwjP/50","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"IZexjDK9/30","code":"best","prose":"Qd7 is the best move here.","candidates":[]}
+{"id":"Ielcto2n/62","code":"blunder","prose":"Blunder. Bc7 misses Bg5, which pins the rook to the king and wins the exchange.","candidates":[{"side":"best","phrase":"attacks the rook on f4","concept":"threat"},{"side":"best","phrase":"pins the rook to the king","concept":"pin"}]}
+{"id":"MZ3hV53l/12","code":"blunder","prose":"Blunder. Bxf3 allows 7.gxf3. White is slightly better now. Ndb4 was the move, keeping it level.","candidates":[]}
+{"id":"N3PBJ07V/62","code":"blunder","prose":"Blunder. fxe3+ misses mate in one: 31...Bg4#.","candidates":[]}
+{"id":"WEn30u09/19","code":"inaccuracy","prose":"dxe5 is slightly inaccurate. Na3 was better.","candidates":[{"side":"played","phrase":"attacks the pawn on f2","concept":"threat"}]}
+{"id":"WEn30u09/62","code":"best","prose":"Best move. Rh1 attacks the pawn on h2.","candidates":[{"side":"played","phrase":"attacks the pawn on h2","concept":"threat"}]}
+{"id":"WEn30u09/82","code":"blunder","prose":"Blunder. Re4 allows 42.Rge3, which attacks the rook on e4. White was clearly better; now White is winning. Rf8 was the move, limiting the damage.","candidates":[]}
+{"id":"YzrWlckd/9","code":"forced","prose":"Kxd1 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"diXKJT7y/17","code":"forced","prose":"Kxd1 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"fFpgwcvI/52","code":"best","prose":"Exactly right. Rd8 forces mate next move.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"takes the open d-file","concept":"open_file"}]}
+{"id":"gxtaeLqK/24","code":"best","prose":"Bd8 is the best move here.","candidates":[]}
+{"id":"gxtaeLqK/51","code":"best","prose":"Accurate. Na7 wins a rook for a pawn (26...Re8 27.c8=Q Rxc8 28.Rxc8+).","candidates":[{"side":"played","phrase":"attacks the rook on c8","concept":"threat"},{"side":"played","phrase":"wins a rook for a pawn","concept":"winning_material"}]}
+{"id":"j99HTPWR/20","code":"best","prose":"Nothing helps here: mate in 2 is coming whatever you play.","candidates":[]}
+{"id":"laldo4k0/41","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"ne1TIdVV/36","code":"best","prose":"Best move. Nxd5 trades knights.","candidates":[{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"oNDS70sU/38","code":"blunder","prose":"Blunder. Bc6 loses a bishop after 20.Qa2 Qa5 21.Qxa5 Bxa5 22.bxc6. Be7 was the move, keeping the material.","candidates":[]}
+{"id":"rw7RU3xt/14","code":"mistake","prose":"Mistake. Qa5 allows 8.Nb3, which attacks the queen on a5. White is slightly better now. h6 was the move, attacking the bishop on g5.","candidates":[{"side":"best","phrase":"attacks the bishop on g5","concept":"threat"}]}
+{"id":"v8hrURkg/46","code":"best","prose":"Nothing helps here: mate in 3 is coming whatever you play.","candidates":[]}
+{"id":"DNhhypWP/40","code":"inaccuracy","prose":"N3d4 misses N3h4, which wins a knight (20...N3h4 21.Nd5 Rad8 22.Ng1 Rxd5).","candidates":[{"side":"played","phrase":"shuts in the bishop on c5","concept":"passive_piece"}]}
+{"id":"kuUD842n/33","code":"inaccuracy","prose":"e5 is slightly inaccurate. Bxc5 was better. You were slightly better; now it's level.","candidates":[]}
+{"id":"NUyvOcew/32","code":"inaccuracy","prose":"Nc3 misses Nd4, which wins the exchange (16...Nd4 17.c4 Nc2 18.Bb2 Nxe1).","candidates":[{"side":"best","phrase":"attacks the pawn on c2","concept":"threat"}]}
+{"id":"xWktiJvc/48","code":"mistake","prose":"Mistake. Be7 misses f6, which wins two pawns (24...f6 25.Ra7 Bxb3 26.Rha1 fxe5).","candidates":[{"side":"played","phrase":"pins the king to the rook","concept":"pin"},{"side":"best","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"1HZPejLy/25","code":"mistake","prose":"Mistake. Rhg1 misses Bg3, which wins a pawn (13.Bg3 Nh3 14.Bxe5 Nxf2 15.Bxg7).","candidates":[{"side":"played","phrase":"attacks the bishop on h4","concept":"threat"}]}
+{"id":"GhsZZFkY/52","code":"blunder","prose":"Blunder. Rd4 misses Rxd3, which wins two bishops and a pawn for a knight (26...Rxd3 27.Ne4 Nd7 28.Qg4 Nxe5).","candidates":[{"side":"played","phrase":"attacks the bishop on b6","concept":"threat"}]}
+{"id":"Q0DkNpNt/54","code":"inaccuracy","prose":"Rd3 hangs the rook to 28.Rxd3. Rd2 was the move, keeping the material.","candidates":[]}
+{"id":"4EPuGhYq/20","code":"mistake","prose":"Mistake. Qh4 loses a knight and a pawn after 11.g3 Qd8 12.Bxe4 d5 13.exd6. f5 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the queen on h4","concept":"threat"},{"side":"played","phrase":"lets the opponent take the centre with pawns on d4 and e5","concept":"center_control"}]}
+{"id":"NUyvOcew/38","code":"blunder","prose":"Blunder. Rxd3 hangs the rook on h8 to 20.Bxh8. Nxd3 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the rook on e1","concept":"threat"}]}
+{"id":"Tj6OIJg9/29","code":"blunder","prose":"Blunder. Nf3 loses a bishop for a pawn after 15...b5 16.d4 bxc4. d4 was the move, keeping the material.","candidates":[]}
+{"id":"2J0zuNpC/49","code":"best","prose":"Exactly right. Rg3+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"dzU99BFv/39","code":"best","prose":"Exactly right. d5 takes the centre and attacks the bishop on e6.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"},{"side":"played","phrase":"attacks the bishop on e6","concept":"threat"}]}
+{"id":"llzca2RX/26","code":"inaccuracy","prose":"c5 is slightly inaccurate. a5 was better. White is slightly better now.","candidates":[{"side":"played","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"MqOhP9JT/49","code":"blunder","prose":"Blunder. h3 allows 25...Rac8, which attacks the rook on c7. You were winning; now you are slightly better. Rdd7 was the move, attacking the bishop on g7.","candidates":[{"side":"played","phrase":"attacks the rook on c7","concept":"threat"},{"side":"played","phrase":"skewers the rook and the knight behind it","concept":"skewer"},{"side":"best","phrase":"attacks the bishop on g7","concept":"threat"}]}
+{"id":"8IIoLziL/23","code":"blunder","prose":"Blunder. e6 loses a pawn after 12...fxe6. exd6 was the move, keeping the material.","candidates":[]}
+{"id":"8qYTysFk/33","code":"best","prose":"Kc4 allows mate in 6. Kd2 held out longer.","candidates":[]}
+{"id":"HFhSKwDs/19","code":"blunder","prose":"Blunder. g5 misses cxd4, which wins a pawn.","candidates":[{"side":"played","phrase":"lets the opponent take the centre with pawns on d4 and d5","concept":"center_control"}]}
+{"id":"QIrUtZaz/66","code":"blunder","prose":"Blunder. Qg4 allows 34.Qd3. White was clearly better; now White is winning. Qxf1+ was the move, limiting the damage.","candidates":[]}
+{"id":"XXTea2bg/63","code":"best","prose":"Best move. Qxd5 forces mate in 7.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"hits the rook on a8 and the knight on e4","concept":"threat"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"DGfxAaRs/47","code":"best","prose":"Exactly right. Rxc8 wins a rook.","candidates":[{"side":"played","phrase":"wins a rook","concept":"winning_material"},{"side":"played","phrase":"pins the rook to the king","concept":"pin"}]}
+{"id":"O1aeKYVU/42","code":"good","prose":"Kxd5 allows mate in 2: 22.Qxd7+ Kc4 23.Bd3#. c5 held out longer.","candidates":[{"side":"played","phrase":"gives up a bishop for a pawn","concept":"trades"}]}
+{"id":"cYrclVmM/20","code":"mistake","prose":"Mistake. f6 loses a pawn after 11.axb4 fxe5 12.dxe5. Nc6 was the move, keeping the material.","candidates":[]}
+{"id":"Y228TdMP/20","code":"mistake","prose":"Mistake. Ne7 allows 11.Nc4, which attacks the bishop on d6. You were winning; now you are clearly better. Nd5 was the move, keeping you winning.","candidates":[]}
+{"id":"u70pye6y/14","code":"inaccuracy","prose":"O-O misses Nxd4, which wins a knight for a pawn.","candidates":[]}
+{"id":"UeNFuxtd/28","code":"blunder","prose":"Blunder. Re1+ allows 15.Rd1, which attacks the rook on e1. White is clearly better now. Bxc3 was the move, keeping it level.","candidates":[]}
+{"id":"MDQflvGw/86","code":"forced","prose":"Kh7 was the only legal move.","candidates":[]}
+{"id":"1TPUrera/61","code":"best","prose":"Rxh7 allows mate next move: 31...Rg1#. Ke1 held out longer.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"6gke5zYl/41","code":"forced","prose":"Ke2 was the only legal move.","candidates":[{"side":"played","phrase":"attacks the pawn on e3","concept":"threat"}]}
+{"id":"7BpSGg8i/87","code":"forced","prose":"Qd1 was the only legal move.","candidates":[]}
+{"id":"9mpw3gDD/46","code":"forced","prose":"Ke7 was the only legal move.","candidates":[]}
+{"id":"CLaooF3B/20","code":"forced","prose":"Kxd8 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"EK0L0K5t/13","code":"blunder","prose":"Blunder. g3 loses a pawn after 7...Qb6 8.Qb5 Nxd4 9.Qxb6 axb6. e3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on d4","concept":"threat"}]}
+{"id":"FVAINHA2/17","code":"best","prose":"Accurate. Bxa8 wins a rook.","candidates":[{"side":"played","phrase":"wins a rook","concept":"winning_material"}]}
+{"id":"FVAINHA2/31","code":"best","prose":"Best move. Nxd7 gives a knight for a bishop.","candidates":[{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"FVAINHA2/7","code":"best","prose":"Accurate. Bc4 develops the bishop.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"GpSMQNVd/55","code":"best","prose":"Good move. d6 pushes the passed pawn.","candidates":[{"side":"played","phrase":"pushes the passed pawn","concept":"passed_pawn"}]}
+{"id":"IZexjDK9/32","code":"forced","prose":"Kd8 was the only legal move.","candidates":[]}
+{"id":"Ielcto2n/64","code":"mistake","prose":"Mistake. Kf7 allows 33.f6. You were slightly better; now it's level. Re8 was the move, keeping you slightly better.","candidates":[]}
+{"id":"MZ3hV53l/25","code":"forced","prose":"Ke2 was the only legal move.","candidates":[]}
+{"id":"N3PBJ07V/64","code":"best","prose":"Best move. d4+ takes the centre and gives check.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"WEn30u09/29","code":"blunder","prose":"Blunder. Nd2 hangs the knight to 15...Qxd2. Qe2 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on b2","concept":"threat"}]}
+{"id":"WEn30u09/63","code":"best","prose":"h3 is exactly right.","candidates":[]}
+{"id":"WEn30u09/88","code":"good","prose":"Rxe1+ allows mate in 8. Ra8 held out longer.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"Zdhs1waP/66","code":"best","prose":"Best move. b1=Q+ promotes to a queen and gives check.","candidates":[{"side":"played","phrase":"promotes to a queen","concept":"promotion"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"eZH6krXF/31","code":"good","prose":"fxe5 allows mate in 5. h3 held out longer.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"fFpgwcvI/53","code":"best","prose":"Nothing helps here: mate next move is coming whatever you play.","candidates":[]}
+{"id":"gxtaeLqK/25","code":"good","prose":"Bb4 is fine. Ba5 was slightly more precise.","candidates":[]}
+{"id":"gxtaeLqK/52","code":"good","prose":"Fine move. Bg5 attacks the rook on c1. Re8 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the rook on c1","concept":"threat"},{"side":"played","phrase":"trades rooks","concept":"trades"}]}
+{"id":"jE2hUvwN/68","code":"blunder","prose":"Blunder. Qxh4+ misses mate in 3: 34...Rxg3+ 35.Kh2 Rxg2+ 36.Kxg2 Qf1#.","candidates":[]}
+{"id":"n983jruV/65","code":"best","prose":"Nothing helps here: mate in 6 is coming whatever you play.","candidates":[{"side":"played","phrase":"wins a knight for a pawn","concept":"winning_material"}]}
+{"id":"ne1TIdVV/4","code":"mistake","prose":"Mistake. Bc5 loses a pawn after 3.Nxe5. Nc6 was the move, keeping the material.","candidates":[{"side":"best","phrase":"defends the pawn on e5","concept":"defense"}]}
+{"id":"oNDS70sU/40","code":"mistake","prose":"Mistake. Be7 loses a queen after 21.Qa2 Qa6 22.bxa6. Qxb5 was the move, keeping the material.","candidates":[{"side":"best","phrase":"skewers the queen and the bishop behind it","concept":"skewer"}]}
+{"id":"rw7RU3xt/42","code":"blunder","prose":"Blunder. a5 allows 22.Qh4+, which gives check. White was slightly better; now White is winning. Kf8 was the move, limiting the damage.","candidates":[]}
+{"id":"vV7M4rwA/39","code":"blunder","prose":"Blunder. Qxa6 allows mate next move: 20...Qxg2#. Bf3 was the move, attacking the queen on d5.","candidates":[{"side":"best","phrase":"attacks the queen on d5","concept":"threat"},{"side":"best","phrase":"skewers the queen and the bishop behind it","concept":"skewer"}]}
+{"id":"GhsZZFkY/47","code":"inaccuracy","prose":"Rg5 misses Bxh7+, which wins a pawn (24.Bxh7+ Nxh7 25.Qxd4).","candidates":[{"side":"played","phrase":"attacks the rook on g5","concept":"threat"}]}
+{"id":"nJF0hHw4/47","code":"blunder","prose":"Blunder. Bxh6 misses fxe6, which wins a pawn (24.fxe6 fxe6 25.Bxe6+).","candidates":[{"side":"best","phrase":"attacks the pawn on f7","concept":"threat"}]}
+{"id":"gmHfEniu/60","code":"inaccuracy","prose":"Rfe8 loses a pawn after 31.Rxb3. Rb8 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the rook on b5","concept":"threat"}]}
+{"id":"u88kT8Dm/39","code":"mistake","prose":"Mistake. Bf5 allows 20...Ke8. You were winning; now you are clearly better. O-O was the move, stopping 20...Ke8.","candidates":[{"side":"best","phrase":"stops 20...Ke8","concept":"prophylaxis"}]}
+{"id":"q5sOl72s/54","code":"blunder","prose":"Blunder. g6 misses h5, which wins a pawn (27...h5 28.Rc7 Rxa2).","candidates":[]}
+{"id":"O19cdLX2/40","code":"blunder","prose":"Blunder. Bxa3 hangs the rook on a6 to 21.Qxa6. Ra4 was the move, keeping the material.","candidates":[{"side":"best","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"uWrTW7LU/71","code":"inaccuracy","prose":"Nc7+ is slightly inaccurate. Nxf4+ was better.","candidates":[]}
+{"id":"Zg31DglY/40","code":"blunder","prose":"Blunder. Rxg3+ hangs the rook to 21.hxg3. Rad8 was the move, keeping the material.","candidates":[]}
+{"id":"GhsZZFkY/51","code":"blunder","prose":"Blunder. Qf4 hangs the bishop on d3 to 26...Rxd3. Qe2 was the move, keeping the material.","candidates":[]}
+{"id":"l7zAZuwu/34","code":"blunder","prose":"Blunder. Nb4 allows 18.Qa4, which attacks the knight on b4. You were slightly better; now White is slightly better. Bg4 was the move, keeping you slightly better.","candidates":[]}
+{"id":"yZwB2tve/34","code":"inaccuracy","prose":"O-O is slightly inaccurate. O-O-O was better. You were clearly better; now you are slightly better.","candidates":[]}
+{"id":"dzU99BFv/36","code":"blunder","prose":"Blunder. Rdf8 allows 19.Qf2. White is slightly better now. g3 was the move, keeping it level.","candidates":[]}
+{"id":"TfgXBzBK/29","code":"mistake","prose":"Mistake. Bxf4 allows 15...e4. Black was slightly better; now Black is clearly better. hxg5 was the move, limiting the damage.","candidates":[]}
+{"id":"xWktiJvc/44","code":"blunder","prose":"Blunder. Qxe2+ allows 23.Kxe2. White is clearly better now. Qb6 was the move, keeping it level.","candidates":[]}
+{"id":"5PbDSOM0/19","code":"mistake","prose":"Mistake. Bxd7+ allows 10...Nxd7. You were slightly better; now it's level. Bd3 was the move, keeping you slightly better.","candidates":[]}
+{"id":"8qYTysFk/39","code":"good","prose":"Ka3 allows mate in 3: 20...b4+ 21.Ka4 Bd7+ 22.Bc6 Bxc6#. Kc3 held out longer.","candidates":[]}
+{"id":"HFhSKwDs/52","code":"blunder","prose":"Blunder. Qxc4 allows mate in 2: 27.Qxf6+ Qf7 28.Rh8#. Ne5 was the move, winning a pawn.","candidates":[]}
+{"id":"QIrUtZaz/68","code":"inaccuracy","prose":"Nc4 loses a knight after 35.Qxc4+ Qxc4 36.Rxc4. Bd5 was the move, keeping the material.","candidates":[]}
+{"id":"e0t2usED/55","code":"best","prose":"Nc5 is the right move.","candidates":[]}
+{"id":"4lhM1Fh6/6","code":"best","prose":"d6 is spot on.","candidates":[]}
+{"id":"wWT0Pu8B/11","code":"good","prose":"c5 is fine. Nf3 was slightly more precise.","candidates":[]}
+{"id":"bt7zA9eR/6","code":"inaccuracy","prose":"d6 is slightly inaccurate: it allows 4.d5, which attacks the knight on c6. exd4 was better. White is slightly better now.","candidates":[{"side":"played","phrase":"attacks the knight on c6","concept":"threat"},{"side":"played","phrase":"shuts in the bishop on f8","concept":"passive_piece"}]}
+{"id":"w8Fddl0K/9","code":"mistake","prose":"Mistake. b4 allows 5...d5, which challenges the centre. You were slightly better; now it's level. d4 was the move, keeping you slightly better.","candidates":[]}
+{"id":"RVqzxG0F/59","code":"blunder","prose":"Blunder. Rxf8+ misses b7, which wins a queen for a bishop and a pawn.","candidates":[]}
+{"id":"pKiTHKLH/53","code":"blunder","prose":"Blunder. Re2 misses Re1, which pins the knight to the king and wins a knight.","candidates":[{"side":"best","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"x3qqYZK7/50","code":"forced","prose":"Kh5 was the only legal move.","candidates":[]}
+{"id":"1VRjI5fa/14","code":"inaccuracy","prose":"c5 is slightly inaccurate. Bb4+ was better. White was clearly better; now White is winning.","candidates":[]}
+{"id":"7BpSGg8i/10","code":"best","prose":"Accurate. Bxf3 gives a bishop for a knight.","candidates":[{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"}]}
+{"id":"7BpSGg8i/88","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"9mpw3gDD/70","code":"best","prose":"Good move. Qxe7 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"CWUiHxhc/11","code":"good","prose":"Good. a3 attacks the bishop on b4. Rc1 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the bishop on b4","concept":"threat"},{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"EK0L0K5t/51","code":"blunder","prose":"Blunder. Kg1 misses Bxf3, which wins a knight (26.Bxf3 Rxc3 27.Nxc3).","candidates":[]}
+{"id":"FVAINHA2/18","code":"best","prose":"Qc7 is spot on.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/32","code":"best","prose":"Best move. Qxd7 wins a knight for a pawn.","candidates":[{"side":"played","phrase":"wins a knight for a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/8","code":"inaccuracy","prose":"a6 is slightly inaccurate. Nc6 was better. White is slightly better now.","candidates":[]}
+{"id":"H7VJQtH3/90","code":"good","prose":"Reasonable. h4 pushes the passed pawn. R4g3# was slightly more precise.","candidates":[{"side":"played","phrase":"pushes the passed pawn","concept":"passed_pawn"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"IZexjDK9/35","code":"best","prose":"Best move. Qxh7 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"Ielcto2n/82","code":"forced","prose":"Ke5 was the only legal move.","candidates":[]}
+{"id":"MZ3hV53l/3","code":"best","prose":"c4 is the best move here.","candidates":[]}
+{"id":"N3PBJ07V/66","code":"inaccuracy","prose":"Rd8+ hangs the rook to 34.Bxd8. Rf5 was the move, keeping the material.","candidates":[]}
+{"id":"WEn30u09/30","code":"blunder","prose":"Blunder. Kh8 misses Qxd2, which wins a knight.","candidates":[]}
+{"id":"WEn30u09/64","code":"best","prose":"Rcc1 is spot on.","candidates":[]}
+{"id":"WEn30u09/89","code":"best","prose":"Exactly right. Rxe1 forces mate in 8.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"wins a rook","concept":"winning_material"}]}
+{"id":"bkJUYQpI/69","code":"blunder","prose":"Blunder. Rd1 allows mate next move: 35...Rxd1#. g3 was the move, keeping you winning.","candidates":[]}
+{"id":"eZH6krXF/40","code":"best","prose":"Good move. Bxc3+ gives a bishop for a knight.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"fFpgwcvI/54","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"gxtaeLqK/26","code":"good","prose":"Reasonable. Ne7 develops the knight. h5 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"gxtaeLqK/53","code":"good","prose":"Good. Rc6 attacks the pawn on b6. Nxc8 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on b6","concept":"threat"},{"side":"played","phrase":"wins a rook for a pawn","concept":"winning_material"},{"side":"played","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"k63szwKs/72","code":"inaccuracy","prose":"a6 allows mate next move: 37.Qg7#. Rxg2+ was the move.","candidates":[]}
+{"id":"n983jruV/70","code":"best","prose":"Good move. c3 forces mate in 7.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"attacks the pawn on b2","concept":"threat"}]}
+{"id":"ne1TIdVV/40","code":"inaccuracy","prose":"Rgf8 is slightly inaccurate. Nb6 was better: it attacks the rook on d5.","candidates":[{"side":"best","phrase":"attacks the rook on d5","concept":"threat"}]}
+{"id":"oNDS70sU/6","code":"best","prose":"Accurate. Nf6 develops the knight.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"tCAHCZ6N/41","code":"good","prose":"Ne4 allows mate in 4: 21...Nhf6 22.Nxf6+ gxf6 23.Qh5 Qxh5 24.Kg2 Qg4#. Kg2 held out longer.","candidates":[{"side":"played","phrase":"defends the bishop on d2","concept":"defense"}]}
+{"id":"vWm6K2ml/42","code":"best","prose":"Nd2 allows mate next move: 22.Qc8#. Nd6 held out longer.","candidates":[{"side":"played","phrase":"attacks the rook on f1","concept":"threat"}]}
+{"id":"Ck0ZuPRy/22","code":"mistake","prose":"Mistake. Nc6 misses exd4, which wins a knight and a pawn for a bishop (11...exd4 12.a4 Nc6 13.a5 dxc3).","candidates":[{"side":"played","phrase":"attacks the knight on c6","concept":"threat"}]}
+{"id":"fzAc6oKG/25","code":"inaccuracy","prose":"dxe5 misses d5, which wins a pawn (13.d5 cxd5 14.Nxd5).","candidates":[{"side":"best","phrase":"attacks the pawn on c6","concept":"threat"}]}
+{"id":"FN9G9i3J/29","code":"inaccuracy","prose":"Qc2 loses a pawn after 15...a5 16.Rd1 Qxe5 17.a3 axb4. Qd4 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on b4","concept":"threat"}]}
+{"id":"jCsNuxY4/47","code":"blunder","prose":"Blunder. Rf1 allows 24...Ne4. You were clearly better; now you are slightly better. Rd2 was the move, keeping you clearly better.","candidates":[]}
+{"id":"1HZPejLy/50","code":"blunder","prose":"Blunder. Kb6 misses Bc8, which wins the exchange (25...Bc8 26.a4 bxa4).","candidates":[]}
+{"id":"DNhhypWP/72","code":"mistake","prose":"Mistake. Rfd8 misses Qb2, which wins a pawn (36...Qb2 37.Be1 Qxa3).","candidates":[]}
+{"id":"DNhhypWP/64","code":"blunder","prose":"Blunder. Nxg3+ allows 33.Nxg3. White was slightly better; now White is winning. Bxe4 was the move, limiting the damage.","candidates":[]}
+{"id":"4q388Xq8/59","code":"inaccuracy","prose":"Qa1 loses a pawn after 30...Qe2 31.Re1 Rxa6. Qb3 was the move, keeping the material.","candidates":[]}
+{"id":"noNiTGVe/52","code":"blunder","prose":"Blunder. Nd4 loses a pawn after 27.Nxd4 exd4 28.Ra1 Bf7 29.Rxd4+. Nc5 was the move, keeping the material.","candidates":[]}
+{"id":"xneKFk4A/29","code":"blunder","prose":"Blunder. Bg3 misses gxh3, which wins a bishop for a pawn.","candidates":[]}
+{"id":"llzca2RX/53","code":"mistake","prose":"Mistake. Qe4 allows 27...Rc8. Black was slightly better; now Black is clearly better. Rc4 was the move, limiting the damage.","candidates":[]}
+{"id":"uWrTW7LU/31","code":"mistake","prose":"Mistake. Rd1 allows 16...Nxc3 and a trade of knights. Black was clearly better; now Black is winning. Nb5 was the move, limiting the damage.","candidates":[]}
+{"id":"FN9G9i3J/63","code":"inaccuracy","prose":"Bg6 is slightly inaccurate. Bc4 was better. Black was clearly better; now Black is winning.","candidates":[]}
+{"id":"tCCTuCwb/29","code":"blunder","prose":"Blunder. Na4 allows 15...Nbd7, which develops the knight. You were clearly better; now you are slightly better. Bxf6 was the move, keeping you clearly better.","candidates":[]}
+{"id":"eSawP8WZ/48","code":"good","prose":"Fine move. Qa6+ gives check. Rf6+ was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"AQsffKvT/81","code":"best","prose":"Nb4 allows mate in 3: 41...Qe2+ 42.Kh1 Qxd1+ 43.Kg2 Qg1#. R1xd4 held out longer.","candidates":[]}
+{"id":"HFhSKwDs/55","code":"good","prose":"Reasonable. Qxf7+ wins a knight. Rh8# was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"Tat8TxY9/56","code":"blunder","prose":"Blunder. Rf4 loses a knight after 29.fxe4. Nd6 was the move, keeping the material.","candidates":[]}
+{"id":"t1ynzSf6/36","code":"best","prose":"Accurate. Nxe5 wins a bishop.","candidates":[{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"hK6BdHCI/5","code":"best","prose":"Accurate. Nc3 develops the knight.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"bZwWiFpD/15","code":"good","prose":"a3 is fine. O-O was slightly more precise.","candidates":[]}
+{"id":"kzO8xpo0/17","code":"inaccuracy","prose":"h3 is slightly inaccurate. O-O-O was better.","candidates":[]}
+{"id":"pnqCxr2D/46","code":"good","prose":"Good. f4 attacks the bishop on g3. Ba4 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the bishop on g3","concept":"threat"}]}
+{"id":"mykn47vz/56","code":"blunder","prose":"Blunder. Ra8 misses Kf8, which wins a pawn.","candidates":[]}
+{"id":"ENVY6yGB/49","code":"inaccuracy","prose":"Rd1 is slightly inaccurate. Qf4 was better.","candidates":[]}
+{"id":"gPx45sxb/59","code":"forced","prose":"Ka2 was the only legal move.","candidates":[]}
+{"id":"1VRjI5fa/30","code":"best","prose":"Ke8 allows mate in 2: 16.Bb5+ Qd7 17.Qxd7#. Qd7 held out longer.","candidates":[]}
+{"id":"7BpSGg8i/20","code":"good","prose":"Reasonable. Nxf3+ gives a knight for a bishop. Bd6 was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"7Bvs8vKk/39","code":"best","prose":"Accurate. Qxe4 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"9o2K8tQf/11","code":"good","prose":"Reasonable. dxc5 wins a pawn. Na3 was slightly more precise.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"CWUiHxhc/51","code":"mistake","prose":"Mistake. a5 loses a pawn after 26...Nxd5 27.Nxg7 Kxg7 28.Qxd5 bxa5. Qb5 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the rook on e8","concept":"threat"}]}
+{"id":"EK0L0K5t/65","code":"best","prose":"Best move. Ke4 attacks the pawn on e5.","candidates":[{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"FVAINHA2/19","code":"best","prose":"Best move. Nd5 attacks the queen on c7.","candidates":[{"side":"played","phrase":"attacks the queen on c7","concept":"threat"}]}
+{"id":"FVAINHA2/33","code":"best","prose":"Exactly right. Qxa6 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/9","code":"good","prose":"d3 is fine. d4 was slightly more precise.","candidates":[]}
+{"id":"HwhEOWSx/15","code":"blunder","prose":"Blunder. f3 loses a knight for a pawn after 8...e5 9.Be3 exd4. c4 was the move, keeping the material.","candidates":[]}
+{"id":"IZexjDK9/37","code":"best","prose":"Good move. Bf7 attacks the queen on e8.","candidates":[{"side":"played","phrase":"attacks the queen on e8","concept":"threat"},{"side":"played","phrase":"trades queens","concept":"trades"}]}
+{"id":"Ielcto2n/88","code":"forced","prose":"Kd4 was the only legal move.","candidates":[{"side":"played","phrase":"attacks the rook on e3","concept":"threat"}]}
+{"id":"MZ3hV53l/32","code":"best","prose":"Good move. Nxe3 gives a knight for a bishop.","candidates":[{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"N3PBJ07V/9","code":"blunder","prose":"Blunder. Ng5 hangs the knight to 5...Qxg5. d4 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on g2","concept":"threat"}]}
+{"id":"WEn30u09/32","code":"blunder","prose":"Blunder. f5 allows 17.Rad1. You were clearly better; now it's level. f6 was the move, keeping you clearly better.","candidates":[]}
+{"id":"WEn30u09/65","code":"best","prose":"Best move. Rf3 takes the open f-file.","candidates":[{"side":"played","phrase":"takes the open f-file","concept":"open_file"}]}
+{"id":"WEn30u09/90","code":"best","prose":"Nothing helps here: mate in 7 is coming whatever you play.","candidates":[]}
+{"id":"bkZKFkin/76","code":"best","prose":"Good move. Nxh4 gives a knight for a bishop.","candidates":[{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"exQjDY1E/53","code":"blunder","prose":"Blunder. Nxd5 allows mate next move: 27...Qxh3#. Bg4 was the move, attacking the queen on d7.","candidates":[{"side":"best","phrase":"attacks the queen on d7","concept":"threat"}]}
+{"id":"fFpgwcvI/7","code":"blunder","prose":"Blunder. Ne2 misses c4, which wins a knight for two pawns.","candidates":[{"side":"best","phrase":"attacks the knight on d5","concept":"threat"}]}
+{"id":"gxtaeLqK/27","code":"inaccuracy","prose":"Nec3 is slightly inaccurate. Nbc3 was better. Black is slightly better now.","candidates":[{"side":"played","phrase":"attacks the pawn on d4","concept":"threat"}]}
+{"id":"gxtaeLqK/54","code":"good","prose":"Ra8 allows mate in 12. Rxc7 held out longer.","candidates":[{"side":"played","phrase":"attacks the knight on a7","concept":"threat"},{"side":"played","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"kM4WYYjC/37","code":"blunder","prose":"Blunder. Ng5 allows mate in 2: 19...Rxg2+ 20.Kh1 Qh2#. Ne3 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the rook on g4","concept":"threat"}]}
+{"id":"nSvKFzXI/16","code":"good","prose":"Reasonable. Nxd5 trades knights. Be7 was slightly more precise.","candidates":[{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"ne1TIdVV/41","code":"best","prose":"Best move. e4 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"},{"side":"played","phrase":"defends the pawn on f5","concept":"defense"}]}
+{"id":"oq3o27d7/47","code":"mistake","prose":"Mistake. g3 misses mate in 2: 24.Re8+ Rxe8 25.Rxe8#.","candidates":[]}
+{"id":"tCAHCZ6N/42","code":"inaccuracy","prose":"Bxd2 misses mate in 4: 21...Nhf6 22.Nxf6+ gxf6 23.Qh5 Qxh5 24.Kg2 Qg4#.","candidates":[]}
+{"id":"vnTKQt11/56","code":"mistake","prose":"Mistake. Qd6 allows mate next move: 29.Qxg7#. Qf7 was the move, limiting the damage.","candidates":[]}
+{"id":"4EPuGhYq/54","code":"good","prose":"Reasonable. Qxd2 wins a knight and attacks the pawn on b2. Bxf1 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on b2","concept":"threat"},{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"DNhhypWP/82","code":"best","prose":"Accurate. Kd7 wins a bishop (42.Kh2 Rxe1).","candidates":[{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"YqOQUbRF/71","code":"best","prose":"Best move. Ne7+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"nJF0hHw4/43","code":"inaccuracy","prose":"Qd3 is slightly inaccurate. Qf2 was better.","candidates":[]}
+{"id":"Ck0ZuPRy/33","code":"blunder","prose":"Blunder. Qxh6 misses Qxe5, which wins a pawn.","candidates":[]}
+{"id":"uWrTW7LU/67","code":"blunder","prose":"Blunder. Kc5 misses Ke5, which wins a pawn (34.Ke5 Kd7 35.gxf5 gxf5 36.Nxf5).","candidates":[{"side":"best","phrase":"stops 34...Kf6","concept":"prophylaxis"}]}
+{"id":"6pANn05J/30","code":"blunder","prose":"Blunder. Na6 misses cxb4, which wins a pawn (15...cxb4 16.cxb4 Nc6 17.Ra3 Ncxe5).","candidates":[]}
+{"id":"nJF0hHw4/46","code":"blunder","prose":"Blunder. Nh4 loses a pawn after 24.fxe6 fxe6 25.Bxe6+. exf5 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on f7","concept":"threat"}]}
+{"id":"mIgTK3WY/29","code":"blunder","prose":"Blunder. O-O-O loses a pawn to 15...Nxf2, which forks the rook on d1 and the rook on h1. Ng5 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the rook on h1","concept":"threat"},{"side":"played","phrase":"forks the rook on d1 and the rook on h1","concept":"fork"}]}
+{"id":"urdHwpWQ/34","code":"blunder","prose":"Blunder. Nc3 allows 18.Qc2, which attacks the knight on c3. White is winning now. dxc4 was the move, keeping it level.","candidates":[]}
+{"id":"UBgIyfUK/28","code":"inaccuracy","prose":"f5 misses Rae8, which wins a pawn (14...Rae8 15.c4 dxc4 16.Nbd2 Nxd2).","candidates":[]}
+{"id":"YqOQUbRF/26","code":"best","prose":"Exactly right. Bc5 develops the bishop.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"gmHfEniu/20","code":"mistake","prose":"Mistake. c5 loses a bishop and a pawn for a knight after 11.Nf5 g6 12.Nxd6. Re8 was the move, keeping the material.","candidates":[]}
+{"id":"Q0DkNpNt/29","code":"blunder","prose":"Blunder. Qxa6 loses the exchange after 15...Qxb2 16.Qxc4 Qxa1+. Be2 was the move, keeping the material.","candidates":[]}
+{"id":"SNSTLokN/61","code":"blunder","prose":"Blunder. Bf5+ misses mate in 5 with Bh7+.","candidates":[]}
+{"id":"Ac7yS6qo/33","code":"good","prose":"Kd2 allows mate in 3: 17...Ne4+ 18.Kd3 Qd1+ 19.Bd2 Qxd2#. Rg1 held out longer.","candidates":[]}
+{"id":"KYtSy3GE/38","code":"forced","prose":"Bf8 was the only legal move.","candidates":[]}
+{"id":"Tat8TxY9/72","code":"best","prose":"Nothing helps here: mate in 4 is coming whatever you play.","candidates":[{"side":"played","phrase":"attacks the pawn on b7","concept":"threat"}]}
+{"id":"zOMBXuAP/40","code":"best","prose":"Exactly right. Rd8 takes the open d-file and attacks the queen on d5.","candidates":[{"side":"played","phrase":"takes the open d-file","concept":"open_file"},{"side":"played","phrase":"attacks the queen on d5","concept":"threat"},{"side":"played","phrase":"skewers the queen and the knight behind it","concept":"skewer"}]}
+{"id":"6LG2NZ9A/22","code":"best","prose":"Exactly right. Qxh6 wins a bishop.","candidates":[{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"Wt4pO0yV/26","code":"best","prose":"Accurate. O-O castles.","candidates":[{"side":"played","phrase":"castles","concept":"castling"},{"side":"played","phrase":"defends the pawn on g7","concept":"defense"}]}
+{"id":"Pbkk0Zec/21","code":"inaccuracy","prose":"f4 is slightly inaccurate. Ne2 was better.","candidates":[{"side":"played","phrase":"attacks the queen on d1","concept":"threat"},{"side":"played","phrase":"shuts in the bishop on c1","concept":"passive_piece"}]}
+{"id":"rUysj2Pj/17","code":"inaccuracy","prose":"Bxe7 misses Qxg7, which forks the rook on h8 and the knight on a1 and wins a rook, a knight and a pawn for a bishop.","candidates":[{"side":"best","phrase":"attacks the rook on h8","concept":"threat"},{"side":"best","phrase":"forks the rook on h8 and the knight on a1","concept":"fork"}]}
+{"id":"FJTeB0gx/19","code":"blunder","prose":"Blunder. Bc2 loses a bishop and a pawn for a knight after 10...Nxc4 11.Qe2 Nxb2 12.Bxh7+ Kxh7. Qc2 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on b2","concept":"threat"}]}
+{"id":"KkRLJJDB/18","code":"blunder","prose":"Blunder. Bxd3 allows 10.cxd3. You were clearly better; now it's level. h5 was the move, keeping you clearly better.","candidates":[]}
+{"id":"xgnbnW0a/28","code":"forced","prose":"Kh8 was the only legal move.","candidates":[]}
+{"id":"1VRjI5fa/31","code":"best","prose":"Exactly right. Bb5+ forces mate next move.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"7BpSGg8i/46","code":"best","prose":"Exactly right. Qxa3 trades pawns.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"7NWORHxc/65","code":"good","prose":"Reasonable. d5 takes the centre. Bb3+ was slightly more precise.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"9o2K8tQf/19","code":"blunder","prose":"Blunder. O-O loses a pawn after 10...Bxc5. b4 was the move, keeping the material.","candidates":[{"side":"best","phrase":"defends the pawn on c5","concept":"defense"}]}
+{"id":"CWUiHxhc/52","code":"mistake","prose":"Mistake. bxa5 misses Nxd5, which wins a pawn (26...Nxd5 27.Nxg7 Kxg7 28.Qxd5 bxa5).","candidates":[]}
+{"id":"EK0L0K5t/67","code":"best","prose":"Best move. Kxe5 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/2","code":"best","prose":"Best move. e5 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"FVAINHA2/34","code":"best","prose":"Accurate. Nf6 develops the knight.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"FtHfBw1B/42","code":"forced","prose":"Kg5 was the only legal move.","candidates":[{"side":"played","phrase":"attacks the knight on f5","concept":"threat"},{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"HxCT46cR/41","code":"inaccuracy","prose":"Be3 allows mate in 4: 21...Nxf2+ 22.Kg2 Qh3+ 23.Kxf2 Qh2+ 24.Kf1 Bh3#. Kg2 was the move.","candidates":[{"side":"played","phrase":"forks the king and the queen on d1","concept":"fork"}]}
+{"id":"IZexjDK9/4","code":"inaccuracy","prose":"e6 is slightly inaccurate: it shuts in the bishop on c8. d4 was better.","candidates":[{"side":"played","phrase":"shuts in the bishop on c8","concept":"passive_piece"},{"side":"best","phrase":"attacks the knight on c3","concept":"threat"}]}
+{"id":"ImxVlfPY/50","code":"best","prose":"c6 allows mate in 2: 26.Rg8+ Kf7 27.Rf8#. Qxe6 held out longer.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"}]}
+{"id":"MZ3hV53l/43","code":"forced","prose":"Kh3 was the only legal move.","candidates":[]}
+{"id":"NoOhvluH/49","code":"inaccuracy","prose":"Rxd5 allows mate in 3: 25...Qxf2+ 26.Kh1 Qf1+ 27.Rxf1 Rxf1#. Rc2 was the move, defending the pawn on f2.","candidates":[{"side":"best","phrase":"defends the pawn on f2","concept":"defense"}]}
+{"id":"WEn30u09/34","code":"blunder","prose":"Blunder. Qf6 misses Bxe4, which wins a pawn.","candidates":[]}
+{"id":"WEn30u09/66","code":"best","prose":"h5 is spot on.","candidates":[]}
+{"id":"WEn30u09/91","code":"best","prose":"Good move. e8=Q forces mate in 5.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"promotes to a queen","concept":"promotion"},{"side":"played","phrase":"attacks the pawn on h5","concept":"threat"},{"side":"played","phrase":"wins a queen for a pawn","concept":"winning_material"}]}
+{"id":"bzujF8pw/46","code":"forced","prose":"Nc8 was the only legal move.","candidates":[]}
+{"id":"fFpgwcvI/11","code":"inaccuracy","prose":"c5 is slightly inaccurate. Nec3 was better.","candidates":[]}
+{"id":"fJeik54u/43","code":"blunder","prose":"Blunder. Be6+ misses mate in 4: 22.Qe8+ Qf8 23.Be6+ Nf7 24.Bxf7+ Kh8 25.Qxf8#.","candidates":[]}
+{"id":"gxtaeLqK/29","code":"blunder","prose":"Blunder. Bd6 loses a pawn after 15...Nf5 16.b4 Nxd4. Bxe7 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on d4","concept":"threat"}]}
+{"id":"gxtaeLqK/55","code":"best","prose":"Best move. c8=Q+ forces mate in 7.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"promotes to a queen","concept":"promotion"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a queen, a rook and a bishop for a pawn","concept":"winning_material"}]}
+{"id":"kM4WYYjC/38","code":"blunder","prose":"Blunder. Bxg2 misses mate in 2: 19...Rxg2+ 20.Kh1 Qh2#.","candidates":[{"side":"played","phrase":"attacks the pawn on e6","concept":"threat"}]}
+{"id":"nSvKFzXI/23","code":"best","prose":"Bg4 is the best move here.","candidates":[]}
+{"id":"ne1TIdVV/43","code":"inaccuracy","prose":"fxg6 loses a pawn after 22...hxg6. g4 was the move, keeping the material.","candidates":[]}
+{"id":"p80h54Rh/53","code":"blunder","prose":"Blunder. Nd7 loses a pawn after 27...Qc6 28.Qf3 Qxf3. Qe3 was the move, keeping the material.","candidates":[]}
+{"id":"tCAHCZ6N/43","code":"inaccuracy","prose":"Nxd2 allows mate in 3: 22...Qg5+ 23.Kh1 Nhf6+ 24.Qh5 Rxh5#. Qxd2 was the move.","candidates":[]}
+{"id":"vvcxPJA2/29","code":"mistake","prose":"Mistake. h5 loses a pawn after 15...Ng7 16.Bh3 Nxh5 17.Bxe6 Qxe6. Bh3 was the move, keeping the material.","candidates":[]}
+{"id":"UBgIyfUK/40","code":"inaccuracy","prose":"Bg3+ is slightly inaccurate. Nf6 was better: it stops 21.Kg1. White was clearly better; now White is winning.","candidates":[{"side":"best","phrase":"stops 21.Kg1","concept":"prophylaxis"}]}
+{"id":"Tj6OIJg9/50","code":"mistake","prose":"Mistake. gxh2+ misses gxf2+, which wins a knight and a pawn (25...gxf2+ 26.Nxf2 Bxh2+ 27.Kh1 Bxd5).","candidates":[]}
+{"id":"lSP6rS5w/29","code":"mistake","prose":"Mistake. Qe3 loses a pawn after 15...Ng4 16.Qf3 Nxh2. Nd2 was the move, keeping the material.","candidates":[]}
+{"id":"GhsZZFkY/53","code":"mistake","prose":"Mistake. Qxf6 misses Bxd4, which wins a bishop and a pawn (27.Bxd4 h6 28.Bxb6 hxg5 29.Qxg5).","candidates":[{"side":"best","phrase":"attacks the bishop on b6","concept":"threat"}]}
+{"id":"xWktiJvc/57","code":"blunder","prose":"Blunder. f4 misses Rxf8+, which wins a pawn.","candidates":[]}
+{"id":"nJF0hHw4/28","code":"mistake","prose":"Mistake. Bxf3 allows 15.Bxf3. White was clearly better; now White is winning. e6 was the move, limiting the damage.","candidates":[]}
+{"id":"DNhhypWP/25","code":"mistake","prose":"Mistake. Bf4 misses Bxc4, which wins a pawn (13.Bxc4 Bb7 14.Bd3 Nfd4 15.Nxd4).","candidates":[]}
+{"id":"2J0zuNpC/35","code":"blunder","prose":"Blunder. Bd2 loses a bishop and a pawn for a knight after 18...axb4. bxa5 was the move, keeping the material.","candidates":[]}
+{"id":"MqOhP9JT/32","code":"blunder","prose":"Blunder. Be6 loses the exchange after 17.Nb5+ Ke7 18.Nc7 Nc6 19.Nxe8. Bxc3 was the move, keeping the material.","candidates":[]}
+{"id":"TTMopOAa/42","code":"blunder","prose":"Blunder. Be8 hangs the bishop to 22.Qxe8+. Qh6 was the move, keeping the material.","candidates":[{"side":"played","phrase":"pins the knight to the rook","concept":"pin"},{"side":"best","phrase":"attacks the queen on h5","concept":"threat"}]}
+{"id":"wkSVjBqB/41","code":"best","prose":"Rf2 is spot on.","candidates":[]}
+{"id":"dzU99BFv/26","code":"blunder","prose":"Blunder. Nxg4 loses a knight for a pawn after 14.hxg4. Bg6 was the move, keeping the material.","candidates":[]}
+{"id":"nJF0hHw4/48","code":"blunder","prose":"Blunder. Nxg2 allows 25.fxe6, which attacks the pawn on f7. White was clearly better; now White is winning. Rxh6 was the move, limiting the damage.","candidates":[{"side":"played","phrase":"attacks the pawn on f7","concept":"threat"}]}
+{"id":"BwYLFRtr/75","code":"inaccuracy","prose":"Rxf4+ is slightly inaccurate. Rd2 was better. Black was clearly better; now Black is winning.","candidates":[]}
+{"id":"xfJxYqQh/69","code":"blunder","prose":"Blunder. Rh5+ allows 35...Kg7. Black is clearly better now. Rxf8+ was the move, keeping it level.","candidates":[]}
+{"id":"Ac7yS6qo/37","code":"best","prose":"c3 allows mate in 4: 19...Ne4+ 20.Kc2 Bd3+ 21.Kxd3 Qd1+ 22.Bd2 Qxd2#. Nc3 held out longer.","candidates":[{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"KYtSy3GE/58","code":"best","prose":"Qxf4 allows mate in 7. Qxe7 held out longer.","candidates":[{"side":"played","phrase":"gives up a queen for a pawn","concept":"trades"}]}
+{"id":"TnJuozQ7/37","code":"best","prose":"Nxf4 allows mate in 4: 19...Qxf4 20.g3 Bxf2+ 21.Kg2 Ne3+ 22.Kh3 Qg4#. Rfe1 held out longer.","candidates":[{"side":"played","phrase":"wins the exchange","concept":"winning_material"}]}
+{"id":"rJWTaG2Q/33","code":"best","prose":"Bc2 is the right move.","candidates":[]}
+{"id":"JuLC4yYi/63","code":"best","prose":"Qb4 is accurate.","candidates":[{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"tUP12rDG/14","code":"good","prose":"Reasonable. O-O castles. Ne5 was slightly more precise.","candidates":[{"side":"played","phrase":"castles","concept":"castling"},{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"eQCfOH7H/53","code":"inaccuracy","prose":"Qb1 is slightly inaccurate. Qa7 was better.","candidates":[]}
+{"id":"CmEuZBLE/75","code":"blunder","prose":"Blunder. Rh1 allows 38...Bxf5 and a knight-for-bishop trade. You were winning; now you are slightly better. Rxg4 was the move, keeping you winning.","candidates":[]}
+{"id":"QHBs6Sga/35","code":"blunder","prose":"Blunder. Nd2 loses a pawn to 18...Qxc3, which pins the knight to the king. O-O was the move, keeping the material.","candidates":[{"side":"played","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"FLYuGOKd/48","code":"forced","prose":"Kb8 was the only legal move.","candidates":[]}
+{"id":"sY8Jkaq8/72","code":"forced","prose":"Kh7 was the only legal move.","candidates":[]}
+{"id":"1VRjI5fa/32","code":"forced","prose":"Qd7 was the only legal move.","candidates":[]}
+{"id":"7BpSGg8i/50","code":"best","prose":"Rc1 is the best move here.","candidates":[{"side":"played","phrase":"trades rooks","concept":"trades"},{"side":"played","phrase":"pins the rook to the king","concept":"pin"}]}
+{"id":"7f2k2ZKy/44","code":"inaccuracy","prose":"h6 allows mate in 7. Ne5 was the move.","candidates":[]}
+{"id":"9o2K8tQf/30","code":"best","prose":"Best move. Bxd4 gives a bishop for a knight.","candidates":[{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"}]}
+{"id":"CWUiHxhc/53","code":"good","prose":"Reasonable. Rb7 attacks the pawn on a7. Qb5 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on a7","concept":"threat"}]}
+{"id":"EK0L0K5t/9","code":"mistake","prose":"Mistake. Qa4 loses a pawn after 5...Qb6 6.Nc3 Qxb2. e3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on d4","concept":"threat"}]}
+{"id":"FVAINHA2/20","code":"best","prose":"Accurate. Qa7 attacks the bishop on a8.","candidates":[{"side":"played","phrase":"attacks the bishop on a8","concept":"threat"},{"side":"played","phrase":"wins a bishop and a pawn for a knight","concept":"winning_material"}]}
+{"id":"FVAINHA2/35","code":"best","prose":"Good move. O-O castles.","candidates":[{"side":"played","phrase":"castles","concept":"castling"}]}
+{"id":"G4p1bVzt/63","code":"blunder","prose":"Blunder. Nc1 allows mate in 2: 32...Re1+ 33.Rxe1 Qxe1#. b5 was the move, keeping it level.","candidates":[{"side":"played","phrase":"skewers the rook and the knight behind it","concept":"skewer"}]}
+{"id":"IZexjDK9/11","code":"inaccuracy","prose":"Ng5 is slightly inaccurate. Qd1 was better.","candidates":[]}
+{"id":"IZexjDK9/45","code":"best","prose":"Exactly right. Bh6 wins a bishop (23...Qe7+ 24.Qxe7+ Kxe7 25.cxb4).","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"attacks the queen on f8","concept":"threat"},{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"KH9PEk6f/28","code":"blunder","prose":"Blunder. Nf4 loses a knight after 15.Bxf4 Qxf4 16.bxc5. Bd6 was the move, keeping the material.","candidates":[]}
+{"id":"MZ3hV53l/51","code":"best","prose":"hxg4 allows mate in 2: 26...hxg4+ 27.Bh3 Rxh3#. Be2 held out longer.","candidates":[]}
+{"id":"OjFVMu1H/25","code":"blunder","prose":"Blunder. f4 allows 13...exf4 and a trade of pawns. You were clearly better; now you are slightly better. Re3 was the move, keeping you clearly better.","candidates":[]}
+{"id":"WEn30u09/51","code":"best","prose":"Accurate. Rg6 defends the pawn on g2.","candidates":[{"side":"played","phrase":"defends the pawn on g2","concept":"defense"}]}
+{"id":"WEn30u09/67","code":"best","prose":"Kg3 is spot on.","candidates":[]}
+{"id":"WEn30u09/92","code":"best","prose":"Nothing helps here: mate in 3 is coming whatever you play.","candidates":[{"side":"played","phrase":"attacks the queen on e8","concept":"threat"}]}
+{"id":"bzujF8pw/50","code":"forced","prose":"Kd6 was the only legal move.","candidates":[]}
+{"id":"fFpgwcvI/20","code":"blunder","prose":"Blunder. e5 allows 11.dxe5. You were clearly better; now it's level. Nxf4 was the move, keeping you clearly better.","candidates":[]}
+{"id":"fh4TPeBQ/14","code":"blunder","prose":"Blunder. Nb4 lets the opponent take the centre with pawns on d4 and e4. White is clearly better now. Bd6 was the move, keeping it level.","candidates":[{"side":"played","phrase":"lets the opponent take the centre with pawns on d4 and e4","concept":"center_control"}]}
+{"id":"gxtaeLqK/3","code":"best","prose":"Good move. e4 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"gxtaeLqK/56","code":"best","prose":"Nothing helps here: mate in 2 is coming whatever you play.","candidates":[]}
+{"id":"ksAc8JEj/48","code":"blunder","prose":"Blunder. Nxh2 allows mate next move: 25.Re8#. Rxh2+ was the move, keeping it level.","candidates":[{"side":"best","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"nSvKFzXI/27","code":"good","prose":"Good. Bh6 attacks the pawn on g7. O-O was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on g7","concept":"threat"}]}
+{"id":"ne1TIdVV/51","code":"good","prose":"Good. Rb4 defends the pawn on e4. Rd1 was slightly more precise.","candidates":[{"side":"played","phrase":"defends the pawn on e4","concept":"defense"}]}
+{"id":"p80h54Rh/57","code":"blunder","prose":"Blunder. Nf6+ misses Qb4, which wins a knight (29.Qb4 Qd8 30.Qxd4).","candidates":[]}
+{"id":"tCAHCZ6N/44","code":"best","prose":"Accurate. Ng5 forces mate in 2.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"wvExJmBs/65","code":"best","prose":"Nothing helps here: mate in 7 is coming whatever you play.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"TTMopOAa/28","code":"inaccuracy","prose":"a6 loses a pawn after 15.f4 Re8. Re8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"p4Zek4Y7/52","code":"good","prose":"h4 is fine. Rg6 was slightly more precise.","candidates":[]}
+{"id":"FN9G9i3J/45","code":"best","prose":"b6 is the best move here.","candidates":[]}
+{"id":"4q388Xq8/38","code":"mistake","prose":"Mistake. Rfe8 misses Qe3+, which wins a pawn (19...Qe3+ 20.Kh1 Qxc3).","candidates":[]}
+{"id":"4EPuGhYq/55","code":"blunder","prose":"Blunder. Qe6+ misses Ne6, which forks the rook on d8 and the rook on f8 and wins the exchange.","candidates":[{"side":"best","phrase":"attacks the rook on d8","concept":"threat"},{"side":"best","phrase":"forks the rook on d8 and the rook on f8","concept":"fork"}]}
+{"id":"Zg31DglY/52","code":"blunder","prose":"Blunder. Rg6 misses Qxh5, which wins a queen.","candidates":[]}
+{"id":"noNiTGVe/47","code":"blunder","prose":"Blunder. c4 loses a bishop for a pawn after 24...f5 25.Rd1+ Ke7 26.Bxg5+ Nxg5. Ra1 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the bishop on a2","concept":"threat"}]}
+{"id":"1HZPejLy/55","code":"blunder","prose":"Blunder. a4 allows 28...Be3+, which gives check. Black was slightly better; now Black is clearly better. Nd1 was the move, attacking the bishop on f2.","candidates":[{"side":"best","phrase":"attacks the bishop on f2","concept":"threat"}]}
+{"id":"xneKFk4A/38","code":"blunder","prose":"Blunder. Rxd7 misses Bxd7, which wins a queen for a pawn.","candidates":[]}
+{"id":"DNhhypWP/52","code":"blunder","prose":"Blunder. Qc6 loses two pawns after 27.Bxh6 Nf5 28.Bg5 f6 29.exf6. f5 was the move, keeping the material.","candidates":[{"side":"played","phrase":"shuts in the bishop on b7","concept":"passive_piece"}]}
+{"id":"YqOQUbRF/77","code":"good","prose":"h4 allows mate in 3: 39...Ra1+ 40.Re1 Rxe1+ 41.Kh2 Rh1#. Re1 held out longer.","candidates":[]}
+{"id":"YqOQUbRF/37","code":"blunder","prose":"Blunder. Qg5+ allows 19...Bg6. Black was slightly better; now Black is clearly better. Qe6+ was the move, limiting the damage.","candidates":[]}
+{"id":"FN9G9i3J/50","code":"blunder","prose":"Blunder. Rxb6 allows 26.Rxf7+. You were slightly better; now White is winning. Be8 was the move, keeping you slightly better.","candidates":[]}
+{"id":"u88kT8Dm/49","code":"blunder","prose":"Blunder. Qc5+ allows 25...Kxd7. You were winning; now you are clearly better. Bxc6 was the move, keeping you winning.","candidates":[]}
+{"id":"8dptcjnH/44","code":"blunder","prose":"Blunder. Na5 loses a knight for a pawn after 23.Ng5 Re7 24.Rxa5. h5 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the queen on g4","concept":"threat"}]}
+{"id":"BO7hKPSE/10","code":"good","prose":"Good. Bxd3 trades bishops. e6 was slightly more precise.","candidates":[{"side":"played","phrase":"trades bishops","concept":"trades"}]}
+{"id":"KYtSy3GE/59","code":"good","prose":"Fine move. Rf1 attacks the queen on f4. exf4 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the queen on f4","concept":"threat"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"dGmgbEfj/71","code":"blunder","prose":"Blunder. f3+ misses mate in 5 with Kg2.","candidates":[{"side":"played","phrase":"attacks the bishop on e3","concept":"threat"}]}
+{"id":"MlnIaVj7/16","code":"best","prose":"Exactly right. Be7 develops the bishop.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"sysGKAjN/33","code":"best","prose":"Accurate. Bxd5 gives up the exchange.","candidates":[{"side":"played","phrase":"gives up the exchange","concept":"trades"}]}
+{"id":"jIkYW7nv/34","code":"good","prose":"Bg4 is fine. Rg6 was slightly more precise.","candidates":[{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"},{"side":"played","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"XEbHmTCg/38","code":"good","prose":"Good. Qh4 hits the pawn on g4 and the pawn on h2. Bc6 was slightly more precise.","candidates":[{"side":"played","phrase":"hits the pawn on g4 and the pawn on h2","concept":"threat"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"xkwp9u0z/45","code":"inaccuracy","prose":"Nh5 is slightly inaccurate. Bc2 was better.","candidates":[]}
+{"id":"ytCu5VIx/44","code":"blunder","prose":"Blunder. Bxb5 misses Rxc1+, which forks the king and the knight on b1 and wins two pieces and a queen for a rook.","candidates":[{"side":"best","phrase":"forks the king and the knight on b1","concept":"fork"}]}
+{"id":"e6ylqedC/53","code":"forced","prose":"Kd2 was the only legal move.","candidates":[]}
+{"id":"JAaDQSva/95","code":"forced","prose":"Ka6 was the only legal move.","candidates":[]}
+{"id":"1VRjI5fa/33","code":"best","prose":"Exactly right. Bxd7+ forces mate in 7.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"7BpSGg8i/70","code":"best","prose":"Exactly right. Rf2+ forces mate in 5.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"7f2k2ZKy/48","code":"blunder","prose":"Blunder. Ke7 allows mate in 2: 25.Qg7+ Bf7 26.Qxf7#. Qxf6 was the move, limiting the damage.","candidates":[{"side":"played","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"9o2K8tQf/36","code":"blunder","prose":"Blunder. Nxa3 hangs the knight to 19.Qxa3. Nd6 was the move, keeping the material.","candidates":[]}
+{"id":"CWUiHxhc/55","code":"blunder","prose":"Blunder. Rxa7 allows 28...Nxd5. You were clearly better; now you are slightly better. Qb5 was the move, attacking the rook on e8.","candidates":[{"side":"best","phrase":"attacks the rook on e8","concept":"threat"}]}
+{"id":"EdgBgzL0/77","code":"good","prose":"Rc6 allows mate in 2: 39...Qf2+ 40.Kh1 Qxg2#. Qf1 held out longer.","candidates":[{"side":"played","phrase":"attacks the queen on f6","concept":"threat"}]}
+{"id":"FVAINHA2/21","code":"best","prose":"Accurate. c3 attacks the knight on b4.","candidates":[{"side":"played","phrase":"attacks the knight on b4","concept":"threat"}]}
+{"id":"FVAINHA2/36","code":"best","prose":"Ng4 is the right move.","candidates":[]}
+{"id":"GMWOlwjP/11","code":"blunder","prose":"Blunder. Nh4 hangs the knight to 6...Bxh4. O-O was the move, keeping the material.","candidates":[]}
+{"id":"IZexjDK9/14","code":"blunder","prose":"Blunder. Nf6 loses a pawn after 8.Qc4 Nd5 9.Qxd5. Nc6 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on c7","concept":"threat"}]}
+{"id":"IZexjDK9/5","code":"good","prose":"Reasonable. Nf3 develops the knight. d4 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the knight","concept":"development"}]}
+{"id":"KH9PEk6f/53","code":"best","prose":"Best move. Nf1 attacks the pawn on d2.","candidates":[{"side":"played","phrase":"attacks the pawn on d2","concept":"threat"}]}
+{"id":"MZ3hV53l/53","code":"forced","prose":"Bh3 was the only legal move.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"OjFVMu1H/32","code":"blunder","prose":"Blunder. Rxb2 allows 17.Reb1. White was slightly better; now White is clearly better. Nxh2 was the move, limiting the damage.","candidates":[]}
+{"id":"WEn30u09/52","code":"mistake","prose":"Mistake. Kh7 allows 27.Rg3. White is slightly better now. Rfc2 was the move, attacking the pawn on c3.","candidates":[{"side":"best","phrase":"attacks the pawn on c3","concept":"threat"}]}
+{"id":"WEn30u09/68","code":"best","prose":"g5 is the right move.","candidates":[]}
+{"id":"WEn30u09/93","code":"best","prose":"Good move. Re7+ forces mate in 2.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a rook","concept":"winning_material"}]}
+{"id":"cHzDiEHH/19","code":"forced","prose":"Kxe2 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"fFpgwcvI/3","code":"best","prose":"Good move. e4 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"fh4TPeBQ/16","code":"blunder","prose":"Blunder. Nc6 allows 9.d5. White is clearly better now. c6 was the move, keeping it level.","candidates":[]}
+{"id":"gxtaeLqK/30","code":"blunder","prose":"Blunder. Nc8 misses Nf5, which wins a bishop and a pawn for a knight (15...Nf5 16.b4 Nxd4).","candidates":[{"side":"best","phrase":"attacks the pawn on d4","concept":"threat"}]}
+{"id":"gxtaeLqK/57","code":"best","prose":"Exactly right. Rxc8+ forces mate next move.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"lLIjkHVR/91","code":"best","prose":"Nothing helps here: mate in 6 is coming whatever you play.","candidates":[]}
+{"id":"nSvKFzXI/52","code":"forced","prose":"Kg8 was the only legal move.","candidates":[{"side":"played","phrase":"trades queens","concept":"trades"}]}
+{"id":"ne1TIdVV/52","code":"good","prose":"Good. Nc5 attacks the pawn on e4. Rc8 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on e4","concept":"threat"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"pC3DfZBm/40","code":"best","prose":"Nothing helps here: mate in 5 is coming whatever you play.","candidates":[{"side":"played","phrase":"gives up a rook","concept":"trades"}]}
+{"id":"tCAHCZ6N/46","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"wvMSm5qB/54","code":"inaccuracy","prose":"Rd6 allows mate next move: 28.Qxf7#. Qe6 was the move, defending the pawn on f7.","candidates":[{"side":"best","phrase":"defends the pawn on f7","concept":"defense"},{"side":"best","phrase":"pins the bishop to the rook","concept":"pin"}]}
+{"id":"6pANn05J/56","code":"inaccuracy","prose":"Qh6 is slightly inaccurate. fxg3 was better. White was clearly better; now White is winning.","candidates":[]}
+{"id":"TMhkCy7Z/44","code":"inaccuracy","prose":"Rb8 loses a pawn after 23.Ba5+ Nb6 24.Rxc5. a5 was the move, keeping the material.","candidates":[]}
+{"id":"TfgXBzBK/31","code":"mistake","prose":"Mistake. g3 loses a pawn after 16...e4 17.Qh5 fxg3 18.fxg3 Bxg3+. dxe5 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the queen on f3","concept":"threat"}]}
+{"id":"wkSVjBqB/39","code":"mistake","prose":"Mistake. Ke1 allows 20...Qb4+, which gives check and hits the pawn on b5. Black was clearly better; now Black is winning. Kg2 was the move, limiting the damage.","candidates":[]}
+{"id":"GhsZZFkY/20","code":"blunder","prose":"Blunder. Qb6 misses Qxd4, which wins a pawn.","candidates":[{"side":"played","phrase":"lets the opponent take the centre with pawns on d4 and e4","concept":"center_control"}]}
+{"id":"4EPuGhYq/21","code":"blunder","prose":"Blunder. Bxe4 misses g3, which wins a knight and a pawn (11.g3 Qd8 12.Bxe4 d5 13.exd6).","candidates":[{"side":"best","phrase":"attacks the queen on h4","concept":"threat"}]}
+{"id":"xWktiJvc/56","code":"mistake","prose":"Mistake. Bg5 loses a pawn after 29.Rxf8+. f6 was the move, keeping the material.","candidates":[]}
+{"id":"yZwB2tve/37","code":"blunder","prose":"Blunder. Nf5 loses a pawn to 19...Rd2+, which pins the king to the pawn. Nb3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"tCCTuCwb/43","code":"blunder","prose":"Blunder. Nxe5 hangs the knight to 22...Ndxe5. Bh4 was the move, keeping the material.","candidates":[]}
+{"id":"Q0DkNpNt/27","code":"blunder","prose":"Blunder. Qa4 hangs the bishop on d4 to 14...Qxd4. Bc3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"FN9G9i3J/70","code":"best","prose":"Kc8 is exactly right.","candidates":[]}
+{"id":"gmHfEniu/31","code":"blunder","prose":"Blunder. c3 allows 16...b5. Black is clearly better now. Rd3 was the move, keeping it level.","candidates":[]}
+{"id":"mIgTK3WY/34","code":"blunder","prose":"Blunder. Rf8 misses Qe7, which wins a rook (17...Qe7 18.Rdf1 Nxh1).","candidates":[{"side":"played","phrase":"attacks the knight on d7","concept":"threat"},{"side":"best","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"tCCTuCwb/28","code":"inaccuracy","prose":"Bc5 is slightly inaccurate. axb5 was better.","candidates":[]}
+{"id":"8dptcjnH/55","code":"blunder","prose":"Blunder. Nxd6 misses Rxb3, which wins a knight (28.Rxb3 Nxb3 29.Ng5 Qg7 30.Qxg7+).","candidates":[]}
+{"id":"BO7hKPSE/29","code":"best","prose":"Accurate. O-O-O castles queenside.","candidates":[{"side":"played","phrase":"castles queenside","concept":"castling"}]}
+{"id":"KYtSy3GE/62","code":"inaccuracy","prose":"Qc7 allows mate in 2: 32.R1xf7+ Kh6 33.Rh8#. f5 was the move.","candidates":[]}
+{"id":"j1dcI2of/51","code":"good","prose":"Bxh6 allows mate next move: 26...Qd1#. Qxd4 held out longer.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"hPeIuhGm/20","code":"best","prose":"Best move. Nxg4 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"dTMpzAr1/67","code":"best","prose":"g4 is accurate.","candidates":[]}
+{"id":"C9LdNE9h/16","code":"mistake","prose":"Mistake. cxd5 allows 9.Bg5, which develops the bishop and attacks the queen on f6. White was slightly better; now White is clearly better. Bg4 was the move, limiting the damage.","candidates":[]}
+{"id":"L02iUU1G/6","code":"inaccuracy","prose":"Qxd5 is slightly inaccurate. exd5 was better. White is slightly better now.","candidates":[]}
+{"id":"7cSVPQmP/49","code":"inaccuracy","prose":"c4 loses a pawn after 25...Re6 26.Rxe6 fxe6. f3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the rook on e4","concept":"threat"}]}
+{"id":"tLsTP8ca/27","code":"blunder","prose":"Blunder. Nxe4 misses Qe1, which wins a pawn (14.Qe1 Qg6 15.Qxe4+ Qxe4 16.Nxe4).","candidates":[{"side":"best","phrase":"attacks the pawn on e4","concept":"threat"}]}
+{"id":"KYjtOele/54","code":"forced","prose":"Kh8 was the only legal move.","candidates":[]}
+{"id":"ifNiFKL4/73","code":"forced","prose":"Kf1 was the only legal move.","candidates":[]}
+{"id":"1VRjI5fa/58","code":"forced","prose":"Ka3 was the only legal move.","candidates":[]}
+{"id":"7BpSGg8i/71","code":"best","prose":"Nothing helps here: mate in 5 is coming whatever you play.","candidates":[]}
+{"id":"88wbCaFC/12","code":"forced","prose":"Kxd8 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"9o2K8tQf/57","code":"best","prose":"Bg7 is the best move here.","candidates":[]}
+{"id":"CWUiHxhc/56","code":"blunder","prose":"Blunder. Qe1+ allows 29.Kh2. White was slightly better; now White is clearly better. Nxd5 was the move, limiting the damage.","candidates":[]}
+{"id":"FMNzioiV/88","code":"best","prose":"Nothing helps here: mate in 6 is coming whatever you play.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/22","code":"best","prose":"Good move. Qxa8 wins a bishop and a pawn for a knight and attacks the knight on d5.","candidates":[{"side":"played","phrase":"attacks the knight on d5","concept":"threat"},{"side":"played","phrase":"wins a bishop and a pawn for a knight","concept":"winning_material"}]}
+{"id":"FVAINHA2/37","code":"best","prose":"Best move. h3 wins a knight for a pawn (19...O-O 20.hxg4).","candidates":[{"side":"played","phrase":"attacks the knight on g4","concept":"threat"},{"side":"played","phrase":"wins a knight for a pawn","concept":"winning_material"}]}
+{"id":"GMWOlwjP/29","code":"forced","prose":"Kh2 was the only legal move.","candidates":[]}
+{"id":"IZexjDK9/15","code":"blunder","prose":"Blunder. g3 misses Qc4, which wins a pawn (8.Qc4 Nd5 9.Qxd5).","candidates":[]}
+{"id":"IZexjDK9/6","code":"inaccuracy","prose":"f5 is slightly inaccurate. d4 was better: it attacks the knight on c3. White is slightly better now.","candidates":[{"side":"best","phrase":"attacks the knight on c3","concept":"threat"}]}
+{"id":"KLLKC9sJ/42","code":"best","prose":"Kh7 allows mate in 6. Kh8 held out longer.","candidates":[]}
+{"id":"MZ3hV53l/6","code":"inaccuracy","prose":"d5 is slightly inaccurate. e6 was better. White is slightly better now.","candidates":[{"side":"played","phrase":"lets the opponent take the centre with pawns on d4 and e4","concept":"center_control"}]}
+{"id":"POrRRX45/44","code":"inaccuracy","prose":"hxg6 allows mate in 4: 23.Qh2 Qxb2+ 24.Kxb2 f5 25.Qh8+ Kf7 26.Rh7#. fxg6 was the move, winning a pawn.","candidates":[]}
+{"id":"WEn30u09/53","code":"best","prose":"Accurate. Rg3 moves the rook out of attack.","candidates":[{"side":"played","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"WEn30u09/69","code":"best","prose":"Best move. e4 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"WEn30u09/94","code":"best","prose":"Nothing helps here: mate next move is coming whatever you play.","candidates":[]}
+{"id":"cHzDiEHH/41","code":"blunder","prose":"Blunder. Rh3 allows mate in 2: 21...Bxd3+ 22.cxd3 Re1#. Nf2 was the move, limiting the damage.","candidates":[]}
+{"id":"fFpgwcvI/37","code":"good","prose":"Kg1 is fine. Bg2 was slightly more precise.","candidates":[]}
+{"id":"gkrVJbOl/51","code":"mistake","prose":"Mistake. Ne6 misses mate in 2: 26.Rg6+ Kh8 27.Rh7#.","candidates":[]}
+{"id":"gxtaeLqK/33","code":"blunder","prose":"Blunder. Bd6 allows 17...Nxd6 and a bishop-for-knight trade. Black is clearly better now. Ba3 was the move, keeping it level.","candidates":[]}
+{"id":"gxtaeLqK/58","code":"forced","prose":"Bd8 was the only legal move.","candidates":[]}
+{"id":"lMOYqBtd/36","code":"best","prose":"Qc5 allows mate in 5. Rfe8 held out longer.","candidates":[{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"},{"side":"played","phrase":"pins the knight to the king","concept":"pin"},{"side":"played","phrase":"moves the queen out of attack","concept":"defense"}]}
+{"id":"nSvKFzXI/62","code":"forced","prose":"Kg8 was the only legal move.","candidates":[]}
+{"id":"ne1TIdVV/8","code":"good","prose":"Good. Bg4 develops the bishop. Nf6 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"pC3DfZBm/41","code":"best","prose":"Good move. Bxg7+ forces mate in 4.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"forks the king and the rook on h8","concept":"fork"},{"side":"played","phrase":"wins a rook and a pawn","concept":"winning_material"}]}
+{"id":"tpAQVFdP/36","code":"blunder","prose":"Blunder. Ke6 loses a rook after 19.Bxe8 Qxe8 20.Qxg7 Qf7 21.Qxf7+. Kf8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"shuts in the bishop on c8","concept":"passive_piece"}]}
+{"id":"xlMLlebD/61","code":"inaccuracy","prose":"Rxa7 allows mate next move: 31...Rxh2#. Bg1 was the move, defending the pawn on h2.","candidates":[{"side":"best","phrase":"defends the pawn on h2","concept":"defense"}]}
+{"id":"Zg31DglY/57","code":"good","prose":"a4 is fine. Kg2 was slightly more precise.","candidates":[]}
+{"id":"2J0zuNpC/45","code":"mistake","prose":"Mistake. Raf1 allows 23...b5, which attacks the queen on c4. Rg3 was the move.","candidates":[]}
+{"id":"1HZPejLy/32","code":"mistake","prose":"Mistake. hxg5 allows 17.Bxf4 and a knight-for-bishop trade. You were slightly better; now it's level. fxg5 was the move, keeping you slightly better.","candidates":[]}
+{"id":"7ylmLTvM/21","code":"blunder","prose":"Blunder. b4 misses Bd3, which wins a pawn (11.Bd3 Qf6 12.Bxh7).","candidates":[{"side":"played","phrase":"attacks the knight on c3","concept":"threat"},{"side":"best","phrase":"attacks the pawn on h7","concept":"threat"}]}
+{"id":"jCsNuxY4/43","code":"blunder","prose":"Blunder. Nxe5 misses Rxd6, which wins a knight.","candidates":[{"side":"played","phrase":"attacks the pawn on f2","concept":"threat"}]}
+{"id":"xneKFk4A/41","code":"blunder","prose":"Blunder. Ree1 misses Nxd7, which wins the exchange (21.Nxd7 Rxe3 22.Ne5 Rxc3 23.bxc3).","candidates":[{"side":"best","phrase":"stops 21...Bd2","concept":"prophylaxis"}]}
+{"id":"EmEZrcf9/48","code":"inaccuracy","prose":"Ne4 loses a knight and a pawn for a bishop after 25.Bxe4 dxe4 26.d5 e3 27.Rxe3. Rae8 was the move, keeping the material.","candidates":[]}
+{"id":"tUB8amwt/56","code":"blunder","prose":"Blunder. Rf8 allows 29.Rc1. You were clearly better; now it's level. g5 was the move, keeping you clearly better.","candidates":[]}
+{"id":"DNhhypWP/62","code":"blunder","prose":"Blunder. Rc8 loses a knight and a pawn for a bishop after 32.Nf6+ Kh8 33.Bxf5. Bxe4 was the move, keeping the material.","candidates":[]}
+{"id":"Zg31DglY/32","code":"blunder","prose":"Blunder. Qc5 hangs the knight on d7 to 17.Qxd7. Rd8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"pins the bishop to the king","concept":"pin"}]}
+{"id":"gmHfEniu/34","code":"mistake","prose":"Mistake. b4 loses a knight for two pawns after 18.Qc4 Nxc3+ 19.bxc3. Rab8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the knight on a2","concept":"threat"}]}
+{"id":"NarEAPFD/20","code":"blunder","prose":"Blunder. Bxb2 misses dxe4, which wins a knight and a pawn for a bishop (10...dxe4 11.Nxc6 Bxf2+).","candidates":[]}
+{"id":"urdHwpWQ/42","code":"blunder","prose":"Blunder. Qg7 allows 22.g6. White is clearly better now. hxg5 was the move, attacking the pawn on f4.","candidates":[{"side":"best","phrase":"attacks the pawn on f4","concept":"threat"}]}
+{"id":"8dptcjnH/61","code":"mistake","prose":"Mistake. Qxf7 misses Bxf7, which wins a rook and a knight for a pawn (31.Bxf7 Nxg3+ 32.Kh2 Nf5 33.Rxb3).","candidates":[]}
+{"id":"VzwNOnKd/52","code":"blunder","prose":"Blunder. a4 loses a pawn after 27.Rxd4. Ba6 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the queen on e2","concept":"threat"},{"side":"best","phrase":"skewers the queen and the rook behind it","concept":"skewer"}]}
+{"id":"BO7hKPSE/35","code":"best","prose":"Qb5 allows mate in 2: 18...Ndb4+ 19.Kc1 Na2#. Kb1 held out longer.","candidates":[{"side":"played","phrase":"hits the knight on c6 and the knight on d3","concept":"threat"},{"side":"played","phrase":"pins the knight to the rook","concept":"pin"}]}
+{"id":"M2NfrvAD/64","code":"best","prose":"Rxd6 allows mate next move: 33.Re8#. Bf7 held out longer.","candidates":[{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"jxEJeqw4/55","code":"good","prose":"a4 allows mate in 2: 28...Rd1+ 29.Re1 Rxe1#. g3 held out longer.","candidates":[{"side":"played","phrase":"attacks the pawn on b5","concept":"threat"}]}
+{"id":"6w8NP5ji/42","code":"best","prose":"Exactly right. Qh4+ forces mate in 3.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"hits the pawn on f2","concept":"threat"}]}
+{"id":"7p9UNEMP/57","code":"best","prose":"Exactly right. Nf6+ wins a queen and a pawn for two pieces (29...Qxf6 30.Rxf6 Bxg4 31.Rxd6).","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"hits the bishop on d7","concept":"threat"},{"side":"played","phrase":"wins a queen and a pawn for two pieces","concept":"winning_material"}]}
+{"id":"OsURTQ26/10","code":"inaccuracy","prose":"Be7 is slightly inaccurate. Be6 was better. You were slightly better; now it's level.","candidates":[]}
+{"id":"stmk2OCH/13","code":"mistake","prose":"Mistake. Qh5 allows 7...Ne5, which attacks the bishop on c4. Black is slightly better now. Nc3 was the move, keeping it level.","candidates":[]}
+{"id":"MgoXD3YY/12","code":"blunder","prose":"Blunder. e5 loses a pawn after 7.Bxe5. Bd6 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the bishop on f4","concept":"threat"}]}
+{"id":"b0etXRK2/60","code":"blunder","prose":"Blunder. Nxd2 allows 31.Qxd2. You were clearly better; now it's level. Rxa4 was the move, keeping you clearly better.","candidates":[]}
+{"id":"XJcKbHBV/55","code":"forced","prose":"Qf2 was the only legal move.","candidates":[]}
+{"id":"NytBGP2x/66","code":"forced","prose":"Kb8 was the only legal move.","candidates":[]}
+{"id":"1ev76cYV/40","code":"mistake","prose":"Mistake. Bxh1 allows mate in 6. Kg7 was the move.","candidates":[]}
+{"id":"7BpSGg8i/72","code":"best","prose":"Accurate. Rf1+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"88wbCaFC/15","code":"good","prose":"Fine move. O-O castles. f3 was slightly more precise.","candidates":[{"side":"played","phrase":"castles","concept":"castling"}]}
+{"id":"9o2K8tQf/61","code":"good","prose":"Fine move. Rxe6+ wins a pawn. Rgf1 was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"CWUiHxhc/59","code":"good","prose":"Rg3 is fine. Qb5 was slightly more precise.","candidates":[]}
+{"id":"FUXC8VIa/77","code":"blunder","prose":"Blunder. Rf3 allows mate next move: 39...R8d2#. Nh7+ was the move, keeping it level.","candidates":[]}
+{"id":"FVAINHA2/23","code":"best","prose":"Accurate. cxb4 wins a knight for a pawn.","candidates":[{"side":"played","phrase":"wins a knight for a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/38","code":"best","prose":"Good move. Bxf2+ gives up a bishop for a pawn.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"GMWOlwjP/35","code":"best","prose":"Kh3 allows mate next move: 18...Qg3#. a4 held out longer.","candidates":[]}
+{"id":"IZexjDK9/16","code":"blunder","prose":"Blunder. Ne4 loses a knight after 9.Nxe4. c6 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the knight on b5","concept":"threat"}]}
+{"id":"IZexjDK9/9","code":"inaccuracy","prose":"Qe2+ is slightly inaccurate: it shuts in the bishop on f1. d4 was better. You were slightly better; now it's level.","candidates":[{"side":"played","phrase":"shuts in the bishop on f1","concept":"passive_piece"}]}
+{"id":"Kl5OMSHr/53","code":"blunder","prose":"Blunder. Rxe6 hangs the rook to 27...fxe6. Rb1 was the move, keeping the material.","candidates":[]}
+{"id":"MZ3hV53l/8","code":"good","prose":"Good. Bg4 develops the bishop. e6 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"wins a knight for a pawn","concept":"winning_material"}]}
+{"id":"QiWepOCZ/52","code":"good","prose":"Qf6 allows mate in 2: 27.Qf8+ Qxf8 28.Rxf8#. Rxe2+ held out longer.","candidates":[]}
+{"id":"WEn30u09/54","code":"best","prose":"Best move. Rxa2 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"WEn30u09/70","code":"good","prose":"Rc4 is fine. Rhe1 was slightly more precise.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"WEn30u09/95","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"cLMSAWe9/10","code":"inaccuracy","prose":"g6 is slightly inaccurate. e6 was better. White is slightly better now.","candidates":[]}
+{"id":"fFpgwcvI/4","code":"inaccuracy","prose":"Nf6 is slightly inaccurate: it allows 3.d5, which attacks the knight on c6. d5 was better. White is slightly better now.","candidates":[{"side":"played","phrase":"attacks the knight on c6","concept":"threat"},{"side":"played","phrase":"lets the opponent take the centre with pawns on e4 and d5","concept":"center_control"},{"side":"best","phrase":"stops 3.d5","concept":"prophylaxis"}]}
+{"id":"gxtaeLqK/1","code":"best","prose":"Best move. d4 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"gxtaeLqK/36","code":"blunder","prose":"Blunder. O-O misses Bf6, which wins a pawn (18...Bf6 19.Rd1 Kd7 20.Na3 Kxd6).","candidates":[]}
+{"id":"gxtaeLqK/59","code":"best","prose":"Checkmate. Well played.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"lMOYqBtd/37","code":"blunder","prose":"Blunder. Qe3 misses mate in 5 with Qg5.","candidates":[{"side":"played","phrase":"attacks the pawn on f6","concept":"threat"},{"side":"best","phrase":"defends the pawn on e5","concept":"defense"}]}
+{"id":"ne1TIdVV/11","code":"blunder","prose":"Blunder. Bxf7+ loses a knight for two pawns after 6...Kxf7 7.Nxe5+ dxe5. h3 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the bishop on g4","concept":"threat"}]}
+{"id":"ntjkrMPB/59","code":"best","prose":"Ne4 allows mate in 4: 30...Rxe4+ 31.Kd1 Ba4+ 32.Nb3 Bxb3+ 33.Kc1 Qc2#. Nxe8 held out longer.","candidates":[]}
+{"id":"qo4T1UoD/39","code":"blunder","prose":"Blunder. Qxd8+ misses mate in 2: 20.Nf6+ Kf8 21.Qh6#.","candidates":[]}
+{"id":"tpAQVFdP/54","code":"mistake","prose":"Mistake. cxb5 allows 28.a4, which attacks the pawn on b5. White was clearly better; now White is winning. Qd5 was the move, limiting the damage.","candidates":[]}
+{"id":"yX6ZCS0k/36","code":"good","prose":"Kf7 is fine. Rf7 was slightly more precise.","candidates":[]}
+{"id":"Q0DkNpNt/19","code":"mistake","prose":"Mistake. a3 misses Qa4, which pins the knight to the king and wins a bishop and a pawn for a knight.","candidates":[{"side":"best","phrase":"attacks the bishop on a6","concept":"threat"},{"side":"best","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"UBgIyfUK/38","code":"inaccuracy","prose":"Rxf2+ hangs the rook to 20.Kxf2. Qf4 was the move, keeping the material.","candidates":[{"side":"best","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"1HZPejLy/22","code":"mistake","prose":"Mistake. h6 misses Bxf2, which wins a pawn.","candidates":[]}
+{"id":"NarEAPFD/21","code":"mistake","prose":"Mistake. Nxc6 misses Ra2, which wins a bishop and a pawn for a knight (11.Ra2 Be5 12.Nxc6 Qd6 13.Nxe5).","candidates":[{"side":"best","phrase":"attacks the bishop on b2","concept":"threat"}]}
+{"id":"fzAc6oKG/61","code":"blunder","prose":"Blunder. Rxd1 misses Nd4+, which wins a knight (31.Nd4+ Kd7 32.Rxd1).","candidates":[]}
+{"id":"DNhhypWP/65","code":"blunder","prose":"Blunder. Qxg3 allows 33...Bxe4 and a knight-for-bishop trade. You were winning; now you are slightly better. Nxg3 was the move, keeping you winning.","candidates":[]}
+{"id":"u88kT8Dm/54","code":"mistake","prose":"Mistake. Kc7 loses two pawns after 28.exd4 Rd6 29.Rxh5. Qxg6 was the move, keeping the material.","candidates":[{"side":"played","phrase":"leaves the knight on c6 pinned","concept":"pin"}]}
+{"id":"urdHwpWQ/38","code":"blunder","prose":"Blunder. Qf6 allows 20.g3. White is slightly better now. Qc7 was the move, keeping it level.","candidates":[]}
+{"id":"u88kT8Dm/29","code":"blunder","prose":"Blunder. Bc4 loses a knight and a pawn for a bishop after 15...Qxg2 16.Rf1 Bxg5. f3 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the rook on h1","concept":"threat"}]}
+{"id":"UBgIyfUK/30","code":"blunder","prose":"Blunder. f4 loses a knight after 16.Bxh5 fxe3 17.Nxe4. Bh2+ was the move, keeping the material.","candidates":[]}
+{"id":"wHtLWVyy/26","code":"inaccuracy","prose":"Qd6 is slightly inaccurate. O-O was better. White was slightly better; now White is clearly better.","candidates":[]}
+{"id":"nJF0hHw4/56","code":"mistake","prose":"Mistake. Kd7 allows 29.Rf2. White is slightly better now. Kb8 was the move, keeping it level.","candidates":[]}
+{"id":"NUyvOcew/36","code":"blunder","prose":"Blunder. Nf4 allows 19.Bxf6 and a trade of pawns. You were clearly better; now you are slightly better. Nde7 was the move, keeping you clearly better.","candidates":[{"side":"played","phrase":"attacks the rook on d8","concept":"threat"},{"side":"played","phrase":"forks the rook on d8 and the rook on h8","concept":"fork"}]}
+{"id":"VzwNOnKd/54","code":"mistake","prose":"Mistake. Qxc5 allows 28.Nd3, which develops the knight and attacks the queen on c5. You were clearly better; now you are slightly better. Ba6 was the move, keeping you clearly better.","candidates":[{"side":"best","phrase":"skewers the queen and the rook behind it","concept":"skewer"}]}
+{"id":"nfeAc1Cz/29","code":"blunder","prose":"Blunder. b3 allows 15...a4. Black is clearly better now. d4 was the move, keeping it level.","candidates":[]}
+{"id":"BO7hKPSE/36","code":"best","prose":"Best move. Nf2+ forks the king and the rook on d1.","candidates":[{"side":"played","phrase":"forks the king and the rook on d1","concept":"fork"}]}
+{"id":"PNH6nW8P/20","code":"forced","prose":"Qxd7 was the only legal move.","candidates":[{"side":"played","phrase":"attacks the queen on a4","concept":"threat"},{"side":"played","phrase":"wins a bishop","concept":"winning_material"}]}
+{"id":"nNk9MHI5/60","code":"blunder","prose":"Blunder. exd5 hangs the rook on h8 to 31.Bxh8. Rg8 was the move, keeping the material.","candidates":[{"side":"best","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"I825rHtd/37","code":"best","prose":"Good move. Rfd1 takes the open d-file.","candidates":[{"side":"played","phrase":"takes the open d-file","concept":"open_file"},{"side":"played","phrase":"trades bishops","concept":"trades"}]}
+{"id":"PIWD38Gr/86","code":"good","prose":"Good. b5+ pushes the passed pawn and gives check. Rf2 was slightly more precise.","candidates":[{"side":"played","phrase":"pushes the passed pawn","concept":"passed_pawn"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"cqnQ4vsN/92","code":"good","prose":"Good. hxg5 trades pawns. Re5 was slightly more precise.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"CWm5CWdm/10","code":"inaccuracy","prose":"Qg4 is slightly inaccurate. Bb7 was better.","candidates":[]}
+{"id":"nZzmL2rR/16","code":"blunder","prose":"Blunder. Bxd5 misses Bxg3, which wins a knight and a pawn for a bishop (8...Bxg3 9.Nb4 Nxb4).","candidates":[]}
+{"id":"5PKdfVoL/44","code":"blunder","prose":"Blunder. Nxd5 misses Rb8, which skewers the queen and the knight behind it and wins a queen for a rook.","candidates":[{"side":"played","phrase":"attacks the pawn on b4","concept":"threat"},{"side":"best","phrase":"attacks the queen on b7","concept":"threat"},{"side":"best","phrase":"skewers the queen and the knight behind it","concept":"skewer"}]}
+{"id":"eLIDnsgG/64","code":"forced","prose":"Kf5 was the only legal move.","candidates":[]}
+{"id":"2CfCXx1c/86","code":"good","prose":"Kd8 allows mate in 7. Be4 held out longer.","candidates":[]}
+{"id":"7BpSGg8i/73","code":"forced","prose":"Kg2 was the only legal move.","candidates":[]}
+{"id":"88wbCaFC/20","code":"inaccuracy","prose":"Bxc3 is slightly inaccurate. Ng4 was better. White is slightly better now.","candidates":[]}
+{"id":"9o2K8tQf/62","code":"good","prose":"Kd7 allows mate in 3: 32.Re7+ Kc8 33.Qf8+ Qe8 34.Qxe8#. Rxe6 held out longer.","candidates":[{"side":"played","phrase":"attacks the rook on e6","concept":"threat"}]}
+{"id":"CWUiHxhc/60","code":"inaccuracy","prose":"a4 is slightly inaccurate. Qb2 was better.","candidates":[{"side":"played","phrase":"attacks the rook on e8","concept":"threat"}]}
+{"id":"FVAINHA2/1","code":"best","prose":"Good move. e4 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"FVAINHA2/24","code":"best","prose":"Best move. Qb7 attacks the pawn on b4.","candidates":[{"side":"played","phrase":"attacks the pawn on b4","concept":"threat"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"FVAINHA2/39","code":"best","prose":"Good move. Kh1 wins a knight (20...O-O 21.hxg4).","candidates":[{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"GMWOlwjP/36","code":"best","prose":"Exactly right. Nf4+ forces mate in 5.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"IZexjDK9/18","code":"blunder","prose":"Blunder. fxe4 allows 10.Qh5+, which gives check. White was slightly better; now White is clearly better. O-O was the move, limiting the damage.","candidates":[]}
+{"id":"Ielcto2n/13","code":"best","prose":"Exactly right. Bxf6 gives a bishop for a knight.","candidates":[{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"}]}
+{"id":"L8zrI5BD/40","code":"good","prose":"Ra8 allows mate in 2: 21.Ba3+ Kc6 22.Qb7#. Ke6 held out longer.","candidates":[{"side":"played","phrase":"attacks the queen on a7","concept":"threat"},{"side":"played","phrase":"skewers the queen and the bishop behind it","concept":"skewer"}]}
+{"id":"MjUb9jcO/71","code":"good","prose":"Fine move. Nxc7 gives up a knight for a pawn. b4 was slightly more precise.","candidates":[{"side":"played","phrase":"gives up a knight for a pawn","concept":"trades"}]}
+{"id":"RgOF3U9r/71","code":"best","prose":"Accurate. Kb3 attacks the pawn on a2.","candidates":[{"side":"played","phrase":"attacks the pawn on a2","concept":"threat"}]}
+{"id":"WEn30u09/55","code":"inaccuracy","prose":"c4 loses a pawn after 28...Rfc2 29.h4 Rxc4. e4 was the move, keeping the material.","candidates":[]}
+{"id":"WEn30u09/71","code":"best","prose":"Accurate. e5 takes the centre.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"WSJDhbPl/81","code":"good","prose":"Nxf7 allows mate next move: 41...Qg4#. Qc8 held out longer.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"cLMSAWe9/30","code":"good","prose":"Qg4 is fine. a5 was slightly more precise.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"fFpgwcvI/45","code":"best","prose":"Nb2 allows mate in 5. f4 held out longer.","candidates":[{"side":"played","phrase":"moves the knight out of attack","concept":"defense"}]}
+{"id":"gxtaeLqK/15","code":"good","prose":"Reasonable. Bb5 develops the bishop. Nf3 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"},{"side":"played","phrase":"pins the knight to the king","concept":"pin"}]}
+{"id":"gxtaeLqK/38","code":"inaccuracy","prose":"Bf6 is slightly inaccurate. b5 was better. You were slightly better; now it's level.","candidates":[]}
+{"id":"gxtaeLqK/6","code":"best","prose":"Exactly right. c5 challenges the centre.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"}]}
+{"id":"lMOYqBtd/40","code":"blunder","prose":"Blunder. b4 allows mate in 4: 21.Qg5 g6 22.Qh6 Qxd4+ 23.cxd4 Kh8 24.Qg7#. Qxe5 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on g7","concept":"threat"}]}
+{"id":"ne1TIdVV/16","code":"blunder","prose":"Blunder. Qf6 allows 9.f4, which challenges the centre. You were clearly better; now it's level. Nf6 was the move, attacking the queen on g4.","candidates":[{"side":"best","phrase":"attacks the queen on g4","concept":"threat"}]}
+{"id":"oCloK0Xg/48","code":"best","prose":"Bg4 allows mate next move: 25.Qxg7#. Qf8 held out longer.","candidates":[{"side":"played","phrase":"attacks the knight on f3","concept":"threat"}]}
+{"id":"qt2sbfqA/19","code":"blunder","prose":"Blunder. Kf1 allows mate next move: 10...Qf2#. Rxh4 was the move, winning a queen.","candidates":[]}
+{"id":"tpAQVFdP/65","code":"mistake","prose":"Mistake. Rb6 misses Qb8+, which pins the king to the pawn and wins a queen for a rook.","candidates":[{"side":"played","phrase":"attacks the pawn on a4","concept":"threat"},{"side":"best","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"yX6ZCS0k/38","code":"best","prose":"Best move. Kg8 attacks the rook on h7.","candidates":[{"side":"played","phrase":"attacks the rook on h7","concept":"threat"}]}
+{"id":"E11tE0QG/39","code":"good","prose":"Reasonable. cxd4 wins a pawn. Bg5 was slightly more precise.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"jCsNuxY4/20","code":"inaccuracy","prose":"Ngxe7 is slightly inaccurate. Kxe7 was better. White is slightly better now.","candidates":[{"side":"played","phrase":"attacks the pawn on e6","concept":"threat"}]}
+{"id":"NUyvOcew/44","code":"inaccuracy","prose":"Nd4 misses Rxa2, which wins a pawn.","candidates":[]}
+{"id":"7ylmLTvM/29","code":"inaccuracy","prose":"Bxh7 misses d6, which wins a queen and a bishop for a rook, a knight and a pawn (15.d6 Nxd6 16.Nd5 Bb7 17.Nxe7).","candidates":[]}
+{"id":"mIgTK3WY/28","code":"mistake","prose":"Mistake. d3 misses dxc3, which wins a bishop and a pawn for a knight (14...dxc3 15.Qxc3 Nd7 16.O-O Ndxe5).","candidates":[]}
+{"id":"E11tE0QG/38","code":"mistake","prose":"Mistake. exd4 loses a rook for two pawns to 20.Bg5, which pins the knight to the queen. Kf8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the knight on e7","concept":"threat"},{"side":"played","phrase":"pins the knight to the queen","concept":"pin"}]}
+{"id":"4q388Xq8/34","code":"blunder","prose":"Blunder. c6 loses a pawn after 18.Bxc4. Qe8 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the bishop on e2","concept":"threat"}]}
+{"id":"ypZJ0wVa/36","code":"mistake","prose":"Mistake. Na5 loses a bishop and a pawn for a knight after 19.Nxb6 axb6 20.Bxh6. Bc7 was the move, keeping the material.","candidates":[]}
+{"id":"MqOhP9JT/34","code":"blunder","prose":"Blunder. Ke7 loses two pawns after 18.Nxd5+ Bxd5 19.Bxd5 Nc6 20.Bxc6. Bxc3 was the move, keeping the material.","candidates":[]}
+{"id":"3aB5ZEok/21","code":"blunder","prose":"Blunder. Nh5 hangs the knight to 11...Nxh5. Ne2 was the move, keeping the material.","candidates":[]}
+{"id":"dzU99BFv/54","code":"inaccuracy","prose":"Qe5 loses a queen for a knight after 28.Re6 Qg7. Qd7 was the move, keeping the material.","candidates":[]}
+{"id":"tCCTuCwb/37","code":"mistake","prose":"Mistake. Nf3 allows 19...Ng4, which attacks the queen on e3. Black is slightly better now. Bxf6 was the move, keeping it level.","candidates":[{"side":"played","phrase":"attacks the queen on e3","concept":"threat"},{"side":"played","phrase":"shuts in the bishop on g2","concept":"passive_piece"}]}
+{"id":"7ylmLTvM/33","code":"blunder","prose":"Blunder. Qe4 allows 17...Kf8. You were clearly better; now you are slightly better. Nd4 was the move, keeping you clearly better.","candidates":[]}
+{"id":"AcF2QAS4/26","code":"mistake","prose":"Mistake. Rxf4 allows 14.Neg5. dxe4 was the move, attacking the knight on f3.","candidates":[{"side":"best","phrase":"attacks the knight on f3","concept":"threat"}]}
+{"id":"8IIoLziL/27","code":"blunder","prose":"Blunder. Qh3 misses e5, which wins a pawn (14.e5 Nd7 15.Qxc6).","candidates":[{"side":"best","phrase":"stops 14...e5","concept":"prophylaxis"}]}
+{"id":"BO7hKPSE/48","code":"good","prose":"a4 is fine. c5 was slightly more precise.","candidates":[]}
+{"id":"PNH6nW8P/53","code":"good","prose":"Rc2 allows mate in 2: 27...Rb1+ 28.Rc1 Rxc1#. Kf1 held out longer.","candidates":[]}
+{"id":"nTD5VGd6/38","code":"inaccuracy","prose":"Nxb3+ misses mate in 2: 19...Qc2+ 20.Ke1 Qc1#.","candidates":[{"side":"best","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"lfmrt1pi/6","code":"best","prose":"c5 is accurate.","candidates":[]}
+{"id":"vPNbwJZr/50","code":"best","prose":"Accurate. Rfb8+ takes the open b-file and gives check.","candidates":[{"side":"played","phrase":"takes the open b-file","concept":"open_file"},{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"FULQAL1Z/36","code":"good","prose":"Good. f5 challenges the centre. Nf6 was slightly more precise.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"jpSijd8h/30","code":"best","prose":"Bf4 is accurate.","candidates":[{"side":"played","phrase":"trades bishops","concept":"trades"}]}
+{"id":"nHYxIoXC/57","code":"blunder","prose":"Blunder. b4 allows 29...Rd3, which attacks the bishop on e3. Black is clearly better now. Rc2 was the move, keeping it level.","candidates":[]}
+{"id":"lvvvNZmJ/34","code":"blunder","prose":"Blunder. Bxe2 allows 18.Bxe2. You were clearly better; now White is slightly better. f5 was the move, keeping you clearly better.","candidates":[]}
+{"id":"o1hzMrZa/75","code":"forced","prose":"Ke1 was the only legal move.","candidates":[]}
+{"id":"2TH890jR/35","code":"best","prose":"Nothing helps here: mate in 5 is coming whatever you play.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"}]}
+{"id":"7BpSGg8i/74","code":"best","prose":"Good move. Qf3+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"88wbCaFC/40","code":"best","prose":"Good move. fxe6 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"9o2K8tQf/64","code":"forced","prose":"Kc8 was the only legal move.","candidates":[]}
+{"id":"CWUiHxhc/61","code":"blunder","prose":"Blunder. c4 misses Qb5, which wins a pawn (31.Qb5 Rc8 32.Rxg7+ Rxg7 33.Nxg7).","candidates":[{"side":"best","phrase":"attacks the rook on e8","concept":"threat"}]}
+{"id":"FVAINHA2/10","code":"mistake","prose":"Mistake. b5 allows 6.Bd5, which attacks the rook on a8. White was slightly better; now White is clearly better. h6 was the move, limiting the damage.","candidates":[{"side":"played","phrase":"attacks the rook on a8","concept":"threat"}]}
+{"id":"FVAINHA2/25","code":"best","prose":"Exactly right. bxc5 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/4","code":"inaccuracy","prose":"Bd6 is slightly inaccurate. Nc6 was better. White is slightly better now.","candidates":[{"side":"played","phrase":"lets the opponent take the centre with pawns on e4 and e5","concept":"center_control"}]}
+{"id":"GMWOlwjP/37","code":"best","prose":"Nothing helps here: mate in 3 is coming whatever you play.","candidates":[{"side":"played","phrase":"attacks the knight on f4","concept":"threat"}]}
+{"id":"IZexjDK9/19","code":"blunder","prose":"Blunder. Qxe4 allows 10...O-O, which castles. You were clearly better; now it's level. Qh5+ was the move, keeping you clearly better.","candidates":[]}
+{"id":"Ielcto2n/35","code":"blunder","prose":"Blunder. Bxf7+ misses Qxf7+, which forks the king and the rook on e8 and wins a bishop and a pawn.","candidates":[{"side":"best","phrase":"forks the king and the rook on e8","concept":"fork"}]}
+{"id":"L8zrI5BD/45","code":"best","prose":"Exactly right. Bxe7 trades bishops.","candidates":[{"side":"played","phrase":"trades bishops","concept":"trades"}]}
+{"id":"Mrgxhayn/50","code":"best","prose":"d4 allows mate in 3: 26.Qh7+ Kf6 27.Rh6+ Kg5 28.Qg7#. Rh8 held out longer.","candidates":[{"side":"played","phrase":"takes the centre","concept":"center_control"}]}
+{"id":"RiSnVK0z/65","code":"good","prose":"Kh1 allows mate in 4: 33...Rf2 34.Qc8+ Nxc8 35.Ng3 Qf3+ 36.Kg1 Qg2#. Ng3 held out longer.","candidates":[]}
+{"id":"WEn30u09/56","code":"best","prose":"Exactly right. Rfc2 attacks the pawn on c4.","candidates":[{"side":"played","phrase":"attacks the pawn on c4","concept":"threat"},{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"WEn30u09/72","code":"best","prose":"Best move. g4 attacks the rook on f3.","candidates":[{"side":"played","phrase":"attacks the rook on f3","concept":"threat"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"WoCFrjS6/5","code":"best","prose":"Best move. d4 challenges the centre and attacks the pawn on e5.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"},{"side":"played","phrase":"attacks the pawn on e5","concept":"threat"}]}
+{"id":"cLMSAWe9/47","code":"forced","prose":"Kxg4 was the only legal move.","candidates":[{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"fFpgwcvI/46","code":"best","prose":"Best move. Rd2 forces mate in 4.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"},{"side":"played","phrase":"attacks the knight on b2","concept":"threat"},{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"gxtaeLqK/16","code":"best","prose":"Good move. Bd7 develops the bishop.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"},{"side":"played","phrase":"gives a knight for a bishop","concept":"trades"}]}
+{"id":"gxtaeLqK/4","code":"best","prose":"Good move. d5 challenges the centre and attacks the pawn on e4.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"},{"side":"played","phrase":"attacks the pawn on e4","concept":"threat"}]}
+{"id":"gxtaeLqK/8","code":"best","prose":"Qb6 is exactly right.","candidates":[]}
+{"id":"lMOYqBtd/41","code":"blunder","prose":"Blunder. fxg7 misses mate in 4: 21.Qg5 g6 22.Qh6 Qxd4+ 23.cxd4 Kh8 24.Qg7#.","candidates":[{"side":"best","phrase":"attacks the pawn on g7","concept":"threat"}]}
+{"id":"ne1TIdVV/17","code":"blunder","prose":"Blunder. Be3 allows 9...Bxe3 and a trade of bishops. Black is clearly better now. f4 was the move, keeping it level.","candidates":[]}
+{"id":"oNDS70sU/15","code":"good","prose":"Fine move. Bxe4 gives a bishop for a knight. Bf4 was slightly more precise.","candidates":[{"side":"played","phrase":"gives a bishop for a knight","concept":"trades"}]}
+{"id":"qt2sbfqA/20","code":"inaccuracy","prose":"Qxh8 misses mate in one: 10...Qf2#.","candidates":[]}
+{"id":"tpAQVFdP/90","code":"best","prose":"Best move. Rxh6+ gives up a rook for a pawn.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"yX6ZCS0k/74","code":"forced","prose":"Kh7 was the only legal move.","candidates":[]}
+{"id":"2J0zuNpC/33","code":"blunder","prose":"Blunder. b4 loses a pawn after 17...Be7 18.Qg3 f5 19.exf6 gxf6. Bd2 was the move, keeping the material.","candidates":[]}
+{"id":"mIgTK3WY/31","code":"mistake","prose":"Mistake. Qd5 allows 16...Nd7, which develops the knight. Black was slightly better; now Black is clearly better. Ng5 was the move, limiting the damage.","candidates":[]}
+{"id":"4EPuGhYq/42","code":"inaccuracy","prose":"Nd7 misses Rd8, which pins the knight to the queen and wins a pawn.","candidates":[{"side":"played","phrase":"attacks the pawn on c7","concept":"threat"},{"side":"best","phrase":"pins the knight to the queen","concept":"pin"}]}
+{"id":"wkSVjBqB/35","code":"mistake","prose":"Mistake. g3 misses g5, which wins a bishop (18.g5 e3+ 19.Kxe3).","candidates":[]}
+{"id":"O19cdLX2/37","code":"blunder","prose":"Blunder. Bxf8 misses Qd4, which wins a rook (19.Qd4 f6 20.Qd3 f5 21.Bxf8).","candidates":[]}
+{"id":"wkSVjBqB/34","code":"inaccuracy","prose":"Bh6 misses Rh4, which wins a pawn (17...Rh4 18.g5 Rxf4+ 19.Kg1 Rxf1+).","candidates":[{"side":"best","phrase":"attacks the pawn on g4","concept":"threat"}]}
+{"id":"DNhhypWP/31","code":"blunder","prose":"Blunder. Rad1 loses a knight for a pawn after 16...hxg5. Nge4 was the move, keeping the material.","candidates":[{"side":"best","phrase":"attacks the bishop on c5","concept":"threat"}]}
+{"id":"llzca2RX/36","code":"blunder","prose":"Blunder. Qf6 allows 19.Qa4+, which gives check. White is slightly better now. Qb5 was the move, keeping it level.","candidates":[]}
+{"id":"CaKTqCEQ/55","code":"blunder","prose":"Blunder. Qf5 misses Be3, which wins a pawn (28.Be3 c4 29.dxc4).","candidates":[{"side":"best","phrase":"attacks the pawn on c5","concept":"threat"}]}
+{"id":"tCCTuCwb/30","code":"inaccuracy","prose":"fxg3 is slightly inaccurate. Nbd7 was better. White was slightly better; now White is clearly better.","candidates":[]}
+{"id":"kTmaVWf8/19","code":"inaccuracy","prose":"d5 is slightly inaccurate. Be3 was better.","candidates":[]}
+{"id":"MqOhP9JT/47","code":"blunder","prose":"Blunder. Nc6 misses g3, which wins a bishop and a pawn for a knight (24.g3 a4 25.bxa4).","candidates":[{"side":"played","phrase":"skewers the rook and the knight behind it","concept":"skewer"}]}
+{"id":"EmEZrcf9/42","code":"inaccuracy","prose":"d5 loses a queen for a bishop after 22.Rf3 dxc4 23.Bxc4 Ne4 24.Bxd8. Qd7 was the move, keeping the material.","candidates":[]}
+{"id":"8IIoLziL/28","code":"mistake","prose":"Mistake. O-O loses a pawn after 15.Qxe6+. e5 was the move, keeping the material.","candidates":[]}
+{"id":"UBgIyfUK/29","code":"blunder","prose":"Blunder. Nfd2 allows 15...Bh2+, which gives check. Black is clearly better now. c4 was the move, keeping it level.","candidates":[]}
+{"id":"BO7hKPSE/49","code":"good","prose":"Good. Qxa4 wins a pawn. Kb2 was slightly more precise.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"Q5HSsAlS/15","code":"forced","prose":"Kxd1 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen for a pawn","concept":"winning_material"}]}
+{"id":"nTD5VGd6/39","code":"inaccuracy","prose":"Ke2 allows mate in 3: 20...Nd4+ 21.Kd2 Qc2+ 22.Ke1 Qc1#. Rxb3 was the move.","candidates":[]}
+{"id":"sAPXqdlz/17","code":"best","prose":"Best move. Nd5 attacks the bishop on b4.","candidates":[{"side":"played","phrase":"attacks the bishop on b4","concept":"threat"},{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"I2pXFS2P/11","code":"best","prose":"h3 is exactly right.","candidates":[]}
+{"id":"P2tE5X0U/46","code":"mistake","prose":"Mistake. b6 allows 24.Nd4. Ba2 was the move, attacking the rook on b1.","candidates":[{"side":"best","phrase":"attacks the rook on b1","concept":"threat"}]}
+{"id":"k1TrqK3S/53","code":"good","prose":"Reasonable. Qa7 attacks the pawn on a6. f4 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on a6","concept":"threat"}]}
+{"id":"rkd4ycqo/21","code":"mistake","prose":"Mistake. Ng4 allows 11...Nxg4 and a trade of knights. Black is slightly better now. b4 was the move, keeping it level.","candidates":[]}
+{"id":"AOQg4xfm/38","code":"blunder","prose":"Blunder. Rd8 loses a queen and a pawn for a knight to 20.Nh6+, which forks the king and the queen on f7. Bxg4 was the move, keeping the material.","candidates":[{"side":"played","phrase":"forks the king and the queen on f7","concept":"fork"}]}
+{"id":"DSuHhfqH/63","code":"forced","prose":"Kf1 was the only legal move.","candidates":[]}
+{"id":"2X95HfiC/44","code":"blunder","prose":"Blunder. Nxd3 allows mate in 2: 23.Bf6 Qxa2 24.Qg7#. f6 was the move, attacking the bishop on g5.","candidates":[{"side":"best","phrase":"attacks the bishop on g5","concept":"threat"}]}
+{"id":"7BpSGg8i/75","code":"forced","prose":"Kh3 was the only legal move.","candidates":[]}
+{"id":"88wbCaFC/54","code":"forced","prose":"Ke7 was the only legal move.","candidates":[]}
+{"id":"9o2K8tQf/68","code":"best","prose":"Nothing helps here: mate next move is coming whatever you play.","candidates":[{"side":"played","phrase":"attacks the rook on e6","concept":"threat"}]}
+{"id":"CWUiHxhc/62","code":"mistake","prose":"Mistake. Qf6 allows 32.Qa3, which attacks the pawn on a4. White was clearly better; now White is winning. Kh8 was the move, limiting the damage.","candidates":[{"side":"played","phrase":"attacks the pawn on a4","concept":"threat"}]}
+{"id":"FVAINHA2/11","code":"best","prose":"Accurate. Bd5 attacks the rook on a8.","candidates":[{"side":"played","phrase":"attacks the rook on a8","concept":"threat"}]}
+{"id":"FVAINHA2/26","code":"best","prose":"Exactly right. Bxc5 wins a pawn.","candidates":[{"side":"played","phrase":"wins a pawn","concept":"winning_material"}]}
+{"id":"FVAINHA2/41","code":"best","prose":"Accurate. hxg4 wins a knight.","candidates":[{"side":"played","phrase":"wins a knight","concept":"winning_material"}]}
+{"id":"GMWOlwjP/38","code":"best","prose":"Exactly right. g5 forces mate in 2.","candidates":[{"side":"played","phrase":"forces mate","concept":"mate_threat"}]}
+{"id":"IZexjDK9/2","code":"good","prose":"Reasonable. d5 challenges the centre and attacks the pawn on e4. e5 was slightly more precise.","candidates":[{"side":"played","phrase":"challenges the centre","concept":"center_control"},{"side":"played","phrase":"attacks the pawn on e4","concept":"threat"},{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"Ielcto2n/36","code":"good","prose":"Kh7 is fine. Kf8 was slightly more precise.","candidates":[]}
+{"id":"L8zrI5BD/50","code":"good","prose":"Kd8 allows mate in 2: 26.Qd6+ Ke8 27.Qe7#. Kf8 held out longer.","candidates":[]}
+{"id":"Mrgxhayn/51","code":"best","prose":"Best move. Rh7+ gives check.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"},{"side":"played","phrase":"pins the king to the pawn","concept":"pin"}]}
+{"id":"T0lBIKUf/72","code":"blunder","prose":"Blunder. Rd6 allows mate next move: 37.Rb7#. a5 was the move, limiting the damage.","candidates":[]}
+{"id":"WEn30u09/57","code":"best","prose":"Kf1 is exactly right.","candidates":[]}
+{"id":"WEn30u09/73","code":"best","prose":"Accurate. hxg4 trades pawns.","candidates":[{"side":"played","phrase":"trades pawns","concept":"trades"}]}
+{"id":"XCy9Hyi7/12","code":"forced","prose":"Kxd8 was the only legal move.","candidates":[{"side":"played","phrase":"wins a queen","concept":"winning_material"}]}
+{"id":"cLMSAWe9/56","code":"mistake","prose":"Mistake. Rxh3 allows 29.Kxh3. You were winning; now you are clearly better. Rd2+ was the move, keeping you winning.","candidates":[]}
+{"id":"fFpgwcvI/47","code":"best","prose":"Nothing helps here: mate in 4 is coming whatever you play.","candidates":[]}
+{"id":"gxtaeLqK/2","code":"best","prose":"e6 is accurate.","candidates":[]}
+{"id":"gxtaeLqK/40","code":"inaccuracy","prose":"Bxb5 is slightly inaccurate. h5 was better.","candidates":[]}
+{"id":"gxtaeLqK/9","code":"good","prose":"Qb3 is fine. Nf3 was slightly more precise.","candidates":[{"side":"played","phrase":"trades queens","concept":"trades"}]}
+{"id":"lMOYqBtd/44","code":"forced","prose":"Kh8 was the only legal move.","candidates":[]}
+{"id":"ne1TIdVV/26","code":"mistake","prose":"Mistake. Ke7 loses a pawn to 14.Qxg7+, which pins the king to the knight. Rhf8 was the move, keeping the material.","candidates":[{"side":"played","phrase":"pins the king to the knight","concept":"pin"}]}
+{"id":"oNDS70sU/17","code":"inaccuracy","prose":"Bd3 is slightly inaccurate: it allows 9...e4, which attacks the bishop on d3. Qh5+ was better.","candidates":[{"side":"played","phrase":"attacks the bishop on d3","concept":"threat"}]}
+{"id":"r1EtwZtg/35","code":"forced","prose":"Bd3 was the only legal move.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"tpAQVFdP/95","code":"blunder","prose":"Blunder. Kg5 hangs the rook on f1 to 48...Kxf1. Rb1 was the move, keeping the material.","candidates":[{"side":"best","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"z9OcZ3xh/31","code":"inaccuracy","prose":"a4 allows mate in 7. Ba3 was the move.","candidates":[]}
+{"id":"EmEZrcf9/39","code":"best","prose":"Re3 is the best move here.","candidates":[{"side":"played","phrase":"trades knights","concept":"trades"}]}
+{"id":"xneKFk4A/51","code":"good","prose":"Reasonable. Rb8 attacks the pawn on b7. Ree2 was slightly more precise.","candidates":[{"side":"played","phrase":"attacks the pawn on b7","concept":"threat"},{"side":"played","phrase":"moves the rook out of attack","concept":"defense"}]}
+{"id":"noNiTGVe/48","code":"blunder","prose":"Blunder. a6 misses f5, which wins a bishop for a pawn (24...f5 25.Rd1+ Ke7 26.Bxg5+ Nxg5).","candidates":[]}
+{"id":"HICEKqKU/24","code":"blunder","prose":"Blunder. Rc2 loses a pawn after 13.Nb5 Kd7 14.Rd1 Nf6 15.Nxd6. Nf6 was the move, keeping the material.","candidates":[{"side":"played","phrase":"attacks the pawn on d6","concept":"threat"}]}
+{"id":"1HZPejLy/53","code":"blunder","prose":"Blunder. b3 loses a pawn after 27...Bg2 28.Nd1 Bh4 29.Rh8 Bxf3. Kd2 was the move, keeping the material.","candidates":[]}
+{"id":"TMhkCy7Z/34","code":"blunder","prose":"Blunder. Nc6 loses a knight after 18.Rc7 Nd5 19.Rxc6. Nbd7 was the move, keeping the material.","candidates":[]}
+{"id":"lSP6rS5w/23","code":"blunder","prose":"Blunder. O-O loses a pawn after 12...Bxd3 13.Qxd3 Nxe5 14.Nxe5 Bxe5. Bxf5 was the move, keeping the material.","candidates":[]}
+{"id":"MqOhP9JT/52","code":"inaccuracy","prose":"axb3 loses a bishop and a pawn after 27.Rf7+ Kg8 28.Rxg7+ Kh8 29.axb3. Bb2 was the move, keeping the material.","candidates":[]}
+{"id":"Q0DkNpNt/22","code":"blunder","prose":"Blunder. Ncxd4 loses a knight for a pawn after 12.Nxd4 O-O 13.Nxf5 exf5 14.Qxd8. Qd5 was the move, keeping the material.","candidates":[]}
+{"id":"7ylmLTvM/32","code":"mistake","prose":"Mistake. d6 allows 17.Nd4. White was slightly better; now White is clearly better. Kf8 was the move, limiting the damage.","candidates":[]}
+{"id":"GaGoYzaA/26","code":"mistake","prose":"Mistake. Bxe5 allows 14.Bxa6. White is slightly better now. Bxd3 was the move, keeping it level.","candidates":[]}
+{"id":"llzca2RX/37","code":"blunder","prose":"Blunder. b5 allows 19...Qe7, which attacks the queen on a3. You were slightly better; now it's level. Qa4+ was the move, keeping you slightly better.","candidates":[]}
+{"id":"DNhhypWP/86","code":"blunder","prose":"Blunder. Kd7 allows 44.Qf7+, which gives check. You were clearly better; now it's level. Kc7 was the move, keeping you clearly better.","candidates":[{"side":"played","phrase":"pins the king to the bishop","concept":"pin"}]}
+{"id":"eSawP8WZ/34","code":"mistake","prose":"Mistake. Qxb2 allows 18.Bxc6, which attacks the rook on a8. You were clearly better; now you are slightly better. Bg4 was the move, keeping you clearly better.","candidates":[{"side":"played","phrase":"attacks the rook on a8","concept":"threat"},{"side":"played","phrase":"forks the rook on a8 and the rook on e8","concept":"fork"}]}
+{"id":"dzU99BFv/56","code":"blunder","prose":"Blunder. Qe6 allows mate in 5. Qd6 was the move, limiting the damage.","candidates":[]}
+{"id":"BO7hKPSE/57","code":"forced","prose":"Kd3 was the only legal move.","candidates":[]}
+{"id":"Q5HSsAlS/55","code":"best","prose":"Re7 allows mate in 4: 28...Rc8 29.Rb7+ Nb6 30.Rxb6+ Kxb6 31.h4 Rc1#. Rd7 held out longer.","candidates":[{"side":"played","phrase":"attacks the pawn on e6","concept":"threat"}]}
+{"id":"nTD5VGd6/41","code":"forced","prose":"Kd2 was the only legal move.","candidates":[]}
+{"id":"BFgm9X2I/50","code":"best","prose":"Kh7 is spot on.","candidates":[]}
+{"id":"9uISXGeS/32","code":"good","prose":"Good. Be6 develops the bishop. Rg8 was slightly more precise.","candidates":[{"side":"played","phrase":"develops the bishop","concept":"development"}]}
+{"id":"KSJQ6KCq/24","code":"inaccuracy","prose":"Re8 is slightly inaccurate. Bc8 was better. White is slightly better now.","candidates":[]}
+{"id":"8aiEYF43/75","code":"good","prose":"Fine move. Re8+ gives check. f5 was slightly more precise.","candidates":[{"side":"played","phrase":"gives check","concept":"trades"}]}
+{"id":"4POZ3jkv/4","code":"blunder","prose":"Blunder. f6 misses exd4, which wins a knight and a pawn for a bishop (2...exd4 3.Nf3 Bb4+ 4.c3 dxc3).","candidates":[]}
+{"id":"dHo5jtV7/19","code":"blunder","prose":"Blunder. fxe4 misses Nxe4, which wins a pawn.","candidates":[{"side":"played","phrase":"attacks the pawn on b2","concept":"threat"},{"side":"played","phrase":"pins the knight to the queen","concept":"pin"}]}
+{"id":"5LDkduNc/77","code":"forced","prose":"Kb1 was the only legal move.","candidates":[]}
