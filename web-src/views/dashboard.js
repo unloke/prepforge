@@ -36,8 +36,7 @@ function bindDropZone(element, onFile) {
 // Library filter bar (prototype All / White / Black / Shared / Disabled plus a
 // repertoire name search): a pure client-side predicate over the cached
 // /api/repertoires listing. Own rows match on their production fields (name,
-// color, visibility, is_active); shared read-only fallback rows carry
-// `sharedRow`. Filtering never refetches or reshapes a row.
+// color, visibility, is_active); received shared rows carry `sharedRow`. Filtering never refetches or reshapes a row.
 export function filterLibraryRows(rows, { filter = "all", query = "" } = {}) {
   const q = query.trim().toLowerCase();
   return (rows || []).filter((item) => {
@@ -322,14 +321,14 @@ export function createDashboardView({
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
     let recapHtml = "";
-    if (recap && (recap.reviews_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
+    if (recap && (recap.moves_reviewed_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
       const delta = (n, goodWhenUp) => {
         if (!n) return "";
         const cls = (n > 0) === goodWhenUp ? "up" : "down";
         return html` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
       };
       const bits = [
-        `${recap.reviews_7d} review${recap.reviews_7d === 1 ? "" : "s"} this week`,
+        `${recap.moves_reviewed_7d} move${recap.moves_reviewed_7d === 1 ? "" : "s"} reviewed · 7d`,
         html`${recap.mastered_now} mastered${delta(recap.mastered_delta, true)}`,
       ];
       if (recap.weak_now > 0 || recap.weak_delta !== 0) {
@@ -378,14 +377,12 @@ export function createDashboardView({
 
   // ---- Library list rendering ----------------------------------------------
   // The list renders from `repListCache` (the /api/repertoires listing: own
-  // repertoires + team shares) so the filter bar can re-render client-side
-  // without another round trip. Own rows normally; the shared read-only list
-  // when the account has no own repertoires (fallback preserved).
+  // repertoires + received team shares) so the filter bar can re-render
+  // client-side without another round trip.
 
-  function renderSharedFallbackRows(container, rows) {
-    // No own repertoires but team shares exist: surface them read-only so
-    // the Library still offers something to open.
-    container.innerHTML = html`${rows
+  // Team shares received from others: read-only rows beside the own ones.
+  function sharedRowsHtml(rows) {
+    return html`${rows
       .map(
         (item) => html`
           <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${item.id}" data-shared="1">
@@ -402,17 +399,6 @@ export function createDashboardView({
             </span>
           </div>`,
       )}`;
-    container.querySelectorAll(".lib-row").forEach((row) => {
-      const open = () => editRepertoire(row.dataset.repertoireId);
-      row.addEventListener("click", open);
-      row.addEventListener("keydown", (event) => {
-        if (event.target !== row) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          open();
-        }
-      });
-    });
   }
 
   // ARIA listbox/option structure: the option role must not contain interactive
@@ -424,14 +410,14 @@ export function createDashboardView({
   // The role=option lands on the .lib-opt span covering the info cells; the
   // row's click/keyboard handlers stay on the wrapper so interaction is
   // unchanged, and the button is no longer inside an option.
-  function renderOwnRepertoireRows(container, visible) {
+  function renderRepertoireRows(container, visible, shared) {
     // Library table (prototype layout): one row per repertoire with name,
     // an inline mastery bar from the cached health badge, and the queue
     // chips. The listing API carries no line count or last-trained date, so
     // the prototype's "Lines" / "Last trained" columns stay out rather than
     // inventing data.
     if (!selectedRepId || !visible.some((item) => String(item.id) === selectedRepId)) {
-      selectedRepId = String(visible[0].id);
+      selectedRepId = visible.length ? String(visible[0].id) : null;
     }
     container.innerHTML = html`${visible
       .map((item) => {
@@ -491,10 +477,22 @@ export function createDashboardView({
             <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
           </div>
         `;
-      })}`;
+      })}${sharedRowsHtml(shared)}`;
     applySelectionHighlight();
     container.querySelectorAll(".lib-row").forEach((row) => {
       const repId = row.dataset.repertoireId;
+      if (row.dataset.shared) {
+        const openShared = () => editRepertoire(repId);
+        row.addEventListener("click", openShared);
+        row.addEventListener("keydown", (event) => {
+          if (event.target !== row) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openShared();
+          }
+        });
+        return;
+      }
       const open = () => {
         selectedRepId = repId;
         editRepertoire(repId);
@@ -571,9 +569,7 @@ export function createDashboardView({
     const focusedRow = focused?.closest?.(".lib-row");
     const focusedId = focusedRow && container.contains(focusedRow) ? focusedRow.dataset.repertoireId : null;
     const focusedMenu = focusedId && focused.matches(".row-menu-btn");
-    const useSharedFallback =
-      !repListCache.own.length && repListCache.shared.length > 0;
-    const universe = useSharedFallback ? repListCache.shared : repListCache.own;
+    const universe = [...repListCache.own, ...repListCache.shared];
     setLibraryEmpty(!universe.length);
     // Selection follows the visible list: narrowing the table moves the
     // selection to the first shown row when the old one is filtered out — the
@@ -606,11 +602,11 @@ export function createDashboardView({
       return;
     }
     setListboxRole(container, true);
-    if (useSharedFallback) {
-      renderSharedFallbackRows(container, shown);
-    } else {
-      renderOwnRepertoireRows(container, shown);
-    }
+    renderRepertoireRows(
+      container,
+      shown.filter((item) => !item.sharedRow),
+      shown.filter((item) => item.sharedRow),
+    );
     // Refresh replaces the row elements. Keep keyboard navigation on the same
     // repertoire, without stealing focus from search, menus or another view.
     if (focusedId) {
@@ -672,14 +668,13 @@ export function createDashboardView({
       (item) => ({ ...item, sharedRow: true }),
     );
     // The count badge counts the full listing — never the filtered view.
-    if (!visible.length && sharedRows.length) {
-      countBadge(sharedRows.length);
-    } else {
-      countBadge(visible.length);
-    }
+    countBadge(visible.length + sharedRows.length);
     repListCache = { own: visible, shared: sharedRows };
     repListLoaded = true;
     renderRepertoireList();
+    // Every create / import / delete ends in this refresh: keep Get started
+    // in step with it instead of the last /api/dashboard read.
+    if (lastSetupPayload) renderSteps({ ...lastSetupPayload, repertoires: visible.length });
     // The Today strip's "new moves to learn" depends on this listing.
     const today = document.getElementById("dashboard-today");
     if (lastTodayPayload && today && !today.hidden) renderDashboardToday(lastTodayPayload);

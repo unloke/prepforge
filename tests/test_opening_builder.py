@@ -689,4 +689,19 @@ def test_apply_plan_rejects_malformed_engine_eval():
             {"changes": [_planned_add("tmp-1", root_id, "e2e4", engineEvaluation=nan_wdl)]},
         )
 
+    # Same numeric contract as Analyze: whole numbers in range, a real WDL split.
+    for bad in (
+        {"depth": True},
+        {"depth": 1.9},
+        {"depth": 10**100},
+        {"score_cp": "12"},
+        {"depth": 16, "wdl": {"win": -1, "draw": 3, "loss": 0}},
+        {"depth": 16, "wdl": {"win": 0.5, "draw": 0.5}},
+    ):
+        with pytest.raises(ValueError):
+            builder.apply_generation_plan(
+                rep.id, root_id,
+                {"changes": [_planned_add("tmp-1", root_id, "e2e4", engineEvaluation={"engine": "x", **bad})]},
+            )
+
     assert repository.load_repertoire(rep.id).root_node.children == []

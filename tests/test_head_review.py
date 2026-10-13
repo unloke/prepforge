@@ -3,7 +3,7 @@ from prepforge_chess.services.classification import evaluation_to_white_win_chan
 from prepforge_chess.core.limits import MAX_SYNC_QUEUE
 from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.services.scheduler import decode_card, own_move_nodes_on, path_to_node
-from test_training_smart import _build, _claim, _due, _repository, _seed_progress
+from test_training_smart import _build, _build_black, _claim, _due, _repository, _seed_progress
 from test_api_analyze import _register, _prepare, _classify_save
 import pytest
 
@@ -15,20 +15,23 @@ def test_terminal_mate_zero_uses_signed_white_score():
         assert chance < 0.03 if cp < 0 else chance > 0.97
 
 
+def _targets(repository, cards):
+    total = 0
+    for card in cards:
+        rep = repository.load_repertoire(card.repertoire_id)
+        nodes = own_move_nodes_on(path_to_node(rep.root_node, card.last_target_id), rep.color)
+        first = next(i for i, node in enumerate(nodes) if node.id == card.first_target_id)
+        total += len(nodes[first:])
+    return total
+
+
 def test_mixed_budget_caps_targets_and_new_moves_globally():
     repository = _repository()
     reps = [_build(repository)[0] for _ in range(7)]
     _claim(repository, "budget-owner", *reps)
     service = SmartTrainingService(repository, "budget-owner")
     def targets(session):
-        total = 0
-        for raw in session.line_order:
-            card = decode_card(raw)
-            rep = repository.load_repertoire(card.repertoire_id)
-            nodes = own_move_nodes_on(path_to_node(rep.root_node, card.last_target_id), rep.color)
-            first = next(i for i, node in enumerate(nodes) if node.id == card.first_target_id)
-            total += len(nodes[first:])
-        return total
+        return _targets(repository, [decode_card(raw) for raw in session.line_order])
     session = service.start_or_resume_mixed(
         "budget-owner", fresh=True, session_size=12, new_cap=12, seed=5
     )
@@ -43,6 +46,19 @@ def test_mixed_budget_caps_targets_and_new_moves_globally():
     )
     assert targets(session) <= 3
     assert service.counts(session)["new"] == 0
+
+
+def test_mixed_budget_left_by_a_small_repertoire_goes_to_the_others():
+    """Five own moves in one repertoire, two in the other, budget seven: both
+    orders fill the whole session."""
+    repository = _repository()
+    white = _build(repository)[0]
+    black = _build_black(repository)
+    _claim(repository, "fill-owner", white, black)
+    service = SmartTrainingService(repository, "fill-owner")
+    for reps in ([white, black], [black, white]):
+        plan = service._plan_mixed(reps, 5, session_size=7, new_cap=7)
+        assert _targets(repository, plan.cards) == 7
 
 
 def test_sync_oversized_queue_is_rejected_before_any_attempt_is_written():

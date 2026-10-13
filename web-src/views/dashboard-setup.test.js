@@ -9,7 +9,7 @@ import { createDashboardView } from "./dashboard.js";
 //  - the card stays until EVERY step is done (linking Lichess no longer
 //    disappears as soon as a repertoire exists), then hides;
 //  - it carries setup only: due / weak training never renders here (the Today
-//    strip owns it), even when the backend ships recommendations.
+//    strip owns it).
 
 function makeContainer() {
   return {
@@ -38,7 +38,6 @@ describe("dashboard setup checklist", () => {
     games: 0,
     repertoires: 0,
     training_sessions: 0,
-    recommendations: [],
     ...extra,
   });
   const mockDashboard = (extra, repertoires = []) =>
@@ -82,7 +81,6 @@ describe("dashboard setup checklist", () => {
           games: 0,
           repertoires: 0,
           training_sessions: 0,
-          recommendations: ["Build a repertoire in Build", "Import your games in Replay"],
         };
       }
       return { repertoires: [] };
@@ -144,7 +142,7 @@ describe("dashboard setup checklist", () => {
   });
 
   it("ticks Link Lichess from the linked accounts and re-renders on refreshSetup", async () => {
-    mockDashboard({ repertoires: 1 });
+    mockDashboard({ repertoires: 1 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
     await view.loadDashboard();
     expect(String(steps.innerHTML)).toContain('data-lib-action="lichess"');
     appState.lichessAccounts = [{ id: "a1", username: "me", is_primary: true }];
@@ -155,10 +153,35 @@ describe("dashboard setup checklist", () => {
 
   it("hides the card once every setup step is done", async () => {
     appState.lichessAccounts = [{ id: "a1", username: "me", is_primary: true }];
-    mockDashboard({ repertoires: 2, training_sessions: 1 });
+    mockDashboard({ repertoires: 2, training_sessions: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
+      { id: "rep-2", name: "d4", color: "white", is_active: true, health: null },
+    ]);
     await view.loadDashboard();
     expect(steps.hidden).toBe(true);
     expect(String(steps.innerHTML)).toBe("");
+  });
+
+  it("follows the repertoire listing, not the earlier dashboard read", async () => {
+    // The dashboard was read before the first import; the listing refresh
+    // after it already has the new repertoire.
+    mockDashboard({ repertoires: 0 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
+    await view.loadDashboard();
+    expect(String(steps.innerHTML)).toContain("1 of 3 done");
+    expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
+  });
+
+  it("lists received shares beside own repertoires", async () => {
+    api.mockImplementation(async (url) =>
+      String(url).startsWith("/api/dashboard")
+        ? dashboardPayload({ repertoires: 1 })
+        : { repertoires: [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }], shared: [{ id: "team-1", name: "Coach Sicilian", color: "black" }] },
+    );
+    await view.loadDashboard();
+    const listing = String(container.innerHTML);
+    expect(listing).toContain('data-repertoire-id="rep-1"');
+    expect(listing).toContain('data-repertoire-id="team-1"');
+    expect(listing).toMatch(/data-repertoire-id="team-1" data-shared="1"/);
   });
 
   it("does not repeat New repertoire on the checklist (the empty state has it)", async () => {
@@ -182,19 +205,13 @@ describe("dashboard setup checklist", () => {
     }
   });
 
-  it("never renders training recommendations on the setup card", async () => {
-    mockDashboard({
-      repertoires: 2,
-      due_reviews: 5,
-      recommendations: [
-        { id: "train-due", title: "5 review cards due now", detail: "", cta: { label: "Start due review", view: "train" } },
-        { id: "review-weak", title: "Sharpen your weak spots", detail: "2 weak moves.", cta: { label: "Review weak moves", view: "train" } },
-      ],
-    });
+  it("keeps due training off the setup card", async () => {
+    mockDashboard({ repertoires: 2, due_reviews: 5 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
+      { id: "rep-2", name: "d4", color: "white", is_active: true, health: null },
+    ]);
     await view.loadDashboard();
-    expect(String(steps.innerHTML)).not.toContain("rec-cta");
-    expect(String(steps.innerHTML)).not.toContain("due now");
-    expect(String(steps.innerHTML)).not.toContain("weak spots");
+    expect(String(steps.innerHTML)).not.toContain("due");
     // The Today strip keeps the Train entry point.
     expect(String(todayCard.innerHTML)).toContain("dashboard-train-now");
   });

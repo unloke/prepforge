@@ -279,6 +279,15 @@ describe("sign-in gate", () => {
     expect(docListeners.keydown).toBeUndefined();
   });
 
+  it("hands focus back to the control that opened it on dismiss", () => {
+    const { controller } = makeController();
+    const opener = { isConnected: true, getClientRects: () => [{}], focus: vi.fn() };
+    document.activeElement = opener;
+    controller.requireSignIn("Sign in to review", "analyze-game");
+    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
+    expect(opener.focus).toHaveBeenCalled();
+  });
+
   it("keeps the pending action across the Google redirect", () => {
     const { controller } = makeController();
     controller.requireSignIn("Sign in to start training", "train");

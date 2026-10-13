@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  clearHandoffJourney,
-  clearHandoffs,
   clearReturnState,
   createHandoff,
   handoffJourney,
@@ -92,11 +90,15 @@ describe("handoff identity (handoffKey / createHandoff)", () => {
   });
 });
 
+let ownerSeq = 0;
+
 describe("rememberHandoff / takeHandoff", () => {
+  // A fresh owner over empty storage starts with no pending work or journey.
   beforeEach(() => {
-    clearHandoffs();
-    clearHandoffJourney();
+    vi.stubGlobal("localStorage", fakeStorage());
+    setHandoffOwner(`fresh-${++ownerSeq}`);
   });
+  afterEach(() => vi.unstubAllGlobals());
 
   it("dedupes repeated clicks on the same target into one record", () => {
     const first = rememberHandoff(base);
@@ -152,17 +154,6 @@ describe("rememberHandoff / takeHandoff", () => {
     expect(journey).toHaveLength(50);
     expect(journey[0].lineUcis).toEqual(["move-5"]);
     expect(journey.at(-1).lineUcis).toEqual(["move-54"]);
-  });
-
-  it("clearHandoffs drops pending work without erasing the journey", () => {
-    rememberHandoff(base);
-    takeHandoff({});
-    rememberHandoff({ ...base, lineUcis: ["later"] });
-    clearHandoffs();
-    expect(pendingHandoffs()).toHaveLength(0);
-    expect(handoffJourney()).toHaveLength(1);
-    clearHandoffJourney();
-    expect(handoffJourney()).toHaveLength(0);
   });
 });
 

@@ -35,11 +35,15 @@ def build_analysis_quality(
     A two-tier run (``screen_depth``) searches every position to the screen
     depth and only the ones a grade could hinge on to the target, by design:
     there "shallow" means below the screen depth."""
-    actual_depths: List[int] = []
+    # One depth per position: a move's "after" is the next move's "before",
+    # so counting per move would count most positions twice.
+    depth_by_fen: Dict[str, int] = {}
     for move in game.moves:
-        for evaluation in (move.engine_eval_before, move.engine_eval_after):
+        for fen, evaluation in ((move.fen_before, move.engine_eval_before),
+                                (move.fen_after, move.engine_eval_after)):
             if evaluation is not None and evaluation.depth is not None:
-                actual_depths.append(int(evaluation.depth))
+                depth_by_fen.setdefault(fen, int(evaluation.depth))
+    actual_depths: List[int] = list(depth_by_fen.values())
     floor = target_depth
     if screen_depth is not None and target_depth is not None:
         floor = min(screen_depth, target_depth)

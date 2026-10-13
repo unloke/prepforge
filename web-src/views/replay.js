@@ -300,8 +300,6 @@ export function createReplayView({
       }
     } else if (game.departure_reason === "game_stayed_in_preparation") {
       lines.push("Game stayed entirely within preparation. Nice.");
-    } else if (game.departure_reason === "no_repertoire_for_color") {
-      lines.push("No active repertoire defined for the colour you played.");
     }
     if (game.reentry_ply) lines.push(html`Back in prep: ${plyMoveLabel(game.reentry_ply, game.move_san_history)}`);
     return html`${lines.map((line) => html`<li>${line}</li>`)}`;

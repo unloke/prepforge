@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import chess.pgn
 
@@ -86,10 +86,14 @@ class PgnImportService:
         pgn_text: str,
         options: PgnImportOptions = PgnImportOptions(),
         owner_user_id: Optional[str] = None,
+        signature_to_id: Optional[Dict[str, str]] = None,
     ) -> PgnImportResult:
         """Import games, owner-scoped when ``owner_user_id`` is given: dedup looks
         only at that owner's existing games and saved games are stamped with the
-        owner, so two users importing the same game keep independent copies."""
+        owner, so two users importing the same game keep independent copies.
+
+        ``signature_to_id`` lets a batch share one loaded signature map (kept
+        current as games are saved) instead of rescanning per game."""
         result = PgnImportResult()
 
         try:
@@ -108,7 +112,8 @@ class PgnImportService:
         # duplicated. Lichess games are also deduped by id below. A signature is
         # initial position + UCI sequence (``codec.move_signature``), so the same
         # moves from a different starting position are different games.
-        signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
+        if signature_to_id is None:
+            signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
 
         for index, game in enumerate(games):
             # python-chess happily returns a Game for non-PGN junk or a header
@@ -200,6 +205,7 @@ class PgnImportService:
         """Import each parsed game independently (F-04): per-game
         imported/existing/failed status, never a fake all-or-nothing result."""
         out: List[GameImportStatus] = []
+        signature_to_id = self.repository.existing_move_signature_ids(owner_user_id)
         for parsed in parsed_games:
             if parsed.error is not None or not parsed.text:
                 out.append(
@@ -212,7 +218,9 @@ class PgnImportService:
                     )
                 )
                 continue
-            result = self.import_text(parsed.text, options, owner_user_id=owner_user_id)
+            result = self.import_text(
+                parsed.text, options, owner_user_id=owner_user_id, signature_to_id=signature_to_id
+            )
             if result.imported_game_ids:
                 out.append(
                     GameImportStatus(

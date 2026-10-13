@@ -1687,6 +1687,7 @@ async function startSmartTraining(options = {}) {
   } catch (error) {
     if (!isCurrent()) return;
     setStatusError(error.message);
+    setTrainBanner("done", "Couldn't save your repertoire edits", "Try Start again in a moment.");
     return;
   }
   // Land any leftover graded attempts (an abandoned previous session) before
@@ -1696,6 +1697,7 @@ async function startSmartTraining(options = {}) {
   if (!isCurrent()) return;
   if (!trainSynced) {
     setStatus("Couldn't sync your last session — check your connection and try again.");
+    setTrainBanner("done", "Couldn't sync your last session", "Try Start again in a moment.");
     return;
   }
   let payload;

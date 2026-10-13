@@ -185,3 +185,15 @@ def test_import_service_signature_dedupe_includes_initial_position():
     assert third.imported_count == 0
     assert third.skipped_game_ids == second.imported_game_ids
     assert len(service.repository.list_games()) == 2
+
+
+def test_batch_import_loads_existing_signatures_once():
+    service = _service()
+    calls = []
+    load = service.repository.existing_move_signature_ids
+    service.repository.existing_move_signature_ids = lambda owner=None: calls.append(owner) or load(owner)
+    pgn = '[Event "x"]\n\n1. e4 e5 2. Nf3 *\n\n' * 20
+    statuses = service.import_parsed(service.parse_text(pgn), owner_user_id="batch-owner")
+    assert [s.status for s in statuses].count("imported") == 1
+    assert len(statuses) == 20
+    assert calls == ["batch-owner"]

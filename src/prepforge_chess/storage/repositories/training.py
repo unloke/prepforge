@@ -99,10 +99,7 @@ class TrainingRepository(SettingsRepository):
         states = ("mastered", "learning", "due", "weak", "untrained")
         aggregates = [func.sum(case((state == name, 1), else_=0)).label(name) for name in states]
         if due_until is not None:
-            aggregates = [
-                func.sum(case((state == "due", 1), else_=0)).label("due"),
-                func.sum(case((state_at(due_until) == "due", 1), else_=0)).label("due_until"),
-            ]
+            aggregates.append(func.sum(case((state_at(due_until) == "due", 1), else_=0)).label("due_until"))
         stmt = (
             select(nodes.c.repertoire_id, *aggregates)
             .select_from(nodes.join(blocked, blocked.c.id == nodes.c.id).outerjoin(
@@ -117,12 +114,12 @@ class TrainingRepository(SettingsRepository):
         )
         with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             rows = conn.execute(stmt).mappings().all()
-        if due_until is not None:
-            return {row["repertoire_id"]: {"due": int(row["due"]), "due_until": int(row["due_until"])} for row in rows}
         out = {}
         for row in rows:
             counts = {name: int(row[name]) for name in states}
-            counts["trainable"] = sum(counts.values())
+            if due_until is not None:
+                counts["due_until"] = int(row["due_until"])
+            counts["trainable"] = sum(counts[name] for name in states)
             counts["mastery_pct"] = (round(counts["mastered"] / counts["trainable"] * 100)
                                      if counts["trainable"] else 0)
             out[row["repertoire_id"]] = counts

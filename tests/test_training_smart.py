@@ -1222,5 +1222,7 @@ def test_due_windows_equal_two_mastery_queries_in_one_statement():
         actual = repository.due_windows_by_repertoire("t-owner", now=NOW, until=until)
     finally:
         event.remove(repository.engine, "before_cursor_execute", collect)
-    assert actual == {rid: {"due": count, "due_until": expected_until[rid]} for rid, count in expected_now.items()}
+    assert {rid: (counts["due"], counts["due_until"]) for rid, counts in actual.items()} == {
+        rid: (count, expected_until[rid]) for rid, count in expected_now.items()
+    }
     assert len(statements) == 1

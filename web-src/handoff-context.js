@@ -47,9 +47,12 @@ function mergeStoredTasks() {
 }
 
 function persistTasks() {
-  if (taskOwner === null) return;
   try {
-    mergeStoredTasks();
+    if (taskOwner !== null) mergeStoredTasks();
+    // Trim after the merge: it re-adds stored records this tab already dropped.
+    settled.sort((a, b) => a.takenAt - b.takenAt);
+    if (settled.length > HANDOFF_LOG_CAP) settled.splice(0, settled.length - HANDOFF_LOG_CAP);
+    if (taskOwner === null) return undefined;
     localStorage.setItem(taskStorageKey(), JSON.stringify({
       version: 1, pending: [...pending.values()], settled,
     }));
@@ -190,7 +193,6 @@ export function takeHandoff(match) {
     record.status = "completed";
     record.completedAt = record.updatedAt = Math.max(record.takenAt, (record.updatedAt || 0) + 1);
     settled.push(record);
-    if (settled.length > HANDOFF_LOG_CAP) settled.splice(0, settled.length - HANDOFF_LOG_CAP);
     persistTasks();
     return record;
   }
@@ -235,18 +237,6 @@ export function trackPreparationPractice({ repertoireId, nodeId, fen, completed 
     if (completed) transitionHandoff(task.key, "completed");
   }
   return tasks;
-}
-
-/** Drop pending handoffs without touching the settled log. */
-export function clearHandoffs() {
-  pending.clear();
-  persistTasks();
-}
-
-/** Drop the settled journey log (tests / owner switch). */
-export function clearHandoffJourney() {
-  settled.length = 0;
-  persistTasks();
 }
 
 /** All settled handoffs (oldest first) — the measurable journey log. */

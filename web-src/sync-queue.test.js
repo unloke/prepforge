@@ -96,3 +96,14 @@ it("an owner generation change invalidates the checkpoint and releases its promi
   expect(await h.queue.flush()).toBe(true);
   expect(send).toHaveBeenCalledOnce();
 });
+
+it("a reloaded page can flush at once: pagehide releases the dying page's lock", async () => {
+  const listeners = [];
+  vi.stubGlobal("addEventListener", (type, fn) => { if (type === "pagehide") listeners.push(fn); });
+  const dying = setup({ persist: vi.fn(), flush: () => new Promise(() => {}) });
+  void dying.queue.flush(); // in flight when the page unloads; its finally never runs
+  const reloaded = setup({ persist: vi.fn(), tabId: "two" });
+  expect(await reloaded.queue.flush()).toBe(false);
+  listeners.forEach((fn) => fn());
+  expect(await reloaded.queue.flush()).toBe(true);
+});

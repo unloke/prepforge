@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from prepforge_chess.core.limits import (
@@ -35,10 +35,6 @@ from prepforge_chess.services.opening_builder import (
     OpeningBuilderService,
 )
 from prepforge_chess.services import streak
-from prepforge_chess.services.dashboard_recommendations import (
-    DashboardSignals,
-    build_recommendations,
-)
 from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
@@ -49,24 +45,10 @@ router = APIRouter(prefix="/api", tags=["workspace"])
 
 
 
-def _enforce_repertoire_quota(
-    user: User,
-    owner: str,
-    repo: WorkspaceRepository,
-    settings: Settings,
-) -> None:
-    """Apply the same Free-plan creation cap to every repertoire-producing route."""
-    if (
-        user.plan != Plan.pro
-        and repo.count_repertoires(owner_user_id=owner) >= settings.free_repertoire_limit
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=(
-                "Free plan is limited to {0} repertoires. Upgrade to Pro for "
-                "unlimited.".format(settings.free_repertoire_limit)
-            ),
-        )
+def _repertoire_cap(user: User, settings: Settings) -> int | None:
+    """The Free-plan cap every repertoire-producing route passes to the save,
+    which enforces it in the write transaction (402 via the app handler)."""
+    return None if user.plan == Plan.pro else settings.free_repertoire_limit
 
 
 def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
@@ -129,11 +111,6 @@ def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
         node.pop("mastery", None)
 
 
-# Next actions are personalized from the owner's real state (due reviews, weak
-# cards, repertoire presence) by services/dashboard_recommendations.py — one
-# pure decision function, regression-tested across account states.
-
-
 @router.get("/dashboard")
 def dashboard(
     local_date: str | None = None,
@@ -164,30 +141,28 @@ def dashboard(
             .where(reps.c.owner_user_id == owner)
         ).scalar_one()
         tp = t.training_progress
-        joined = tp.join(reps, reps.c.id == tp.c.repertoire_id)
-        # One scan of owner progress replaces six separate COUNT round trips.
-        # Due timestamps are stored as ISO-8601 UTC text, so lexical comparison works.
-        week_ago_iso = (now - timedelta(days=7)).isoformat()
-        def tally(predicate):
-            return func.coalesce(func.sum(case((predicate, 1), else_=0)), 0)
-
-        (
-            open_mistakes, reviews_7d, mastered_now, weak_now,
-        ) = conn.execute(
-            select(
-                tally(tp.c.attempts > tp.c.correct_attempts),
-                tally(tp.c.last_reviewed_at.is_not(None)
-                      & (tp.c.last_reviewed_at >= now - timedelta(days=7))),
-                tally(tp.c.is_mastered == 1),
-                tally((tp.c.attempts >= 2)
-                      & (tp.c.correct_attempts * 2 < tp.c.attempts)),
-            ).select_from(joined).where(reps.c.owner_user_id == owner, tp.c.owner_user_id == owner)
-        ).one()
-    # Today promises work the Smart queue can actually schedule. Reuse the
-    # Library's effective-enabled, own-move and weak-before-due rules.
-    due_counts = repo.due_windows_by_repertoire(owner, now=now, until=now + timedelta(hours=24))
-    due_reviews = sum(due_counts.get(rid, {}).get("due", 0) for rid in active_ids)
-    due_soon = sum(due_counts.get(rid, {}).get("due_until", 0) for rid in active_ids) - due_reviews
+        # Moves reviewed in the last 7 days: one progress row per move, so a
+        # move reviewed five times counts once.
+        reviews_7d = conn.execute(
+            select(func.count())
+            .select_from(tp.join(reps, reps.c.id == tp.c.repertoire_id))
+            .where(
+                reps.c.owner_user_id == owner,
+                tp.c.owner_user_id == owner,
+                tp.c.last_reviewed_at >= now - timedelta(days=7),
+            )
+        ).scalar_one()
+    week_ago_iso = (now - timedelta(days=7)).isoformat()
+    # Today and the recap describe what the Smart queue can schedule now: the
+    # Library's buckets (effective-enabled own moves, weak before due before
+    # mastered) over active repertoires.
+    counts = repo.due_windows_by_repertoire(owner, now=now, until=now + timedelta(hours=24))
+    def total(bucket: str) -> int:
+        return sum(counts.get(rid, {}).get(bucket, 0) for rid in active_ids)
+    due_reviews = total("due")
+    due_soon = total("due_until") - due_reviews
+    mastered_now = total("mastered")
+    weak_now = total("weak")
     replaced = repo.get_user_setting(owner, PLAYED_SESSIONS_KEY)
     if isinstance(replaced, int) and replaced > 0:
         sessions += replaced
@@ -200,7 +175,6 @@ def dashboard(
         "games": games,
         "repertoires": repertoires,
         "training_sessions": sessions,
-        "open_mistakes": open_mistakes,
         "due_reviews": due_reviews,
         "due_soon": due_soon,
         "streak": streak.as_view(
@@ -210,17 +184,6 @@ def dashboard(
         "recap": _weekly_recap(
             repo, owner, local_day,
             reviews_7d=reviews_7d, mastered_now=mastered_now, weak_now=weak_now,
-        ),
-        "recommendations": build_recommendations(
-            DashboardSignals(
-                games=games,
-                repertoires=repertoires,
-                training_sessions=sessions,
-                due_reviews=due_reviews,
-                due_soon=due_soon,
-                open_mistakes=open_mistakes,
-                weak=weak_now,
-            )
         ),
     }
 
@@ -266,7 +229,7 @@ def _weekly_recap(
 
     return {
         "week_start": week_start,
-        "reviews_7d": reviews_7d,
+        "moves_reviewed_7d": reviews_7d,
         "mastered_now": mastered_now,
         "mastered_delta": mastered_now - _baseline("mastered", mastered_now),
         "weak_now": weak_now,
@@ -490,13 +453,12 @@ def create_repertoire(
 
     Free-plan users are capped at ``settings.free_repertoire_limit`` repertoires;
     exceeding it returns 402 so the SPA can prompt an upgrade. Pro is unlimited."""
-    _enforce_repertoire_quota(user, owner, repo, settings)
     name = body.name.strip() or "Untitled repertoire"
     builder = OpeningBuilderService(repo)
     repertoire = builder.create_repertoire(
-        CreateRepertoireRequest(name=name, color=Color(body.color))
+        CreateRepertoireRequest(name=name, color=Color(body.color)),
+        owner, max_owned=_repertoire_cap(user, settings),
     )
-    repo.claim_repertoire(repertoire.id, owner)
     return build_workspace_payload(
         repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
     )
@@ -717,9 +679,8 @@ def fork_shared_repertoire(
     repertoire = repo.load_repertoire(repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
-    _enforce_repertoire_quota(user, owner, repo, settings)
     _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
-    repo.save_repertoire(repertoire, owner_user_id=owner)
+    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
     return {"repertoire_id": repertoire.id, "name": repertoire.name}
 
 
@@ -752,9 +713,8 @@ def fork_repertoire(
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    _enforce_repertoire_quota(user, owner, repo, settings)
     _reassign_ids(repertoire)
-    repo.save_repertoire(repertoire, owner_user_id=owner)
+    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
     return {"repertoire_id": repertoire.id, "name": repertoire.name}
 
 
@@ -1201,7 +1161,6 @@ def import_repertoire(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a saved ``.prepforge.json`` package, owned by the caller."""
-    _enforce_repertoire_quota(user, owner, repo, settings)
     if not body.package_json.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="repertoire package is empty")
     try:
@@ -1209,7 +1168,7 @@ def import_repertoire(
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     _reassign_ids(repertoire)  # fresh ids → importer's own copy, no cross-tenant clobber
-    repo.save_repertoire(repertoire, owner_user_id=owner)
+    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
     return build_workspace_payload(
         repo,
         repertoire.id,
@@ -1240,14 +1199,13 @@ def import_repertoire_pgn(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     """Import a repertoire from a tree PGN (variations become branches), owned by the caller."""
-    _enforce_repertoire_quota(user, owner, repo, settings)
     try:
         repertoire = RepertoireExportService().import_tree_pgn(
             body.pgn, name=body.name, color=Color(body.color)
         )
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    repo.save_repertoire(repertoire, owner_user_id=owner)
+    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
     return build_workspace_payload(
         repo, repertoire.id, selected_node_id=repertoire.root_node.id, owner_user_id=owner
     )

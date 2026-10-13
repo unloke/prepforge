@@ -237,6 +237,8 @@ export function createAccountController({
     } else {
       clearPendingAction();
     }
+    // Dismissing hands focus back to whatever opened the modal.
+    const opener = existing ? null : document.activeElement;
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay auth-overlay";
     const providers = appState.authProviders || { google: false, password: true };
@@ -340,6 +342,7 @@ export function createAccountController({
       if (!signedIn && !replaced) {
         clearPendingAction();
         authDismissedAt = Date.now();
+        if (opener?.isConnected && opener !== document.body && opener.getClientRects?.().length) opener.focus();
       }
       // Abandoning a reset (Escape, overlay click, palette close) must scrub the
       // token from the URL too, or it stays bookmarkable/shareable in history.

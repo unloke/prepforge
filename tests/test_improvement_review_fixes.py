@@ -179,7 +179,8 @@ def test_quality_metadata_labels_run_completeness(client):
     )
     quality2 = r2.json()["quality"]
     assert quality2["search"] == "partial-shallow"
-    assert quality2["shallow_positions"] > 0
+    # One count per position, not per move side (adjacent moves share one).
+    assert quality2["shallow_positions"] == len(set(prepared["positions"]))
     assert "partial-shallow" in quality2["completeness"]
 
     # A two-tier run screened at 12 on purpose: depth-12 reads are not "shallow".
