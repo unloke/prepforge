@@ -8,10 +8,10 @@ coach-prod-v2 positions. Nothing here changes production Coach.
 `candidates.mjs` lists every point the Coach could prove for a position; `pick.py` lets the
 router choose among them.
 
-- 387 of 860 positions have fewer than two proven candidates in different kept concepts, so there
+- 753 of 860 positions have fewer than two proven candidates in different kept concepts, so there
   is nothing to rerank.
-- Only 19 positions would change their point (swaps.jsonl), and about half of those changes read
-  worse.
+- Only 62 positions reach a real choice; 19 of them change their point (swaps.jsonl). By eye, about half of those read
+  worse (no blind review backs this).
 
 The router is not useful as a direct ranker over the current detectors. The limit is the
 detector set, not the ranking.
