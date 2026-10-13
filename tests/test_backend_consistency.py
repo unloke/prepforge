@@ -15,6 +15,7 @@ from prepforge_chess.services.training_smart import SmartTrainingService
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 from prepforge_chess.storage import sa_tables as t
+from api_helpers import insert_users
 from test_training_smart import _build, _mastered, _seed_progress
 
 
@@ -39,6 +40,7 @@ def repo(request, tmp_path):
     engine = create_engine(url, connect_args={"options": "-c search_path=" + schema})
     try:
         t.metadata.create_all(engine)
+        insert_users(engine, "owner", "t-owner")
         yield WorkspaceRepository(engine)
     finally:
         engine.dispose()

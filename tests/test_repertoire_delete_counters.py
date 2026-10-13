@@ -1,7 +1,7 @@
 """Deleting a whole repertoire must not lower the dashboard's session or weekly
 review counts: its rows are archived into the owner's counters first."""
-from tests.api_helpers import csrf_headers
-from tests.test_api_train import _register, _smart_move, _smart_start, _white_repertoire_with_e4
+from api_helpers import csrf_headers
+from test_api_train import _register, _smart_move, _smart_start, _white_repertoire_with_e4
 
 
 def _played_repertoire(client):

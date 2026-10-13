@@ -4,8 +4,8 @@ lifecycle repository), so this checks the rows directly."""
 from sqlalchemy import func, select
 
 from prepforge_chess.storage import sa_tables as t
-from tests.api_helpers import csrf_headers
-from tests.test_api_train import _register, _smart_move, _smart_start, _white_repertoire_with_e4
+from api_helpers import csrf_headers
+from test_api_train import _register, _smart_move, _smart_start, _white_repertoire_with_e4
 
 
 def test_account_delete_leaves_no_owner_rows(client):

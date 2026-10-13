@@ -24,6 +24,7 @@ from prepforge_chess.services.opening_builder import (
 from prepforge_chess.storage import sa_tables
 from prepforge_chess.storage.database import apply_schema, connect_database
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+from api_helpers import insert_users
 
 
 def _repository():
@@ -228,9 +229,7 @@ def test_interleaved_compare_batches_never_double_count(tmp_path):
     engine = connect_database(tmp_path / "interleave.sqlite3")
     apply_schema(engine)
     owner = "miss-interleave-owner"
-    # user_settings and training rows reference users (FK enforced on this file DB).
-    with engine.begin() as conn:
-        conn.execute(sa_tables.users.insert().values(id=owner, email=f"{owner}@x.test"))
+    insert_users(engine, owner)  # FK enforced on this file DB
     repository = WorkspaceRepository(engine)
     repertoire, node_id = _repertoire_with_target(repository)
 
@@ -306,7 +305,6 @@ def test_postgres_concurrent_record_departure_misses_count_once():
     from threading import Barrier
 
     import sqlalchemy as sa
-    from prepforge_chess.storage import sa_tables
 
     url = os.getenv("TEST_POSTGRES_URL")
     if not url:
@@ -325,6 +323,7 @@ def test_postgres_concurrent_record_departure_misses_count_once():
         repo = WorkspaceRepository(engine)
         repertoire, node_id = _repertoire_with_target(repo)
         owner = "postgres-miss-owner"
+        insert_users(engine, owner)
         racers = 8
         barrier = Barrier(racers)
 
