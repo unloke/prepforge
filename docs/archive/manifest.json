@@ -284,5 +284,17 @@
     "reason": "Original retained before replacing mixed current/history material with concise current documentation.",
     "replacement": true,
     "sha256": "a95431c402ba4685b108909284693b9c5d852d7f46c98c8919fbe2c04a916ace"
+  },
+  {
+    "source": "docs/async-persistence-followup-review.md",
+    "destination": "docs/archive/audits/async-persistence-followup-review-2026-10-04.md",
+    "reason": "Uncommitted review report from a finished round; findings were fixed or superseded by later audits.",
+    "sha256": "8a294f9a30c4c36ae40f9bd441f8e576641ca70eddbbc08b1884a75a6554612a"
+  },
+  {
+    "source": "ui-db-algorithm-improvement-report.md",
+    "destination": "docs/archive/audits/ui-db-algorithm-improvement-report-2026-10-08.md",
+    "reason": "Uncommitted review report from a finished round; findings were fixed or superseded by later audits.",
+    "sha256": "df2357475c17e3f8b3bb0e9a88a5556057ffb28b6051cf596d9fb8ff3b2dec51"
   }
 ]

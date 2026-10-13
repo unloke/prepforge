@@ -97,3 +97,16 @@ tmp/
 /research/tools/maia3/*.onnx
 /research/tools/stockfish/*.exe
 /research/tools/stockfish-17.1-official-windows-x86-64/
+
+# Local-only: run outputs, worktree checkouts, other agents' tool installs
+/artifacts/
+/.worktrees/
+/.vitest/
+/.agents/
+/agent/
+/.commandcode/
+/skills-lock.json
+**/*.pid
+research/**/*.pt
+# Paused LLM coach line; still in use by a local review server, archive when it stops
+/research/sft/
