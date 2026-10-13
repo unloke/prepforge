@@ -28,10 +28,10 @@ def test_deleting_repertoire_keeps_session_count(client):
 def test_deleting_repertoire_keeps_weekly_reviews(client):
     _register(client, "reviews@example.com")
     rep = _played_repertoire(client)
-    before = client.get("/api/dashboard").json()["recap"]["reviews_7d"]
+    before = client.get("/api/dashboard").json()["recap"]["moves_reviewed_7d"]
     assert before == 1
     _delete(client, rep)
-    assert client.get("/api/dashboard").json()["recap"]["reviews_7d"] == before
+    assert client.get("/api/dashboard").json()["recap"]["moves_reviewed_7d"] == before
 
 
 def test_deleting_unplayed_repertoire_adds_nothing(client):
