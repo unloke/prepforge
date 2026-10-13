@@ -72,7 +72,7 @@ def _match_game_path(
     moves: List[MoveRecord],
     repertoire: Repertoire,
     user_color: Color,
-) -> RepertoireMatchResult:
+) -> Optional[RepertoireMatchResult]:
     node = repertoire.root_node
     matched_plies = 0
     pending = list(moves)
@@ -98,6 +98,14 @@ def _match_game_path(
             matched_plies += 1
             pending = pending[index + 1 :]
         # else: the game ends before the root position — it never left prep.
+    else:
+        # A moveless root may sit on a custom position (Build from a FEN, a
+        # PGN with a FEN header): the game must reach it before any child can
+        # match, else moves played before it read as leaving preparation.
+        start = _root_index(pending, node.fen)
+        if start is None:
+            return None  # not comparable: the game never reached this repertoire
+        pending = pending[start:]
 
     for move in pending:
         child = _find_child(node, move.uci)
@@ -131,11 +139,29 @@ def _position_key(fen: str) -> Optional[str]:
     return " ".join(board.fen().split()[:4])
 
 
+def _root_index(moves: List[MoveRecord], root_fen: str) -> Optional[int]:
+    """Index of the first move played from the root position (``len(moves)``
+    when only the final position is it), or None if the game never gets there."""
+    placement = root_fen.split(" ", 1)[0]
+    fens = [move.fen_before for move in moves] + ([moves[-1].fen_after] if moves else [])
+    root = None
+    for index, fen in enumerate(fens):
+        if fen == root_fen:
+            return index
+        if fen.split(" ", 1)[0] != placement:
+            continue
+        # Same placement, different text: compare side, castling and en passant.
+        root = root or _position_key(root_fen)
+        if root is not None and _position_key(fen) == root:
+            return index
+    return None
+
+
 def match_game_to_repertoire(
     moves: List[MoveRecord], repertoire: Repertoire, user_color: Color
-) -> RepertoireMatchResult:
+) -> Optional[RepertoireMatchResult]:
     result = _match_game_path(moves, repertoire, user_color)
-    if result.departure_ply is None:
+    if result is None or result.departure_ply is None:
         return result
     game_positions = [
         (move.ply, _position_key(move.fen_after))
@@ -187,4 +213,5 @@ def match_game_against_repertoires(
     user_color: Color,
 ) -> Optional[RepertoireMatchResult]:
     relevant = [rep for rep in repertoires if rep.color is user_color]
-    return select_deepest_match(match_game_to_repertoire(moves, rep, user_color) for rep in relevant)
+    matches = (match_game_to_repertoire(moves, rep, user_color) for rep in relevant)
+    return select_deepest_match(match for match in matches if match is not None)

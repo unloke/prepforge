@@ -8,6 +8,9 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Set, Tuple
 
 from prepforge_chess.core.limits import (
+    MAX_EVAL_DEPTH,
+    MAX_EVAL_MATE_IN,
+    MAX_EVAL_SCORE_CP,
     MAX_PLAN_CHANGES,
     MAX_PLAN_DEPTH,
     MAX_PLAN_PV_LENGTH,
@@ -22,6 +25,7 @@ from prepforge_chess.core.models import (
     OpeningNode,
     Repertoire,
 )
+from prepforge_chess.services.browser_compute import validate_int
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
@@ -96,21 +100,14 @@ def _engine_eval_from_payload(data) -> Optional[EngineEvaluation]:
     evals). A malformed shape
     raises ValueError (→ 400); a missing eval is simply None (eval is optional
     metadata, not a hard requirement of a generated node). Validation is shape
-    only — bounded ``pv`` of UCI-ish strings, finite numeric ``wdl`` — to keep
-    garbage out of the DB, not to re-derive any chess truth.
+    only — whole numbers in the same ranges Analyze accepts, bounded ``pv`` of
+    UCI-ish strings, a ``wdl`` that is a probability split — to keep garbage
+    out of the DB, not to re-derive any chess truth.
     """
     if data is None:
         return None
     if not isinstance(data, dict):
         raise ValueError("engineEvaluation must be an object or null")
-
-    def _opt_int(value) -> Optional[int]:
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            raise ValueError("engineEvaluation numeric fields must be integers")
 
     pv = data.get("pv") or []
     if not isinstance(pv, list):
@@ -132,23 +129,23 @@ def _engine_eval_from_payload(data) -> Optional[EngineEvaluation]:
     wdl = data.get("wdl")
     parsed_wdl: Optional[dict] = None
     if wdl is not None:
-        if not isinstance(wdl, dict):
-            raise ValueError("engineEvaluation.wdl must be an object or null")
+        if not isinstance(wdl, dict) or set(wdl) != {"win", "draw", "loss"}:
+            raise ValueError("engineEvaluation.wdl must be {win, draw, loss} or null")
         parsed_wdl = {}
         for key, raw in wdl.items():
-            try:
-                value = float(raw)
-            except (TypeError, ValueError):
-                raise ValueError("engineEvaluation.wdl values must be numbers")
-            if not math.isfinite(value):
-                raise ValueError("engineEvaluation.wdl values must be finite")
-            parsed_wdl[str(key)] = value
+            if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not 0 <= raw <= 1:
+                raise ValueError("engineEvaluation.wdl values must be numbers in [0, 1]")
+            parsed_wdl[key] = float(raw)
+        if abs(sum(parsed_wdl.values()) - 1) > 0.01:
+            raise ValueError("engineEvaluation.wdl must sum to 1")
 
     return EngineEvaluation(
         engine=str(data.get("engine") or "stockfish (browser)"),
-        depth=_opt_int(data.get("depth")),
-        score_cp=_opt_int(data.get("score_cp")),
-        mate_in=_opt_int(data.get("mate_in")),
+        depth=validate_int(data.get("depth"), "engineEvaluation.depth", lo=0, hi=MAX_EVAL_DEPTH),
+        score_cp=validate_int(data.get("score_cp"), "engineEvaluation.score_cp",
+                              lo=-MAX_EVAL_SCORE_CP, hi=MAX_EVAL_SCORE_CP),
+        mate_in=validate_int(data.get("mate_in"), "engineEvaluation.mate_in",
+                             lo=-MAX_EVAL_MATE_IN, hi=MAX_EVAL_MATE_IN),
         best_move_uci=best_move,
         pv=parsed_pv,
         wdl=parsed_wdl,
@@ -190,7 +187,10 @@ class OpeningBuilderService:
         self.chess_core = chess_core or ChessCore()
 
 
-    def create_repertoire(self, request: CreateRepertoireRequest) -> Repertoire:
+    def create_repertoire(
+        self, request: CreateRepertoireRequest, owner_user_id: Optional[str] = None,
+        *, max_owned: Optional[int] = None,
+    ) -> Repertoire:
         repertoire_id = str(uuid.uuid4())
         root = OpeningNode(
             id=str(uuid.uuid4()),
@@ -209,7 +209,7 @@ class OpeningBuilderService:
             notes=request.notes,
             tags=list(request.tags),
         )
-        self.repository.save_repertoire(repertoire)
+        self.repository.save_repertoire(repertoire, owner_user_id, max_owned=max_owned)
         return repertoire
 
     def add_move(

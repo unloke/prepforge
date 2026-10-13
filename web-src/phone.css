@@ -117,15 +117,17 @@
   #view-dashboard .lib-list .seg {
     display: flex;
     gap: 8px;
-    max-width: none;
-    margin: 0 calc(-1 * var(--phone-gutter));
-    padding: 0 var(--phone-gutter);
+    /* Capped to the card (which clips): the row scrolls instead of sizing to its chips. */
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
     border: 0;
     background: none;
     overflow-x: auto;
     scrollbar-width: none;
   }
   #view-dashboard .lib-list .seg::-webkit-scrollbar { display: none; }
+  #view-dashboard .lib-list:is(.is-empty, .is-loading) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: none;
     min-height: 34px;
@@ -473,6 +475,21 @@
   }
   #run-analysis { --pill-left: 154px; }
   #build-generate-node { --pill-left: 106px; }
+  /* Under 360px the icons and arrows leave the pill too little room for its
+     name (Analyze kept 44px): tighten the bar so the action stays readable. */
+  @media (max-width: 359px) {
+    #view-build .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px; }
+    #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
+    #view-analyze .board-bar .ib { width: 40px; }
+    .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
+    :is(#run-analysis, #build-generate-node) {
+      right: 106px;
+      max-width: calc(100% - var(--pill-left) - 106px);
+      padding: 0 10px;
+      font-size: 14px;
+    }
+    #run-analysis { --pill-left: 142px; }
+  }
   :is(#run-analysis, #build-generate-node) .bi { display: none; }
   :is(#run-analysis, #build-generate-node) .bl { display: inline; }
   :is(#run-analysis, #build-generate-node):hover { background: var(--accent); filter: none; }
@@ -496,6 +513,21 @@
   }
   .study .board-bar .build-sync::before { content: none; }
   .study .board-bar .build-sync.is-saved { display: none; }
+  /* Saving is a passing dot; a stuck save (offline, sign-in, conflict) says so
+     in words, above the bar. */
+  .study .board-bar .build-sync.is-error {
+    top: auto;
+    bottom: calc(100% + 8px);
+    left: 10px;
+    width: auto;
+    height: auto;
+    padding: 4px 10px;
+    border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+    border-radius: 999px;
+    font-size: 12px;
+    background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
+    color: var(--warn-text);
+  }
 
   /* The tab bar waits under the thumb bar; Menu raises it. */
   body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {

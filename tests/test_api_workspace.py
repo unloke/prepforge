@@ -81,15 +81,11 @@ def test_new_user_sees_empty_owner_scoped_workspace(client):
     assert body["games"] == 0
     assert body["repertoires"] == 0
     assert body["training_sessions"] == 0
-    assert body["open_mistakes"] == 0
     assert body["due_reviews"] == 0
-    # Recommendations are state-driven only: a brand-new account has no work
-    # waiting, so the Today card keeps its numbers and shows no filler
-    # navigation steps (they duplicated the top nav).
-    assert body["recommendations"] == []
+    assert "recommendations" not in body and "open_mistakes" not in body
     # Weekly recap: empty but well-formed for a brand-new user.
     recap = body["recap"]
-    assert recap["reviews_7d"] == 0
+    assert recap["moves_reviewed_7d"] == 0
     assert recap["mastered_now"] == 0 and recap["mastered_delta"] == 0
     assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
     assert recap["week_start"]
@@ -131,10 +127,61 @@ def test_dashboard_recap_counts_this_weeks_reviews(client):
     )
 
     recap = client.get("/api/dashboard").json()["recap"]
-    assert recap["reviews_7d"] == 1
+    assert recap["moves_reviewed_7d"] == 1
     # One correct attempt is not mastery yet; nothing weak either.
     assert recap["mastered_now"] == 0 and recap["mastered_delta"] == 0
     assert recap["weak_now"] == 0 and recap["weak_delta"] == 0
+
+
+def test_dashboard_recap_uses_library_mastery_buckets(client):
+    """A move that recovered (low lifetime accuracy, high recent score) is
+    mastered and not weak, as in the Library; disabling it drops it from both."""
+    from dataclasses import replace
+    from datetime import datetime, timedelta, timezone
+
+    from prepforge_chess.api.deps import get_repository
+
+    owner = _register(client, "recover@example.com", display_name="Rec")
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "KP", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    added = client.post(
+        "/api/build/add-move",
+        json={
+            "repertoire_id": created["repertoire_id"],
+            "parent_node_id": created["selected_node_id"],
+            "move_uci": "e2e4",
+        },
+        headers=csrf_headers(client),
+    ).json()
+    start = client.post(
+        "/api/train/smart/start",
+        json={"repertoire_id": created["repertoire_id"], "seed": 5},
+        headers=csrf_headers(client),
+    ).json()
+    client.post(
+        "/api/train/smart/move",
+        json={"session_id": start["session_id"], "played_uci": "e2e4", "attempt": 1},
+        headers=csrf_headers(client),
+    )
+    repo = get_repository()
+    rep_id = created["repertoire_id"]
+    (progress,) = repo.list_training_progress(rep_id, owner_user_id=owner)
+    repo.save_training_progress(rep_id, replace(
+        progress, attempts=20, correct_attempts=8, spaced_repetition_score=7.0,
+        is_mastered=True, due_at=datetime.now(timezone.utc) + timedelta(days=3),
+    ), owner_user_id=owner)
+
+    recap = client.get("/api/dashboard").json()["recap"]
+    assert (recap["mastered_now"], recap["weak_now"]) == (1, 0)
+    library = client.get("/api/repertoires").json()["repertoires"][0]["health"]
+    assert (library["mastered"], library["weak"]) == (1, 0)
+
+    repo.update_opening_nodes(rep_id, [{"id": added["selected_node_id"], "is_enabled": False}])
+    recap = client.get("/api/dashboard").json()["recap"]
+    assert (recap["mastered_now"], recap["weak_now"]) == (0, 0)
 
 
 def test_dashboard_recap_keeps_reviews_of_deleted_moves(client):
@@ -165,7 +212,7 @@ def test_dashboard_recap_keeps_reviews_of_deleted_moves(client):
         json={"session_id": start["session_id"], "played_uci": "e2e4", "attempt": 1},
         headers=csrf_headers(client),
     )
-    assert client.get("/api/dashboard").json()["recap"]["reviews_7d"] == 1
+    assert client.get("/api/dashboard").json()["recap"]["moves_reviewed_7d"] == 1
 
     deleted = client.post(
         "/api/build/delete-nodes",
@@ -173,7 +220,7 @@ def test_dashboard_recap_keeps_reviews_of_deleted_moves(client):
         headers=csrf_headers(client),
     )
     assert deleted.status_code == 200, deleted.text
-    assert client.get("/api/dashboard").json()["recap"]["reviews_7d"] == 1
+    assert client.get("/api/dashboard").json()["recap"]["moves_reviewed_7d"] == 1
 
 
 def test_dashboard_session_count_grows_when_a_played_session_is_restarted(client):
@@ -278,35 +325,6 @@ def test_weekly_recap_reseeds_baseline_on_week_roll(client):
     snap = repo.get_user_setting(owner, _RECAP_SNAPSHOT_KEY)
     assert snap["week_start"] == first["week_start"]
     assert snap["mastered"] == 0 and snap["weak"] == 0
-
-
-def test_dashboard_recommendations_follow_account_state(client):
-    """Recommendations carry only state-driven actions (due reviews / weak
-    review) — never generic navigation steps duplicating the top nav
-    (personalization lives in services/dashboard_recommendations.py)."""
-    _register(client, "coach@example.com", display_name="Coach")
-    created = client.post(
-        "/api/repertoires/create",
-        json={"name": "KP", "color": "white"},
-        headers=csrf_headers(client),
-    ).json()
-    client.post(
-        "/api/build/add-move",
-        json={
-            "repertoire_id": created["repertoire_id"],
-            "parent_node_id": created["selected_node_id"],
-            "move_uci": "e2e4",
-        },
-        headers=csrf_headers(client),
-    )
-
-    recs = client.get("/api/dashboard").json()["recommendations"]
-    ids = [r["id"] for r in recs]
-    assert set(ids) <= {"train-due", "review-weak"}
-    assert "onboarding-analyze" not in ids
-    assert "analyze-game" not in ids
-    assert "extend-repertoire" not in ids
-    assert all(r["cta"]["view"] in {"train", "build", "analyze"} for r in recs)
 
 
 def test_auth_me_reports_display_name(client):

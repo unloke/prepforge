@@ -1,5 +1,6 @@
 from typing import List
 
+from prepforge_chess.core.chess_core import STARTING_FEN
 from prepforge_chess.core.models import (
     Color,
     MoveRecord,
@@ -17,7 +18,7 @@ def _move(uci: str, ply: int, side: Color) -> MoveRecord:
     return MoveRecord(
         uci=uci,
         san=uci,
-        fen_before=f"before-{ply}",
+        fen_before=STARTING_FEN if ply == 1 else f"before-{ply}",
         fen_after=f"after-{ply}",
         move_number=(ply + 1) // 2,
         ply=ply,
@@ -30,7 +31,7 @@ def _rep(rep_id: str, name: str, moves: List[str]) -> Repertoire:
     root = OpeningNode(
         id=f"{rep_id}-root",
         repertoire_id=rep_id,
-        fen="startpos",
+        fen=STARTING_FEN,
         side_to_move=Color.WHITE,
     )
     current = root
@@ -52,7 +53,7 @@ def _rep(rep_id: str, name: str, moves: List[str]) -> Repertoire:
         id=rep_id,
         name=name,
         color=Color.WHITE,
-        root_fen="startpos",
+        root_fen=STARTING_FEN,
         root_node=root,
     )
 
@@ -336,3 +337,23 @@ def test_hydrated_root_move_synthetic_fields_contract():
     assert b.san == "c7c5"
     assert b.fen_before == after_c5
     assert b.fen_after == after_c5
+
+
+def test_custom_root_waits_for_the_game_to_reach_it():
+    """A moveless root on the position after 1.e4: the game's 1.e4 is not a
+    departure, matching starts from the root position."""
+    from prepforge_chess.core.chess_core import ChessCore
+
+    after_e4 = ChessCore().apply_uci_sequence(STARTING_FEN, ["e2e4"])[0].fen_after
+    rep, moves = _legal_rep_and_moves(["e7e5", "g1f3"], [], root_fen=after_e4)
+    rep = Repertoire(id=rep.id, name=rep.name, color=Color.BLACK, root_fen=after_e4,
+                     root_node=rep.root_node)
+    game = ChessCore().apply_uci_sequence(STARTING_FEN, ["e2e4", "e7e5", "g1f3"])
+    result = match_game_to_repertoire(game, rep, Color.BLACK)
+    assert result.matched_plies == 2
+    assert result.departure_reason == "game_stayed_in_preparation"
+
+    # A game that never reaches the root is not compared with it at all.
+    other = ChessCore().apply_uci_sequence(STARTING_FEN, ["d2d4", "d7d5"])
+    assert match_game_to_repertoire(other, rep, Color.BLACK) is None
+    assert match_game_against_repertoires(other, [rep], Color.BLACK) is None

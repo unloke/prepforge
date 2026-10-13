@@ -25,6 +25,12 @@ class RevisionConflict(RuntimeError):
         self.current_revision = current_revision
 
 
+class RepertoireQuotaExceeded(RuntimeError):
+    def __init__(self, limit: int):
+        super().__init__("owner already has {0} repertoires".format(limit))
+        self.limit = limit
+
+
 class RepertoireRepository(EvaluationRepository, TrainingRepository):
     def expect_repertoire_revision(self, repertoire_id: str, revision: int) -> None:
         """Fence a request's writes at commit, not just at its earlier HTTP read."""
@@ -63,9 +69,18 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             return self._expected_revisions[repertoire_id]
         return self.repertoire_revision(repertoire_id)
 
-    def save_repertoire(self, repertoire: Repertoire, owner_user_id: Optional[str] = None) -> None:
+    def save_repertoire(
+        self, repertoire: Repertoire, owner_user_id: Optional[str] = None,
+        *, max_owned: Optional[int] = None,
+    ) -> None:
+        """``max_owned`` caps how many repertoires the owner may hold once this
+        one is saved. The count runs inside the write transaction, after the
+        insert, so two concurrent creates cannot both pass a stale count."""
         now = datetime.now(timezone.utc)
         with self.engine.begin() as conn:
+            if max_owned is not None and conn.dialect.name == "postgresql":
+                # SQLite already serialises writers; Postgres needs a per-owner lock.
+                conn.execute(select(func.pg_advisory_xact_lock(func.hashtext(owner_user_id))))
             _upsert(
                 conn,
                 t.repertoires,
@@ -91,6 +106,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 coalesce_cols=("owner_user_id",),
             )
 
+            if max_owned is not None and conn.execute(
+                select(func.count()).select_from(t.repertoires)
+                .where(t.repertoires.c.owner_user_id == owner_user_id)
+            ).scalar_one() > max_owned:
+                raise RepertoireQuotaExceeded(max_owned)  # rolls the insert back
             pos_cache: Dict[str, int] = {}
             for node in self._walk_nodes(repertoire.root_node):
                 self._save_opening_node(conn, node, pos_cache)
@@ -415,15 +435,6 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             }
             for row in rows
         ]
-
-    def count_repertoires(self, owner_user_id: Optional[str] = None) -> int:
-        """Number of repertoires owned by ``owner_user_id`` (all rows if None),
-        without loading any opening trees — used by the Free-plan quota gate."""
-        stmt = select(func.count()).select_from(t.repertoires)
-        if owner_user_id is not None:
-            stmt = stmt.where(t.repertoires.c.owner_user_id == owner_user_id)
-        with self.engine.connect() as conn:
-            return int(conn.execute(stmt).scalar_one())
 
     def repertoire_meta(self, repertoire_id: str, *, conn: Optional[Connection] = None) -> Optional[Dict[str, Any]]:
         """Lightweight ``(id, name, is_active, owner_user_id, team_id, visibility)`` for

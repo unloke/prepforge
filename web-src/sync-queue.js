@@ -34,17 +34,23 @@ export function createSyncQueue({ key, state, owner, generation, serialize, flus
     sync.retry = Math.min(sync.retry + 1, 6);
     arm(info?.retryAfterMs ?? Math.min(30_000, 1000 * 2 ** (sync.retry - 1)));
   }
+  // An unloading page never reaches the flush's finally: release its lock on
+  // pagehide, or a reload would find it held by a "tab" that no longer exists.
+  let heldLock = null;
+  globalThis.addEventListener?.("pagehide", () => { if (heldLock) releaseFlushLock(heldLock, key); });
   function drain() {
     const sync = state(), account = owner(), epoch = generation();
     if (sync.flushing) return sync.flushing;
     if (!hasWork()) return Promise.resolve(true);
     const lockId = `${tabId}:${account}:${epoch}`;
     if (!acquireFlushLock(account, lockId, Date.now(), key)) { arm(idleMs); return Promise.resolve(false); }
+    heldLock = lockId;
     cancel();
     const checkpoint = persist();
     const isCurrent = () => account === owner() && epoch === generation() && sync === state();
     const task = Promise.resolve(flush(checkpoint, isCurrent)).finally(() => {
       if (sync.flushing === task) sync.flushing = null;
+      if (heldLock === lockId) heldLock = null;
       releaseFlushLock(lockId, key);
     });
     sync.flushing = task;

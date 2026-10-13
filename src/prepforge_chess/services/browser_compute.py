@@ -71,7 +71,7 @@ class PositionPayloadError(ValueError):
     500 and never a partial write."""
 
 
-def _validate_int(
+def validate_int(
     value: Any, field: str, *, lo: int, hi: int, required: bool = False
 ) -> Optional[int]:
     if value is None:
@@ -114,14 +114,14 @@ def validate_position_item(item: Any, index: int) -> Dict[str, Any]:
         raise PositionPayloadError("{0}.fen must be a non-empty string".format(field))
     score_cp = item.get("score_cp")
     if score_cp is not None:
-        _validate_int(score_cp, "{0}.score_cp".format(field), lo=-MAX_EVAL_SCORE_CP, hi=MAX_EVAL_SCORE_CP)
+        validate_int(score_cp, "{0}.score_cp".format(field), lo=-MAX_EVAL_SCORE_CP, hi=MAX_EVAL_SCORE_CP)
     mate_in = item.get("mate_in")
     if mate_in is not None:
-        _validate_int(mate_in, "{0}.mate_in".format(field), lo=-MAX_EVAL_MATE_IN, hi=MAX_EVAL_MATE_IN)
+        validate_int(mate_in, "{0}.mate_in".format(field), lo=-MAX_EVAL_MATE_IN, hi=MAX_EVAL_MATE_IN)
     # depth 0 is legitimate: a terminal position needs no search.
-    _validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=MAX_EVAL_DEPTH, required=True)
-    _validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=MAX_EVAL_NODES)
-    _validate_int(item.get("time_ms"), "{0}.time_ms".format(field), lo=0, hi=10**10)
+    validate_int(item.get("depth"), "{0}.depth".format(field), lo=0, hi=MAX_EVAL_DEPTH, required=True)
+    validate_int(item.get("nodes"), "{0}.nodes".format(field), lo=0, hi=MAX_EVAL_NODES)
+    validate_int(item.get("time_ms"), "{0}.time_ms".format(field), lo=0, hi=10**10)
     _validate_uci(item.get("best_move_uci"), "{0}.best_move_uci".format(field))
     pv = item.get("pv")
     if pv is not None:

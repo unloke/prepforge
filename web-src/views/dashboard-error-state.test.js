@@ -36,7 +36,6 @@ const DASHBOARD = {
   due_reviews: 0,
   due_soon: 0,
   repertoires: 1,
-  recommendations: [],
 };
 const REPS = {
   repertoires: [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }],

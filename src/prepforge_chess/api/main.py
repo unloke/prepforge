@@ -38,7 +38,7 @@ from prepforge_chess.api.routers import (
 )
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
-from prepforge_chess.storage.repositories.repertoires import RevisionConflict
+from prepforge_chess.storage.repositories.repertoires import RepertoireQuotaExceeded, RevisionConflict
 
 
 @asynccontextmanager
@@ -79,6 +79,12 @@ def create_app() -> FastAPI:
             "error": "revision_conflict", "current_revision": exc.current_revision,
             "message": str(exc),
         }})
+
+    @app.exception_handler(RepertoireQuotaExceeded)
+    async def repertoire_quota(request: Request, exc: RepertoireQuotaExceeded):
+        return JSONResponse(status_code=402, content={"detail": (
+            "Free plan is limited to {0} repertoires. Upgrade to Pro for unlimited.".format(exc.limit)
+        )})
 
     # Middleware order: last added is outermost. We want CORS outermost so even
     # CSRF/rate-limit rejections carry CORS headers (so the browser can read

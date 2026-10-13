@@ -334,21 +334,33 @@ class SmartTrainingService:
     ) -> SessionPlan:
         # Split the session budget across repertoires (ceil, so small counts
         # still get a slot); build_session_plan handles the per-rep urgency.
+        # A repertoire that cannot fill its share leaves budget behind; a second
+        # pass hands it to the ones that filled theirs, so the order of
+        # repertoires never decides how long the session is.
         remaining_size = max(0, session_size if session_size is not None else DEFAULT_SESSION_SIZE)
         remaining_new = max(0, new_cap if new_cap is not None else DEFAULT_NEW_CAP)
-        plans: List[tuple[str, SessionPlan]] = []
+        plans: List[tuple[str, SessionPlan, int, int]] = []
         for index, rep in enumerate(reps):
             remaining_reps = len(reps) - index
-            plan = self._plan_single(
-                rep,
-                seed + index,
-                -(-remaining_size // remaining_reps),
-                -(-remaining_new // remaining_reps),
-            )
-            plans.append((rep.id, plan))
+            size = -(-remaining_size // remaining_reps)
+            new = -(-remaining_new // remaining_reps)
+            plan = self._plan_single(rep, seed + index, size, new)
+            plans.append((rep.id, plan, size, new))
             remaining_size -= plan.counts.get("targets", 0)
             remaining_new -= plan.counts.get("new", 0)
-        return mix_plans(plans, seed=seed)
+        for index, (rep_id, plan, size, new) in enumerate(plans):
+            if remaining_size <= 0:
+                break
+            targets, fresh = plan.counts.get("targets", 0), plan.counts.get("new", 0)
+            if targets < size and fresh < new:
+                continue  # already took everything it had
+            more = self._plan_single(
+                reps[index], seed + index, targets + remaining_size, fresh + max(0, remaining_new)
+            )
+            remaining_size -= more.counts.get("targets", 0) - targets
+            remaining_new -= more.counts.get("new", 0) - fresh
+            plans[index] = (rep_id, more, size, new)
+        return mix_plans([(rep_id, plan) for rep_id, plan, _, _ in plans], seed=seed)
 
     def next_session_counts(self, owner_user_id: str) -> Dict[str, int]:
         """Card counts of the queue a plain Start would serve: what is left of
