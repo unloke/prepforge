@@ -13,7 +13,7 @@ For each card in positions.jsonl, walks the played and best engine lines and rec
   and enter in a line with mate or forced_mate (part of the mate), then shield, open_file and the
   positional.py facts other than draw_risk are dropped from a card with a material, mate or
   forced_mate fact, and draw_risk from a card with mate or forced_mate;
-- outpost, piece_harassed, pawn_weakness, draw_risk from positional.py;
+- outpost, piece_harassed, restricted, pawn_weakness, draw_risk from positional.py;
 - tactical and material relations from tactics.py: fork, mate_threat, mate,
   material (an exchange one side wins), and between lines forced_mate, king_exposed and trades
   (two or more pieces more off over the plies both lines reach, of about equal worth for both
@@ -39,7 +39,7 @@ import tactics
 HERE = pathlib.Path(__file__).parent
 VALUE = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 ORDER = ["mate", "forced_mate", "mate_threat", "material", "fork", "king_exposed",
-         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "pawn_weakness", "draw_risk"]
+         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "draw_risk"]
 HEAVY = (chess.ROOK, chess.QUEEN)
 
 
@@ -229,7 +229,7 @@ def candidates(r):
     out += positional.facts(r["fen"], r["played_pv"], r["best_pv"])
     # a card about lost material or mate does not need positional facts, nor a drawing check next to a mate
     if any(c["type"] in ("material", "mate", "forced_mate") for c in out):
-        out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "pawn_weakness")]
+        out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "restricted", "pawn_weakness")]
     if any(c["type"] in ("mate", "forced_mate") for c in out):
         out = [c for c in out if c["type"] != "draw_risk"]
     # next to won or lost material, king exposure is only the material changing hands

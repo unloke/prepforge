@@ -252,7 +252,19 @@
     }
    ]
   },
-  "candidates": []
+  "candidates": [
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 4,
+    "piece": null,
+    "side": "black",
+    "at": [
+     "a7"
+    ],
+    "text_zh": "黑方 a7 兵變成孤兵，對方可以攻擊它"
+   }
+  ]
  },
  {
   "pos_id": "r3-004",
@@ -830,6 +842,18 @@
      "c3"
     ],
     "text_zh": "白方推 b2-b4 拆開兵鏈，c3 兵沒有兵保護了"
+   },
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 1,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "b4",
+     "c4"
+    ],
+    "text_zh": "白方推 b4 後 c4 再也沒有兵能控制，黑馬可以佔據"
    }
   ]
  },
@@ -886,7 +910,20 @@
     }
    ]
   },
-  "candidates": []
+  "candidates": [
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 1,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "f4",
+     "e5"
+    ],
+    "text_zh": "白方推 f4 後 e5 再也沒有兵能控制，黑馬可以佔據"
+   }
+  ]
  },
  {
   "pos_id": "r3-012",
@@ -2098,6 +2135,17 @@
     "other_gone": [],
     "lead": 0,
     "at": []
+   },
+   {
+    "type": "restricted",
+    "line": "played",
+    "ply": 4,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "c4"
+    ],
+    "text_zh": "白象 c4 活動嚴重受限，缺乏安全退路"
    }
   ]
  },

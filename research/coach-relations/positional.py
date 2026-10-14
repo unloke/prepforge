@@ -1,6 +1,6 @@
 """Research only. Positional facts between the played and best lines, for enumerate.py.
 
-Ported from the Freebuff detector run (artifacts/benchmarks/coach-relations-20261014), keeping the
+Ported from two Freebuff detector runs (artifacts/benchmarks/coach-relations-20261014), keeping the
 detectors that held up on a board check:
 - outpost: a knight or bishop lands on a central square (files c-f, relative ranks 4-6) that a
   friendly pawn defends, no enemy pawn can ever attack, and it still holds at the end of the line,
@@ -10,10 +10,18 @@ detectors that held up on a board check:
   ply-1 pawn push kicks back an advanced enemy minor piece; or a ply-1 queen sortie from d1/d8
   meets three undeveloped enemy minor pieces, one of which can develop onto it with tempo. Played
   line: the mover's piece; best line: the opponent's;
+- restricted: at the common ply a knight, bishop, rook or queen off its first rank loses material
+  (static exchange) on every legal move and a cheaper enemy piece attacks it or can after one
+  quiet move; still so at the line's end, and no piece of that kind is restricted in the other
+  line. Played line: the mover's piece; best line: the opponent's (the played line lets it out);
 - pawn_weakness: in the played line the first move is a pawn push that leaves a friendly pawn on
   relative rank 3 or more without pawn support, and that pawn is still there at the common ply; or
   at the common ply a new isolated pawn on files c-f is attacked more than defended (on d or e,
-  simply undefended). Played line: the mover's pawns; best line: the opponent's;
+  simply undefended), or on files a, b, g or h is attacked at least as often as defended, can be
+  attacked by an enemy piece, lasts to the end of the line, and no material is lost on the way.
+  Played line: the mover's pawns; best line: the opponent's. Also a hole: the ply-1 push takes the
+  last pawn able to cover a square on files c-f, ranks 4-6 for the opponent, that an enemy pawn
+  can cover and an enemy knight or bishop can reach in two moves; the best line keeps the cover;
 - draw_risk: a line ends in stalemate and the other does not; or in the played line the opponent
   gives two or more checks including the last move, the best line has none, and the mover is two
   points up at the end of either line.
@@ -162,10 +170,77 @@ def harassed(lines, mover):
     return out
 
 
+def see(b, sq, enemy):
+    """What `enemy` wins by capturing on `sq`, lowest-value attacker first, each side free to stop."""
+    tb = b.copy(stack=False)
+    tb.turn = enemy
+    target = tb.piece_at(sq)
+    caps = [m for m in tb.legal_moves if m.to_square == sq] if target else []
+    if not caps:
+        return 0
+    tb.push(min(caps, key=lambda m: VAL[tb.piece_type_at(m.from_square)]))
+    return max(0, VAL[target.piece_type] - see(tb, sq, not enemy))
+
+
+def pawn_control(b, c, sq):
+    """A pawn of c on an adjacent file behind sq, so it attacks sq now or after advancing."""
+    return any(abs(chess.square_file(p) - chess.square_file(sq)) == 1 and rel(p, c) < rel(sq, c) for p in b.pieces(chess.PAWN, c))
+
+
+def targetable(b, sq, c):
+    """An enemy piece (not a pawn or king) attacks sq, or can after one quiet move to a safe square."""
+    if any(b.piece_type_at(a) not in (chess.PAWN, chess.KING) for a in b.attackers(not c, sq)):
+        return True
+    tb = b.copy(stack=False)
+    tb.turn = not c
+    for m in list(tb.legal_moves):
+        if tb.piece_type_at(m.from_square) in (chess.PAWN, chess.KING) or tb.is_capture(m):
+            continue
+        tb.push(m)
+        hit = sq in tb.attacks(m.to_square) and see(tb, m.to_square, c) == 0
+        tb.pop()
+        if hit:
+            return True
+    return False
+
+
+def minor_reaches(b, sq, c):
+    """Type of an enemy knight or bishop on sq or able to reach it in two moves, not stopping on a
+    square a pawn of c attacks, with sq attacked no more by c than by the enemy on arrival."""
+    tb = b.copy(stack=False)
+    tb.turn = not c
+    held = lambda: len(tb.attackers(not c, sq)) >= len(tb.attackers(c, sq))
+    for start in [*b.pieces(chess.KNIGHT, not c), *b.pieces(chess.BISHOP, not c)]:
+        if start == sq:
+            return b.piece_type_at(sq)
+        for m1 in [m for m in tb.legal_moves if m.from_square == start]:
+            if m1.to_square != sq and (tb.is_capture(m1) or any(tb.piece_type_at(a) == chess.PAWN for a in tb.attackers(c, m1.to_square))):
+                continue
+            tb.push(m1)
+            if m1.to_square == sq:
+                ok = held()
+            else:
+                tb.turn = not c
+                ok = chess.Move(m1.to_square, sq) in tb.legal_moves
+                if ok:
+                    tb.push(chess.Move(m1.to_square, sq))
+                    ok = held()
+                    tb.pop()
+            tb.pop()
+            tb.turn = not c
+            if ok:
+                return b.piece_type_at(start)
+    return None
+
+
 def isolated(b, c):
     pawns = b.pieces(chess.PAWN, c)
     files = {chess.square_file(s) for s in pawns}
     return {s for s in pawns if chess.square_file(s) - 1 not in files and chess.square_file(s) + 1 not in files}
+
+
+def files(squares):
+    return {chess.square_file(s) for s in squares}
 
 
 def doubled(b, c):
@@ -187,6 +262,22 @@ def pawn_weakness(lines, mover):
                     out.append(fact("pawn_weakness", "played", 1, mover, [m1.to_square, t],
                                     f"{side(mover)}推 {name(m1.from_square)}-{name(m1.to_square)} 拆開兵鏈，{name(t)} 兵沒有兵保護了"))
                     break
+            # a hole: the pushed pawn was the only one that could cover a square, and by the end of the line none can
+            end, end_best = lines["played"][-1][0], lines["best"][-1][0]
+            others = b0.copy()
+            others.remove_piece_at(m1.from_square)
+            for sq in chess.SQUARES:
+                if (abs(chess.square_file(sq) - chess.square_file(m1.from_square)) != 1 or chess.square_file(sq) not in (2, 3, 4, 5)
+                        or rel(sq, not mover) not in (3, 4, 5) or not rel(m1.from_square, mover) < rel(sq, mover) <= rel(m1.to_square, mover) + 1
+                        or material(end, mover) < material(b0, mover) or end.piece_type_at(sq) == chess.PAWN):
+                    continue
+                if (pawn_control(b0, mover, sq) and not pawn_control(others, mover, sq) and not pawn_control(end, mover, sq)
+                        and pawn_control(end_best, mover, sq) and pawn_control(end, not mover, sq)):
+                    pt = minor_reaches(end, sq, mover)
+                    if pt:
+                        out.append(fact("pawn_weakness", "played", 1, mover, [m1.to_square, sq],
+                                        f"{side(mover)}推 {name(m1.to_square)} 後 {name(sq)} 再也沒有兵能控制，{side(not mover)[0]}{ZH[pt]}可以佔據"))
+                        break
     # doubled pawns, compared at the end of each line: the structure lasts
     ends = {line: lines[line][-1][0] for line in lines}
     for line, other in (("played", "best"), ("best", "played")):
@@ -210,8 +301,63 @@ def pawn_weakness(lines, mover):
         bk, ok = lines[line][k][0], lines[other][k][0]
         for sq in sorted(isolated(bk, c) - isolated(b0, c) - isolated(ok, c)):
             att, dfn = len(bk.attackers(not c, sq)), len(bk.attackers(c, sq))
-            if chess.square_file(sq) in (2, 3, 4, 5) and (att > dfn or chess.square_file(sq) in (3, 4) and dfn == 0):
+            f = chess.square_file(sq)
+            if f in (2, 3, 4, 5) and (att > dfn or f in (3, 4) and dfn == 0):
                 out.append(fact("pawn_weakness", line, k, c, [sq], f"{side(c)}在 {name(sq)} 留下沒有保護的中央孤兵"))
+            elif (f not in (2, 3, 4, 5) and dfn <= att and f not in doubled(bk, c) | files(isolated(b0, c)) | files(isolated(ok, c))
+                  and not any(n[-1][0].is_checkmate() for n in lines.values())
+                  and lines[line][-1][0].piece_at(sq) == chess.Piece(chess.PAWN, c)
+                  and min(material(bk, c), material(lines[line][-1][0], c)) >= material(b0, c) and targetable(bk, sq, c)):
+                out.append(fact("pawn_weakness", line, k, c, [sq], f"{side(c)} {name(sq)} 兵變成孤兵，對方可以攻擊它"))
+    return out
+
+
+def restricted(b, sq):
+    """The knight, bishop, rook or queen on sq (off its first rank, not pinned, not in check) loses
+    material on every legal move, and a cheaper enemy piece attacks it or can after one quiet move
+    (directly or by uncovering it), the attacker safe."""
+    p = b.piece_at(sq)
+    if not p or p.piece_type in (chess.PAWN, chess.KING) or rel(sq, p.color) == 0 or b.is_game_over():
+        return False
+    c, v = p.color, VAL[p.piece_type]
+    tb = b.copy(stack=False)
+    tb.turn = c
+    if tb.is_check() or tb.is_pinned(c, sq):
+        return False
+    for m in [m for m in tb.legal_moves if m.from_square == sq]:
+        won = VAL[tb.piece_type_at(m.to_square)] if tb.is_capture(m) else 0
+        tb.push(m)
+        lost = see(tb, m.to_square, not c)
+        tb.pop()
+        if lost <= won:
+            return False
+    if any(VAL[b.piece_type_at(a)] < v for a in b.attackers(not c, sq)):
+        return True
+    tb.turn = not c
+    for m in list(tb.legal_moves):
+        if tb.is_capture(m):
+            continue
+        tb.push(m)
+        hit = see(tb, m.to_square, c) == 0 and any(VAL[tb.piece_type_at(a)] < v and see(tb, a, c) == 0 for a in tb.attackers(not c, sq))
+        tb.pop()
+        if hit:
+            return True
+    return False
+
+
+def restricted_pieces(lines, mover):
+    out = []
+    k = min(len(lines["played"]), len(lines["best"])) - 1
+    if k < 1 or any(n[-1][0].is_checkmate() for n in lines.values()):
+        return out
+    for line, other in (("played", "best"), ("best", "played")):
+        c = mover if line == "played" else not mover
+        bk, ok, end = lines[line][k][0], lines[other][k][0], lines[line][-1][0]
+        for sq in chess.SquareSet(bk.occupied_co[c]):
+            pt = bk.piece_type_at(sq)
+            if (restricted(bk, sq) and (end is bk or restricted(end, sq))
+                    and not any(restricted(ok, o) for o in ok.pieces(pt, c))):
+                out.append(fact("restricted", line, k, c, [sq], f"{side(c)[0]}{ZH[pt]} {name(sq)} 活動嚴重受限，缺乏安全退路"))
     return out
 
 
@@ -235,4 +381,5 @@ def draw_risk(lines, mover):
 def facts(fen, played_pv, best_pv):
     lines = {"played": walk(fen, played_pv), "best": walk(fen, best_pv)}
     mover = chess.Board(fen).turn
-    return outposts(lines, mover) + harassed(lines, mover) + pawn_weakness(lines, mover) + draw_risk(lines, mover)
+    return (outposts(lines, mover) + harassed(lines, mover) + restricted_pieces(lines, mover) + pawn_weakness(lines, mover)
+            + draw_risk(lines, mover))

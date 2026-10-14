@@ -232,7 +232,7 @@ function candText(c) {
         : c.line === "best" && lead > 0 ? `；${mover}領先 ${lead} 分，換子簡化` : `；${mover}${lead > 0 ? "領先" : "落後"} ${Math.abs(lead)} 分`;
       return `多換子：${what}${why}`;
     }
-    case "outpost": case "piece_harassed": case "pawn_weakness": case "draw_risk": return c.text_zh;
+    case "outpost": case "piece_harassed": case "restricted": case "pawn_weakness": case "draw_risk": return c.text_zh;
     case "enter": return `${piece} 進入 ${c.square}`;
     default: return c.type;
   }

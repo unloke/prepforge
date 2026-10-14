@@ -840,6 +840,18 @@
     "at": [
      "e4"
     ]
+   },
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 1,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "c4",
+     "d3"
+    ],
+    "text_zh": "白方推 c4 後 d3 再也沒有兵能控制，黑馬可以佔據"
    }
   ]
  },
@@ -1856,7 +1868,20 @@
     }
    ]
   },
-  "candidates": []
+  "candidates": [
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 1,
+    "piece": null,
+    "side": "black",
+    "at": [
+     "c5",
+     "d6"
+    ],
+    "text_zh": "黑方推 c5 後 d6 再也沒有兵能控制，白馬可以佔據"
+   }
+  ]
  },
  {
   "pos_id": "rr-059",
@@ -2258,6 +2283,18 @@
     "at": [
      "d3"
     ]
+   },
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 1,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "c4",
+     "d3"
+    ],
+    "text_zh": "白方推 c4 後 d3 再也沒有兵能控制，黑象可以佔據"
    }
   ]
  },
@@ -4438,6 +4475,29 @@
      "d5"
     ],
     "text_zh": "黑方的馬佔據 d5 前哨格，有兵保護，對方的兵趕不走它"
+   },
+   {
+    "type": "restricted",
+    "line": "best",
+    "ply": 4,
+    "piece": null,
+    "side": "black",
+    "at": [
+     "b6"
+    ],
+    "text_zh": "黑馬 b6 活動嚴重受限，缺乏安全退路"
+   },
+   {
+    "type": "pawn_weakness",
+    "line": "played",
+    "ply": 1,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "c5",
+     "d5"
+    ],
+    "text_zh": "白方推 c5 後 d5 再也沒有兵能控制，黑馬可以佔據"
    }
   ]
  },

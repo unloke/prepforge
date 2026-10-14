@@ -21,7 +21,7 @@ MATCH = {
     "mate": {"mate", "forced_mate", "mate_threat"},
     "king_safety": {"king_exposed", "shield"},
     "trade": {"trades"},
-    "activity": {"enter", "open_file", "outpost", "piece_harassed"},
+    "activity": {"enter", "open_file", "outpost", "piece_harassed", "restricted"},
     "development": set(),
     "space": set(),
     "pawns": {"shield", "pawn_weakness"},

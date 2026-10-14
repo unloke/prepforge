@@ -19,9 +19,12 @@ const arg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null
 const port = Number(arg("--port") || 5207);
 const round = arg("--round");
 const suffix = round && round !== "1" ? `-r${round}` : "";
-const setBytes = readFileSync(join(here, `set${suffix}.json`));
-const setSha = createHash("sha256").update(setBytes).digest("hex");
-const positions = JSON.parse(setBytes.toString("utf8"));
+// Read the set on every request: a set rebuilt under a running server must reject pages that
+// still hold the old one.
+function loadSet() {
+  const bytes = readFileSync(join(here, `set${suffix}.json`));
+  return { sha: createHash("sha256").update(bytes).digest("hex"), positions: JSON.parse(bytes.toString("utf8")) };
+}
 const labelsPath = join(here, `LABELS${suffix}.json`);
 
 function readJson(req) {
@@ -39,9 +42,12 @@ function send(res, code, value) {
   res.end(JSON.stringify(value));
 }
 
-const ids = new Set(positions.map((p) => p.pos_id));
-const valid = (doc) => doc?.schema === "reason-review/1" && doc.set_sha256 === setSha &&
-  Array.isArray(doc.reviews) && doc.reviews.every((r) => ids.has(r.pos_id));
+function valid(doc) {
+  const { sha, positions } = loadSet();
+  const ids = new Set(positions.map((p) => p.pos_id));
+  return doc?.schema === "reason-review/1" && doc.set_sha256 === sha &&
+    Array.isArray(doc.reviews) && doc.reviews.every((r) => ids.has(r.pos_id));
+}
 
 // Windows refuses the rename while another program (an editor, antivirus, the indexer) has
 // LABELS.json open; that lock is brief, so retry a few times before reporting the failure.
@@ -66,7 +72,8 @@ const api = {
       const url = (req.url || "").split("?")[0];
       if (url === "/api/session" && req.method === "GET") {
         const labels = existsSync(labelsPath) ? JSON.parse(readFileSync(labelsPath, "utf8")) : null;
-        return send(res, 200, { set_sha256: setSha, positions, labels });
+        const { sha, positions } = loadSet();
+        return send(res, 200, { set_sha256: sha, positions, labels });
       }
       if (url === "/api/labels" && req.method === "PUT") {
         let doc;
@@ -98,5 +105,5 @@ const server = await createServer({
   },
 });
 await server.listen();
-console.log(`Reason review: http://127.0.0.1:${port}/  (${positions.length} positions)`);
+console.log(`Reason review: http://127.0.0.1:${port}/  (${loadSet().positions.length} positions)`);
 console.log(`Labels: ${labelsPath}`);
