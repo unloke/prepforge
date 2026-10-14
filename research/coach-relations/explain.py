@@ -122,7 +122,10 @@ def phrase(f, ln, ext, a, root, row):
         return (f"loses {what}{ext.after(a, f['end'])}" if played else f"wins {what}{ext.paren(a, f['end'])}"), f["end"], arrow, []
     if t == "fork":
         targets = " and ".join(ln.name(k, s) for s in f["targets"])
-        verb = f"allows {ln.seq(a, k)}, forking {targets}" if played else f"forks {targets}{ln.paren(a, k)}"
+        if played:
+            verb = f"allows {ln.seq(a, k)}, forking {targets}"
+        else:
+            verb = f"forks {targets}{ln.paren(a, k)}" if k == 1 else f"sets up {ln.seq(k, k)}, forking {targets}{ln.paren(a, k)}"
         return verb, k, arrow, f["targets"][:2]
     if t == "castling":
         cc = chess.WHITE if c else chess.BLACK
@@ -141,8 +144,9 @@ def phrase(f, ln, ext, a, root, row):
         b = [p for p in extra if p.islower()]
         what = " and ".join(x for x in (w and f"White's {pieces(w).split(' ', 1)[1]}", b and f"Black's {pieces(b).split(' ', 1)[1]}") if x)
         lead = f["lead"] if root.turn else -f["lead"]
-        why = (f", though {color(root.turn)} is {-lead} points down" if played and lead < 0 else
-               f", while {color(root.turn)} is {lead} points up" if not played and lead > 0 else "")
+        pts = lambda n: f"{n} point{'s' if n > 1 else ''}"
+        why = (f", though {color(root.turn)} is {pts(-lead)} down" if played and lead < 0 else
+               f", while {color(root.turn)} is {pts(lead)} up" if not played and lead > 0 else "")
         return f"trades off {what}{ln.paren(a, k)}{why}", k, None, []
     what, by = f.get("what"), PIECE.get(f.get("by"), "piece")
     moves = ln.after(a, k) if played else ln.paren(a, k)
@@ -151,6 +155,8 @@ def phrase(f, ln, ext, a, root, row):
         return f"{verb}, an outpost no pawn can challenge{moves}", k, arrow, sq[:1]
     if t == "piece_harassed":
         fr, to = sq
+        if what == "chased" and not ln.boards[k - 1].is_attacked_by(not c, chess.parse_square(fr)):
+            what = "round_trip"
         if not played:
             return f"chases the {color(c).lower()} {by} from {fr} back to {to}{moves}", k, arrow, sq
         verb = {"early_queen": f"brings the queen out to {fr} too early: a piece comes to {to} with tempo",
@@ -240,28 +246,35 @@ def balance(b, c):
 
 
 def hits(b, sq, c):
-    """Squares of c's pieces worth a minor piece or more that the piece on sq attacks and wins:
-    worth more than it, or undefended."""
-    v = tactics.VAL[b.piece_type_at(sq)]
-    return [t for t in b.attacks(sq) & b.occupied_co[c] & ~b.pawns & ~b.kings
-            if tactics.VAL[b.piece_type_at(t)] > v or not b.attackers(c, t)]
+    """Squares of c's men (not the king) that the piece on sq attacks."""
+    return list(b.attacks(sq) & b.occupied_co[c] & ~b.kings)
+
+
+def answered(ln, i, sq):
+    """The attack on sq made by ply i matters in the line: ply i+1 moves the man away, or the
+    attacker's side takes on sq at ply i+2 or i+4."""
+    if i < len(ln.moves) and ln.moves[i].from_square == sq:
+        return True
+    return any(j <= len(ln.moves) and ln.moves[j - 1].to_square == sq and ln.boards[j - 1].is_capture(ln.moves[j - 1])
+               for j in (i + 2, i + 4))
 
 
 def quiet(lines, ext, root):
     """With no fact: (what the played move allows, what the best move does), each "" when
-    nothing concrete holds. Allows: the reply when it captures or checks, or when it newly
-    attacks a piece that then has to move. Best: comes out ahead in material over the other
-    line, stops the played line's quiet reply, or newly attacks a piece that then has to move."""
+    nothing concrete holds. Allows: the reply when it checks or captures (not a plain recapture), or when it newly
+    attacks a man that then has to move or is taken. Best: comes out ahead in material over the other
+    line, stops the played line's quiet reply, or newly attacks a man that then has to move or is
+    taken."""
     pl, bl, me = lines["played"], lines["best"], root.turn
     allows = ""
     if len(pl.moves) > 1:
         r, b1, b2 = pl.moves[1], pl.boards[1], pl.boards[2]
-        if b1.is_capture(r) or b2.is_check():
+        if b2.is_check() or b1.is_capture(r) and r.to_square != pl.moves[0].to_square:  # not a plain recapture
             allows = f"allows {pl.seq(2, 2)}"
         elif len(pl.moves) > 2:
-            new = [t for t in hits(b2, r.to_square, me) if t not in b1.attacks(r.from_square)]
-            if pl.moves[2].from_square in new:
-                allows = f"allows {pl.seq(2, 2)}, which attacks {pl.name(2, chess.square_name(pl.moves[2].from_square))}"
+            new = [t for t in hits(b2, r.to_square, me) if t not in b1.attacks(r.from_square) and answered(pl, 2, t)]
+            if new:
+                allows = f"allows {pl.seq(2, 2)}, which attacks {pl.name(2, chess.square_name(new[0]))}"
     ep, eb = ext["played"], ext["best"]
     d = balance(eb.boards[last_capture(eb)], me) - balance(ep.boards[last_capture(ep)], me)
     if d >= 1:
@@ -275,9 +288,9 @@ def quiet(lines, ext, root):
                 and r not in b1.legal_moves):
             return allows, f"it stops {pl.seq(2, 2)}"
     m = bl.moves[0]
-    new = [t for t in hits(b1, m.to_square, not me) if t not in root.attacks(m.from_square)]
-    if len(bl.moves) > 1 and not b1.is_check() and bl.moves[1].from_square in new:
-        return allows, f"it attacks {bl.name(1, chess.square_name(bl.moves[1].from_square))}"
+    new = [t for t in hits(b1, m.to_square, not me) if t not in root.attacks(m.from_square) and answered(bl, 1, t)]
+    if new and not b1.is_check():
+        return allows, f"it attacks {bl.name(1, chess.square_name(new[0]))}"
     return allows, ""
 
 
@@ -292,6 +305,8 @@ def explain(row, cands=None):
     cands = said(cands if cands is not None else candidates(row), row, ext)
     ranked = rank(cands, mover)
     facts = ranked[:2] if len(ranked) > 1 and second(*ranked[:2]) else ranked[:1]
+    if [f["type"] for f in facts] == ["trades"] and any(quiet(lines, ext, root)):  # a trade alone says little
+        facts = []
     grade = GRADE.get(row["grade"])
     out, arrows, squares, shown = [], [], [], {}
     for i, f in enumerate(facts):

@@ -1,0 +1,305 @@
+{
+  "seed_hex": "ff5f92b8e66bf9efb6974e7811d659f2",
+  "pairs": {
+    "pair-001": {
+      "id": "zyYqMNVY/89",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-002": {
+      "id": "yZwB2tve/19",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-003": {
+      "id": "tCCTuCwb/29",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-004": {
+      "id": "rUysj2Pj/17",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-005": {
+      "id": "rkd4ycqo/21",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-006": {
+      "id": "8IIoLziL/28",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-007": {
+      "id": "7cSVPQmP/49",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-008": {
+      "id": "4POZ3jkv/4",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-009": {
+      "id": "GhsZZFkY/20",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-010": {
+      "id": "UBgIyfUK/29",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-011": {
+      "id": "cLMSAWe9/67",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-012": {
+      "id": "b0etXRK2/60",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-013": {
+      "id": "TfgXBzBK/29",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-014": {
+      "id": "QHBs6Sga/35",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-015": {
+      "id": "L02iUU1G/6",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-016": {
+      "id": "HT9jGdjU/38",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-017": {
+      "id": "DNhhypWP/55",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-018": {
+      "id": "nZzmL2rR/16",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-019": {
+      "id": "HxCT46cR/41",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-020": {
+      "id": "Tj6OIJg9/29",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-021": {
+      "id": "T0lBIKUf/72",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-022": {
+      "id": "KSJQ6KCq/24",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-023": {
+      "id": "gkrVJbOl/51",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-024": {
+      "id": "FN9G9i3J/50",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-025": {
+      "id": "9kHtte6M/54",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-026": {
+      "id": "k63szwKs/72",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-027": {
+      "id": "wkSVjBqB/35",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-028": {
+      "id": "ENVY6yGB/49",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-029": {
+      "id": "nNk9MHI5/60",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-030": {
+      "id": "dGmgbEfj/71",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-031": {
+      "id": "AcF2QAS4/26",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-032": {
+      "id": "1VRjI5fa/14",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-033": {
+      "id": "fFpgwcvI/11",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-034": {
+      "id": "kTmaVWf8/19",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-035": {
+      "id": "z9OcZ3xh/31",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-036": {
+      "id": "rw7RU3xt/14",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-037": {
+      "id": "NUyvOcew/36",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-038": {
+      "id": "fzAc6oKG/22",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-039": {
+      "id": "7f2k2ZKy/44",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-040": {
+      "id": "6pANn05J/56",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-041": {
+      "id": "RVqzxG0F/59",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-042": {
+      "id": "gmHfEniu/20",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-043": {
+      "id": "HFhSKwDs/19",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-044": {
+      "id": "4EPuGhYq/21",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-045": {
+      "id": "EK0L0K5t/9",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-046": {
+      "id": "lSP6rS5w/29",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-047": {
+      "id": "wvMSm5qB/54",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-048": {
+      "id": "p80h54Rh/53",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-049": {
+      "id": "N2XZNEWU/43",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-050": {
+      "id": "qo4T1UoD/39",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-051": {
+      "id": "FN9G9i3J/63",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-052": {
+      "id": "CWm5CWdm/10",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-053": {
+      "id": "FpZiajAh/35",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-054": {
+      "id": "5PKdfVoL/44",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-055": {
+      "id": "NoOhvluH/49",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-056": {
+      "id": "gmHfEniu/34",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-057": {
+      "id": "xneKFk4A/29",
+      "A": "production",
+      "B": "relations"
+    },
+    "pair-058": {
+      "id": "BvQR69NU/9",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-059": {
+      "id": "pKiTHKLH/53",
+      "A": "relations",
+      "B": "production"
+    },
+    "pair-060": {
+      "id": "tpAQVFdP/65",
+      "A": "production",
+      "B": "relations"
+    }
+  }
+}

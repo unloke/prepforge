@@ -6,8 +6,9 @@
   node research/coach-ab-review/serve.mjs research/coach-relations/ab2 --port 5208
 
 The first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
-second run builds the pairs. Cards: inaccuracies, mistakes and blunders with candidates that no
-review round and no earlier A/B (ab*/ids.json) has shown, 60 of them. Order and A/B side come from os.urandom; the key is sealed
+second run builds the pairs. Cards: inaccuracies, mistakes and blunders that no
+review round and no earlier A/B (ab*/ids.json) has shown, 60 of them; with --reviewed the review
+rounds' cards may be drawn too (they tuned pick.py, not the wording). Order and A/B side come from os.urandom; the key is sealed
 in ab/run-output/BLIND-KEY.json. Codex gets ab/run-output/judge/batchN.jsonl and RUBRIC.md.
 """
 import hashlib
@@ -48,12 +49,11 @@ def main():
     pos = {r["id"]: r for r in jsonl(HERE / "positions.jsonl")}
     if not (AB / "prod.jsonl").exists():
         seen = set()
-        for s in ("set", "set-r2", "set-r3", "set-r4"):
+        for s in () if "--reviewed" in sys.argv else ("set", "set-r2", "set-r3", "set-r4"):
             seen |= {p["card"] for p in json.loads((HERE / f"review/{s}.json").read_text(encoding="utf-8"))}
         for f in HERE.glob("ab*/ids.json"):
             seen |= set(json.loads(f.read_text(encoding="utf-8")))
-        pool = [r["id"] for r in jsonl(HERE / "candidates.jsonl")
-                if r["id"] not in seen and pos[r["id"]]["grade"] in ("inaccuracy", "mistake", "blunder")]
+        pool = [i for i, r in pos.items() if i not in seen and r["grade"] in ("inaccuracy", "mistake", "blunder")]
         AB.mkdir(exist_ok=True)
         ids = random.Random(int.from_bytes(os.urandom(16), "big")).sample(pool, N)
         (AB / "ids.json").write_text(json.dumps(ids) + "\n", encoding="utf-8")
