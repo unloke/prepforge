@@ -1,0 +1,540 @@
+{
+ "schema": "reason-review/1",
+ "set_sha256": "36f795cdcb46b23c9bbd8d2e4e57a08303f3195c096b04412837ff65bc90ded8",
+ "completed": 35,
+ "updated_at": "2026-10-14T08:14:46.934Z",
+ "reviews": [
+  {
+   "pos_id": "r3-001",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰送了一隻騎士",
+   "submitted_at": "2026-10-14T07:07:58.072Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:08:05.674Z"
+  },
+  {
+   "pos_id": "r3-002",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰送抓雙 但是最佳贏一隻兵",
+   "submitted_at": "2026-10-14T07:08:35.621Z",
+   "ratings": {
+    "0": "minor",
+    "1": "key",
+    "2": "key",
+    "3": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:08:58.745Z"
+  },
+  {
+   "pos_id": "r3-003",
+   "kind": "pawns",
+   "secondary": [
+    "activity"
+   ],
+   "where": "best",
+   "marks": {},
+   "note": "實戰是個很漂亮的重新置放皇后 這個兵型如果沒有Qd8就崩了 但是走出最佳後 a4就可以用a5去頂 這時候如果axb5 那黑方就可以axb4反擊 如果是bxa5 那Qxa5牽制住城堡 總而言之 實戰黑方a兵是孤兵且不好防守 最佳卻可以撐住兵型和局面",
+   "submitted_at": "2026-10-14T07:13:21.514Z",
+   "ratings": {},
+   "updated_at": "2026-10-14T07:13:21.514Z"
+  },
+  {
+   "pos_id": "r3-004",
+   "kind": "mate",
+   "secondary": [
+    "material"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰錯過將殺還送了城堡和一個抓雙",
+   "submitted_at": "2026-10-14T07:13:48.812Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "key",
+    "3": "key",
+    "4": "key",
+    "5": "key"
+   },
+   "updated_at": "2026-10-14T07:14:16.469Z"
+  },
+  {
+   "pos_id": "r3-005",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰送將殺",
+   "submitted_at": "2026-10-14T07:14:41.714Z",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "updated_at": "2026-10-14T07:14:54.674Z"
+  },
+  {
+   "pos_id": "r3-006",
+   "kind": "material",
+   "secondary": [
+    "development",
+    "king_safety",
+    "activity"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰要馬掉兵 要馬這個皇后被卡在a4動不了 反觀最佳就是正常出子\n",
+   "submitted_at": "2026-10-14T07:16:33.275Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:16:45.246Z"
+  },
+  {
+   "pos_id": "r3-007",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰送主教",
+   "submitted_at": "2026-10-14T07:17:27.991Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T07:17:31.322Z"
+  },
+  {
+   "pos_id": "r3-008",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰錯過得子",
+   "submitted_at": "2026-10-14T07:18:01.007Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:18:18.393Z"
+  },
+  {
+   "pos_id": "r3-009",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰錯過贏子力的機會",
+   "submitted_at": "2026-10-14T07:19:03.950Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T07:19:07.838Z"
+  },
+  {
+   "pos_id": "r3-010",
+   "kind": "pawns",
+   "secondary": [
+    "activity"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰b4浪費一步棋 然後還沒有任何收穫 然後還破壞自己的兵型",
+   "submitted_at": "2026-10-14T07:21:39.422Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T07:21:49.222Z"
+  },
+  {
+   "pos_id": "r3-011",
+   "kind": "pawns",
+   "secondary": [
+    "activity",
+    "space",
+    "material"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰的走法放開了e5格子還破壞了自己的兵型 這下黑騎士就可以放在e5然後控制全局了 最佳的走法黑方是守不住a兵的 可以賺到",
+   "submitted_at": "2026-10-14T07:25:42.492Z",
+   "ratings": {},
+   "updated_at": "2026-10-14T07:25:42.492Z"
+  },
+  {
+   "pos_id": "r3-012",
+   "kind": "material",
+   "secondary": [
+    "pawns",
+    "space"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "最佳的走法可以贏一隻兵 實戰錯過了 然後實戰c4兵卡著c3落後兵 兵型直接變糟了 然後空間也被壓制住了",
+   "submitted_at": "2026-10-14T07:28:08.158Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "wrong"
+   },
+   "updated_at": "2026-10-14T07:29:24.980Z"
+  },
+  {
+   "pos_id": "r3-013",
+   "kind": "endgame",
+   "secondary": [
+    "trade"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰被逼著用f兵換掉e兵 然後就后翼 多兵且國王太遠簡單輸棋 最佳可以用黑a兵換白e兵  所以可以製造更多反擊",
+   "submitted_at": "2026-10-14T07:32:28.293Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:32:45.778Z"
+  },
+  {
+   "pos_id": "r3-014",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "送抓雙城堡",
+   "submitted_at": "2026-10-14T07:33:52.912Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:34:02.932Z"
+  },
+  {
+   "pos_id": "r3-015",
+   "kind": "king_safety",
+   "secondary": [
+    "space",
+    "pawns"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰的f4讓黑方白格主教可以到g4打后然後準備Bf3困住國王 這個形狀需要保護國王而不是反擊",
+   "submitted_at": "2026-10-14T07:37:17.057Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T07:37:38.734Z"
+  },
+  {
+   "pos_id": "r3-016",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "錯過殺棋",
+   "submitted_at": "2026-10-14T07:39:03.220Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "key",
+    "5": "key"
+   },
+   "updated_at": "2026-10-14T07:39:29.555Z"
+  },
+  {
+   "pos_id": "r3-017",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰錯過贏得騎士的走法",
+   "submitted_at": "2026-10-14T07:40:10.609Z",
+   "ratings": {
+    "0": "key",
+    "1": "wrong"
+   },
+   "updated_at": "2026-10-14T07:40:17.889Z"
+  },
+  {
+   "pos_id": "r3-018",
+   "kind": "king_safety",
+   "secondary": [
+    "development"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走出f6弱化自己的王翼 然後阻止自己的騎士到f6",
+   "submitted_at": "2026-10-14T07:42:23.893Z",
+   "ratings": {
+    "0": "wrong"
+   },
+   "updated_at": "2026-10-14T07:42:29.565Z"
+  },
+  {
+   "pos_id": "r3-019",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "自己的騎士困住了 實戰沒有找到正確的方式去拯救他",
+   "submitted_at": "2026-10-14T07:43:35.020Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T07:43:40.317Z"
+  },
+  {
+   "pos_id": "r3-020",
+   "kind": "activity",
+   "secondary": [
+    "trade",
+    "pawns"
+   ],
+   "where": "both",
+   "marks": {},
+   "note": "實戰f5完全錯估了白f兵和黑h兵的價值 這個不是好的交換 反觀最佳Rc5成功防止Nc4 阻止對手的騎士出動 同時攻擊c7逼黑城堡保護兵 阻止城堡出動 然後讓主教可以待在好格f6",
+   "submitted_at": "2026-10-14T07:46:09.999Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "key",
+    "2": "key",
+    "3": "minor"
+   },
+   "updated_at": "2026-10-14T07:46:43.615Z"
+  },
+  {
+   "pos_id": "r3-021",
+   "kind": "material",
+   "secondary": [
+    "activity"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "這個實戰走法讓對方城堡太方便到二線了 剩置直接掉兵 ",
+   "submitted_at": "2026-10-14T07:57:55.572Z",
+   "ratings": {
+    "0": "wrong",
+    "1": "key",
+    "2": "key",
+    "3": "irrelevant"
+   },
+   "updated_at": "2026-10-14T07:58:18.306Z"
+  },
+  {
+   "pos_id": "r3-022",
+   "kind": "activity",
+   "secondary": [
+    "space"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰直接讓自己的馬退回家 然後還讓對手的一隻兵在d5 超難受",
+   "submitted_at": "2026-10-14T07:59:09.435Z",
+   "ratings": {},
+   "updated_at": "2026-10-14T07:59:09.435Z"
+  },
+  {
+   "pos_id": "r3-023",
+   "kind": "activity",
+   "secondary": [
+    "material"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "這個比較特別 黑后被卡住 應該維持讓他卡住的狀態 甚至比丟的兵嚴重 但實戰failed to do that 然後讓后跑出來了",
+   "submitted_at": "2026-10-14T08:00:54.170Z",
+   "ratings": {
+    "0": "minor"
+   },
+   "updated_at": "2026-10-14T08:00:56.970Z"
+  },
+  {
+   "pos_id": "r3-024",
+   "kind": "development",
+   "secondary": [
+    "trade"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "面對這個棋型 需要用長異位來攻擊才能取得些微優勢 而最佳比起實戰更接近長異位 來開始王翼攻擊",
+   "submitted_at": "2026-10-14T08:02:44.937Z",
+   "ratings": {},
+   "updated_at": "2026-10-14T08:02:44.937Z"
+  },
+  {
+   "pos_id": "r3-025",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "主教被抓死",
+   "submitted_at": "2026-10-14T08:03:02.000Z",
+   "ratings": {
+    "0": "wrong"
+   },
+   "updated_at": "2026-10-14T08:03:08.148Z"
+  },
+  {
+   "pos_id": "r3-026",
+   "kind": "trade",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "這隻主教位置很好 然後還威脅著王翼 比造成疊兵有影響多了 不該和騎士交換",
+   "submitted_at": "2026-10-14T08:04:53.114Z",
+   "ratings": {
+    "0": "irrelevant"
+   },
+   "updated_at": "2026-10-14T08:05:05.620Z"
+  },
+  {
+   "pos_id": "r3-027",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰送兵",
+   "submitted_at": "2026-10-14T08:05:24.178Z",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "updated_at": "2026-10-14T08:05:27.634Z"
+  },
+  {
+   "pos_id": "r3-028",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰漏將殺",
+   "submitted_at": "2026-10-14T08:05:56.536Z",
+   "ratings": {
+    "0": "key",
+    "1": "minor",
+    "2": "key",
+    "3": "key"
+   },
+   "updated_at": "2026-10-14T08:06:07.940Z"
+  },
+  {
+   "pos_id": "r3-029",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "往c3走沒有退路 對手b5壓過來直接崩了 但是最佳的c1就能往b1退",
+   "submitted_at": "2026-10-14T08:07:01.054Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T08:07:03.494Z"
+  },
+  {
+   "pos_id": "r3-030",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰讓王太暴露了 應該要請求皇后交換減輕壓力",
+   "submitted_at": "2026-10-14T08:07:55.359Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "key"
+   },
+   "updated_at": "2026-10-14T08:08:04.511Z"
+  },
+  {
+   "pos_id": "r3-031",
+   "kind": "trade",
+   "secondary": [
+    "activity",
+    "king_safety"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "黑主教比白騎士重要太多了 這個交換不能做",
+   "submitted_at": "2026-10-14T08:09:15.517Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T08:09:22.308Z"
+  },
+  {
+   "pos_id": "r3-032",
+   "kind": "king_safety",
+   "secondary": [
+    "activity"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰的Nh5有點浪費一手 讓黑方有機會牽制然後準備騎士的入侵",
+   "submitted_at": "2026-10-14T08:10:45.764Z",
+   "ratings": {
+    "0": "irrelevant"
+   },
+   "updated_at": "2026-10-14T08:10:48.544Z"
+  },
+  {
+   "pos_id": "r3-033",
+   "kind": "activity",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰的b4浪費了一步 沒能成功搶佔c開放線攻擊對方的王 被對手Rd3一打 這個城堡被tie到這隻主教 子力直接被卡住",
+   "submitted_at": "2026-10-14T08:12:15.824Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-14T08:12:26.876Z"
+  },
+  {
+   "pos_id": "r3-034",
+   "kind": "king_safety",
+   "secondary": [
+    "space",
+    "activity"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰讓后翼太空 直接被白皇后入侵 導致不能入堡 然後后翼城堡和兵都變得很脆弱",
+   "submitted_at": "2026-10-14T08:13:42.828Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T08:13:45.478Z"
+  },
+  {
+   "pos_id": "r3-035",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "應該保護國王 實戰就被用兵強制爆破了 ",
+   "submitted_at": "2026-10-14T08:14:44.224Z",
+   "ratings": {
+    "0": "key"
+   },
+   "updated_at": "2026-10-14T08:14:46.634Z"
+  }
+ ]
+}

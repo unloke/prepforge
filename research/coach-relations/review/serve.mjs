@@ -1,6 +1,6 @@
 // Local review server for the move-reason set (set.json, from build_set.py).
 //
-//   node research/coach-relations/review/serve.mjs [--port 5207] [--round 2]
+//   node research/coach-relations/review/serve.mjs [--port 5207] [--round 2|3]
 //
 // The reviewer first writes their own reason for each position, then rates the enumerator's
 // candidates. Every change is saved to LABELS.json next to this file.
@@ -17,7 +17,8 @@ const webSrc = join(repo, "web-src");
 const args = process.argv.slice(2);
 const arg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
 const port = Number(arg("--port") || 5207);
-const suffix = arg("--round") === "2" ? "-r2" : "";
+const round = arg("--round");
+const suffix = round && round !== "1" ? `-r${round}` : "";
 const setBytes = readFileSync(join(here, `set${suffix}.json`));
 const setSha = createHash("sha256").update(setBytes).digest("hex");
 const positions = JSON.parse(setBytes.toString("utf8"));
