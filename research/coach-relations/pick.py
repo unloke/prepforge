@@ -5,9 +5,10 @@
 Mate first; then material that wins or loses a piece (net 3 or more), largest net first; then lost
 castling rights; then smaller material, largest net first; then the other tactical facts; then the
 positional facts that name a weakness (pawn weakness, restricted, outpost, harassed piece) before
-the vaguer shield, trades, open file and enter. Ties keep the earlier ply, then the enumerator's
-order. Tuned on rounds 2 and 3; round 4 (Codex labels) is the check. Prints, per set, how often
-the first and the first two candidates include one rated key.
+the vaguer shield, trades, open file and enter. Material the mover wins in the played line goes
+last: the line stopped before the opponent takes it back (1 key in 18 ratings). Ties keep the
+earlier ply, then the enumerator's order. Tuned on rounds 2 and 3; round 4 (Codex labels) is the
+check. Prints, per set, how often the first and the first two candidates include one rated key.
 """
 import json
 import pathlib
@@ -17,12 +18,17 @@ ORDER = ["mate", "forced_mate", "mate_threat", "material_big", "castling", "mate
          "pawn_weakness", "restricted", "outpost", "piece_harassed", "shield", "trades", "open_file", "enter", "draw_risk"]
 
 
-def rank(cands):
+def unfinished(c, mover):
+    return c["type"] == "material" and c["line"] == "played" and c["side"] == mover
+
+
+def rank(cands, mover):
+    """mover: "white" or "black", the side that played the move."""
     def key(c):
         t = c["type"]
         if t == "material":
             t = "material_big" if c["net"] >= 3 else "material_small"
-        return ORDER.index(t), -c.get("net", 0), c["ply"]
+        return unfinished(c, mover), ORDER.index(t), -c.get("net", 0), c["ply"]
     return sorted(cands, key=key)
 
 
@@ -36,7 +42,7 @@ def main():
                 cands = [dict(c, rating=r["ratings"].get(str(i))) for i, c in enumerate(sets[r["pos_id"]]["candidates"])]
                 if not any(c["rating"] == "key" for c in cands):
                     continue
-                ranked = [c["rating"] for c in rank(cands)]
+                ranked = [c["rating"] for c in rank(cands, sets[r["pos_id"]]["side"])]
                 n += 1
                 top1 += ranked[0] == "key"
                 top2 += "key" in ranked[:2]

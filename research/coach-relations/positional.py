@@ -65,9 +65,9 @@ def walk(fen, pv):
     return out
 
 
-def fact(kind, line, ply, color, squares, text):
+def fact(kind, line, ply, color, squares, text, **what):
     return {"type": kind, "line": line, "ply": ply, "piece": None, "side": "white" if color else "black",
-            "at": [name(s) for s in squares], "text_zh": text}
+            "at": [name(s) for s in squares], "text_zh": text, **what}
 
 
 def is_outpost(b, sq, c):
@@ -96,7 +96,8 @@ def outposts(lines, mover):
             if (is_outpost(b, sq, p.color) and is_outpost(nodes[-1][0], sq, p.color) and not is_outpost(b0, sq, p.color)
                     and not any(is_outpost(ob, sq, p.color) for ob, _ in lines[other][1:])):
                 out.append(fact("outpost", line, i, p.color, [sq],
-                                f"{side(p.color)}的{ZH[p.piece_type]}佔據 {name(sq)} 前哨格，有兵保護，對方的兵趕不走它"))
+                                f"{side(p.color)}的{ZH[p.piece_type]}佔據 {name(sq)} 前哨格，有兵保護，對方的兵趕不走它",
+                                by=p.symbol().lower()))
                 break
     return out
 
@@ -172,7 +173,7 @@ def harassed(lines, mover):
                     "kick": f"{side(not c)}推兵把 {name(sq)} 的{ZH[pt]}趕回 {name(to)}",
                     "chased": f"{side(c)}的{ZH[pt]}走到 {name(sq)} 後被趕回 {name(to)}，白白浪費步數",
                     "round_trip": f"{side(c)}的{ZH[pt]}出到 {name(sq)} 又走回 {name(to)}，白跑一趟"}[kind]
-            out.append(fact("piece_harassed", line, ply, c, [sq, to], text))
+            out.append(fact("piece_harassed", line, ply, c, [sq, to], text, what=kind, by=chess.piece_symbol(pt)))
     return out
 
 
@@ -266,7 +267,7 @@ def pawn_weakness(lines, mover):
                         and lines["best"][1][1].from_square != t
                         and lines["played"][k][0].piece_at(t) == chess.Piece(chess.PAWN, mover)):
                     out.append(fact("pawn_weakness", "played", 1, mover, [m1.to_square, t],
-                                    f"{side(mover)}推 {name(m1.from_square)}-{name(m1.to_square)} 拆開兵鏈，{name(t)} 兵沒有兵保護了"))
+                                    f"{side(mover)}推 {name(m1.from_square)}-{name(m1.to_square)} 拆開兵鏈，{name(t)} 兵沒有兵保護了", what="chain"))
                     break
             # a hole: the pushed pawn was the only one that could cover a square, and by the end of the line none can
             end, end_best = lines["played"][-1][0], lines["best"][-1][0]
@@ -282,7 +283,8 @@ def pawn_weakness(lines, mover):
                     pt = minor_reaches(end, sq, mover)
                     if pt:
                         out.append(fact("pawn_weakness", "played", 1, mover, [m1.to_square, sq],
-                                        f"{side(mover)}推 {name(m1.to_square)} 後 {name(sq)} 再也沒有兵能控制，{side(not mover)[0]}{ZH[pt]}可以佔據"))
+                                        f"{side(mover)}推 {name(m1.to_square)} 後 {name(sq)} 再也沒有兵能控制，{side(not mover)[0]}{ZH[pt]}可以佔據", what="hole",
+                                        by=chess.piece_symbol(pt)))
                         break
     # doubled pawns, compared at the end of each line: the structure lasts
     ends = {line: lines[line][-1][0] for line in lines}
@@ -301,7 +303,7 @@ def pawn_weakness(lines, mover):
                 ply = next(i for i, (b, _) in enumerate(lines[line]) if (f in doubled(b, c)) == hurt)
                 text = (f"{side(c)}在 {'abcdefgh'[f]} 線變成疊兵" if hurt else
                         f"{side(c)}的 {'abcdefgh'[f]} 線疊兵被解開了")
-                out.append(fact("pawn_weakness", line, ply, c, pawns, text))
+                out.append(fact("pawn_weakness", line, ply, c, pawns, text, what="doubled" if hurt else "undoubled"))
     for line, other in (("played", "best"), ("best", "played")):
         c = mover if line == "played" else not mover
         bk, ok = lines[line][k][0], lines[other][k][0]
@@ -309,12 +311,12 @@ def pawn_weakness(lines, mover):
             att, dfn = len(bk.attackers(not c, sq)), len(bk.attackers(c, sq))
             f = chess.square_file(sq)
             if f in (2, 3, 4, 5) and (att > dfn or f in (3, 4) and dfn == 0):
-                out.append(fact("pawn_weakness", line, k, c, [sq], f"{side(c)}在 {name(sq)} 留下沒有保護的中央孤兵"))
+                out.append(fact("pawn_weakness", line, k, c, [sq], f"{side(c)}在 {name(sq)} 留下沒有保護的中央孤兵", what="isolated"))
             elif (f not in (2, 3, 4, 5) and dfn <= att and f not in doubled(bk, c) | files(isolated(b0, c)) | files(isolated(ok, c))
                   and not any(n[-1][0].is_checkmate() for n in lines.values())
                   and lines[line][-1][0].piece_at(sq) == chess.Piece(chess.PAWN, c)
                   and min(material(bk, c), material(lines[line][-1][0], c)) >= material(b0, c) and targetable(bk, sq, c)):
-                out.append(fact("pawn_weakness", line, k, c, [sq], f"{side(c)} {name(sq)} 兵變成孤兵，對方可以攻擊它"))
+                out.append(fact("pawn_weakness", line, k, c, [sq], f"{side(c)} {name(sq)} 兵變成孤兵，對方可以攻擊它", what="isolated"))
     return out
 
 
@@ -363,7 +365,8 @@ def restricted_pieces(lines, mover):
             pt = bk.piece_type_at(sq)
             if (restricted(bk, sq) and (end is bk or restricted(end, sq))
                     and not any(restricted(ok, o) for o in ok.pieces(pt, c))):
-                out.append(fact("restricted", line, k, c, [sq], f"{side(c)[0]}{ZH[pt]} {name(sq)} 活動嚴重受限，缺乏安全退路"))
+                out.append(fact("restricted", line, k, c, [sq], f"{side(c)[0]}{ZH[pt]} {name(sq)} 活動嚴重受限，缺乏安全退路",
+                                by=chess.piece_symbol(pt)))
     return out
 
 
@@ -371,7 +374,7 @@ def draw_risk(lines, mover):
     out = []
     for line, other in (("played", "best"), ("best", "played")):
         if lines[line][-1][0].is_stalemate() and not lines[other][-1][0].is_stalemate():
-            out.append(fact("draw_risk", line, len(lines[line]) - 1, mover, [], "這條變化走成逼和（無子可動）"))
+            out.append(fact("draw_risk", line, len(lines[line]) - 1, mover, [], "這條變化走成逼和（無子可動）", what="stalemate"))
     checks = {line: [i for i in range(1, len(n)) if n[i - 1][0].turn != mover and n[i][0].is_check()]
               for line, n in lines.items()}
     p = lines["played"]
@@ -380,7 +383,7 @@ def draw_risk(lines, mover):
             and max(material(p[-1][0], mover), material(lines["best"][-1][0], mover)) >= 2):
         k = p[-1][0].king(mover)
         out.append(fact("draw_risk", "played", checks["played"][-1], mover, [k],
-                        f"{side(mover)}的王在 {name(k)} 缺乏掩護，對方可以連續將軍求和"))
+                        f"{side(mover)}的王在 {name(k)} 缺乏掩護，對方可以連續將軍求和", what="perpetual"))
     return out
 
 
