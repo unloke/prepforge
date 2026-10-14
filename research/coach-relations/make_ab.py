@@ -1,12 +1,13 @@
 """Blind A/B of explain.py against the production Coach, for coach-ab-review and a Codex judge.
 
-  node research/coach-prod-v2/run.mjs research/coach-relations/ab/ids.json research/coach-relations/ab/prod.jsonl
-  py research/coach-relations/make_ab.py
-  node research/coach-ab-review/serve.mjs research/coach-relations/ab --port 5208
+  py research/coach-relations/make_ab.py ab2
+  node research/coach-prod-v2/run.mjs research/coach-relations/ab2/ids.json research/coach-relations/ab2/prod.jsonl
+  py research/coach-relations/make_ab.py ab2
+  node research/coach-ab-review/serve.mjs research/coach-relations/ab2 --port 5208
 
-Run once without prod.jsonl to draw the cards (writes ab/ids.json), then build the production
-prose with run.mjs and run again. Cards: inaccuracies, mistakes and blunders with candidates that
-no review round has shown, 60 of them. Order and A/B side come from os.urandom; the key is sealed
+The first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
+second run builds the pairs. Cards: inaccuracies, mistakes and blunders with candidates that no
+review round and no earlier A/B (ab*/ids.json) has shown, 60 of them. Order and A/B side come from os.urandom; the key is sealed
 in ab/run-output/BLIND-KEY.json. Codex gets ab/run-output/judge/batchN.jsonl and RUBRIC.md.
 """
 import hashlib
@@ -21,7 +22,6 @@ import chess
 from explain import explain
 
 HERE = pathlib.Path(__file__).parent
-AB = HERE / "ab"
 N, BATCH = 60, 30
 
 
@@ -44,11 +44,14 @@ def answer(text):
 
 
 def main():
+    AB = HERE / sys.argv[1]
     pos = {r["id"]: r for r in jsonl(HERE / "positions.jsonl")}
     if not (AB / "prod.jsonl").exists():
         seen = set()
         for s in ("set", "set-r2", "set-r3", "set-r4"):
             seen |= {p["card"] for p in json.loads((HERE / f"review/{s}.json").read_text(encoding="utf-8"))}
+        for f in HERE.glob("ab*/ids.json"):
+            seen |= set(json.loads(f.read_text(encoding="utf-8")))
         pool = [r["id"] for r in jsonl(HERE / "candidates.jsonl")
                 if r["id"] not in seen and pos[r["id"]]["grade"] in ("inaccuracy", "mistake", "blunder")]
         AB.mkdir(exist_ok=True)

@@ -1,0 +1,715 @@
+Reading additional input from stdin...
+OpenAI Codex v0.162.1
+--------
+workdir: D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+model: gpt-6-astra
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: high
+reasoning summaries: none
+session id: 01a13bf7-5d5d-7ca1-86b4-343552a827b3
+--------
+user
+Read RUBRIC.md and follow it for batch2.jsonl, writing out/batch2.jsonl.
+warning: Codex is ignoring 2 unrecognized configuration settings. Check for typos or deprecated settings.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_model` is ignored.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_reasoning_effort` is ignored.
+warning: Codex is ignoring 2 unrecognized configuration settings. Check for typos or deprecated settings.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_model` is ignored.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_reasoning_effort` is ignored.
+codex
+I’ll read the rubric, evaluate `batch2.jsonl`, and write `out/batch2.jsonl`.
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Raw -Encoding UTF8 RUBRIC.md' in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 895ms:
+# Judging two coach explanations
+
+You are a strong chess coach judging two short explanations, A and B, of the same move from a real
+game. Each line of `batchN.jsonl` is one position:
+
+- `fen`: the position before the move; `side_to_move` played it.
+- `played`: the move actually played and the engine's continuation after it (SAN).
+- `best`: the engine's best move and its continuation (SAN).
+- `grade`: how bad the played move was (inaccuracy < mistake < blunder).
+- `A`, `B`: the two explanations, written for a club player reviewing their game.
+
+The two come from different programs, in random order. Statements about the evaluation ("you were
+clearly better; now you are slightly better") come from the engine: take them as true. Everything
+else must be checked on the board. You may use python-chess (`import chess`) to replay the lines,
+list attacks, count material and so on. There is no engine here beyond the given continuations; do
+not install or run one.
+
+## What makes an explanation better
+
+1. **Correct.** Every claim holds on the board: the moves exist, the material counts are right,
+   the threats are real. A false or misleading claim is the worst fault.
+2. **Gets the point.** It names the main reason the played move is worse than the best move, as a
+   coach would explain it.
+3. **Useful and clear.** A club player understands what went wrong and what to do instead.
+   Concrete is better than vague; short is better than long when they say the same.
+
+## Output
+
+Append one JSON object per position, one per line, to `out/batchN.jsonl` (same N as the input):
+
+```json
+{"pair_id": "pair-001", "verdict": "A", "issues": {"A": [], "B": ["missed_key_point"]},
+ "main_reason": "Bg5 drops the f7 pawn after Rxf8+ and Rc8+.", "confidence": "high",
+ "why": "B names the pawn loss; A's king-cover claim is about Black's own pawn and misleads."}
+```
+
+- `verdict`: `A`, `B`, `tie` (equally good), or `both_bad` (neither is acceptable).
+- `issues`: for each side, any of `factual_error` (a claim is false on the board),
+  `missed_key_point` (does not say the main reason), `hallucination` (asserts something the lines
+  do not support), `unnatural` (awkward or confusing wording).
+- `main_reason`: one sentence, your own view of why the played move is worse.
+- `confidence`: `high` when the verdict is clear, `low` when it is close or you are unsure.
+- `why`: one or two sentences on the verdict.
+
+Judge every position in the batch. Write only to `out/`.
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Raw -Encoding UTF8 batch2.jsonl' in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 643ms:
+{"pair_id": "pair-031", "fen": "r1bqk1nr/3p1ppp/p1nb4/1ppBp3/4P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 2 7", "side_to_move": "white", "grade": "mistake", "played": "7.a3 h6 8.O-O Nf6", "best": "7.Ng5 Nh6 8.O-O O-O", "A": "Mistake. a3 is not the best move. Ng5 was the move.", "B": "Mistake. a3 loses a bishop after 7...h6 8.O-O Nf6 9.Nh4 Nxd5. Ng5 was the move, keeping the material."}
+{"pair_id": "pair-032", "fen": "r1b1k2r/pp1p1ppp/2p5/2b1p1Bn/2B1P3/2NP1P2/PPP2P1P/R3K2R w KQkq - 4 11", "side_to_move": "white", "grade": "mistake", "played": "11.O-O-O Bxf2 12.a4 d6", "best": "11.a4 f5 12.Be3 d6", "A": "Mistake. O-O-O loses a pawn after 11...Bxf2. a4 was the move.", "B": "Mistake. O-O-O loses a pawn after 11...Bxf2. a4 was the move, keeping the material."}
+{"pair_id": "pair-033", "fen": "8/1p2k2p/b5p1/1p3p2/3Kp1P1/2P1N2P/3rB3/4R3 w - - 2 34", "side_to_move": "white", "grade": "blunder", "played": "34.Kc5 Kf6 35.gxf5 gxf5", "best": "34.Ke5 Kd7 35.gxf5 gxf5 36.Nxf5", "A": "Blunder. Kc5 misses Ke5, which wins a pawn (34.Ke5 Kd7 35.gxf5 gxf5 36.Nxf5).", "B": "Blunder. Kc5 misses Ke5, which wins a pawn (34.Ke5 Kd7 35.gxf5 gxf5 36.Nxf5)."}
+{"pair_id": "pair-034", "fen": "r2qr1k1/1b3pp1/pp1p1b1p/1p5Q/3pP3/1B1P3P/PPP2PP1/R3K2R w KQ - 0 18", "side_to_move": "white", "grade": "blunder", "played": "18.Bxf7+ Kf8 19.Bxe8 Qxe8 20.Qxe8+ Rxe8", "best": "18.Qxf7+ Kh7 19.Qxb7 Be5", "A": "Blunder. Bxf7+ misses Qxf7+, which forks the king and the rook on e8 and wins a bishop and a pawn.", "B": "Blunder. Bxf7+ misses Qxf7+, which wins a bishop and a pawn (18.Qxf7+ Kh7 19.Qxb7)."}
+{"pair_id": "pair-035", "fen": "rnb2rk1/1p3qpp/p2p1n2/1Pb1p1B1/N1P2p2/3P1NP1/3QPPBP/1R3RK1 b - - 2 15", "side_to_move": "black", "grade": "inaccuracy", "played": "15...fxg3 16.Nxc5 gxh2+ 17.Kh1 dxc5 18.Nxe5", "best": "15...Nbd7 16.Bxf6 Qxf6 17.gxf4 Qxf4 18.Qxf4 Rxf4", "A": "fxg3 is slightly inaccurate. Nbd7 was the move.", "B": "fxg3 is slightly inaccurate. Nbd7 was better. White was slightly better; now White is clearly better."}
+{"pair_id": "pair-036", "fen": "r1bqk1r1/pnppbp1p/1p5p/3P4/2P5/1QNB1N2/P4PPP/R3R1K1 w q - 4 15", "side_to_move": "white", "grade": "inaccuracy", "played": "15.Bxh7 Nc5 16.Qc2 Rg7", "best": "15.d6 Nxd6 16.Nd5 Bb7 17.Nxe7 Qxe7 18.Rxe7+ Kxe7", "A": "Bxh7 misses d6, which wins a queen and a bishop for a rook, a knight and a pawn (15.d6 Nxd6 16.Nd5 Bb7 17.Nxe7).", "B": "Bxh7 is slightly inaccurate: it misses d6, which wins the queen and a bishop for a rook and a knight and a pawn (15.d6 Nxd6 16.Nd5 Bb7 17.Nxe7 Qxe7 18.Rxe7+ Kxe7)."}
+{"pair_id": "pair-037", "fen": "3b1rk1/1b4p1/1p5p/p2pPP2/Pp1p2P1/1P1P3P/2P5/2KR1R2 w - - 1 31", "side_to_move": "white", "grade": "blunder", "played": "31.Rf4 Bg5 32.Rf1 Bc8", "best": "31.Rde1 Bh4 32.Re2 Bc8", "A": "Blunder. Rf4 is not the best move. Rde1 was the move.", "B": "Blunder. Rf4 loses the exchange to 31...Bg5, which pins the rook to the king. Rde1 was the move, keeping the material."}
+{"pair_id": "pair-038", "fen": "R4rk1/5pp1/4p2p/2RpP1b1/1p4P1/1b2P3/1N2KP1P/8 w - - 1 29", "side_to_move": "white", "grade": "blunder", "played": "29.f4 Rxa8 30.fxg5 Ra2", "best": "29.Rxf8+ Kxf8 30.Rc8+ Ke7", "A": "Blunder. f4 misses Rxf8+, which wins a pawn.", "B": "Blunder. f4 loses a rook for a bishop after 29...Rxa8 30.fxg5. Rxf8+ was the move."}
+{"pair_id": "pair-039", "fen": "8/1p5p/b3k1p1/1pKN4/4ppP1/2P4P/3rB3/4R3 w - - 2 36", "side_to_move": "white", "grade": "inaccuracy", "played": "36.Nc7+ Kf6 37.Nd5+ Ke5", "best": "36.Nxf4+ Ke5 37.Ng2 Rc2", "A": "Nc7+ is slightly inaccurate: it misses Nxf4+, which wins a pawn (36.Nxf4+).", "B": "Nc7+ is slightly inaccurate. Nxf4+ was better."}
+{"pair_id": "pair-040", "fen": "r1bq1rk1/ppn1p1bp/1np1Ppp1/8/2PP4/2N1BN1P/PP2Q1P1/R3KB1R w KQ - 1 13", "side_to_move": "white", "grade": "blunder", "played": "13.d5 cxd5 14.Qf2 Nxc4 15.Bxc4 dxc4", "best": "13.b3 Bxe6 14.Qd2 Qd7", "A": "Blunder. d5 loses a bishop and two pawns for a knight after 13...cxd5 14.Qf2 Nxc4 15.Bxc4 dxc4. b3 was the move, keeping the material.", "B": "Blunder. d5 loses a bishop and two pawns for a knight after 13...cxd5 14.Qf2 Nxc4 15.Bxc4 dxc4. b3 was the move."}
+{"pair_id": "pair-041", "fen": "rn4nr/pp3kpp/2p2q2/2b1p3/4P1Q1/2NP4/PPP2PPP/R1B1K2R w KQ - 1 9", "side_to_move": "white", "grade": "blunder", "played": "9.Be3 Bxe3 10.fxe3 Qe6", "best": "9.f4 Qe6 10.f5 Qd6", "A": "Blunder. Be3 leaves doubled pawns on the e-file after 9...Bxe3 10.fxe3. f4 was the move: it chases the black queen from e6 back to d6 (9.f4 Qe6 10.f5 Qd6).", "B": "Blunder. Be3 allows 9...Bxe3 and a trade of bishops. Black is clearly better now. f4 was the move, keeping it level."}
+{"pair_id": "pair-042", "fen": "r2q1rk1/pp2np2/6p1/3P4/3P2N1/6P1/P2B1PB1/R3R1K1 w - - 1 21", "side_to_move": "white", "grade": "blunder", "played": "21.Bh6 Nf5 22.Bf4 Rc8", "best": "21.Bg5 f6 22.Nxf6+ Kh8", "A": "Blunder. Bh6 misses Bg5, which pins the knight to the queen and wins a pawn.", "B": "Blunder. Bh6 misses Bg5, which wins a pawn (21.Bg5 f6 22.Nxf6+)."}
+{"pair_id": "pair-043", "fen": "rn1q1rk1/pp2bpp1/3p1n1p/2p5/3NPP2/2N1B3/PPP1Q1PP/2KR3R w - - 0 11", "side_to_move": "white", "grade": "blunder", "played": "11.Nf3 Qc8 12.Rhg1 Qc6", "best": "11.Nf5 g6 12.Nxd6 Bxd6", "A": "Blunder. Nf3 misses Nf5, which wins a bishop and a pawn for a knight (11.Nf5 g6 12.Nxd6).", "B": "Blunder. Nf3 is not the best move. Nf5 was the move."}
+{"pair_id": "pair-044", "fen": "1r1qk2r/1p2bpp1/p1np1n2/2p1p1Np/2P3bP/PPNBP3/1BQP1PP1/R3K2R b KQk - 5 12", "side_to_move": "black", "grade": "mistake", "played": "12...d5 13.cxd5 Nxd5 14.Nxf7 Kxf7 15.Nxd5 Bxh4", "best": "12...Ng8 13.f3 Bd7 14.f4 exf4", "A": "Mistake. d5 misses Ng8, which wins a pawn (12...Ng8 13.f3 Bd7 14.f4 exf4).", "B": "Mistake. d5 allows 13.cxd5 and a trade of knights. White was slightly better; now White is clearly better. Ng8 was the move, limiting the damage."}
+{"pair_id": "pair-045", "fen": "2kr1b1r/1ppbq3/2n1pp2/1B1p1np1/3P3p/P1N1PN1P/2P2PPB/R2Q1RK1 b - - 0 16", "side_to_move": "black", "grade": "blunder", "played": "16...e5 17.Nxd5 Qg7 18.dxe5", "best": "16...Qg7 17.Ne1 Bd6 18.Nd3", "A": "Blunder. e5 loses four pawns after 17.Nxd5 Qg7 18.dxe5 g4 19.exf6. Qg7 was the move, keeping the material.", "B": "Blunder. e5 loses a knight and two pawns for a bishop after 17.Nxd5 Qg7 18.dxe5 fxe5 19.Bxc6 Bxc6 20.Bxe5. Qg7 was the move."}
+{"pair_id": "pair-046", "fen": "r2q1rk1/2p2ppp/P7/3b4/Q1p5/2P5/4BPPP/R4RK1 b - - 1 17", "side_to_move": "black", "grade": "blunder", "played": "17...c6 18.Bxc4 h6 19.Rfb1", "best": "17...Qe8 18.Rfd1 Qxe2 19.Rxd5", "A": "Blunder. c6 loses a pawn after 18.Bxc4. Qe8 was the move, keeping the material.", "B": "Blunder. c6 loses a pawn after 18.Bxc4. Qe8 was the move."}
+{"pair_id": "pair-047", "fen": "2r2rk1/1b3p2/p3p1p1/4P3/7P/PqN3Q1/3B2P1/1B4RK b - - 2 36", "side_to_move": "black", "grade": "mistake", "played": "36...Rfd8 37.Bxg6 Kf8 38.Qf4", "best": "36...Qb2 37.Be1 Qxa3 38.Rf1", "A": "Mistake. Rfd8 allows 37.Bxg6 Kf8 38.Qf4, threatening mate on f7. It also loses a pawn. Qb2 was the move.", "B": "Mistake. Rfd8 misses Qb2, which wins a pawn (36...Qb2 37.Be1 Qxa3)."}
+{"pair_id": "pair-048", "fen": "r1bqk2r/pp3ppp/2n1pn2/3p4/3P4/2P1PNP1/P2B1PBP/R2Q1RK1 b kq - 0 11", "side_to_move": "black", "grade": "inaccuracy", "played": "11...Ng4 12.c4 O-O 13.Qb3", "best": "11...O-O 12.c4 Ne4 13.Qc2", "A": "Ng4 is slightly inaccurate. O-O was better. White is slightly better now.", "B": "Ng4 is slightly inaccurate. O-O was the move."}
+{"pair_id": "pair-049", "fen": "r5nr/3nbkp1/p1p4p/1p6/4P3/q1B2P2/P1P1NP1P/R2Q1RK1 b - - 5 16", "side_to_move": "black", "grade": "blunder", "played": "16...Qc5 17.Qxd7 Rd8 18.Qh3", "best": "16...Rd8 17.Qb1 Nc5 18.Qe1", "A": "Blunder. Qc5 loses a knight after 17.Qxd7. Rd8 was the move.", "B": "Blunder. Qc5 hangs the knight on d7 to 17.Qxd7. Rd8 was the move, keeping the material."}
+{"pair_id": "pair-050", "fen": "2kr3r/1p2np2/p1p1p1nb/q2pPP2/3P2B1/2NQB2P/PPP3R1/1K4R1 b - - 0 23", "side_to_move": "black", "grade": "blunder", "played": "23...Nh4 24.fxe6 fxe6 25.Bxe6+ Kb8", "best": "23...exf5 24.Bxf5+ Kb8 25.Bxg6 Bxe3 26.Qxe3 fxg6", "A": "Blunder. Nh4 loses a pawn after 24.fxe6 fxe6 25.Bxe6+. exf5 was the move, keeping the material.", "B": "Blunder. Nh4 loses a pawn after 24.fxe6 fxe6 25.Bxe6+. exf5 was the move."}
+{"pair_id": "pair-051", "fen": "8/8/6p1/4P3/3R3P/1PNn1k2/P5rP/7K b - - 4 42", "side_to_move": "black", "grade": "blunder", "played": "42...Rd2 43.Rd6 Nf2+ 44.Kg1", "best": "42...Nf2#", "A": "Blunder. Rd2 misses mate in one: 42...Nf2#.", "B": "Blunder. Rd2 misses mate in one: 42...Nf2#."}
+{"pair_id": "pair-052", "fen": "r2qk2r/p1p2ppp/b1n1p3/4Pn2/2pP4/P1B2N2/1P3PPP/R2QKB1R b KQkq - 0 11", "side_to_move": "black", "grade": "blunder", "played": "11...Ncxd4 12.Nxd4 O-O 13.Nxf5 exf5 14.Qxd8 Raxd8", "best": "11...Qd5 12.Qd2 O-O-O 13.O-O-O", "A": "Blunder. Ncxd4 loses a knight for a pawn after 12.Nxd4 O-O 13.Nxf5 exf5 14.Qxd8. Qd5 was the move, keeping the material.", "B": "Blunder. Ncxd4 loses a knight for a pawn after 12.Nxd4 O-O 13.Nxf5 exf5 14.Qxd8 Raxd8. Qd5 was the move."}
+{"pair_id": "pair-053", "fen": "r4r1k/1pq3pp/p1bb4/2pB4/4Q1N1/1PPP2p1/P4P1P/R3R1K1 b - - 1 25", "side_to_move": "black", "grade": "mistake", "played": "25...gxh2+ 26.Kh1 Rf4 27.Bxc6 Rxe4 28.Bxe4", "best": "25...gxf2+ 26.Nxf2 Bxh2+ 27.Kh1 Bxd5 28.Qxd5 Rxf2", "A": "Mistake. gxh2+ misses gxf2+, which wins a knight and a pawn (25...gxf2+ 26.Nxf2 Bxh2+ 27.Kh1 Bxd5 28.Qxd5 Rxf2).", "B": "Mistake. gxh2+ misses gxf2+, which wins a knight and a pawn (25...gxf2+ 26.Nxf2 Bxh2+ 27.Kh1 Bxd5)."}
+{"pair_id": "pair-054", "fen": "R7/p1k5/2ppbp2/1p4p1/4Pp2/2NP1P2/PPP2b2/2K5 b - - 0 25", "side_to_move": "black", "grade": "blunder", "played": "25...Kb6 26.Kd2 Be3+ 27.Ke2", "best": "25...Bc8 26.a4 bxa4 27.Nxa4", "A": "Blunder. Kb6 misses Bc8, which leaves the white rook on a8 with no safe square (25...Bc8 26.a4 bxa4 27.Nxa4).", "B": "Blunder. Kb6 misses Bc8, which wins the exchange (25...Bc8 26.a4 bxa4)."}
+{"pair_id": "pair-055", "fen": "5rk1/p4p1p/1p2p1p1/1P6/P3Q2R/5r1P/5PPK/3q4 w - - 0 31", "side_to_move": "white", "grade": "blunder", "played": "31.gxf3 Rc8 32.Rg4 Rc1", "best": "31.Qxf3 Qxf3 32.gxf3 Rc8", "A": "Blunder. gxf3 misses Qxf3, which trades off White's queen and Black's queen (31.Qxf3 Qxf3 32.gxf3 Rc8).", "B": "Blunder. gxf3 allows 31...Rc8. Black was clearly better; now Black is winning. Qxf3 was the move, attacking the queen on d1."}
+{"pair_id": "pair-056", "fen": "r3rk2/pp4bp/n5p1/3N1p2/3N4/4P3/PP3PPP/2RR2K1 w - - 3 21", "side_to_move": "white", "grade": "mistake", "played": "21.Nc7 Nxc7 22.Rxc7 f4", "best": "21.Kf1 Be5 22.Nf3 Rad8", "A": "Mistake. Nc7 trades off White's knight and Black's knight (21...Nxc7 22.Rxc7 f4). Kf1 was the move.", "B": "Mistake. Nc7 loses a pawn after 21...Nxc7 22.Rxc7 f4 23.Nf3 fxe3. Kf1 was the move, keeping the material."}
+{"pair_id": "pair-057", "fen": "3r1rk1/1b3pp1/pq2p2p/4Pn2/2p1NBQP/P7/4N1P1/1B4RK b - - 0 31", "side_to_move": "black", "grade": "blunder", "played": "31...Rc8 32.Nf6+ Kh8 33.Bxf5 exf5", "best": "31...Bxe4 32.Bxe4 Qf2 33.Rc1 Qxh4+ 34.Qxh4 Nxh4 35.Rxc4", "A": "Blunder. Rc8 loses a knight and a pawn for a bishop after 32.Nf6+ Kh8 33.Bxf5. Bxe4 was the move, keeping the material.", "B": "Blunder. Rc8 misses Bxe4, which forks the king and the queen on g4 (31...Bxe4 32.Bxe4 Qf2 33.Rc1 Qxh4+)."}
+{"pair_id": "pair-058", "fen": "rn1q2nr/pp3kpp/2p5/2b1p3/4P1Q1/2NP4/PPP2PPP/R1B1K2R b KQ - 0 8", "side_to_move": "black", "grade": "blunder", "played": "8...Qf6 9.f4 Qe6 10.f5", "best": "8...Nf6 9.Qe2 Rf8 10.g3", "A": "Blunder. Qf6 allows 9.f4, which challenges the centre. You were clearly better; now it's level. Nf6 was the move, attacking the queen on g4.", "B": "Blunder. Qf6 is not the best move. Nf6 was the move."}
+{"pair_id": "pair-059", "fen": "rnbqkbnr/ppp1pppp/8/3p4/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 1 2", "side_to_move": "black", "grade": "inaccuracy", "played": "2...e6 3.d4 Nf6 4.e5", "best": "2...d4 3.Nb1 Nf6 4.e5", "A": "e6 is slightly inaccurate. d4 was the move.", "B": "e6 is slightly inaccurate: it shuts in the bishop on c8. d4 was better."}
+{"pair_id": "pair-060", "fen": "r1bqk2r/ppp2ppp/2np1n2/1Bb1p3/4P3/2P2N2/PP1P1PPP/RNBQ1RK1 w kq - 1 6", "side_to_move": "white", "grade": "blunder", "played": "6.Re1 O-O 7.h3 h6", "best": "6.d4 Bb6 7.d5 a6", "A": "Blunder. Re1 misses d4, which wins a knight for a pawn.", "B": "Blunder. Re1 misses d4, which chases the black bishop from c5 back to b6 (6.d4 Bb6)."}
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'python -c "import chess; print(chess.__version__)"' in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 671ms:
+1.11.2
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-ChildItem -Force out -ErrorAction SilentlyContinue | Select-Object Name,Length' in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 607ms:
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import chess,json,re
+from collections import Counter
+for s in open('batch2.jsonl',encoding='utf-8'):
+ if not s.strip(): continue
+ d=json.loads(s); print('\\n'+d['pair_id']); b=chess.Board(d['fen']);print(b)
+ for k in ['played','best']:
+  b=chess.Board(d['fen']); caps=[]
+  for t in d[k].split():
+   t=re.sub(r'"'^'"\\d+\\.(\\.\\.)?','',t)
+   if not t:continue
+   m=b.parse_san(t)
+   if b.is_capture(m):caps.append(('W' if b.turn else 'B')+':'+str(b.piece_at(m.to_square)))
+   b.push(m)
+  print(k,d[k], 'captures',','.join(caps))
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 872ms:
+
+pair-031
+r . b q k . n r
+. . . p . p p p
+p . n b . . . .
+. p p B p . . .
+. . . . P . . .
+. . N P . N . .
+P P P . . P P P
+R . B Q K . . R
+played 7.a3 h6 8.O-O Nf6 captures 
+best 7.Ng5 Nh6 8.O-O O-O captures 
+
+pair-032
+r . b . k . . r
+p p . p . p p p
+. . p . . . . .
+. . b . p . B n
+. . B . P . . .
+. . N P . P . .
+P P P . . P . P
+R . . . K . . R
+played 11.O-O-O Bxf2 12.a4 d6 captures B:P
+best 11.a4 f5 12.Be3 d6 captures 
+
+pair-033
+. . . . . . . .
+. p . . k . . p
+b . . . . . p .
+. p . . . p . .
+. . . K p . P .
+. . P . N . . P
+. . . r B . . .
+. . . . R . . .
+played 34.Kc5 Kf6 35.gxf5 gxf5 captures W:p,B:P
+best 34.Ke5 Kd7 35.gxf5 gxf5 36.Nxf5 captures W:p,B:P,W:p
+
+pair-034
+r . . q r . k .
+. b . . . p p .
+p p . p . b . p
+. p . . . . . Q
+. . . p P . . .
+. B . P . . . P
+P P P . . P P .
+R . . . K . . R
+played 18.Bxf7+ Kf8 19.Bxe8 Qxe8 20.Qxe8+ Rxe8 captures W:p,W:r,B:B,W:q,B:Q
+best 18.Qxf7+ Kh7 19.Qxb7 Be5 captures W:p,W:b
+
+pair-035
+r n b . . r k .
+. p . . . q p p
+p . . p . n . .
+. P b . p . B .
+N . P . . p . .
+. . . P . N P .
+. . . Q P P B P
+. R . . . R K .
+played 15...fxg3 16.Nxc5 gxh2+ 17.Kh1 dxc5 18.Nxe5 captures B:P,W:b,B:P,B:N,W:p
+best 15...Nbd7 16.Bxf6 Qxf6 17.gxf4 Qxf4 18.Qxf4 Rxf4 captures W:n,B:B,W:p,B:P,W:q,B:Q
+
+pair-036
+r . b q k . r .
+p n p p b p . p
+. p . . . . . p
+. . . P . . . .
+. . P . . . . .
+. Q N B . N . .
+P . . . . P P P
+R . . . R . K .
+played 15.Bxh7 Nc5 16.Qc2 Rg7 captures W:p
+best 15.d6 Nxd6 16.Nd5 Bb7 17.Nxe7 Qxe7 18.Rxe7+ Kxe7 captures B:P,W:b,B:N,W:q,B:R
+
+pair-037
+. . . b . r k .
+. b . . . . p .
+. p . . . . . p
+p . . p P P . .
+P p . p . . P .
+. P . P . . . P
+. . P . . . . .
+. . K R . R . .
+played 31.Rf4 Bg5 32.Rf1 Bc8 captures 
+best 31.Rde1 Bh4 32.Re2 Bc8 captures 
+
+pair-038
+R . . . . r k .
+. . . . . p p .
+. . . . p . . p
+. . R p P . b .
+. p . . . . P .
+. b . . P . . .
+. N . . K P . P
+. . . . . . . .
+played 29.f4 Rxa8 30.fxg5 Ra2 captures B:R,W:b
+best 29.Rxf8+ Kxf8 30.Rc8+ Ke7 captures W:r,B:R
+
+pair-039
+. . . . . . . .
+. p . . . . . p
+b . . . k . p .
+. p K N . . . .
+. . . . p p P .
+. . P . . . . P
+. . . r B . . .
+. . . . R . . .
+played 36.Nc7+ Kf6 37.Nd5+ Ke5 captures 
+best 36.Nxf4+ Ke5 37.Ng2 Rc2 captures W:p
+
+pair-040
+r . b q . r k .
+p p n . p . b p
+. n p . P p p .
+. . . . . . . .
+. . P P . . . .
+. . N . B N . P
+P P . . Q . P .
+R . . . K B . R
+played 13.d5 cxd5 14.Qf2 Nxc4 15.Bxc4 dxc4 captures B:P,B:P,W:n,B:B
+best 13.b3 Bxe6 14.Qd2 Qd7 captures B:P
+
+pair-041
+r n . . . . n r
+p p . . . k p p
+. . p . . q . .
+. . b . p . . .
+. . . . P . Q .
+. . N P . . . .
+P P P . . P P P
+R . B . K . . R
+played 9.Be3 Bxe3 10.fxe3 Qe6 captures B:B,W:b
+best 9.f4 Qe6 10.f5 Qd6 captures 
+
+pair-042
+r . . q . r k .
+p p . . n p . .
+. . . . . . p .
+. . . P . . . .
+. . . P . . N .
+. . . . . . P .
+P . . B . P B .
+R . . . R . K .
+played 21.Bh6 Nf5 22.Bf4 Rc8 captures 
+best 21.Bg5 f6 22.Nxf6+ Kh8 captures W:p
+
+pair-043
+r n . q . r k .
+p p . . b p p .
+. . . p . n . p
+. . p . . . . .
+. . . N P P . .
+. . N . B . . .
+P P P . Q . P P
+. . K R . . . R
+played 11.Nf3 Qc8 12.Rhg1 Qc6 captures 
+best 11.Nf5 g6 12.Nxd6 Bxd6 captures W:p,B:N
+
+pair-044
+. r . q k . . r
+. p . . b p p .
+p . n p . n . .
+. . p . p . N p
+. . P . . . b P
+P P N B P . . .
+. B Q P . P P .
+R . . . K . . R
+played 12...d5 13.cxd5 Nxd5 14.Nxf7 Kxf7 15.Nxd5 Bxh4 captures W:p,B:P,W:p,B:N,W:n,B:P
+best 12...Ng8 13.f3 Bd7 14.f4 exf4 captures B:P
+
+pair-045
+. . k r . b . r
+. p p b q . . .
+. . n . p p . .
+. B . p . n p .
+. . . P . . . p
+P . N . P N . P
+. . P . . P P B
+R . . Q . R K .
+played 16...e5 17.Nxd5 Qg7 18.dxe5 captures W:p,W:p
+best 16...Qg7 17.Ne1 Bd6 18.Nd3 captures 
+
+pair-046
+r . . q . r k .
+. . p . . p p p
+P . . . . . . .
+. . . b . . . .
+Q . p . . . . .
+. . P . . . . .
+. . . . B P P P
+R . . . . R K .
+played 17...c6 18.Bxc4 h6 19.Rfb1 captures W:p
+best 17...Qe8 18.Rfd1 Qxe2 19.Rxd5 captures B:B,W:b
+
+pair-047
+. . r . . r k .
+. b . . . p . .
+p . . . p . p .
+. . . . P . . .
+. . . . . . . P
+P q N . . . Q .
+. . . B . . P .
+. B . . . . R K
+played 36...Rfd8 37.Bxg6 Kf8 38.Qf4 captures W:p
+best 36...Qb2 37.Be1 Qxa3 38.Rf1 captures B:P
+
+pair-048
+r . b q k . . r
+p p . . . p p p
+. . n . p n . .
+. . . p . . . .
+. . . P . . . .
+. . P . P N P .
+P . . B . P B P
+R . . Q . R K .
+played 11...Ng4 12.c4 O-O 13.Qb3 captures 
+best 11...O-O 12.c4 Ne4 13.Qc2 captures 
+
+pair-049
+r . . . . . n r
+. . . n b k p .
+p . p . . . . p
+. p . . . . . .
+. . . . P . . .
+q . B . . P . .
+P . P . N P . P
+R . . Q . R K .
+played 16...Qc5 17.Qxd7 Rd8 18.Qh3 captures W:n
+best 16...Rd8 17.Qb1 Nc5 18.Qe1 captures 
+
+pair-050
+. . k r . . . r
+. p . . n p . .
+p . p . p . n b
+q . . p P P . .
+. . . P . . B .
+. . N Q B . . P
+P P P . . . R .
+. K . . . . R .
+played 23...Nh4 24.fxe6 fxe6 25.Bxe6+ Kb8 captures W:p,B:P,W:p
+best 23...exf5 24.Bxf5+ Kb8 25.Bxg6 Bxe3 26.Qxe3 fxg6 captures B:P,W:p,W:n,B:B,W:b,B:B
+
+pair-051
+. . . . . . . .
+. . . . . . . .
+. . . . . . p .
+. . . . P . . .
+. . . R . . . P
+. P N n . k . .
+P . . . . . r P
+. . . . . . . K
+played 42...Rd2 43.Rd6 Nf2+ 44.Kg1 captures 
+best 42...Nf2# captures 
+
+pair-052
+r . . q k . . r
+p . p . . p p p
+b . n . p . . .
+. . . . P n . .
+. . p P . . . .
+P . B . . N . .
+. P . . . P P P
+R . . Q K B . R
+played 11...Ncxd4 12.Nxd4 O-O 13.Nxf5 exf5 14.Qxd8 Raxd8 captures B:P,W:n,W:n,B:N,W:q,B:Q
+best 11...Qd5 12.Qd2 O-O-O 13.O-O-O captures 
+
+pair-053
+r . . . . r . k
+. p q . . . p p
+p . b b . . . .
+. . p B . . . .
+. . . . Q . N .
+. P P P . . p .
+P . . . . P . P
+R . . . R . K .
+played 25...gxh2+ 26.Kh1 Rf4 27.Bxc6 Rxe4 28.Bxe4 captures B:P,W:b,B:Q,W:r
+best 25...gxf2+ 26.Nxf2 Bxh2+ 27.Kh1 Bxd5 28.Qxd5 Rxf2 captures B:P,W:p,B:P,B:B,W:b,B:N
+
+pair-054
+R . . . . . . .
+p . k . . . . .
+. . p p b p . .
+. p . . . . p .
+. . . . P p . .
+. . N P . P . .
+P P P . . b . .
+. . K . . . . .
+played 25...Kb6 26.Kd2 Be3+ 27.Ke2 captures 
+best 25...Bc8 26.a4 bxa4 27.Nxa4 captures B:P,W:p
+
+pair-055
+. . . . . r k .
+p . . . . p . p
+. p . . p . p .
+. P . . . . . .
+P . . . Q . . R
+. . . . . r . P
+. . . . . P P K
+. . . q . . . .
+played 31.gxf3 Rc8 32.Rg4 Rc1 captures W:r
+best 31.Qxf3 Qxf3 32.gxf3 Rc8 captures W:r,B:Q,W:q
+
+pair-056
+r . . . r k . .
+p p . . . . b p
+n . . . . . p .
+. . . N . p . .
+. . . N . . . .
+. . . . P . . .
+P P . . . P P P
+. . R R . . K .
+played 21.Nc7 Nxc7 22.Rxc7 f4 captures B:N,W:n
+best 21.Kf1 Be5 22.Nf3 Rad8 captures 
+
+pair-057
+. . . r . r k .
+. b . . . p p .
+p q . . p . . p
+. . . . P n . .
+. . p . N B Q P
+P . . . . . . .
+. . . . N . P .
+. B . . . . R K
+played 31...Rc8 32.Nf6+ Kh8 33.Bxf5 exf5 captures W:n,B:B
+best 31...Bxe4 32.Bxe4 Qf2 33.Rc1 Qxh4+ 34.Qxh4 Nxh4 35.Rxc4 captures B:N,W:b,B:P,W:q,B:Q,W:p
+
+pair-058
+r n . q . . n r
+p p . . . k p p
+. . p . . . . .
+. . b . p . . .
+. . . . P . Q .
+. . N P . . . .
+P P P . . P P P
+R . B . K . . R
+played 8...Qf6 9.f4 Qe6 10.f5 captures 
+best 8...Nf6 9.Qe2 Rf8 10.g3 captures 
+
+pair-059
+r n b q k b n r
+p p p . p p p p
+. . . . . . . .
+. . . p . . . .
+. . . . P . . .
+. . N . . . . .
+P P P P . P P P
+R . B Q K B N R
+played 2...e6 3.d4 Nf6 4.e5 captures 
+best 2...d4 3.Nb1 Nf6 4.e5 captures 
+
+pair-060
+r . b q k . . r
+p p p . . p p p
+. . n p . n . .
+. B b . p . . .
+. . . . P . . .
+. . P . . N . .
+P P . P . P P P
+R N B Q . R K .
+played 6.Re1 O-O 7.h3 h6 captures 
+best 6.d4 Bb6 7.d5 a6 captures 
+
+codex
+I’ve replayed all 30 positions. I’m checking the tactical claims and material counts, especially where an explanation extends beyond the supplied line.
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import chess,json,re
+D={d['pair_id']:d for l in open('batch2.jsonl',encoding='utf-8') if l.strip() for d in [json.loads(l)]}
+lines={31:'a3 h6 O-O Nf6 Nh4 Nxd5 exd5',37:'Rf4 Bg5 Rf1 Bc8',43:'Nf5 g6 Nxd6 Bxd6 Rxd6',44:'Ng8 f3 Bd7 f4 exf4 exf4',45:'e5 Nxd5 Qg7 dxe5 fxe5 Bxc6 Bxc6 Bxe5',47:'Rfd8 Bxg6 Kf8 Qf4',54:'Bc8 a4 bxa4 Nxa4',56:'Nc7 Nxc7 Rxc7 f4 Nf3 fxe3 fxe3',57:'Rc8 Nf6+ Kh8 Bxf5 exf5 Qxf5',60:'d4 Bb6 d5 a6'}
+for n,line in lines.items():
+ b=chess.Board(D[f'pair-{n:03}']['fen']); print(n,line)
+ try:
+  for t in line.split():b.push_san(t)
+  print('legal; final FEN',b.fen())
+  if n==47:
+   b.turn=chess.WHITE;b.push_san('Qxf7#');print('Qxf7 mate?',b.is_checkmate(),'replies', [b.san(m) for m in b.legal_moves])
+  if n==54:
+   print('rook legal moves:',[b.san(m) for m in b.legal_moves if m.from_square==chess.A8])
+ except Exception as e:print(type(e).__name__,str(e))
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 872ms:
+31 a3 h6 O-O Nf6 Nh4 Nxd5 exd5
+legal; final FEN r1bqk2r/3p1pp1/p1nb3p/1ppPp3/7N/P1NP4/1PP2PPP/R1BQ1RK1 b kq - 0 10
+37 Rf4 Bg5 Rf1 Bc8
+legal; final FEN 2b2rk1/6p1/1p5p/p2pPPb1/Pp1p1RP1/1P1P3P/2P5/2K2R2 w - - 5 33
+43 Nf5 g6 Nxd6 Bxd6 Rxd6
+legal; final FEN rn1q1rk1/pp3p2/3R1npp/2p5/4PP2/2N1B3/PPP1Q1PP/2K4R b - - 0 13
+44 Ng8 f3 Bd7 f4 exf4 exf4
+legal; final FEN 1r1qk1nr/1p1bbpp1/p1np4/2p3Np/2P2P1P/PPNB4/1BQP2P1/R3K2R b KQk - 0 15
+45 e5 Nxd5 Qg7 dxe5 fxe5 Bxc6 Bxc6 Bxe5
+legal; final FEN 2kr1b1r/1pp3q1/2b5/3NBnp1/7p/P3PN1P/2P2PP1/R2Q1RK1 b - - 0 20
+47 Rfd8 Bxg6 Kf8 Qf4
+legal; final FEN 2rr1k2/1b3p2/p3p1B1/4P3/5Q1P/PqN5/3B2P1/6RK b - - 2 38
+Qxf7 mate? True replies []
+54 Bc8 a4 bxa4 Nxa4
+legal; final FEN R1b5/p1k5/2pp1p2/6p1/N3Pp2/3P1P2/1PP2b2/2K5 b - - 0 27
+rook legal moves: []
+56 Nc7 Nxc7 Rxc7 f4 Nf3 fxe3 fxe3
+legal; final FEN r3rk2/ppR3bp/6p1/8/8/4PN2/PP4PP/3R2K1 b - - 0 24
+57 Rc8 Nf6+ Kh8 Bxf5 exf5 Qxf5
+legal; final FEN 2r2r1k/1b3pp1/pq3N1p/4PQ2/2p2B1P/P7/4N1P1/6RK b - - 0 34
+60 d4 Bb6 d5 a6
+legal; final FEN r1bqk2r/1pp2ppp/pbnp1n2/1B1Pp3/4P3/2P2N2/PP3PPP/RNBQ1RK1 w kq - 0 8
+
+codex
+The checks found several misleading claims, including a “lost bishop” that can be recaptured and a “won pawn” that can also be recaptured. I’m finishing the judgments and validating the output format.
+
+apply patch
+patch: completed
+D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge\out\batch2.jsonl
+diff --git a/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b4cedc04e877e853589de3056f8489250946ecf
+--- /dev/null
++++ b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+@@ -0,0 +1,30 @@
++{"pair_id":"pair-031","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"a3 misses Ng5's immediate pressure on f7 and gives Black time for ...h6 and ...Nf6.","confidence":"high","why":"A gives little explanation, but B falsely claims a lost bishop: after its ...Nxd5, White can recapture with exd5 or Nxd5."}
++{"pair_id":"pair-032","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Castling queenside removes the king's protection of f2 and allows ...Bxf2 to win a pawn.","confidence":"high","why":"Both correctly identify the pawn loss; keeping the king on e1 permits Kxf2 if Black tries the same capture after a4."}
++{"pair_id":"pair-033","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Ke5 drives the black king away and enables gxf5, ...gxf5 and Nxf5 to win a pawn, whereas Kc5 allows ...Kf6.","confidence":"high","why":"The explanations are identical and correctly describe the net pawn gain in the supplied line."}
++{"pair_id":"pair-034","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Qxf7+ wins the f7 pawn and b7 bishop outright, while Bxf7+ leads to an exchange gain and a pawn after the queen trade.","confidence":"low","why":"B clearly shows the relevant capture on b7. Qxf7+ also attacks the e8 rook as A says, but that rook is defended by the queen, so this extra fork description distracts from the actual gain."}
++{"pair_id":"pair-035","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"fxg3 allows Nxc5 followed by Nxe5, while Nbd7 develops a piece and leads to the supplied simplifying exchanges.","confidence":"low","why":"Neither explains the concrete difference between the moves. B's accepted evaluation information adds context but no coaching reason."}
++{"pair_id":"pair-036","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"d6 clears d5 for the knight and enables Nxe7 followed by Rxe7+, winning queen and bishop for rook, knight and pawn.","confidence":"low","why":"Both give the correct material balance, but B includes the captures that actually establish the queen win; A stops before them."}
++{"pair_id":"pair-037","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"Rf4 allows ...Bg5 to pin the rook to the king on c1, costing the exchange.","confidence":"high","why":"B identifies the decisive pin. The supplied Rf1 moves the other rook from d1 and does not release the pinned rook on f4."}
++{"pair_id":"pair-038","verdict":"B","issues":{"A":["hallucination","missed_key_point"],"B":[]},"main_reason":"f4 allows ...Rxa8 and yields only a bishop for the rook, whereas Rxf8+ trades rooks with check.","confidence":"high","why":"B accurately accounts for the exchange loss. A's claim that Rxf8+ wins a pawn is not established by the supplied continuation and misses the immediate material problem."}
++{"pair_id":"pair-039","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nxf4+ takes a pawn with check, while Nc7+ spends the tempo checking without taking it.","confidence":"high","why":"A explains the concrete gain; B only names the better move."}
++{"pair_id":"pair-040","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"d5 permits ...cxd5 and ...Nxc4, leaving White down two pawns after the bishop-for-knight exchange instead of the single pawn conceded after b3.","confidence":"high","why":"Both correctly count the played line. A's added claim of keeping the material is misleading because the best line also gives up the e6 pawn to ...Bxe6."}
++{"pair_id":"pair-041","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Be3 permits a bishop trade that doubles White's e-pawns and misses the active f4-f5 advance with tempo against the queen.","confidence":"high","why":"A names both the structural consequence and the useful pawn advance. B describes the trade and evaluation without explaining why the trade is harmful."}
++{"pair_id":"pair-042","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Bg5 pins the e7 knight to the d8 queen and provokes ...f6, allowing Nxf6+ to win a pawn.","confidence":"high","why":"Both identify the pawn gain, but A also explains the correct pin that makes Bg5 effective."}
++{"pair_id":"pair-043","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nf5 allows Nxd6 and, after ...Bxd6, Rxd6, gaining a pawn through a knight-for-bishop exchange.","confidence":"high","why":"A's material claim is correct once the legal rook recapture on d6 is included. B gives no reason for preferring Nf5."}
++{"pair_id":"pair-044","verdict":"B","issues":{"A":["factual_error"],"B":["missed_key_point"]},"main_reason":"d5 allows cxd5 and the Nxf7 fork, drawing Black's king to f7 before Nxd5 recovers the knight.","confidence":"high","why":"A mistakes ...exf4 for a pawn win even though White can recapture with exf4. B avoids that error, although its description of a knight trade omits the fork and king exposure."}
++{"pair_id":"pair-045","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"e5 exposes the d5 and e5 pawns to Nxd5 and dxe5, with further material losses possible after ...fxe5 and Bxc6.","confidence":"high","why":"B's legal continuation has the stated net balance: knight and two pawns for a bishop. A's displayed continuation captures only three black pawns, not four."}
++{"pair_id":"pair-046","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"c6 allows Bxc4 to win a pawn, while Qe8 creates the counterattack ...Qxe2 and exchanges bishops without losing that pawn.","confidence":"high","why":"Both accurately identify the pawn loss and the better move; the additional phrase in A does not materially change the explanation."}
++{"pair_id":"pair-047","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Rfd8 permits Bxg6 and Qf4, losing a pawn and allowing a threat of Qxf7 mate, whereas Qb2 wins the a3 pawn.","confidence":"high","why":"A explains the dangerous consequence of the played move, including a genuine mating threat. B correctly describes the alternative pawn win but omits that danger."}
++{"pair_id":"pair-048","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"Ng4 spends another tempo on the knight while White plays c4 and Qb3 against d5 and b7; castling first allows the more central ...Ne4.","confidence":"low","why":"Both merely recommend castling. A's accepted evaluation statement does not explain the development or central-pressure issue."}
++{"pair_id":"pair-049","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Qc5 leaves the d7 knight undefended to Qxd7, whereas Rd8 protects it before it moves to c5.","confidence":"high","why":"Both correctly identify the hanging knight and the saving move, with no meaningful difference in usefulness."}
++{"pair_id":"pair-050","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Nh4 allows fxe6, ...fxe6 and Bxe6+ for a net pawn loss, while exf5 initiates exchanges that avoid that loss.","confidence":"high","why":"Both accurately describe the same pawn loss and recommend the same alternative."}
++{"pair_id":"pair-051","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Rd2 abandons the immediate mate Nf2#, allowing the white king to escape to g1 after the later knight check.","confidence":"high","why":"The explanations are identical and the claimed mate in one is legal and correct."}
++{"pair_id":"pair-052","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Ncxd4 gives up both black knights for White's knight and d-pawn, leaving Black down a knight for a pawn after the queen exchange.","confidence":"low","why":"Both give the correct net loss. B finishes the queen exchange with ...Raxd8, making the material accounting clearer."}
++{"pair_id":"pair-053","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"gxf2+ draws the knight to f2 so Black can capture it with ...Rxf2 after the bishop exchanges, gaining a net knight and pawn.","confidence":"low","why":"Both state the correct net gain. A includes ...Rxf2, the capture that establishes the knight win, while B stops too early to demonstrate it."}
++{"pair_id":"pair-054","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Bc8 confines the rook on a8, allowing Black to win the exchange, whereas Kb6 lets that opportunity pass.","confidence":"low","why":"A correctly describes the trap: b8 is covered by the king, c8 is protected, and a7 is covered by the f2 bishop. B accurately states the resulting exchange gain; both are useful."}
++{"pair_id":"pair-055","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qxf3 forces a queen exchange in the supplied line, removing the queen that otherwise combines with ...Rc8-c1 against White's king.","confidence":"high","why":"A identifies the important queen trade. B's statement that Qxf3 attacks d1 is correct, but its description of ...Rc8 does not explain the mating danger or why exchanging queens helps."}
++{"pair_id":"pair-056","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"Nc7 exchanges the active d5 knight and allows ...f4 against White's centre, while Kf1 improves the king position first.","confidence":"high","why":"A is superficial but accurate. B's supposed pawn loss after ...fxe3 is not established because White can legally recapture with fxe3."}
++{"pair_id":"pair-057","verdict":"A","issues":{"A":[],"B":["factual_error"]},"main_reason":"Rc8 allows Nf6+ followed by Bxf5 and Qxf5 after ...exf5, whereas Bxe4 removes the knight before it can check on f6.","confidence":"high","why":"A's material count is correct after the natural Qxf5 recapture. Bxe4 does not fork the king and queen; the later ...Qxh4+ creates that double attack."}
++{"pair_id":"pair-058","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qf6 allows White to gain central space with f4-f5 and chase the queen, while Nf6 develops with an attack on White's queen.","confidence":"high","why":"A gives concrete, correct strategic and tactical details. B only names the alternative."}
++{"pair_id":"pair-059","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"e6 blocks the c8 bishop and misses d4's opportunity to gain space with tempo against the c3 knight.","confidence":"high","why":"B correctly identifies the blocked bishop and offers an actual reason; A gives only the preferred move."}
++{"pair_id":"pair-060","verdict":"B","issues":{"A":["hallucination"],"B":[]},"main_reason":"d4 gains central space with tempo against the c5 bishop and enables d5 against the pinned c6 knight, whereas Re1 allows Black to castle.","confidence":"low","why":"B accurately describes the bishop retreat shown in the line. A asserts a knight-for-pawn win that the supplied continuation does not establish."}
+
+diff --git a/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b4cedc04e877e853589de3056f8489250946ecf
+--- /dev/null
++++ b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+@@ -0,0 +1,30 @@
++{"pair_id":"pair-031","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"a3 misses Ng5's immediate pressure on f7 and gives Black time for ...h6 and ...Nf6.","confidence":"high","why":"A gives little explanation, but B falsely claims a lost bishop: after its ...Nxd5, White can recapture with exd5 or Nxd5."}
++{"pair_id":"pair-032","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Castling queenside removes the king's protection of f2 and allows ...Bxf2 to win a pawn.","confidence":"high","why":"Both correctly identify the pawn loss; keeping the king on e1 permits Kxf2 if Black tries the same capture after a4."}
++{"pair_id":"pair-033","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Ke5 drives the black king away and enables gxf5, ...gxf5 and Nxf5 to win a pawn, whereas Kc5 allows ...Kf6.","confidence":"high","why":"The explanations are identical and correctly describe the net pawn gain in the supplied line."}
++{"pair_id":"pair-034","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Qxf7+ wins the f7 pawn and b7 bishop outright, while Bxf7+ leads to an exchange gain and a pawn after the queen trade.","confidence":"low","why":"B clearly shows the relevant capture on b7. Qxf7+ also attacks the e8 rook as A says, but that rook is defended by the queen, so this extra fork description distracts from the actual gain."}
++{"pair_id":"pair-035","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"fxg3 allows Nxc5 followed by Nxe5, while Nbd7 develops a piece and leads to the supplied simplifying exchanges.","confidence":"low","why":"Neither explains the concrete difference between the moves. B's accepted evaluation information adds context but no coaching reason."}
++{"pair_id":"pair-036","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"d6 clears d5 for the knight and enables Nxe7 followed by Rxe7+, winning queen and bishop for rook, knight and pawn.","confidence":"low","why":"Both give the correct material balance, but B includes the captures that actually establish the queen win; A stops before them."}
++{"pair_id":"pair-037","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"Rf4 allows ...Bg5 to pin the rook to the king on c1, costing the exchange.","confidence":"high","why":"B identifies the decisive pin. The supplied Rf1 moves the other rook from d1 and does not release the pinned rook on f4."}
++{"pair_id":"pair-038","verdict":"B","issues":{"A":["hallucination","missed_key_point"],"B":[]},"main_reason":"f4 allows ...Rxa8 and yields only a bishop for the rook, whereas Rxf8+ trades rooks with check.","confidence":"high","why":"B accurately accounts for the exchange loss. A's claim that Rxf8+ wins a pawn is not established by the supplied continuation and misses the immediate material problem."}
++{"pair_id":"pair-039","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nxf4+ takes a pawn with check, while Nc7+ spends the tempo checking without taking it.","confidence":"high","why":"A explains the concrete gain; B only names the better move."}
++{"pair_id":"pair-040","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"d5 permits ...cxd5 and ...Nxc4, leaving White down two pawns after the bishop-for-knight exchange instead of the single pawn conceded after b3.","confidence":"high","why":"Both correctly count the played line. A's added claim of keeping the material is misleading because the best line also gives up the e6 pawn to ...Bxe6."}
++{"pair_id":"pair-041","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Be3 permits a bishop trade that doubles White's e-pawns and misses the active f4-f5 advance with tempo against the queen.","confidence":"high","why":"A names both the structural consequence and the useful pawn advance. B describes the trade and evaluation without explaining why the trade is harmful."}
++{"pair_id":"pair-042","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Bg5 pins the e7 knight to the d8 queen and provokes ...f6, allowing Nxf6+ to win a pawn.","confidence":"high","why":"Both identify the pawn gain, but A also explains the correct pin that makes Bg5 effective."}
++{"pair_id":"pair-043","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nf5 allows Nxd6 and, after ...Bxd6, Rxd6, gaining a pawn through a knight-for-bishop exchange.","confidence":"high","why":"A's material claim is correct once the legal rook recapture on d6 is included. B gives no reason for preferring Nf5."}
++{"pair_id":"pair-044","verdict":"B","issues":{"A":["factual_error"],"B":["missed_key_point"]},"main_reason":"d5 allows cxd5 and the Nxf7 fork, drawing Black's king to f7 before Nxd5 recovers the knight.","confidence":"high","why":"A mistakes ...exf4 for a pawn win even though White can recapture with exf4. B avoids that error, although its description of a knight trade omits the fork and king exposure."}
++{"pair_id":"pair-045","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"e5 exposes the d5 and e5 pawns to Nxd5 and dxe5, with further material losses possible after ...fxe5 and Bxc6.","confidence":"high","why":"B's legal continuation has the stated net balance: knight and two pawns for a bishop. A's displayed continuation captures only three black pawns, not four."}
++{"pair_id":"pair-046","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"c6 allows Bxc4 to win a pawn, while Qe8 creates the counterattack ...Qxe2 and exchanges bishops without losing that pawn.","confidence":"high","why":"Both accurately identify the pawn loss and the better move; the additional phrase in A does not materially change the explanation."}
++{"pair_id":"pair-047","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Rfd8 permits Bxg6 and Qf4, losing a pawn and allowing a threat of Qxf7 mate, whereas Qb2 wins the a3 pawn.","confidence":"high","why":"A explains the dangerous consequence of the played move, including a genuine mating threat. B correctly describes the alternative pawn win but omits that danger."}
++{"pair_id":"pair-048","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"Ng4 spends another tempo on the knight while White plays c4 and Qb3 against d5 and b7; castling first allows the more central ...Ne4.","confidence":"low","why":"Both merely recommend castling. A's accepted evaluation statement does not explain the development or central-pressure issue."}
++{"pair_id":"pair-049","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Qc5 leaves the d7 knight undefended to Qxd7, whereas Rd8 protects it before it moves to c5.","confidence":"high","why":"Both correctly identify the hanging knight and the saving move, with no meaningful difference in usefulness."}
++{"pair_id":"pair-050","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Nh4 allows fxe6, ...fxe6 and Bxe6+ for a net pawn loss, while exf5 initiates exchanges that avoid that loss.","confidence":"high","why":"Both accurately describe the same pawn loss and recommend the same alternative."}
++{"pair_id":"pair-051","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Rd2 abandons the immediate mate Nf2#, allowing the white king to escape to g1 after the later knight check.","confidence":"high","why":"The explanations are identical and the claimed mate in one is legal and correct."}
++{"pair_id":"pair-052","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Ncxd4 gives up both black knights for White's knight and d-pawn, leaving Black down a knight for a pawn after the queen exchange.","confidence":"low","why":"Both give the correct net loss. B finishes the queen exchange with ...Raxd8, making the material accounting clearer."}
++{"pair_id":"pair-053","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"gxf2+ draws the knight to f2 so Black can capture it with ...Rxf2 after the bishop exchanges, gaining a net knight and pawn.","confidence":"low","why":"Both state the correct net gain. A includes ...Rxf2, the capture that establishes the knight win, while B stops too early to demonstrate it."}
++{"pair_id":"pair-054","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Bc8 confines the rook on a8, allowing Black to win the exchange, whereas Kb6 lets that opportunity pass.","confidence":"low","why":"A correctly describes the trap: b8 is covered by the king, c8 is protected, and a7 is covered by the f2 bishop. B accurately states the resulting exchange gain; both are useful."}
++{"pair_id":"pair-055","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qxf3 forces a queen exchange in the supplied line, removing the queen that otherwise combines with ...Rc8-c1 against White's king.","confidence":"high","why":"A identifies the important queen trade. B's statement that Qxf3 attacks d1 is correct, but its description of ...Rc8 does not explain the mating danger or why exchanging queens helps."}
++{"pair_id":"pair-056","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"Nc7 exchanges the active d5 knight and allows ...f4 against White's centre, while Kf1 improves the king position first.","confidence":"high","why":"A is superficial but accurate. B's supposed pawn loss after ...fxe3 is not established because White can legally recapture with fxe3."}
++{"pair_id":"pair-057","verdict":"A","issues":{"A":[],"B":["factual_error"]},"main_reason":"Rc8 allows Nf6+ followed by Bxf5 and Qxf5 after ...exf5, whereas Bxe4 removes the knight before it can check on f6.","confidence":"high","why":"A's material count is correct after the natural Qxf5 recapture. Bxe4 does not fork the king and queen; the later ...Qxh4+ creates that double attack."}
++{"pair_id":"pair-058","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qf6 allows White to gain central space with f4-f5 and chase the queen, while Nf6 develops with an attack on White's queen.","confidence":"high","why":"A gives concrete, correct strategic and tactical details. B only names the alternative."}
++{"pair_id":"pair-059","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"e6 blocks the c8 bishop and misses d4's opportunity to gain space with tempo against the c3 knight.","confidence":"high","why":"B correctly identifies the blocked bishop and offers an actual reason; A gives only the preferred move."}
++{"pair_id":"pair-060","verdict":"B","issues":{"A":["hallucination"],"B":[]},"main_reason":"d4 gains central space with tempo against the c5 bishop and enables d5 against the pinned c6 knight, whereas Re1 allows Black to castle.","confidence":"low","why":"B accurately describes the bishop retreat shown in the line. A asserts a knight-for-pawn win that the supplied continuation does not establish."}
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import json,pathlib,chess
+p=pathlib.Path('out/batch2.jsonl'); rows=[json.loads(s) for s in p.read_text(encoding='utf-8').splitlines() if s.strip()]
+source=[json.loads(s) for s in pathlib.Path('batch2.jsonl').read_text(encoding='utf-8').splitlines() if s.strip()]
+assert [r['pair_id'] for r in rows]==[r['pair_id'] for r in source]
+assert len({r['pair_id'] for r in rows})==len(rows)
+for r in rows:
+ assert set(r)=={'pair_id','verdict','issues','main_reason','confidence','why'}
+ assert r['verdict'] in {'A','B','tie','both_bad'}
+ assert r['confidence'] in {'high','low'}
+ assert set(r['issues'])=={'A','B'}
+ assert all(i in {'factual_error','missed_key_point','hallucination','unnatural'} for v in r['issues'].values() for i in v)
+print(f'Validated {len(rows)} judgments, matching all input IDs in order.')
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab2\run-output\judge
+ succeeded in 890ms:
+Validated 30 judgments, matching all input IDs in order.
+
+diff --git a/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b4cedc04e877e853589de3056f8489250946ecf
+--- /dev/null
++++ b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+@@ -0,0 +1,30 @@
++{"pair_id":"pair-031","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"a3 misses Ng5's immediate pressure on f7 and gives Black time for ...h6 and ...Nf6.","confidence":"high","why":"A gives little explanation, but B falsely claims a lost bishop: after its ...Nxd5, White can recapture with exd5 or Nxd5."}
++{"pair_id":"pair-032","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Castling queenside removes the king's protection of f2 and allows ...Bxf2 to win a pawn.","confidence":"high","why":"Both correctly identify the pawn loss; keeping the king on e1 permits Kxf2 if Black tries the same capture after a4."}
++{"pair_id":"pair-033","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Ke5 drives the black king away and enables gxf5, ...gxf5 and Nxf5 to win a pawn, whereas Kc5 allows ...Kf6.","confidence":"high","why":"The explanations are identical and correctly describe the net pawn gain in the supplied line."}
++{"pair_id":"pair-034","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Qxf7+ wins the f7 pawn and b7 bishop outright, while Bxf7+ leads to an exchange gain and a pawn after the queen trade.","confidence":"low","why":"B clearly shows the relevant capture on b7. Qxf7+ also attacks the e8 rook as A says, but that rook is defended by the queen, so this extra fork description distracts from the actual gain."}
++{"pair_id":"pair-035","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"fxg3 allows Nxc5 followed by Nxe5, while Nbd7 develops a piece and leads to the supplied simplifying exchanges.","confidence":"low","why":"Neither explains the concrete difference between the moves. B's accepted evaluation information adds context but no coaching reason."}
++{"pair_id":"pair-036","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"d6 clears d5 for the knight and enables Nxe7 followed by Rxe7+, winning queen and bishop for rook, knight and pawn.","confidence":"low","why":"Both give the correct material balance, but B includes the captures that actually establish the queen win; A stops before them."}
++{"pair_id":"pair-037","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"Rf4 allows ...Bg5 to pin the rook to the king on c1, costing the exchange.","confidence":"high","why":"B identifies the decisive pin. The supplied Rf1 moves the other rook from d1 and does not release the pinned rook on f4."}
++{"pair_id":"pair-038","verdict":"B","issues":{"A":["hallucination","missed_key_point"],"B":[]},"main_reason":"f4 allows ...Rxa8 and yields only a bishop for the rook, whereas Rxf8+ trades rooks with check.","confidence":"high","why":"B accurately accounts for the exchange loss. A's claim that Rxf8+ wins a pawn is not established by the supplied continuation and misses the immediate material problem."}
++{"pair_id":"pair-039","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nxf4+ takes a pawn with check, while Nc7+ spends the tempo checking without taking it.","confidence":"high","why":"A explains the concrete gain; B only names the better move."}
++{"pair_id":"pair-040","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"d5 permits ...cxd5 and ...Nxc4, leaving White down two pawns after the bishop-for-knight exchange instead of the single pawn conceded after b3.","confidence":"high","why":"Both correctly count the played line. A's added claim of keeping the material is misleading because the best line also gives up the e6 pawn to ...Bxe6."}
++{"pair_id":"pair-041","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Be3 permits a bishop trade that doubles White's e-pawns and misses the active f4-f5 advance with tempo against the queen.","confidence":"high","why":"A names both the structural consequence and the useful pawn advance. B describes the trade and evaluation without explaining why the trade is harmful."}
++{"pair_id":"pair-042","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Bg5 pins the e7 knight to the d8 queen and provokes ...f6, allowing Nxf6+ to win a pawn.","confidence":"high","why":"Both identify the pawn gain, but A also explains the correct pin that makes Bg5 effective."}
++{"pair_id":"pair-043","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nf5 allows Nxd6 and, after ...Bxd6, Rxd6, gaining a pawn through a knight-for-bishop exchange.","confidence":"high","why":"A's material claim is correct once the legal rook recapture on d6 is included. B gives no reason for preferring Nf5."}
++{"pair_id":"pair-044","verdict":"B","issues":{"A":["factual_error"],"B":["missed_key_point"]},"main_reason":"d5 allows cxd5 and the Nxf7 fork, drawing Black's king to f7 before Nxd5 recovers the knight.","confidence":"high","why":"A mistakes ...exf4 for a pawn win even though White can recapture with exf4. B avoids that error, although its description of a knight trade omits the fork and king exposure."}
++{"pair_id":"pair-045","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"e5 exposes the d5 and e5 pawns to Nxd5 and dxe5, with further material losses possible after ...fxe5 and Bxc6.","confidence":"high","why":"B's legal continuation has the stated net balance: knight and two pawns for a bishop. A's displayed continuation captures only three black pawns, not four."}
++{"pair_id":"pair-046","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"c6 allows Bxc4 to win a pawn, while Qe8 creates the counterattack ...Qxe2 and exchanges bishops without losing that pawn.","confidence":"high","why":"Both accurately identify the pawn loss and the better move; the additional phrase in A does not materially change the explanation."}
++{"pair_id":"pair-047","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Rfd8 permits Bxg6 and Qf4, losing a pawn and allowing a threat of Qxf7 mate, whereas Qb2 wins the a3 pawn.","confidence":"high","why":"A explains the dangerous consequence of the played move, including a genuine mating threat. B correctly describes the alternative pawn win but omits that danger."}
++{"pair_id":"pair-048","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"Ng4 spends another tempo on the knight while White plays c4 and Qb3 against d5 and b7; castling first allows the more central ...Ne4.","confidence":"low","why":"Both merely recommend castling. A's accepted evaluation statement does not explain the development or central-pressure issue."}
++{"pair_id":"pair-049","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Qc5 leaves the d7 knight undefended to Qxd7, whereas Rd8 protects it before it moves to c5.","confidence":"high","why":"Both correctly identify the hanging knight and the saving move, with no meaningful difference in usefulness."}
++{"pair_id":"pair-050","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Nh4 allows fxe6, ...fxe6 and Bxe6+ for a net pawn loss, while exf5 initiates exchanges that avoid that loss.","confidence":"high","why":"Both accurately describe the same pawn loss and recommend the same alternative."}
++{"pair_id":"pair-051","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Rd2 abandons the immediate mate Nf2#, allowing the white king to escape to g1 after the later knight check.","confidence":"high","why":"The explanations are identical and the claimed mate in one is legal and correct."}
++{"pair_id":"pair-052","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Ncxd4 gives up both black knights for White's knight and d-pawn, leaving Black down a knight for a pawn after the queen exchange.","confidence":"low","why":"Both give the correct net loss. B finishes the queen exchange with ...Raxd8, making the material accounting clearer."}
++{"pair_id":"pair-053","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"gxf2+ draws the knight to f2 so Black can capture it with ...Rxf2 after the bishop exchanges, gaining a net knight and pawn.","confidence":"low","why":"Both state the correct net gain. A includes ...Rxf2, the capture that establishes the knight win, while B stops too early to demonstrate it."}
++{"pair_id":"pair-054","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Bc8 confines the rook on a8, allowing Black to win the exchange, whereas Kb6 lets that opportunity pass.","confidence":"low","why":"A correctly describes the trap: b8 is covered by the king, c8 is protected, and a7 is covered by the f2 bishop. B accurately states the resulting exchange gain; both are useful."}
++{"pair_id":"pair-055","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qxf3 forces a queen exchange in the supplied line, removing the queen that otherwise combines with ...Rc8-c1 against White's king.","confidence":"high","why":"A identifies the important queen trade. B's statement that Qxf3 attacks d1 is correct, but its description of ...Rc8 does not explain the mating danger or why exchanging queens helps."}
++{"pair_id":"pair-056","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"Nc7 exchanges the active d5 knight and allows ...f4 against White's centre, while Kf1 improves the king position first.","confidence":"high","why":"A is superficial but accurate. B's supposed pawn loss after ...fxe3 is not established because White can legally recapture with fxe3."}
++{"pair_id":"pair-057","verdict":"A","issues":{"A":[],"B":["factual_error"]},"main_reason":"Rc8 allows Nf6+ followed by Bxf5 and Qxf5 after ...exf5, whereas Bxe4 removes the knight before it can check on f6.","confidence":"high","why":"A's material count is correct after the natural Qxf5 recapture. Bxe4 does not fork the king and queen; the later ...Qxh4+ creates that double attack."}
++{"pair_id":"pair-058","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qf6 allows White to gain central space with f4-f5 and chase the queen, while Nf6 develops with an attack on White's queen.","confidence":"high","why":"A gives concrete, correct strategic and tactical details. B only names the alternative."}
++{"pair_id":"pair-059","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"e6 blocks the c8 bishop and misses d4's opportunity to gain space with tempo against the c3 knight.","confidence":"high","why":"B correctly identifies the blocked bishop and offers an actual reason; A gives only the preferred move."}
++{"pair_id":"pair-060","verdict":"B","issues":{"A":["hallucination"],"B":[]},"main_reason":"d4 gains central space with tempo against the c5 bishop and enables d5 against the pinned c6 knight, whereas Re1 allows Black to castle.","confidence":"low","why":"B accurately describes the bishop retreat shown in the line. A asserts a knight-for-pawn win that the supplied continuation does not establish."}
+
+codex
+Wrote all 30 judgments to [out/batch2.jsonl](out/batch2.jsonl) and validated the format and matching IDs.
+diff --git a/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b4cedc04e877e853589de3056f8489250946ecf
+--- /dev/null
++++ b/research/coach-relations/ab2/run-output/judge/out/batch2.jsonl
+@@ -0,0 +1,30 @@
++{"pair_id":"pair-031","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"a3 misses Ng5's immediate pressure on f7 and gives Black time for ...h6 and ...Nf6.","confidence":"high","why":"A gives little explanation, but B falsely claims a lost bishop: after its ...Nxd5, White can recapture with exd5 or Nxd5."}
++{"pair_id":"pair-032","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Castling queenside removes the king's protection of f2 and allows ...Bxf2 to win a pawn.","confidence":"high","why":"Both correctly identify the pawn loss; keeping the king on e1 permits Kxf2 if Black tries the same capture after a4."}
++{"pair_id":"pair-033","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Ke5 drives the black king away and enables gxf5, ...gxf5 and Nxf5 to win a pawn, whereas Kc5 allows ...Kf6.","confidence":"high","why":"The explanations are identical and correctly describe the net pawn gain in the supplied line."}
++{"pair_id":"pair-034","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Qxf7+ wins the f7 pawn and b7 bishop outright, while Bxf7+ leads to an exchange gain and a pawn after the queen trade.","confidence":"low","why":"B clearly shows the relevant capture on b7. Qxf7+ also attacks the e8 rook as A says, but that rook is defended by the queen, so this extra fork description distracts from the actual gain."}
++{"pair_id":"pair-035","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"fxg3 allows Nxc5 followed by Nxe5, while Nbd7 develops a piece and leads to the supplied simplifying exchanges.","confidence":"low","why":"Neither explains the concrete difference between the moves. B's accepted evaluation information adds context but no coaching reason."}
++{"pair_id":"pair-036","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"d6 clears d5 for the knight and enables Nxe7 followed by Rxe7+, winning queen and bishop for rook, knight and pawn.","confidence":"low","why":"Both give the correct material balance, but B includes the captures that actually establish the queen win; A stops before them."}
++{"pair_id":"pair-037","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"Rf4 allows ...Bg5 to pin the rook to the king on c1, costing the exchange.","confidence":"high","why":"B identifies the decisive pin. The supplied Rf1 moves the other rook from d1 and does not release the pinned rook on f4."}
++{"pair_id":"pair-038","verdict":"B","issues":{"A":["hallucination","missed_key_point"],"B":[]},"main_reason":"f4 allows ...Rxa8 and yields only a bishop for the rook, whereas Rxf8+ trades rooks with check.","confidence":"high","why":"B accurately accounts for the exchange loss. A's claim that Rxf8+ wins a pawn is not established by the supplied continuation and misses the immediate material problem."}
++{"pair_id":"pair-039","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nxf4+ takes a pawn with check, while Nc7+ spends the tempo checking without taking it.","confidence":"high","why":"A explains the concrete gain; B only names the better move."}
++{"pair_id":"pair-040","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"d5 permits ...cxd5 and ...Nxc4, leaving White down two pawns after the bishop-for-knight exchange instead of the single pawn conceded after b3.","confidence":"high","why":"Both correctly count the played line. A's added claim of keeping the material is misleading because the best line also gives up the e6 pawn to ...Bxe6."}
++{"pair_id":"pair-041","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Be3 permits a bishop trade that doubles White's e-pawns and misses the active f4-f5 advance with tempo against the queen.","confidence":"high","why":"A names both the structural consequence and the useful pawn advance. B describes the trade and evaluation without explaining why the trade is harmful."}
++{"pair_id":"pair-042","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Bg5 pins the e7 knight to the d8 queen and provokes ...f6, allowing Nxf6+ to win a pawn.","confidence":"high","why":"Both identify the pawn gain, but A also explains the correct pin that makes Bg5 effective."}
++{"pair_id":"pair-043","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Nf5 allows Nxd6 and, after ...Bxd6, Rxd6, gaining a pawn through a knight-for-bishop exchange.","confidence":"high","why":"A's material claim is correct once the legal rook recapture on d6 is included. B gives no reason for preferring Nf5."}
++{"pair_id":"pair-044","verdict":"B","issues":{"A":["factual_error"],"B":["missed_key_point"]},"main_reason":"d5 allows cxd5 and the Nxf7 fork, drawing Black's king to f7 before Nxd5 recovers the knight.","confidence":"high","why":"A mistakes ...exf4 for a pawn win even though White can recapture with exf4. B avoids that error, although its description of a knight trade omits the fork and king exposure."}
++{"pair_id":"pair-045","verdict":"B","issues":{"A":["factual_error"],"B":[]},"main_reason":"e5 exposes the d5 and e5 pawns to Nxd5 and dxe5, with further material losses possible after ...fxe5 and Bxc6.","confidence":"high","why":"B's legal continuation has the stated net balance: knight and two pawns for a bishop. A's displayed continuation captures only three black pawns, not four."}
++{"pair_id":"pair-046","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"c6 allows Bxc4 to win a pawn, while Qe8 creates the counterattack ...Qxe2 and exchanges bishops without losing that pawn.","confidence":"high","why":"Both accurately identify the pawn loss and the better move; the additional phrase in A does not materially change the explanation."}
++{"pair_id":"pair-047","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"Rfd8 permits Bxg6 and Qf4, losing a pawn and allowing a threat of Qxf7 mate, whereas Qb2 wins the a3 pawn.","confidence":"high","why":"A explains the dangerous consequence of the played move, including a genuine mating threat. B correctly describes the alternative pawn win but omits that danger."}
++{"pair_id":"pair-048","verdict":"tie","issues":{"A":["missed_key_point"],"B":["missed_key_point"]},"main_reason":"Ng4 spends another tempo on the knight while White plays c4 and Qb3 against d5 and b7; castling first allows the more central ...Ne4.","confidence":"low","why":"Both merely recommend castling. A's accepted evaluation statement does not explain the development or central-pressure issue."}
++{"pair_id":"pair-049","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Qc5 leaves the d7 knight undefended to Qxd7, whereas Rd8 protects it before it moves to c5.","confidence":"high","why":"Both correctly identify the hanging knight and the saving move, with no meaningful difference in usefulness."}
++{"pair_id":"pair-050","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Nh4 allows fxe6, ...fxe6 and Bxe6+ for a net pawn loss, while exf5 initiates exchanges that avoid that loss.","confidence":"high","why":"Both accurately describe the same pawn loss and recommend the same alternative."}
++{"pair_id":"pair-051","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Rd2 abandons the immediate mate Nf2#, allowing the white king to escape to g1 after the later knight check.","confidence":"high","why":"The explanations are identical and the claimed mate in one is legal and correct."}
++{"pair_id":"pair-052","verdict":"B","issues":{"A":[],"B":[]},"main_reason":"Ncxd4 gives up both black knights for White's knight and d-pawn, leaving Black down a knight for a pawn after the queen exchange.","confidence":"low","why":"Both give the correct net loss. B finishes the queen exchange with ...Raxd8, making the material accounting clearer."}
++{"pair_id":"pair-053","verdict":"A","issues":{"A":[],"B":[]},"main_reason":"gxf2+ draws the knight to f2 so Black can capture it with ...Rxf2 after the bishop exchanges, gaining a net knight and pawn.","confidence":"low","why":"Both state the correct net gain. A includes ...Rxf2, the capture that establishes the knight win, while B stops too early to demonstrate it."}
++{"pair_id":"pair-054","verdict":"tie","issues":{"A":[],"B":[]},"main_reason":"Bc8 confines the rook on a8, allowing Black to win the exchange, whereas Kb6 lets that opportunity pass.","confidence":"low","why":"A correctly describes the trap: b8 is covered by the king, c8 is protected, and a7 is covered by the f2 bishop. B accurately states the resulting exchange gain; both are useful."}
++{"pair_id":"pair-055","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qxf3 forces a queen exchange in the supplied line, removing the queen that otherwise combines with ...Rc8-c1 against White's king.","confidence":"high","why":"A identifies the important queen trade. B's statement that Qxf3 attacks d1 is correct, but its description of ...Rc8 does not explain the mating danger or why exchanging queens helps."}
++{"pair_id":"pair-056","verdict":"A","issues":{"A":["missed_key_point"],"B":["factual_error"]},"main_reason":"Nc7 exchanges the active d5 knight and allows ...f4 against White's centre, while Kf1 improves the king position first.","confidence":"high","why":"A is superficial but accurate. B's supposed pawn loss after ...fxe3 is not established because White can legally recapture with fxe3."}
++{"pair_id":"pair-057","verdict":"A","issues":{"A":[],"B":["factual_error"]},"main_reason":"Rc8 allows Nf6+ followed by Bxf5 and Qxf5 after ...exf5, whereas Bxe4 removes the knight before it can check on f6.","confidence":"high","why":"A's material count is correct after the natural Qxf5 recapture. Bxe4 does not fork the king and queen; the later ...Qxh4+ creates that double attack."}
++{"pair_id":"pair-058","verdict":"A","issues":{"A":[],"B":["missed_key_point"]},"main_reason":"Qf6 allows White to gain central space with f4-f5 and chase the queen, while Nf6 develops with an attack on White's queen.","confidence":"high","why":"A gives concrete, correct strategic and tactical details. B only names the alternative."}
++{"pair_id":"pair-059","verdict":"B","issues":{"A":["missed_key_point"],"B":[]},"main_reason":"e6 blocks the c8 bishop and misses d4's opportunity to gain space with tempo against the c3 knight.","confidence":"high","why":"B correctly identifies the blocked bishop and offers an actual reason; A gives only the preferred move."}
++{"pair_id":"pair-060","verdict":"B","issues":{"A":["hallucination"],"B":[]},"main_reason":"d4 gains central space with tempo against the c5 bishop and enables d5 against the pinned c6 knight, whereas Re1 allows Black to castle.","confidence":"low","why":"B accurately describes the bishop retreat shown in the line. A asserts a knight-for-pawn win that the supplied continuation does not establish."}
+
+tokens used
+59,279
+Wrote all 30 judgments to [out/batch2.jsonl](out/batch2.jsonl) and validated the format and matching IDs.

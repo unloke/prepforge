@@ -1,0 +1,174 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab",
+  "blind_data_sha256": "ef26a15fc1892cfff7502c2ffd6fe4110401aaf6f3ecac4ac9f46f98b39e7cb5",
+  "pairs_total": 60,
+  "completed": 10,
+  "updated_at": "2026-10-14T19:45:08.962Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "一般不會說\"你下了錯棋! 因為你錯過了機會爆破自己的國王...?\"",
+      "content_sha256": {
+        "A": "9c79119ddcc8795553004750cf65dcb8c394a5ff3aa867204fffe08f42238aaf",
+        "B": "5e80a5864880ba17aca481ba27d6a6fd86c41a2de9b53762c91dd4ce0845e527"
+      },
+      "updated_at": "2026-10-14T19:33:57.062Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "missed_key_point",
+          "unnatural"
+        ]
+      },
+      "note": "Bxb4是吃兵 當然也有攻擊馬 不過一般會同時說到牽制車如果要說攻擊馬的話 所以B miss point 然後又有點太長 然後講的也不自然",
+      "content_sha256": {
+        "A": "6e0b205660cdcbaa613e2cc5e93bf99219f374fa0e95d112163fa670bc2c2ec2",
+        "B": "d9a716dbffb887e06566692573af246fa6d37e43d1b3b027945ddaefde0021c1"
+      },
+      "updated_at": "2026-10-14T19:36:52.963Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "A沒提到掉助教",
+      "content_sha256": {
+        "A": "fa786e681163c598004feab2cd0c2256a148f075322d4d54231132e5cf72a18d",
+        "B": "98eaad125f895f1b9f9a78efceb082f22d3266e039509101ff9172629bf56222"
+      },
+      "updated_at": "2026-10-14T19:37:29.664Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "7e7a4bbdaf4f2bd4af970c7e64ab7c3310946267139974ca44d391bbe6ac9d38",
+        "B": "52f4dcd45abd3cb0ee33c4c03bf4c4d3e02554ab9fd8769b5edcaf62cccbc11f"
+      },
+      "updated_at": "2026-10-14T19:37:58.588Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "9ce36363ae35dd8680b1c0bbd2229c84f81020b7b09141b256f04f93eb3c02a4",
+        "B": "ed067011a2ee78d9fa32f1439b78c03cdc0b1447cda90a2d68a4e7f57fd7136e"
+      },
+      "updated_at": "2026-10-14T19:38:30.112Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "A",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "ac3d44f56ecf9aaa0f8247f47a502f0630f759c3f29257d8042bb7d0b0fd5039",
+        "B": "86569eb1d8d579fb61c713fe043ac08468105cd36d67aa0a4ac65095a43aa171"
+      },
+      "updated_at": "2026-10-14T19:39:31.135Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point",
+          "unnatural"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "B沒講清楚為什麼換騎士好 更好的應該要提到騎士在中心很強然後Qc7可以用后吃不會破壞兵型",
+      "content_sha256": {
+        "A": "0bd05a44631def0e7ddfcec32ca18ebd72ebacdc412b51e442bab068949558a5",
+        "B": "19ea320751af271cc1d6564815e923c6e0418d62735edf8ddf5cbc2dd04858b4"
+      },
+      "updated_at": "2026-10-14T19:41:51.752Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "ff69dc8fd585ed54e396d319fdf645745c03c240a8f173b36165d59805b7fb7b",
+        "B": "6eeeb161f29e2e41cc74d630a5d1dcc5b06ee5b750846f41ea2645b3bcdb6dae"
+      },
+      "updated_at": "2026-10-14T19:42:32.496Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "factual_error"
+        ]
+      },
+      "note": "B並不會掉兵呀 可以吃回的",
+      "content_sha256": {
+        "A": "ec41040fad0558dd353899a690cb76880a053af8ba076fd21f603ee24d888f1b",
+        "B": "b11ac606106788de73e6ddb94cb3db031caf9e1dd3b4b48f6ea6a6a0d41326ef"
+      },
+      "updated_at": "2026-10-14T19:43:36.088Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "A",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "應該是不至於贏兩隻車(黑方比起吃象應該會先逃車) 但是A比較細 也能看出他的想法哪裡來的 給過",
+      "content_sha256": {
+        "A": "1d6ad7a89e63fe3cbec2a3d0d586d3056e531ee1cbd7f27e78d1b05f3a6255d2",
+        "B": "fdcad57853800bd5aaf9cfa6a7a7f206c0a428d9ef1412b42d69ce4700a3c574"
+      },
+      "updated_at": "2026-10-14T19:45:08.646Z"
+    }
+  ]
+}

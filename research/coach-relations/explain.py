@@ -2,13 +2,17 @@
 
   py research/coach-relations/explain.py [card id ...]     # default: the round-4 cards
 
-The first fact from pick.rank speaks, unless it is material the mover wins in the played line (the
-line stopped too early), and then nothing does. The second joins it unless the first is a mate,
-the second is a vaguer fact (shield, trades, open file, enter, king exposure, draw) or also such
-material, both are the same kind in the same line, or it is a fork that is not how the first
-fact's material is won. Sentences follow the production Coach's voice ("Blunder. Nfe5 loses a
-bishop after ... d4 was the move."). Marks: the move behind each fact as an arrow at its node,
-then the squares the facts name, at most three in all.
+Shield, open file, enter and king exposure never speak (the first blind A/B lost 11 of 12 of
+them). Material is recounted from the root to the line's last capture, Stockfish's captures past
+the line included, so a rook traded for a rook in two runs is no rook won; a recount that comes
+out even, or with the wrong side ahead (the mover in the played line: the line stopped too early;
+the opponent in the best line), is dropped. Lost castling speaks only when the king move answers a
+check no other move meets. The first fact from pick.rank speaks; with none, the played line's
+reply is named when it captures or checks. The second joins it unless the first is a mate, the
+second is a vaguer fact (trades, draw), both are the same kind in the same line, or it is a fork
+that is not how the first fact's material is won. Sentences follow the production Coach's voice
+("Blunder. Nfe5 loses a bishop after ... d4 was the move."). Marks: the move behind each fact as
+an arrow at its node, then the squares the facts name, at most three in all.
 """
 import json
 import pathlib
@@ -17,14 +21,17 @@ import sys
 import chess
 
 import positional
+import tactics
 from enumerate import candidates
-from pick import rank, unfinished
+from pick import rank
 
 HERE = pathlib.Path(__file__).parent
 PIECE = {"p": "pawn", "n": "knight", "b": "bishop", "r": "rook", "q": "queen", "k": "king"}
 COUNT = {2: "two", 3: "three", 4: "four"}
 GRADE = {"blunder": "Blunder.", "mistake": "Mistake."}
-VAGUE = {"shield", "trades", "open_file", "enter", "king_exposed", "draw_risk"}
+SILENT = {"shield", "open_file", "enter", "king_exposed"}
+VAGUE = {"trades", "draw_risk"}
+VAL = {"p": 1, "n": 3, "b": 3, "r": 5, "q": 9}
 NUMBER = {1: "one"}
 
 
@@ -76,15 +83,6 @@ class Line:
     def paren(self, a, b):
         return f" ({self.seq(a, b)})" if b >= a else ""
 
-    def run_end(self, k):
-        """The last ply of the exchange that starts at ply k: consecutive captures, and a later
-        recapture on the same square."""
-        sq = self.moves[k - 1].to_square
-        while k < len(self.moves) and self.boards[k].is_capture(self.moves[k]):
-            k += 1
-        later = [i for i in range(k + 1, len(self.moves) + 1) if self.moves[i - 1].to_square == sq and self.boards[i - 1].is_capture(self.moves[i - 1])]
-        return later[-1] if later else k
-
     def name(self, ply, sq):
         """"the bishop on g4", or "the king"."""
         for b in (self.boards[ply], self.boards[max(0, ply - 1)]):
@@ -98,9 +96,10 @@ class Line:
         return {"line": line, "ply": k, "from": chess.square_name(m.from_square), "to": chess.square_name(m.to_square)}
 
 
-def phrase(f, ln, a, root, row):
+def phrase(f, ln, ext, a, root, row):
     """(verb phrase for what the line's first move does, last ply it needs, arrow, squares). The
-    played move's phrase shows the moves from ply a (at least 2), the best move's from ply a."""
+    played move's phrase shows the moves from ply a (at least 2), the best move's from ply a. ext is
+    the line with Stockfish's captures after it."""
     t, played = f["type"], f["line"] == "played"
     a = max(a, 2) if played else a
     k = max(1, min(f["ply"], len(ln.moves)))
@@ -120,11 +119,7 @@ def phrase(f, ln, a, root, row):
         return f"threatens mate on {f['square']}{ln.paren(a, k)}", k, arrow, [f["square"]]
     if t == "material":
         what = pieces(f["won"]) + (f" for {pieces(f['lost'])}" if f["lost"] else "")
-        if not f["at"]:
-            last = len(ln.moves)
-            return f"{'loses' if played else 'wins'} {what} once the captures go on past {ln.seq(last, last)}", last, None, []
-        b = ln.run_end(k)
-        return (f"loses {what}{ln.after(a, b)}" if played else f"wins {what}{ln.paren(a, b)}"), b, arrow, []
+        return (f"loses {what}{ext.after(a, f['end'])}" if played else f"wins {what}{ext.paren(a, f['end'])}"), f["end"], arrow, []
     if t == "fork":
         targets = " and ".join(ln.name(k, s) for s in f["targets"])
         verb = f"allows {ln.seq(a, k)}, forking {targets}" if played else f"forks {targets}{ln.paren(a, k)}"
@@ -137,16 +132,6 @@ def phrase(f, ln, a, root, row):
         verb = (f"allows {long.seq(a, b)}, and the {color(cc).lower()} king can no longer castle" if played
                 else f"drives the {color(cc).lower()} king out{long.paren(a, b)}, so {color(cc)} can no longer castle")
         return verb, b, None if tail else arrow, sq[:1]
-    if t == "king_exposed":
-        w = max(1, min(f["worst"], len(ln.moves)))
-        king = f"the {'white' if root.piece_at(chess.parse_square(f['piece'])).color else 'black'} king"
-        return (f"leaves {king} with {f['here']} attacked squares around it{ln.after(a, w)}, against {f['there']} in the other line",
-                w, ln.arrow(f["line"], w), sq[:1])
-    if t == "shield":
-        king = f"the {'white' if root.piece_at(chess.parse_square(f['other'])).color else 'black'} king" if f.get("other") else "the king"
-        if played:
-            return f"cracks the pawn cover of {king}{ln.after(a, k)}", k, arrow, sq[:2]
-        return f"breaks open the pawn cover of {king}{ln.paren(a, k)}", k, arrow, sq[:2]
     if t == "trades":
         extra = list(f["gone"])
         for p in f["other_gone"]:
@@ -159,15 +144,6 @@ def phrase(f, ln, a, root, row):
         why = (f", though {color(root.turn)} is {-lead} points down" if played and lead < 0 else
                f", while {color(root.turn)} is {lead} points up" if not played and lead > 0 else "")
         return f"trades off {what}{ln.paren(a, k)}{why}", k, None, []
-    if t == "open_file":
-        if played:
-            return f"hands {color(c)} the open {f['file']}-file{ln.after(a, k)}", k, None, sq[:1]
-        return f"takes the open {f['file']}-file{ln.paren(a, k)}", k, None, sq[:1]
-    if t == "enter":
-        piece = ln.name(k, sq[0]).split(" on ")[0]
-        if played:
-            return f"allows {ln.seq(a, k)}, and {piece} gets into {f['square']}", k, arrow, []
-        return f"brings {piece} to {f['square']}{ln.paren(a, k)}", k, arrow, []
     what, by = f.get("what"), PIECE.get(f.get("by"), "piece")
     moves = ln.after(a, k) if played else ln.paren(a, k)
     if t == "outpost":
@@ -204,8 +180,49 @@ def phrase(f, ln, a, root, row):
     return f"lets {color(not c)} give perpetual check{moves}", k, None, sq[:1]
 
 
-def second(a, b, mover):
-    if a["type"] in ("mate", "forced_mate") or b["type"] in VAGUE or unfinished(b, mover):
+def recount(f, ext):
+    """The material fact counted from the root to the line's last capture, or None when it comes out
+    even or for the wrong side (the opponent ahead in the best line, the mover in the played line)."""
+    end = max(i for i in range(len(ext.moves) + 1) if i == 0 or ext.boards[i - 1].is_capture(ext.moves[i - 1])
+              or ext.moves[i - 1].promotion)
+    gone = {}
+    for c in chess.COLORS:
+        for t in VAL:
+            pt = chess.Piece.from_symbol(t).piece_type
+            gone[c, t] = len(ext.boards[0].pieces(pt, c)) - len(ext.boards[end].pieces(pt, c))
+    net = sum(VAL[t] * (gone[chess.BLACK, t] - gone[chess.WHITE, t]) for t in VAL)
+    w = net > 0
+    if not net or (w == ext.boards[0].turn) != (f["line"] == "best"):
+        return None
+    won = [t for t in VAL for _ in range(gone[not w, t])] + [f"={t}" for t in VAL for _ in range(-gone[w, t])]
+    lost = [t for t in VAL for _ in range(gone[w, t])] + [f"={t}" for t in VAL for _ in range(-gone[not w, t])]
+    for t in list(won):  # like for like cancels out
+        if t in lost:
+            won.remove(t)
+            lost.remove(t)
+    return dict(f, side=color(w).lower(), net=abs(net), won=won[::-1], lost=lost[::-1], end=end)
+
+
+def forced_out(f, row):
+    """True when the castling fact's king move answers a check that only a king move meets."""
+    c = chess.WHITE if f["side"] == "white" else chess.BLACK
+    _, ply, (tail, _) = positional.castle_state(positional.walk(row["fen"], row[f"{f['line']}_pv"]), c)
+    b = Line(row["fen"], Line(row["fen"], row[f"{f['line']}_pv"]).moves + tail).boards[ply - 1]
+    return b.is_check() and all(b.piece_type_at(m.from_square) == chess.KING for m in b.legal_moves)
+
+
+def said(cands, row, ext):
+    out = []
+    for f in cands:
+        if f["type"] == "material":
+            f = recount(f, ext[f["line"]])
+        if f and f["type"] not in SILENT and (f["type"] != "castling" or forced_out(f, row)):
+            out.append(f)
+    return out
+
+
+def second(a, b):
+    if a["type"] in ("mate", "forced_mate") or b["type"] in VAGUE:
         return False
     if a["type"] == b["type"] and a["line"] == b["line"]:
         return False
@@ -219,14 +236,18 @@ def explain(row, cands=None):
     mover = "white" if root.turn else "black"
     lines = {"played": Line(row["fen"], row["played_pv"]), "best": Line(row["fen"], row["best_pv"])}
     P, B = lines["played"].sans[0], lines["best"].sans[0]
-    ranked = [c for c in rank(cands if cands is not None else candidates(row), mover) if not unfinished(c, mover)]
-    facts = ranked[:2] if len(ranked) > 1 and second(*ranked[:2], mover) else ranked[:1]
+    ext = {k: Line(row["fen"], ln.moves + ([] if ln.boards[-1].is_game_over() else
+                                              [chess.Move.from_uci(u) for u in tactics.tail(ln.boards[-1], root.turn)[0]]))
+           for k, ln in lines.items()}
+    cands = said(cands if cands is not None else candidates(row), row, ext)
+    ranked = rank(cands, mover)
+    facts = ranked[:2] if len(ranked) > 1 and second(*ranked[:2]) else ranked[:1]
     grade = GRADE.get(row["grade"])
     out, arrows, squares, shown = [], [], [], {}
     for i, f in enumerate(facts):
         line = f["line"]
         ln = lines[line]
-        verb, last, arrow, sq = phrase(f, ln, shown.get(line, 0) + 1, root, row)
+        verb, last, arrow, sq = phrase(f, ln, ext[line], shown.get(line, 0) + 1, root, row)
         if i == 0:
             if line == "played":
                 body = verb
@@ -245,8 +266,11 @@ def explain(row, cands=None):
         if arrow:
             arrows.append(arrow)
         squares += [s for s in sq if s not in squares]
-    if not facts:
-        out.append(f"{grade} {P} is not the best move." if grade else f"{P} is slightly inaccurate.")
+    if not facts:  # with no fact, a forcing reply is still worth naming
+        ln = lines["played"]
+        forcing = len(ln.moves) > 1 and (ln.boards[1].is_capture(ln.moves[1]) or ln.boards[2].is_check())
+        body = f"allows {ln.seq(2, 2)}" if forcing else "is not the best move"
+        out.append(f"{grade} {P} {body}." if grade else f"{P} is slightly inaccurate{': it ' + body if forcing else ''}.")
     if "best" not in shown:
         out.append(f"{B} was the move.")
     arrows = arrows[:3]

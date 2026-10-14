@@ -1,6 +1,6 @@
 """Unblinds the Codex verdicts of make_ab.py's A/B and counts them.
 
-  py research/coach-relations/ab_tally.py
+  py research/coach-relations/ab_tally.py ab2
 
 Wins, ties and both-bad by program, an exact two-sided sign test on the decisive pairs, issue tags
 per program, the split by grade, and the low-confidence pairs with both texts.
@@ -8,9 +8,8 @@ per program, the split by grade, and the low-confidence pairs with both texts.
 import json
 import math
 import pathlib
+import sys
 from collections import Counter
-
-HERE = pathlib.Path(__file__).parent / "ab/run-output"
 
 
 def sign_test(k, n):
@@ -19,6 +18,7 @@ def sign_test(k, n):
 
 
 def main():
+    HERE = pathlib.Path(__file__).parent / sys.argv[1] / "run-output"
     key = json.loads((HERE / "BLIND-KEY.json").read_text(encoding="utf-8"))["pairs"]
     cards = {}
     for f in sorted((HERE / "judge").glob("batch*.jsonl")):
