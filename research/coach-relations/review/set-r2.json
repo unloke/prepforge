@@ -87,18 +87,10 @@
     "line": "best",
     "type": "enter",
     "piece": "a3",
-    "ply": 1,
-    "square": "a2",
-    "at": [
-     "a2"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "a3",
     "ply": 3,
     "square": "d2",
+    "capture": false,
+    "check": false,
     "at": [
      "d2"
     ]
@@ -342,6 +334,8 @@
     "piece": "b5",
     "ply": 2,
     "square": "a6",
+    "capture": true,
+    "check": true,
     "at": [
      "a6"
     ]
@@ -407,6 +401,8 @@
     "piece": "g4",
     "ply": 2,
     "square": "g7",
+    "capture": true,
+    "check": true,
     "at": [
      "g7"
     ]
@@ -417,6 +413,8 @@
     "piece": "d8",
     "ply": 3,
     "square": "d2",
+    "capture": true,
+    "check": false,
     "at": [
      "d2"
     ]
@@ -519,16 +517,6 @@
     "at": [
      "c3"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "b4",
-    "ply": 5,
-    "square": "c3",
-    "at": [
-     "c3"
-    ]
    }
   ]
  },
@@ -613,6 +601,7 @@
      "e4",
      "g4"
     ],
+    "check": false,
     "at": [
      "f4",
      "e4",
@@ -730,6 +719,8 @@
     "piece": "a7",
     "ply": 1,
     "square": "b8",
+    "capture": false,
+    "check": true,
     "at": [
      "b8"
     ]
@@ -792,21 +783,6 @@
   "candidates": [
    {
     "line": "played",
-    "type": "fork",
-    "piece": "f6",
-    "ply": 1,
-    "targets": [
-     "h5",
-     "g8"
-    ],
-    "at": [
-     "g5",
-     "h5",
-     "g8"
-    ]
-   },
-   {
-    "line": "played",
     "type": "open_file",
     "piece": "a1",
     "ply": 4,
@@ -822,6 +798,8 @@
     "piece": "f6",
     "ply": 1,
     "square": "e6",
+    "capture": false,
+    "check": true,
     "at": [
      "e6"
     ]
@@ -1014,6 +992,7 @@
      "f6",
      "h6"
     ],
+    "check": false,
     "at": [
      "g5",
      "f6",
@@ -1103,6 +1082,8 @@
     "piece": "b5",
     "ply": 4,
     "square": "d6",
+    "capture": false,
+    "check": false,
     "at": [
      "d6"
     ]
@@ -1269,6 +1250,8 @@
     "piece": "h3",
     "ply": 2,
     "square": "e6",
+    "capture": true,
+    "check": true,
     "at": [
      "e6"
     ]
@@ -1330,31 +1313,12 @@
    },
    {
     "line": "best",
-    "type": "mate_threat",
-    "piece": "d2",
-    "ply": 2,
-    "square": "e8",
-    "at": [
-     "c1",
-     "e8"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g4",
-    "ply": 1,
-    "square": "h2",
-    "at": [
-     "h2"
-    ]
-   },
-   {
-    "line": "best",
     "type": "enter",
     "piece": "h3",
     "ply": 1,
     "square": "h2",
+    "capture": true,
+    "check": true,
     "at": [
      "h2"
     ]
@@ -1431,21 +1395,6 @@
    },
    {
     "line": "best",
-    "type": "fork",
-    "piece": "e7",
-    "ply": 2,
-    "targets": [
-     "e5",
-     "g7"
-    ],
-    "at": [
-     "f6",
-     "e5",
-     "g7"
-    ]
-   },
-   {
-    "line": "best",
     "type": "trades",
     "piece": null,
     "ply": 4,
@@ -1461,18 +1410,10 @@
     "piece": "f1",
     "ply": 2,
     "square": "f7",
+    "capture": true,
+    "check": true,
     "at": [
      "f7"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e7",
-    "ply": 2,
-    "square": "f6",
-    "at": [
-     "f6"
     ]
    }
   ]
@@ -1532,21 +1473,13 @@
   },
   "candidates": [
    {
-    "line": "played",
-    "type": "enter",
-    "piece": "a7",
-    "ply": 3,
-    "square": "a2",
-    "at": [
-     "a2"
-    ]
-   },
-   {
     "line": "best",
     "type": "enter",
     "piece": "e6",
     "ply": 1,
     "square": "a2",
+    "capture": false,
+    "check": false,
     "at": [
      "a2"
     ]
@@ -1706,38 +1639,6 @@
     ]
    },
    {
-    "line": "played",
-    "type": "fork",
-    "piece": "e5",
-    "ply": 7,
-    "targets": [
-     "c1",
-     "e1",
-     "f4"
-    ],
-    "at": [
-     "d3",
-     "c1",
-     "e1",
-     "f4"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "fork",
-    "piece": "c8",
-    "ply": 1,
-    "targets": [
-     "b1",
-     "e1"
-    ],
-    "at": [
-     "c1",
-     "b1",
-     "e1"
-    ]
-   },
-   {
     "line": "best",
     "type": "king_exposed",
     "piece": "e1",
@@ -1759,21 +1660,13 @@
     "at": []
    },
    {
-    "line": "played",
-    "type": "enter",
-    "piece": "e5",
-    "ply": 7,
-    "square": "d3",
-    "at": [
-     "d3"
-    ]
-   },
-   {
     "line": "best",
     "type": "enter",
     "piece": "c8",
     "ply": 1,
     "square": "c1",
+    "capture": true,
+    "check": true,
     "at": [
      "c1"
     ]
@@ -1853,6 +1746,8 @@
     "piece": "g5",
     "ply": 2,
     "square": "g6",
+    "capture": true,
+    "check": true,
     "at": [
      "g6"
     ]
@@ -1863,18 +1758,10 @@
     "piece": "g5",
     "ply": 4,
     "square": "g8",
+    "capture": false,
+    "check": true,
     "at": [
      "g8"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "h1",
-    "ply": 4,
-    "square": "h6",
-    "at": [
-     "h6"
     ]
    }
   ]
@@ -1932,23 +1819,7 @@
     }
    ]
   },
-  "candidates": [
-   {
-    "line": "best",
-    "type": "fork",
-    "piece": "d7",
-    "ply": 4,
-    "targets": [
-     "c4",
-     "e4"
-    ],
-    "at": [
-     "d5",
-     "c4",
-     "e4"
-    ]
-   }
-  ]
+  "candidates": []
  },
  {
   "pos_id": "rr-057",
@@ -2016,16 +1887,6 @@
     ],
     "lost": [],
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "b2",
-    "ply": 1,
-    "square": "c2",
-    "at": [
-     "c2"
-    ]
    }
   ]
  },
@@ -2301,18 +2162,10 @@
     "piece": "g5",
     "ply": 2,
     "square": "d2",
+    "capture": false,
+    "check": false,
     "at": [
      "d2"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g5",
-    "ply": 4,
-    "square": "e1",
-    "at": [
-     "e1"
     ]
    }
   ]
@@ -2414,19 +2267,11 @@
    {
     "line": "played",
     "type": "enter",
-    "piece": "b6",
-    "ply": 3,
-    "square": "b2",
-    "at": [
-     "b2"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
     "piece": "d2",
     "ply": 6,
     "square": "h8",
+    "capture": false,
+    "check": true,
     "at": [
      "h8"
     ]
@@ -2437,6 +2282,8 @@
     "piece": "h1",
     "ply": 8,
     "square": "h7",
+    "capture": false,
+    "check": true,
     "at": [
      "h7"
     ]
@@ -2514,6 +2361,8 @@
     "piece": "e5",
     "ply": 2,
     "square": "d3",
+    "capture": false,
+    "check": true,
     "at": [
      "d3"
     ]
@@ -2524,6 +2373,8 @@
     "piece": "f5",
     "ply": 4,
     "square": "d3",
+    "capture": true,
+    "check": false,
     "at": [
      "d3"
     ]
@@ -2609,16 +2460,6 @@
     "cp": 21,
     "queens": false,
     "at": []
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "f4",
-    "ply": 2,
-    "square": "d6",
-    "at": [
-     "d6"
-    ]
    }
   ]
  },
@@ -2676,33 +2517,13 @@
     ]
    },
    {
-    "line": "best",
-    "type": "mate_threat",
-    "piece": "g1",
-    "ply": 2,
-    "square": "g7",
-    "at": [
-     "g2",
-     "g7"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "mate_threat",
-    "piece": "g1",
-    "ply": 4,
-    "square": "g7",
-    "at": [
-     "g3",
-     "g7"
-    ]
-   },
-   {
     "line": "played",
     "type": "enter",
     "piece": "c7",
     "ply": 2,
     "square": "g7",
+    "capture": false,
+    "check": true,
     "at": [
      "g7"
     ]
@@ -2713,6 +2534,8 @@
     "piece": "a2",
     "ply": 1,
     "square": "g2",
+    "capture": true,
+    "check": true,
     "at": [
      "g2"
     ]
@@ -2723,6 +2546,8 @@
     "piece": "e8",
     "ply": 3,
     "square": "e2",
+    "capture": false,
+    "check": true,
     "at": [
      "e2"
     ]
@@ -3004,16 +2829,6 @@
     "cp": 295,
     "queens": false,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "b5",
-    "ply": 5,
-    "square": "d7",
-    "at": [
-     "d7"
-    ]
    }
   ]
  },
@@ -3245,31 +3060,6 @@
     "ply": 5,
     "n": -5,
     "at": []
-   },
-   {
-    "line": "best",
-    "type": "fork",
-    "piece": "e4",
-    "ply": 4,
-    "targets": [
-     "d1",
-     "h1"
-    ],
-    "at": [
-     "f2",
-     "d1",
-     "h1"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e4",
-    "ply": 4,
-    "square": "f2",
-    "at": [
-     "f2"
-    ]
    }
   ]
  },
@@ -3449,17 +3239,6 @@
     "at": [
      "b7"
     ]
-   },
-   {
-    "line": "played",
-    "type": "mate_threat",
-    "piece": "d4",
-    "ply": 1,
-    "square": "h6",
-    "at": [
-     "d6",
-     "h6"
-    ]
    }
   ]
  },
@@ -3546,26 +3325,6 @@
     "at": [
      "f2"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f7",
-    "ply": 4,
-    "square": "f2",
-    "at": [
-     "f2"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f7",
-    "ply": 6,
-    "square": "g2",
-    "at": [
-     "g2"
-    ]
    }
   ]
  },
@@ -3641,16 +3400,6 @@
     "lost": [],
     "at": [
      "b4"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "f4",
-    "ply": 4,
-    "square": "d6",
-    "at": [
-     "d6"
     ]
    }
   ]
@@ -3768,6 +3517,8 @@
     "piece": "d7",
     "ply": 2,
     "square": "h3",
+    "capture": true,
+    "check": true,
     "at": [
      "h3"
     ]
@@ -3776,18 +3527,10 @@
     "line": "best",
     "type": "enter",
     "piece": "a4",
-    "ply": 3,
-    "square": "c6",
-    "at": [
-     "c6"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "a4",
     "ply": 5,
     "square": "a8",
+    "capture": true,
+    "check": true,
     "at": [
      "a8"
     ]
@@ -3869,6 +3612,8 @@
     "piece": "e3",
     "ply": 2,
     "square": "e2",
+    "capture": false,
+    "check": false,
     "at": [
      "e2"
     ]
@@ -4018,18 +3763,10 @@
     "piece": "b7",
     "ply": 2,
     "square": "c7",
+    "capture": false,
+    "check": false,
     "at": [
      "c7"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "b7",
-    "ply": 4,
-    "square": "c6",
-    "at": [
-     "c6"
     ]
    }
   ]
@@ -4193,36 +3930,13 @@
     ]
    },
    {
-    "line": "played",
-    "type": "fork",
-    "piece": "g5",
-    "ply": 1,
-    "targets": [
-     "c5",
-     "f8"
-    ],
-    "at": [
-     "e6",
-     "c5",
-     "f8"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g5",
-    "ply": 1,
-    "square": "e6",
-    "at": [
-     "e6"
-    ]
-   },
-   {
     "line": "best",
     "type": "enter",
     "piece": "d6",
     "ply": 1,
     "square": "g6",
+    "capture": false,
+    "check": true,
     "at": [
      "g6"
     ]
@@ -4233,6 +3947,8 @@
     "piece": "e7",
     "ply": 3,
     "square": "h7",
+    "capture": false,
+    "check": true,
     "at": [
      "h7"
     ]
@@ -4484,17 +4200,6 @@
   },
   "candidates": [
    {
-    "line": "played",
-    "type": "mate_threat",
-    "piece": "d1",
-    "ply": 1,
-    "square": "f7",
-    "at": [
-     "h5",
-     "f7"
-    ]
-   },
-   {
     "type": "piece_harassed",
     "line": "played",
     "ply": 3,
@@ -4589,25 +4294,12 @@
    },
    {
     "line": "played",
-    "type": "fork",
-    "piece": "d5",
-    "ply": 4,
-    "targets": [
-     "e6",
-     "a8"
-    ],
-    "at": [
-     "c7",
-     "e6",
-     "a8"
-    ]
-   },
-   {
-    "line": "played",
     "type": "enter",
     "piece": "d5",
     "ply": 4,
     "square": "c7",
+    "capture": false,
+    "check": true,
     "at": [
      "c7"
     ]
@@ -4712,25 +4404,11 @@
      "c3",
      "e3"
     ],
+    "check": false,
     "at": [
      "d4",
      "c3",
      "e3"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "fork",
-    "piece": "c3",
-    "ply": 7,
-    "targets": [
-     "d7",
-     "g8"
-    ],
-    "at": [
-     "f6",
-     "d7",
-     "g8"
     ]
    }
   ]
@@ -4860,6 +4538,8 @@
     "piece": "a7",
     "ply": 2,
     "square": "c6",
+    "capture": false,
+    "check": false,
     "at": [
      "c6"
     ]
@@ -5215,16 +4895,6 @@
      "h5",
      "g4"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g5",
-    "ply": 1,
-    "square": "d2",
-    "at": [
-     "d2"
-    ]
    }
   ]
  },
@@ -5326,6 +4996,7 @@
      "e5",
      "d8"
     ],
+    "check": false,
     "at": [
      "c6",
      "e5",
@@ -5430,16 +5101,6 @@
     "cp": -239,
     "queens": false,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "a4",
-    "ply": 1,
-    "square": "a6",
-    "at": [
-     "a6"
-    ]
    }
   ]
  },
@@ -5636,35 +5297,12 @@
    },
    {
     "line": "best",
-    "type": "fork",
-    "piece": "e7",
-    "ply": 1,
-    "targets": [
-     "a8",
-     "g8"
-    ],
-    "at": [
-     "e8",
-     "a8",
-     "g8"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f4",
-    "ply": 4,
-    "square": "f3",
-    "at": [
-     "f3"
-    ]
-   },
-   {
-    "line": "best",
     "type": "enter",
     "piece": "e7",
     "ply": 1,
     "square": "e8",
+    "capture": false,
+    "check": true,
     "at": [
      "e8"
     ]
@@ -5790,19 +5428,11 @@
    {
     "line": "played",
     "type": "enter",
-    "piece": "e8",
-    "ply": 1,
-    "square": "f8",
-    "at": [
-     "f8"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
     "piece": "b2",
     "ply": 4,
     "square": "c1",
+    "capture": false,
+    "check": true,
     "at": [
      "c1"
     ]
@@ -5813,6 +5443,8 @@
     "piece": "b2",
     "ply": 6,
     "square": "e1",
+    "capture": true,
+    "check": true,
     "at": [
      "e1"
     ]
@@ -5823,6 +5455,8 @@
     "piece": "b6",
     "ply": 3,
     "square": "b8",
+    "capture": false,
+    "check": false,
     "at": [
      "b8"
     ]
@@ -5905,6 +5539,8 @@
     "piece": "a1",
     "ply": 1,
     "square": "a7",
+    "capture": false,
+    "check": false,
     "at": [
      "a7"
     ]
@@ -5915,6 +5551,8 @@
     "piece": "a1",
     "ply": 3,
     "square": "f7",
+    "capture": false,
+    "check": false,
     "at": [
      "f7"
     ]
@@ -6118,21 +5756,6 @@
   "candidates": [
    {
     "line": "best",
-    "type": "fork",
-    "piece": "c6",
-    "ply": 4,
-    "targets": [
-     "b8",
-     "g8"
-    ],
-    "at": [
-     "c8",
-     "b8",
-     "g8"
-    ]
-   },
-   {
-    "line": "best",
     "type": "shield",
     "piece": "g7",
     "ply": 1,
@@ -6153,16 +5776,6 @@
     "at": [
      "h6",
      "g8"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "c1",
-    "ply": 6,
-    "square": "c8",
-    "at": [
-     "c8"
     ]
    }
   ]
@@ -6245,16 +5858,6 @@
     "at": [
      "d3"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f5",
-    "ply": 2,
-    "square": "d3",
-    "at": [
-     "d3"
-    ]
    }
   ]
  },
@@ -6327,6 +5930,8 @@
     "piece": "f3",
     "ply": 2,
     "square": "f7",
+    "capture": true,
+    "check": true,
     "at": [
      "f7"
     ]
@@ -6423,16 +6028,6 @@
     "at": [
      "d7"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "b2",
-    "ply": 2,
-    "square": "h8",
-    "at": [
-     "h8"
-    ]
    }
   ]
  },
@@ -6522,16 +6117,6 @@
     "cp": -335,
     "queens": true,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f4",
-    "ply": 5,
-    "square": "f8",
-    "at": [
-     "f8"
-    ]
    }
   ]
  },
@@ -6631,6 +6216,7 @@
      "g7",
      "f8"
     ],
+    "check": true,
     "at": [
      "f7",
      "g7",
@@ -6657,26 +6243,6 @@
     "cp": 83,
     "queens": true,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "d2",
-    "ply": 3,
-    "square": "d6",
-    "at": [
-     "d6"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "d1",
-    "ply": 5,
-    "square": "d6",
-    "at": [
-     "d6"
-    ]
    }
   ]
  },
@@ -6981,6 +6547,8 @@
     "piece": "f8",
     "ply": 5,
     "square": "f3",
+    "capture": true,
+    "check": false,
     "at": [
      "f3"
     ]
@@ -7145,25 +6713,12 @@
    },
    {
     "line": "played",
-    "type": "fork",
-    "piece": "c5",
-    "ply": 4,
-    "targets": [
-     "c1",
-     "h1"
-    ],
-    "at": [
-     "f1",
-     "c1",
-     "h1"
-    ]
-   },
-   {
-    "line": "played",
     "type": "enter",
     "piece": "c5",
     "ply": 2,
     "square": "f2",
+    "capture": true,
+    "check": true,
     "at": [
      "f2"
     ]
@@ -7174,6 +6729,8 @@
     "piece": "c5",
     "ply": 4,
     "square": "f1",
+    "capture": false,
+    "check": true,
     "at": [
      "f1"
     ]
@@ -7184,6 +6741,8 @@
     "piece": "f8",
     "ply": 6,
     "square": "f1",
+    "capture": true,
+    "check": true,
     "at": [
      "f1"
     ]
@@ -7629,26 +7188,6 @@
     "cp": 808,
     "queens": true,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f5",
-    "ply": 3,
-    "square": "e6",
-    "at": [
-     "e6"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "d5",
-    "ply": 3,
-    "square": "e7",
-    "at": [
-     "e7"
-    ]
    }
   ]
  },
@@ -7732,18 +7271,10 @@
     "piece": "g5",
     "ply": 2,
     "square": "f6",
+    "capture": false,
+    "check": false,
     "at": [
      "f6"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "d5",
-    "ply": 3,
-    "square": "a2",
-    "at": [
-     "a2"
     ]
    },
    {
@@ -7752,6 +7283,8 @@
     "piece": "h6",
     "ply": 4,
     "square": "g7",
+    "capture": false,
+    "check": true,
     "at": [
      "g7"
     ]
@@ -7926,6 +7459,8 @@
     "piece": "g7",
     "ply": 2,
     "square": "g2",
+    "capture": true,
+    "check": true,
     "at": [
      "g2"
     ]
@@ -8027,26 +7562,6 @@
     ],
     "at": [
      "g7"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "a3",
-    "ply": 1,
-    "square": "e7",
-    "at": [
-     "e7"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e7",
-    "ply": 2,
-    "square": "a3",
-    "at": [
-     "a3"
     ]
    }
   ]

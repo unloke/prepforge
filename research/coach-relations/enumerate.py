@@ -18,7 +18,10 @@ For each card in positions.jsonl, walks the played and best engine lines and rec
   material (an exchange one side wins), and between lines forced_mate, king_exposed and trades
   (more pieces off over the plies both lines reach, with the material lead and the eval).
 Pieces are named by their square in the root position. A candidate is an event (type, piece)
-found in one line and not the other. Writes candidates.jsonl and reports, on the v7 misses in
+found in one line and not the other. enter, fork and mate_threat are kept only for the side the
+line favours (the opponent in the played line, the mover in the best line), and an entry that
+captures without check or a fork with check is dropped from a line that reports material or mate.
+Writes candidates.jsonl and reports, on the v7 misses in
 gold.jsonl, whether the reason the reviewer named is among the candidates.
 """
 import json
@@ -132,7 +135,7 @@ def events(fen, pv):
         rel = chess.square_rank(m.to_square) if p.color else 7 - chess.square_rank(m.to_square)
         if p.piece_type in VALUE and rel >= 5 and not any(
                 b.piece_at(s) == chess.Piece(chess.PAWN, not p.color) for s in b.attackers(not p.color, m.to_square)):
-            add("enter", moved, i, square=chess.square_name(m.to_square))
+            add("enter", moved, i, square=chess.square_name(m.to_square), capture=pb.is_capture(m), check=b.is_check())
     b, ids, m = nodes[-1]
     if b.is_checkmate():
         add("mate", ids[m.to_square], len(nodes) - 1, at=[chess.square_name(m.to_square)])
@@ -205,6 +208,13 @@ def candidates(r):
     # material won inside a mating line is part of the mate
     mating = {c["line"] for c in out if c["type"] in ("mate", "forced_mate")}
     out = [c for c in out if not (c["type"] == "material" and c["line"] in mating)]
+    # entering, forking or threatening mate explains a line only for the side that line favours
+    out = [c for c in out if c["type"] not in ("enter", "fork", "mate_threat")
+           or (root.piece_at(chess.parse_square(c["piece"])).color == root.turn) == (c["line"] == "best")]
+    # a capture on entry or a fork with check is the material or mate its line already reports
+    tac = {c["line"] for c in out if c["type"] in ("material", "mate", "forced_mate")}
+    out = [c for c in out if not (c["line"] in tac and (c["type"] == "enter" and c["capture"] and not c["check"]
+                                                        or c["type"] == "fork" and c["check"]))]
     out += positional.facts(r["fen"], r["played_pv"], r["best_pv"])
     # a card about lost material or mate does not need positional facts, nor a drawing check next to a mate
     if any(c["type"] in ("material", "mate", "forced_mate") for c in out):

@@ -1,6 +1,6 @@
 {
  "schema": "reason-review/1",
- "set_sha256": "c2eb81c7dba7ffa6a3c8a6d31324b20ab0b539e5a09245c16b0db798f6f2695a",
+ "set_sha256": "1cc357be522e9cc2e28ce34795873817eb694de791b6d56e6f756271b5393e27",
  "completed": 84,
  "updated_at": "2026-10-14T06:29:05.980Z",
  "reviews": [
@@ -15,8 +15,7 @@
    "ratings": {
     "0": "key",
     "1": "key",
-    "2": "minor",
-    "3": "irrelevant"
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-13T23:40:02.550Z"
   },
@@ -89,8 +88,7 @@
    "submitted_at": "2026-10-13T11:47:00.387Z",
    "ratings": {
     "0": "irrelevant",
-    "1": "minor",
-    "2": "irrelevant"
+    "1": "minor"
    },
    "updated_at": "2026-10-13T23:40:22.072Z"
   },
@@ -137,8 +135,7 @@
    "submitted_at": "2026-10-13T19:22:35.004Z",
    "ratings": {
     "0": "irrelevant",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-13T23:41:27.912Z"
   },
@@ -231,9 +228,7 @@
    "submitted_at": "2026-10-13T20:11:02.023Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant",
-    "3": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-13T23:42:31.768Z"
   },
@@ -247,10 +242,8 @@
    "submitted_at": "2026-10-13T20:12:16.411Z",
    "ratings": {
     "0": "key",
-    "1": "minor",
-    "2": "irrelevant",
-    "3": "minor",
-    "4": "minor"
+    "1": "irrelevant",
+    "2": "minor"
    },
    "updated_at": "2026-10-13T22:38:14.599Z"
   },
@@ -265,8 +258,7 @@
    "note": "最佳走法非常高明 透過Bb2移除保護b4主教的城堡 然後Qe5拿掉主教能夠撤退的c3格子 這時白方幾乎必須換子了 但是白方少子力不適合換子 最佳透過操作達到逼換的效果",
    "submitted_at": "2026-10-13T20:16:42.455Z",
    "ratings": {
-    "0": "irrelevant",
-    "1": "minor"
+    "0": "minor"
    },
    "updated_at": "2026-10-13T20:18:37.454Z"
   },
@@ -283,12 +275,9 @@
     "1": "minor",
     "2": "key",
     "3": "key",
-    "4": "minor",
-    "5": "minor",
-    "6": "irrelevant",
-    "7": "irrelevant",
-    "8": "irrelevant",
-    "9": "irrelevant"
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant"
    },
    "updated_at": "2026-10-13T23:42:41.744Z"
   },
@@ -303,8 +292,7 @@
    "ratings": {
     "0": "key",
     "1": "irrelevant",
-    "2": "irrelevant",
-    "3": "irrelevant"
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-13T22:40:53.325Z"
   },
@@ -316,9 +304,7 @@
    "marks": {},
    "note": "最佳走法才能透過王翼攻擊來補償落後的子力",
    "submitted_at": "2026-10-13T20:44:54.420Z",
-   "ratings": {
-    "0": "irrelevant"
-   },
+   "ratings": {},
    "updated_at": "2026-10-13T20:45:06.500Z"
   },
   {
@@ -330,8 +316,7 @@
    "note": "實戰走法d6兵是保不住的",
    "submitted_at": "2026-10-13T20:46:35.299Z",
    "ratings": {
-    "0": "minor",
-    "1": "irrelevant"
+    "0": "minor"
    },
    "updated_at": "2026-10-13T23:43:10.926Z"
   },
@@ -375,8 +360,7 @@
     "0": "key",
     "1": "key",
     "2": "key",
-    "3": "irrelevant",
-    "4": "irrelevant"
+    "3": "irrelevant"
    },
    "updated_at": "2026-10-14T01:54:14.608Z"
   },
@@ -391,9 +375,8 @@
    "ratings": {
     "0": "key",
     "1": "key",
-    "2": "irrelevant",
-    "3": "minor",
-    "4": "minor"
+    "2": "minor",
+    "3": "minor"
    },
    "updated_at": "2026-10-13T23:44:42.012Z"
   },
@@ -424,8 +407,7 @@
    "submitted_at": "2026-10-13T21:40:04.199Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-13T21:40:30.800Z"
   },
@@ -439,11 +421,9 @@
    "submitted_at": "2026-10-13T21:40:57.228Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
+    "1": "key",
     "2": "irrelevant",
-    "3": "key",
-    "4": "irrelevant",
-    "5": "irrelevant"
+    "3": "irrelevant"
    },
    "updated_at": "2026-10-13T23:44:50.802Z"
   },
@@ -493,8 +473,7 @@
    "note": "最佳走法壓制了對手的子力發展 在自己有空間優勢的時候像是實戰這樣交換子力是不好的 應該維持壓力",
    "submitted_at": "2026-10-13T21:47:43.262Z",
    "ratings": {
-    "0": "minor",
-    "1": "irrelevant"
+    "0": "minor"
    },
    "updated_at": "2026-10-14T01:54:33.197Z"
   },
@@ -536,9 +515,7 @@
    "note": "實戰送殺",
    "submitted_at": "2026-10-13T23:54:50.024Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-13T23:55:26.156Z"
   },
@@ -568,8 +545,7 @@
    "note": "實戰送殺",
    "submitted_at": "2026-10-13T23:58:11.822Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-13T23:58:23.574Z"
   },
@@ -584,9 +560,7 @@
    "note": "實戰送兵還讓對手的城堡跑到第2線 直接出事",
    "submitted_at": "2026-10-13T23:59:36.057Z",
    "ratings": {
-    "0": "key",
-    "1": "minor",
-    "2": "minor"
+    "0": "key"
    },
    "updated_at": "2026-10-14T01:55:07.421Z"
   },
@@ -601,8 +575,7 @@
    "note": "實戰走法送了兵還讓對手兵卡在e5",
    "submitted_at": "2026-10-14T00:00:55.104Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-14T00:01:09.590Z"
   },
@@ -619,8 +592,7 @@
     "1": "minor",
     "2": "minor",
     "3": "key",
-    "4": "irrelevant",
-    "5": "irrelevant"
+    "4": "irrelevant"
    },
    "updated_at": "2026-10-14T00:02:15.914Z"
   },
@@ -665,8 +637,7 @@
    "submitted_at": "2026-10-14T01:58:36.649Z",
    "ratings": {
     "0": "key",
-    "1": "minor",
-    "2": "irrelevant"
+    "1": "minor"
    },
    "updated_at": "2026-10-14T01:58:42.098Z"
   },
@@ -698,10 +669,8 @@
    "ratings": {
     "0": "key",
     "1": "irrelevant",
-    "2": "irrelevant",
-    "3": "irrelevant",
-    "4": "minor",
-    "5": "minor"
+    "2": "minor",
+    "3": "minor"
    },
    "updated_at": "2026-10-14T02:01:20.423Z"
   },
@@ -745,9 +714,8 @@
    "note": "Qh5純粹送節奏 Ne5然後白后就被趕回去了",
    "submitted_at": "2026-10-14T02:05:29.320Z",
    "ratings": {
-    "0": "irrelevant",
-    "1": "key",
-    "2": "minor"
+    "0": "key",
+    "1": "minor"
    },
    "updated_at": "2026-10-14T06:28:14.499Z"
   },
@@ -761,8 +729,7 @@
    "submitted_at": "2026-10-14T02:05:55.214Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "minor"
+    "1": "minor"
    },
    "updated_at": "2026-10-14T02:06:01.100Z"
   },
@@ -776,8 +743,7 @@
    "submitted_at": "2026-10-14T02:06:31.985Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "irrelevant"
+    "1": "key"
    },
    "updated_at": "2026-10-14T02:06:59.195Z"
   },
@@ -862,8 +828,7 @@
    "ratings": {
     "0": "key",
     "1": "minor",
-    "2": "minor",
-    "3": "irrelevant"
+    "2": "minor"
    },
    "updated_at": "2026-10-14T03:03:11.937Z"
   },
@@ -894,8 +859,7 @@
    "submitted_at": "2026-10-14T03:33:13.730Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "irrelevant"
+    "1": "key"
    },
    "updated_at": "2026-10-14T03:33:23.861Z"
   },
@@ -924,9 +888,7 @@
    "ratings": {
     "0": "key",
     "1": "irrelevant",
-    "2": "irrelevant",
-    "3": "irrelevant",
-    "4": "key"
+    "2": "key"
    },
    "updated_at": "2026-10-14T03:40:00.288Z"
   },
@@ -944,11 +906,10 @@
     "0": "irrelevant",
     "1": "irrelevant",
     "2": "key",
-    "3": "irrelevant",
+    "3": "key",
     "4": "key",
-    "5": "key",
-    "6": "irrelevant",
-    "7": "key"
+    "5": "irrelevant",
+    "6": "key"
    },
    "updated_at": "2026-10-14T05:31:29.487Z"
   },
@@ -1000,9 +961,7 @@
    "submitted_at": "2026-10-14T04:18:52.038Z",
    "ratings": {
     "0": "irrelevant",
-    "1": "irrelevant",
-    "2": "irrelevant",
-    "3": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-14T04:19:14.159Z"
   },
@@ -1015,8 +974,7 @@
    "note": "實戰版本掉兵",
    "submitted_at": "2026-10-14T04:39:09.015Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-14T04:39:11.616Z"
   },
@@ -1045,8 +1003,7 @@
    "submitted_at": "2026-10-14T04:47:44.994Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-14T04:47:56.352Z"
   },
@@ -1062,8 +1019,7 @@
    "submitted_at": "2026-10-14T05:30:26.842Z",
    "ratings": {
     "0": "irrelevant",
-    "1": "minor",
-    "2": "irrelevant"
+    "1": "minor"
    },
    "updated_at": "2026-10-14T05:30:35.624Z"
   },
@@ -1079,9 +1035,7 @@
     "0": "key",
     "1": "irrelevant",
     "2": "irrelevant",
-    "3": "key",
-    "4": "irrelevant",
-    "5": "irrelevant"
+    "3": "key"
    },
    "updated_at": "2026-10-14T05:41:14.611Z"
   },
@@ -1157,10 +1111,9 @@
    "submitted_at": "2026-10-14T05:48:48.180Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
+    "1": "key",
     "2": "key",
-    "3": "key",
-    "4": "key"
+    "3": "key"
    },
    "updated_at": "2026-10-14T05:48:58.517Z"
   },
@@ -1248,9 +1201,7 @@
    "submitted_at": "2026-10-14T05:58:40.463Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "irrelevant",
-    "3": "irrelevant"
+    "1": "key"
    },
    "updated_at": "2026-10-14T05:58:48.024Z"
   },
@@ -1266,8 +1217,7 @@
     "0": "key",
     "1": "key",
     "2": "key",
-    "3": "irrelevant",
-    "4": "key"
+    "3": "key"
    },
    "updated_at": "2026-10-14T05:59:10.299Z"
   },
@@ -1315,9 +1265,7 @@
    "submitted_at": "2026-10-14T06:02:51.145Z",
    "ratings": {
     "0": "minor",
-    "1": "key",
-    "2": "irrelevant",
-    "3": "irrelevant"
+    "1": "key"
    },
    "updated_at": "2026-10-14T06:02:58.347Z"
   }

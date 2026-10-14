@@ -158,7 +158,7 @@ def move_events(pb, b, m, ids, add, i):
                    if b.piece_type_at(t) == chess.KING or VAL[b.piece_type_at(t)] > v
                    or (VAL[b.piece_type_at(t)] >= 3 and not defended(b, t, not c))]
         if len(targets) >= 2:
-            add("fork", moved, i, targets=[name(t) for t in targets], at=[name(to)] + [name(t) for t in targets])
+            add("fork", moved, i, targets=[name(t) for t in targets], check=b.is_check(), at=[name(to)] + [name(t) for t in targets])
 
     # mate threat: let the opponent pass and look for a mate in one
     if not b.is_check() and not b.is_game_over():
