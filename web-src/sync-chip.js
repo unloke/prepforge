@@ -5,10 +5,8 @@ const SYNC_CHIP_VARIANTS = {
   syncing: { cls: "is-syncing", text: "↻ Saving…" },
   error: { cls: "is-error", text: "⚠ Offline — will retry" },
   rejected: { cls: "is-error", text: "⚠ Some attempts couldn't be saved" },
-  // R-01/R-04: unconfirmed work is never claimed as Saved. These two states
-  // say WHY nothing is moving: waiting for sign-in vs a stale-edit conflict.
+  // R-01/R-04: unconfirmed work is never claimed as Saved.
   blocked: { cls: "is-error", text: "⚠ Waiting for sign-in — edits kept" },
-  conflict: { cls: "is-error", text: "⚠ Changed elsewhere — draft kept" },
 };
 
 // On Train the chip tracks graded attempts, not repertoire edits; "Unsaved
