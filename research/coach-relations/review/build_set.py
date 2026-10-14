@@ -13,7 +13,7 @@ from the current enumerator (round 1 tuned it, so only unseen positions measure 
 Round 3 draws new positions: not in rounds 1-2, not from the v7 spot check, not from the games
 whose candidates were printed while tuning round 2 (SEEN), one per game, half of them with no
 material or mate candidate (so positional detectors are measured on enough positions), each half
-interleaved by grade.
+interleaved by grade. Once set-r3.json exists, later runs only refresh its candidates.
 """
 import json
 import pathlib
@@ -56,6 +56,14 @@ def item(pos_id, r):
 
 
 def round3(rows):
+    path = HERE / "set-r3.json"
+    if path.exists():  # the draw is fixed once written; refresh the candidates only
+        by_id = {r["id"]: r for r in rows}
+        out = json.loads(path.read_text(encoding="utf-8"))
+        for c in out:
+            c["candidates"] = candidates(by_id[c["card"]])
+        path.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        return print(len(out), "positions, candidates refreshed")
     done = {p["card"] for f in ("set.json", "set-r2.json") for p in json.loads((HERE / f).read_text(encoding="utf-8"))}
     skip = {r["id"].split("/")[0] for r in rows if r["chk"]} | SEEN
     pool = [r for r in rows if r["grade"] in ("inaccuracy", "mistake", "blunder") and r["played_pv"][:1] != r["best_pv"][:1]

@@ -67,26 +67,6 @@
     "at": [
      "e4"
     ]
-   },
-   {
-    "line": "played",
-    "type": "king_exposed",
-    "piece": "e3",
-    "ply": 1,
-    "fewer": 2.0,
-    "at": [
-     "e3"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "king_exposed",
-    "piece": "e6",
-    "ply": 1,
-    "fewer": 3.0,
-    "at": [
-     "e6"
-    ]
    }
   ]
  },
@@ -735,16 +715,6 @@
     "at": [
      "h3"
     ]
-   },
-   {
-    "line": "best",
-    "type": "king_exposed",
-    "piece": "g1",
-    "ply": 1,
-    "fewer": 2.2,
-    "at": [
-     "g1"
-    ]
    }
   ]
  },
@@ -1044,10 +1014,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "N",
+     "b"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 93,
-    "queens": false,
     "at": []
    }
   ]
@@ -1111,10 +1083,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "R",
+     "r"
+    ],
+    "other_gone": [],
     "lead": -1,
-    "cp": -275,
-    "queens": false,
     "at": []
    },
    {
@@ -1876,17 +1850,6 @@
   },
   "candidates": [
    {
-    "line": "best",
-    "type": "mate_threat",
-    "piece": "a1",
-    "ply": 5,
-    "square": "d8",
-    "at": [
-     "d7",
-     "d8"
-    ]
-   },
-   {
     "line": "played",
     "type": "material",
     "piece": "d8",
@@ -2182,10 +2145,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "N",
+     "n"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": -69,
-    "queens": false,
     "at": []
    }
   ]
@@ -2249,10 +2214,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "N",
+     "b"
+    ],
+    "other_gone": [],
     "lead": 1,
-    "cp": -470,
-    "queens": false,
     "at": []
    }
   ]
@@ -2602,10 +2569,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "Q",
+     "q"
+    ],
+    "other_gone": [],
     "lead": 2,
-    "cp": 268,
-    "queens": true,
     "at": []
    }
   ]
@@ -2679,10 +2648,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "N",
+     "b"
+    ],
+    "other_gone": [],
     "lead": 1,
-    "cp": -185,
-    "queens": false,
     "at": []
    }
   ]

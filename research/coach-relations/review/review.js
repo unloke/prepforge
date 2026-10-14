@@ -219,10 +219,18 @@ function candText(c) {
     case "shield": return `${other} 前的兵盾 ${piece} ${c.how === "taken" ? "被吃" : "前進"}`;
     case "open_file": return `${c.side === "white" ? "白方" : "黑方"}佔住開放的 ${c.file} 線（${piece}），對方沒有重子在線上`;
     case "trades": {
-      const lead = c.lead ? `${c.lead > 0 ? "白方" : "黑方"}子力領先 ${Math.abs(c.lead)} 分` : "子力相當";
-      const cp = c.cp == null ? "" : `，評估 ${c.cp > 0 ? "+" : ""}${(c.cp / 100).toFixed(1)}`;
-      const n = c.n % 2 ? `${c.n} 個子` : `${c.n / 2} 組子`;
-      return `${lead}${cp}；這條變化多換了 ${n}${c.queens ? "（含后）" : ""}`;
+      // the pieces this line trades beyond the other line, as "white pieces 換 black pieces"
+      const extra = [...c.gone];
+      for (const p of c.other_gone) if (extra.includes(p)) extra.splice(extra.indexOf(p), 1);
+      const side = (white) => extra.filter((p) => (p === p.toUpperCase()) === white).map((p) => PIECE_NAME[p.toLowerCase()]).join("");
+      const [w, b] = [side(true), side(false)];
+      const what = w && b ? `白${w}換黑${b}` : `${w ? "白" : "黑"}${w || b}離開棋盤`;
+      // the material lead from the mover's side: trading down when behind, or simplifying when ahead
+      const mover = pos().side === "white" ? "白方" : "黑方";
+      const lead = pos().side === "white" ? c.lead : -c.lead;
+      const why = !lead ? "" : c.line === "played" && lead < 0 ? `；${mover}落後 ${-lead} 分還換子`
+        : c.line === "best" && lead > 0 ? `；${mover}領先 ${lead} 分，換子簡化` : `；${mover}${lead > 0 ? "領先" : "落後"} ${Math.abs(lead)} 分`;
+      return `多換子：${what}${why}`;
     }
     case "outpost": case "piece_harassed": case "pawn_weakness": case "draw_risk": return c.text_zh;
     case "enter": return `${piece} 進入 ${c.square}`;

@@ -1,8 +1,8 @@
 {
  "schema": "reason-review/1",
- "set_sha256": "36f795cdcb46b23c9bbd8d2e4e57a08303f3195c096b04412837ff65bc90ded8",
+ "set_sha256": "d06d51fe45f20e9b0dac4693932733cd9d0cbe8c175b85e6f05a7ad8011b8c8a",
  "completed": 35,
- "updated_at": "2026-10-14T08:14:46.934Z",
+ "updated_at": "2026-10-14T08:53:31.757Z",
  "reviews": [
   {
    "pos_id": "r3-001",
@@ -13,9 +13,7 @@
    "note": "實戰送了一隻騎士",
    "submitted_at": "2026-10-14T07:07:58.072Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-14T07:08:05.674Z"
   },
@@ -122,8 +120,7 @@
    "note": "實戰錯過得子",
    "submitted_at": "2026-10-14T07:18:01.007Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-14T07:18:18.393Z"
   },
@@ -184,9 +181,9 @@
    "ratings": {
     "0": "key",
     "1": "irrelevant",
-    "2": "wrong"
+    "2": "irrelevant"
    },
-   "updated_at": "2026-10-14T07:29:24.980Z"
+   "updated_at": "2026-10-14T08:52:20.753Z"
   },
   {
    "pos_id": "r3-013",
@@ -203,7 +200,7 @@
     "1": "key",
     "2": "irrelevant"
    },
-   "updated_at": "2026-10-14T07:32:45.778Z"
+   "updated_at": "2026-10-14T08:52:28.847Z"
   },
   {
    "pos_id": "r3-014",
@@ -326,10 +323,9 @@
    "note": "這個實戰走法讓對方城堡太方便到二線了 剩置直接掉兵 ",
    "submitted_at": "2026-10-14T07:57:55.572Z",
    "ratings": {
-    "0": "wrong",
+    "0": "key",
     "1": "key",
-    "2": "key",
-    "3": "irrelevant"
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-14T07:58:18.306Z"
   },
@@ -383,9 +379,9 @@
    "note": "主教被抓死",
    "submitted_at": "2026-10-14T08:03:02.000Z",
    "ratings": {
-    "0": "wrong"
+    "0": "irrelevant"
    },
-   "updated_at": "2026-10-14T08:03:08.148Z"
+   "updated_at": "2026-10-14T08:52:38.603Z"
   },
   {
    "pos_id": "r3-026",
@@ -398,9 +394,9 @@
    "note": "這隻主教位置很好 然後還威脅著王翼 比造成疊兵有影響多了 不該和騎士交換",
    "submitted_at": "2026-10-14T08:04:53.114Z",
    "ratings": {
-    "0": "irrelevant"
+    "0": "key"
    },
-   "updated_at": "2026-10-14T08:05:05.620Z"
+   "updated_at": "2026-10-14T08:52:49.925Z"
   },
   {
    "pos_id": "r3-027",
@@ -457,7 +453,7 @@
     "0": "irrelevant",
     "1": "key"
    },
-   "updated_at": "2026-10-14T08:08:04.511Z"
+   "updated_at": "2026-10-14T08:53:19.739Z"
   },
   {
    "pos_id": "r3-031",
@@ -473,7 +469,7 @@
    "ratings": {
     "0": "key"
    },
-   "updated_at": "2026-10-14T08:09:22.308Z"
+   "updated_at": "2026-10-14T08:53:31.453Z"
   },
   {
    "pos_id": "r3-032",

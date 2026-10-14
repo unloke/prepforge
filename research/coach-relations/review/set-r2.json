@@ -181,10 +181,12 @@
     "type": "trades",
     "piece": null,
     "ply": 5,
-    "n": 2,
+    "gone": [
+     "N",
+     "n"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 55,
-    "queens": false,
     "at": []
    }
   ]
@@ -694,27 +696,6 @@
    },
    {
     "line": "best",
-    "type": "king_exposed",
-    "piece": "d6",
-    "ply": 1,
-    "fewer": 2.5,
-    "at": [
-     "d6"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "trades",
-    "piece": null,
-    "ply": 4,
-    "n": 3,
-    "lead": 7,
-    "cp": 1014,
-    "queens": true,
-    "at": []
-   },
-   {
-    "line": "best",
     "type": "enter",
     "piece": "a7",
     "ply": 1,
@@ -865,10 +846,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "R",
+     "r"
+    ],
+    "other_gone": [],
     "lead": -1,
-    "cp": -386,
-    "queens": false,
     "at": []
    },
    {
@@ -1394,17 +1377,6 @@
     ]
    },
    {
-    "line": "best",
-    "type": "trades",
-    "piece": null,
-    "ply": 4,
-    "n": 2,
-    "lead": 1,
-    "cp": 445,
-    "queens": true,
-    "at": []
-   },
-   {
     "line": "played",
     "type": "enter",
     "piece": "f1",
@@ -1640,23 +1612,24 @@
    },
    {
     "line": "best",
-    "type": "king_exposed",
-    "piece": "e1",
-    "ply": 1,
-    "fewer": 3.5,
-    "at": [
-     "e1"
-    ]
-   },
-   {
-    "line": "best",
     "type": "trades",
     "piece": null,
     "ply": 7,
-    "n": 2,
+    "gone": [
+     "Q",
+     "B",
+     "B",
+     "N",
+     "r",
+     "b"
+    ],
+    "other_gone": [
+     "Q",
+     "B",
+     "q",
+     "b"
+    ],
     "lead": 4,
-    "cp": -660,
-    "queens": false,
     "at": []
    },
    {
@@ -2146,17 +2119,6 @@
     ]
    },
    {
-    "line": "best",
-    "type": "trades",
-    "piece": null,
-    "ply": 5,
-    "n": 2,
-    "lead": -1,
-    "cp": 230,
-    "queens": false,
-    "at": []
-   },
-   {
     "line": "played",
     "type": "enter",
     "piece": "g5",
@@ -2349,10 +2311,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "B",
+     "n"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": -3,
-    "queens": false,
     "at": []
    },
    {
@@ -2455,10 +2419,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "B",
+     "b"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 21,
-    "queens": false,
     "at": []
    }
   ]
@@ -2625,10 +2591,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "Q",
+     "q"
+    ],
+    "other_gone": [],
     "lead": -1,
-    "cp": -84,
-    "queens": true,
     "at": []
    },
    {
@@ -2824,10 +2792,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "N",
+     "n"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 295,
-    "queens": false,
     "at": []
    }
   ]
@@ -2909,10 +2879,12 @@
     "type": "trades",
     "piece": null,
     "ply": 4,
-    "n": 2,
+    "gone": [
+     "N",
+     "b"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 47,
-    "queens": false,
     "at": []
    }
   ]
@@ -3173,17 +3145,6 @@
     "at": [
      "h1"
     ]
-   },
-   {
-    "line": "played",
-    "type": "trades",
-    "piece": null,
-    "ply": 4,
-    "n": 2,
-    "lead": 3,
-    "cp": 486,
-    "queens": false,
-    "at": []
    }
   ]
  },
@@ -4717,10 +4678,12 @@
     "type": "trades",
     "piece": null,
     "ply": 5,
-    "n": 2,
+    "gone": [
+     "N",
+     "n"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 37,
-    "queens": false,
     "at": []
    }
   ]
@@ -5002,16 +4965,6 @@
      "e5",
      "d8"
     ]
-   },
-   {
-    "line": "played",
-    "type": "king_exposed",
-    "piece": "e8",
-    "ply": 1,
-    "fewer": 2.0,
-    "at": [
-     "e8"
-    ]
    }
   ]
  },
@@ -5090,17 +5043,6 @@
     "at": [
      "b2"
     ]
-   },
-   {
-    "line": "played",
-    "type": "trades",
-    "piece": null,
-    "ply": 4,
-    "n": 2,
-    "lead": -1,
-    "cp": -239,
-    "queens": false,
-    "at": []
    }
   ]
  },
@@ -6018,16 +5960,6 @@
     "at": [
      "h8"
     ]
-   },
-   {
-    "line": "best",
-    "type": "king_exposed",
-    "piece": "d7",
-    "ply": 1,
-    "fewer": 2.2,
-    "at": [
-     "d7"
-    ]
    }
   ]
  },
@@ -6106,17 +6038,6 @@
     "at": [
      "g6"
     ]
-   },
-   {
-    "line": "played",
-    "type": "trades",
-    "piece": null,
-    "ply": 4,
-    "n": 3,
-    "lead": -4,
-    "cp": -335,
-    "queens": true,
-    "at": []
    }
   ]
  },
@@ -6222,27 +6143,6 @@
      "g7",
      "f8"
     ]
-   },
-   {
-    "line": "played",
-    "type": "king_exposed",
-    "piece": "g7",
-    "ply": 1,
-    "fewer": 2.0,
-    "at": [
-     "g7"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "trades",
-    "piece": null,
-    "ply": 5,
-    "n": 3,
-    "lead": 0,
-    "cp": 83,
-    "queens": true,
-    "at": []
    }
   ]
  },
@@ -7177,17 +7077,6 @@
     "at": [
      "e7"
     ]
-   },
-   {
-    "line": "best",
-    "type": "trades",
-    "piece": null,
-    "ply": 4,
-    "n": 2,
-    "lead": 1,
-    "cp": 808,
-    "queens": true,
-    "at": []
    }
   ]
  },
@@ -7370,10 +7259,12 @@
     "type": "trades",
     "piece": null,
     "ply": 6,
-    "n": 2,
+    "gone": [
+     "N",
+     "b"
+    ],
+    "other_gone": [],
     "lead": 0,
-    "cp": 60,
-    "queens": false,
     "at": []
    },
    {

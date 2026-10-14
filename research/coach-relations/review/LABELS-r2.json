@@ -1,8 +1,8 @@
 {
  "schema": "reason-review/1",
- "set_sha256": "1cc357be522e9cc2e28ce34795873817eb694de791b6d56e6f756271b5393e27",
+ "set_sha256": "1a9d76d2fe24015bfe5b06e7cdaadda65c288b1f820500bbd66dd819ae07f7ea",
  "completed": 84,
- "updated_at": "2026-10-14T06:29:05.980Z",
+ "updated_at": "2026-10-14T08:58:13.803Z",
  "reviews": [
   {
    "pos_id": "rr-037",
@@ -31,7 +31,7 @@
     "0": "irrelevant",
     "1": "irrelevant"
    },
-   "updated_at": "2026-10-13T18:59:34.394Z"
+   "updated_at": "2026-10-14T08:54:43.129Z"
   },
   {
    "pos_id": "rr-039",
@@ -117,9 +117,7 @@
    "ratings": {
     "0": "key",
     "1": "key",
-    "2": "minor",
-    "3": "irrelevant",
-    "4": "irrelevant"
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-13T23:41:11.946Z"
   },
@@ -153,7 +151,7 @@
     "0": "key",
     "1": "irrelevant"
    },
-   "updated_at": "2026-10-13T23:41:35.890Z"
+   "updated_at": "2026-10-14T08:54:54.345Z"
   },
   {
    "pos_id": "rr-047",
@@ -242,8 +240,7 @@
    "submitted_at": "2026-10-13T20:12:16.411Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "minor"
+    "1": "minor"
    },
    "updated_at": "2026-10-13T22:38:14.599Z"
   },
@@ -276,10 +273,9 @@
     "2": "key",
     "3": "key",
     "4": "irrelevant",
-    "5": "irrelevant",
-    "6": "irrelevant"
+    "5": "irrelevant"
    },
-   "updated_at": "2026-10-13T23:42:41.744Z"
+   "updated_at": "2026-10-14T08:55:53.076Z"
   },
   {
    "pos_id": "rr-055",
@@ -359,8 +355,7 @@
    "ratings": {
     "0": "key",
     "1": "key",
-    "2": "key",
-    "3": "irrelevant"
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-14T01:54:14.608Z"
   },
@@ -395,7 +390,7 @@
     "1": "minor",
     "2": "key"
    },
-   "updated_at": "2026-10-14T01:54:26.417Z"
+   "updated_at": "2026-10-14T08:56:07.988Z"
   },
   {
    "pos_id": "rr-063",
@@ -409,7 +404,7 @@
     "0": "key",
     "1": "irrelevant"
    },
-   "updated_at": "2026-10-13T21:40:30.800Z"
+   "updated_at": "2026-10-14T08:56:42.353Z"
   },
   {
    "pos_id": "rr-064",
@@ -443,7 +438,7 @@
     "2": "minor",
     "3": "key"
    },
-   "updated_at": "2026-10-13T23:45:07.254Z"
+   "updated_at": "2026-10-14T08:56:56.955Z"
   },
   {
    "pos_id": "rr-066",
@@ -473,9 +468,9 @@
    "note": "最佳走法壓制了對手的子力發展 在自己有空間優勢的時候像是實戰這樣交換子力是不好的 應該維持壓力",
    "submitted_at": "2026-10-13T21:47:43.262Z",
    "ratings": {
-    "0": "minor"
+    "0": "key"
    },
-   "updated_at": "2026-10-14T01:54:33.197Z"
+   "updated_at": "2026-10-14T08:57:26.793Z"
   },
   {
    "pos_id": "rr-068",
@@ -489,9 +484,9 @@
    "submitted_at": "2026-10-13T23:50:22.513Z",
    "ratings": {
     "0": "key",
-    "1": "wrong"
+    "1": "irrelevant"
    },
-   "updated_at": "2026-10-13T23:52:10.080Z"
+   "updated_at": "2026-10-14T08:57:40.454Z"
   },
   {
    "pos_id": "rr-069",
@@ -531,8 +526,7 @@
     "0": "key",
     "1": "key",
     "2": "key",
-    "3": "minor",
-    "4": "irrelevant"
+    "3": "minor"
    },
    "updated_at": "2026-10-13T23:57:50.081Z"
   },
@@ -802,7 +796,7 @@
     "1": "irrelevant",
     "2": "irrelevant"
    },
-   "updated_at": "2026-10-14T02:55:00.870Z"
+   "updated_at": "2026-10-14T08:57:49.657Z"
   },
   {
    "pos_id": "rr-090",
@@ -842,8 +836,7 @@
    "submitted_at": "2026-10-14T03:28:37.175Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-14T06:28:44.395Z"
   },
@@ -855,11 +848,10 @@
    ],
    "where": "played",
    "marks": {},
-   "note": "實戰貪吃了一隻主教 沒意識到國王太危險所以城堡跑不掉了",
+   "note": "實戰貪吃了一隻��教 沒意識到國王太危險所以城堡跑不掉了",
    "submitted_at": "2026-10-14T03:33:13.730Z",
    "ratings": {
-    "0": "key",
-    "1": "key"
+    "0": "key"
    },
    "updated_at": "2026-10-14T03:33:23.861Z"
   },
@@ -1002,8 +994,7 @@
    "note": "實戰掉整隻城堡 但是最佳只掉一個交換",
    "submitted_at": "2026-10-14T04:47:44.994Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-14T04:47:56.352Z"
   },
@@ -1018,8 +1009,7 @@
    "note": "實戰這個走法是多子 可是a兵擋不住了",
    "submitted_at": "2026-10-14T05:30:26.842Z",
    "ratings": {
-    "0": "irrelevant",
-    "1": "minor"
+    "0": "irrelevant"
    },
    "updated_at": "2026-10-14T05:30:35.624Z"
   },
@@ -1033,9 +1023,7 @@
    "submitted_at": "2026-10-14T05:33:51.468Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant",
-    "3": "key"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-14T05:41:14.611Z"
   },
@@ -1200,8 +1188,7 @@
    "note": "皇后被抓死了 實戰沒有注意到 沒有得子",
    "submitted_at": "2026-10-14T05:58:40.463Z",
    "ratings": {
-    "0": "key",
-    "1": "key"
+    "0": "key"
    },
    "updated_at": "2026-10-14T05:58:48.024Z"
   },
@@ -1235,10 +1222,10 @@
    "note": "最佳中不去逼這隻主教 正常發展 但是實戰去逼了一下 損失一個節奏 然後還變成疊兵 然後對手還可以優先走出Nd4這種強格子放騎士的走法 虧爛",
    "submitted_at": "2026-10-14T06:01:14.137Z",
    "ratings": {
-    "0": "irrelevant",
+    "0": "minor",
     "1": "key"
    },
-   "updated_at": "2026-10-14T06:29:05.680Z"
+   "updated_at": "2026-10-14T08:58:13.502Z"
   },
   {
    "pos_id": "rr-119",

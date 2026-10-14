@@ -183,7 +183,10 @@ def king_zone(b):
     return out
 
 
-def pieces_off(nodes):
-    first, last = nodes[0][0], nodes[-1][0]
-    count = lambda b: sum(1 for p in b.piece_map().values() if p.piece_type not in (chess.PAWN, chess.KING))
-    return count(first) - count(last)
+def pieces_gone(first, last):
+    """Symbols of the pieces (not pawns or kings) on `first` that are no longer on `last`."""
+    out = []
+    for c in chess.COLORS:
+        for t in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT):
+            out += [chess.Piece(t, c).symbol()] * max(0, len(first.pieces(t, c)) - len(last.pieces(t, c)))
+    return out

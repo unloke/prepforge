@@ -16,7 +16,9 @@ For each card in positions.jsonl, walks the played and best engine lines and rec
 - outpost, piece_harassed, pawn_weakness, draw_risk from positional.py;
 - tactical and material relations from tactics.py: fork, mate_threat, mate,
   material (an exchange one side wins), and between lines forced_mate, king_exposed and trades
-  (more pieces off over the plies both lines reach, with the material lead and the eval).
+  (two or more pieces more off over the plies both lines reach, of about equal worth for both
+  sides, listed for both lines, with the material lead). A mate threat is dropped when the reply takes the threatening piece, and king_exposed
+  from a card with material but no mate.
 Pieces are named by their square in the root position. A candidate is an event (type, piece)
 found in one line and not the other. enter, fork and mate_threat are kept only for the side the
 line favours (the opponent in the played line, the mover in the best line), and an entry that
@@ -136,6 +138,9 @@ def events(fen, pv):
         if p.piece_type in VALUE and rel >= 5 and not any(
                 b.piece_at(s) == chess.Piece(chess.PAWN, not p.color) for s in b.attackers(not p.color, m.to_square)):
             add("enter", moved, i, square=chess.square_name(m.to_square), capture=pb.is_capture(m), check=b.is_check())
+    # a mate threat answered by taking the threatening piece was never a threat
+    out = [e for e in out if not (e["type"] == "mate_threat" and e["ply"] + 1 < len(nodes)
+                                  and nodes[e["ply"] + 1][2].to_square == nodes[e["ply"]][2].to_square)]
     b, ids, m = nodes[-1]
     if b.is_checkmate():
         add("mate", ids[m.to_square], len(nodes) - 1, at=[chess.square_name(m.to_square)])
@@ -143,13 +148,12 @@ def events(fen, pv):
     more, mate = ([], None) if b.is_game_over() else tactics.tail(b, root)
     tactics.exchanges(walk(fen, pv[:len(nodes) - 1] + more), len(nodes) - 1, add)
     line = {"kz": [{ids[k]: n for k, n in tactics.king_zone(nb).items()} for nb, ids, _ in nodes], "mate": mate,
-            "off": [tactics.pieces_off(nodes[:i + 1]) for i in range(len(nodes))],
+            "gone": [tactics.pieces_gone(nodes[0][0], nb) for nb, _, _ in nodes],
             "files": [{"abcdefgh"[f]: ("white" if own[0] else "black", nids[own[1]], chess.square_name(own[1]))
                        for f in range(8) for own in [file_owner(nb, f)] if own} for nb, nids, _ in nodes],
             "touched": [set().union(*[touched(nodes[j - 1][0], nodes[j][2]) for j in range(1, i + 1)])
                         for i in range(len(nodes))],
-            "queens": [len(nb.pieces(chess.QUEEN, chess.WHITE) | nb.pieces(chess.QUEEN, chess.BLACK)) for nb, _, _ in nodes],
-            "cp": None if b.is_game_over() or tactics.analyse(b)["cp"] is None else tactics.analyse(b)["cp"] * (1 if b.turn else -1), "last": len(nodes) - 1}
+            "last": len(nodes) - 1}
     return out, at, line
 
 
@@ -184,14 +188,19 @@ def candidates(r):
         if mate is not None and (omate is None or (omate > 0) != (mate > 0)):
             ev[line].append({"type": "forced_mate", "piece": None, "ply": ln[line]["last"], "n": mate, "at": []})
         k = min(ln[line]["last"], ln[o]["last"])
-        n = ln[line]["off"][k] - ln[o]["off"][k]
         for f, (side, pid, sq) in ln[line]["files"][k].items():
             live = "abcdefgh".index(f) in ln[line]["touched"][k] | ln[o]["touched"][k]
             if live and ln[o]["files"][k].get(f, (None,))[0] != side:
                 ev[line].append({"type": "open_file", "piece": pid, "ply": k, "side": side, "file": f, "at": [sq]})
-        if n >= 2:
-            ev[line].append({"type": "trades", "piece": None, "ply": k, "n": n, "lead": lead, "cp": ln["best"]["cp"],
-                             "queens": ln[line]["queens"][k] < ln[o]["queens"][k], "at": []})
+        extra = list(ln[line]["gone"][k])
+        for p in ln[o]["gone"][k]:
+            if p in extra:
+                extra.remove(p)
+        worth = lambda white: sum(VALUE[chess.Piece.from_symbol(p).piece_type] for p in extra if p.isupper() == white)
+        # an uneven trade is won or lost material, which material reports
+        if len(ln[line]["gone"][k]) - len(ln[o]["gone"][k]) >= 2 and abs(worth(True) - worth(False)) < 2:
+            ev[line].append({"type": "trades", "piece": None, "ply": k, "gone": ln[line]["gone"][k],
+                             "other_gone": ln[o]["gone"][k], "lead": lead, "at": []})
     # an exchange is the same when the same side wins the same pieces for the same price
     def key(e):
         if e["type"] == "material":
@@ -221,6 +230,9 @@ def candidates(r):
         out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "pawn_weakness")]
     if any(c["type"] in ("mate", "forced_mate") for c in out):
         out = [c for c in out if c["type"] != "draw_risk"]
+    # next to won or lost material, king exposure is only the material changing hands
+    elif any(c["type"] == "material" for c in out):
+        out = [c for c in out if c["type"] != "king_exposed"]
     return sorted(out, key=lambda c: (ORDER.index(c["type"]), c["line"] != "played", c["ply"]))
 
 
