@@ -746,3 +746,27 @@ p . . p . q . .
 . . . Q P P B P
 . R . . . R K .
 
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import json
+from pathlib import Path
+p=Path('out/batch1.jsonl');rows=[json.loads(s) for s in p.read_text(encoding='utf-8').splitlines()]
+for r in rows:
+ if r['pair_id']=='pair-019':
+  r['main_reason']='Bc5 lets White exchange on f6 and play d4 with tempo against the c5 bishop; the supplied gxf6 recapture also damages Black\\'s king cover.'
+  r['why']='A names Bxf6, but that capture also occurs in the best line. Neither explains the tempo gained by d4 against the c5 bishop or the damaged pawn structure in the played continuation.'
+ if r['pair_id']=='pair-009':
+  r['main_reason']='Nc6 spends a tempo moving the active knight and permits Rac8 against the c7 rook; g3 instead creates a king escape square.'
+with p.open('w',encoding='utf-8',newline='\\n') as f:
+ for r in rows:f.write(json.dumps(r,ensure_ascii=False)+'\\n')
+assert len(rows)==30 and len({r['pair_id'] for r in rows})==30
+print('Final output validated: 30 judgments.')
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 1082ms:
+Final output validated: 30 judgments.
+
+codex
+Wrote all 30 judgments to [out/batch1.jsonl](out/batch1.jsonl) and validated the JSON format and pair IDs.
+tokens used
+54,670
+Wrote all 30 judgments to [out/batch1.jsonl](out/batch1.jsonl) and validated the JSON format and pair IDs.

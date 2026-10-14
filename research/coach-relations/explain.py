@@ -7,8 +7,8 @@ them). Material is recounted from the root to the line's last capture, Stockfish
 the line included, so a rook traded for a rook in two runs is no rook won; a recount that comes
 out even, or with the wrong side ahead (the mover in the played line: the line stopped too early;
 the opponent in the best line), is dropped. Lost castling speaks only when the king move answers a
-check no other move meets. The first fact from pick.rank speaks; with none, the played line's
-reply is named when it captures or checks. The second joins it unless the first is a mate, the
+check no other move meets. The first fact from pick.rank speaks; with none, quiet() names what
+the reply does and what the best move does, from the board alone. The second joins it unless the first is a mate, the
 second is a vaguer fact (trades, draw), both are the same kind in the same line, or it is a fork
 that is not how the first fact's material is won. Sentences follow the production Coach's voice
 ("Blunder. Nfe5 loses a bishop after ... d4 was the move."). Marks: the move behind each fact as
@@ -183,8 +183,7 @@ def phrase(f, ln, ext, a, root, row):
 def recount(f, ext):
     """The material fact counted from the root to the line's last capture, or None when it comes out
     even or for the wrong side (the opponent ahead in the best line, the mover in the played line)."""
-    end = max(i for i in range(len(ext.moves) + 1) if i == 0 or ext.boards[i - 1].is_capture(ext.moves[i - 1])
-              or ext.moves[i - 1].promotion)
+    end = last_capture(ext)
     gone = {}
     for c in chess.COLORS:
         for t in VAL:
@@ -231,6 +230,57 @@ def second(a, b):
     return True
 
 
+def last_capture(ln):
+    return max(i for i in range(len(ln.moves) + 1) if i == 0 or ln.boards[i - 1].is_capture(ln.moves[i - 1])
+               or ln.moves[i - 1].promotion)
+
+
+def balance(b, c):
+    return sum(VAL[p.symbol().lower()] * (1 if p.color == c else -1) for p in b.piece_map().values() if p.piece_type != chess.KING)
+
+
+def hits(b, sq, c):
+    """Squares of c's pieces worth a minor piece or more that the piece on sq attacks and wins:
+    worth more than it, or undefended."""
+    v = tactics.VAL[b.piece_type_at(sq)]
+    return [t for t in b.attacks(sq) & b.occupied_co[c] & ~b.pawns & ~b.kings
+            if tactics.VAL[b.piece_type_at(t)] > v or not b.attackers(c, t)]
+
+
+def quiet(lines, ext, root):
+    """With no fact: (what the played move allows, what the best move does), each "" when
+    nothing concrete holds. Allows: the reply when it captures or checks, or when it newly
+    attacks a piece that then has to move. Best: comes out ahead in material over the other
+    line, stops the played line's quiet reply, or newly attacks a piece that then has to move."""
+    pl, bl, me = lines["played"], lines["best"], root.turn
+    allows = ""
+    if len(pl.moves) > 1:
+        r, b1, b2 = pl.moves[1], pl.boards[1], pl.boards[2]
+        if b1.is_capture(r) or b2.is_check():
+            allows = f"allows {pl.seq(2, 2)}"
+        elif len(pl.moves) > 2:
+            new = [t for t in hits(b2, r.to_square, me) if t not in b1.attacks(r.from_square)]
+            if pl.moves[2].from_square in new:
+                allows = f"allows {pl.seq(2, 2)}, which attacks {pl.name(2, chess.square_name(pl.moves[2].from_square))}"
+    ep, eb = ext["played"], ext["best"]
+    d = balance(eb.boards[last_capture(eb)], me) - balance(ep.boards[last_capture(ep)], me)
+    if d >= 1:
+        words = {1: "a pawn", 2: "two pawns", 3: "a piece", 5: "a rook", 9: "a queen"}.get(d, f"{d} pawns' worth")
+        return allows, f"it comes out {words} better{eb.paren(1, last_capture(eb))}"
+    b1 = bl.boards[1]
+    if len(pl.moves) > 1 and not b1.is_check():
+        r = pl.moves[1]
+        q = b1.piece_at(r.from_square)
+        if (not pl.boards[1].is_capture(r) and not root.piece_at(r.to_square) and q and q == pl.boards[1].piece_at(r.from_square)
+                and r not in b1.legal_moves):
+            return allows, f"it stops {pl.seq(2, 2)}"
+    m = bl.moves[0]
+    new = [t for t in hits(b1, m.to_square, not me) if t not in root.attacks(m.from_square)]
+    if len(bl.moves) > 1 and not b1.is_check() and bl.moves[1].from_square in new:
+        return allows, f"it attacks {bl.name(1, chess.square_name(bl.moves[1].from_square))}"
+    return allows, ""
+
+
 def explain(row, cands=None):
     root = chess.Board(row["fen"])
     mover = "white" if root.turn else "black"
@@ -266,13 +316,13 @@ def explain(row, cands=None):
         if arrow:
             arrows.append(arrow)
         squares += [s for s in sq if s not in squares]
-    if not facts:  # with no fact, a forcing reply is still worth naming
-        ln = lines["played"]
-        forcing = len(ln.moves) > 1 and (ln.boards[1].is_capture(ln.moves[1]) or ln.boards[2].is_check())
-        body = f"allows {ln.seq(2, 2)}" if forcing else "is not the best move"
-        out.append(f"{grade} {P} {body}." if grade else f"{P} is slightly inaccurate{': it ' + body if forcing else ''}.")
+    better = ""
+    if not facts:
+        allows, better = quiet(lines, ext, root)
+        out.append(f"{grade} {P} {allows or 'is not the best move'}." if grade else
+                   f"{P} is slightly inaccurate{': it ' + allows if allows else ''}.")
     if "best" not in shown:
-        out.append(f"{B} was the move.")
+        out.append(f"{B} was the move{': ' + better if better else ''}.")
     arrows = arrows[:3]
     return {"text": " ".join(out), "arrows": arrows, "squares": squares[:3 - len(arrows)], "facts": [f["type"] for f in facts]}
 

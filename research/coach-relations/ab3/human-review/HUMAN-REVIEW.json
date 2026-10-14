@@ -1,0 +1,175 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab3",
+  "blind_data_sha256": "b90e576e7623390ea2a6451fffacf323352f5f42e6c597d2d0ff10c8ba541f8b",
+  "pairs_total": 60,
+  "completed": 10,
+  "updated_at": "2026-10-14T20:33:48.089Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "c93e4dd523549fa5e1d8c2ba8917b602debfd12fd6d3c4134acdd019ad70cf85",
+        "B": "9b428aedd3cfc8a2e0c1c1abe2652c55134b1ebade98b4f416ccff8521e47ba7"
+      },
+      "updated_at": "2026-10-14T20:27:14.612Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "5628eb31048778998d261797544a6c8cb5fdc4bc8f4021824bf5225ff6c93360",
+        "B": "bb213a799c3c3c5e7abdde6356776f2ceda1ad9ef0f57da7176df0b4cec0bcd8"
+      },
+      "updated_at": "2026-10-14T20:29:19.920Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "08e91983e5a004131d183afe17f855e2cfe54efacd926578c2cc61add1b2adad",
+        "B": "14b337644ebd03accf09da14eb78e8183a42c02360b0c477d5d1653ede704e36"
+      },
+      "updated_at": "2026-10-14T20:29:36.359Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "A",
+      "issues": {
+        "A": [
+          "missed_key_point",
+          "unnatural"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "8e87dbc9d4b7aaba6238087b37dba11cd2b0b870e52847c454b9b7c54c3c536a",
+        "B": "c9c5c1bba7a085a93613ee8a4e1d8a0d1c9af06de7c937e6067ac85464a4ea76"
+      },
+      "updated_at": "2026-10-14T20:30:05.063Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "a0686128373d15e43a50c7f48936f65aec7a6e0326e28fc3e2d2fd5ef595d132",
+        "B": "1c60a91c757504202942a6b9f94d8f17bc788bef662f98df6a7e8b49266c5743"
+      },
+      "updated_at": "2026-10-14T20:30:32.437Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "e8204e863c2728b03909da78fb0d7d1cb89562192d1abc97935def27df7f154b",
+        "B": "d4e935a862e3089ad16a525933f55120cc701baf924cc3f1e1e92edc2707582e"
+      },
+      "updated_at": "2026-10-14T20:30:59.445Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "d8bf49b9b3e11afa1b1185c40b9462463cd86ffb5cabf44e082a1f37fcbe17d8",
+        "B": "61ae8ba6d7d6c5b991826cb4d58797a759a364d82d1655b5f053111aa149130f"
+      },
+      "updated_at": "2026-10-14T20:31:22.940Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "18ab4ff92d47b9e5562ab6e98a98f72c1c12aa8e012772ab102b384bf5525d91",
+        "B": "a72f5a32c02b7546fcb726a2e128bba224677b81038f684950a42a55e91d6605"
+      },
+      "updated_at": "2026-10-14T20:32:38.141Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "tie",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": [
+          "factual_error"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "0c411f449e54cf23bea03bcfc38a3e02416b02a0f19bcfe7dc8d495826f05dcc",
+        "B": "a712b707903cd0c4b0c9888ff26e4cb1cd9ca6b4404c41c73e5a651b299acbb5"
+      },
+      "updated_at": "2026-10-14T20:33:33.811Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "106dd2c16585e3b68a59898973910eadcf4a9f1a39d236c7a2e785db0928080e",
+        "B": "d424093d2f297be75fa298fdcecda97750ee4f56ae2c0041497693ea94e0ae69"
+      },
+      "updated_at": "2026-10-14T20:33:47.775Z"
+    }
+  ]
+}
