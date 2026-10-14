@@ -52,7 +52,7 @@ import { createBoardController } from "./board/board-controller.js";
 import { isReviewedMove, pgnPlayers, selfSide } from "./analyze-orient.js";
 import { classifySyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
-import { withRequestDeadline } from "./sync-queue.js";
+import { buildAddId, buildDeleteId, withRequestDeadline } from "./sync-queue.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
 import { trainStartDisabled } from "./train-start.js";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
@@ -1151,7 +1151,7 @@ const selectBuildNode = viaBuildSession("selectBuildNode");
 const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
 const syncController = createSyncController({
-  appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision,
+  api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision,
   rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes,
   reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie,
   CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID,
@@ -3874,17 +3874,17 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       const meta = await fetchRepertoireMeta(repertoireId).catch(() => null);
       appState.pendingRepDeletes.add(repKey);
       invalidateBook();
+      // Its queued edits go too, tombstoned so the durable outbox can't bring
+      // them back. This happens at delete time (not commit time) so the doomed
+      // tree can't keep taking edits.
+      const doomedAdds = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repKey));
+      const doomedDeletes = appState.buildPendingDeletes.filter((entry) => buildOpMatchesRepertoire(entry, repKey));
+      appState.buildPending = appState.buildPending.filter((m) => !doomedAdds.includes(m));
+      appState.buildPendingDeletes = appState.buildPendingDeletes.filter((entry) => !doomedDeletes.includes(entry));
+      void persistOutbox({ build: doomedAdds.map(buildAddId), deletes: doomedDeletes.map(buildDeleteId) });
       if (appState.build && String(appState.build.repertoire_id) === repKey) {
-        // Drop any local-first sync state — flushing into a deleted rep is pointless
-        // and a pending timer would fire against a now-null tree. This happens at
-        // delete time (not commit time) so the doomed tree can't keep taking edits.
-        clearTimeout(appState.buildFlushTimer);
-        appState.buildFlushTimer = null;
-        appState.buildPending = [];
-        appState.buildPendingDeletes = [];
         appState.buildUndoDeletes = new Set();
         appState.buildUndoCommitByMove = new Map();
-        appState.buildIdMap = {};
         appState.buildSyncState = "saved";
         appState.build = null;
         appState.buildNodeById = new Map();

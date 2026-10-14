@@ -5,6 +5,7 @@ import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
 import { createSettingsActions } from "./settings-actions.js";
 import { classifySyncError } from "./sync-errors.js";
+import { rebaseBuildOps } from "./build-revision.js";
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 const source = appSource();
@@ -25,7 +26,7 @@ function queueFlush(marker, deps) {
     state: () => train ? app.trainSync : buildState, owner: deps.currentOwnerId,
     generation: () => app.ownerGeneration, idleMs: train ? 4000 : 2000,
     hasWork: () => train ? app.trainSync.pending.length || app.trainSync.dirty
-      : app.build && (app.buildPending.length || app.buildPendingDeletes.length),
+      : app.buildPending.length || app.buildPendingDeletes.length,
     persist: () => deps.persistOutbox(), flush: (checkpoint, isCurrent) => compile(marker, deps)(checkpoint, isCurrent),
   });
   deps[train ? "trainQueue" : "buildQueue"] = queue;
@@ -39,7 +40,7 @@ function deferred() {
 }
 
 it("opening a repertoire retains and reapplies its durable pending deletes", async () => {
-  const deletion = { id: "B-node", repertoire_id: "B" };
+  const deletion = { id: "B-node", repertoire_id: "B", base_revision: 2 };
   const appState = { build: { repertoire_id: "A" }, buildPendingDeletes: [deletion], buildPending: [], buildIdMap: {} };
   const reapplyPendingBuildDeletes = vi.fn(() => {
     expect(appState.buildPendingDeletes).toEqual([deletion]);
@@ -49,9 +50,11 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(), hasPendingBuildOpsFor: () => true, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
+    rebaseBuildOps,
   });
-  await run({ repertoire_id: "B", nodes: [{ id: "B-root" }] });
+  await run({ repertoire_id: "B", revision: 5, nodes: [{ id: "B-root" }] });
   expect(appState.buildPendingDeletes).toEqual([deletion]);
+  expect(deletion.base_revision).toBe(5); // replays on the tree just loaded
   expect(reapplyPendingBuildDeletes).toHaveBeenCalled();
 });
 
@@ -180,9 +183,47 @@ function buildFlushHarness() {
     releaseFlushLock: vi.fn(), classifySyncError: () => ({ kind: "network" }), describeSyncError: () => "error",
     setTimeout: vi.fn(), BUILD_FLUSH_MAX_BACKOFF_MS: 30000, scheduleBuildFlush: vi.fn(),
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
+    rebaseBuildOps, api: vi.fn(), selectBuildNode: vi.fn(),
   };
   return { op, appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
+
+// Production 2026-10-14: one edit made elsewhere moved the server revision, and
+// every queued edit kept its stale base, so each flush (and each reload) hit
+// 409 again while new edits piled onto the queue. A conflict now loads the
+// current tree, rebases the queue onto it and replays.
+it("a Build revision conflict replays the queue on the current tree", async () => {
+  const h = buildFlushHarness();
+  h.op.base_revision = 2;
+  const conflict = Object.assign(new Error("changed elsewhere"), { status: 409 });
+  h.deps.classifySyncError = classifySyncError;
+  h.deps.postJson.mockRejectedValueOnce(conflict);
+  h.deps.queuedBuildRevision = (ops) => Math.min(...ops.map((op) => op.base_revision));
+  h.deps.api.mockResolvedValue({ repertoire_id: "r", revision: 3, nodes: [{ id: "root" }] });
+  h.deps.hydrateBuild = vi.fn(async (payload) => {
+    h.appState.build = payload;
+    rebaseBuildOps(h.appState.buildPending, payload.repertoire_id, payload.revision);
+  });
+  expect(await h.run()).toBe(false);
+  expect(h.deps.api).toHaveBeenCalledWith("/api/build/load?repertoire_id=r");
+  expect(h.appState.buildPending).toEqual([h.op]);
+  expect(h.op.base_revision).toBe(3);
+  h.deps.hydrateBuild.mockResolvedValue(undefined);
+  expect(await queueFlush("function flushBuildMoves(", h.deps)()).toBe(true);
+  expect(h.deps.postJson.mock.calls[1][1].base_revision).toBe(3);
+  expect(h.appState.buildPending).toEqual([]);
+});
+
+it("queued edits for a repertoire that is not open still save", async () => {
+  const h = buildFlushHarness();
+  h.appState.build = null;
+  h.deps.captureBuildContext = () => () => false;
+  expect(await h.run()).toBe(true);
+  expect(h.deps.postJson.mock.calls[0][1].repertoire_id).toBe("r");
+  expect(h.deps.hydrateBuild).not.toHaveBeenCalled();
+  expect(h.appState.buildPending).toEqual([]);
+  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
+});
 
 it("Build render failure after commit does not requeue confirmed adds", async () => {
   const { run, appState, deps } = buildFlushHarness();

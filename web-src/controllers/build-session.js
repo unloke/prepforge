@@ -10,6 +10,7 @@ import {
   _buildGenReady, buildDockTab, buildView, coverageView, explorerClient, explorerDb,
   explorerModule,
 } from "../app.js";
+import { rebaseBuildOps } from "../build-revision.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
@@ -89,6 +90,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
+  rebaseBuildOps([...appState.buildPending, ...appState.buildPendingDeletes], payload.repertoire_id, payload.revision);
   // Derived analysis must match this exact local tree, including optimistic edits.
   coverageView?.sync();
   invalidateBook();

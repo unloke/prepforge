@@ -102,12 +102,6 @@ describe("describeSyncError", () => {
     expect(none).toContain("kept for review");
   });
 
-  it("explains conflicts as reconciliation, not data loss", () => {
-    const msg = describeSyncError(classifySyncError({ status: 409 }), { count: 1 });
-    expect(msg).toContain("changed elsewhere");
-    expect(msg).toContain("kept");
-  });
-
   it("carries the rate-limit wait into the message", () => {
     const withHint = describeSyncError(
       { kind: "rate-limit", retryAfterMs: 5000 },

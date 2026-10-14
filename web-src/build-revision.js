@@ -28,3 +28,11 @@ export function rebaseQueuedBuildRevision(entries, repertoireId, before, after) 
     }
   }
 }
+
+// Queued edits are move intents the server re-validates: once a fresh tree is
+// loaded, they replay on top of its revision.
+export function rebaseBuildOps(entries, repertoireId, revision) {
+  for (const op of entries) {
+    if (String(op.repertoire_id) === String(repertoireId)) op.base_revision = revision;
+  }
+}

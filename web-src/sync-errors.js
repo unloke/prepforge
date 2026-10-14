@@ -9,7 +9,7 @@
 // - network / 5xx / 408 / 425  → retry later, keep the draft (nothing lost)
 // - 401 auth                   → retry later; PAUSE and ask for sign-in
 // - 403 csrf/forbidden         → retry later after a CSRF refresh
-// - 409 conflict               → keep the draft, surface the conflict flow
+// - 409 conflict               → keep the draft; Build replays it on the fresh tree
 // - 429 rate limit             → retry after the server's hint
 // - 400 / 422 / 404 / 410 …    → permanent for THIS payload: isolate it as
 //                                rejected (kept for inspection), never drop
@@ -52,8 +52,8 @@ export function classifySyncError(error) {
     return { ...base, kind: "csrf" };
   }
   if (status === 409) {
-    // Optimistic-concurrency conflict (D-02): the draft must survive so the
-    // user can reconcile; it is retriable only after that reconciliation.
+    // Optimistic-concurrency conflict (D-02): the draft must survive; it is
+    // retriable only after rebasing onto the current revision.
     return { ...base, kind: "conflict", retriable: false };
   }
   if (status === 429) {
@@ -102,8 +102,6 @@ export function describeSyncError(info, ctx = {}) {
       return `Waiting for sign-in — ${noun} kept on this device and saved after you sign in.`;
     case "csrf":
       return `Save blocked by a stale security token — ${noun} kept and retried automatically.`;
-    case "conflict":
-      return `This repertoire changed elsewhere — ${noun} kept. Reload it and re-apply, or keep your draft.`;
     case "rate-limit": {
       const ms = info.retryAfterMs != null ? info.retryAfterMs : ctx.retryAfterMs;
       const secs = ms ? Math.max(1, Math.ceil(ms / 1000)) : null;
