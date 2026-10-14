@@ -1,0 +1,554 @@
+{
+ "source": "codex exec, RUBRIC.md in codex-annot-r4",
+ "reviews": [
+  {
+   "pos_id": "r4-001",
+   "kind": "material",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "played",
+   "note": "Nd7 讓黑后以 Qc6 威脅 Qxg2#，白方用 Qf3 擋住後遭 Qxf3、gxf3、Nxh3+，失去 h3 兵與多兵優勢。",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-002",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "Rd8 讓白馬 Nh6+ 將軍捉后，Nxf7 Kxf7 Nxg5+ 後白方以一馬換得后與兵，淨賺七分；Bxg4 可先消除這匹馬。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-003",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "Ra5 放任白車 Rd8#；Nd6 則在 d6 阻住白車的 d 線，避免這個將殺。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-004",
+   "kind": "material",
+   "secondary": [
+    "endgame"
+   ],
+   "where": "played",
+   "note": "Kg4 讓黑車以 Rd2 侵入第二橫線，再用 Rxa2 白吃 a2 兵；Kf3 的變化則以 Re4 維持車的活動。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-005",
+   "kind": "material",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "best",
+   "note": "b5 錯過 Qa4+ 迫使 Kf8、剝奪黑王易位權的機會；接著 Qc6、Qc7 可侵入並以 Qxa7、Qxb6 連吃兩兵。",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-006",
+   "kind": "material",
+   "secondary": [],
+   "where": "best",
+   "note": "Bxd5 Bxd5 只是等值交換，錯過 Bxg3 的得兵機會；最佳線 Nb4 Nxb4 hxg3 後，黑方得到馬與兵、失去象，淨賺一分。",
+   "ratings": {
+    "0": "wrong"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-007",
+   "kind": "activity",
+   "secondary": [
+    "material"
+   ],
+   "where": "played",
+   "note": "Nd7 讓白馬以 Nd5 取得據點，再以 e6 趕走 d7 馬，接著 Nxc7；Rd8 則先壓住 d 線，並能以 Bxe6 消除白方的先進兵。",
+   "ratings": {
+    "0": "minor"
+   },
+   "confidence": "low",
+   "doubt": "實戰後續黑象又能在 f1 換得車，難以確定評價差距中子力活躍度與兵得失的比重。"
+  },
+  {
+   "pos_id": "r4-008",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "Qxc4 讓后離開 f7，失去對 f6 的保護，白方以 Qxf6+ Qf7 Rh8# 直接將殺。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "minor"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-009",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "c5 讓白馬以 Nf5、Nxd6 引黑象到 d6，再用 e5 雙攻 d6 象與 f6 馬；續著 exf6、Rxd6 後白方淨得四分，不能把 Bxd6 當成黑方穩賺兩分。",
+   "ratings": {
+    "0": "wrong"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-010",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "Nf3 允許 b5 攻擊無安全退路的 c4 象，d4 bxc4 bxc4 後白方以象換兵；先走 d4 可打開象沿 d3 撤退的路線。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-011",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "b4 忽略 Qg5 的 Qg7# 威脅；g6 後白后轉到 h6，黑方即使 Qxd4+ 棄后也擋不住 Qg7#。Qxe5 則能守住 g7。",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "key",
+    "3": "key",
+    "4": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-012",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "Qxh4+ Kxh4 Bxg3+ Kg4 讓白王逃出殺網，只剩和棋；應走 Rxg3+ Kh2 Rxg2+ Kxg2 Qf1#。",
+   "ratings": {
+    "0": "key",
+    "1": "minor",
+    "2": "minor"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-013",
+   "kind": "material",
+   "secondary": [],
+   "where": "best",
+   "note": "Qb6 錯過直接 Qxd4 白吃中央兵的機會；Qxd4、Nf3、Qd7 後黑方保住多兵，實戰 Nxd3+、Qxd3 只是等值換子。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-014",
+   "kind": "mate",
+   "secondary": [
+    "material"
+   ],
+   "where": "played",
+   "note": "Kf1 立即遭 Qf2#，e4 馬保護 f2 后；Rxh4 可直接吃掉黑后，消除殺棋並取得決定性子力優勢。",
+   "ratings": {
+    "0": "key",
+    "1": "minor",
+    "2": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-015",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "Rxe6 讓黑方 fxe6，以象換得白車，白方白白損失品質；Rb1 可以保住車並保護 b4 兵。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-016",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "O-O-O 讓 Nxf2 白吃 f2 兵，接著 Ng5 Qe7 也未能追回；立即 Ng5 則能接 e6、Qxc7，以反擊維持優勢。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-017",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "Ng5 移開 f3 馬，打通 b7 象到 g2 的斜線，黑方以 Rxg2+、Kh1、Qh2# 將殺；Ne3 可先攻擊 g4 車。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-018",
+   "kind": "material",
+   "secondary": [
+    "activity"
+   ],
+   "where": "best",
+   "note": "Qc4 錯過 Rab1 後以 Rxb6 吃兵並活化白車的機會；最佳線還能接 Nf6+ Bxf6 exf6，讓 f6 兵威脅黑王。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-019",
+   "kind": "material",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "played",
+   "note": "Ke1 讓黑后 Qb4+ 把白王趕到 e2，接著 Nxg3+ 將軍抽車；Nxf1、Kxf1、Qxb5+ 後，白方共損失品質及兩兵。",
+   "ratings": {
+    "0": "minor",
+    "1": "key",
+    "2": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-020",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "e5 讓 Bxe5 封住 f4 等逃生格，接著 Rf8 h3+ Kg5 Rg1+ Bg4 Rxg4#；Ra7 的變化則讓黑王經 f3 逃向 e2。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-021",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "Rxd7 用錯棋子吃后，讓 Nxe5 雙攻 d7 車與 g4 象，續著 Nxd7、Bxd7 白方以馬換車；Bxd7 則可在 Nxe5 後用 Be6 撤象。",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-022",
+   "kind": "material",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "played",
+   "note": "f6 讓 Qxe6+ Kf8 暴露黑王；接著 b3、Ba3+ 迫使黑方以 Rc5 擋將，Qe2 Kf7 dxc5 後丟車，應先 O-O。",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-023",
+   "kind": "material",
+   "secondary": [],
+   "where": "both",
+   "note": "a6 讓白車 Ra1、Rxa6 白吃一兵；f5 則同時威脅 g4 車與 h4 象，迫使白方在 Bxg5+、Nxg5 中以象換兵。",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-024",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "played",
+   "note": "Qxh6 貪吃邊兵，讓 Rxg2+ 撕開王翼，Ng6、Nf4 配合 Rdg8 形成強攻；Qxe5 後則能走 g3 堵住 g 線。",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-025",
+   "kind": "material",
+   "secondary": [],
+   "where": "best",
+   "note": "Nc3 錯過 Nd4、c4、Nc2 雙攻 a1 與 e1 兩車的機會；接著 Nxe1、Rxe1，黑方可用馬換車。",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-026",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "Rxa7 貪吃兵卻漏掉 Rxh2#，f3 馬保護 h2 車並封住 g1；Bg1 可守住 h2，爭取 Kg2 逃生。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-027",
+   "kind": "material",
+   "secondary": [
+    "trade"
+   ],
+   "where": "played",
+   "note": "Qxf7 經換后後讓黑馬 Nbd4 逃走；Bxf7 保留后，在所示的 Nxg3+、Kh2、Nf5 後可用 Rxb3 多吃一馬。",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "key",
+    "3": "minor"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-028",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "f3+ 太早，黑王可用 Kxf3 逃出殺網；應先 Kg2 保護 f3，威脅 f3#，即使 Qd2 Bxd2 Rf7 仍有三步殺。",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "key",
+    "3": "irrelevant",
+    "4": "minor"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-029",
+   "kind": "material",
+   "secondary": [],
+   "where": "both",
+   "note": "Nxe4 貪吃 e4 兵，卻讓 Qxb5 吃掉 b5 馬，這一輪白方淨損兩分；先 Qe1、Qg6，再 Qxe4+、Qxe4、Nxe4，則可保住雙馬並淨得一兵。",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-030",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "played",
+   "note": "Qd6 讓 Nb5 axb5 Bxe5 趕后，續著 Qc6 Bxf6+ Kf8 Be7+ Kg8，黑王失去易位且遭連續將軍；先 O-O 可先安頓黑王。",
+   "ratings": {
+    "0": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-031",
+   "kind": "material",
+   "secondary": [
+    "development"
+   ],
+   "where": "played",
+   "note": "Qe3 讓黑馬 Ng4 趕后，再以 Nxh2 白吃 h2 兵；Nd2 則出動后翼馬，並準備 Ne4。h2 馬雖同時攻擊后與車，所示後續並沒有贏得這兩個目標。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-032",
+   "kind": "material",
+   "secondary": [
+    "development"
+   ],
+   "where": "both",
+   "note": "Qf5 讓 c4 趕象後以 cxd3 吃兵，續著 Rxd3 又有 Nxe4，白方終究少一兵；Be3 c4 dxc4 的變化則在後續換子後保住多一兵。",
+   "ratings": {
+    "0": "key",
+    "1": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-033",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "d3 未解除 e7 黑后對 e4 白象的牽制，黑方 f5 趕象後，Bxf4、fxe4 便以兵換象；先 O-O 可讓白象不再被釘在王前。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-034",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "note": "Nh4 把馬送到 e7 象的斜線上，Bxh4 後白方無法回吃，白白少一匹馬；直接 O-O 可保住子力。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-035",
+   "kind": "king_safety",
+   "secondary": [
+    "material"
+   ],
+   "where": "played",
+   "note": "Rxb6 讓白方 Rxf7+ 棄車引出黑王，Qh7+、Bh5、Rf1+ 接續進攻，迫使黑后在 f5 擋將後被換掉；Be8 則先穩住王位。",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant"
+   },
+   "confidence": "low",
+   "doubt": "黑王暴露及白方強攻很明確，但所示續著無法確認候選所稱的連續將軍求和是否強制成立。"
+  },
+  {
+   "pos_id": "r4-036",
+   "kind": "activity",
+   "secondary": [
+    "trade"
+   ],
+   "where": "played",
+   "note": "Rh1 使白車被動，Bxf5 exf5 Rh5 後黑車能吃掉 f5 兵並活躍起來；Rxg4 接 Rg7 則能讓白車侵入第七橫線。",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-037",
+   "kind": "material",
+   "secondary": [],
+   "where": "best",
+   "note": "O-O 錯過 e5 趕走 f6 馬並打開 f3 后通往 b7 的斜線；Nfd7、Bxe7、Qxe7 後 Qxb7 可吃回一兵，消除少兵劣勢。",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-038",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "note": "Rd1 讓黑車 Rxd1#，白王被 f2、g2、h2 的己兵困在底線；先 g3 可騰出 g2 逃生格。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-039",
+   "kind": "material",
+   "secondary": [],
+   "where": "best",
+   "note": "Re1+、Rxd1+ 只換掉一對車，錯過 Bxc3 先吃 c3 馬的機會；最佳線再用 Rxg5、Qxg5，以車換得白馬與白象，淨賺一分。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  },
+  {
+   "pos_id": "r4-040",
+   "kind": "activity",
+   "secondary": [
+    "space"
+   ],
+   "where": "best",
+   "note": "d5 cxd5 Nxd5 可讓馬佔據 e4 兵保護的前哨格，攻擊 f6 后，接著以 d4 擴大中心；dxe5 則錯過這個帶先手的改善。",
+   "ratings": {
+    "0": "key"
+   },
+   "confidence": "high",
+   "doubt": ""
+  }
+ ]
+}

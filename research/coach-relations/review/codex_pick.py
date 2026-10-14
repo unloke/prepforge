@@ -4,8 +4,8 @@ should check first.
   py research/coach-relations/review/codex_pick.py 4 artifacts/benchmarks/coach-relations-20261014/codex-annot-r4/out
 
 Writes LABELS-r<round>.codex.json (Codex's labels, kept apart from the human's LABELS file) and
-prints the picks: positions where Codex rated a candidate wrong, said it was unsure, or named a
-reason other than material or mate with no candidate rated key. Up to 15, in that order.
+prints the picks: positions where Codex rated a candidate wrong, said it was unsure, rated no
+candidate key, or named a reason other than material or mate. Up to 15, in that order.
 """
 import json
 import pathlib
@@ -30,9 +30,10 @@ def main():
         ratings = [r["ratings"].get(str(i)) for i in range(len(cands))]
         why = ("wrong fact" if "wrong" in ratings else
                "low confidence" if r.get("confidence") == "low" else
-               "no key fact" if r["kind"] not in TACTICAL and "key" not in ratings else None)
+               "no key fact" if "key" not in ratings else
+               "positional" if r["kind"] not in TACTICAL else None)
         if why:
-            picks.append((["wrong fact", "low confidence", "no key fact"].index(why), pid, why, r))
+            picks.append((["wrong fact", "low confidence", "no key fact", "positional"].index(why), pid, why, r))
     tactical = [r for r in labels.values() if r["kind"] in TACTICAL]
     covered = lambda rs: sum("key" in r["ratings"].values() for r in rs)
     positional = [r for r in labels.values() if r["kind"] not in TACTICAL]
