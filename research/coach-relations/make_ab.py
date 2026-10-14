@@ -1,0 +1,92 @@
+"""Blind A/B of explain.py against the production Coach, for coach-ab-review and a Codex judge.
+
+  node research/coach-prod-v2/run.mjs research/coach-relations/ab/ids.json research/coach-relations/ab/prod.jsonl
+  py research/coach-relations/make_ab.py
+  node research/coach-ab-review/serve.mjs research/coach-relations/ab --port 5208
+
+Run once without prod.jsonl to draw the cards (writes ab/ids.json), then build the production
+prose with run.mjs and run again. Cards: inaccuracies, mistakes and blunders with candidates that
+no review round has shown, 60 of them. Order and A/B side come from os.urandom; the key is sealed
+in ab/run-output/BLIND-KEY.json. Codex gets ab/run-output/judge/batchN.jsonl and RUBRIC.md.
+"""
+import hashlib
+import json
+import os
+import pathlib
+import random
+import sys
+
+import chess
+
+from explain import explain
+
+HERE = pathlib.Path(__file__).parent
+AB = HERE / "ab"
+N, BATCH = 60, 30
+
+
+def jsonl(path):
+    return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+
+def san_line(fen, ucis):
+    b, out = chess.Board(fen), []
+    for u in ucis:
+        m = chess.Move.from_uci(u)
+        num = f"{b.fullmove_number}." if b.turn else f"{b.fullmove_number}..." if not out else ""
+        out.append(num + b.san(m))
+        b.push(m)
+    return " ".join(out)
+
+
+def answer(text):
+    return {"response": text, "finish": {"finished": True}, "content_sha256": hashlib.sha256(text.encode()).hexdigest()}
+
+
+def main():
+    pos = {r["id"]: r for r in jsonl(HERE / "positions.jsonl")}
+    if not (AB / "prod.jsonl").exists():
+        seen = set()
+        for s in ("set", "set-r2", "set-r3", "set-r4"):
+            seen |= {p["card"] for p in json.loads((HERE / f"review/{s}.json").read_text(encoding="utf-8"))}
+        pool = [r["id"] for r in jsonl(HERE / "candidates.jsonl")
+                if r["id"] not in seen and pos[r["id"]]["grade"] in ("inaccuracy", "mistake", "blunder")]
+        AB.mkdir(exist_ok=True)
+        ids = random.Random(int.from_bytes(os.urandom(16), "big")).sample(pool, N)
+        (AB / "ids.json").write_text(json.dumps(ids) + "\n", encoding="utf-8")
+        sys.exit(f"{len(pool)} unseen cards, drew {N}: now run run.mjs (see the docstring)")
+
+    prod = {r["id"]: r for r in jsonl(AB / "prod.jsonl")}
+    ids = json.loads((AB / "ids.json").read_text(encoding="utf-8"))
+    seed = int.from_bytes(os.urandom(16), "big")
+    rng = random.Random(seed)
+    rng.shuffle(ids)
+    out, judge, key = [], [], {}
+    for n, i in enumerate(ids, 1):
+        p, r, pid = pos[i], prod[i], f"pair-{n:03d}"
+        text = {"relations": explain(p)["text"], "production": r["prose"]}
+        a, b = ("relations", "production") if rng.random() < 0.5 else ("production", "relations")
+        out.append({
+            "pair_id": pid,
+            "prompt": f"{r['san']} ({r['code']}), {r['mover']}, move {r['moveNumber']}.",
+            "facts": {"fen_before": r["fen"], "fen_after": r["fenAfter"], "side": r["mover"], "move_number": r["moveNumber"],
+                      "played_uci": r["uci"], "played_san": r["san"], "best_uci": r["bestUci"], "best_san": r["bestSan"],
+                      "is_best": r["isBest"], "grade": r["code"]},
+            "A": answer(text[a]), "B": answer(text[b]),
+        })
+        judge.append({"pair_id": pid, "fen": p["fen"], "side_to_move": r["mover"], "grade": p["grade"],
+                      "played": san_line(p["fen"], p["played_pv"]), "best": san_line(p["fen"], p["best_pv"]),
+                      "A": text[a], "B": text[b]})
+        key[pid] = {"id": i, "A": a, "B": b}
+    dst = AB / "run-output"
+    (dst / "judge/out").mkdir(parents=True, exist_ok=True)
+    (dst / "BLINDED.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out), encoding="utf-8")
+    (dst / "BLIND-KEY.json").write_text(json.dumps({"seed_hex": f"{seed:032x}", "pairs": key}, indent=2) + "\n", encoding="utf-8")
+    for k in range(0, len(judge), BATCH):
+        (dst / f"judge/batch{k // BATCH + 1}.jsonl").write_text(
+            "".join(json.dumps(r) + "\n" for r in judge[k:k + BATCH]), encoding="utf-8")
+    print(len(out), "pairs")
+
+
+if __name__ == "__main__":
+    main()
