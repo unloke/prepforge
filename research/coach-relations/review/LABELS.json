@@ -1,0 +1,653 @@
+{
+ "schema": "reason-review/1",
+ "set_sha256": "ab9c0ce905b6eaebcf4333f95bbea61357861f52d59ba6ecccdfdff0992e4118",
+ "completed": 36,
+ "updated_at": "2026-10-13T10:52:58.403Z",
+ "reviews": [
+  {
+   "pos_id": "rr-001",
+   "kind": "enter",
+   "where": "both",
+   "marks": {},
+   "note": "問題是出在實戰的g6沒有保護到d5 所以Ne5之後不能走Nxe5(會遇到dxe5 Ne4 Qxd5) 反觀最佳, e6之後保護著d5 所以Ne5 Nxe5 dxe5 Nd7 然後就沒事了",
+   "submitted_at": "2026-10-13T08:12:07.500Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T08:13:12.562Z"
+  },
+  {
+   "pos_id": "rr-002",
+   "kind": "tactic",
+   "where": "best",
+   "marks": {},
+   "note": "主教牽制到馬之後不論白方怎麼走 這個王翼必定會被打開 舉例Bg4 Qd3 Bxf2+!! Kxf2 Bxf3 此時不論怎麼吃回 Qh4+都抓雙到主教 然後對方的王還被打出來 黑方還多了一隻兵",
+   "submitted_at": "2026-10-13T08:16:35.225Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "minor",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "minor",
+    "8": "minor",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T08:50:14.303Z"
+  },
+  {
+   "pos_id": "rr-003",
+   "kind": "open",
+   "where": "played",
+   "marks": {},
+   "note": "吃在b2導致白方可以把城堡放到b開放線 然後黑方另一隻來不及支援 太早吃了",
+   "submitted_at": "2026-10-13T08:20:27.302Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "minor",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "key"
+   },
+   "updated_at": "2026-10-13T08:21:01.382Z"
+  },
+  {
+   "pos_id": "rr-004",
+   "kind": "pawns",
+   "where": "best",
+   "marks": {},
+   "note": "吃開之後主要是黑方守不了這個d6兵了 然後e線打開可以把城堡推進去 不過我測試下來不把車送進去依然大優 所以應該是兵型比較重要",
+   "submitted_at": "2026-10-13T08:26:32.262Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "minor"
+   },
+   "updated_at": "2026-10-13T08:28:54.760Z"
+  },
+  {
+   "pos_id": "rr-005",
+   "kind": "tactic",
+   "where": "both",
+   "marks": {},
+   "note": "走d5會直接被Rh3準備將殺 需要最佳得這個Re6來阻擋才能行 隨便一步還真的不行 因為如果走比如g6這種棋 沒有最佳的Re6-h6反將殺威脅 還把自己的斜線打開增加風險 因此這個Re6幾乎可以說是僅此一手",
+   "submitted_at": "2026-10-13T08:36:09.090Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "minor",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T08:36:36.020Z"
+  },
+  {
+   "pos_id": "rr-006",
+   "kind": "cramped",
+   "where": "played",
+   "marks": {},
+   "note": "國王被卡在f6要被殺了 白方只需要解殺都是大優的",
+   "submitted_at": "2026-10-13T08:51:27.102Z",
+   "ratings": {
+    "0": "key",
+    "1": "minor",
+    "2": "minor",
+    "3": "irrelevant",
+    "4": "minor"
+   },
+   "updated_at": "2026-10-13T08:51:44.295Z"
+  },
+  {
+   "pos_id": "rr-007",
+   "kind": "enter",
+   "where": "played",
+   "marks": {},
+   "note": "實戰這樣換掉皇后到c6，機動性大幅增加甚至還雙擊c3和g2直接必定掉子",
+   "submitted_at": "2026-10-13T08:54:09.187Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "key",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant"
+   },
+   "updated_at": "2026-10-13T08:54:49.134Z"
+  },
+  {
+   "pos_id": "rr-008",
+   "kind": "enter",
+   "where": "both",
+   "marks": {},
+   "note": "實戰Ne7完全不明所以呀 最佳的Nd5進入到d5格並威脅進入e3格抓雙 沒辦法白方只能走Nc4保護e3格 但是威脅依然在且因為騎士已經在d5，白方不能走e4 dxe3 Nxe3這條線去阻止 因為他已經控制住了 接下來白方就只能坐牢了",
+   "submitted_at": "2026-10-13T08:59:26.331Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T08:59:45.352Z"
+  },
+  {
+   "pos_id": "rr-009",
+   "kind": "material",
+   "where": "played",
+   "marks": {},
+   "note": "這就是白方算漏了 以為有Bxf7 Kxf7 Ng5+ 但實際上此時黑方可以大膽的走Qxg5 送掉皇后 然後Bxg5 Bxd1 完成一個多兩分的局面 所以純粹計算問題呀 ",
+   "submitted_at": "2026-10-13T09:02:17.081Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "minor",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:02:49.387Z"
+  },
+  {
+   "pos_id": "rr-010",
+   "kind": "king_pawns",
+   "where": "best",
+   "marks": {},
+   "note": "實戰依然大優 但是這個將殺沒走出來 標籤我真的沒看出來要選哪個 感覺選哪個都不能描述這個狀況",
+   "submitted_at": "2026-10-13T09:04:11.263Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "key",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:04:25.366Z"
+  },
+  {
+   "pos_id": "rr-011",
+   "kind": "trade_active",
+   "where": "best",
+   "marks": {},
+   "note": "這個也不好選 就是優勢局面可以簡化掉就簡化掉 最佳就是簡化 實戰就是沒簡化搞得白方還可以繼續撐",
+   "submitted_at": "2026-10-13T09:06:27.510Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "key",
+    "3": "irrelevant",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:06:48.771Z"
+  },
+  {
+   "pos_id": "rr-012",
+   "kind": "material",
+   "where": "best",
+   "marks": {},
+   "note": "Re1騎士被牽制直接抓死 多一子",
+   "submitted_at": "2026-10-13T09:07:29.827Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:07:53.744Z"
+  },
+  {
+   "pos_id": "rr-013",
+   "kind": "tactic",
+   "where": "best",
+   "marks": {},
+   "note": "透過Bxh7打開白后攻擊主教的路線 賺一兵",
+   "submitted_at": "2026-10-13T09:08:48.781Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "minor",
+    "8": "key",
+    "9": "minor",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:09:22.728Z"
+  },
+  {
+   "pos_id": "rr-014",
+   "kind": "material",
+   "where": "both",
+   "marks": {},
+   "note": "這個實戰這樣下就兩輕子換一隻城堡呀 賺爛 實戰就是正常交換然後多一兵",
+   "submitted_at": "2026-10-13T09:12:29.005Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:12:46.449Z"
+  },
+  {
+   "pos_id": "rr-015",
+   "kind": "king_pawns",
+   "where": "both",
+   "marks": {},
+   "note": "實戰走吃馬會被對手走f3+ 然後白方王太弱只能被逼和 最佳就是不吃馬但是自己有兵保護對方城堡也被自己的兵擋住不會被逼和 可以用子力優勢贏棋",
+   "submitted_at": "2026-10-13T09:16:55.565Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "minor",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:19:13.202Z"
+  },
+  {
+   "pos_id": "rr-016",
+   "kind": "material",
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法純掉b3兵",
+   "submitted_at": "2026-10-13T09:21:01.879Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:21:19.187Z"
+  },
+  {
+   "pos_id": "rr-017",
+   "kind": "king_pawns",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法充分利用子力去攻擊f7兵和對手的王 而實戰就是基本上在等死",
+   "submitted_at": "2026-10-13T09:22:48.424Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:23:27.746Z"
+  },
+  {
+   "pos_id": "rr-018",
+   "kind": "trade_active",
+   "where": "played",
+   "marks": {},
+   "note": "實戰在劣勢時換子(甚至是掉子。Nd4 Nxd4 exd4 Rxd4+ 送兵) 而最佳更好的利用自己的棋子去做最大的抵抗",
+   "submitted_at": "2026-10-13T09:26:00.550Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:26:42.907Z"
+  },
+  {
+   "pos_id": "rr-019",
+   "kind": "material",
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法用城堡換一隻兵",
+   "submitted_at": "2026-10-13T09:27:23.443Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:27:38.394Z"
+  },
+  {
+   "pos_id": "rr-020",
+   "kind": "material",
+   "where": "played",
+   "marks": {},
+   "note": "實戰d4送兵",
+   "submitted_at": "2026-10-13T09:28:21.912Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:28:28.860Z"
+  },
+  {
+   "pos_id": "rr-021",
+   "kind": "cramped",
+   "where": "played",
+   "marks": {},
+   "note": "這個實戰Rf3把自己的國王困死了 送殺 ",
+   "submitted_at": "2026-10-13T09:29:18.444Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "key",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:29:41.951Z"
+  },
+  {
+   "pos_id": "rr-022",
+   "kind": "tactic",
+   "where": "best",
+   "marks": {},
+   "note": "最佳的Nf6+直接導入將殺路線",
+   "submitted_at": "2026-10-13T09:31:10.728Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "minor",
+    "3": "minor",
+    "4": "minor",
+    "5": "minor",
+    "6": "irrelevant",
+    "7": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:31:40.904Z"
+  },
+  {
+   "pos_id": "rr-023",
+   "kind": "cramped",
+   "where": "played",
+   "marks": {},
+   "note": "Bxf4導致了自己被對面的兵線壓過來空間都要被擠沒了",
+   "submitted_at": "2026-10-13T09:33:23.512Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:33:35.005Z"
+  },
+  {
+   "pos_id": "rr-024",
+   "kind": "material",
+   "where": "best",
+   "marks": {},
+   "note": "把城堡放到2線順便抓雙",
+   "submitted_at": "2026-10-13T09:34:27.441Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "key"
+   },
+   "updated_at": "2026-10-13T09:34:40.356Z"
+  },
+  {
+   "pos_id": "rr-025",
+   "kind": "tactic",
+   "where": "best",
+   "marks": {},
+   "note": "最佳是一步殺 ",
+   "submitted_at": "2026-10-13T09:35:30.499Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:35:39.613Z"
+  },
+  {
+   "pos_id": "rr-026",
+   "kind": "pawns",
+   "where": "played",
+   "marks": {},
+   "note": "b4直接導致了整個后翼的兵型被打崩 中心還被完全壓制",
+   "submitted_at": "2026-10-13T09:36:38.271Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "minor",
+    "3": "minor",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:37:07.765Z"
+  },
+  {
+   "pos_id": "rr-027",
+   "kind": "material",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法直接贏了一隻騎士 實戰應該是漏看了",
+   "submitted_at": "2026-10-13T09:38:05.085Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:38:32.227Z"
+  },
+  {
+   "pos_id": "rr-028",
+   "kind": "enter",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法出動騎士並鞏固中心",
+   "submitted_at": "2026-10-13T09:41:25.323Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:41:36.238Z"
+  },
+  {
+   "pos_id": "rr-029",
+   "kind": "pawns",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法可以破壞對手兵型或是讓對手棄兵",
+   "submitted_at": "2026-10-13T09:43:05.441Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "minor",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:43:39.161Z"
+  },
+  {
+   "pos_id": "rr-030",
+   "kind": "tactic",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法雙擊了國王和城堡然後淨賺一隻城堡",
+   "submitted_at": "2026-10-13T09:44:39.820Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "irrelevant",
+    "3": "minor",
+    "4": "irrelevant",
+    "5": "minor",
+    "6": "irrelevant"
+   },
+   "updated_at": "2026-10-13T09:45:02.055Z"
+  },
+  {
+   "pos_id": "rr-031",
+   "kind": "enter",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法更快出動子力可以更快的施壓",
+   "submitted_at": "2026-10-13T09:46:52.600Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "minor",
+    "5": "key",
+    "6": "irrelevant",
+    "7": "key",
+    "8": "key"
+   },
+   "updated_at": "2026-10-13T09:47:46.805Z"
+  },
+  {
+   "pos_id": "rr-032",
+   "kind": "trade_active",
+   "where": "both",
+   "marks": {},
+   "note": "h6之後這個主教吃了就幫助黑方改善 不吃這個Nxd4就成立 白方非常痛苦 反觀實戰的Qa5有點幫助出子的味道了 Nb3踩了一腳黑方還得回退",
+   "submitted_at": "2026-10-13T10:06:05.736Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant"
+   },
+   "updated_at": "2026-10-13T10:06:13.565Z"
+  },
+  {
+   "pos_id": "rr-033",
+   "kind": "tactic",
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法兩步殺",
+   "submitted_at": "2026-10-13T10:06:56.522Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "minor",
+    "5": "key",
+    "6": "irrelevant"
+   },
+   "updated_at": "2026-10-13T10:07:32.634Z"
+  },
+  {
+   "pos_id": "rr-034",
+   "kind": "king_pawns",
+   "where": "played",
+   "marks": {},
+   "note": "實戰送殺",
+   "submitted_at": "2026-10-13T10:09:31.955Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "key",
+    "7": "irrelevant",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T10:09:59.548Z"
+  },
+  {
+   "pos_id": "rr-035",
+   "kind": "pawns",
+   "where": "both",
+   "marks": {},
+   "note": "實戰走法幫助白方打開城堡的線威脅己方的王 最佳走法引離強中心騎士然後攻擊對手的王",
+   "submitted_at": "2026-10-13T10:42:35.357Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "key",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T10:42:56.066Z"
+  },
+  {
+   "pos_id": "rr-036",
+   "kind": "king_pawns",
+   "where": "played",
+   "marks": {},
+   "note": "g6讓對手可以走出Rc7把國王定在8線 直接廢了這個國王 然後還順便打兵 ",
+   "submitted_at": "2026-10-13T10:47:39.682Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-13T10:47:49.730Z"
+  },
+  {
+   "pos_id": "rr-037",
+   "kind": "material",
+   "where": null,
+   "marks": {},
+   "note": "",
+   "submitted_at": null,
+   "ratings": {},
+   "updated_at": "2026-10-13T10:52:58.102Z"
+  }
+ ]
+}

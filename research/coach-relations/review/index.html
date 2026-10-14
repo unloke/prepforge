@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reason review</title>
+    <script type="module" src="./review.js"></script>
+  </head>
+  <body class="abr">
+    <header class="abr-top">
+      <div class="abr-title"><strong>棋步理由標註</strong></div>
+      <div class="abr-progress" title="完成的局面">
+        <span id="rr-count">0 / 120</span>
+        <span class="abr-track"><span class="abr-fill" id="rr-fill"></span></span>
+      </div>
+      <span class="abr-save" id="rr-save" role="status" aria-live="polite"></span>
+      <button class="btn ghost abr-help-btn" id="rr-help-btn" type="button" aria-expanded="false" aria-controls="rr-help" title="說明與快捷鍵">?</button>
+    </header>
+
+    <div class="abr-help" id="rr-help" hidden>
+      <dl>
+        <dt>右鍵拖曳</dt><dd>畫箭頭；右鍵點一下畫圈（記在目前這一步；分析線上的不存檔）</dd>
+        <dt>備註</dt><dd>送出後仍可修改</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>變化中上一步／下一步</dd>
+        <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>切換實戰／最佳／分析線</dd>
+        <dt>走棋</dt><dd>在任一步拖動或點棋子，開出分析線；點引擎著法也會走進去</dd>
+        <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>回到開頭／走到最後</dd>
+        <dt><kbd>Backspace</kbd></dt><dd>刪除分析線</dd>
+        <dt><kbd>L</kbd></dt><dd>引擎開關</dd>
+        <dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd>候選：關鍵・次要・不重要・錯誤</dd>
+        <dt><kbd>0</kbd></dt><dd>未評的候選全部設為「存在但不重要」</dd>
+        <dt>次要原因</dt><dd>可複選，可不選</dd>
+        <dt><kbd>Enter</kbd></dt><dd>送出判斷；之後跳到下一個未完成</dd>
+        <dt><kbd>F</kbd></dt><dd>翻轉棋盤</dd>
+        <dt><kbd>N</kbd></dt><dd>備註 · <kbd>Esc</kbd> 離開</dd>
+      </dl>
+    </div>
+
+    <main class="abr-main" id="rr-main" hidden>
+      <section class="abr-board-col" aria-label="局面">
+        <div class="abr-pos-head">
+          <span class="abr-pair" id="rr-pos"></span>
+          <span class="abr-move" id="rr-move"></span>
+        </div>
+        <div class="board-stack">
+          <div class="chessboard" id="rr-board"></div>
+          <svg class="annotations" id="rr-annotations"></svg>
+        </div>
+        <div class="rr-lines" id="rr-lines"></div>
+        <div class="abr-board-bar">
+          <span class="rr-marks" id="rr-marks"></span>
+          <button class="btn ghost" id="rr-flip" type="button" title="翻轉棋盤 (F)">翻轉</button>
+        </div>
+      </section>
+
+      <section class="abr-review-col" aria-label="標註">
+        <div class="rr-block rr-engine">
+          <div class="rr-engine-head">
+            <button class="btn ghost" id="rr-engine-btn" type="button" aria-pressed="true" title="引擎開關 (L)">引擎</button>
+            <span class="rr-engine-depth" id="rr-engine-depth"></span>
+          </div>
+          <ol class="rr-engine-lines" id="rr-engine-lines"></ol>
+        </div>
+        <div class="rr-block" id="rr-mine">
+          <h3>出在哪條變化</h3>
+          <div class="rr-chips" id="rr-where" role="radiogroup" aria-label="變化"></div>
+          <h3>主因</h3>
+          <div class="rr-chips" id="rr-kinds" role="radiogroup" aria-label="主因"></div>
+          <h3>次要原因</h3>
+          <div class="rr-chips" id="rr-secondary" aria-label="次要原因"></div>
+          <textarea id="rr-note" class="abr-note" rows="2" placeholder="備註" aria-label="備註"></textarea>
+          <button class="btn primary" id="rr-submit" type="button" disabled>送出判斷 <kbd>Enter</kbd></button>
+        </div>
+
+        <div class="rr-block" id="rr-cands" hidden>
+          <div class="rr-cands-head">
+            <h3>候選理由</h3>
+            <button class="btn ghost" id="rr-rest" type="button" title="未評的全部設為「存在但不重要」(0)">其餘都不重要 <kbd>0</kbd></button>
+          </div>
+          <ol class="rr-cand-list" id="rr-cand-list"></ol>
+        </div>
+
+        <nav class="abr-nav">
+          <button class="btn" id="rr-prev" type="button">← 上一個</button>
+          <button class="btn" id="rr-next" type="button">下一個 →</button>
+          <button class="btn primary" id="rr-next-open" type="button">下一個未完成</button>
+        </nav>
+
+        <ol class="abr-map" id="rr-map" aria-label="所有局面"></ol>
+      </section>
+    </main>
+
+    <div class="abr-done" id="rr-done" hidden></div>
+    <p class="abr-error" id="rr-error" role="alert" hidden></p>
+  </body>
+</html>

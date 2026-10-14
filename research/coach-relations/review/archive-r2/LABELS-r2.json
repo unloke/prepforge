@@ -1,0 +1,481 @@
+{
+ "schema": "reason-review/1",
+ "set_sha256": "140c1385a3e70bf107c988ce475cc2ace3d1e9de1c8ddca66f0dba12d99bc7d0",
+ "completed": 22,
+ "updated_at": "2026-10-13T20:48:28.022Z",
+ "reviews": [
+  {
+   "pos_id": "rr-037",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法直接送掉騎士 最佳走法多1分 btw候選理由的原因方向是對的 但是數字不太對 然後這題之前好像出現過了",
+   "submitted_at": "2026-10-13T11:29:19.865Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "minor",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T18:59:20.910Z"
+  },
+  {
+   "pos_id": "rr-038",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法可以透過棄子來攻王 最佳走法可以有一個更好的兵型結構",
+   "submitted_at": "2026-10-13T11:34:49.426Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant"
+   },
+   "updated_at": "2026-10-13T18:59:34.394Z"
+  },
+  {
+   "pos_id": "rr-039",
+   "kind": "material",
+   "secondary": [
+    "development"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "這個就是戰術 實戰會遇到Rxd4!! 棄子 但是黑方不能吃因為有將殺follow up. 最佳可以同時出子和保護d4兵",
+   "submitted_at": "2026-10-13T11:38:47.722Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T18:59:59.844Z"
+  },
+  {
+   "pos_id": "rr-040",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰錯過一步贏主教然後走入了一步殺。",
+   "submitted_at": "2026-10-13T11:41:04.162Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "key",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T19:00:09.292Z"
+  },
+  {
+   "pos_id": "rr-041",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法送了一步殺",
+   "submitted_at": "2026-10-13T11:42:15.737Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "key",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T11:44:22.721Z"
+  },
+  {
+   "pos_id": "rr-042",
+   "kind": "activity",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "c3黑兵的位置和h2的白兵位置是不能比的 實戰的走法基本上就是拿f4+c3換g3+h2 這是很虧的",
+   "submitted_at": "2026-10-13T11:47:00.387Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T11:47:44.293Z"
+  },
+  {
+   "pos_id": "rr-043",
+   "kind": "material",
+   "secondary": [],
+   "where": "best",
+   "marks": {},
+   "note": "最佳的Rf4可以贏子力",
+   "submitted_at": "2026-10-13T11:48:43.495Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant"
+   },
+   "updated_at": "2026-10-13T19:00:26.256Z"
+  },
+  {
+   "pos_id": "rr-044",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰Rb6掉城堡",
+   "submitted_at": "2026-10-13T19:01:40.107Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant",
+    "3": "minor",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T19:03:34.198Z"
+  },
+  {
+   "pos_id": "rr-045",
+   "kind": "king_safety",
+   "secondary": [
+    "activity"
+   ],
+   "where": "best",
+   "marks": {},
+   "note": "最佳的Qe6 Bf7 Qg4 Bg6之所以比實戰直接Qg5好 是因為皇后在g4比在g5好太多了 在g5會被Rf5打 會被Qd8求換 但是在g4都不會遇到這些問題 在Rae1之後白方有足夠的王翼攻擊來補償少的子力",
+   "submitted_at": "2026-10-13T19:22:35.004Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T19:22:48.656Z"
+  },
+  {
+   "pos_id": "rr-046",
+   "kind": "trade",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "可以注意到在這個結構下黑方Rd6是逼換 因為城堡不能跑 會被Re1將殺 但是黑方有子力優勢 白方不適合換子 所以需要對這個問題做點什麼就可以避免逼換的結局 比如Rd4, Rh4, f3之類的都可以",
+   "submitted_at": "2026-10-13T19:26:03.859Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "key",
+    "2": "irrelevant"
+   },
+   "updated_at": "2026-10-13T19:26:16.377Z"
+  },
+  {
+   "pos_id": "rr-047",
+   "kind": "material",
+   "secondary": [
+    "king_safety"
+   ],
+   "where": "best",
+   "marks": {},
+   "note": "最佳的g5直接抓雙 實戰g3弱化自己的國王太多 g5甚至未來就直接沒有用了",
+   "submitted_at": "2026-10-13T19:28:30.700Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "key",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T19:29:41.484Z"
+  },
+  {
+   "pos_id": "rr-048",
+   "kind": "activity",
+   "secondary": [
+    "trade"
+   ],
+   "where": "best",
+   "marks": {},
+   "note": "實戰和最佳都是黑方多一兵 但是最佳的路線中白騎士不能走到d6(皇后牽制著城堡) 然後白方也沒有c開放線 整體而言最佳就是實戰更好的局面版本",
+   "submitted_at": "2026-10-13T20:01:07.434Z",
+   "ratings": {
+    "0": "key",
+    "1": "key",
+    "2": "irrelevant",
+    "3": "minor",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:01:52.881Z"
+  },
+  {
+   "pos_id": "rr-049",
+   "kind": "pawns",
+   "secondary": [
+    "activity"
+   ],
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法可以把對手的騎士打退 並且保持好的兵型同時壓制對手 但是實戰走法會浪費一步棋 兵還有點太深 對方的騎士也在一個更好的位置",
+   "submitted_at": "2026-10-13T20:09:39.576Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "minor",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:09:56.595Z"
+  },
+  {
+   "pos_id": "rr-050",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法送兵",
+   "submitted_at": "2026-10-13T20:10:22.042Z",
+   "ratings": {
+    "0": "key",
+    "1": "minor",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:10:30.509Z"
+  },
+  {
+   "pos_id": "rr-051",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法送一步殺 ",
+   "submitted_at": "2026-10-13T20:11:02.023Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:11:28.704Z"
+  },
+  {
+   "pos_id": "rr-052",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法送殺",
+   "submitted_at": "2026-10-13T20:12:16.411Z",
+   "ratings": {
+    "0": "key",
+    "1": "minor",
+    "2": "minor",
+    "3": "minor",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "minor",
+    "8": "minor",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:12:46.217Z"
+  },
+  {
+   "pos_id": "rr-053",
+   "kind": "trade",
+   "secondary": [
+    "activity"
+   ],
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法非常高明 透過Bb2移除保護b4主教的城堡 然後Qe5拿掉主教能夠撤退的c3格子 這時白方幾乎必須換子了 但是白方少子力不適合換子 最佳透過操作達到逼換的效果",
+   "submitted_at": "2026-10-13T20:16:42.455Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "minor",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "minor",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "minor",
+    "10": "wrong",
+    "11": "irrelevant",
+    "12": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:18:37.454Z"
+  },
+  {
+   "pos_id": "rr-054",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "",
+   "submitted_at": "2026-10-13T20:31:17.927Z",
+   "ratings": {
+    "0": "minor",
+    "1": "minor",
+    "2": "key",
+    "3": "key",
+    "4": "minor",
+    "5": "minor",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant",
+    "12": "irrelevant",
+    "13": "irrelevant",
+    "14": "irrelevant",
+    "15": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:32:16.297Z"
+  },
+  {
+   "pos_id": "rr-055",
+   "kind": "mate",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰送殺 最佳可以透過送兵撐久點",
+   "submitted_at": "2026-10-13T20:40:36.259Z",
+   "ratings": {
+    "0": "key",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant",
+    "6": "irrelevant",
+    "7": "irrelevant",
+    "8": "irrelevant",
+    "9": "irrelevant",
+    "10": "irrelevant",
+    "11": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:41:07.011Z"
+  },
+  {
+   "pos_id": "rr-056",
+   "kind": "king_safety",
+   "secondary": [],
+   "where": "best",
+   "marks": {},
+   "note": "最佳走法才能透過王翼攻擊來補償落後的子力",
+   "submitted_at": "2026-10-13T20:44:54.420Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:45:06.500Z"
+  },
+  {
+   "pos_id": "rr-057",
+   "kind": "material",
+   "secondary": [],
+   "where": "played",
+   "marks": {},
+   "note": "實戰走法d6兵是保不住的",
+   "submitted_at": "2026-10-13T20:46:35.299Z",
+   "ratings": {
+    "0": "minor",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "irrelevant",
+    "4": "irrelevant",
+    "5": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:46:54.285Z"
+  },
+  {
+   "pos_id": "rr-058",
+   "kind": "pawns",
+   "secondary": [
+    "space"
+   ],
+   "where": "played",
+   "marks": {},
+   "note": "實戰c5對兵型非常不友善 且最後會被對手壓爆",
+   "submitted_at": "2026-10-13T20:48:06.834Z",
+   "ratings": {
+    "0": "irrelevant",
+    "1": "irrelevant",
+    "2": "irrelevant",
+    "3": "key",
+    "4": "irrelevant"
+   },
+   "updated_at": "2026-10-13T20:48:27.720Z"
+  }
+ ]
+}

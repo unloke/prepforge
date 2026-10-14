@@ -1,0 +1,43 @@
+/* Reason review: the coach-ab-review layout plus the line stepper, chips and candidate list. */
+.rr-lines { display: grid; gap: 6px; }
+.rr-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-family: var(--mono); font-size: 13px; }
+.rr-line-name { width: 3em; color: var(--label); font-family: inherit; font-weight: 650; }
+.rr-ply { height: 26px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); }
+.rr-ply:hover { border-color: var(--btn-border-hover); }
+.rr-ply.is-current { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.rr-ply.has-marks { box-shadow: inset 0 -3px 0 var(--warn); }
+.rr-marks { color: var(--label); font-size: var(--fs-s); }
+
+.rr-block { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--panel); }
+.rr-block[hidden] { display: none; }
+.rr-block h3 { margin: 0; font-size: 13px; color: var(--label); }
+.rr-block.is-locked > :not(textarea) { opacity: 0.75; }
+.rr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rr-chip { height: 30px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--panel); color: var(--text); font-size: 13px; font-weight: 600; }
+.rr-chip:hover:not(:disabled) { border-color: var(--btn-border-hover); }
+.rr-chip[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.rr-cand-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.rr-cand { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; }
+.rr-cand.is-focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.rr-cand-text { font-size: 15px; }
+.rr-cand-where { margin-right: 8px; color: var(--label); font: 600 var(--fs-s) var(--mono); }
+.rr-rate { display: flex; flex-wrap: wrap; gap: 6px; }
+.rr-rate .rr-chip { height: 26px; font-size: 12px; }
+.rr-rate .rr-chip[data-rate="key"][aria-checked="true"] { background: var(--good); border-color: var(--good); }
+.rr-rate .rr-chip[data-rate="wrong"][aria-checked="true"] { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
+.rr-rate .rr-chip[data-rate="irrelevant"][aria-checked="true"] { background: var(--inert); border-color: var(--inert); }
+
+.rr-drop { color: var(--label); }
+.rr-engine { display: grid; gap: 6px; }
+.rr-engine-head { display: flex; align-items: center; gap: 10px; }
+#rr-engine-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.rr-engine-depth { color: var(--label); font-size: var(--fs-s); font-family: var(--mono); }
+.rr-engine-lines { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-family: var(--mono); font-size: 13px; }
+.rr-engine-lines li { display: flex; gap: 8px; align-items: baseline; }
+.rr-engine-eval { flex: none; width: 4.5em; font-weight: 700; }
+.rr-engine-pv { display: flex; flex-wrap: wrap; gap: 2px; }
+.rr-engine-pv button { padding: 0 3px; border: 0; border-radius: 4px; background: none; color: var(--text); font: inherit; }
+.rr-engine-pv button:hover { background: var(--accent); color: var(--accent-ink); }
+.rr-engine-error { color: var(--danger); }
+.rr-cands-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

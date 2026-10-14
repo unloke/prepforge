@@ -1,0 +1,7 @@
+{"chk": "chk-002", "line": "played", "type": "trade_active", "piece": "d3", "sure": true, "why": "白后比黑后活躍，換掉不值得"}
+{"chk": "chk-006", "line": "played", "type": "block", "by": "f3", "sure": false, "why": "主教被擋住（哪個主教待確認）"}
+{"chk": "chk-008", "line": "best", "type": "cramped", "piece": "f2", "sure": true, "why": "Rd2 把黑馬擠到 h1 角落"}
+{"chk": "chk-009", "line": "best", "type": "enter", "piece": "d3", "sure": true, "why": "白后經 b5 侵入 d7"}
+{"chk": "chk-014", "line": "best", "type": "king_pawns", "piece": "d4", "sure": true, "why": "黑王 Kc3 能支援己兵，Ke5 不能"}
+{"chk": "chk-015", "line": "best", "type": "cramped", "piece": "f8", "sure": true, "why": "Bf5 離開 g6，解放了黑王"}
+{"chk": "chk-036", "line": "best", "type": "enter", "piece": "d1", "sure": true, "why": "Rdd7 上第七線壓迫黑王"}
