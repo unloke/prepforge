@@ -21,10 +21,10 @@ DATE = "20261014"
 repo = pathlib.Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 GAMES = repo / "artifacts/benchmarks/coach-relations-20261014/prod-depth/games"
 files = ["package.json", "package-lock.json", "research/sft/experiment/coach-v5-20261011/make_cards.py"]
-for d, exts in (("web-src/engine", {".js", ".json"}), ("web-src/coach", {".js", ".json"}), ("web-src/generated", {".js", ".json"}),
-                ("research/coach-relations", {".py"}), ("research/coach-relations/prod-depth", {".py", ".mjs"})):
-    files += sorted(p.relative_to(repo).as_posix() for p in (repo / d).glob("*") if p.is_file() and p.suffix in exts
-                    and not p.name.endswith(".test.js"))
+files += sorted(p.relative_to(repo).as_posix() for p in (repo / "web-src").rglob("*") if p.suffix in {".js", ".json"}
+               and not p.name.endswith(".test.js") and p.name != "maia3-smoke-fixture.json")
+for d, exts in (("research/coach-relations", {".py"}), ("research/coach-relations/prod-depth", {".py", ".mjs"})):
+    files += sorted(p.relative_to(repo).as_posix() for p in (repo / d).glob("*") if p.is_file() and p.suffix in exts)
 buf, manifest = io.BytesIO(), {}
 with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
     for f in files + [f"games/{kind}.json"]:

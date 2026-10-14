@@ -1,4 +1,6 @@
-// Production coach prose on the coach-v5 depth-22 reads. Run from the repo root:
+// Production coach prose on the coach-v5 reads: Stockfish 19 full NNUE at depth 22, a research
+// setting, not the product's (Analyze reads with lite at 12, then 16 where the router asks;
+// research/coach-relations/prod-depth runs that). Run from the repo root:
 //   node research/coach-prod-v2/run.mjs <ids.json|all> <out.jsonl>
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { Chess } from "chess.js";

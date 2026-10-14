@@ -5,7 +5,8 @@
   py research/coach-relations/make_ab.py ab2
   node research/coach-ab-review/serve.mjs research/coach-relations/ab2 --port 5208
 
-The first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
+Rounds 1-5 (ab..ab5): the cards and both programs' lines are the coach-v5 depth-22 full-NNUE
+reads, not production's depth; round 6 (ab6) uses prod-depth/. The first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
 second run builds the pairs. Cards: inaccuracies, mistakes and blunders that no
 review round and no earlier A/B (ab*/ids.json) has shown, 60 of them; with --reviewed the review
 rounds' cards may be drawn too (they tuned pick.py, not the wording). Order and A/B side come from os.urandom; the key is sealed

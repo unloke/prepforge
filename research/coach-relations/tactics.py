@@ -13,7 +13,7 @@ Per line: mate (the line ends in mate), and Stockfish's forced mate at its end. 
 mate, king exposure (attacked squares around a king) and how many pieces come off.
 
 Stockfish is production's engine (the stockfish 19 lite package under node) at the screen depth
-analysis limits, cached by FEN in sf_cache.jsonl.
+analysis limits (more threads and hash than the browser), cached by FEN in sf_cache.jsonl.
 """
 import json
 import os

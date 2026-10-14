@@ -2,7 +2,9 @@
 
   py research/coach-relations/enumerate.py
 
-For each card in positions.jsonl, walks the played and best engine lines and records events:
+For each card in positions.jsonl, walks the played and best engine lines and records events. The
+cards are the coach-v5 ones: Stockfish 19 full NNUE depth-22 lines cut to 4-8 plies, a research
+setting; prod-depth/ makes the same rows from production's lite 12/16 reads.
 - enter: a piece lands deep in the enemy half, off enemy pawn attacks;
 - shield: a shield pawn of a king on a wing (the three files around it, up to two ranks ahead)
   is pushed or taken while the enemy keeps a queen or two heavy pieces;
