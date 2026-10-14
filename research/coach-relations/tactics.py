@@ -79,14 +79,16 @@ def exchanges(nodes, last, add):
         m = nodes[i][2]
         if not (nodes[i - 1][0].is_capture(m) or m.promotion):
             continue
-        if runs:
-            j = runs[-1][-1]
-            sq = nodes[j][2].to_square
-            # a delayed recapture of the same piece on the same square finishes the same exchange
-            if i == j + 1 or (m.to_square == sq and nodes[i - 1][1].get(sq) == nodes[j][1][sq]):
-                runs[-1].append(i)
-                continue
-        runs.append([i])
+        # a delayed recapture of the same piece on the same square finishes that exchange, together
+        # with any captures made in between (Bxg3 Nb4 Nxb4 hxg3 is one exchange)
+        k = next((k for k in range(len(runs) - 1, -1, -1) if m.to_square == nodes[runs[k][-1]][2].to_square
+                  and nodes[i - 1][1].get(m.to_square) == nodes[runs[k][-1]][1][m.to_square]), None)
+        if k is not None:
+            runs[k:] = [sum(runs[k:], []) + [i]]
+        elif runs and i == runs[-1][-1] + 1:
+            runs[-1].append(i)
+        else:
+            runs.append([i])
     found = []
     for run in runs:
         first = nodes[run[0] - 1][0].turn

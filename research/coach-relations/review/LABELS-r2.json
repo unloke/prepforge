@@ -1,6 +1,6 @@
 {
  "schema": "reason-review/1",
- "set_sha256": "a04d2b787ac8333e89a77c9b153957ba29eeccf33393a33274d914ddacbad3c8",
+ "set_sha256": "21e80c263f99b5786060ef850b88236d6a3bf1e1d43afc1c7c66eeabb6a02ace",
  "completed": 84,
  "updated_at": "2026-10-14T08:58:13.803Z",
  "reviews": [
@@ -147,7 +147,8 @@
    "submitted_at": "2026-10-13T19:26:03.859Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant"
+    "1": "irrelevant",
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-14T08:54:54.345Z"
   },
@@ -267,10 +268,9 @@
    "ratings": {
     "0": "minor",
     "1": "minor",
-    "2": "key",
-    "3": "key",
+    "3": "irrelevant",
     "4": "irrelevant",
-    "5": "irrelevant"
+    "2": "key"
    },
    "updated_at": "2026-10-14T08:55:53.076Z"
   },
@@ -321,7 +321,9 @@
    "marks": {},
    "note": "實戰c5對兵型非常不友善 且最後會被對手壓爆",
    "submitted_at": "2026-10-13T20:48:06.834Z",
-   "ratings": {},
+   "ratings": {
+    "0": "irrelevant"
+   },
    "updated_at": "2026-10-13T20:48:27.720Z"
   },
   {
@@ -381,7 +383,8 @@
    "ratings": {
     "0": "irrelevant",
     "1": "minor",
-    "2": "key"
+    "2": "key",
+    "3": "key"
    },
    "updated_at": "2026-10-14T08:56:07.988Z"
   },
@@ -765,7 +768,9 @@
    "note": "實戰走法讓對手可以把馬放到d5這個好格 然後還破壞了自己的兵鏈",
    "submitted_at": "2026-10-14T02:53:52.880Z",
    "ratings": {
-    "0": "key"
+    "0": "key",
+    "1": "minor",
+    "2": "key"
    },
    "updated_at": "2026-10-14T05:31:21.126Z"
   },
@@ -839,7 +844,8 @@
    "note": "實戰貪吃了一隻��教 沒意識到國王太危險所以城堡跑不掉了",
    "submitted_at": "2026-10-14T03:33:13.730Z",
    "ratings": {
-    "0": "key"
+    "0": "key",
+    "1": "minor"
    },
    "updated_at": "2026-10-14T03:33:23.861Z"
   },
@@ -853,7 +859,8 @@
    "submitted_at": "2026-10-14T03:38:33.095Z",
    "ratings": {
     "0": "key",
-    "1": "key"
+    "1": "key",
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-14T03:38:39.791Z"
   },
@@ -1158,7 +1165,8 @@
    "submitted_at": "2026-10-14T05:57:28.601Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant"
+    "1": "irrelevant",
+    "2": "key"
    },
    "updated_at": "2026-10-14T05:58:00.482Z"
   },
@@ -1236,5 +1244,16 @@
    },
    "updated_at": "2026-10-14T06:02:58.347Z"
   }
+ ],
+ "codex_rated": [
+  "rr-046:2",
+  "rr-054:2",
+  "rr-058:0",
+  "rr-062:3",
+  "rr-088:1",
+  "rr-088:2",
+  "rr-093:1",
+  "rr-094:2",
+  "rr-115:2"
  ]
 }

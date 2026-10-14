@@ -24,10 +24,16 @@ detectors that held up on a board check:
   can cover and an enemy knight or bishop can reach in two moves; the best line keeps the cover;
 - draw_risk: a line ends in stalemate and the other does not; or in the played line the opponent
   gives two or more checks including the last move, the best line has none, and the mover is two
-  points up at the end of either line.
+  points up at the end of either line;
+- castling: a side that could castle at the root loses every castling right without castling, by
+  a king move in the line or by a king move answering check in Stockfish's next four plies after
+  it, while in the other line it castles or keeps a right. Played line: the mover; best line: the
+  opponent.
 Each fact carries text_zh for the review page. Facts are returned per line, already contrastive.
 """
 import chess
+
+import tactics
 
 VAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100}
 ZH = {chess.PAWN: "兵", chess.KNIGHT: "馬", chess.BISHOP: "象", chess.ROOK: "車", chess.QUEEN: "后"}
@@ -378,8 +384,50 @@ def draw_risk(lines, mover):
     return out
 
 
+def castle_state(nodes, c):
+    """(state, ply, (Stockfish moves after the line up to the loss, whether that king move answered
+    check)) for color c; state is castled, kept, lost (a king move, after the line only out of check)
+    or gone (lost any other way)."""
+    b = nodes[-1][0]
+    more = [] if b.is_game_over() else [chess.Move.from_uci(u) for u in tactics.analyse(b)["pv"][:4]]
+    b = nodes[0][0].copy(stack=False)
+    for i, m in enumerate([m for _, m in nodes[1:]] + more, 1):
+        if b.turn == c and b.is_castling(m):
+            return "castled", i, ([], False)
+        king = b.turn == c and m.from_square == b.king(c)
+        check = b.is_check()
+        tail = more[:max(0, i - len(nodes) + 1)]
+        b.push(m)
+        if not b.has_castling_rights(c):
+            return ("lost" if king and (i < len(nodes) or check) else "gone"), i, (tail, check)
+    return "kept", len(nodes) - 1, ([], False)
+
+
+def castling(lines, mover):
+    out = []
+    root = lines["played"][0][0]
+    for line, other in (("played", "best"), ("best", "played")):
+        c = mover if line == "played" else not mover
+        if not root.has_castling_rights(c):
+            continue
+        state, ply, (tail, check) = castle_state(lines[line], c)
+        ostate = castle_state(lines[other], c)[0]
+        if state == "lost" and ostate in ("castled", "kept"):
+            last = len(lines[line]) - 1
+            b = lines[line][min(ply, last)][0].copy(stack=False)
+            sans = []
+            for m in tail:
+                sans.append(b.san(m))
+                b.push(m)
+            how = f"引擎續著 {' '.join(sans)} 後，" if tail else ""
+            keep = "已經易位" if ostate == "castled" else "仍保有易位權"
+            out.append(fact("castling", line, min(ply, last), c, [b.king(c)],
+                            f"{how}{side(c)}的王{'被將軍後' if check else ''}移動，失去易位權；另一條變化裡{keep}"))
+    return out
+
+
 def facts(fen, played_pv, best_pv):
     lines = {"played": walk(fen, played_pv), "best": walk(fen, best_pv)}
     mover = chess.Board(fen).turn
     return (outposts(lines, mover) + harassed(lines, mover) + restricted_pieces(lines, mover) + pawn_weakness(lines, mover)
-            + draw_risk(lines, mover))
+            + draw_risk(lines, mover) + castling(lines, mover))

@@ -12,8 +12,8 @@ For each card in positions.jsonl, walks the played and best engine lines and rec
   material won by the opponent in the best line is dropped (an unfinished sacrifice), and material
   and enter in a line with mate or forced_mate (part of the mate), then shield, open_file and the
   positional.py facts other than draw_risk are dropped from a card with a material, mate or
-  forced_mate fact, and draw_risk from a card with mate or forced_mate;
-- outpost, piece_harassed, restricted, pawn_weakness, draw_risk from positional.py;
+  forced_mate fact, and draw_risk and castling from a card with mate or forced_mate;
+- outpost, piece_harassed, restricted, pawn_weakness, draw_risk, castling from positional.py;
 - tactical and material relations from tactics.py: fork, mate_threat, mate,
   material (an exchange one side wins), and between lines forced_mate, king_exposed and trades
   (two or more pieces more off over the plies both lines reach, of about equal worth for both
@@ -39,7 +39,7 @@ import tactics
 HERE = pathlib.Path(__file__).parent
 VALUE = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 ORDER = ["mate", "forced_mate", "mate_threat", "material", "fork", "king_exposed",
-         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "draw_risk"]
+         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "draw_risk", "castling"]
 HEAVY = (chess.ROOK, chess.QUEEN)
 
 
@@ -231,7 +231,7 @@ def candidates(r):
     if any(c["type"] in ("material", "mate", "forced_mate") for c in out):
         out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "restricted", "pawn_weakness")]
     if any(c["type"] in ("mate", "forced_mate") for c in out):
-        out = [c for c in out if c["type"] != "draw_risk"]
+        out = [c for c in out if c["type"] not in ("draw_risk", "castling")]
     # next to won or lost material, king exposure is only the material changing hands
     elif any(c["type"] == "material" for c in out):
         out = [c for c in out if c["type"] != "king_exposed"]

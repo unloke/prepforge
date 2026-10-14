@@ -65,7 +65,8 @@
    "note": "b5 錯過 Qa4+ 迫使 Kf8、剝奪黑王易位權的機會；接著 Qc6、Qc7 可侵入並以 Qxa7、Qxb6 連吃兩兵。",
    "ratings": {
     "0": "irrelevant",
-    "1": "irrelevant"
+    "1": "irrelevant",
+    "2": "key"
    },
    "confidence": "high",
    "doubt": ""
@@ -77,7 +78,7 @@
    "where": "best",
    "note": "Bxd5 Bxd5 只是等值交換，錯過 Bxg3 的得兵機會；最佳線 Nb4 Nxb4 hxg3 後，黑方得到馬與兵、失去象，淨賺一分。",
    "ratings": {
-    "0": "wrong"
+    "0": "key"
    },
    "confidence": "high",
    "doubt": ""
@@ -297,7 +298,8 @@
    "note": "f6 讓 Qxe6+ Kf8 暴露黑王；接著 b3、Ba3+ 迫使黑方以 Rc5 擋將，Qe2 Kf7 dxc5 後丟車，應先 O-O。",
    "ratings": {
     "0": "minor",
-    "1": "irrelevant"
+    "1": "irrelevant",
+    "2": "key"
    },
    "confidence": "high",
    "doubt": ""
@@ -408,7 +410,8 @@
    "where": "played",
    "note": "Qd6 讓 Nb5 axb5 Bxe5 趕后，續著 Qc6 Bxf6+ Kf8 Be7+ Kg8，黑王失去易位且遭連續將軍；先 O-O 可先安頓黑王。",
    "ratings": {
-    "0": "irrelevant"
+    "0": "irrelevant",
+    "1": "key"
    },
    "confidence": "high",
    "doubt": ""
@@ -507,7 +510,8 @@
    "note": "O-O 錯過 e5 趕走 f6 馬並打開 f3 后通往 b7 的斜線；Nfd7、Bxe7、Qxe7 後 Qxb7 可吃回一兵，消除少兵劣勢。",
    "ratings": {
     "0": "key",
-    "1": "irrelevant"
+    "1": "irrelevant",
+    "2": "minor"
    },
    "confidence": "high",
    "doubt": ""

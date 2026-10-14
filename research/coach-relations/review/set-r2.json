@@ -1559,31 +1559,17 @@
     "piece": "c8",
     "ply": 1,
     "side": "black",
-    "net": 3,
-    "won": [
-     "b"
-    ],
-    "lost": [],
-    "at": [
-     "c1"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "material",
-    "piece": "d8",
-    "ply": 3,
-    "side": "black",
-    "net": 7,
+    "net": 10,
     "won": [
      "q",
+     "b",
      "n"
     ],
     "lost": [
      "r"
     ],
     "at": [
-     "a5"
+     "c1"
     ]
    },
    {
@@ -4965,6 +4951,17 @@
     "at": [
      "b2"
     ]
+   },
+   {
+    "type": "castling",
+    "line": "played",
+    "ply": 5,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "e2"
+    ],
+    "text_zh": "白方的王被將軍後移動，失去易位權；另一條變化裡已經易位"
    }
   ]
  },
@@ -5074,6 +5071,17 @@
     "at": [
      "c4"
     ]
+   },
+   {
+    "type": "castling",
+    "line": "played",
+    "ply": 7,
+    "piece": null,
+    "side": "white",
+    "at": [
+     "f1"
+    ],
+    "text_zh": "白方的王被將軍後移動，失去易位權；另一條變化裡仍保有易位權"
    }
   ]
  },
@@ -6872,6 +6880,17 @@
      "d4",
      "c1"
     ]
+   },
+   {
+    "type": "castling",
+    "line": "best",
+    "ply": 2,
+    "piece": null,
+    "side": "black",
+    "at": [
+     "e7"
+    ],
+    "text_zh": "黑方的王被將軍後移動，失去易位權；另一條變化裡仍保有易位權"
    }
   ]
  },
