@@ -339,7 +339,7 @@ def explain(row, cands=None):
     if "best" not in shown:
         out.append(f"{B} was the move{': ' + better if better else ''}.")
     arrows = arrows[:3]
-    return {"text": " ".join(out), "arrows": arrows, "squares": squares[:3 - len(arrows)], "facts": [f["type"] for f in facts]}
+    return {"text": " ".join(out), "arrows": arrows, "squares": squares[:3 - len(arrows)], "facts": [f["type"] for f in facts], "chosen": facts}
 
 
 def main():
