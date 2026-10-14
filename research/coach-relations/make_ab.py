@@ -20,6 +20,7 @@ import sys
 
 import chess
 
+import tactics
 from explain import explain
 
 HERE = pathlib.Path(__file__).parent
@@ -89,6 +90,7 @@ def main():
         (dst / f"judge/batch{k // BATCH + 1}.jsonl").write_text(
             "".join(json.dumps(r) + "\n" for r in judge[k:k + BATCH]), encoding="utf-8")
     print(len(out), "pairs")
+    tactics.close()
 
 
 if __name__ == "__main__":

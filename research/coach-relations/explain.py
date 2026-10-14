@@ -349,6 +349,7 @@ def main():
         e = explain(rows[i])
         marks = [f"{a['line']} ply {a['ply']} {a['from']}-{a['to']}" for a in e["arrows"]]
         print(f"{i}  [{' + '.join(e['facts'])}]\n  {e['text']}\n  marks: {'; '.join(marks + e['squares']) or 'none'}\n")
+    tactics.close()
 
 
 if __name__ == "__main__":

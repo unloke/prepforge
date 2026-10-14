@@ -15,9 +15,10 @@ mate, king exposure (attacked squares around a king) and how many pieces come of
 Stockfish is production's engine (the stockfish 19 lite package under node) at the screen depth
 analysis limits, cached by FEN in sf_cache.jsonl.
 """
-import atexit
 import json
+import os
 import pathlib
+import signal
 
 import chess
 import chess.engine
@@ -29,6 +30,19 @@ CACHE = HERE / "sf_cache.jsonl"
 _cache, _engine = None, None
 
 VAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100}
+
+
+def close():
+    """Kill the engine process. Scripts call it before they end: the wasm build ignores "quit", so
+    SimpleEngine.close() alone, or interpreter shutdown (it joins the engine thread), waits forever."""
+    global _engine
+    if _engine is not None:
+        e, _engine = _engine, None
+        try:
+            os.kill(e.protocol.transport.get_pid(), signal.SIGTERM)  # TerminateProcess on Windows
+        except OSError:
+            pass
+        e.close()
 
 
 def analyse(b):
@@ -44,7 +58,6 @@ def analyse(b):
     if fen not in _cache:
         if _engine is None:
             _engine = chess.engine.SimpleEngine.popen_uci(ENGINE)
-            atexit.register(_engine.close)  # the wasm build ignores "quit"; close without waiting
             _engine.configure({"Threads": 8, "Hash": 256})
         info = _engine.analyse(b, LIMIT)
         score = info["score"].relative
