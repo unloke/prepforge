@@ -32,7 +32,6 @@
   select,
   textarea { font-size: 16px; }
   .btn.sm { min-height: 36px; height: 36px; }
-  .job-toast button { min-width: 44px; min-height: 44px; }
 
   /* ---- Pages ------------------------------------------------------------- */
   .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
@@ -546,10 +545,6 @@
     visibility: visible;
     transition: transform 180ms ease;
   }
-  body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .toast-stack {
-    bottom: calc(var(--phone-bar-h) + 10px + env(safe-area-inset-bottom));
-  }
-
   /* ---- Bottom sheet (Analyze's report) ----------------------------------- */
   .phone-sheet.is-open {
     position: fixed;
@@ -825,23 +820,30 @@
   .sheet-item .ic { width: 22px; height: 22px; color: var(--accent-strong); }
   .sheet-item:active { background: var(--surface-3); }
 
-  /* ---- Status pill: a small notice at the top edge -------------------- */
-  .topbar-status-slot,
-  .topbar-status-slot:has(.status:empty),
-  .topbar-status-slot:has(.status:not(.is-fresh)) {
-    top: calc(8px + env(safe-area-inset-top));
-    bottom: auto;
-    left: 50%;
-    right: auto;
-    width: max-content;
-    max-width: calc(100vw - 24px);
-    padding: 6px 12px;
-    border-radius: 999px;
-    transform: translateX(-50%);
+  /* ---- Notifications: one compact card, bottom-right ------------------- */
+  /* Above the tab bar (pages) or the thumb bar (study screens), clear of the
+     board and Analyze's chart. Only the newest card shows; the next surfaces
+     when it leaves. Swipe it away or tap ×. */
+  .notices {
+    right: 10px;
+    bottom: calc(var(--phone-bar-h) + 10px + env(safe-area-inset-bottom));
+    width: min(320px, calc(100vw - 20px));
   }
-  .topbar-status-slot:has(.status:empty),
-  .topbar-status-slot:has(.status:not(.is-fresh)) { transform: translate(-50%, -6px); }
-  .topbar-status-slot .status-close { width: 32px; height: 32px; }
+  .notices > .notice:not(:last-child) { display: none; }
+  .notice {
+    min-height: 44px;
+    padding: 4px 2px 4px 12px;
+    column-gap: 8px;
+    border-radius: var(--phone-radius);
+    font-size: 14px;
+  }
+  .notice-text { font-size: 12px; }
+  .notice-title[hidden] + .notice-text { font-size: 14px; }
+  .notice:not([data-tone="error"], .has-actions, :hover, :focus-within) .notice-close { opacity: 1; }
+  .notice-close { width: 40px; height: 40px; }
+  .notice-action,
+  .notice-stop { height: 34px; padding: 0 12px; font-size: 13px; }
+  .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
   /* The tab bar. */
   .tabbar { height: calc(56px + env(safe-area-inset-bottom)); }

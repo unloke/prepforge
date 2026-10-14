@@ -185,7 +185,7 @@ async function main() {
 
   async function getAppStatus(page) {
     return page.evaluate(() => {
-      const bar = document.querySelector('[data-testid="app-status"], .status');
+      const bar = document.getElementById("notices");
       return bar ? bar.textContent.trim() : "";
     });
   }
@@ -230,7 +230,7 @@ async function main() {
       moveListChildCount: document.getElementById("analysis-moves")?.children.length || 0,
       summaryHasBars: !!document.querySelector("#analysis-summary .class-bars"),
       summaryText: (document.getElementById("analysis-summary")?.textContent || "").trim().slice(0, 120),
-      status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+      status: document.getElementById("notices")?.textContent?.trim() || "",
       booklineHidden: document.getElementById("coach-bookline")?.hidden,
       booklineText: (document.getElementById("coach-bookline")?.textContent || "").trim().slice(0, 120),
       coachProse: (document.getElementById("coach-prose")?.textContent || "").trim().slice(0, 120),
@@ -252,7 +252,7 @@ async function main() {
   }
 
   async function waitForJobStopButton(page, timeout = 120_000) {
-    await page.locator(".job-toast-stop").waitFor({ state: "visible", timeout });
+    await page.locator(".notice-stop").waitFor({ state: "visible", timeout });
   }
 
   async function waitForRunRetryable(page, statusPattern, timeout = 90_000) {
@@ -281,7 +281,7 @@ async function main() {
       await clickAnalyze(page);
       await page.waitForTimeout(800);
       const snap = await page.evaluate(() => ({
-        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        status: document.getElementById("notices")?.textContent?.trim() || "",
         authModalOpen: !!document.querySelector(".auth-overlay"),
         resultsVisible: !document.getElementById("analysis-results")?.hidden,
         runDisabled: document.getElementById("run-analysis")?.disabled,
@@ -325,7 +325,7 @@ async function main() {
           viewportW: window.innerWidth,
           authModalOpen: !!document.querySelector(".auth-overlay"),
           resultsVisible: !document.getElementById("analysis-results")?.hidden,
-          status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+          status: document.getElementById("notices")?.textContent?.trim() || "",
           runDisabled: document.getElementById("run-analysis")?.disabled,
         };
       });
@@ -367,7 +367,7 @@ async function main() {
       await page.keyboard.press("Enter");
       await page.waitForTimeout(800);
       const afterEnter = await page.evaluate(() => ({
-        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        status: document.getElementById("notices")?.textContent?.trim() || "",
         runDisabled: document.getElementById("run-analysis")?.disabled,
         authModalOpen: !!document.querySelector(".auth-overlay"),
       }));
@@ -444,7 +444,7 @@ async function main() {
           resultsVisible: !document.getElementById("analysis-results")?.hidden,
           moveListChildCount: document.getElementById("analysis-moves")?.children.length || 0,
           summaryHasBars: !!document.querySelector("#analysis-summary .class-bars"),
-          status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+          status: document.getElementById("notices")?.textContent?.trim() || "",
         };
         return snap;
       });
@@ -538,7 +538,7 @@ async function main() {
       const snap = await page.evaluate(() => {
         const btn = document.getElementById("run-analysis");
         return {
-          status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+          status: document.getElementById("notices")?.textContent?.trim() || "",
           runDisabled: btn?.disabled ?? null,
           runAriaDisabled: btn?.getAttribute("aria-disabled") || "",
           runGated: btn?.classList.contains("is-coming-soon"),
@@ -575,13 +575,13 @@ async function main() {
 
       await waitForJobStopButton(page);
       const during = await page.evaluate(() => ({
-        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
-        toast: (document.querySelector(".job-toast")?.textContent || "").slice(0, 160),
-        stopVisible: !!document.querySelector(".job-toast-stop"),
+        status: document.getElementById("notices")?.textContent?.trim() || "",
+        toast: (document.querySelector("#notices .notice, .job-dock .notice")?.textContent || "").slice(0, 160),
+        stopVisible: !!document.querySelector(".notice-stop"),
         runDisabled: document.getElementById("run-analysis")?.disabled,
       }));
 
-      await page.locator(".job-toast-stop").first().click();
+      await page.locator(".notice-stop").first().click();
       const afterStop = await waitForRunRetryable(page, /stopped/i);
       afterStop.resultsHidden = await page.evaluate(
         () => document.getElementById("analysis-results")?.hidden,
@@ -641,7 +641,7 @@ async function main() {
       const afterCreate = await page.evaluate((expectedName) => ({
         viewBuildActive: document.getElementById("view-build")?.classList.contains("is-active"),
         buildRepName: document.getElementById("build-rep-name")?.textContent?.trim() || "",
-        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        status: document.getElementById("notices")?.textContent?.trim() || "",
         handoffHidden: document.getElementById("analysis-handoff")?.hidden,
       }), repName);
 
@@ -679,7 +679,7 @@ async function main() {
       await clickAnalyze(page);
       await page.waitForTimeout(800);
       const snap = await page.evaluate(() => ({
-        status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+        status: document.getElementById("notices")?.textContent?.trim() || "",
         authModalOpen: !!document.querySelector(".auth-overlay"),
         runDisabled: document.getElementById("run-analysis")?.disabled,
       }));

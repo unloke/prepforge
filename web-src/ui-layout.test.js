@@ -102,7 +102,7 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".train-coach-sub");
   });
 
-  it("has no top bar at any width: rail owns search/theme/account, status floats", () => {
+  it("has no top bar at any width: rail owns search/theme/account, notices float", () => {
     expect(html).not.toContain('class="topbar"');
     expect(html).not.toContain('id="topbar-title"');
     expect(html).not.toContain('id="topbar-sub"');
@@ -121,23 +121,10 @@ describe("workspace chrome layout", () => {
     expect(html).toContain('id="sheet-theme"');
     expect(html).toContain('id="sheet-palette"');
     expect(app).toContain('getElementById("sheet-theme")?.addEventListener("click", toggleTheme)');
-    // Status: a fixed floating pill that hides until a message is set.
-    const slot = html.indexOf('id="topbar-status-slot"');
-    expect(slot).toBeGreaterThan(html.indexOf("</nav>"));
-    expect(html.indexOf('id="app-status-close"')).toBeGreaterThan(slot);
-    expect(css).toMatch(/\.topbar-status-slot\s*\{[^}]*position:\s*fixed/s);
-    expect(css).toMatch(/\.topbar-status-slot:has\(\.status:not\(\.is-fresh\)\)/);
-    expect(app).toContain('const showNow = !!text && text !== "Ready" && !inProgress;');
-    expect(app).toContain('status.classList.toggle("is-fresh", showNow)');
-    // The slot itself is marked idle when empty, so no empty pill can linger.
-    expect(app).toContain('slot.classList.toggle("is-idle", !showNow)');
-    expect(css).toMatch(/\.topbar-status-slot\.is-idle\s*\{[^}]*visibility:\s*hidden/s);
-    // Long messages wrap instead of being cut off.
-    expect(css).toMatch(/\.topbar-status-slot \.status:not\(\[hidden\]\)\s*\{[^}]*white-space:\s*normal/s);
-    // In-progress ("...") messages only surface if still current after a beat.
-    expect(app).toContain("STATUS_PROGRESS_SHOW_DELAY");
-    expect(app).toContain('function setStatus(message, { severity = "info" } = {})');
-    expect(app).toContain('getElementById("app-status-close")');
+    // Notifications: one fixed stack after the nav, bottom-right.
+    expect(html.indexOf('id="notices"')).toBeGreaterThan(html.indexOf("</nav>"));
+    expect(css).toMatch(/\.notices\s*\{[^}]*position:\s*fixed;[^}]*right:\s*16px;[^}]*bottom:\s*16px/s);
+    expect(html).not.toContain('id="app-status"');
     // Library's Import / New live in the repertoire list header, mirrored in the
     // More sheet for phones.
     const lib = html.slice(html.indexOf('id="view-dashboard"'), html.indexOf('id="view-analyze"'));

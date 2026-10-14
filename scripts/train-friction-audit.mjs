@@ -144,7 +144,7 @@ async function main() {
   }
 
   async function getAppStatus(page) {
-    return page.evaluate(() => document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "");
+    return page.evaluate(() => document.getElementById("notices")?.textContent?.trim() || "");
   }
 
   async function gotoDashboard(page) {
@@ -221,7 +221,7 @@ async function main() {
       navBuild: !!document.querySelector('[data-testid="nav-build"]'),
       pickerHidden: document.getElementById("train-repertoire-select")?.hidden,
       smartModeActive: !!document.querySelector('#train-modes .train-mode[data-mode="smart"].is-active'),
-      status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+      status: document.getElementById("notices")?.textContent?.trim() || "",
     }));
   }
 

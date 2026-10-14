@@ -74,12 +74,7 @@
         </button>
       </div>
     </nav>
-    <!-- No top bar at any width: the active nav item names the page. Status is
-         a floating pill (bottom-right) that fades after a few seconds. -->
-    <span class="topbar-status-slot is-idle" id="topbar-status-slot">
-      <div class="status" id="app-status" data-testid="app-status" role="status" aria-live="polite" data-state="ready" data-severity="info">Ready</div>
-      <button class="status-close" id="app-status-close" type="button" hidden aria-label="Dismiss status" title="Dismiss">×</button>
-    </span>
+    <!-- No top bar at any width: the active nav item names the page. -->
 
     <main class="workspace" id="workspace-main" tabindex="-1">
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
@@ -865,7 +860,7 @@
       <div class="engine-window-resize" id="engine-window-resize" aria-hidden="true"></div>
     </div>
 
-    <div class="toast-stack" id="toast-stack" data-testid="toast-stack" role="region" aria-label="Notifications" aria-live="polite"></div>
+    <div class="notices" id="notices" data-testid="notices" role="region" aria-label="Notifications"></div>
 
     <div class="palette" id="command-palette" data-testid="command-palette" hidden role="dialog" aria-modal="true" aria-label="Command palette">
       <div class="palette-panel">

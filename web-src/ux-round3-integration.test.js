@@ -33,7 +33,7 @@ function harness(realBoard = false) {
     hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
     revealAnalysisResults: vi.fn(), syncViewHeads: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn(),
     orientAnalysisForSelf: vi.fn(), orientAnalysisFromPgn: vi.fn(),
-    isBrowserEngineAvailable: () => true, jobToast: { isBusy: () => false }, requireSignIn: () => true,
+    isBrowserEngineAvailable: () => true, notices: { isBusy: () => false }, requireSignIn: () => true,
     postJson: vi.fn(async () => { throw new Error("stop before engine"); }), engineLifecycleMark: vi.fn(),
     isAuthError: () => false, hideAnalysisResults: vi.fn(), loadCheckpoint: () => null, currentOwnerId: () => "owner",
     evalMapFrom: () => new Map(), clearCheckpoint: vi.fn(async () => true), markCheckpointSaved: vi.fn(), refreshAnalyzeRecovery: vi.fn(), hideAnalysisRetrySave: vi.fn(),
@@ -41,7 +41,7 @@ function harness(realBoard = false) {
     boardInfo: vi.fn(async () => ({ legal_moves: [] })), boards: { analysis: { setPosition: vi.fn(), setMoveBadge: vi.fn() } },
     highlightCurrentMove: vi.fn(), classBadgeSymbol: () => "", engineWidget: null, syncWorkspaceUrl: vi.fn(),
   };
-  deps.jobToast.failJob = vi.fn();
+  deps.notices.failJob = vi.fn();
   const helper = body("function invalidateAnalysisSource(");
   const inputStart = source.indexOf('pgnInput.addEventListener("input",');
   const inputBinding = source.slice(inputStart, source.indexOf("\n    });", inputStart) + 8);

@@ -71,7 +71,6 @@ async function skipTrainingLine() {
     if (result.prompt) {
       appState.training.prompt = result.prompt;
       await renderTraining(result.prompt);
-      setStatus("Skipped to next line");
     } else {
       appState.training.prompt = null;
       if (appState.trainReview && appState.trainReview.queue.length) {
@@ -488,7 +487,6 @@ async function startTraining(mode, options = {}) {
   clearBlitzTimer();
   setBlitzBarVisible(false);
   setSmartPanelsHidden();
-  setStatus("Starting trainer");
   const repertoireId = selectedTrainRepertoireId();
   appState.trainingRepertoireId = repertoireId;
   // No unauthenticated demo in the SaaS model: training is always against one of the
@@ -963,7 +961,6 @@ async function startPlaySession({
     sub: `${why}${luckyMeta}`,
     label: playBookLabel(appState.play),
   });
-  setStatus(isStartFen(info.fen) ? "Your move" : `Started from a key position (${reason || "book"})`);
   renderPlayTrail();
   syncTrainPickerVisibility();
   if (sideToMoveFromFen(info.fen) !== userColor) {
@@ -1673,7 +1670,6 @@ async function startSmartTraining(options = {}) {
   const owner = currentOwnerId();
   const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
   const fresh = !!options.fresh;
-  setStatus(fresh ? "Building a new queue" : "Building your queue");
   setTrainBanner(
     "runin",
     fresh ? "Building a new queue…" : "Building your queue…",
@@ -2188,7 +2184,6 @@ async function skipSmartCard() {
   markTrainPositionDirty();
   const next = smartLocalPrompt(smart);
   if (next) {
-    setStatus("Skipped to the next card");
     await presentSmartPrompt(next);
   } else {
     setStatus("Session complete");

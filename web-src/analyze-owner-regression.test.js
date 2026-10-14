@@ -74,13 +74,13 @@ it("switching accounts during classify-save releases the analysis job without re
   const bobAnalysis = { game_id: "bob-game" };
   const runButton = { disabled: false };
   const appState = {};
-  const jobToast = {
+  const notices = {
     isBusy: () => busy, startJob: vi.fn(() => { busy = true; }),
     updateJob: vi.fn(), lockJob: vi.fn(),
     cancelJob: vi.fn(() => { busy = false; }), failJob: vi.fn(), completeJob: vi.fn(),
   };
   const deps = {
-    appState, jobToast, currentOwnerId: () => owner,
+    appState, notices, currentOwnerId: () => owner,
     isBrowserEngineAvailable: () => true, requireSignIn: () => true,
     document: { getElementById: (id) => id === "pgn-input" ? { value: "1. e4" } : runButton },
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,
@@ -109,7 +109,7 @@ it("switching accounts during classify-save releases the analysis job without re
   expect(deps.postJson).toHaveBeenCalledWith("/api/analyze/classify-save", expect.any(Object));
   expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice", expect.any(String));
   expect(appState.analysis).toBe(bobAnalysis);
-  expect(jobToast.failJob).not.toHaveBeenCalled();
+  expect(notices.failJob).not.toHaveBeenCalled();
   expect(busy).toBe(false);
   expect(runButton.disabled).toBe(false);
 });

@@ -525,7 +525,7 @@ export function createAnalyzeView({
     const hidden = !points.length || idx < 0;
     // While a run is in progress the stored points are the previous game's (the
     // CSS hides that graph too), so they are not this position's eval.
-    const running = !!document.querySelector('#analysis-eval-card .job-toast[data-state="running"]');
+    const running = !!document.querySelector('#analysis-eval-card .notice[data-state="running"]');
     const x = hidden ? -10 : evalChartXOf(idx, points.length);
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
@@ -621,30 +621,47 @@ export function createAnalyzeView({
       selectEvalChartIdx(evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX)));
     });
 
-    // A finger dragged along the graph scrubs through the game.
+    // A finger on the graph scrubs through the game with the tooltip showing;
+    // lifting it hides the tooltip. A mouse hovers. Pointer events, not mouse
+    // events: a tap's emulated mousemove would pin the tooltip until the next
+    // interaction, since no mouseleave follows a touch.
     let scrubIdx = -1;
-    chart.addEventListener("pointermove", (event) => {
+    const scrub = (event) => {
       const points = appState.evalChartPoints || [];
-      if (event.pointerType !== "touch" || !points.length) return;
+      if (!points.length) return;
       const idx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
+      showEvalChartTooltip(idx);
       if (idx === scrubIdx) return;
       scrubIdx = idx;
       selectEvalChartIdx(idx);
+    };
+    const endScrub = (event) => {
+      if (event.pointerType !== "touch") return;
+      scrubIdx = -1;
+      hideEvalChartTooltip();
+    };
+    chart.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "touch") scrub(event);
     });
-    chart.addEventListener("pointerup", () => { scrubIdx = -1; });
-
-    chart.addEventListener("mousemove", (event) => {
+    chart.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch") {
+        scrub(event);
+        return;
+      }
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
       showEvalChartTooltip(evalChartFocusIdx);
     });
+    chart.addEventListener("pointerup", endScrub);
+    chart.addEventListener("pointercancel", endScrub);
 
     // Pointer focus would pin the tooltip after the mouse leaves; keyboard
     // users step moves with the arrow keys (global) and read the move list.
     chart.addEventListener("mousedown", (event) => event.preventDefault());
 
-    chart.addEventListener("mouseleave", () => {
+    chart.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "touch") return;
       evalChartFocusIdx = -1;
       hideEvalChartTooltip();
     });

@@ -136,7 +136,7 @@ export function createScoutView(deps) {
     selectBuildNode,
     resolveBuildId,
     setBuildSync,
-    jobToast,
+    notices,
     parseFenBoard,
     pieceSvg,
     getBuildState,
@@ -1359,7 +1359,7 @@ export function createScoutView(deps) {
       setStatus("No lines to add");
       return;
     }
-    if (jobToast.isBusy()) {
+    if (notices.isBusy()) {
       setStatus("Another job is running");
       return;
     }
@@ -1367,7 +1367,7 @@ export function createScoutView(deps) {
     if (!repId) return;
 
     const ctrl = new AbortController();
-    jobToast.startJob({
+    notices.startJob({
       id: `scout-prep-${Date.now()}`,
       title: "Add Scout Lines",
       tab: "build",
@@ -1379,7 +1379,7 @@ export function createScoutView(deps) {
     let failed = 0;
     for (const line of unique) {
       if (ctrl.signal.aborted) break;
-      jobToast.updateJob({
+      notices.updateJob({
         current: done,
         total: unique.length,
         message: `${line.sans.at(-1) || "line"} · ${done + 1}/${unique.length}`,
@@ -1396,7 +1396,7 @@ export function createScoutView(deps) {
       }
       done++;
     }
-    jobToast.completeJob({
+    notices.completeJob({
       title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
       message: `Wrote ${written} line${written === 1 ? "" : "s"} into prep${failed ? ` · ${failed} failed` : ""}`,
     });
@@ -1418,7 +1418,7 @@ export function createScoutView(deps) {
       setStatus("Scout an opponent first");
       return;
     }
-    if (jobToast.isBusy()) {
+    if (notices.isBusy()) {
       setStatus("Another job is running");
       return;
     }
@@ -1436,7 +1436,7 @@ export function createScoutView(deps) {
       state.games.some((g) => g.color === c),
     );
     const total = colors.length;
-    jobToast.startJob({
+    notices.startJob({
       id: `scout-deep-${Date.now()}`,
       title: "Scout Deep Scan",
       tab: "replay",
@@ -1448,7 +1448,7 @@ export function createScoutView(deps) {
     try {
       for (const color of colors) {
         if (!canApplyDeepScan(opGen, state) || ctrl.signal.aborted) break;
-        jobToast.updateJob({
+        notices.updateJob({
           current: done,
           total,
           message: `Scanning ${color} openings…`,
@@ -1459,7 +1459,7 @@ export function createScoutView(deps) {
           speedFilter: state.activeSpeed,
           shouldCancel: () => !canApplyDeepScan(opGen, state) || ctrl.signal.aborted,
           onProgress: (cur, tot) => {
-            jobToast.updateJob({
+            notices.updateJob({
               current: done,
               total,
               message: `${color}: game ${cur}/${tot}`,
@@ -1471,26 +1471,26 @@ export function createScoutView(deps) {
         done++;
       }
       if (!canApplyDeepScan(opGen, state) || ctrl.signal.aborted) {
-        jobToast.cancelJob("Deep scan stopped");
+        notices.cancelJob("Deep scan stopped");
         return;
       }
       state.engineAggByColor = {};
       renderScoutReport({ force: true });
       scheduleEngineAggregation();
       bindScoutEvents();
-      jobToast.completeJob({
+      notices.completeJob({
         title: "Deep scan done",
         message: `Engine patterns for ${done} colour${done === 1 ? "" : "s"}`,
       });
     } catch (error) {
       if (!canApplyDeepScan(opGen, state)) {
-        jobToast.cancelJob("Deep scan stopped");
+        notices.cancelJob("Deep scan stopped");
         return;
       }
       if (error?.cancelled) {
-        jobToast.cancelJob("Deep scan stopped");
+        notices.cancelJob("Deep scan stopped");
       } else {
-        jobToast.failJob(error.message || "Deep scan failed");
+        notices.failJob(error.message || "Deep scan failed");
         setStatus(error.message);
       }
     } finally {
@@ -1825,18 +1825,7 @@ export function createScoutView(deps) {
       if (results) results.innerHTML = scoutErrorHtml(message);
       const profile = getProfileEl();
       if (profile) profile.hidden = true;
-      setStatus(message);
       return;
-    }
-    if (scoutState?.games?.length) {
-      const n = scoutState.games.length;
-      const label =
-        session.state === "done"
-          ? `Scouted ${countOf(n, "game")} for ${scoutState.username} · no more history`
-          : session.state === "paused"
-            ? `Paused at ${countOf(n, "game")}`
-            : `Scouted ${countOf(n, "game")} for ${scoutState.username}`;
-      setStatus(label);
     }
   }
 
@@ -2004,7 +1993,6 @@ export function createScoutView(deps) {
         if (profile) profile.hidden = true;
       }
       updateScoutControls();
-      setStatus(message);
     }
   }
 
@@ -2102,7 +2090,6 @@ export function createScoutView(deps) {
       clearScoutSide();
       if (profile) profile.hidden = true;
       updateLiveCounter();
-      setStatus(`Scouting ${scoutLabel(usernames)}`);
       await runStream({ session });
       if (isActiveSession(session)) results?.classList.remove("is-streaming");
     } catch (error) {
@@ -2112,7 +2099,6 @@ export function createScoutView(deps) {
       scoutSession = null;
       if (results) results.innerHTML = scoutErrorHtml(message);
       if (profile) profile.hidden = true;
-      setStatus(message);
     } finally {
       initGuard.finish(initToken);
       updateScoutControls();
@@ -2124,7 +2110,6 @@ export function createScoutView(deps) {
     if (!session || !scoutState) return;
     const results = getResultsEl();
     if (results) results.classList.add("is-streaming");
-    setStatus(`Resuming scout for ${scoutState.username}…`);
     const until = session.oldestDatestamp;
     await runStream({ until, session });
     if (isActiveSession(session)) results?.classList.remove("is-streaming");

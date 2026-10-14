@@ -134,8 +134,8 @@ const tap = (loc) => loc.click(T).then(() => true, () => false);
 
 async function statusOf(page) {
   return page.evaluate(() => {
-    const el = document.getElementById("app-status");
-    return { text: (el?.textContent || "").trim(), severity: el?.dataset.severity || "" };
+    const el = document.querySelector("#notices .notice:last-child");
+    return { text: (el?.querySelector(".notice-text")?.textContent || "").trim(), severity: el?.dataset.tone || "" };
   });
 }
 

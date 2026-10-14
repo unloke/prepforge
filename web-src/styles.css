@@ -458,41 +458,6 @@ h2 {
   stroke-linejoin: round;
 }
 
-/* Status overlays the free space before Ctrl K and has no layout width. */
-.topbar-status-slot {
-  position: absolute;
-  right: calc(100% + 12px);
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: max-content;
-  max-width: min(420px, 60vw);
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.status-close {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  background: var(--panel-soft);
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.status-close:hover {
-  color: var(--text);
-  border-color: var(--line-strong);
-}
-
 /* Primary navigation items: rail rows on desktop, bottom tabs on mobile.
    Icons never move between states; labels fade in when the rail overlays. */
 .tab {
@@ -609,41 +574,6 @@ h2 {
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-}
-
-.status {
-  font-size: 12px;
-  color: var(--muted);
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topbar-status-slot .status:not(:empty)::before {
-  content: "";
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 6px;
-  border-radius: 50%;
-  background: var(--good);
-  vertical-align: 1px;
-}
-.topbar-status-slot .status[data-severity="warning"]::before { background: var(--warn); }
-.topbar-status-slot .status[data-severity="error"]::before,
-.topbar-status-slot .status[data-state="error"]::before { background: var(--danger); }
-
-.status[data-severity="success"] {
-  color: var(--good-text);
-  font-weight: 650;
-}
-
-.status[data-severity="warning"] {
-  color: var(--warn-text);
-  font-weight: 650;
 }
 
 /* Prototype top-bar icon buttons: borderless, 30px, tinted on hover. */
@@ -2255,9 +2185,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .explain-review .pf-switch.is-on .pf-knob,
 .train-blitz-row .pf-switch.is-on .pf-knob {
   transform: translateX(14px);
-}
-.status[data-state="error"] {
-  color: var(--danger-strong);
 }
 
 .train-repertoire-menu {
@@ -4233,41 +4160,8 @@ body.is-guest .replay-results:empty::before {
     border-top: 1px solid var(--line);
   }
 
-  /* Jobs as toasts clear the bottom tab bar. */
-  .toast-stack {
-    bottom: calc(66px + env(safe-area-inset-bottom));
-  }
-
   .tab {
     min-height: 44px;
-  }
-
-  .status {
-    flex: 1 1 auto;
-    min-width: 0;
-    text-align: left;
-  }
-
-  .topbar-status-slot {
-    position: fixed;
-    top: auto;
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
-    transform: none;
-    width: auto;
-    max-width: none;
-    padding: 8px 10px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    z-index: 50;
-  }
-
-  .status-close {
-    width: 44px;
-    height: 44px;
-    font-size: 16px;
   }
 
   .workspace {
@@ -4323,385 +4217,179 @@ body.is-guest .replay-results:empty::before {
   }
 }
 
-/* ----- Notification-style job toast (bottom-right) ---------------------- */
-
-.toast-stack {
+/* ----- Notifications (notices.js) ----------------------------------------
+   One stack, bottom-right; newest on top. Phone layout lives in phone.css. */
+.notices {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  right: 16px;
+  bottom: 16px;
   z-index: var(--z-toast);
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  /* Cards are appended; newest shows on top. */
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
   pointer-events: none;
 }
+.notices:empty { display: none; }
 
-.job-toast {
+.notice {
+  --tone: var(--accent);
   position: relative;
-  width: 320px;
-  max-width: calc(100vw - 36px);
-  margin-top: 10px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 18px 38px rgba(28, 28, 28, 0.18),
-    0 4px 12px rgba(28, 28, 28, 0.08);
-  padding: 12px 14px;
   display: grid;
-  gap: 10px;
-  max-height: 200px;
-  transform-origin: bottom right;
-  transform: translateX(24px) scale(0.94);
-  opacity: 0;
-  transition: transform 280ms cubic-bezier(0.2, 0.9, 0.3, 1.2),
-    opacity 240ms ease,
-    max-height 300ms ease,
-    margin 300ms ease,
-    padding 300ms ease,
-    width 280ms ease;
-  pointer-events: auto;
-}
-
-.job-toast.is-visible {
-  transform: translateX(0) scale(1);
-  opacity: 1;
-}
-
-/* Exit: slide out and collapse height so cards below rise into place. */
-.job-toast.is-leaving {
-  transform: translateX(24px) scale(0.94);
-  opacity: 0;
-  max-height: 0;
-  margin-top: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  overflow: hidden;
-}
-
-.job-toast-body {
-  display: grid;
-  gap: 9px;
-}
-
-.job-toast.is-minimized {
-  width: 200px;
-  padding: 8px 12px;
-  gap: 7px;
-  cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, width 280ms ease,
-    padding 280ms ease, opacity 240ms ease;
-}
-
-/* When minimized, keep the progress bar visible but drop the chatty bits. */
-.job-toast.is-minimized .job-toast-message,
-.job-toast.is-minimized .job-toast-stop,
-.job-toast.is-minimized .job-toast-actions,
-.job-toast.is-minimized .job-toast-collapse {
-  display: none;
-}
-
-.job-toast.is-minimized .job-toast-body {
-  gap: 0;
-}
-
-.job-toast.is-minimized .job-toast-title {
-  font-size: 12px;
-}
-
-/* Hover affordance on a minimized card: lift it slightly and nudge a "click to
-   expand" cue so it's obviously interactive. */
-.job-toast.is-minimized:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 22px 44px rgba(28, 28, 28, 0.22), 0 6px 14px rgba(28, 28, 28, 0.1);
-}
-
-.job-toast.is-minimized:hover .job-toast-icon {
-  animation: jobToastWiggle 0.5s ease;
-}
-
-@keyframes jobToastWiggle {
-  0%, 100% { transform: scale(1) rotate(0); }
-  30% { transform: scale(1.18) rotate(-8deg); }
-  60% { transform: scale(1.12) rotate(8deg); }
-}
-
-.job-toast-head {
-  display: grid;
-  grid-template-columns: 18px 1fr auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px;
-}
-
-.job-toast-title {
-  font-weight: 700;
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.job-toast-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--accent);
-  position: relative;
-}
-
-.job-toast.state-running .job-toast-icon {
-  background: linear-gradient(45deg, var(--accent), var(--accent-strong));
-  animation: jobToastPulse 1.4s ease-in-out;
-}
-
-.job-toast.state-done .job-toast-icon {
-  background: var(--good);
-}
-
-.job-toast.state-done .job-toast-icon::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 4px;
-  height: 8px;
-  border: solid var(--accent-ink);
-  border-width: 0 2px 2px 0;
-  transform: translate(-50%, -60%) rotate(45deg);
-  transform-origin: center;
-  animation: jobToastCheck 360ms ease forwards;
-}
-
-.job-toast.state-failed .job-toast-icon {
-  background: var(--danger);
-}
-
-.job-toast.state-done {
-  cursor: pointer;
-  border-color: var(--good);
-  animation: jobToastBounce 420ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
-}
-
-.job-toast.state-done .job-toast-title {
-  color: var(--good-text);
-}
-
-.job-toast-collapse {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
-  padding: 2px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.job-toast-collapse:hover {
-  background: var(--line-soft);
+  column-gap: 10px;
+  padding: 10px 6px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow-2);
   color: var(--text);
+  font-size: var(--fs);
+  line-height: 1.35;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  touch-action: pan-y;
 }
+.notice[data-tone="success"] { --tone: var(--good); }
+.notice[data-tone="warning"] { --tone: var(--warn); }
+.notice[data-tone="error"] {
+  --tone: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--line));
+}
+.notice.is-visible { opacity: 1; transform: none; }
+.notice.is-leaving { opacity: 0; transform: translateX(18px); }
+.notice.is-bump { animation: notice-bump 260ms ease; }
+@keyframes notice-bump { 40% { transform: scale(1.02); } }
 
-.job-toast-message {
-  font-size: 12px;
+.notice-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--tone);
+}
+.notice[data-state="running"] .notice-icon {
+  background: none;
+  border: 2px solid color-mix(in srgb, var(--tone) 25%, transparent);
+  border-top-color: var(--tone);
+  animation: notice-spin 0.9s linear infinite;
+}
+@keyframes notice-spin { to { transform: rotate(360deg); } }
+
+.notice-main { grid-column: 2; display: grid; gap: 2px; min-width: 0; }
+.notice-title { font-weight: 600; }
+.notice-text {
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Notification cards carry sentences, not a progress label: wrap them in
-   full instead of cutting them off ("…turn it on in Settings → Playing stren…"). */
-.job-toast.variant-info:not(.is-leaving),
-.job-toast.state-failed:not(.is-leaving) { max-height: 360px; }
-.job-toast.variant-info .job-toast-message,
-.job-toast.state-failed .job-toast-message {
-  white-space: normal;
-  overflow: visible;
+  font-size: var(--fs-s);
   overflow-wrap: anywhere;
-  line-height: 1.4;
 }
+.notice-title[hidden] + .notice-text { color: var(--text); font-size: var(--fs); }
+.notice[data-state="running"] .notice-text { font-variant-numeric: tabular-nums; }
 
-.job-toast-track {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--line-soft);
+.notice-track {
+  height: 3px;
+  margin-top: 6px;
   overflow: hidden;
+  border-radius: 2px;
+  background: var(--surface-3);
 }
-
-.job-toast-fill {
+.notice-fill {
+  width: 0;
   height: 100%;
   border-radius: inherit;
-  width: 0%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
-  transition: width 320ms ease;
+  background: var(--tone);
+  transition: width 300ms ease;
 }
+.notice-fill.is-indeterminate { width: 30%; animation: notice-scan 1.4s ease-in-out infinite; }
+@keyframes notice-scan { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.notice[data-state="cancelled"] .notice-fill,
+.notice.is-cancelling .notice-fill { background: var(--muted); }
 
-.job-toast.state-running .job-toast-fill.is-indeterminate {
-  width: 25% !important;
-  animation: toast-scan 1.6s ease-in-out infinite;
+.notice-actions { grid-column: 3; display: flex; gap: 6px; }
+.notice-actions:empty { display: none; }
+.notice-action,
+.notice-stop {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
 }
+.notice-action:hover,
+.notice-stop:hover { background: var(--surface-3); }
+.notice-action.is-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.notice-action.is-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.notice-stop { color: var(--danger); }
+.notice-stop:disabled { color: var(--muted); cursor: default; }
 
-@keyframes toast-scan {
-  0%   { margin-left: 0; }
-  50%  { margin-left: 75%; }
-  100% { margin-left: 0; }
+.notice-close {
+  grid-column: 4;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
 }
+.notice-close:hover { background: var(--surface-3); color: var(--text); }
+.notice-close:focus-visible,
+.notice-action:focus-visible,
+.notice-stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Routine lines leave by themselves: × shows on hover only. */
+.notice:not([data-tone="error"], .has-actions, :hover, :focus-within) .notice-close { opacity: 0; }
+.notice.is-sticky .notice-close { display: none; }
 
-.job-toast.state-done .job-toast-fill {
-  background: var(--good);
-  width: 100% !important;
-}
-
-.job-toast.state-failed .job-toast-fill {
-  background: var(--danger);
-  width: 100% !important;
-}
-
-@keyframes jobToastPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.78); opacity: 0.65; }
-}
-
-@keyframes jobToastCheck {
-  from { opacity: 0; transform: translate(-50%, -60%) rotate(45deg) scale(0.3); }
-  to   { opacity: 1; transform: translate(-50%, -60%) rotate(45deg) scale(1); }
-}
-
-@keyframes jobToastBounce {
-  0%   { transform: translateY(0) scale(1); }
-  40%  { transform: translateY(-6px) scale(1.04); }
-  70%  { transform: translateY(0) scale(0.98); }
-  100% { transform: translateY(0) scale(1); }
-}
-
-/* ---- Docked job cards ----------------------------------------------------
-   A job that produces something on the page (whole-game analysis, coverage scan,
-   line completion, generation) runs as a panel card in that page's flow, not a
-   floating toast: one header row (title, live status, Stop) over a thin track. */
-.job-dock:empty {
-  display: none;
-}
+/* Docked jobs: a job that produces something on the page runs as a card in
+   that page's flow, not over it. */
+.job-dock:empty { display: none; }
 #build-job-dock,
-#coverage-job-dock {
-  margin: 6px 0 8px;
-}
-.job-dock .job-toast.is-docked {
-  width: auto;
-  max-width: none;
-  margin: 0;
-  padding: 10px 12px;
-  gap: 8px;
+#coverage-job-dock { margin: 6px 0 8px; }
+.job-dock > .notice {
+  padding: 8px 6px 8px 10px;
   border-radius: 8px;
+  background: var(--panel-soft);
   box-shadow: none;
   transform: none;
   opacity: 1;
+  transition: none;
 }
-.job-dock .job-toast.is-docked .job-toast-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
+.job-dock > .notice .notice-main {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 10px;
 }
-.job-dock .job-toast.is-docked .job-toast-title {
-  flex: none;
-  font-size: var(--fs-s);
-  font-weight: 700;
-}
-.job-dock .job-toast.is-docked .job-toast-message {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
+.job-dock > .notice .notice-title { font-size: var(--fs-s); }
+.job-dock > .notice .notice-text {
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--muted);
   font-size: var(--fs-xs);
-  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.job-dock .job-toast.is-docked .job-toast-stop {
-  flex: none;
-  margin-left: auto;
-}
-.job-dock .job-toast.is-docked.state-failed .job-toast-message {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.job-dock .job-toast.is-docked .job-toast-track {
-  height: 4px;
-}
-.job-dock .job-toast.is-docked.state-done {
-  cursor: pointer;
-}
-.job-dock .job-toast.is-docked.is-leaving {
-  transform: none;
-}
-
-/* ---- Stop control (cancel a running heavy job) ------------------------- */
-.job-toast-stop {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--danger);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
-}
-
-.job-toast-stop:hover {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: var(--accent-ink);
-}
-
-.job-toast-stop:disabled {
-  cursor: default;
-  opacity: 0.6;
-  color: var(--muted);
-  background: var(--panel-soft);
-}
-
-.job-toast.is-cancelling .job-toast-fill {
-  opacity: 0.5;
-  filter: grayscale(0.4);
-}
-
-/* ---- Cancelled state -------------------------------------------------- */
-.job-toast.state-cancelled .job-toast-icon {
-  background: var(--muted);
-}
-
-.job-toast.state-cancelled .job-toast-title {
-  color: var(--muted);
-}
-
-.job-toast.state-cancelled .job-toast-fill {
-  background: var(--muted);
-}
-
-/* ---- Info variant: a notification card with action buttons ------------ */
-.job-toast.variant-info {
-  border-left: 3px solid var(--accent);
-}
-
-.job-toast.variant-info .job-toast-icon {
-  background: linear-gradient(45deg, var(--accent), var(--accent-strong));
-  animation: none;
-}
-
-.job-toast-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.job-toast-actions .toast-action {
-  padding: 5px 12px;
-  font-size: 12px;
-}
+.job-dock > .notice[data-state="failed"] .notice-text { white-space: normal; }
+.job-dock > .notice .notice-track { grid-column: 1 / -1; }
+.job-dock > .notice[data-state="done"] { cursor: pointer; }
 
 /* ----- Engine widget (floating, draggable, resizable) ------------------ */
 
@@ -5308,87 +4996,16 @@ body.is-guest .replay-results:empty::before {
   .study .board-area { justify-self: start; }
 }
 
-.status:not([hidden]) {
-  margin: 8px 18px 0;
-  padding: 8px 12px;
-  max-width: none;
-  white-space: normal;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-card);
-  background: var(--panel);
-}
-.topbar-status-slot .status:not([hidden]) {
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-  max-width: 100%;
-  /* Long messages wrap onto more lines instead of being cut off with "…". */
-  white-space: normal;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-  line-height: 1.4;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-.status-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* ===========================================================================
    Shell without a top bar (every width)
    The left rail (bottom tab bar + More sheet on phones) is the only chrome:
    the current page is the active nav item, page actions live inside each
-   page's own header, and Search / Theme / Account sit in the rail foot. The app status is a small floating pill (bottom-right)
-   that appears on change and fades out; errors stay until dismissed.
+   page's own header, and Search / Theme / Account sit in the rail foot.
    =========================================================================== */
 @media (min-width: 761px) {
   .workspace { padding-top: 18px; }
 }
 
-.topbar-status-slot {
-  position: fixed;
-  top: auto;
-  right: 16px;
-  /* Ride above any job toasts instead of sitting on top of them
-     (--toast-stack-h is kept in sync from JS). */
-  bottom: calc(16px + var(--toast-stack-h, 0px));
-  left: auto;
-  z-index: 55;
-  transform: none;
-  padding: 6px 8px 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--panel);
-  box-shadow: var(--shadow-2);
-  font-size: 12px;
-  /* Informational pill: click-through so it never blocks what's underneath.
-     Errors (with their × button) stay interactive. */
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, bottom 0.25s ease;
-}
-.topbar-status-slot:has(.status[data-state="error"]) { pointer-events: auto; }
-/* Pointer over the pill's spot: fade it to a ghost so the content under it is readable. */
-.topbar-status-slot.is-ghost { opacity: 0.12; }
-.topbar-status-slot:has(.status:empty),
-.topbar-status-slot:has(.status:not(.is-fresh)) {
-  opacity: 0;
-  transform: translateY(6px);
-  pointer-events: none;
-}
-/* JS marks the slot idle whenever there is nothing to show (setStatus), so an
-   empty pill can never linger — even mid-fade or with the ghost class on. */
-.topbar-status-slot.is-idle {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
-}
-.topbar-status-slot {
-  white-space: normal;
-  overflow: visible;
-  max-width: min(440px, calc(100vw - 32px));
-  border-radius: 16px;
-}
-.topbar-status-slot .status { max-width: min(400px, calc(100vw - 80px)); }
 
 /* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
 .rail-btn {
@@ -5425,7 +5042,6 @@ body.is-guest .replay-results:empty::before {
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {
-  .job-toast button { min-width: 44px; min-height: 44px; }
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
 }
