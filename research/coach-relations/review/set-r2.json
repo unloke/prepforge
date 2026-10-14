@@ -329,18 +329,6 @@
     "at": [
      "b5"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "b5",
-    "ply": 2,
-    "square": "a6",
-    "capture": true,
-    "check": true,
-    "at": [
-     "a6"
-    ]
    }
   ]
  },
@@ -393,18 +381,6 @@
     "type": "mate",
     "piece": "g4",
     "ply": 2,
-    "at": [
-     "g7"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g4",
-    "ply": 2,
-    "square": "g7",
-    "capture": true,
-    "check": true,
     "at": [
      "g7"
     ]
@@ -1375,18 +1351,6 @@
     "at": [
      "h8"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f1",
-    "ply": 2,
-    "square": "f7",
-    "capture": true,
-    "check": true,
-    "at": [
-     "f7"
-    ]
    }
   ]
  },
@@ -1712,30 +1676,6 @@
     "ply": 5,
     "n": -5,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g5",
-    "ply": 2,
-    "square": "g6",
-    "capture": true,
-    "check": true,
-    "at": [
-     "g6"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g5",
-    "ply": 4,
-    "square": "g8",
-    "capture": false,
-    "check": true,
-    "at": [
-     "g8"
-    ]
    }
   ]
  },
@@ -2225,30 +2165,6 @@
      "b2",
      "h8"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "d2",
-    "ply": 6,
-    "square": "h8",
-    "capture": false,
-    "check": true,
-    "at": [
-     "h8"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "h1",
-    "ply": 8,
-    "square": "h7",
-    "capture": false,
-    "check": true,
-    "at": [
-     "h7"
-    ]
    }
   ]
  },
@@ -2478,18 +2394,6 @@
     "type": "mate",
     "piece": "c7",
     "ply": 2,
-    "at": [
-     "g7"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "c7",
-    "ply": 2,
-    "square": "g7",
-    "capture": false,
-    "check": true,
     "at": [
      "g7"
     ]
@@ -3473,18 +3377,6 @@
     ]
    },
    {
-    "line": "played",
-    "type": "enter",
-    "piece": "d7",
-    "ply": 2,
-    "square": "h3",
-    "capture": true,
-    "check": true,
-    "at": [
-     "h3"
-    ]
-   },
-   {
     "line": "best",
     "type": "enter",
     "piece": "a4",
@@ -3889,30 +3781,6 @@
     "at": [
      "c3"
     ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "d6",
-    "ply": 1,
-    "square": "g6",
-    "capture": false,
-    "check": true,
-    "at": [
-     "g6"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e7",
-    "ply": 3,
-    "square": "h7",
-    "capture": false,
-    "check": true,
-    "at": [
-     "h7"
-    ]
    }
   ]
  },
@@ -4022,6 +3890,9 @@
     "piece": "g8",
     "ply": 1,
     "fewer": 2.0,
+    "worst": 4,
+    "here": 6,
+    "there": 2,
     "at": [
      "g8"
     ]
@@ -4252,18 +4123,6 @@
     "ply": 5,
     "n": -3,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "d5",
-    "ply": 4,
-    "square": "c7",
-    "capture": false,
-    "check": true,
-    "at": [
-     "c7"
-    ]
    }
   ]
  },
@@ -4489,6 +4348,9 @@
     "piece": "f2",
     "ply": 1,
     "fewer": 3.0,
+    "worst": 1,
+    "here": 3,
+    "there": 0,
     "at": [
      "f2"
     ]
@@ -5236,18 +5098,6 @@
     "at": [
      "e7"
     ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e7",
-    "ply": 1,
-    "square": "e8",
-    "capture": false,
-    "check": true,
-    "at": [
-     "e8"
-    ]
    }
   ]
  },
@@ -5862,20 +5712,11 @@
     "piece": "f8",
     "ply": 1,
     "fewer": 2.0,
+    "worst": 2,
+    "here": 6,
+    "there": 2,
     "at": [
      "f8"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f3",
-    "ply": 2,
-    "square": "f7",
-    "capture": true,
-    "check": true,
-    "at": [
-     "f7"
     ]
    }
   ]
@@ -6610,42 +6451,6 @@
     "at": [
      "f1"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "c5",
-    "ply": 2,
-    "square": "f2",
-    "capture": true,
-    "check": true,
-    "at": [
-     "f2"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "c5",
-    "ply": 4,
-    "square": "f1",
-    "capture": false,
-    "check": true,
-    "at": [
-     "f1"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f8",
-    "ply": 6,
-    "square": "f1",
-    "capture": true,
-    "check": true,
-    "at": [
-     "f1"
-    ]
    }
   ]
  },
@@ -6989,6 +6794,9 @@
     "piece": "e8",
     "ply": 1,
     "fewer": 2.6,
+    "worst": 2,
+    "here": 3,
+    "there": 0,
     "at": [
      "e8"
     ]
@@ -7151,30 +6959,6 @@
     "square": "g7",
     "at": [
      "f6",
-     "g7"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g5",
-    "ply": 2,
-    "square": "f6",
-    "capture": false,
-    "check": false,
-    "at": [
-     "f6"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "h6",
-    "ply": 4,
-    "square": "g7",
-    "capture": false,
-    "check": true,
-    "at": [
      "g7"
     ]
    }
@@ -7340,20 +7124,11 @@
     "piece": "g1",
     "ply": 1,
     "fewer": 2.5,
+    "worst": 2,
+    "here": 6,
+    "there": 1,
     "at": [
      "g1"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g7",
-    "ply": 2,
-    "square": "g2",
-    "capture": true,
-    "check": true,
-    "at": [
-     "g2"
     ]
    }
   ]

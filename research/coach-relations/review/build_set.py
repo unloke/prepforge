@@ -3,6 +3,7 @@
   py research/coach-relations/review/build_set.py           # round 1 -> set.json
   py research/coach-relations/review/build_set.py --r2      # round 2 -> set-r2.json
   py research/coach-relations/review/build_set.py --r3      # round 3 -> set-r3.json
+  py research/coach-relations/review/build_set.py --r4      # round 4 -> set-r4.json
 
 From positions.jsonl: inaccuracies, mistakes and blunders whose played move is not the engine
 move, one per game, no game from the v7 spot check (those tuned the enumerator), 45 of each
@@ -14,8 +15,12 @@ Round 3 draws new positions: not in rounds 1-2, not from the v7 spot check, not 
 whose candidates were printed while tuning round 2 (SEEN), one per game, half of them with no
 material or mate candidate (so positional detectors are measured on enough positions), each half
 interleaved by grade. Once set-r3.json exists, later runs only refresh its candidates.
+Round 4 is a plain random sample of 40 from the same kind of pool (minus round 3), one per game,
+with no split by candidate type, so its rates estimate the whole population. Its draw is fixed
+the same way.
 """
 import json
+from collections import Counter
 import pathlib
 import random
 from itertools import zip_longest
@@ -55,19 +60,44 @@ def item(pos_id, r):
             "candidates": candidates(r)}
 
 
+def refresh(path, rows):
+    """The draw is fixed once written; refresh the candidates only."""
+    by_id = {r["id"]: r for r in rows}
+    out = json.loads(path.read_text(encoding="utf-8"))
+    for c in out:
+        c["candidates"] = candidates(by_id[c["card"]])
+    path.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(len(out), "positions, candidates refreshed")
+
+
+def unseen(rows, rounds):
+    done = {p["card"] for f in rounds for p in json.loads((HERE / f).read_text(encoding="utf-8"))}
+    skip = {r["id"].split("/")[0] for r in rows if r["chk"]} | SEEN
+    return [r for r in rows if r["grade"] in ("inaccuracy", "mistake", "blunder") and r["played_pv"][:1] != r["best_pv"][:1]
+            and r["id"] not in done and r["id"].split("/")[0] not in skip]
+
+
+def round4(rows):
+    path = HERE / "set-r4.json"
+    if path.exists():
+        return refresh(path, rows)
+    pool = unseen(rows, ("set.json", "set-r2.json", "set-r3.json"))
+    random.Random(20261015).shuffle(pool)
+    games, picked = set(), []
+    for r in pool:
+        if r["id"].split("/")[0] not in games and len(picked) < 40:
+            games.add(r["id"].split("/")[0])
+            picked.append(r)
+    out = [item(f"r4-{n:03d}", r) for n, r in enumerate(picked, 1)]
+    path.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(len(out), "positions", Counter(r["grade"] for r in picked))
+
+
 def round3(rows):
     path = HERE / "set-r3.json"
-    if path.exists():  # the draw is fixed once written; refresh the candidates only
-        by_id = {r["id"]: r for r in rows}
-        out = json.loads(path.read_text(encoding="utf-8"))
-        for c in out:
-            c["candidates"] = candidates(by_id[c["card"]])
-        path.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-        return print(len(out), "positions, candidates refreshed")
-    done = {p["card"] for f in ("set.json", "set-r2.json") for p in json.loads((HERE / f).read_text(encoding="utf-8"))}
-    skip = {r["id"].split("/")[0] for r in rows if r["chk"]} | SEEN
-    pool = [r for r in rows if r["grade"] in ("inaccuracy", "mistake", "blunder") and r["played_pv"][:1] != r["best_pv"][:1]
-            and r["id"] not in done and r["id"].split("/")[0] not in skip]
+    if path.exists():
+        return refresh(path, rows)
+    pool = unseen(rows, ("set.json", "set-r2.json"))
     random.Random(20261014).shuffle(pool)
     games, halves = set(), {True: {}, False: {}}
     for r in pool:
@@ -94,6 +124,8 @@ def main():
     rows = [json.loads(l) for l in (HERE.parent / "positions.jsonl").read_text(encoding="utf-8").splitlines()]
     if "--r3" in sys.argv:
         return round3(rows)
+    if "--r4" in sys.argv:
+        return round4(rows)
     tuned = {r["id"].split("/")[0] for r in rows if r["chk"]}
     pool = [r for r in rows if r["grade"] in ("inaccuracy", "mistake", "blunder")
             and r["played_pv"][:1] != r["best_pv"][:1] and r["id"].split("/")[0] not in tuned]

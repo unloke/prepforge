@@ -1,6 +1,6 @@
 {
  "schema": "reason-review/1",
- "set_sha256": "1a9d76d2fe24015bfe5b06e7cdaadda65c288b1f820500bbd66dd819ae07f7ea",
+ "set_sha256": "142a07a93b220592cc78a6aca95f6aff7ab00b8f9cce0f4efe0ee7c6bd9c9c69",
  "completed": 84,
  "updated_at": "2026-10-14T08:58:13.803Z",
  "reviews": [
@@ -58,8 +58,7 @@
    "submitted_at": "2026-10-13T11:41:04.162Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "key"
+    "1": "key"
    },
    "updated_at": "2026-10-13T19:00:09.292Z"
   },
@@ -73,8 +72,7 @@
    "submitted_at": "2026-10-13T11:42:15.737Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "irrelevant"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-13T22:34:40.839Z"
   },
@@ -239,8 +237,7 @@
    "note": "實戰走法送殺",
    "submitted_at": "2026-10-13T20:12:16.411Z",
    "ratings": {
-    "0": "key",
-    "1": "minor"
+    "0": "key"
    },
    "updated_at": "2026-10-13T22:38:14.599Z"
   },
@@ -286,9 +283,7 @@
    "note": "實戰送殺 最佳可以透過送兵撐久點",
    "submitted_at": "2026-10-13T20:40:36.259Z",
    "ratings": {
-    "0": "key",
-    "1": "irrelevant",
-    "2": "irrelevant"
+    "0": "key"
    },
    "updated_at": "2026-10-13T22:40:53.325Z"
   },
@@ -369,9 +364,7 @@
    "submitted_at": "2026-10-13T21:36:23.093Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "minor",
-    "3": "minor"
+    "1": "key"
    },
    "updated_at": "2026-10-13T23:44:42.012Z"
   },
@@ -416,9 +409,8 @@
    "submitted_at": "2026-10-13T21:40:57.228Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "irrelevant",
-    "3": "irrelevant"
+    "1": "irrelevant",
+    "2": "irrelevant"
    },
    "updated_at": "2026-10-13T23:44:50.802Z"
   },
@@ -585,8 +577,7 @@
     "0": "key",
     "1": "minor",
     "2": "minor",
-    "3": "key",
-    "4": "irrelevant"
+    "3": "irrelevant"
    },
    "updated_at": "2026-10-14T00:02:15.914Z"
   },
@@ -662,9 +653,7 @@
    "submitted_at": "2026-10-14T02:01:06.551Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "minor",
-    "3": "minor"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-14T02:01:20.423Z"
   },
@@ -722,8 +711,7 @@
    "note": "實戰送殺",
    "submitted_at": "2026-10-14T02:05:55.214Z",
    "ratings": {
-    "0": "key",
-    "1": "minor"
+    "0": "key"
    },
    "updated_at": "2026-10-14T02:06:01.100Z"
   },
@@ -879,8 +867,7 @@
    "submitted_at": "2026-10-14T03:39:27.256Z",
    "ratings": {
     "0": "key",
-    "1": "irrelevant",
-    "2": "key"
+    "1": "irrelevant"
    },
    "updated_at": "2026-10-14T03:40:00.288Z"
   },
@@ -980,8 +967,7 @@
    "submitted_at": "2026-10-14T04:46:34.565Z",
    "ratings": {
     "0": "key",
-    "1": "minor",
-    "2": "minor"
+    "1": "minor"
    },
    "updated_at": "2026-10-14T04:46:50.969Z"
   },
@@ -1098,10 +1084,7 @@
    "note": "實戰直接送將殺",
    "submitted_at": "2026-10-14T05:48:48.180Z",
    "ratings": {
-    "0": "key",
-    "1": "key",
-    "2": "key",
-    "3": "key"
+    "0": "key"
    },
    "updated_at": "2026-10-14T05:48:58.517Z"
   },
@@ -1202,9 +1185,7 @@
    "submitted_at": "2026-10-14T05:59:04.110Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "key",
-    "3": "key"
+    "1": "key"
    },
    "updated_at": "2026-10-14T05:59:10.299Z"
   },
@@ -1237,8 +1218,7 @@
    "submitted_at": "2026-10-14T06:01:36.443Z",
    "ratings": {
     "0": "key",
-    "1": "key",
-    "2": "key"
+    "1": "key"
    },
    "updated_at": "2026-10-14T06:01:40.845Z"
   },

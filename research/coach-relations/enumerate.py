@@ -10,7 +10,7 @@ For each card in positions.jsonl, walks the played and best engine lines and rec
   sees into the enemy's home ranks, the other side has none there but has one elsewhere, and in
   either line a rook or queen moved on that file or a pawn left it;
   material won by the opponent in the best line is dropped (an unfinished sacrifice), and material
-  in a line with mate or forced_mate (part of the mate), then shield, open_file and the
+  and enter in a line with mate or forced_mate (part of the mate), then shield, open_file and the
   positional.py facts other than draw_risk are dropped from a card with a material, mate or
   forced_mate fact, and draw_risk from a card with mate or forced_mate;
 - outpost, piece_harassed, pawn_weakness, draw_risk from positional.py;
@@ -166,8 +166,10 @@ def fewer(a, b, at, kind):
         if plies:
             d = max(sum(b[i][pid] - a[i][pid] for i in span) / len(span) for span in (plies, plies[:2]))
             if d >= 2:
-                out.append({"type": kind, "piece": pid, "ply": plies[0], "fewer": round(d, 1),
-                            "at": [at[plies[0]][pid]]})
+                # the ply with the widest gap, for a count the reader can check on the board
+                w = max(plies, key=lambda i: b[i][pid] - a[i][pid])
+                out.append({"type": kind, "piece": pid, "ply": plies[0], "fewer": round(d, 1), "worst": w,
+                            "here": -a[w][pid], "there": -b[w][pid], "at": [at[plies[0]][pid]]})
     return out
 
 
@@ -214,9 +216,9 @@ def candidates(r):
     # the best line is good for the mover, so the opponent winning material there is an unfinished sacrifice
     mover = "white" if root.turn else "black"
     out = [c for c in out if not (c["type"] == "material" and c["line"] == "best" and c["side"] != mover)]
-    # material won inside a mating line is part of the mate
+    # material won or a square entered inside a mating line is part of the mate
     mating = {c["line"] for c in out if c["type"] in ("mate", "forced_mate")}
-    out = [c for c in out if not (c["type"] == "material" and c["line"] in mating)]
+    out = [c for c in out if not (c["type"] in ("material", "enter") and c["line"] in mating)]
     # entering, forking or threatening mate explains a line only for the side that line favours
     out = [c for c in out if c["type"] not in ("enter", "fork", "mate_threat")
            or (root.piece_at(chess.parse_square(c["piece"])).color == root.turn) == (c["line"] == "best")]

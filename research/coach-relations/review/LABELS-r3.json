@@ -1,6 +1,6 @@
 {
  "schema": "reason-review/1",
- "set_sha256": "d06d51fe45f20e9b0dac4693932733cd9d0cbe8c175b85e6f05a7ad8011b8c8a",
+ "set_sha256": "0148126f2e8ffa83892d8c1c7dae390b59993fba07ed4f980778ef5b60449811",
  "completed": 35,
  "updated_at": "2026-10-14T08:53:31.757Z",
  "reviews": [
@@ -60,9 +60,7 @@
     "0": "key",
     "1": "key",
     "2": "key",
-    "3": "key",
-    "4": "key",
-    "5": "key"
+    "3": "key"
    },
    "updated_at": "2026-10-14T07:14:16.469Z"
   },
@@ -75,8 +73,7 @@
    "note": "實戰送將殺",
    "submitted_at": "2026-10-14T07:14:41.714Z",
    "ratings": {
-    "0": "key",
-    "1": "key"
+    "0": "key"
    },
    "updated_at": "2026-10-14T07:14:54.674Z"
   },
@@ -245,9 +242,7 @@
     "0": "key",
     "1": "key",
     "2": "irrelevant",
-    "3": "irrelevant",
-    "4": "key",
-    "5": "key"
+    "3": "irrelevant"
    },
    "updated_at": "2026-10-14T07:39:29.555Z"
   },
@@ -422,9 +417,7 @@
    "submitted_at": "2026-10-14T08:05:56.536Z",
    "ratings": {
     "0": "key",
-    "1": "minor",
-    "2": "key",
-    "3": "key"
+    "1": "minor"
    },
    "updated_at": "2026-10-14T08:06:07.940Z"
   },

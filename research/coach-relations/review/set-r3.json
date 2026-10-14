@@ -359,30 +359,6 @@
      "c7",
      "d8"
     ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "g4",
-    "ply": 1,
-    "square": "g2",
-    "capture": true,
-    "check": true,
-    "at": [
-     "g2"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "c7",
-    "ply": 3,
-    "square": "h2",
-    "capture": false,
-    "check": true,
-    "at": [
-     "h2"
-    ]
    }
   ]
  },
@@ -452,18 +428,6 @@
     "ply": 4,
     "n": -6,
     "at": []
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "g1",
-    "ply": 2,
-    "square": "g8",
-    "capture": false,
-    "check": true,
-    "at": [
-     "g8"
-    ]
    }
   ]
  },
@@ -1192,6 +1156,9 @@
     "piece": "f1",
     "ply": 1,
     "fewer": 2.0,
+    "worst": 1,
+    "here": 2,
+    "there": 0,
     "at": [
      "f1"
     ]
@@ -1387,32 +1354,11 @@
     "piece": "g8",
     "ply": 1,
     "fewer": 2.0,
+    "worst": 1,
+    "here": 3,
+    "there": 1,
     "at": [
      "g8"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e3",
-    "ply": 3,
-    "square": "h6",
-    "capture": false,
-    "check": false,
-    "at": [
-     "h6"
-    ]
-   },
-   {
-    "line": "best",
-    "type": "enter",
-    "piece": "e3",
-    "ply": 7,
-    "square": "g7",
-    "capture": false,
-    "check": true,
-    "at": [
-     "g7"
     ]
    }
   ]
@@ -2397,30 +2343,6 @@
     "at": [
      "d6"
     ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f6",
-    "ply": 2,
-    "square": "f2",
-    "capture": true,
-    "check": true,
-    "at": [
-     "f2"
-    ]
-   },
-   {
-    "line": "played",
-    "type": "enter",
-    "piece": "f6",
-    "ply": 4,
-    "square": "e1",
-    "capture": true,
-    "check": true,
-    "at": [
-     "e1"
-    ]
    }
   ]
  },
@@ -2489,6 +2411,9 @@
     "piece": "d2",
     "ply": 1,
     "fewer": 3.5,
+    "worst": 2,
+    "here": 5,
+    "there": 1,
     "at": [
      "c3"
     ]
@@ -2796,6 +2721,9 @@
     "piece": "b7",
     "ply": 1,
     "fewer": 2.0,
+    "worst": 1,
+    "here": 4,
+    "there": 2,
     "at": [
      "b7"
     ]
@@ -2954,6 +2882,9 @@
     "piece": "e7",
     "ply": 1,
     "fewer": 2.5,
+    "worst": 2,
+    "here": 5,
+    "there": 2,
     "at": [
      "e7"
     ]

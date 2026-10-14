@@ -215,7 +215,7 @@ function candText(c) {
     case "mate_threat": return `${piece} 之後威脅在 ${c.square} 將殺`;
     case "material": return `${c.at.length ? "這串交換" : "變化結束後續吃，"}${c.side === "white" ? "白方" : "黑方"}淨賺 ${c.net} 分：得 ${pieces(c.won)}${c.lost.length ? `，失 ${pieces(c.lost)}` : ""}`;
     case "fork": return `${piece} 同時攻擊 ${c.targets.map(name).join("、")}`;
-    case "king_exposed": return `${piece} 周圍比另一條變化平均多 ${c.fewer} 格受攻擊`;
+    case "king_exposed": return `${piece} 在 ${pos().lines[c.line][c.worst - 1].san} 之後周圍有 ${c.here} 格受攻擊，另一條變化同一步只有 ${c.there} 格`;
     case "shield": return `${other} 前的兵盾 ${piece} ${c.how === "taken" ? "被吃" : "前進"}`;
     case "open_file": return `${c.side === "white" ? "白方" : "黑方"}佔住開放的 ${c.file} 線（${piece}），對方沒有重子在線上`;
     case "trades": {
