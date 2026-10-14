@@ -12,6 +12,8 @@ import hashlib
 import io
 import json
 import pathlib
+import posixpath
+import re
 import subprocess
 import sys
 import zipfile
@@ -21,8 +23,22 @@ DATE = "20261014"
 repo = pathlib.Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 GAMES = repo / "artifacts/benchmarks/coach-relations-20261014/prod-depth/games"
 files = ["package.json", "package-lock.json", "research/sft/experiment/coach-v5-20261011/make_cards.py"]
-files += sorted(p.relative_to(repo).as_posix() for p in (repo / "web-src").rglob("*") if p.suffix in {".js", ".json"}
-               and not p.name.endswith(".test.js") and p.name != "maia3-smoke-fixture.json")
+
+
+def closure(entry):
+    """The repo files `entry` imports by relative path, transitively (Kaggle caps a kernel at 1 MB)."""
+    seen, todo = set(), [entry]
+    while todo:
+        f = todo.pop()
+        if f not in seen:
+            seen.add(f)
+            src = (repo / f).read_text(encoding="utf-8")
+            todo += [posixpath.normpath(posixpath.join(posixpath.dirname(f), m))
+                     for m in re.findall(r"""(?:from\s+|import\s*\(\s*|import\s+)["'](\.[^"']+)["']""", src)]
+    return sorted(seen)
+
+
+files += [f for f in closure("research/coach-relations/prod-depth/analyze-games.mjs") if f.startswith("web-src/")]
 for d, exts in (("research/coach-relations", {".py"}), ("research/coach-relations/prod-depth", {".py", ".mjs"})):
     files += sorted(p.relative_to(repo).as_posix() for p in (repo / d).glob("*") if p.is_file() and p.suffix in exts)
 buf, manifest = io.BytesIO(), {}
