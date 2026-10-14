@@ -1,0 +1,748 @@
+Reading additional input from stdin...
+OpenAI Codex v0.162.1
+--------
+workdir: D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: danger-full-access
+reasoning effort: high
+reasoning summaries: none
+session id: 01a13c06-9488-7cc3-9320-12274d5f4f46
+--------
+user
+Read RUBRIC.md and follow it for batch1.jsonl, writing out/batch1.jsonl.
+warning: Codex is ignoring 2 unrecognized configuration settings. Check for typos or deprecated settings.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_model` is ignored.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_reasoning_effort` is ignored.
+warning: Codex is ignoring 2 unrecognized configuration settings. Check for typos or deprecated settings.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_model` is ignored.
+  user (C:\Users\andre\.codex\config.toml): `default_subagent_reasoning_effort` is ignored.
+codex
+I’ll read the rubric, evaluate each entry in `batch1.jsonl`, and write the results to `out/batch1.jsonl`.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Raw -Encoding UTF8 RUBRIC.md' in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 866ms:
+# Judging two coach explanations
+
+You are a strong chess coach judging two short explanations, A and B, of the same move from a real
+game. Each line of `batchN.jsonl` is one position:
+
+- `fen`: the position before the move; `side_to_move` played it.
+- `played`: the move actually played and the engine's continuation after it (SAN).
+- `best`: the engine's best move and its continuation (SAN).
+- `grade`: how bad the played move was (inaccuracy < mistake < blunder).
+- `A`, `B`: the two explanations, written for a club player reviewing their game.
+
+The two come from different programs, in random order. Statements about the evaluation ("you were
+clearly better; now you are slightly better") come from the engine: take them as true. Everything
+else must be checked on the board. You may use python-chess (`import chess`) to replay the lines,
+list attacks, count material and so on. There is no engine here beyond the given continuations; do
+not install or run one.
+
+## What makes an explanation better
+
+1. **Correct.** Every claim holds on the board: the moves exist, the material counts are right,
+   the threats are real. A false or misleading claim is the worst fault.
+2. **Gets the point.** It names the main reason the played move is worse than the best move, as a
+   coach would explain it.
+3. **Useful and clear.** A club player understands what went wrong and what to do instead.
+   Concrete is better than vague; short is better than long when they say the same.
+
+## Output
+
+Append one JSON object per position, one per line, to `out/batchN.jsonl` (same N as the input):
+
+```json
+{"pair_id": "pair-001", "verdict": "A", "issues": {"A": [], "B": ["missed_key_point"]},
+ "main_reason": "Bg5 drops the f7 pawn after Rxf8+ and Rc8+.", "confidence": "high",
+ "why": "B names the pawn loss; A's king-cover claim is about Black's own pawn and misleads."}
+```
+
+- `verdict`: `A`, `B`, `tie` (equally good), or `both_bad` (neither is acceptable).
+- `issues`: for each side, any of `factual_error` (a claim is false on the board),
+  `missed_key_point` (does not say the main reason), `hallucination` (asserts something the lines
+  do not support), `unnatural` (awkward or confusing wording).
+- `main_reason`: one sentence, your own view of why the played move is worse.
+- `confidence`: `high` when the verdict is clear, `low` when it is close or you are unsure.
+- `why`: one or two sentences on the verdict.
+
+Judge every position in the batch. Write only to `out/`.
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-ChildItem -Force | Select-Object Name,Length,Mode | Format-Table -AutoSize' in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 695ms:
+
+Name         Length Mode  
+----         ------ ----  
+out                 d-----
+batch1.jsonl 12057  -a----
+batch2.jsonl 12576  -a----
+log1.txt     976    -a----
+log2.txt     976    -a----
+RUBRIC.md    2466   -a----
+
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-Content -Raw -Encoding UTF8 batch1.jsonl' in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 640ms:
+{"pair_id": "pair-001", "fen": "3k2r1/p6p/1p2np2/4p1p1/1P4RB/2P5/b3NKPP/7R w - - 0 24", "side_to_move": "white", "grade": "blunder", "played": "24.c4 f5 25.Rd1+ Ke7 26.Bxg5+ Nxg5", "best": "24.Ra1 Bb3 25.Rxa7 Nc7 26.Bxg5 fxg5", "A": "Blunder. c4 loses a bishop for a pawn after 24...f5 25.Rd1+ Ke7 26.Bxg5+ Nxg5. Ra1 was the move, keeping the material.", "B": "Blunder. c4 is not the best move. Ra1 was the move."}
+{"pair_id": "pair-002", "fen": "4r1k1/R3nrp1/3pN2p/2pP1p2/p4P2/2PQP1RP/6PK/q7 w - - 0 31", "side_to_move": "white", "grade": "blunder", "played": "31.c4 Kh8 32.Rf3 Rb8", "best": "31.Qb5 Rc8 32.Rxg7+ Rxg7 33.Nxg7", "A": "Blunder. c4 misses Qb5, which wins a pawn (31.Qb5 Rc8 32.Rxg7+ Rxg7 33.Nxg7).", "B": "Blunder. c4 misses Qb5, which wins a knight (31.Qb5 Rc8 32.Rxg7+ Rxg7 33.Nxg7 Qxc3 34.Rxe7)."}
+{"pair_id": "pair-003", "fen": "r2qkb1r/ppp1pppp/2n5/3n4/3PP1b1/5N2/PP3PPP/RNBQKB1R b KQkq - 0 6", "side_to_move": "black", "grade": "blunder", "played": "6...Bxf3 7.gxf3 Nb6 8.d5", "best": "6...Ndb4 7.d5 Nd4 8.Na3", "A": "Blunder. Bxf3 trades off White's knight and Black's bishop (7.gxf3 Nb6 8.d5). Ndb4 was the move.", "B": "Blunder. Bxf3 allows 7.gxf3. White is slightly better now. Ndb4 was the move, keeping it level."}
+{"pair_id": "pair-004", "fen": "rn4k1/1b5p/6pB/2Pqpr2/pp1p4/5P2/P3Q1PP/2NR1RK1 b - - 1 27", "side_to_move": "black", "grade": "mistake", "played": "27...Qxc5 28.Nd3 Qb5 29.g4", "best": "27...Ba6 28.Nd3 Nc6 29.h4", "A": "Mistake. Qxc5 allows 28.Nd3, which develops the knight and attacks the queen on c5. You were clearly better; now you are slightly better. Ba6 was the move, keeping you clearly better.", "B": "Mistake. Qxc5 is not the best move. Ba6 was the move."}
+{"pair_id": "pair-005", "fen": "r5k1/3p2p1/2b4p/n1B5/8/P2Q2Pq/5P1P/2R1R1K1 w - - 3 33", "side_to_move": "white", "grade": "blunder", "played": "33.Qf1 Qxf1+ 34.Kxf1 Nb3", "best": "33.f3 Qh5 34.Re3 Qg5", "A": "Blunder. Qf1 allows 33...Qxf1+ and a trade of queens. You were winning; now you are clearly better. f3 was the move, keeping you winning.", "B": "Blunder. Qf1 trades off White's queen and Black's queen (33...Qxf1+ 34.Kxf1 Nb3). f3 was the move."}
+{"pair_id": "pair-006", "fen": "2r2rk1/1b3pp1/pq2p2p/4Pn2/2p1NBQP/P5N1/6P1/1B4RK b - - 2 32", "side_to_move": "black", "grade": "blunder", "played": "32...Nxg3+ 33.Nxg3 Qd4 34.Nh5", "best": "32...Bxe4 33.Bxe4 Nxg3+ 34.Qxg3", "A": "Blunder. Nxg3+ allows 33.Nxg3. White was slightly better; now White is winning. Bxe4 was the move, limiting the damage.", "B": "Blunder. Nxg3+ allows 33.Nxg3 Qd4 34.Nh5, threatening mate on g7. Bxe4 was the move."}
+{"pair_id": "pair-007", "fen": "r5k1/ppqn2p1/2p4p/3p3B/3P4/1N5P/PPP2KPb/2RQR3 b - - 0 20", "side_to_move": "black", "grade": "inaccuracy", "played": "20...Bg3+ 21.Kg1 Bxe1 22.Qxe1", "best": "20...Nf6 21.Bf3 Rf8 22.Ke2", "A": "Bg3+ is slightly inaccurate. Nf6 was the move.", "B": "Bg3+ is slightly inaccurate. Nf6 was better: it stops 21.Kg1. White was clearly better; now White is winning."}
+{"pair_id": "pair-008", "fen": "r1bq1rk1/p6p/2pb1p2/3pp3/3P1p1P/2P2Q2/PP1N1PP1/R3KB1R w KQ - 0 16", "side_to_move": "white", "grade": "mistake", "played": "16.g3 e4 17.Qh5 fxg3 18.fxg3 Bxg3+ 19.Kd1", "best": "16.dxe5 fxe5 17.O-O-O Rb8", "A": "Mistake. g3 loses a pawn after 16...e4 17.Qh5 fxg3 18.fxg3 Bxg3+. dxe5 was the move, keeping the material.", "B": "Mistake. g3 allows 16...e4 17.Qh5 fxg3 18.fxg3 Bxg3+ 19.Kd1, and the white king can no longer castle. It also loses a pawn. dxe5 was the move."}
+{"pair_id": "pair-009", "fen": "r3rk2/2R3bp/1p4p1/p4p2/3N4/1P2P3/P4PPP/3R2K1 w - - 0 24", "side_to_move": "white", "grade": "blunder", "played": "24.Nc6 Rac8 25.Rxc8 Rxc8", "best": "24.g3 a4 25.bxa4 Re7", "A": "Blunder. Nc6 misses g3, which wins a bishop and a pawn for a knight (24.g3 a4 25.bxa4).", "B": "Blunder. Nc6 misses g3, which wins a pawn (24.g3 a4 25.bxa4)."}
+{"pair_id": "pair-010", "fen": "r5r1/4bk2/p1p2p1p/1pq5/4P3/5PNQ/P1P2P1P/R4RK1 b - - 3 20", "side_to_move": "black", "grade": "blunder", "played": "20...Rxg3+ 21.hxg3 h5 22.Rad1", "best": "20...Rad8 21.Kh1 Qc3 22.Qh5+ Ke6", "A": "Blunder. Rxg3+ loses a rook for a knight after 21.hxg3. Rad8 was the move.", "B": "Blunder. Rxg3+ hangs the rook to 21.hxg3. Rad8 was the move, keeping the material."}
+{"pair_id": "pair-011", "fen": "r1b1k2r/pp1p1pp1/2p4p/2b1p3/2B1Pn1B/2NP1P2/PPP2P1P/2KR3R w kq - 2 13", "side_to_move": "white", "grade": "mistake", "played": "13.Rhg1 g5 14.Bg3 b5", "best": "13.Bg3 Nh3 14.Bxe5 Nxf2 15.Bxg7", "A": "Mistake. Rhg1 misses Bg3, which wins a pawn (13.Bg3 Nh3 14.Bxe5 Nxf2 15.Bxg7).", "B": "Mistake. Rhg1 misses Bg3, which wins a pawn (13.Bg3 Nh3 14.Bxe5 Nxf2 15.Bxg7)."}
+{"pair_id": "pair-012", "fen": "6r1/5k2/p1pb1p1Q/1pq5/4P3/5PP1/P1P2P2/R4RK1 w - - 1 25", "side_to_move": "white", "grade": "blunder", "played": "25.Qh7+ Rg7 26.Qf5 Bxg3", "best": "25.Kg2 Qxc2 26.Qh5+ Kf8", "A": "Blunder. Qh7+ allows 25...Rg7, which hits the queen on h7 and the pawn on g3. You were winning; now it's level. Kg2 was the move, keeping you winning.", "B": "Blunder. Qh7+ is not the best move. Kg2 was the move."}
+{"pair_id": "pair-013", "fen": "r6r/pp3R2/2pR2Bk/7p/1P2P1bb/8/6P1/7K w - - 0 31", "side_to_move": "white", "grade": "blunder", "played": "31.Bf5+ Kg5 32.Rg6+ Kf4 33.Bxg4+ Ke3", "best": "31.Bh7+ Bf6 32.Rdxf6+ Kg5", "A": "Blunder. Bf5+ misses Bh7+, which forces mate in 5.", "B": "Blunder. Bf5+ misses mate in 5 with Bh7+."}
+{"pair_id": "pair-014", "fen": "r1b2rk1/1p3p1p/4p1p1/p2pP1QP/6P1/Pn2R3/3K1P2/1q3B1R w - - 0 20", "side_to_move": "white", "grade": "inaccuracy", "played": "20.Ke2 Nd4+ 21.Kd2 Qc2+ 22.Ke1 Qc1#", "best": "20.Rxb3 Qa2+ 21.Ke1 Qxb3", "A": "Ke2 allows mate in 3: 20...Nd4+ 21.Kd2 Qc2+ 22.Ke1 Qc1#. Rxb3 was the move.", "B": "Ke2 is slightly inaccurate: it allows mate in 3: 20...Nd4+ 21.Kd2 Qc2+ 22.Ke1 Qc1#. Rxb3 was the move."}
+{"pair_id": "pair-015", "fen": "r6r/pp1n1kpp/2p1qn2/4p1Q1/4P3/2NPP3/PPP3PP/2KR1R2 b - - 6 13", "side_to_move": "black", "grade": "mistake", "played": "13...Ke7 14.Qxg7+ Qf7 15.Qxf7+ Kxf7", "best": "13...Rhf8 14.Qf5 g6 15.Qxe6+ Kxe6", "A": "Mistake. Ke7 loses a pawn to 14.Qxg7+, which pins the king to the knight. Rhf8 was the move, keeping the material.", "B": "Mistake. Ke7 loses a pawn after 14.Qxg7+ Qf7 15.Qxf7+ Kxf7. Rhf8 was the move."}
+{"pair_id": "pair-016", "fen": "r2qkb1r/pp1bpppp/2n2n2/3p4/Q2P1B2/2N5/PP2PPPP/R3KBNR w KQkq - 6 7", "side_to_move": "white", "grade": "blunder", "played": "7.g3 Qb6 8.Qb5 Nxd4 9.Qxb6 axb6", "best": "7.e3 Rc8 8.Qb3 e6", "A": "Blunder. g3 loses a pawn after 7...Qb6 8.Qb5 Nxd4 9.Qxb6 axb6. e3 was the move.", "B": "Blunder. g3 loses a pawn after 7...Qb6 8.Qb5 Nxd4 9.Qxb6 axb6. e3 was the move, keeping the material."}
+{"pair_id": "pair-017", "fen": "5kr1/p2RR3/2p5/2N5/7p/8/P1P2KP1/1r6 w - - 8 36", "side_to_move": "white", "grade": "blunder", "played": "36.Rd8+ Kxe7 37.Rxg8 Rb2", "best": "36.Ne6#", "A": "Blunder. Rd8+ misses mate in one: 36.Ne6#.", "B": "Blunder. Rd8+ misses mate in one: 36.Ne6#."}
+{"pair_id": "pair-018", "fen": "rn4k1/1p1b2b1/p1pp1q2/4p2Q/PPP5/3P2P1/5PBP/R4RK1 b - - 2 21", "side_to_move": "black", "grade": "blunder", "played": "21...Be8 22.Qxe8+ Bf8 23.Qc8", "best": "21...Qh6 22.Qe2 Bf5 23.b5", "A": "Blunder. Be8 loses a bishop after 22.Qxe8+. Qh6 was the move.", "B": "Blunder. Be8 hangs the bishop to 22.Qxe8+. Qh6 was the move, keeping the material."}
+{"pair_id": "pair-019", "fen": "rnb2rk1/bp3qpp/p2p1n2/1P2p1B1/2P2p2/2NP1NP1/3QPPBP/1R3RK1 b - - 0 14", "side_to_move": "black", "grade": "inaccuracy", "played": "14...Bc5 15.Bxf6 gxf6 16.d4", "best": "14...axb5 15.Bxf6 Qxf6 16.cxb5", "A": "Bc5 is slightly inaccurate: it allows 15.Bxf6. axb5 was the move.", "B": "Bc5 is slightly inaccurate. axb5 was better."}
+{"pair_id": "pair-020", "fen": "2kr1b1r/1ppb2pp/4pq2/1P1p4/3Pp3/4P3/1PP1BPPP/R2QK2R b KQ - 0 15", "side_to_move": "black", "grade": "blunder", "played": "15...Kb8 16.c3 Be8 17.Qa4", "best": "15...Be8 16.O-O Bd6 17.Ra7", "A": "Blunder. Kb8 loses a pawn after 16.c3 Be8. Be8 was the move, keeping the material.", "B": "Blunder. Kb8 allows 16.c3 Be8 17.Qa4, threatening mate on a8. Be8 was the move."}
+{"pair_id": "pair-021", "fen": "3r2k1/2p2ppp/4p3/8/8/P1R2BP1/5PKP/8 b - - 0 27", "side_to_move": "black", "grade": "inaccuracy", "played": "27...Rd3 28.Rxd3 f5 29.a4", "best": "27...Rd2 28.a4 Ra2 29.Rxc7", "A": "Rd3 hangs the rook to 28.Rxd3. Rd2 was the move, keeping the material.", "B": "Rd3 is slightly inaccurate: it loses a rook after 28.Rxd3. Rd2 was the move."}
+{"pair_id": "pair-022", "fen": "r1bqr3/pp3kbQ/2p2pB1/3np1p1/8/2BP2P1/PPP2P1P/R4RK1 b - - 2 18", "side_to_move": "black", "grade": "blunder", "played": "18...Ke6 19.Bxe8 Qxe8 20.Qxg7", "best": "18...Kf8 19.Bxe8 Qxe8 20.h4", "A": "Blunder. Ke6 loses a rook after 19.Bxe8 Qxe8 20.Qxg7. Kf8 was the move.", "B": "Blunder. Ke6 loses a rook after 19.Bxe8 Qxe8 20.Qxg7 Qf7 21.Qxf7+. Kf8 was the move, keeping the material."}
+{"pair_id": "pair-023", "fen": "r1bq1rk1/pppp2pp/2n5/2bNppN1/2B5/8/PPPP1PPP/R1BQK2R b KQ - 1 8", "side_to_move": "black", "grade": "mistake", "played": "8...h6 9.Ne7+ Kh8 10.Ng6#", "best": "8...Qxg5 9.h4 Bxf2+ 10.Kxf2", "A": "Mistake. h6 allows mate in 2: 9.Ne7+ Kh8 10.Ng6#. Qxg5 was the move.", "B": "Mistake. h6 allows mate in 2: 9.Ne7+ Kh8 10.Ng6#. Qxg5 was the move, limiting the damage."}
+{"pair_id": "pair-024", "fen": "5rk1/1bb3p1/1p5p/p2pPP2/Pp1p1RP1/1P1P3P/2P5/2K1R3 b - - 4 32", "side_to_move": "black", "grade": "mistake", "played": "32...Kf7 33.f6 Re8 34.fxg7+ Kxg7", "best": "32...Re8 33.Rff1 Bc8 34.Kd1", "A": "Mistake. Kf7 allows 33.f6. You were slightly better; now it's level. Re8 was the move, keeping you slightly better.", "B": "Mistake. Kf7 is not the best move. Re8 was the move."}
+{"pair_id": "pair-025", "fen": "r1bqk2r/5ppp/p1n1p3/1pb1Pn2/2p5/P1N2N2/BPP1QPPP/R1B2RK1 w kq - 0 13", "side_to_move": "white", "grade": "mistake", "played": "13.Bf4 Bb7 14.Ne4 Ncd4 15.Nxd4 Nxd4", "best": "13.Bxc4 Bb7 14.Bd3 Nfd4 15.Nxd4 Bxd4", "A": "Mistake. Bf4 misses Bxc4, which wins a pawn (13.Bxc4 Bb7 14.Bd3 Nfd4 15.Nxd4).", "B": "Mistake. Bf4 misses Bxc4, which wins a pawn (13.Bxc4 Bb7 14.Bd3 Nfd4 15.Nxd4 Bxd4)."}
+{"pair_id": "pair-026", "fen": "5k2/1p5p/1p4p1/4Np2/b3p1P1/2P4P/r3B3/2R3K1 w - - 1 28", "side_to_move": "white", "grade": "blunder", "played": "28.Kf2 Ke7 29.gxf5 gxf5", "best": "28.Bc4 Rd2 29.gxf5 gxf5", "A": "Blunder. Kf2 misses Bc4, which wins a pawn (28.Bc4 Rd2 29.gxf5).", "B": "Blunder. Kf2 is not the best move. Bc4 was the move."}
+{"pair_id": "pair-027", "fen": "r1br2k1/ppq2pp1/2p1pnnp/2b5/1P2P3/2P3NP/P1B1QPP1/RNB1K2R b KQ - 2 14", "side_to_move": "black", "grade": "blunder", "played": "14...Nf4 15.Bxf4 Qxf4 16.bxc5", "best": "14...Bd6 15.O-O b6 16.a4", "A": "Blunder. Nf4 loses a knight after 15.Bxf4 Qxf4 16.bxc5. Bd6 was the move, keeping the material.", "B": "Blunder. Nf4 loses a knight after 15.Bxf4 Qxf4 16.bxc5. Bd6 was the move."}
+{"pair_id": "pair-028", "fen": "1k1r3r/ppp1qp1p/2p2n2/4p1pb/4P3/2NPPN1P/PPPQ2P1/R4RK1 w - - 0 13", "side_to_move": "white", "grade": "blunder", "played": "13.g4 Bg6 14.Qg2 h5", "best": "13.Nxg5 Rhg8 14.Nf3 Rg3", "A": "Blunder. g4 misses Nxg5, which wins a pawn.", "B": "Blunder. g4 misses Nxg5, which wins a pawn (13.Nxg5)."}
+{"pair_id": "pair-029", "fen": "rnbqkbnr/ppp3pp/8/3p1p2/8/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 0 5", "side_to_move": "white", "grade": "inaccuracy", "played": "5.Qe2+ Be7 6.d4 Nf6", "best": "5.d4 Nf6 6.Bd3 c6", "A": "Qe2+ is slightly inaccurate: it shuts in the bishop on f1. d4 was better. You were slightly better; now it's level.", "B": "Qe2+ is slightly inaccurate. d4 was the move."}
+{"pair_id": "pair-030", "fen": "2b2rk1/1p1n1qpp/r7/1Rp1p1B1/2P3n1/3P1N2/3QPPB1/5RK1 w - - 3 22", "side_to_move": "white", "grade": "blunder", "played": "22.Nxe5 Ndxe5 23.Rxc5 Nc6", "best": "22.Bh4 Ngf6 23.Ra5 Rxa5 24.Qxa5", "A": "Blunder. Nxe5 loses a knight for two pawns after 22...Ndxe5 23.Rxc5. Bh4 was the move.", "B": "Blunder. Nxe5 hangs the knight to 22...Ndxe5. Bh4 was the move, keeping the material."}
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command 'Get-ChildItem out -Force | Select-Object Name,Length | Format-Table -AutoSize; python -c "import chess; print(chess.__version__)"' in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 722ms:
+1.11.2
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import json,re,chess
+for s in open('batch1.jsonl',encoding='utf-8'):
+ d=json.loads(s); b=chess.Board(d['fen'])
+ print('\\n'+d['pair_id'], 'start:',b.piece_map())
+ for key in ('played','best'):
+  b=chess.Board(d['fen']); caps=[]
+  try:
+   for san in re.sub(r'\\d+\\.(?:\\.\\.)?',' ',d[key]).split():
+    m=b.parse_san(san)
+    if b.is_capture(m): caps.append(san+':'+str(b.piece_at(m.to_square)))
+    b.push(m)
+   print(key,'captures',','.join(caps),'mate',b.is_checkmate())
+  except Exception as e:print('ERROR',key,san,str(e))
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 724ms:
+
+pair-001 start: {62: Piece.from_symbol('r'), 59: Piece.from_symbol('k'), 55: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 45: Piece.from_symbol('p'), 44: Piece.from_symbol('n'), 41: Piece.from_symbol('p'), 38: Piece.from_symbol('p'), 36: Piece.from_symbol('p'), 31: Piece.from_symbol('B'), 30: Piece.from_symbol('R'), 25: Piece.from_symbol('P'), 18: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('K'), 12: Piece.from_symbol('N'), 8: Piece.from_symbol('b'), 7: Piece.from_symbol('R')}
+played captures Bxg5+:p,Nxg5:B mate False
+best captures Rxa7:p,Bxg5:p,fxg5:B mate False
+
+pair-002 start: {62: Piece.from_symbol('k'), 60: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('r'), 52: Piece.from_symbol('n'), 48: Piece.from_symbol('R'), 47: Piece.from_symbol('p'), 44: Piece.from_symbol('N'), 43: Piece.from_symbol('p'), 37: Piece.from_symbol('p'), 35: Piece.from_symbol('P'), 34: Piece.from_symbol('p'), 29: Piece.from_symbol('P'), 24: Piece.from_symbol('p'), 23: Piece.from_symbol('P'), 22: Piece.from_symbol('R'), 20: Piece.from_symbol('P'), 19: Piece.from_symbol('Q'), 18: Piece.from_symbol('P'), 15: Piece.from_symbol('K'), 14: Piece.from_symbol('P'), 0: Piece.from_symbol('q')}
+played captures  mate False
+best captures Rxg7+:p,Rxg7:R,Nxg7:r mate False
+
+pair-003 start: {63: Piece.from_symbol('r'), 61: Piece.from_symbol('b'), 60: Piece.from_symbol('k'), 59: Piece.from_symbol('q'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 52: Piece.from_symbol('p'), 50: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 42: Piece.from_symbol('n'), 35: Piece.from_symbol('n'), 30: Piece.from_symbol('b'), 28: Piece.from_symbol('P'), 27: Piece.from_symbol('P'), 21: Piece.from_symbol('N'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 5: Piece.from_symbol('B'), 4: Piece.from_symbol('K'), 3: Piece.from_symbol('Q'), 2: Piece.from_symbol('B'), 1: Piece.from_symbol('N'), 0: Piece.from_symbol('R')}
+played captures Bxf3:N,gxf3:b mate False
+best captures  mate False
+
+pair-004 start: {62: Piece.from_symbol('k'), 57: Piece.from_symbol('n'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 49: Piece.from_symbol('b'), 47: Piece.from_symbol('B'), 46: Piece.from_symbol('p'), 37: Piece.from_symbol('r'), 36: Piece.from_symbol('p'), 35: Piece.from_symbol('q'), 34: Piece.from_symbol('P'), 27: Piece.from_symbol('p'), 25: Piece.from_symbol('p'), 24: Piece.from_symbol('p'), 21: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 12: Piece.from_symbol('Q'), 8: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 3: Piece.from_symbol('R'), 2: Piece.from_symbol('N')}
+played captures Qxc5:P mate False
+best captures  mate False
+
+pair-005 start: {62: Piece.from_symbol('k'), 56: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 51: Piece.from_symbol('p'), 47: Piece.from_symbol('p'), 42: Piece.from_symbol('b'), 34: Piece.from_symbol('B'), 32: Piece.from_symbol('n'), 23: Piece.from_symbol('q'), 22: Piece.from_symbol('P'), 19: Piece.from_symbol('Q'), 16: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 4: Piece.from_symbol('R'), 2: Piece.from_symbol('R')}
+played captures Qxf1+:Q,Kxf1:q mate False
+best captures  mate False
+
+pair-006 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 58: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 49: Piece.from_symbol('b'), 47: Piece.from_symbol('p'), 44: Piece.from_symbol('p'), 41: Piece.from_symbol('q'), 40: Piece.from_symbol('p'), 37: Piece.from_symbol('n'), 36: Piece.from_symbol('P'), 31: Piece.from_symbol('P'), 30: Piece.from_symbol('Q'), 29: Piece.from_symbol('B'), 28: Piece.from_symbol('N'), 26: Piece.from_symbol('p'), 22: Piece.from_symbol('N'), 16: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 7: Piece.from_symbol('K'), 6: Piece.from_symbol('R'), 1: Piece.from_symbol('B')}
+played captures Nxg3+:N,Nxg3:n mate False
+best captures Bxe4:N,Bxe4:b,Nxg3+:N,Qxg3:n mate False
+
+pair-007 start: {62: Piece.from_symbol('k'), 56: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 51: Piece.from_symbol('n'), 50: Piece.from_symbol('q'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 47: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 39: Piece.from_symbol('B'), 35: Piece.from_symbol('p'), 27: Piece.from_symbol('P'), 23: Piece.from_symbol('P'), 17: Piece.from_symbol('N'), 15: Piece.from_symbol('b'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('K'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 4: Piece.from_symbol('R'), 3: Piece.from_symbol('Q'), 2: Piece.from_symbol('R')}
+played captures Bxe1:R,Qxe1:b mate False
+best captures  mate False
+
+pair-008 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 59: Piece.from_symbol('q'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 45: Piece.from_symbol('p'), 43: Piece.from_symbol('b'), 42: Piece.from_symbol('p'), 36: Piece.from_symbol('p'), 35: Piece.from_symbol('p'), 31: Piece.from_symbol('P'), 29: Piece.from_symbol('p'), 27: Piece.from_symbol('P'), 21: Piece.from_symbol('Q'), 18: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 11: Piece.from_symbol('N'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 5: Piece.from_symbol('B'), 4: Piece.from_symbol('K'), 0: Piece.from_symbol('R')}
+played captures fxg3:P,fxg3:p,Bxg3+:P mate False
+best captures dxe5:p,fxe5:P mate False
+
+pair-009 start: {61: Piece.from_symbol('k'), 60: Piece.from_symbol('r'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('b'), 50: Piece.from_symbol('R'), 46: Piece.from_symbol('p'), 41: Piece.from_symbol('p'), 37: Piece.from_symbol('p'), 32: Piece.from_symbol('p'), 27: Piece.from_symbol('N'), 20: Piece.from_symbol('P'), 17: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 3: Piece.from_symbol('R')}
+played captures Rxc8:r,Rxc8:R mate False
+best captures bxa4:p mate False
+
+pair-010 start: {62: Piece.from_symbol('r'), 56: Piece.from_symbol('r'), 53: Piece.from_symbol('k'), 52: Piece.from_symbol('b'), 47: Piece.from_symbol('p'), 45: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 40: Piece.from_symbol('p'), 34: Piece.from_symbol('q'), 33: Piece.from_symbol('p'), 28: Piece.from_symbol('P'), 23: Piece.from_symbol('Q'), 22: Piece.from_symbol('N'), 21: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 0: Piece.from_symbol('R')}
+played captures Rxg3+:N,hxg3:r mate False
+best captures  mate False
+
+pair-011 start: {63: Piece.from_symbol('r'), 60: Piece.from_symbol('k'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 51: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 47: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 36: Piece.from_symbol('p'), 34: Piece.from_symbol('b'), 31: Piece.from_symbol('B'), 29: Piece.from_symbol('n'), 28: Piece.from_symbol('P'), 26: Piece.from_symbol('B'), 21: Piece.from_symbol('P'), 19: Piece.from_symbol('P'), 18: Piece.from_symbol('N'), 15: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 3: Piece.from_symbol('R'), 2: Piece.from_symbol('K')}
+played captures  mate False
+best captures Bxe5:p,Nxf2:P,Bxg7:p mate False
+
+pair-012 start: {62: Piece.from_symbol('r'), 53: Piece.from_symbol('k'), 47: Piece.from_symbol('Q'), 45: Piece.from_symbol('p'), 43: Piece.from_symbol('b'), 42: Piece.from_symbol('p'), 40: Piece.from_symbol('p'), 34: Piece.from_symbol('q'), 33: Piece.from_symbol('p'), 28: Piece.from_symbol('P'), 22: Piece.from_symbol('P'), 21: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 0: Piece.from_symbol('R')}
+played captures Bxg3:P mate False
+best captures Qxc2:P mate False
+
+pair-013 start: {63: Piece.from_symbol('r'), 56: Piece.from_symbol('r'), 53: Piece.from_symbol('R'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 47: Piece.from_symbol('k'), 46: Piece.from_symbol('B'), 43: Piece.from_symbol('R'), 42: Piece.from_symbol('p'), 39: Piece.from_symbol('p'), 31: Piece.from_symbol('b'), 30: Piece.from_symbol('b'), 28: Piece.from_symbol('P'), 25: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 7: Piece.from_symbol('K')}
+played captures Bxg4+:b mate False
+best captures Rdxf6+:b mate False
+
+pair-014 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 46: Piece.from_symbol('p'), 44: Piece.from_symbol('p'), 39: Piece.from_symbol('P'), 38: Piece.from_symbol('Q'), 36: Piece.from_symbol('P'), 35: Piece.from_symbol('p'), 32: Piece.from_symbol('p'), 30: Piece.from_symbol('P'), 20: Piece.from_symbol('R'), 17: Piece.from_symbol('n'), 16: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 11: Piece.from_symbol('K'), 7: Piece.from_symbol('R'), 5: Piece.from_symbol('B'), 1: Piece.from_symbol('q')}
+played captures  mate True
+best captures Rxb3:n,Qxb3:R mate False
+
+pair-015 start: {63: Piece.from_symbol('r'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('k'), 51: Piece.from_symbol('n'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 45: Piece.from_symbol('n'), 44: Piece.from_symbol('q'), 42: Piece.from_symbol('p'), 38: Piece.from_symbol('Q'), 36: Piece.from_symbol('p'), 28: Piece.from_symbol('P'), 20: Piece.from_symbol('P'), 19: Piece.from_symbol('P'), 18: Piece.from_symbol('N'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 5: Piece.from_symbol('R'), 3: Piece.from_symbol('R'), 2: Piece.from_symbol('K')}
+played captures Qxg7+:p,Qxf7+:q,Kxf7:Q mate False
+best captures Qxe6+:q,Kxe6:Q mate False
+
+pair-016 start: {63: Piece.from_symbol('r'), 61: Piece.from_symbol('b'), 60: Piece.from_symbol('k'), 59: Piece.from_symbol('q'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 52: Piece.from_symbol('p'), 51: Piece.from_symbol('b'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 45: Piece.from_symbol('n'), 42: Piece.from_symbol('n'), 35: Piece.from_symbol('p'), 29: Piece.from_symbol('B'), 27: Piece.from_symbol('P'), 24: Piece.from_symbol('Q'), 18: Piece.from_symbol('N'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 12: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 6: Piece.from_symbol('N'), 5: Piece.from_symbol('B'), 4: Piece.from_symbol('K'), 0: Piece.from_symbol('R')}
+played captures Nxd4:P,Qxb6:q,axb6:Q mate False
+best captures  mate False
+
+pair-017 start: {62: Piece.from_symbol('r'), 61: Piece.from_symbol('k'), 52: Piece.from_symbol('R'), 51: Piece.from_symbol('R'), 48: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 34: Piece.from_symbol('N'), 31: Piece.from_symbol('p'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('K'), 10: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 1: Piece.from_symbol('r')}
+played captures Kxe7:R,Rxg8:r mate False
+best captures  mate True
+
+pair-018 start: {62: Piece.from_symbol('k'), 57: Piece.from_symbol('n'), 56: Piece.from_symbol('r'), 54: Piece.from_symbol('b'), 51: Piece.from_symbol('b'), 49: Piece.from_symbol('p'), 45: Piece.from_symbol('q'), 43: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 40: Piece.from_symbol('p'), 39: Piece.from_symbol('Q'), 36: Piece.from_symbol('p'), 26: Piece.from_symbol('P'), 25: Piece.from_symbol('P'), 24: Piece.from_symbol('P'), 22: Piece.from_symbol('P'), 19: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('B'), 13: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 0: Piece.from_symbol('R')}
+played captures Qxe8+:b mate False
+best captures  mate False
+
+pair-019 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 58: Piece.from_symbol('b'), 57: Piece.from_symbol('n'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('q'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('b'), 45: Piece.from_symbol('n'), 43: Piece.from_symbol('p'), 40: Piece.from_symbol('p'), 38: Piece.from_symbol('B'), 36: Piece.from_symbol('p'), 33: Piece.from_symbol('P'), 29: Piece.from_symbol('p'), 26: Piece.from_symbol('P'), 22: Piece.from_symbol('P'), 21: Piece.from_symbol('N'), 19: Piece.from_symbol('P'), 18: Piece.from_symbol('N'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('B'), 13: Piece.from_symbol('P'), 12: Piece.from_symbol('P'), 11: Piece.from_symbol('Q'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 1: Piece.from_symbol('R')}
+played captures Bxf6:n,gxf6:B mate False
+best captures axb5:P,Bxf6:n,Qxf6:B,cxb5:p mate False
+
+pair-020 start: {63: Piece.from_symbol('r'), 61: Piece.from_symbol('b'), 59: Piece.from_symbol('r'), 58: Piece.from_symbol('k'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 51: Piece.from_symbol('b'), 50: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 45: Piece.from_symbol('q'), 44: Piece.from_symbol('p'), 35: Piece.from_symbol('p'), 33: Piece.from_symbol('P'), 28: Piece.from_symbol('p'), 27: Piece.from_symbol('P'), 20: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 12: Piece.from_symbol('B'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 4: Piece.from_symbol('K'), 3: Piece.from_symbol('Q'), 0: Piece.from_symbol('R')}
+played captures  mate False
+best captures  mate False
+
+pair-021 start: {62: Piece.from_symbol('k'), 59: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 50: Piece.from_symbol('p'), 44: Piece.from_symbol('p'), 22: Piece.from_symbol('P'), 21: Piece.from_symbol('B'), 18: Piece.from_symbol('R'), 16: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('K'), 13: Piece.from_symbol('P')}
+played captures Rxd3:r mate False
+best captures Rxc7:p mate False
+
+pair-022 start: {60: Piece.from_symbol('r'), 59: Piece.from_symbol('q'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('Q'), 54: Piece.from_symbol('b'), 53: Piece.from_symbol('k'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 46: Piece.from_symbol('B'), 45: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 38: Piece.from_symbol('p'), 36: Piece.from_symbol('p'), 35: Piece.from_symbol('n'), 22: Piece.from_symbol('P'), 19: Piece.from_symbol('P'), 18: Piece.from_symbol('B'), 15: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 0: Piece.from_symbol('R')}
+played captures Bxe8:r,Qxe8:B,Qxg7:b mate False
+best captures Bxe8:r,Qxe8:B mate False
+
+pair-023 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 59: Piece.from_symbol('q'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 51: Piece.from_symbol('p'), 50: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 42: Piece.from_symbol('n'), 38: Piece.from_symbol('N'), 37: Piece.from_symbol('p'), 36: Piece.from_symbol('p'), 35: Piece.from_symbol('N'), 34: Piece.from_symbol('b'), 26: Piece.from_symbol('B'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 11: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 4: Piece.from_symbol('K'), 3: Piece.from_symbol('Q'), 2: Piece.from_symbol('B'), 0: Piece.from_symbol('R')}
+played captures  mate True
+best captures Qxg5:N,Bxf2+:P,Kxf2:b mate False
+
+pair-024 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 50: Piece.from_symbol('b'), 49: Piece.from_symbol('b'), 47: Piece.from_symbol('p'), 41: Piece.from_symbol('p'), 37: Piece.from_symbol('P'), 36: Piece.from_symbol('P'), 35: Piece.from_symbol('p'), 32: Piece.from_symbol('p'), 30: Piece.from_symbol('P'), 29: Piece.from_symbol('R'), 27: Piece.from_symbol('p'), 25: Piece.from_symbol('p'), 24: Piece.from_symbol('P'), 23: Piece.from_symbol('P'), 19: Piece.from_symbol('P'), 17: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 4: Piece.from_symbol('R'), 2: Piece.from_symbol('K')}
+played captures fxg7+:p,Kxg7:P mate False
+best captures  mate False
+
+pair-025 start: {63: Piece.from_symbol('r'), 60: Piece.from_symbol('k'), 59: Piece.from_symbol('q'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 44: Piece.from_symbol('p'), 42: Piece.from_symbol('n'), 40: Piece.from_symbol('p'), 37: Piece.from_symbol('n'), 36: Piece.from_symbol('P'), 34: Piece.from_symbol('b'), 33: Piece.from_symbol('p'), 26: Piece.from_symbol('p'), 21: Piece.from_symbol('N'), 18: Piece.from_symbol('N'), 16: Piece.from_symbol('P'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 12: Piece.from_symbol('Q'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('B'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 2: Piece.from_symbol('B'), 0: Piece.from_symbol('R')}
+played captures Nxd4:n,Nxd4:N mate False
+best captures Bxc4:p,Nxd4:n,Bxd4:N mate False
+
+pair-026 start: {61: Piece.from_symbol('k'), 55: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 46: Piece.from_symbol('p'), 41: Piece.from_symbol('p'), 37: Piece.from_symbol('p'), 36: Piece.from_symbol('N'), 30: Piece.from_symbol('P'), 28: Piece.from_symbol('p'), 24: Piece.from_symbol('b'), 23: Piece.from_symbol('P'), 18: Piece.from_symbol('P'), 12: Piece.from_symbol('B'), 8: Piece.from_symbol('r'), 6: Piece.from_symbol('K'), 2: Piece.from_symbol('R')}
+played captures gxf5:p,gxf5:P mate False
+best captures gxf5:p,gxf5:P mate False
+
+pair-027 start: {62: Piece.from_symbol('k'), 59: Piece.from_symbol('r'), 58: Piece.from_symbol('b'), 56: Piece.from_symbol('r'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 50: Piece.from_symbol('q'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 47: Piece.from_symbol('p'), 46: Piece.from_symbol('n'), 45: Piece.from_symbol('n'), 44: Piece.from_symbol('p'), 42: Piece.from_symbol('p'), 34: Piece.from_symbol('b'), 28: Piece.from_symbol('P'), 25: Piece.from_symbol('P'), 23: Piece.from_symbol('P'), 22: Piece.from_symbol('N'), 18: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 12: Piece.from_symbol('Q'), 10: Piece.from_symbol('B'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 4: Piece.from_symbol('K'), 2: Piece.from_symbol('B'), 1: Piece.from_symbol('N'), 0: Piece.from_symbol('R')}
+played captures Bxf4:n,Qxf4:B,bxc5:b mate False
+best captures  mate False
+
+pair-028 start: {63: Piece.from_symbol('r'), 59: Piece.from_symbol('r'), 57: Piece.from_symbol('k'), 55: Piece.from_symbol('p'), 53: Piece.from_symbol('p'), 52: Piece.from_symbol('q'), 50: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 45: Piece.from_symbol('n'), 42: Piece.from_symbol('p'), 39: Piece.from_symbol('b'), 38: Piece.from_symbol('p'), 36: Piece.from_symbol('p'), 28: Piece.from_symbol('P'), 23: Piece.from_symbol('P'), 21: Piece.from_symbol('N'), 20: Piece.from_symbol('P'), 19: Piece.from_symbol('P'), 18: Piece.from_symbol('N'), 14: Piece.from_symbol('P'), 11: Piece.from_symbol('Q'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R'), 0: Piece.from_symbol('R')}
+played captures  mate False
+best captures Nxg5:p mate False
+
+pair-029 start: {63: Piece.from_symbol('r'), 62: Piece.from_symbol('n'), 61: Piece.from_symbol('b'), 60: Piece.from_symbol('k'), 59: Piece.from_symbol('q'), 58: Piece.from_symbol('b'), 57: Piece.from_symbol('n'), 56: Piece.from_symbol('r'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 50: Piece.from_symbol('p'), 49: Piece.from_symbol('p'), 48: Piece.from_symbol('p'), 37: Piece.from_symbol('p'), 35: Piece.from_symbol('p'), 21: Piece.from_symbol('N'), 18: Piece.from_symbol('N'), 15: Piece.from_symbol('P'), 14: Piece.from_symbol('P'), 13: Piece.from_symbol('P'), 11: Piece.from_symbol('P'), 10: Piece.from_symbol('P'), 9: Piece.from_symbol('P'), 8: Piece.from_symbol('P'), 7: Piece.from_symbol('R'), 5: Piece.from_symbol('B'), 4: Piece.from_symbol('K'), 3: Piece.from_symbol('Q'), 2: Piece.from_symbol('B'), 0: Piece.from_symbol('R')}
+played captures  mate False
+best captures  mate False
+
+pair-030 start: {62: Piece.from_symbol('k'), 61: Piece.from_symbol('r'), 58: Piece.from_symbol('b'), 55: Piece.from_symbol('p'), 54: Piece.from_symbol('p'), 53: Piece.from_symbol('q'), 51: Piece.from_symbol('n'), 49: Piece.from_symbol('p'), 40: Piece.from_symbol('r'), 38: Piece.from_symbol('B'), 36: Piece.from_symbol('p'), 34: Piece.from_symbol('p'), 33: Piece.from_symbol('R'), 30: Piece.from_symbol('n'), 26: Piece.from_symbol('P'), 21: Piece.from_symbol('N'), 19: Piece.from_symbol('P'), 14: Piece.from_symbol('B'), 13: Piece.from_symbol('P'), 12: Piece.from_symbol('P'), 11: Piece.from_symbol('Q'), 6: Piece.from_symbol('K'), 5: Piece.from_symbol('R')}
+played captures Nxe5:p,Ndxe5:N,Rxc5:p mate False
+best captures Rxa5:R,Qxa5:r mate False
+
+codex
+The continuations are legal. I found several explanations that miscount exchanges or name the wrong piece loss. I’m checking the claimed threats and mating lines before writing the verdicts.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import chess,json,re
+D={x['pair_id']:x for x in map(json.loads,open('batch1.jsonl',encoding='utf-8'))}
+for n in [1,2,6,7,9,12,13,14,19,20,22,24,26,27]:
+ d=D[f'pair-{n:03}'];b=chess.Board(d['fen']);print('\\n',d['pair_id']);print(b)
+ if n in [2,6,12,20,22]:
+  key='best' if n==2 else 'played'
+  for san in re.sub(r'\\d+\\.(?:\\.\\.)?',' ',d[key]).split():b.push_san(san)
+  print(key,'END');print(b)
+  if n==2:
+   for san in ['Qxc3','Rxe7']:
+    try:b.push_san(san);print('extra',san,'legal')
+    except Exception as e:print('extra ERROR',e)
+  if n==6:
+   b.push(chess.Move.null());m=b.parse_san('Qxg7#');b.push(m);print('Qg7 mate?',b.is_checkmate())
+  if n==20:
+   b.push(chess.Move.null());print('Qa8 legal?',chess.Move.from_uci('a4a8') in b.legal_moves,'a4-a8 blockers',[(chess.square_name(s),str(b.piece_at(s))) for s in [chess.A5,chess.A6,chess.A7]])
+ if n==13:
+  for san in ['Bh7+','Bf6','Rdxf6+','Kg5']:b.push_san(san)
+  print('after best',b);print('legal checking moves',[b.san(m) for m in b.legal_moves if b.gives_check(m)])
+ if n==14:
+  b.push_san('Ke2');b.push_san('Nd4+');print('white responses to Nd4',[b.san(m) for m in b.legal_moves])
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 935ms:
+
+ pair-001
+. . . k . . r .
+p . . . . . . p
+. p . . n p . .
+. . . . p . p .
+. P . . . . R B
+. . P . . . . .
+b . . . N K P P
+. . . . . . . R
+
+ pair-002
+. . . . r . k .
+R . . . n r p .
+. . . p N . . p
+. . p P . p . .
+p . . . . P . .
+. . P Q P . R P
+. . . . . . P K
+q . . . . . . .
+best END
+. . r . . . k .
+R . . . n . N .
+. . . p . . . p
+. Q p P . p . .
+p . . . . P . .
+. . P . P . . P
+. . . . . . P K
+q . . . . . . .
+extra Qxc3 legal
+extra Rxe7 legal
+
+ pair-006
+. . r . . r k .
+. b . . . p p .
+p q . . p . . p
+. . . . P n . .
+. . p . N B Q P
+P . . . . . N .
+. . . . . . P .
+. B . . . . R K
+played END
+. . r . . r k .
+. b . . . p p .
+p . . . p . . p
+. . . . P . . N
+. . p q . B Q P
+P . . . . . . .
+. . . . . . P .
+. B . . . . R K
+Qg7 mate? True
+
+ pair-007
+r . . . . . k .
+p p q n . . p .
+. . p . . . . p
+. . . p . . . B
+. . . P . . . .
+. N . . . . . P
+P P P . . K P b
+. . R Q R . . .
+
+ pair-009
+r . . . r k . .
+. . R . . . b p
+. p . . . . p .
+p . . . . p . .
+. . . N . . . .
+. P . . P . . .
+P . . . . P P P
+. . . R . . K .
+
+ pair-012
+. . . . . . r .
+. . . . . k . .
+p . p b . p . Q
+. p q . . . . .
+. . . . P . . .
+. . . . . P P .
+P . P . . P . .
+R . . . . R K .
+played END
+. . . . . . . .
+. . . . . k r .
+p . p . . p . .
+. p q . . Q . .
+. . . . P . . .
+. . . . . P b .
+P . P . . P . .
+R . . . . R K .
+
+ pair-013
+r . . . . . . r
+p p . . . R . .
+. . p R . . B k
+. . . . . . . p
+. P . . P . b b
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+after best r . . . . . . r
+p p . . . R . B
+. . p . . R . .
+. . . . . . k p
+. P . . P . b .
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+legal checking moves ['Rg7+', 'Rg6+', 'Rf5+']
+
+ pair-014
+r . b . . r k .
+. p . . . p . p
+. . . . p . p .
+p . . p P . Q P
+. . . . . . P .
+P n . . R . . .
+. . . K . P . .
+. q . . . B . R
+white responses to Nd4 ['Kd2']
+
+ pair-019
+r n b . . r k .
+b p . . . q p p
+p . . p . n . .
+. P . . p . B .
+. . P . . p . .
+. . N P . N P .
+. . . Q P P B P
+. R . . . R K .
+
+ pair-020
+. . k r . b . r
+. p p b . . p p
+. . . . p q . .
+. P . p . . . .
+. . . P p . . .
+. . . . P . . .
+. P P . B P P P
+R . . Q K . . R
+played END
+. k . r b b . r
+. p p . . . p p
+. . . . p q . .
+. P . p . . . .
+Q . . P p . . .
+. . P . P . . .
+. P . . B P P P
+R . . . K . . R
+Qa8 legal? True a4-a8 blockers [('a5', 'None'), ('a6', 'None'), ('a7', 'None')]
+
+ pair-022
+r . b q r . . .
+p p . . . k b Q
+. . p . . p B .
+. . . n p . p .
+. . . . . . . .
+. . B P . . P .
+P P P . . P . P
+R . . . . R K .
+played END
+r . b . q . . .
+p p . . . . Q .
+. . p . k p . .
+. . . n p . p .
+. . . . . . . .
+. . B P . . P .
+P P P . . P . P
+R . . . . R K .
+
+ pair-024
+. . . . . r k .
+. b b . . . p .
+. p . . . . . p
+p . . p P P . .
+P p . p . R P .
+. P . P . . . P
+. . P . . . . .
+. . K . R . . .
+
+ pair-026
+. . . . . k . .
+. p . . . . . p
+. p . . . . p .
+. . . . N p . .
+b . . . p . P .
+. . P . . . . P
+r . . . B . . .
+. . R . . . K .
+
+ pair-027
+r . b r . . k .
+p p q . . p p .
+. . p . p n n p
+. . b . . . . .
+. P . . P . . .
+. . P . . . N P
+P . B . Q P P .
+R N B . K . . R
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import chess,json,re
+D={x['pair_id']:x for x in map(json.loads,open('batch1.jsonl',encoding='utf-8'))}
+b=chess.Board(D['pair-013']['fen'])
+for san in ['Bh7+','Bf6','Rdxf6+','Kg5']:b.push_san(san)
+for first in ['Rg7+','Rg6+','Rf5+']:
+ c=b.copy();c.push_san(first);print('\\n',first,'replies',[c.san(m) for m in c.legal_moves])
+ for m in list(c.legal_moves):
+  san=c.san(m);d=c.copy();d.push(m)
+  print(san,'white checks',[(d.san(k)) for k in d.legal_moves if d.gives_check(k)])
+  print(d)
+for n in [7,20,22,26]:
+ d=D[f'pair-{n:03}'];c=chess.Board(d['fen'])
+ if n==7:
+  c.push_san('Nf6');print('pair7 Kg1 legal',chess.Move.from_uci('f2g1') in c.legal_moves,'attackers g1',[chess.square_name(s) for s in c.attackers(chess.BLACK,chess.G1)])
+ if n==20:
+  for san in ['Kb8','c3','Be8','Qa4']:c.push_san(san)
+  c.push(chess.Move.null());c.push_san('Qa8#');print('pair20 Qa8 mate',c.is_checkmate())
+ if n==22:
+  for san in ['Ke6','Bxe8','Qxe8','Qxg7','Qf7','Qxf7+']:c.push_san(san)
+  print('pair22 added continuation legal')
+ if n==26:
+  c.push_san('Kf2');print('pair26 immediate black captures',[(c.san(m),str(c.piece_at(m.to_square))) for m in c.legal_moves if c.is_capture(m)])
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 667ms:
+
+ Rg7+ replies ['Kxf6', 'Kh4']
+Kxf6 white checks ['Rf7+', 'Rg6+', 'e5+']
+r . . . . . . r
+p p . . . . R B
+. . p . . k . .
+. . . . . . . p
+. P . . P . b .
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+Kh4 white checks ['Rxg4+', 'g3+']
+r . . . . . . r
+p p . . . . R B
+. . p . . R . .
+. . . . . . . p
+. P . . P . b k
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+
+ Rg6+ replies ['Kh4']
+Kh4 white checks ['Rxg4+', 'g3+']
+r . . . . . . r
+p p . . . R . B
+. . p . . . R .
+. . . . . . . p
+. P . . P . b k
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+
+ Rf5+ replies ['Kh6', 'Kh4', 'Bxf5']
+Kh6 white checks ['R7f6+', 'R5f6+', 'Rxh5+']
+r . . . . . . r
+p p . . . R . B
+. . p . . . . k
+. . . . . R . p
+. P . . P . b .
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+Kh4 white checks ['Rxh5+', 'g3+']
+r . . . . . . r
+p p . . . R . B
+. . p . . . . .
+. . . . . R . p
+. P . . P . b k
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+Bxf5 white checks ['Rg7+', 'Rxf5+']
+r . . . . . . r
+p p . . . R . B
+. . p . . . . .
+. . . . . b k p
+. P . . P . . .
+. . . . . . . .
+. . . . . . P .
+. . . . . . . K
+pair7 Kg1 legal False attackers g1 ['h2']
+pair20 Qa8 mate True
+pair22 added continuation legal
+pair26 immediate black captures [('Rxe2+', 'B'), ('fxg4', 'P')]
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import chess,json,re
+D={x['pair_id']:x for x in map(json.loads,open('batch1.jsonl',encoding='utf-8'))}
+b=chess.Board(D['pair-002']['fen'])
+for san in re.sub(r'\\d+\\.(?:\\.\\.)?',' ',D['pair-002']['best']).split():b.push_san(san)
+for san in ['Rc7','Nc6','Ng6','Kf7']:
+ try:
+  c=b.copy();c.push_san(san);print(san,'legal; Rxe7:',chess.Move.from_uci('a7e7') in c.legal_moves)
+ except Exception as e:print(san,e)
+b=chess.Board(D['pair-005']['fen'])
+for san in ['Qf1','Qxf1+','Kxf1','Nb3']:b.push_san(san)
+print('pair5 Nb3 attacks:',[(chess.square_name(s),str(b.piece_at(s))) for s in b.attacks(chess.B3) if b.piece_at(s)])
+b=chess.Board(D['pair-013']['fen']);b.push_san('Bh7+');print('pair13 replies',[b.san(m) for m in b.legal_moves])
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 900ms:
+Rc7 legal; Rxe7: False
+Nc6 legal; Rxe7: True
+Ng6 legal; Rxe7: True
+Kf7 legal; Rxe7: True
+pair5 Nb3 attacks: [('c1', 'R'), ('c5', 'B')]
+pair13 replies ['Kg5', 'Bf6', 'Be6']
+
+codex
+The key checks are complete: the mate threats in pairs 006, 014, 017, 020, and 023 are real. Pairs 022 and 027 name the wrong material loss, and pair 026’s claimed pawn win ends in a pawn exchange. I’ll now write all 30 judgments and validate the output.
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import json
+from pathlib import Path
+rows=[]
+def add(n,verdict,a,b,reason,why,confidence='high'):
+ rows.append(dict(pair_id=f'pair-{n:03}',verdict=verdict,issues={'A':a,'B':b},main_reason=reason,confidence=confidence,why=why))
+add(1,'both_bad',['factual_error','missed_key_point'],['missed_key_point'],
+    'c4 misses the chance to collect a7 with Ra1 and Rxa7 before the bishop-for-pawn exchange.',
+    'The best line also exchanges the bishop for the g5 pawn, so A falsely says Ra1 keeps the material. B gives no reason for preferring Ra1.')
+add(2,'A',[],['hallucination'],
+    'c4 misses Qb5 followed by Rxg7+ and Nxg7, trading rooks while winning the g7 pawn.',
+    'A correctly counts the supplied exchange. B needs the additional, unforced Qxc3 to claim a knight win; Black can instead play Rc7 to block Rxe7.')
+add(3,'tie',['missed_key_point'],['missed_key_point'],
+    'Bxf3 gives up the bishop and lets White gain central tempi with gxf3 and d5, whereas Ndb4 saves the attacked d5 knight with counterplay.',
+    'A correctly describes the exchange and B reports the evaluation change, but neither explains the central tempo problem or the purpose of Ndb4. Their coaching value is similarly limited.', 'low')
+add(4,'A',[],['missed_key_point'],
+    'Qxc5 lets White develop with Nd3 while attacking the queen and gaining time.',
+    'A identifies a real attack by the d3 knight on c5. B only names the preferred move.')
+add(5,'A',['missed_key_point'],['missed_key_point'],
+    'Qf1 exchanges away the queen that guards b3, allowing Nb3 to fork the c1 rook and c5 bishop.',
+    'Both correctly describe the queen exchange but omit the subsequent fork. A is marginally more useful because it explains that the exchange surrenders much of the winning advantage.', 'low')
+add(6,'B',['missed_key_point'],[],
+    'Nxg3+ leaves the e4 knight available to recapture and reach h5, creating the threat of Qxg7 mate.',
+    'B identifies the real mating threat, verified after Nh5. A only names the recapture; Bxe4 first removes that knight.')
+add(7,'B',['missed_key_point'],[],
+    'Bg3+ lets White escape to g1, whereas Nf6 keeps the h2 bishop controlling g1 and develops the knight against h5.',
+    'B correctly says Kg1 is unavailable after Nf6 because the bishop remains on h2. A provides no concrete reason for the alternative.')
+add(8,'B',[],[],
+    'g3 allows e4 and the captures on g3, losing a pawn and forcing the king to move before castling.',
+    'Both correctly identify the pawn loss. B also explains the loss of castling rights after Bxg3+ and Kd1.')
+add(9,'B',['factual_error','missed_key_point'],['missed_key_point'],
+    'Nc6 permits Rac8 with tempo against the active rook, while g3 gives the king an escape square and preserves the rook-and-knight setup.',
+    'B correctly counts the pawn captured by bxa4. A invents a bishop-for-knight exchange absent from the line; neither explains the role of g3.', 'low')
+add(10,'A',[],['factual_error'],
+    'Rxg3+ sacrifices a rook for the g3 knight without sufficient compensation.',
+    'A correctly counts the exchange. B calls it a hanging rook and implies Rad8 saves a whole rook, overlooking the knight captured on g3.')
+add(11,'tie',[],[],
+    'Rhg1 misses Bg3, after which Bxe5 and Bxg7 win two pawns while Nxf2 takes only one.',
+    'The explanations are identical and correctly describe a net pawn gain.')
+add(12,'A',[],['missed_key_point'],
+    'Qh7+ lets Rg7 attack the queen with tempo and the g3 pawn, which falls to Bxg3 after Qf5.',
+    'A correctly identifies both targets of Rg7 and connects the checking move to lost time. B gives no concrete explanation.')
+add(13,'tie',[],[],
+    'Bf5+ lets the king escape through g5 and f4, whereas Bh7+ opens the sixth rank for a stronger mating attack.',
+    'Both make the same mate-in-five claim and recommend Bh7+. The supplied continuation shows the attack but ends before mate, so the exact distance remains unverified.', 'low')
+add(14,'tie',[],[],
+    'Ke2 allows the forced mating sequence Nd4+, Kd2, Qc2+, Ke1, Qc1#.',
+    'Both give the same legal mating line and the same alternative. B merely repeats the supplied inaccuracy grade.')
+add(15,'B',['factual_error'],[],
+    'Ke7 leaves g7 available to Qxg7+, allowing White to win a pawn and exchange queens.',
+    'B accurately describes the pawn loss. A adds a nonexistent pin of the king to the knight.')
+add(16,'tie',[],[],
+    'g3 neglects d4, allowing Qb6 and Nxd4 to win that pawn before the queens are exchanged.',
+    'Both correctly identify the same pawn loss and recommend e3, which protects d4.')
+add(17,'tie',[],[],
+    'Rd8+ misses the immediate checkmate Ne6#.',
+    'The explanations are identical, and Ne6 is verified checkmate.')
+add(18,'tie',[],[],
+    'Be8 places the bishop on an undefended square where Qxe8+ wins it.',
+    'Both correctly identify the bishop loss and recommend Qh6; the wording difference adds no material insight.')
+add(19,'tie',['missed_key_point'],['missed_key_point'],
+    'Bc5 blocks the queen\\'s route to f6, forcing gxf6 after Bxf6 and damaging Black\\'s king cover; axb5 permits Qxf6 instead.',
+    'A names Bxf6, but that capture also occurs in the best line. Neither explains why the forced pawn recapture makes Bc5 worse.', 'low')
+add(20,'B',['factual_error'],[],
+    'Kb8 allows c3 and Qa4, setting up the threat of Qa8 mate along the open a-file.',
+    'B identifies a verified mate threat. A claims a pawn loss even though its cited moves capture nothing.')
+add(21,'tie',[],[],
+    'Rd3 puts the rook directly in the c3 rook\\'s path and loses it to Rxd3 without a recapture.',
+    'Both accurately identify the undefended rook loss and recommend Rd2.')
+add(22,'both_bad',['missed_key_point'],['factual_error','missed_key_point'],
+    'Ke6 leaves the g7 bishop undefended after Bxe8 and Qxe8, whereas Kf8 protects it.',
+    'Both focus on the rook exchange that also occurs after Kf8 and miss the additional bishop loss. B falsely says Kf8 keeps the material despite the same Bxe8 exchange.')
+add(23,'tie',[],[],
+    'h6 ignores the forced mate Ne7+, Kh8, Ng6#.',
+    'Both give the same verified mating line and recommend Qxg5 to remove the g5 knight.')
+add(24,'A',[],['missed_key_point'],
+    'Kf7 lets White advance f6 and trade off the g7 pawn, weakening Black\\'s kingside instead of maintaining pressure with Re8.',
+    'A names the concrete pawn advance and the evaluation change. B only states that Re8 is better.')
+add(25,'tie',[],[],
+    'Bf4 misses Bxc4, which takes the c4 pawn before Black develops with Bb7.',
+    'Both correctly identify the pawn gain. B includes the final recapture, which confirms the subsequent knight exchange but does not change the explanation.')
+add(26,'B',['factual_error'],['missed_key_point'],
+    'Kf2 leaves the e2 bishop pinned to the king along the second rank by Ra2, whereas Bc4 frees and activates it.',
+    'A claims a pawn win by stopping before gxf5, which completes an equal pawn exchange also seen in the played line. B avoids that false claim but gives no explanation of Bc4.', 'low')
+add(27,'both_bad',['factual_error','missed_key_point'],['factual_error','missed_key_point'],
+    'Nf4 permits Bxf4 and Qxf4 followed by bxc5, losing the c5 bishop after an equal minor-piece exchange.',
+    'Both name the wrong loss: the knight is exchanged for White\\'s bishop, and the extra piece lost is Black\\'s c5 bishop.')
+add(28,'tie',[],[],
+    'g4 misses the immediate pawn capture Nxg5 and instead allows Black to respond with Bg6 and h5.',
+    'Both correctly identify the missed pawn gain; B\\'s one-move citation adds no substantial information.')
+add(29,'A',[],['missed_key_point'],
+    'Qe2+ occupies the f1 bishop\\'s natural diagonal and delays development compared with d4 and Bd3.',
+    'A correctly explains the obstruction of the f1 bishop. B only names d4.')
+add(30,'A',[],['factual_error'],
+    'Nxe5 sacrifices a knight for the e5 and c5 pawns, leaving White without that minor piece.',
+    'A accurately counts both captured pawns. B describes the knight as simply hanging and omits the material White receives in the sequence.')
+source=[json.loads(s) for s in Path('batch1.jsonl').read_text(encoding='utf-8').splitlines()]
+assert [r['pair_id'] for r in rows]==[r['pair_id'] for r in source]
+p=Path('out/batch1.jsonl')
+p.parent.mkdir(exist_ok=True)
+with p.open('a',encoding='utf-8',newline='\\n') as f:
+ for row in rows:f.write(json.dumps(row,ensure_ascii=False)+'\\n')
+print(f'Appended {len(rows)} judgments to {p}.')
+actual=[json.loads(s) for s in p.read_text(encoding='utf-8').splitlines()]
+assert len(actual)==len(source),f'Unexpected total count: {len(actual)}'
+assert {r['pair_id'] for r in actual}=={r['pair_id'] for r in source}
+allowed={'factual_error','missed_key_point','hallucination','unnatural'}
+for r in actual:
+ assert r['verdict'] in {'A','B','tie','both_bad'}
+ assert r['confidence'] in {'high','low'}
+ assert set(r['issues'])=={'A','B'}
+ assert all(set(v)<=allowed for v in r['issues'].values())
+ assert set(r)=={'pair_id','verdict','issues','main_reason','confidence','why'}
+print('Validated JSON, schema, and all 30 pair IDs.')
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 969ms:
+Appended 30 judgments to out\batch1.jsonl.
+Validated JSON, schema, and all 30 pair IDs.
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "@'
+import chess,json
+D={x['pair_id']:x for x in map(json.loads,open('batch1.jsonl',encoding='utf-8'))}
+b=chess.Board(D['pair-019']['fen'])
+for san in ['Bc5','Bxf6']:b.push_san(san)
+print('Qxf6 legal:',chess.Move.from_uci('f7f6') in b.legal_moves)
+b.push_san('Qxf6');b.push_san('d4');print(b)
+'@ | python -" in D:\auto_art\PrepForge Chess\research\coach-relations\ab3\run-output\judge
+ succeeded in 1039ms:
+Qxf6 legal: True
+r n b . . r k .
+. p . . . . p p
+p . . p . q . .
+. P b . p . . .
+. . P P . p . .
+. . N . . N P .
+. . . Q P P B P
+. R . . . R K .
+
