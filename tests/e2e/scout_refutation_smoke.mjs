@@ -37,7 +37,7 @@ const SCENARIOS = [
       const deepScanGap = page.locator('[data-testid="scout-refutation-gap-deep-scan"]').first();
       await deepScanGap.waitFor({ timeout: TIMEOUT_MS });
       await deepScanGap.click();
-      const jobTitle = page.locator(".job-toast-title");
+      const jobTitle = page.locator("#notices .notice-title");
       try {
         await jobTitle.filter({ hasText: /Scout Deep Scan/i }).waitFor({ timeout: 10_000 });
       } catch {

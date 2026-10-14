@@ -282,7 +282,7 @@ async function runViewport(vp) {
   const classBars = await page.locator("#analysis-summary .cbar-row").count();
   check(classBars === 2, `class bars should show White + Black rows, got ${classBars}`);
 
-  check(await page.locator("#analysis-job-dock .job-toast").count() === 0, "completed analysis progress must disappear immediately");
+  check(await page.locator("#analysis-job-dock .notice").count() === 0, "completed analysis progress must disappear immediately");
 
   // Exercise shared live evaluation and rapid forward/back navigation with the
   // real worker, not a mirrored test implementation.
@@ -510,7 +510,7 @@ async function runViewport(vp) {
     await saveRequested;
     await page.locator('.history-item[data-game-id="g2"]').focus();
     await page.keyboard.press("Enter");
-    await page.waitForFunction(() => /Recalled analysis/.test(document.getElementById("app-status").textContent));
+    await page.waitForFunction(() => document.getElementById("pgn-input").value.includes('[Black "me_user"]'));
     releaseSave();
     await page.waitForFunction(() => !document.getElementById("run-analysis").disabled);
     check(await page.locator("#eval-chart .eval-area").count() === 0, "a completed older review must not repaint the recalled report");

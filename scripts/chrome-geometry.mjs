@@ -4,8 +4,8 @@ import { chromium } from 'playwright';
 //  - desktop: the 60px rail overlays to 204px on hover/keyboard focus and must
 //    never move main content or the board;
 //  - there is no desktop top bar: search and theme live in the rail foot, and
-//    status messages float as a bottom-right pill; long messages wrap fully
-//    without clipping or shifting the chrome around them;
+//    notifications stack bottom-right; a long one wraps fully without
+//    clipping or shifting the chrome around it;
 //  - mobile (390): bottom tab bar with 44px targets, no horizontal scroll.
 const DESKTOP_WIDTHS = [1024, 1180, 1200, 1440];
 const MOBILE_WIDTH = 390;
@@ -32,37 +32,32 @@ try {
         const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect();
         return { x, y, width, height };
       };
-      const status = document.querySelector('#app-status');
+      const card = document.querySelector('#notices .notice');
+      const text = card?.querySelector('.notice-text');
       return {
         hasTopbar: document.querySelector('.topbar') !== null, main: rect('.workspace'),
         rail: rect('#app-rail'),
         palette: rect('#open-palette'),
-        account: rect('#theme-toggle'), status: rect('#app-status'),
-        statusScrollWidth: status.scrollWidth,
-        statusScrollHeight: status.scrollHeight,
-        statusClientHeight: status.clientHeight,
-        statusWhiteSpace: getComputedStyle(status).whiteSpace,
-        statusOverflow: getComputedStyle(status).textOverflow,
+        account: rect('#theme-toggle'),
+        status: card ? rect('#notices .notice') : null,
+        statusScrollWidth: text?.scrollWidth,
+        statusClientWidth: text?.clientWidth,
       };
     });
     const before = await snapshot();
     if (before.hasTopbar || before.main.y !== 0) {
       throw new Error(`${viewportWidth}px should have no top bar above the workspace: ${JSON.stringify(before.main)}`);
     }
-    await page.locator('#app-status').evaluate((element) => {
-      element.textContent = 'A long repertoire status message '.repeat(10);
-      element.classList.add('is-fresh');
-      element.dataset.state = 'ready';
-      element.dataset.severity = 'info';
-      document.querySelector('#app-status-close').hidden = true;
-      document.querySelector('#topbar-status-slot').classList.remove('is-idle');
+    await page.evaluate(async () => {
+      const { createNotices } = await import('/static/notices.js');
+      window.__notices = createNotices();
+      window.__notices.bind(document.getElementById('notices'));
+      window.__notices.status('A long repertoire status message '.repeat(10));
     });
+    await page.waitForTimeout(300);
     const long = await snapshot();
-    await page.locator('#app-status').evaluate((element) => {
-      element.textContent = '';
-      element.classList.remove('is-fresh');
-      document.querySelector('#topbar-status-slot').classList.add('is-idle');
-    });
+    await page.evaluate(() => window.__notices.status(''));
+    await page.waitForTimeout(400);
     const cleared = await snapshot();
     for (const key of ['main', 'palette', 'account']) {
       for (const coordinate of ['x', 'y', 'width', 'height']) {
@@ -72,17 +67,15 @@ try {
         }
       }
     }
-    if (long.status.height <= 20 || long.status.width > 420
-        || long.statusScrollWidth > Math.ceil(long.status.width)
-        || long.statusScrollHeight > long.statusClientHeight
-        || long.statusWhiteSpace !== 'normal' || long.statusOverflow !== 'clip') {
-      throw new Error(`Long status must wrap without clipping: ${JSON.stringify(long)}`);
+    if (!long.status || long.status.height <= 40 || long.status.width > 360
+        || long.statusScrollWidth > long.statusClientWidth || cleared.status) {
+      throw new Error(`Long notice must wrap without clipping, then clear: ${JSON.stringify({ long, cleared })}`);
     }
-    // The pill floats in the bottom-right corner, clear of the rail.
+    // The stack sits in the bottom-right corner, clear of the rail.
     if (long.status.x < long.rail.x + long.rail.width + 8
         || long.status.x + long.status.width > viewportWidth
         || long.status.y < 900 / 2) {
-      throw new Error(`${viewportWidth}px status pill is out of its corner: ${JSON.stringify(long.status)}`);
+      throw new Error(`${viewportWidth}px notice is out of its corner: ${JSON.stringify(long.status)}`);
     }
 
     // Rail contract: collapsed width is the 60px track; hover expands to the

@@ -137,7 +137,7 @@ describe("scout refutation render sync", () => {
       selectBuildNode: vi.fn(),
       resolveBuildId: vi.fn(),
       setBuildSync: vi.fn(),
-      jobToast: {
+      notices: {
         isBusy: () => false,
         startJob: vi.fn(),
         updateJob: vi.fn(),

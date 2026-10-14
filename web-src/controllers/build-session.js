@@ -24,7 +24,7 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark, engineWidget,
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
-  hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
+  hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
   openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
   reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
   renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
@@ -39,7 +39,7 @@ export function createBuildSession(deps) {
     downloadText, effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark,
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
-    hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
+    hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
     openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
     reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
     renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
@@ -1121,7 +1121,7 @@ async function generateFromCurrentNode() {
     setStatus("Open or create a repertoire first");
     return;
   }
-  if (jobToast.isBusy()) {
+  if (notices.isBusy()) {
     setStatus("Another job is already running", { severity: "warning" });
     return;
   }
@@ -1157,7 +1157,7 @@ async function generateFromCurrentNode() {
   const generatedRepertoireId = appState.build.repertoire_id;
   const generatedBaseRevision = appState.build.revision;
   // Cancel model has two phases. GENERATION (local, before the POST) is
-  // cancellable: jobToast's Stop aborts the controller, the recursion checks the
+  // cancellable: notices's Stop aborts the controller, the recursion checks the
   // signal, and an explicit re-check below bails before the POST — so Stop here
   // persists NOTHING. SAVING (the apply-plan POST) is NOT cancellable: an atomic
   // server apply can't be un-persisted by aborting the fetch, so we remove the
@@ -1175,8 +1175,7 @@ async function generateFromCurrentNode() {
   let lastInitAt = 0;
   let nudgeTimer = null;
   try {
-    setStatus("Loading engines and generating moves");
-    jobToast.startJob({
+    notices.startJob({
       id: jobId,
       title: "Generating moves",
       tab: "build",
@@ -1186,10 +1185,10 @@ async function generateFromCurrentNode() {
     });
 
     nudgeTimer = setInterval(() => {
-      if (!jobToast.isBusy()) return;
+      if (!notices.isBusy()) return;
       if (Date.now() - lastInitAt < 2000) return; // let Maia cold-init progress own the toast
       progress.done = Math.min(progress.total - 3, progress.done + 1);
-      jobToast.updateJob({
+      notices.updateJob({
         current: progress.done,
         total: progress.total,
         message: progress.plannedMoves
@@ -1249,7 +1248,7 @@ async function generateFromCurrentNode() {
           progress.total - 2,
           Math.max(progress.done + 1, Math.ceil(added * 0.75)),
         );
-        jobToast.updateJob({
+        notices.updateJob({
           current: progress.done,
           total: progress.total,
           message: progress.plannedMoves
@@ -1263,11 +1262,11 @@ async function generateFromCurrentNode() {
       // nudge timer drive, so a chatty stream can't fake completion. Skipped while the Maia
       // cold-init owns the toast (its download % is more useful there).
       onEvent: (ev) => {
-        if (!jobToast.isBusy()) return;
+        if (!notices.isBusy()) return;
         if (Date.now() - lastInitAt < 2000) return;
         if (ev && ev.type === "search") {
           const base = progress.plannedMoves ? `+${progress.plannedMoves} moves · ` : "";
-          jobToast.updateJob({
+          notices.updateJob({
             message:
               ev.engine === "maia"
                 ? `${base}consulting Maia for human replies`
@@ -1284,28 +1283,28 @@ async function generateFromCurrentNode() {
         lastInitAt = Date.now();
         if (phase === "download") {
           const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
             message: `downloading Maia model · ${pct}%`,
           });
         } else if (phase === "cache") {
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
             message: "loading cached Maia model",
           });
         } else if (phase === "verify") {
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
             message: "verifying Maia model",
           });
         } else if (phase === "session") {
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
@@ -1342,12 +1341,12 @@ async function generateFromCurrentNode() {
     // an atomic server apply, so the saving phase is NOT cancellable: remove the
     // Stop button (synchronously, before the awaited POST, so no late click can
     // land in the gap) rather than let the UI imply a cancel that wouldn't hold.
-    jobToast.updateJob({
+    notices.updateJob({
       current: progress.total,
       total: progress.total,
       message: "saving",
     });
-    jobToast.lockJob("saving — finishing up");
+    notices.lockJob("saving — finishing up");
     const payload = await postJson(
       "/api/build/generate/apply-plan",
       {
@@ -1360,10 +1359,7 @@ async function generateFromCurrentNode() {
     );
     if (isCurrent()) await hydrateBuild(payload, nodeId);
     const summary = payload.summary || {};
-    setStatus(
-      `Generated from ${appState.buildNodeById.get(nodeId)?.san || "node"} · +${summary.added_nodes || 0} new`
-    );
-    jobToast.completeJob({
+    notices.completeJob({
       title: "Generation done",
       message: `+${summary.added_nodes || 0} new moves`,
       onClick: () => switchView("build"),
@@ -1371,11 +1367,10 @@ async function generateFromCurrentNode() {
   } catch (error) {
     if (error && (error.name === "AbortError" || error.cancelled)) {
       // Aborted before the POST: nothing persisted, existing tree still rendered.
-      setStatus("Generation stopped");
-      jobToast.cancelJob("Generation stopped");
+      notices.cancelJob("Generation stopped");
     } else {
       setStatusError(error.message);
-      jobToast.failJob(error.message);
+      notices.failJob(error.message);
     }
   } finally {
     if (nudgeTimer) clearInterval(nudgeTimer);

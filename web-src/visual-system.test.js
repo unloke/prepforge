@@ -362,8 +362,9 @@ describe("status semantics", () => {
     expect(app).toContain('function setStatusError(message)');
     expect(app).toContain('setStatus(message, { severity: "error" })');
     expect(app).not.toContain("const isError = /(?:error|failed|unavailable");
-    expect(html).toContain('data-severity="info"');
-    expect(css).toContain('.status[data-severity="success"]');
-    expect(css).toContain('.status[data-severity="warning"]');
+    expect(app).toContain("notices.status(text === \"Ready\" ? \"\" : text, { tone: severity })");
+    expect(css).toContain('.notice[data-tone="success"]');
+    expect(css).toContain('.notice[data-tone="warning"]');
+    expect(css).toContain('.notice[data-tone="error"]');
   });
 });

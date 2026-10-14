@@ -4,7 +4,7 @@ import { MAX_FETCH } from "./generated/shared-constants.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
-import { createToastStack } from "./controllers/toast-stack.js";
+import { createNotices } from "./notices.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
 import { classBadgeSymbol } from "./move-grades.js";
 import { countOf } from "./plural.js";
@@ -107,7 +107,6 @@ import {
   takeAuthReturn,
   takePendingAction,
 } from "./auth-gate.js";
-import { shouldClearStatusOnNavigate } from "./status-pill.js";
 import {
   openSourceComposer,
   normalizeSelection,
@@ -642,7 +641,7 @@ const BROWSER_ENGINE_UNAVAILABLE =
 
 const boards = {};
 
-const jobToast = createToastStack();
+const notices = createNotices();
 
 // ===== Undo notifications =====================================================
 // Destructive actions apply to the UI instantly but only reach the server once
@@ -655,7 +654,7 @@ const pendingUndoCommits = new Set();
 function showUndoToast({ title, message, onUndo, onCommit, host = null }) {
   if (host) return showInlineUndo(host, { title, message, onUndo, onCommit });
   let settled = false;
-  let toast = null;
+  let card = null;
   const commit = () => {
     if (settled) return;
     settled = true;
@@ -665,12 +664,15 @@ function showUndoToast({ title, message, onUndo, onCommit, host = null }) {
     } catch (_) {
       /* best-effort */
     }
-    if (toast) toast.dismiss();
+    if (card) card.dismiss();
   };
   pendingUndoCommits.add(commit);
-  toast = jobToast.notify({
+  // Hovering the card pauses the countdown, so the window never closes while
+  // the user is reaching for Undo.
+  card = notices.show(message, {
     title,
-    message,
+    duration: UNDO_TOAST_MS,
+    onClose: commit,
     actions: [
       {
         label: "Undo",
@@ -688,9 +690,6 @@ function showUndoToast({ title, message, onUndo, onCommit, host = null }) {
       },
     ],
   });
-  // Hovering the card pauses the countdown (Toast's pointer gating), so the
-  // window never closes while the user is reaching for Undo.
-  toast._arm(UNDO_TOAST_MS, commit);
   return commit;
 }
 
@@ -911,16 +910,13 @@ function engineLifecycleMark(name, origin = performance.now()) {
   } catch (_) { /* logging only */ }
   return origin;
 }
-const STATUS_PROGRESS_SHOW_DELAY = 700;
-
 // True while a 401 is being turned into the sign-in modal, so the modal's own
 // fallback warning can't loop back through here.
 let routingAuthStatus = false;
 
+// The status line of the notification stack (notices.js). "" or "Ready"
+// clears it and resolves any status error.
 function setStatus(message, { severity = "info" } = {}) {
-  const status = document.getElementById("app-status");
-  if (!status) return;
-  const closeBtn = document.getElementById("app-status-close");
   const text = String(message || "");
   // A guest (or expired session) hit an account-only endpoint: the sign-in
   // modal with an explanation replaces the backend's "not authenticated".
@@ -933,119 +929,7 @@ function setStatus(message, { severity = "info" } = {}) {
     }
     return;
   }
-  const slot = document.getElementById("topbar-status-slot");
-  status.textContent = text;
-  status.title = text;
-  // The floating status pill only shows messages set after load (not the
-  // static "Ready" placeholder); it hides again when the text clears.
-  // "Ready" is the idle state, not news: it clears the pill instead.
-  const normalizedSeverity = ["info", "success", "warning", "error"].includes(severity)
-    ? severity
-    : "info";
-  const isError = normalizedSeverity === "error";
-  // In-progress messages ("Loading...") usually resolve within a moment; only
-  // surface one if it is still the current message after a beat, so quick
-  // steps never flash a pill in the corner.
-  const inProgress = !isError && /(\.\.\.|…)$/.test(text);
-  if (typeof window !== "undefined") window.clearTimeout(setStatus._showTimer);
-  const showNow = !!text && text !== "Ready" && !inProgress;
-  status.classList.toggle("is-fresh", showNow);
-  if (slot) slot.classList.toggle("is-idle", !showNow);
-  // Pills are dropped on navigation (clearStaleStatusOnNavigate); note when
-  // this one was raised so a message set by the navigation itself stays.
-  setStatus._at = text ? Date.now() : 0;
-  if (inProgress && typeof window !== "undefined") {
-    setStatus._showTimer = window.setTimeout(() => {
-      if (status.textContent === text) {
-        status.classList.add("is-fresh");
-        if (slot) slot.classList.remove("is-idle");
-      }
-    }, STATUS_PROGRESS_SHOW_DELAY);
-  }
-  status.setAttribute("role", isError ? "alert" : "status");
-  status.setAttribute("aria-live", isError ? "assertive" : "polite");
-  status.dataset.severity = normalizedSeverity;
-  status.dataset.state = isError ? "error" : "ready";
-  if (typeof window === "undefined") return;
-  window.clearTimeout(setStatus._timer);
-  if (closeBtn) closeBtn.hidden = !isError || !text;
-  if (text && !isError) {
-    setStatus._timer = window.setTimeout(() => {
-      if (status.textContent !== text) return;
-      clearStatus();
-    }, normalizedSeverity === "warning" ? 6000 : 4000);
-  }
-}
-
-// Empty the floating status pill and hide its slot (no leftover empty pill).
-function clearStatus() {
-  const status = document.getElementById("app-status");
-  if (typeof window !== "undefined") {
-    window.clearTimeout(setStatus._timer);
-    window.clearTimeout(setStatus._showTimer);
-  }
-  setStatus._at = 0;
-  if (status) {
-    status.textContent = "";
-    status.title = "";
-    status.classList.remove("is-fresh");
-    status.dataset.severity = "info";
-    status.dataset.state = "ready";
-  }
-  document.getElementById("topbar-status-slot")?.classList.add("is-idle");
-  const closeBtn = document.getElementById("app-status-close");
-  if (closeBtn) closeBtn.hidden = true;
-}
-
-// A pill belongs to the page it was raised on: leaving that page drops it,
-// unless it was raised a moment ago by the very action that is navigating.
-const STATUS_NAV_GRACE_MS = 400;
-function clearStaleStatusOnNavigate() {
-  if (shouldClearStatusOnNavigate(setStatus._at, Date.now(), STATUS_NAV_GRACE_MS)) clearStatus();
-}
-
-// Keep the floating status pill out of the way: it rides above the job-toast
-// stack (never on top of it), is click-through unless it holds an error, and
-// fades to a ghost while the pointer is over its spot — so a message never
-// blocks the button underneath it.
-function bindStatusPillAvoidance() {
-  const slot = document.getElementById("topbar-status-slot");
-  const stack = document.getElementById("toast-stack");
-  if (!slot || typeof window === "undefined") return;
-  if (stack && typeof ResizeObserver === "function") {
-    const sync = () => {
-      const h = stack.getBoundingClientRect().height;
-      document.documentElement.style.setProperty("--toast-stack-h", `${Math.round(h)}px`);
-    };
-    new ResizeObserver(sync).observe(stack);
-    sync();
-  }
-  let frame = 0;
-  let last = null;
-  const evaluate = () => {
-    frame = 0;
-    if (!last) return;
-    const status = document.getElementById("app-status");
-    const isError = status && status.dataset.state === "error";
-    const r = slot.getBoundingClientRect();
-    const pad = 18;
-    const near =
-      !isError &&
-      r.width > 0 &&
-      last.x >= r.left - pad &&
-      last.x <= r.right + pad &&
-      last.y >= r.top - pad &&
-      last.y <= r.bottom + pad;
-    slot.classList.toggle("is-ghost", near);
-  };
-  document.addEventListener(
-    "pointermove",
-    (event) => {
-      last = { x: event.clientX, y: event.clientY };
-      if (!frame) frame = requestAnimationFrame(evaluate);
-    },
-    { passive: true }
-  );
+  notices.status(text === "Ready" ? "" : text, { tone: severity });
 }
 
 function setStatusError(message) {
@@ -1538,7 +1422,7 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
   // Games ↔ Scout is a page change for the user even though both live in the
   // replay view: an error from one must not follow them to the other.
-  if (appState.replaySection && appState.replaySection !== next) clearStaleStatusOnNavigate();
+  if (appState.replaySection && appState.replaySection !== next) notices.clearStatusOnNavigate();
   appState.replaySection = next;
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
     const active = panel.dataset.replayPanel === next;
@@ -1672,7 +1556,7 @@ function switchView(name, { fromUrl = false } = {}) {
     sharedRepertoiresSeq++;
     teamDetailSeq++;
   }
-  if (appState.currentView !== name) clearStaleStatusOnNavigate();
+  if (appState.currentView !== name) notices.clearStatusOnNavigate();
   if (name !== "analyze") analyzeSession?.positionCoach.cancel();
   if (appState.currentView !== name && engineWidget) engineWidget.exitPreview();
   appState.currentView = name;
@@ -2104,7 +1988,7 @@ function goToSmartTraining(statusMessage) {
   appState.trainMode = "smart";
   const btn = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
   if (btn) btn.click();
-  setStatus(statusMessage || "Starting trainer");
+  if (statusMessage) setStatus(statusMessage);
   // Dashboard "Train now" used to dump the user on an idle Train tab. Start
   // (or resume) the smart queue immediately so one click is a real session.
   startTraining("smart", { fresh: false }).catch(() => {});
@@ -2487,34 +2371,28 @@ async function checkLatestLichessGame({ baselineOnly = false } = {}) {
   // recent === false: a genuinely older game; stay silent.
 }
 
-// Surface a "you just finished a game" nudge. It lives in the shared toast
-// stack (so it never overlaps the job cards or engine window) and auto-cleans
-// itself after a while if the player ignores it.
+// Surface a "you just finished a game" nudge as a notice with an Analyze action.
 function showNewGameWidget(game) {
   if (appState.newGameWidgetId === game.lichess_id) return;
   appState.newGameWidgetId = game.lichess_id;
   const sub =
     `${game.white || "?"} vs ${game.black || "?"}` +
     `${game.result ? " · " + game.result : ""}`;
-  const toast = jobToast.notify({
-    id: `newgame-${game.lichess_id}`,
+  // Auto-dismiss after ~45s of being ignored; hover keeps it alive. Closing it
+  // any way marks the game seen so the watcher doesn't re-surface it.
+  notices.show(sub, {
+    key: `newgame-${game.lichess_id}`,
     title: "You just finished a game!",
-    message: sub,
+    duration: 45000,
+    onClose: () => {
+      appState.newGameWidgetId = null;
+      markLichessSeen(game.lichess_id);
+    },
     actions: [
-      {
-        label: "Dismiss",
-        primary: false,
-        onClick: () => {
-          appState.newGameWidgetId = null;
-          markLichessSeen(game.lichess_id);
-        },
-      },
       {
         label: "Analyze",
         primary: true,
         onClick: async () => {
-          appState.newGameWidgetId = null;
-          markLichessSeen(game.lichess_id);
           switchView("analyze");
           // Pull the full PGN now (the probe above skipped move text).
           let pgn = game.pgn || "";
@@ -2531,14 +2409,6 @@ function showNewGameWidget(game) {
         },
       },
     ],
-  });
-  // Auto-dismiss after ~45s of being ignored; the pointer-gating keeps it alive
-  // while the user is actually interacting with it. Mark the game seen so the
-  // watcher doesn't keep re-surfacing the same finished game.
-  if (toast) toast._arm(45000, () => {
-    appState.newGameWidgetId = null;
-    markLichessSeen(game.lichess_id);
-    toast.dismiss();
   });
 }
 
@@ -2779,7 +2649,6 @@ function invalidateAnalysisSource() {
 
 async function recallAnalysis(gameId, listItem = null) {
   const seq = invalidateAnalysisSource();
-  setStatus("Loading saved analysis...");
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   try {
@@ -2809,7 +2678,6 @@ async function recallAnalysis(gameId, listItem = null) {
     document.querySelector("#analyze-sidebar .panel-scroll")?.scrollTo({ top: 0 });
     await syncPgnFromTree();
     if (seq !== analysisRecallSeq) return;
-    setStatus(`Recalled analysis: ${payload.moves.length} plies`);
   } catch (error) {
     if (seq !== analysisRecallSeq) return;
     setStatusError(error.message);
@@ -3674,10 +3542,8 @@ function updateBuildReadOnlyUi(payload) {
   if (appState.sharedToken) return;
   if (payload.writable === false) {
     renderReadOnlyBanner(payload);
-    setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
   } else {
     removeReadOnlyBanner();
-    setStatus(`Editing ${payload.name}`);
   }
   syncCoverageReadOnlyState();
 }
@@ -4013,7 +3879,7 @@ function loadAnalyzeSession() {
       boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
       defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
       engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-      importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
+      importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
       maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
       refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
       sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
@@ -4187,7 +4053,7 @@ function loadBuildSession() {
       deleteBuildNodeLocal, downloadText, effectiveMaiaRating, effectiveStockfishDepth,
       engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
-      isBuildReadOnly, jobToast, normalizeUci, openSettingsSection, optimisticBoardMove,
+      isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
       postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
       refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
       requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
@@ -5706,14 +5572,12 @@ async function maybeOpenSharedView() {
   }
   if (!token) return false;
   try {
-    setStatus("Loading shared repertoire");
     const payload = await api(`/api/shared/${encodeURIComponent(token)}`);
     appState.sharedToken = token;
     await hydrateBuild(payload, payload.selected_node_id);
     renderSharedBanner(payload);
     switchView("build");
     syncCoverageReadOnlyState();
-    setStatus(`Viewing shared repertoire "${payload.name}" (read-only)`);
     return true;
   } catch (error) {
     setStatus(`Share link problem: ${error.message}`, { severity: "error" });
@@ -5840,7 +5704,7 @@ function ensureCoverageView() {
           ownerGeneration: appState.ownerGeneration, rating: effectiveMaiaRating(),
           selectedNodeId: appState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
         getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode, getBoard: () => boards.build,
-        previewReplies: previewCoverageReplies, getJob: () => jobToast,
+        previewReplies: previewCoverageReplies, getJob: () => notices,
         onError: (error) => setStatusError(error.message),
       });
       return coverageView;
@@ -5860,7 +5724,7 @@ async function previewCoverageReplies(gaps, options) {
   if (owner !== currentOwnerId() || generation !== appState.ownerGeneration || !options.isValid()) return;
   return mod.previewCoverageReplies(gaps, options, {
     isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage: BROWSER_ENGINE_UNAVAILABLE,
-    jobToast, hardFlushBuild, captureBuildContext, getBuild: () => appState.build,
+    notices, hardFlushBuild, captureBuildContext, getBuild: () => appState.build,
     effectiveMaiaRating, effectiveStockfishDepth, getGenerator: () => _buildGenReady || preloadBuildGen(),
     getProvider: getSharedMaia3Provider, showConfirmModal, postJson, classifySyncError,
     hydrateBuild, trainRepertoire,
@@ -5897,7 +5761,7 @@ async function ensureScoutView() {
       selectBuildNode,
       resolveBuildId,
       setBuildSync,
-      jobToast,
+      notices,
       parseFenBoard,
       pieceSvg,
       getBuildState: () => appState.build,
@@ -5986,7 +5850,7 @@ function installPolishE2eHook() {
     },
     async fetchMyLastGame() {
       await fetchMyLichessGame();
-      return document.getElementById("app-status")?.textContent || "";
+      return notices.statusText();
     },
     async setBoardFen(boardName, fen) {
       const board = boards[boardName] || null;
@@ -6613,10 +6477,6 @@ function bindEvents() {
     switchView(loc.view, { fromUrl: true });
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
-  const statusClose = document.getElementById("app-status-close");
-  if (statusClose) {
-    statusClose.addEventListener("click", () => clearStatus());
-  }
   const blitzToggle = document.getElementById("train-blitz-toggle");
   if (blitzToggle) {
     const paintBlitz = (on) => {
@@ -6828,8 +6688,7 @@ async function init() {
     overlayId: "train-annotations",
     onMove: (moveUci) => submitTrainingMove(moveUci),
   });
-  jobToast.bind();
-  bindStatusPillAvoidance();
+  notices.bind();
   document.getElementById("coach-maia")?.addEventListener("click", (event) => {
     const pill = event.target.closest(".hp[data-uci]");
     if (!pill) return;
@@ -7002,16 +6861,13 @@ function noteKeptGuestSources() {
   ]);
   if (!names.size) return;
   const list = [...names].slice(0, 3).join(", ") + (names.size > 3 ? ` +${names.size - 3}` : "");
-  // A card, not the status pill: the resumed action may own the pill.
-  const toast = jobToast.notify({
-    id: "kept-guest-sources",
+  // Its own card, not the status line: the resumed action may own that.
+  notices.show(`${list} — added before you signed in. Remove them from the source chips if you don't need them.`, {
+    key: "kept-guest-sources",
     title: "Kept your Games/Scout sources",
-    message:
-      `${list} — added before you signed in — stay as Games/Scout sources. ` +
-      "Remove them from the source chips if you don't need them.",
-    actions: [{ label: "OK", primary: true, onClick: () => {} }],
+    duration: 20000,
+    actions: [{ label: "OK", primary: true }],
   });
-  if (toast && typeof toast._arm === "function") toast._arm(20000, () => {});
 }
 
 function handleBillingReturn() {
@@ -7075,12 +6931,6 @@ async function loadSignedInWorkspace() {
   if (appState.buildPending.length || appState.buildPendingDeletes.length) {
     setBuildSync("dirty");
     scheduleBuildFlush();
-  }
-  if (restored && (restored.build || restored.train)) {
-    const parts = [];
-    if (restored.build) parts.push(`${restored.build} Build edit${restored.build === 1 ? "" : "s"}`);
-    if (restored.train) parts.push(`${restored.train} training attempt${restored.train === 1 ? "" : "s"}`);
-    setStatus(`Unsynced work kept on this device: ${parts.join(" and ")} — saving…`, "info");
   }
   if (restored && restored.rejected) {
     setBuildSync("rejected");

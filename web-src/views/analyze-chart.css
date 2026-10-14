@@ -384,8 +384,8 @@
 /* Whole-game progress: the graph draws itself as positions finish, with the
    job's count, Stop and a thin track under it. */
 .eval-live { display: none; position: relative; overflow: hidden; border-radius: 6px; }
-#analysis-eval-card:has(.job-toast[data-state="running"]) .eval-live { display: block; }
-#analysis-eval-card:has(.job-toast[data-state="running"]) #analysis-eval-graph { display: none; }
+#analysis-eval-card:has(.notice[data-state="running"]) .eval-live { display: block; }
+#analysis-eval-card:has(.notice[data-state="running"]) #analysis-eval-graph { display: none; }
 .eval-chart .eval-front { stroke: var(--accent); stroke-opacity: 0.55; }
 .eval-chart .eval-maia-line {
   fill: none;
@@ -398,27 +398,18 @@
 .eval-chart .eval-maia-front { stroke: var(--brilliant); stroke-width: 2; }
 
 .analysis-job-dock:empty { display: none; }
-.analysis-job-dock .job-toast.is-docked {
+.analysis-job-dock > .notice {
+  grid-template-columns: minmax(0, 1fr) auto;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: none;
-  box-shadow: none;
-  transition: none;
 }
-.analysis-job-dock .job-toast-title { display: none; }
-.analysis-job-dock .job-toast-head { display: flex; align-items: center; gap: 8px; padding: 0; }
-.analysis-job-dock .job-toast-message {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  font-variant-numeric: tabular-nums;
-}
-.analysis-job-dock .job-toast-stop { flex: none; }
 /* The live graph is the progress display; the dock keeps the count and Stop. */
-.analysis-job-dock .job-toast-track { display: none; }
+.analysis-job-dock :is(.notice-icon, .notice-title, .notice-track, .notice-close) { display: none; }
+.analysis-job-dock > .notice .notice-main { grid-column: 1; display: block; }
+.analysis-job-dock > .notice .notice-actions { grid-column: 2; }
+.analysis-job-dock > .notice .notice-text { white-space: normal; overflow-wrap: anywhere; }
 .rb-head {
   display: flex;
   flex-wrap: wrap;

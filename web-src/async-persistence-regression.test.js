@@ -141,16 +141,16 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
   const scoutSource = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   // Private view functions are indented inside createScoutView.
   const code = scoutSource.replace(/^  /gm, "");
-  const jobToast = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
+  const notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
   const run = compile("async function scoutPrepareAll(", {
-    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), jobToast,
+    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices,
     scoutPickRepertoire: async () => "r", scoutWriteLineToRep: write,
   }, "", code);
   await run(["a", "b", "c"].map((uci) => ({ ucis: [uci], sans: [uci] })), "white");
   expect(write).toHaveBeenCalledTimes(3);
-  expect(jobToast.completeJob).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("1 line") }));
-  expect(jobToast.completeJob.mock.calls[0][0].message).toContain("2 failed");
+  expect(notices.completeJob).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("1 line") }));
+  expect(notices.completeJob.mock.calls[0][0].message).toContain("2 failed");
 });
 
 it("the application wires Scout's handoff recorder", async () => {
@@ -159,7 +159,7 @@ it("the application wires Scout's handoff recorder", async () => {
   const noop = () => {};
   const deps = Object.fromEntries(["escapeHtml", "setStatus", "switchView", "api", "showInputModal",
     "createRepertoirePrompt", "editRepertoire", "boardAfterMove", "buildProvisionalNode", "hardFlushBuild",
-    "selectBuildNode", "resolveBuildId", "setBuildSync", "jobToast", "parseFenBoard", "pieceSvg",
+    "selectBuildNode", "resolveBuildId", "setBuildSync", "notices", "parseFenBoard", "pieceSvg",
     "startLichessOAuth", "loadPgnIntoAnalyze", "effectiveMaiaRating", "maiaAnalysisEnabled",
     "scoutPickedUsernames", "requireSignIn", "effectiveStockfishDepth", "queueBuildAdd"].map((key) => [key, noop]));
   const run = compile("async function ensureScoutView(", { ...deps, rememberHandoff,
@@ -312,7 +312,7 @@ it("a Train sync response after changing owners cannot settle the new owner's ou
 
 
 it("a late Generate save response cannot hydrate the repertoire the user left", async () => {
-  const start = source.indexOf('    const payload = await postJson(', source.indexOf('    jobToast.lockJob("saving'));
+  const start = source.indexOf('    const payload = await postJson(', source.indexOf('    notices.lockJob("saving'));
   const end = source.indexOf('    const summary = payload.summary', start);
   const response = deferred();
   let current = true;

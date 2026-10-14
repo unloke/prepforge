@@ -22,7 +22,7 @@ let accountService, activeViewName, analysisSelfSide, analysisStore, api, appSta
   boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
   defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
   engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-  importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
+  importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
   maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
   refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
   sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
@@ -35,7 +35,7 @@ export function createAnalyzeSession(deps) {
     boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
     defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
     engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-    importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
+    importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
     maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
     refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
     sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
@@ -749,7 +749,7 @@ async function runAnalysis(options = {}) {
     setStatus("Paste PGN before analyzing");
     return;
   }
-  if (jobToast.isBusy()) {
+  if (notices.isBusy()) {
     setStatus("Another job is already running");
     return;
   }
@@ -830,7 +830,7 @@ async function runAnalysis(options = {}) {
       }
     };
 
-    jobToast.startJob({
+    notices.startJob({
       id: jobId,
       title: "Analyzing game",
       tab: "analyze",
@@ -866,7 +866,7 @@ async function runAnalysis(options = {}) {
     // Every job update also drives the live graph's animation for that phase.
     const job = (update) => {
       live.phase?.(update.phase, update.current, update.total);
-      jobToast.updateJob(update);
+      notices.updateJob(update);
     };
     // The Maia pass streams alongside Stockfish: every finished eval goes to the assessor,
     // which assesses a move as soon as both of its positions are known, so most of the Maia
@@ -999,7 +999,7 @@ async function runAnalysis(options = {}) {
     // save is not cancellable, so remove the Stop affordance rather than
     // imply a cancel that wouldn't hold. Classifying (CPU) and saving (DB)
     // are separate phases — the server reports both in server_timings_ms.
-    jobToast.lockJob();
+    notices.lockJob();
     job({
       current: positions.length,
       total: positions.length,
@@ -1064,7 +1064,7 @@ async function runAnalysis(options = {}) {
           timings[`server_${key}`] = value;
         }
         if (server.save_game_ms != null || server.save_analysis_ms != null) {
-          jobToast.updateJob({
+          notices.updateJob({
             current: positions.length,
             total: positions.length,
             phase: "saving",
@@ -1078,7 +1078,7 @@ async function runAnalysis(options = {}) {
     await finishAnalyzeCheckpoint(inMemoryCheckpoint || checkpoint);
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     refreshAnalysisHistoryIfOpen();
-    const complete = (current = false) => jobToast.completeJob({
+    const complete = (current = false) => notices.completeJob({
       title: current ? "Analysis ready" : "Analysis saved",
       message: `${payload.moves.length} plies classified`,
       onClick: current ? () => switchView("analyze") : null,
@@ -1095,7 +1095,7 @@ async function runAnalysis(options = {}) {
       complete();
       return;
     }
-    jobToast.updateJob({
+    notices.updateJob({
       current: positions.length,
       total: positions.length,
       phase: "rendering",
@@ -1111,9 +1111,10 @@ async function runAnalysis(options = {}) {
     // The docked job toast goes with the Analyze panel; a run that finishes
     // after the user left gets a card in the stack instead.
     if (activeViewName() !== "analyze") {
-      jobToast.notify({
+      notices.show(`${payload.moves.length} plies classified`, {
+        tone: "success",
         title: "Analysis ready",
-        message: `${payload.moves.length} plies classified`,
+        duration: 10000,
         actions: [{ label: "Open", primary: true, onClick: () => switchView("analyze") }],
       });
     }
@@ -1129,15 +1130,14 @@ async function runAnalysis(options = {}) {
       if (current) {
         appState.analysisSourcePgn = null;
         hideAnalysisHandoff();
-        setStatus("Analysis stopped");
       }
-      jobToast.cancelJob(error.message || "Analysis stopped");
+      notices.cancelJob(error.message || "Analysis stopped");
     } else if (isAuthError(error)) {
       if (current) accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
-      jobToast.failJob("Sign in required");
+      notices.failJob("Sign in required");
     } else {
       if (current) setStatusError(error.message);
-      jobToast.failJob(error.message);
+      notices.failJob(error.message);
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.

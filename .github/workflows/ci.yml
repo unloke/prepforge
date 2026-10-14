@@ -180,14 +180,14 @@ jobs:
         run: npm run build
       - name: Menu, popover and command palette browser contracts
         run: node scripts/review-accessibility-smoke.mjs
-      - name: Topbar status geometry (1024 / 1200 / 1440)
+      - name: Chrome and notification geometry (1024 / 1200 / 1440)
         run: |
           npx vite --host 127.0.0.1 > /tmp/prepforge-vite.log 2>&1 &
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:5173/static/ > /dev/null; then break; fi
             sleep 1
           done
-          node scripts/topbar-status-geometry.mjs
+          node scripts/chrome-geometry.mjs
       - name: Scout + axe + eval-chart + Train keyboard + Analyze board E2E
         run: >-
           uv run pytest -m e2e

@@ -184,7 +184,7 @@ describe("eval chart tooltip boundaries", () => {
     tooltip.offsetWidth = 180;
     view.renderEvalChart(POINTS);
     for (const x of [0, width]) {
-      chart.dispatch("mousemove", { clientX: x });
+      chart.dispatch("pointermove", { pointerType: "mouse", clientX: x });
       const left = Number.parseFloat(tooltip.style.left);
       expect(left - 90).toBeGreaterThanOrEqual(0);
       expect(left + 90).toBeLessThanOrEqual(width);
@@ -293,14 +293,26 @@ describe("eval chart mouse behaviour", () => {
   it("hover shows the move, its eval in pawns, and classification as text", () => {
     const { chart, tooltip, view } = setup();
     view.renderEvalChart(POINTS);
-    chart.dispatch("mousemove", { clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
+    chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
     expect(String(tooltip.innerHTML)).toContain("<b>Nc6</b>");
     expect(String(tooltip.innerHTML)).toContain("−1.2");
     expect(String(tooltip.innerHTML)).not.toContain("win chance");
     expect(String(tooltip.innerHTML)).toContain("Mistake");
     expect(String(tooltip.innerHTML)).toContain("?"); // glyph — a non-colour cue
-    chart.dispatch("mouseleave");
+    chart.dispatch("pointerleave", { pointerType: "mouse" });
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it("a finger scrubs with the tooltip up and lifting it hides the tooltip", () => {
+    const { chart, tooltip, showAnalysisPly, view } = setup();
+    view.renderEvalChart(POINTS);
+    chart.dispatch("pointerdown", { pointerType: "touch", clientX: 480 });
+    expect(tooltip.hidden).toBe(false);
+    expect(showAnalysisPly).toHaveBeenCalledWith(4);
+    chart.dispatch("pointermove", { pointerType: "touch", clientX: 0 });
+    expect(showAnalysisPly).toHaveBeenCalledWith(1);
+    chart.dispatch("pointerup", { pointerType: "touch" });
     expect(tooltip.hidden).toBe(true);
   });
 
@@ -323,9 +335,9 @@ describe("eval chart pointer focus", () => {
     expect(chart.getAttribute("tabindex")).toBe(null);
     const down = chart.dispatch("mousedown");
     expect(down.preventDefault).toHaveBeenCalled();
-    chart.dispatch("mousemove", { clientX: 160 });
+    chart.dispatch("pointermove", { pointerType: "mouse", clientX: 160 });
     expect(tooltip.hidden).toBe(false);
-    chart.dispatch("mouseleave");
+    chart.dispatch("pointerleave", { pointerType: "mouse" });
     expect(tooltip.hidden).toBe(true);
   });
 

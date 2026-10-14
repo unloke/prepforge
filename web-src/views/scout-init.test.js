@@ -92,7 +92,7 @@ describe("scout view initialization reentrancy", () => {
       selectBuildNode: vi.fn(),
       resolveBuildId: vi.fn(),
       setBuildSync: vi.fn(),
-      jobToast: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
+      notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})),
       pieceSvg: vi.fn(() => ""),
       getBuildState: vi.fn(),
@@ -154,7 +154,6 @@ describe("scout view initialization reentrancy", () => {
     expect(String(elements.get("scout-results").innerHTML)).toContain("repertoire service down");
     expect(elements.get("scout-profile").hidden).toBe(true);
     expect(elements.get("scout-btn").disabled).toBe(false);
-    expect(setStatus).toHaveBeenCalledWith("repertoire service down");
     expect(streamGames).not.toHaveBeenCalled();
   });
 
