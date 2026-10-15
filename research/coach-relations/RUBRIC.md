@@ -45,6 +45,18 @@ Specifically:
   Structural endgame reasons (making or stopping a passed pawn, pawn majorities, isolated pawns)
   are key points when they decide the comparison.
 - **One reason.** A second sentence that adds no new understanding counts against the text.
+- **No reason on either side is `both_bad`.** When neither text gives a real reason (a bare "X was
+  the move", the score, a reply named without why), the verdict is `both_bad`, not the shorter or
+  less padded one. Identical texts are a `tie` (or `both_bad` if neither gives a reason).
+- **A followable material count is a reason.** A correct win or loss of material that the reader
+  can see on the board is enough; do not also demand the strategic purpose of the move.
+- **Name the tactic.** Saying what wins the material (a fork, a pin, a hanging piece) beats a bare
+  count of the same material.
+- **Counts must not stop at the edge of the line.** If the supplied line ends on a capture that the
+  other side can simply take back, or the count only holds because the line stops there, the
+  material claim is unproven: mark `hallucination`.
+- **Coach voice.** Plain words a coach would say ("wins a knight") are fine; extra precision
+  ("for a pawn") is welcome but not required.
 
 ## Output
 
