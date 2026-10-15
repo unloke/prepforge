@@ -1,0 +1,170 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab7",
+  "blind_data_sha256": "6631fb698aa569b5b9b7989a1f8cee75e0cccd6cbb47a0f4a3c99ed56536abd4",
+  "pairs_total": 90,
+  "completed": 10,
+  "updated_at": "2026-10-15T04:18:40.175Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "兩個都一樣什麼都講但是A短點 真要選的話那就A吧 但都一樣爛",
+      "content_sha256": {
+        "A": "75ef58f8cf2c72a9639442874e8bc03ae9da1dc370535c087169ae9827bdb403",
+        "B": "3ecee509ebdcd854fae8017f42b8e58ae51274ca858e8bfddc1dd18a97088fdf"
+      },
+      "updated_at": "2026-10-15T04:07:04.699Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "都很好 但是A講到更適合coach講的話 聽起來比較像是真的教練 不過理論上兩點都講會好點",
+      "content_sha256": {
+        "A": "72fe837f7c5b80dadfbc3be925dca470243d10f182f7079b029d356a8da8a0c5",
+        "B": "4cc973e0f875e84a3fdd47c0a7082e77ebc0ab2a9809f83b9a818e6722b043a6"
+      },
+      "updated_at": "2026-10-15T04:08:45.153Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "講的是一樣的東西 但是A講的更好 就是有提到雙擊",
+      "content_sha256": {
+        "A": "6650a5fb709b444c849c40bfbb6b7934c96c5549139c09ea6279b2786d419be6",
+        "B": "be2b5d200d03317bbf7036422feb9a811257bd4d0f584c4e6e8a90cb9d0cf546"
+      },
+      "updated_at": "2026-10-15T04:09:15.567Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "其實兩個都通 補一嘴一兵換一騎士是比較專業 但是口語上A比較像真實的教練 直接說贏騎士",
+      "content_sha256": {
+        "A": "cd01152d1d01f7495b52d650102c8b7903b1a19217c3e1a177fb4e4ef7a748b8",
+        "B": "7a7f627943ae7fbcf8c8d9f12c2d75f840d42bcfee554df3b79a96c465a6a765"
+      },
+      "updated_at": "2026-10-15T04:10:35.396Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "factual_error"
+        ]
+      },
+      "note": "B哪裡贏兵了= =",
+      "content_sha256": {
+        "A": "686eaf0f6a0cffb9e71267a918ab0aac5ffa66733ff0112c6bdfd5b7a0550bf6",
+        "B": "05b5192d585674927699a3ead201e6240e335233e1ffa48a7a679800d49a2eda"
+      },
+      "updated_at": "2026-10-15T04:11:15.092Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "實際是有贏兵 但是和coach描述的不同啊 dxc5有給他但沒講出來 然後後續的Bxc5 Nxc5甚至都不在提供給他的資料裡 這個講贏兵是因為資料截止在贏兵上 不是因為他知道真的贏兵 肯定會有問題的",
+      "content_sha256": {
+        "A": "209264d04426e95ea278f0c9ac4071ee7ddc92ede9bca6decc545d2b31894f2f",
+        "B": "c3d901d937826b1d9e175fd0cce629bd1084e0f57e6457c132e7f0ea7e8450d4"
+      },
+      "updated_at": "2026-10-15T04:14:33.793Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "679c70890d9b682bf7ec6f581ac3a4b90988a2575bcba073afddd5b0288e89f9",
+        "B": "679c70890d9b682bf7ec6f581ac3a4b90988a2575bcba073afddd5b0288e89f9"
+      },
+      "updated_at": "2026-10-15T04:15:17.463Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "兩者都沒講到開放線呀 這題就是開放線 B接近了點 的確是放他走Rf6造成的 但看起來沒想到開放線那裡去 所以兩個都不好",
+      "content_sha256": {
+        "A": "9673d247091fbae129c2d56836ee8a8f424d404e6c7fdff4779f4adbf9e40756",
+        "B": "c36481a085404d8cdbf7826b6d0cfd5c2a427d2ce51d2fef961b18d4f863e39f"
+      },
+      "updated_at": "2026-10-15T04:16:15.215Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "b90f78b107aa942777c636d6b65d60082444dec04690038f397a7759e724109a",
+        "B": "43502ff61df0f9d1821774ffb1cf82a5ffe496d7ed0cf2fde0bf6ac84eedcd9e"
+      },
+      "updated_at": "2026-10-15T04:16:30.529Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "A",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "B的問題依然是掉兵 但不是掉你講的兵 這個掉的事dxe6 Qxe6 Bd5 Qf6 之後有Nxg3 fxg3 Rxg3 但他就講了他能看到的結尾是少兵的 什麼都不管 然後A 就講了一半 兩個各有各的問題 不過A好點",
+      "content_sha256": {
+        "A": "17d9fb490b120cf6575b8fb40d3bfc1e5af4da7de86cd0412240fa668a87534c",
+        "B": "ae06db4899c3e6c26c27651848eb4cc2b6edc46ed159532441ef9ea75d507105"
+      },
+      "updated_at": "2026-10-15T04:18:39.859Z"
+    }
+  ]
+}
