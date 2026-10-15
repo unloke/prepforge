@@ -1,0 +1,154 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "notes1",
+  "blind_data_sha256": "15e0656560bacd117c5de2ccb6e784e7e9349231a86be3c6b64daa748ab07ebe",
+  "pairs_total": 40,
+  "completed": 10,
+  "updated_at": "2026-10-15T09:11:26.247Z",
+  "reviews": [
+    {
+      "pair_id": "card-001",
+      "verdict": "bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "如果讓黑方走出f5和Nc6那就會出現皇后被迫回家的狀況 此時Na5起到限制Nc6的作用(沒有任何走法可以阻止f5) 然後還順便加強攻擊b7",
+      "content_sha256": {
+        "A": "1540262983b69c4737e3a4126a219132798be483fb2f15312cfd47624cc71657",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:18:58.083Z"
+    },
+    {
+      "pair_id": "card-002",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "Kh2浪費一個節奏 然後停止保護f2 然後跑太遠來不及擋住對手的通路兵",
+      "content_sha256": {
+        "A": "acebd237bbb4d5728053a5d78bcafa5d7c2e1aff6bf7934f395fccd789425491",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:24:55.352Z"
+    },
+    {
+      "pair_id": "card-003",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "g5對王翼施壓 這個有點難解釋 講的口語化點就是王翼擴張且白方擋不下來(比如g5 exf5 e4抓雙 如果想先setup比如g5 Nd2 那f4推起來也擋不下來) 然後對方的王翼就會被轟炸",
+      "content_sha256": {
+        "A": "696ca00dffcb9734b020a55d95b58ae294e49e9094512a4469ec05a1b3fd94db",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:30:51.041Z"
+    },
+    {
+      "pair_id": "card-004",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "Re8浪費了一步 待會回來又浪費了一步(他沒有標到應該是因為引擎發現回去來不及所以不推薦 要穩定解釋的話就是Re8讓對手可以升變) 所以最後會被擋住 Kf4才是正確運用節奏的方式",
+      "content_sha256": {
+        "A": "1c7ee1d14ebfe4fd16daca283a14061caa542808fcbf7239dfde38e4ae774774",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:35:29.216Z"
+    },
+    {
+      "pair_id": "card-005",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "王的安全和兵型唄 算是比較變種 就是最佳的走法兵型雖亂 但是沒有被卡死的落後兵 然後王雖然暴露 但是沒有能夠攻擊到他的手段 實戰就是都稍差",
+      "content_sha256": {
+        "A": "860ee4df626024c383f4a14a883081eacb0d9ff6e5a89e1654ec7b04c067f33d",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:40:47.740Z"
+    },
+    {
+      "pair_id": "card-006",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "主教比騎士有價實 Kf1放著讓對手吃掉了",
+      "content_sha256": {
+        "A": "8d64dcb989bcba824c2ed0fd552e9e88cc5058bc8d2912c5f696e9effd971948",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:42:35.996Z"
+    },
+    {
+      "pair_id": "card-007",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "這個電腦判斷問題 實際上實戰後續最佳走法應該是h3 f6 Bb6 Qf2 但是這個深度不夠沒有看到這個後續 呃 不過如果需要從這裡看出點東西的話 那就是h3讓對方的子力更活躍比起最佳解",
+      "content_sha256": {
+        "A": "fb5098d7271a914c54938b75230225b195f54b22240d5adae30fa6fdf7f78f21",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:50:05.578Z"
+    },
+    {
+      "pair_id": "card-008",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "實戰Rc1讓對手Nc4取得好格 然後Bxc4之後dxc4又讓對手的兵取得好格子 后翼兵鏈就要推過來了",
+      "content_sha256": {
+        "A": "8c12d00cd7decd1fe4ca415c8d3ecf173ad0b8d2377182789cab70e360007795",
+        "B": null
+      },
+      "updated_at": "2026-10-15T08:54:42.783Z"
+    },
+    {
+      "pair_id": "card-009",
+      "verdict": "bad",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "ok 這個有點複雜 h4為什麼重要呢 首先 他不好被吃 白方這個兵型會直接爛掉 然後Rh6抓兵也不好 Bd2抓雙直接把白城堡定住讓他需要保主教 王Kg2去守也不太好 Be1直接抓死f兵 Ra8繞後也不好 黑方可以Rc1+ Kg2 Rd1抓兵 這些操作沒有h4都不會發生 基本上就是一隻本來應該輕鬆拿下來的子突然有大用的概念",
+      "content_sha256": {
+        "A": "4f9d81c28fb95610ed8cd7422a7fcd3e4906637d0cc6f7e59fbec6ab004b32c7",
+        "B": null
+      },
+      "updated_at": "2026-10-15T09:09:11.706Z"
+    },
+    {
+      "pair_id": "card-010",
+      "verdict": "bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "Qc7主要的問題是Na6打 Qxb7之後Nb4抓死c兵所以黑方不虧子力 然後皇后的機動性還比一開始差很多 完全不划算 回程的路讓還會被城堡打很多下",
+      "content_sha256": {
+        "A": "891999d0d8c57d8c046e022a15d35476c09328989536dfbc921539c8ec2b27a1",
+        "B": null
+      },
+      "updated_at": "2026-10-15T09:11:25.936Z"
+    }
+  ]
+}
