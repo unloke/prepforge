@@ -533,7 +533,6 @@ const appState = {
   },
   // R-03: ops the server permanently refused. Kept for inspection/export —
   // restored on reload, never silently dropped, never auto-retried.
-  buildRejected: [],
   trainRejected: [],
   // Whether the durable outbox write succeeded. False means the queue only
   // lives in this tab, which the UI must state honestly.
@@ -6935,7 +6934,7 @@ async function loadSignedInWorkspace() {
   if (restored && restored.rejected) {
     setBuildSync("rejected");
     setStatus(
-      `${restored.rejected} edit${restored.rejected === 1 ? "" : "s"} couldn't be saved earlier and ${restored.rejected === 1 ? "is" : "are"} kept for review.`,
+      `${restored.rejected} training attempt${restored.rejected === 1 ? "" : "s"} couldn't be saved earlier and ${restored.rejected === 1 ? "is" : "are"} kept for review.`,
       { severity: "warning" },
     );
   }

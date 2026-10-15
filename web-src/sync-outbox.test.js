@@ -12,8 +12,8 @@ import {
   trainAttemptId,
 } from "./sync-queue.js";
 
-// Outbox merge rules (R-03/R-04): rejected ops are kept for inspection (never
-// silently dropped), settled ops never return, and a cross-tab lock stops two
+// Outbox merge rules (R-03/R-04): rejected training attempts are kept, rejected
+// Build edits are reported once and dropped, settled ops never return, and a cross-tab lock stops two
 // tabs from double-sending the same queue. Storage itself is outbox-db.js.
 
 function fakeStorage() {
@@ -45,15 +45,14 @@ function memoryOutbox() {
 }
 
 describe("outbox state", () => {
-  it("round-trips the queue and keeps rejected ops for inspection", () => {
+  it("round-trips the queue and keeps rejected training attempts", () => {
     const state = {
       build: {
         pending: [buildEntry],
         pendingDeletes: [{ tempId: "d1" }],
         idMap: { t1: 11 },
-        rejected: [{ tempId: "bad", error: "validation" }],
       },
-      train: { pending: [{ attempt: "u1" }], rejected: [] },
+      train: { pending: [{ attempt: "u1" }], rejected: [{ sessionId: "s", attempts: [], status: 422 }] },
     };
     const box = memoryOutbox();
     box.save(state);
@@ -70,7 +69,7 @@ describe("outbox state", () => {
 
   it("reports pending work and rejected ops separately", () => {
     const empty = {
-      build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
+      build: { pending: [], pendingDeletes: [], idMap: {} },
       train: { pending: [], rejected: [] },
     };
     expect(outboxHasWork(empty)).toBe(false);
@@ -81,7 +80,7 @@ describe("outbox state", () => {
     ).toBe(true);
     expect(outboxHasWork({ ...empty, train: { ...empty.train, pending: [{}] } })).toBe(true);
     // Rejected ops are for the user to act on — they are NOT auto-retried work.
-    const rejected = { ...empty, build: { ...empty.build, rejected: [buildEntry] } };
+    const rejected = { ...empty, train: { ...empty.train, rejected: [{ sessionId: "s", attempts: [] }] } };
     expect(outboxHasWork(rejected)).toBe(false);
     expect(outboxHasRejected(rejected)).toBe(true);
   });
@@ -133,7 +132,7 @@ describe("cross-tab flush lock", () => {
 
 describe("outbox settling", () => {
   const empty = {
-    build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
+    build: { pending: [], pendingDeletes: [], idMap: {} },
     train: { pending: [], rejected: [] },
   };
 
@@ -164,8 +163,7 @@ describe("outbox settling", () => {
   });
 
   it("never reports quiescent while rejected ops are kept for review", () => {
-    const rejected = { kind: "add", tempId: "bad", message: "nope" };
-    box.save({ ...empty, build: { ...empty.build, rejected: [rejected] } });
+    box.save({ ...empty, train: { ...empty.train, rejected: [{ sessionId: "s", attempts: [], status: 422 }] } });
     const stored = box.load();
     expect(outboxHasWork(stored)).toBe(false);
     expect(outboxIsQuiescent(stored)).toBe(false);
@@ -222,17 +220,10 @@ describe("outbox settling", () => {
     expect(merged.build.pending).toHaveLength(0);
   });
 
-  it("bounds the rejected tail so a device can't grow without limit", () => {
-    for (let i = 0; i < 140; i += 1) {
-      box.save({
-        ...empty,
-        build: { ...empty.build, rejected: [{ kind: "add", tempId: `bad-${i}` }] },
-      });
-    }
-    const rejected = box.load().build.rejected;
-    expect(rejected).toHaveLength(140);
-    // The newest rejections survive — those are the ones being worked on.
-    expect(rejected[rejected.length - 1].tempId).toBe("bad-139");
+  it("drops stored rejected Build edits: they are reported once, not kept", () => {
+    box.save({ ...empty, build: { ...empty.build, rejected: [{ kind: "add", tempId: "bad" }] } });
+    expect(box.load().build.rejected).toBeUndefined();
+    expect(outboxIsQuiescent(box.load())).toBe(true);
   });
 
   it("requires attempt UUIDs rather than deriving identities from grades", () => {

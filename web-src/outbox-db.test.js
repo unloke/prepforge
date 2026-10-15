@@ -47,7 +47,6 @@ it("a stale writer cannot replay settled adds/deletes/attempts", async () => {
   expect(restored.build.pending).toEqual([]);
   expect(restored.build.pendingDeletes).toEqual([]);
   expect(restored.train.pending).toEqual([]);
-  expect(restored.build.rejected).toEqual(stale.build.rejected);
   expect(restored.build.idMap).toEqual(stale.build.idMap);
 });
 
