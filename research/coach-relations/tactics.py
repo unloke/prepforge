@@ -60,7 +60,7 @@ def analyse(b):
     if fen not in _cache:
         if _engine is None:
             _engine = chess.engine.SimpleEngine.popen_uci(ENGINE)
-            _engine.configure({"Threads": 8, "Hash": 256})
+            _engine.configure({"Threads": int(os.environ.get("SF_THREADS", 8)), "Hash": 256})
         info = _engine.analyse(b, LIMIT)
         score = info["score"].relative
         row = {"fen": fen, "cp": score.score(), "mate": score.mate(), "pv": [m.uci() for m in info.get("pv", [])],

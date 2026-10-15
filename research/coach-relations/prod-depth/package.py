@@ -1,11 +1,15 @@
 """Kaggle kernels for the production-depth coach reads (no local compute).
 
-  py research/coach-relations/prod-depth/package.py <kernel-dir> v5|fresh1|fresh2|fresh3|fresh4
+  py research/coach-relations/prod-depth/package.py <kernel-dir> v5|fresh1|fresh2|fresh3|fresh4 [--explain]
 
 Each kernel analyses one games file (games.py) with analyze-games.mjs (production's tiered pass
 and Coach, plus the engine stress check), then runs explain_cards.py on its errors. Output in
 /kaggle/working/prod-depth: evals.jsonl, cards.jsonl, explain.jsonl, sf_cache.jsonl, health.json,
 SOURCE-MANIFEST.json.
+With --explain the kernel reads that kind's finished kernel output instead (kernel source) and
+only reruns explain_cards.py on its cards, in PROCS shards at once with one engine thread each:
+for a new explain.py, whose searches (sf_cache.jsonl) then make local scans of the pool instant.
+Output in /kaggle/working/explain: explain-<i>.jsonl and sf_cache-<i>.jsonl per shard.
 """
 import base64
 import hashlib
@@ -19,7 +23,8 @@ import sys
 import zipfile
 
 out, kind = pathlib.Path(sys.argv[1]), sys.argv[2]
-DATE = "20261014"
+EXPLAIN = "--explain" in sys.argv
+DATE, PROCS = "20261014", 4
 repo = pathlib.Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 GAMES = repo / "artifacts/benchmarks/coach-relations-20261014/prod-depth/games"
 files = ["package.json", "package-lock.json"]
@@ -38,18 +43,33 @@ def closure(entry):
     return sorted(seen)
 
 
-files += [f for f in closure("research/coach-relations/prod-depth/analyze-games.mjs") if f.startswith("web-src/")]
+if not EXPLAIN:
+    files += [f for f in closure("research/coach-relations/prod-depth/analyze-games.mjs") if f.startswith("web-src/")]
 for d, exts in (("research/coach-relations", {".py"}), ("research/coach-relations/prod-depth", {".py", ".mjs"})):
     files += sorted(p.relative_to(repo).as_posix() for p in (repo / d).glob("*") if p.is_file() and p.suffix in exts)
 buf, manifest = io.BytesIO(), {}
 with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-    for f in files + [f"games/{kind}.json"]:
+    for f in files + ([] if EXPLAIN else [f"games/{kind}.json"]):
         data = (GAMES / f"{kind}.json" if f.startswith("games/") else repo / f).read_bytes()
         z.writestr(f, data)
         manifest[f] = hashlib.sha256(data).hexdigest()
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, cwd=repo).strip()
 dirty = subprocess.check_output(["git", "status", "--porcelain", "--", *files], text=True, cwd=repo).strip()
 blob = base64.b64encode(buf.getvalue()).decode()
+EXPLAIN_JOB = f'''src=next(pathlib.Path('/kaggle/input').rglob('prod-depth/cards.jsonl')).parent
+out=pathlib.Path('/kaggle/working/explain');out.mkdir(parents=True,exist_ok=True)
+(out/'SOURCE-MANIFEST.json').write_text(json.dumps(dict(kind='{kind}',commit='{commit}',dirty={json.dumps(dirty)},files=manifest,cpus=os.cpu_count()),indent=1))
+t0=time.time();ps=[]
+for i in range({PROCS}):
+    d=pathlib.Path(f'/tmp/code{{i}}');shutil.copytree(root,d,ignore=shutil.ignore_patterns('node_modules'));(d/'node_modules').symlink_to(root/'node_modules')
+    ps.append(subprocess.Popen([sys.executable,'research/coach-relations/prod-depth/explain_cards.py',str(src/'cards.jsonl'),str(out/f'explain-{{i}}.jsonl'),
+                                '--shard',f'{{i}}/{PROCS}','--read',str(src/'sf_cache.jsonl')],cwd=d,env=dict(os.environ,SF_THREADS='1')))
+codes=[p.wait(timeout=11*3600) for p in ps]
+for i in range({PROCS}):
+    c=pathlib.Path(f'/tmp/code{{i}}/research/coach-relations/sf_cache.jsonl')
+    if c.exists():shutil.copy(c,out/f'sf_cache-{{i}}.jsonl')
+log(stage='explain',seconds=round(time.time()-t0),codes=codes)
+'''
 job = f'''import base64,hashlib,io,json,os,pathlib,shutil,subprocess,sys,tarfile,time,urllib.request,zipfile
 root=pathlib.Path('/tmp/code');out=pathlib.Path('/kaggle/working/prod-depth')
 zipfile.ZipFile(io.BytesIO(base64.b64decode('{blob}'))).extractall(root)
@@ -70,7 +90,7 @@ subprocess.run(['npm','install','--omit=dev','--ignore-scripts','--no-audit','--
 lite=root/'node_modules/stockfish/bin/stockfish-19-lite.js'
 assert hashlib.sha256(lite.read_bytes()).hexdigest()=='2f98d35d20bf435c16925f8955fe4b0c2062e66962799a407667218ff9ea709d','production engine mismatch'
 subprocess.run([sys.executable,'-m','pip','install','-q','chess==1.11.2'],check=True)
-(out/'SOURCE-MANIFEST.json').write_text(json.dumps(dict(kind='{kind}',commit='{commit}',dirty={json.dumps(dirty)},files=manifest,cpus=os.cpu_count()),indent=1))
+''' + (EXPLAIN_JOB if EXPLAIN else f'''(out/'SOURCE-MANIFEST.json').write_text(json.dumps(dict(kind='{kind}',commit='{commit}',dirty={json.dumps(dirty)},files=manifest,cpus=os.cpu_count()),indent=1))
 t0=time.time()
 subprocess.run(['node','--import','./research/coach-relations/prod-depth/register.mjs','research/coach-relations/prod-depth/analyze-games.mjs',
                 'games/{kind}.json',str(out),'--budget','560','--stress'],cwd=root,check=True)
@@ -80,12 +100,12 @@ p=subprocess.run([sys.executable,'research/coach-relations/prod-depth/explain_ca
 log(stage='explain',seconds=round(time.time()-t0),code=p.returncode)
 cache=root/'research/coach-relations/sf_cache.jsonl'
 if cache.exists():shutil.copy(cache,out/'sf_cache.jsonl')
-'''
+''')
 out.mkdir(parents=True, exist_ok=True)
 (out / "job.py").write_text(job, encoding="utf-8")
-slug = f"vexylon/coach-prod-depth-{kind}-{DATE}"
+slug = f"vexylon/coach-{'explain' if EXPLAIN else 'prod-depth'}-{kind}-{DATE}"
 (out / "kernel-metadata.json").write_text(json.dumps({
     "id": slug, "title": slug.split("/")[1], "code_file": "job.py", "language": "python", "kernel_type": "script",
     "is_private": "true", "enable_gpu": "false", "enable_internet": "true",
-    "dataset_sources": [], "competition_sources": [], "kernel_sources": []}, indent=2))
+    "dataset_sources": [], "competition_sources": [], "kernel_sources": [f"vexylon/coach-prod-depth-{kind}-{DATE}"] if EXPLAIN else []}, indent=2))
 print(json.dumps({"kind": kind, "slug": slug, "files": len(files), "zipBytes": len(buf.getvalue()), "dirty": dirty}))

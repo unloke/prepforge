@@ -1,12 +1,13 @@
 """explain.py on the production-depth cards (analyze-games.mjs cards.jsonl).
 
-  py research/coach-relations/prod-depth/explain_cards.py <cards.jsonl> <out.jsonl>
+  py research/coach-relations/prod-depth/explain_cards.py <cards.jsonl> <out.jsonl> [--shard i/n] [--read <sf_cache.jsonl> ...]
 
 Each inaccuracy, mistake or blunder becomes an explain row: played line = the move plus the
 after-read PV, best line = the before-read PV, both whole (explain.py decides how much to show;
 the coach-v5 4-to-8-ply cut hid exchanges finished later in the line). The grade is production's
 own (the card's code). Tail searches go to
-tactics.py's cache (sf_cache.jsonl), at the screen depth.
+tactics.py's cache (sf_cache.jsonl), at the screen depth; --read adds caches to look in first
+(tactics.READ), --shard i/n takes every n-th error card from the i-th.
 """
 import json
 import pathlib
@@ -27,10 +28,19 @@ def row(c):
 
 
 def main():
-    src, dst = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+    args = sys.argv[1:]
+    shard = args.pop(args.index("--shard") + 1) if "--shard" in args else "0/1"
+    args = [a for a in args if a != "--shard"]
+    if "--read" in args:
+        k = args.index("--read")
+        tactics.READ += [pathlib.Path(p) for p in args[k + 1:]]
+        args = args[:k]
+    src, dst = pathlib.Path(args[0]), pathlib.Path(args[1])
+    i, n = map(int, shard.split("/"))
     done = {json.loads(l)["id"] for l in dst.open(encoding="utf-8")} if dst.exists() else set()
     cards = [json.loads(l) for l in src.open(encoding="utf-8")]
-    todo = [c for c in cards if c["code"] in ERRORS and c["id"] not in done]
+    todo = [c for c in cards if c["code"] in ERRORS][i::n]
+    todo = [c for c in todo if c["id"] not in done]
     t0 = time.time()
     with dst.open("a", encoding="utf-8") as f:
         for n, c in enumerate(todo, 1):

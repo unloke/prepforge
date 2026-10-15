@@ -237,6 +237,59 @@ def recount(f, ext):
     return dict(f, side=color(w).lower(), net=abs(net), won=won[::-1], lost=lost[::-1], end=end)
 
 
+def defender(f, ln):
+    """How the material fact's first won man falls, when it falls for losing its last guard in the
+    line: (kind, ply, guard square, victim square, capture ply) or None. The man is taken unguarded at ply c; going
+    back while it stays on its square, the move that left it without a guard is
+    - "abandon": the played move itself walks the guard away;
+    - "lure": the losing side's guard takes the piece the winner just moved (that move lures it);
+    - "drive": the losing side moves the guard to answer a check, or to flee a new attack by the
+      piece the winner just moved (the guard was not attacked before that move);
+    - "remove": the winner takes the guard.
+    Anything else (the guard leaves on its own later, a line is blocked, a pinned or overloaded
+    guard) says nothing: the line alone does not show why it happened. Nor does a man that was
+    not safe with its guard (more attackers than guards, or a cheaper attacker): it falls anyway
+    (sol's precision check, 2 of 20)."""
+    w = chess.WHITE if f["side"] == "white" else chess.BLACK
+    for c in range(1, f["end"] + 1):
+        b, m = ln.boards[c - 1], ln.moves[c - 1]
+        x = b.piece_at(m.to_square)
+        if b.turn == w and x and x.color != w and x.symbol().lower() in f["won"]:
+            break
+    else:
+        return None
+    s = m.to_square
+    if b.attackers(not w, s):
+        return None
+    for j in range(c - 2, -1, -1):
+        bj, mj = ln.boards[j], ln.moves[j]
+        if s in (mj.from_square, mj.to_square):
+            return None
+        guards = bj.attackers(not w, s)
+        if not guards:
+            continue
+        # the man must have been safe with its guard: never more attackers than guards from then on,
+        # and none cheaper than the man (else it falls anyway and the guard is a side detail)
+        man = tactics.VAL[x.piece_type]
+        for i in range(j, c):
+            att = ln.boards[i].attackers(w, s)
+            if len(att) > len(guards) or any(tactics.VAL[ln.boards[i].piece_type_at(q)] < man for q in att):
+                return None
+        if bj.turn != w and mj.from_square in guards:
+            if j == 0 and f["line"] == "played":
+                return "abandon", 1, mj.from_square, s, c
+            lure = ln.moves[j - 1] if j else None
+            if lure and mj.to_square == lure.to_square:
+                return "lure", j, mj.from_square, s, c
+            new = (mj.from_square in bj.attacks(lure.to_square) and not ln.boards[j - 1].is_attacked_by(w, mj.from_square)) if lure else False
+            if lure and (bj.is_check() or new):
+                return "drive", j, mj.from_square, s, c
+        elif bj.turn == w and mj.to_square in guards and bj.is_capture(mj):
+            return "remove", j + 1, mj.to_square, s, c
+        return None
+    return None
+
+
 def edge(ln, end):
     """True when the line ends on the capture at ply end and the side to move can take back on that
     square: the count holds only because the line stops there."""
@@ -392,12 +445,23 @@ def explain(row, cands=None):
     grade = GRADE.get(row["grade"])
     out, arrows, squares, shown = [], [], [], {}
     fork_first = len(facts) == 2 and facts[0]["line"] == "best" and facts[1]["ply"] == 1
+    guard = facts[0]["type"] == "material" and len(facts) == 1 and defender(facts[0], ext[facts[0]["line"]]) if facts else None
     for i, f in enumerate(facts):
         line = f["line"]
         ln = lines[line]
         verb, last, arrow, sq = phrase(f, ln, ext[line], shown.get(line, 0) + 1, root, row)
         if i == 0 and fork_first:  # the best move itself forks: one sentence names the fork and its gain
             verb = f"forks {' and '.join(ln.name(1, s) for s in kings_first(ln, 1, facts[1]['targets']))} and {verb}"
+        if guard:  # the material falls for losing its guard: say how, in the line's own moves
+            kind, k, g, v, c = guard
+            el = ext[line]
+            man, gd = el.name(c - 1, chess.square_name(v)), el.name(k if kind in ("lure", "drive") else k - 1, chess.square_name(g))
+            if kind == "abandon":
+                verb = f"leaves {man} undefended and {verb}"
+            else:
+                how = {"lure": f"pulls {gd} away from {man}", "drive": f"drives {gd} away from {man}",
+                       "remove": f"takes {gd}, the last guard of {man}"}[kind]
+                verb = f"{how}, and {verb}" if k == 1 else f"{verb}: {el.seq(k, k)} {how}"
         if i == 0:
             if line == "played":
                 body = verb
@@ -420,7 +484,8 @@ def explain(row, cands=None):
     if "best" not in shown:
         out.append(f"{B} was the move{': ' + better if better else ''}.")
     arrows = arrows[:3]
-    return {"text": " ".join(out), "arrows": arrows, "squares": squares[:3 - len(arrows)], "facts": [f["type"] for f in facts], "chosen": facts}
+    return {"text": " ".join(out), "arrows": arrows, "squares": squares[:3 - len(arrows)], "facts": [f["type"] for f in facts], "chosen": facts,
+            "guard": guard[0] if guard else None}
 
 
 def main():
