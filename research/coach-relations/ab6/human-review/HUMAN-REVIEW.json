@@ -1,0 +1,176 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab6",
+  "blind_data_sha256": "b0b24d46a1d550d00dcc7627d7b78771a066f2cd6f73e7381fab4d73d737405a",
+  "pairs_total": 90,
+  "completed": 10,
+  "updated_at": "2026-10-15T03:08:59.131Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "factual_error"
+        ]
+      },
+      "note": "B: 兵呢? 沒講到怎麼掉的呀",
+      "content_sha256": {
+        "A": "52c1b75bbdd8313fbfeae05b1636c71c78880f3fc1c7fbc162657b79ca9501ff",
+        "B": "477d6d5b221936f5e13bd8aedf47f6438ca9f869aa9b2d9ae7f35f904c91281c"
+      },
+      "updated_at": "2026-10-15T02:38:12.603Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "A: 兵怎麼掉的沒提到呀 B: 文句太長了吧 然後這個也不算浪費走法 講到空間太小就很夠了",
+      "content_sha256": {
+        "A": "aa7fca134146656c80003d921a831c6d073292560a2113318cb98f67b9a9e954",
+        "B": "fc9c1c6fabdc31e0c4aeb7092f5db5bf7728164e87d1c8201cd300825ef510ce"
+      },
+      "updated_at": "2026-10-15T02:40:06.369Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": []
+      },
+      "note": "A: 太長了吧 完全過度解釋 然後兩個人都沒有提到掉兵...? 啊 我懂了 兩步棋都掉兵 嘶... 那我不理解為什麼最佳比較好欸 甚至是blunder 啊啊啊 應該是通路兵 那為什麼兩個coach都沒有提到? ",
+      "content_sha256": {
+        "A": "1320b23481fb5f551a80623705af400b519ea39426aaaab67c18aa5d41444cfc",
+        "B": "a8f630aa8df3bcf0e08a8e822271dc97c1dcba4679848ec138754ed3cd75788e"
+      },
+      "updated_at": "2026-10-15T02:43:19.098Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "ok 我不理解Ne7要怎麼推導出贏兩隻兵 我知道這肯定是什麼電腦走法 可是coach連我這個advance player 都看不懂 應該是不太對吧 = =",
+      "content_sha256": {
+        "A": "79e333187208c4de2ed62023dc0c570b74ffe0ab22096d44c403d40303b37fc2",
+        "B": "fa83353b90633b3f279167341e60d0541a57acf4db4ed345220c051042810940"
+      },
+      "updated_at": "2026-10-15T02:48:29.552Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point",
+          "unnatural"
+        ],
+        "B": []
+      },
+      "note": "A到底在講什麼 = = nothing burger 我最討厭這樣的評論了",
+      "content_sha256": {
+        "A": "de14cd3a0f68b8a8b75fbc95e9f3dab12a6149645e1c655b25ef850614f52776",
+        "B": "c6c32f4e0ff6fbd2939694cb8d0f2750a9671b51987d8c50e99c2add146e16f4"
+      },
+      "updated_at": "2026-10-15T02:50:05.775Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point",
+          "unnatural"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "A完全就是nothing burger 請問g4是為了攻擊f5嘛= = B什麼都沒講但是起碼沒有瞎掰... 不過兩個都不合格啦",
+      "content_sha256": {
+        "A": "e662d1fbc78046b146c83b2bdba1c884e0161e23baa903095b464e7d398f0b44",
+        "B": "81d359f3687a7340c5138de04e30ad4ffb160be5a113307fbb288309cd1c1058"
+      },
+      "updated_at": "2026-10-15T02:51:14.321Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": []
+      },
+      "note": "A沒有提到掉兵 然後兩人的這個\"得兵\" 我真的看不懂呀 為什麼這樣得兵??",
+      "content_sha256": {
+        "A": "41edbabd403f6c19952b8e801c85a43e8baff9d029f09949635ef74558c1c79e",
+        "B": "4fc32e1cd8ff9bbe980ad8a86bac448ac2390a376e4ab7a87403a5ede9aaa99d"
+      },
+      "updated_at": "2026-10-15T02:55:24.997Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "e226c920ba589fa3dd1e697611bcb866e8aaefdd04265fefee66b549ff0f8a66",
+        "B": "de0fe1ad92e04ef064a6520ba83baab3831959217c74a0582ea9d92b3778495a"
+      },
+      "updated_at": "2026-10-15T03:07:43.909Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "70ac9ca3b016a3a18c62d07704d1eb805b63c3ef461d65734f2aaafc08d71dbc",
+        "B": "d7207078f5dad533d31494d6a0156fc57613246e18e59b90da43720aec698b4f"
+      },
+      "updated_at": "2026-10-15T03:08:30.175Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "8a1e4bce21eb267fbef541ab4ce569b1623b504ed6ef13c61f60c09a31c10788",
+        "B": "f8c3bac11143d68a1d65c3839726345825aa21389a2eb5fe2aaf9d62ecbcbd84"
+      },
+      "updated_at": "2026-10-15T03:08:58.829Z"
+    }
+  ]
+}
