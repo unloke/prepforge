@@ -22,7 +22,7 @@ out, kind = pathlib.Path(sys.argv[1]), sys.argv[2]
 DATE = "20261014"
 repo = pathlib.Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip())
 GAMES = repo / "artifacts/benchmarks/coach-relations-20261014/prod-depth/games"
-files = ["package.json", "package-lock.json", "research/sft/experiment/coach-v5-20261011/make_cards.py"]
+files = ["package.json", "package-lock.json"]
 
 
 def closure(entry):

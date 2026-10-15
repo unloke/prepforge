@@ -8,6 +8,8 @@ Reports, on the 860 positions.jsonl moves (and, for fresh* outs, the no-reason s
   lines that stop mid-exchange (Stockfish's tail continues with captures);
 - explain.py on both, on moves both call an error: lead fact kind, a reason at all (fact or quiet
   sentence) or bare / reply only, and whether the material claim (line, net, pieces) matches depth 22.
+Since round 9 explain_cards.row gives the full production PVs, not the cut lines the depth-22
+cards use, so the "lines" section compares unlike things; round 6's output is ab6/compare-depth.txt.
 Every kernel's sf_cache.jsonl is read (tactics.READ) so nothing is searched twice; the tail
 searches still run at tactics.py's screen-depth settings.
 """

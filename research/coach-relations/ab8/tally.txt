@@ -1,0 +1,160 @@
+90/90 judged
+relations 30, production 15, tie 28, both_bad 17; sign test on 45 decisive: p = 0.036
+  inaccuracy: {'tie': 8, 'both_bad': 11, 'relations': 10, 'production': 1}
+  mistake: {'both_bad': 3, 'tie': 8, 'relations': 11, 'production': 8}
+  blunder: {'tie': 12, 'relations': 9, 'both_bad': 3, 'production': 6}
+  mate: {'relations': 7, 'production': 1, 'tie': 1}
+  material: {'tie': 22, 'relations': 7, 'production': 3}
+  no fact: {'both_bad': 15, 'relations': 3, 'tie': 3, 'production': 7}
+  other fact: {'relations': 13, 'production': 4, 'tie': 2, 'both_bad': 2}
+  relations issues: missed_key_point 29 (32%), hallucination 1 (1%), factual_error 1 (1%)
+  production issues: missed_key_point 35 (39%), hallucination 6 (7%), factual_error 5 (6%)
+
+low confidence:
+pair-007 PHrdhjmM/76 mistake -> tie
+  played 39.Rd5 b4 40.Rd4 bxc3 41.bxc3 | best 39.Kf3 Rxd7 40.Ke2 Re7
+  production: Mistake. Rd5 loses a knight for a pawn after 39...b4 40.Rd4 bxc3. Kf3 was the move, keeping the material.
+  relations: Mistake. Rd5 loses a knight for a pawn after 39...b4 40.Rd4 bxc3 41.bxc3 Rxd7 42.Rxc4. Kf3 was the move.
+  reason: Rd5 allows b4 to attack Nc3, which is needed to protect the d5 rook from Kxd5, leading to the knight-for-pawn loss in the continuation.
+  why: Both identify the same knight-for-pawn loss. B extends the accounting through Rxd7 and Rxc4, but A's shorter line already makes the knight loss and bxc3 recapture followable.
+
+pair-010 zHUpHUGX/27 blunder -> relations
+  played 14...hxg5 15.Bxe4 dxe4 16.Nxg5 | best 14...Nxe5 15.Nxe5 Nxg5 16.Bxg5 Qxg5+ 17.Kh1
+  relations: Blunder. hxg5 allows 15.Bxe4 dxe4 16.Nxg5, threatening mate on h7. Nxe5 was the move.
+  production: Blunder. hxg5 misses Nxe5, which wins a bishop and a pawn for a knight (14...Nxe5 15.Nxe5 Nxg5 16.Bxg5 Qxg5+).
+  reason: hxg5 opens the h-file so that Bxe4, dxe4 and Nxg5 create the immediate threat of Qh7 mate.
+  why: A gives a concrete, verified mating threat and explains the danger created by moving the h-pawn. B's material count in the alternative is correct, but explains the played move's danger less directly.
+
+pair-013 UXAzyMAQ/29 mistake -> relations
+  played 15...Be5 16.b3 c5 17.Rfe1 | best 15...g5 16.Nd4 Rb6 17.Bg3
+  relations: Mistake. Be5 is not the best move. g5 was the move.
+  production: Mistake. Be5 misses g5, which wins a pawn.
+  reason: g5 challenges the h4 bishop and gains kingside space, while Be5 misses that active pawn advance.
+  why: A gives no explanation, but is preferable to B's unsupported claim that g5 wins a pawn. No pawn is won in the supplied continuation.
+
+pair-015 wf52f200/18 blunder -> relations
+  played 10.Bd3 Nxd4 11.Bxf5 Nxf5 | best 10.Be3 Nge7 11.Nbd2 Kb8
+  production: Blunder. Bd3 allows 10...Nxd4. Black is clearly better now. Be3 was the move, defending the pawn on d4.
+  relations: Blunder. Bd3 loses a pawn after 10...Nxd4 11.Bxf5 Nxf5. Be3 was the move.
+  reason: Bd3 leaves d4 undefended, so Nxd4 wins that pawn and the subsequent bishop exchange does not recover it.
+  why: Both identify the d4-pawn problem. B states the lasting pawn loss directly and supports it through the exchanges, while A pads its defensive point with the evaluation.
+
+pair-026 Z5kVZz9M/36 mistake -> relations
+  played 19.Ba3 d6 20.Re6 h6 | best 19.a4 Nb3 20.axb5 Nxa1 21.bxc6 dxc6
+  production: Mistake. Ba3 allows 19...d6. a4 was the move.
+  relations: Mistake. Ba3 misses a4, which saddles Black with doubled pawns on the c-file (19.a4 Nb3 20.axb5 Nxa1 21.bxc6 dxc6).
+  reason: a4 undermines Black's queenside pawns and, in the supplied continuation, removes b5 and the c6 bishop while leaving isolated doubled c-pawns.
+  why: B identifies an actual structural result of the alternative line, with pawns left on c6 and c7. A merely names d6 without explaining why it matters; the overall compensation for White's exchange sacrifice remains difficult to assess from this short line.
+
+pair-030 XxkHBPg8/30 blunder -> production
+  played 16.Bb5 Qb7 17.g4 Bc5 | best 16.Qb5 Bc5 17.Qxc6 Bxc6 18.Rxd8 Rxd8
+  relations: Blunder. Bb5 is not the best move. Qb5 was the move: it attacks the queen on c6.
+  production: Blunder. Bb5 allows 16...Qb7, which attacks the bishop on a7. Black is winning now. Qb5 was the move, keeping it level.
+  reason: Bb5 permits Qb7 to attack the trapped a7 bishop, while Qb5 forces attention to the queens and leads to simplifying exchanges.
+  why: B identifies the immediate problem with the played move: the attack on Ba7, whose diagonal is obstructed by b6. A's true observation that Qb5 attacks the queen does not explain why that forcing move is needed.
+
+pair-032 p7GC1zEA/21 inaccuracy -> both_bad
+  played 11...O-O-O 12.c3 Kb8 13.cxd4 cxd4 | best 11...Nh6 12.Bd2 Ng4 13.Nf4
+  production: O-O-O is slightly inaccurate. Nh6 was better. White is slightly better now.
+  relations: O-O-O is slightly inaccurate. Nh6 was the move.
+  reason: Nh6 develops the kingside knight with Ng4 in view, while queenside castling leaves White free to open the center with c3.
+  why: Neither explains the move comparison; A only adds an evaluation statement.
+
+pair-033 4yRAdELN/21 blunder -> production
+  played 11...d4 12.O-O h5 13.Bd3 | best 11...Nb4 12.Bd3 c4 13.bxc4 dxc4
+  production: Blunder. d4 allows 12.O-O, which castles. White is clearly better now. Nb4 was the move, attacking the bishop on a6.
+  relations: Blunder. d4 misses Nb4, which leaves White with an isolated pawn on a2 (11...Nb4 12.Bd3 c4 13.bxc4).
+  reason: Nb4 gains time against the a6 bishop and supports the forcing central advance c4.
+  why: A identifies the useful attack on the bishop. B focuses on the incidental isolation of a2 rather than the forcing central play.
+
+pair-037 83YNb3sh/12 inaccuracy -> both_bad
+  played 7.Bc4 Nc6 8.Qe3 f5 | best 7.Nc3 Nc6 8.Qd2 h5
+  production: Bc4 is slightly inaccurate. Nc3 was better. You were slightly better; now it's level.
+  relations: Bc4 is slightly inaccurate: it allows 7...Nc6, which attacks the queen on d4. Nc3 was the move.
+  reason: Nc3 develops the queenside knight while keeping the bishop flexible; the supplied lines do not establish a more specific tactical distinction.
+  why: A gives no reason. B treats the attack by Nc6 as the distinction even though Black also plays Nc6 against the best move.
+
+pair-050 Kp9QvTVo/5 mistake -> production
+  played 3...Qe5 4.d4 Qa5 5.Bd2 | best 3...Qd6 4.d4 e5 5.dxe5 Qxd1+ 6.Kxd1
+  relations: Mistake. Qe5 misses Qd6, which saddles White with doubled pawns on the e-file (3...Qd6 4.d4 e5 5.dxe5).
+  production: Mistake. Qe5 allows 4.d4, which attacks the queen on e5. White is clearly better now. Qd6 was the move, keeping it level.
+  reason: Qe5 lets d4 gain a central tempo against the queen, while Qd6 enables the central counterstrike e5 and a queen exchange.
+  why: B identifies the immediate tempo gained by d4. A names a real pawn-structure change but misses the queen-tempo and central-play distinction.
+
+pair-051 MuCh08iO/65 inaccuracy -> relations
+  played 33...Qg4+ 34.Kc2 Rfd8 35.Rhg1 | best 33...Qh3 34.Kc2 Rfd8 35.d4 Qxc3+ 36.Kxc3 Bxh1 37.Rxh1
+  relations: Qg4+ is slightly inaccurate: it misses Qh3, which wins a rook for a bishop (33...Qh3 34.Kc2 Rfd8 35.d4 Qxc3+ 36.Kxc3 Bxh1 37.Rxh1).
+  production: Qg4+ misses Qh3, which wins the exchange (33...Qh3 34.Kc2 Rfd8 35.d4 Qxc3+).
+  reason: Qh3 prepares a queen exchange on c3 that unpins the c6 bishop, allowing Bxh1 and a net exchange gain after Rxh1.
+  why: A supplies the natural captures needed to demonstrate the exchange gain. B stops at a queen capture and leaves the rook-for-bishop mechanism unexplained.
+
+pair-052 W4quLCuf/85 inaccuracy -> both_bad
+  played 43...Ke4 44.a6 f3 45.gxf3+ Kxf3 | best 43...Rc1+ 44.Kh2 Ra1 45.h4
+  production: Ke4 misses Rc1+, which wins a pawn.
+  relations: Ke4 is slightly inaccurate. Rc1+ was the move.
+  reason: Rc1+ followed by Ra1 puts the rook behind the passed a-pawn, whereas Ke4 lets White advance it to a6 immediately.
+  why: A neither identifies a pawn nor establishes a forced pawn win; the main issue is control of the passed pawn. B only names the best move.
+
+pair-055 wDll6agA/20 mistake -> both_bad
+  played 11.Na4 Re8 12.Ne5 b5 | best 11.h3 b6 12.g4 Ba6
+  relations: Mistake. Na4 is not the best move. h3 was the move.
+  production: Mistake. Na4 allows 11...Re8. Black is slightly better now. h3 was the move, keeping it level.
+  reason: h3 prepares the kingside pawn expansion g4, whereas Na4 spends time moving a knight away from the center while Black develops with Re8.
+  why: A gives only the preferred move. B adds a reply and evaluation without explaining the consequence of Re8.
+
+pair-063 09fzI0ta/27 mistake -> relations
+  played 14...Ng4 15.Qb5 Qxb5 16.cxb5 | best 14...Ne4 15.Qb5 Qe6 16.Nd4
+  production: Mistake. Ng4 allows 15.Qb5. White was slightly better; now White is clearly better. Ne4 was the move, limiting the damage.
+  relations: Mistake. Ng4 leaves the black knight on g4 with no safe square after 15.Qb5 Qxb5 16.cxb5. Ne4 was the move.
+  reason: Ng4 sidelines the knight with every available destination covered after the queen exchange, whereas Ne4 establishes it centrally.
+  why: B identifies the knight's restricted placement; A only names Qb5 and repeats the evaluation. The knight is not immediately attacked, so this is a positional restriction rather than a demonstrated piece loss.
+
+pair-069 iWBWnlpJ/56 mistake -> production
+  played 29.b3 d2 30.a4 Bd3 | best 29.Rb7 Bc6 30.Rb4 d5 31.exd5 Bxd5
+  relations: Mistake. b3 is not the best move. Rb7 was the move: it attacks the bishop on b5.
+  production: Mistake. b3 allows 29...d2, which pushes the passed pawn. Black is slightly better now. Rb7 was the move, attacking the bishop on b5.
+  reason: b3 lets the advanced passed pawn reach d2 with Bd3 supporting promotion, whereas Rb7 gains time against Bb5 to activate the rook against the passer.
+  why: B identifies the dangerous passed-pawn advance. A names the rook's attack on the bishop but leaves out the promotion problem that makes the move urgent.
+
+pair-072 dtUD8U9h/8 inaccuracy -> both_bad
+  played 5.d4 Qh4+ 6.Ke2 Bc7 | best 5.Nf3 Bc7 6.d4 d5
+  production: d4 is slightly inaccurate. Nf3 was better. You were slightly better; now it's level.
+  relations: d4 is slightly inaccurate: it allows 5...Qh4+. Nf3 was the move: it attacks the bishop on e5.
+  reason: d4 allows Qh4+ to force Ke2 and forfeit castling, while Nf3 controls h4 and prevents that queen check from working.
+  why: A gives no reason. B names the check without its consequence and emphasizes the attack on Be5 instead of the king-safety problem that decides the comparison.
+
+pair-077 cOpD3x4M/18 inaccuracy -> both_bad
+  played 10.Bf3 O-O 11.Qc2 a5 | best 10.Nd5 Nxd5 11.cxd5 O-O
+  relations: Bf3 is slightly inaccurate. Nd5 was the move: it attacks the knight on f6.
+  production: Bf3 is slightly inaccurate. Nd5 was better. You were slightly better; now it's level.
+  reason: Nd5 uses White's central space to exchange Nf6 and establish a strong d5 pawn after cxd5, whereas Bf3 blocks the f-pawn and neglects that central opportunity.
+  why: A's attack on the defended knight does not explain the favorable central transformation. B gives no reason beyond the move and evaluation.
+
+pair-079 dfMGCaQa/44 mistake -> production
+  played 23.a4 e5 24.Rb1 Qa7 | best 23.Rb1 Qa7 24.Nc4 Bc6
+  relations: Mistake. a4 is not the best move. Rb1 was the move: it attacks the queen on b6.
+  production: Mistake. a4 allows 23...e5, which challenges the centre. You were slightly better; now it's level. Rb1 was the move, attacking the queen on b6.
+  reason: a4 gives Black time for e5 to attack Bf4 and challenge d4, whereas Rb1 first gains a tempo on the queen and allows Nc4.
+  why: B at least identifies the central counterplay allowed by a4. A mentions only the queen attack available with Rb1, without connecting it to the central danger.
+
+pair-081 nHSnrCha/11 inaccuracy -> relations
+  played 6...Nc6 7.c5 Be7 8.b4 | best 6...b6 7.b4 c5 8.cxd5 exd5 9.dxc5 bxc5 10.bxc5
+  production: Nc6 is slightly inaccurate. b6 was better. White is slightly better now.
+  relations: Nc6 is slightly inaccurate: it allows 7.c5, which attacks the bishop on d6. b6 was the move.
+  reason: Nc6 permits c5 with tempo against Bd6 followed by b4, while b6 contests c5 and keeps the c-pawn free for a central break.
+  why: B identifies the forcing pawn advance that drives the bishop back; A offers no reason beyond the evaluation and alternative.
+
+pair-082 edBe6w4s/10 inaccuracy -> production
+  played 6.e5 cxd4 7.cxd4 Nxd4 | best 6.Bd3 cxd4 7.cxd4 dxe4 8.Nxe4
+  production: e5 loses a pawn after 6...cxd4 7.cxd4 Nxd4 8.Bd3 Nxf3+. Bd3 was the move, keeping the material.
+  relations: e5 is slightly inaccurate: it lets Black get a passed pawn on the d-file after 6...cxd4 7.cxd4 Nxd4. Bd3 was the move.
+  reason: e5 lets cxd4 cxd4 Nxd4 win White's central pawn, since the knight on d4 is protected by Qb6.
+  why: A identifies the concrete pawn loss, which remains after a recapture of the knight on f3. B's passed d-pawn is real but omits the immediate material concession.
+
+pair-088 sVAalAIe/37 inaccuracy -> both_bad
+  played 19...Rxd4 20.Qxd4 Bc5 21.Rxc5 bxc5 | best 19...Bc5 20.Be3 Rd7 21.Rc4
+  relations: Rxd4 is slightly inaccurate. Bc5 was the move.
+  production: Rxd4 is slightly inaccurate. Bc5 was better. White is slightly better now.
+  reason: Rxd4 permits Qxd4 Bc5 Rxc5 bxc5 and then Qxc5, leaving the recapturing pawn loose, whereas Bc5 immediately pins Nd4 without that liquidation.
+  why: Neither explains the liquidation or the loose c5 pawn; both merely name Bc5, and B adds the evaluation.
+

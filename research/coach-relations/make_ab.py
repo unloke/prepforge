@@ -29,6 +29,9 @@ import chess
 import tactics
 from explain import explain
 
+sys.path.append(str(pathlib.Path(__file__).parent / "prod-depth"))
+from explain_cards import row  # noqa: E402
+
 HERE = pathlib.Path(__file__).parent
 N, BATCH, PER_GRADE = 60, 30, 30
 ERRORS = ("inaccuracy", "mistake", "blunder")
@@ -78,11 +81,11 @@ def v5_cards(AB):
 def reads_cards(AB, reads):
     """The same from prod-depth kernel outputs (<reads>/fresh*/cards.jsonl, explain.jsonl): both
     programs on production's reads. Draws PER_GRADE unseen cards of each error grade once. explain.py
-    runs again here (the kernel's text is from the code it shipped with)."""
+    runs again here on the full PVs (explain_cards.row; the kernels' rows are the old cut lines)."""
     rows, games = {}, {}
     for d in sorted(reads.glob("fresh*")):
         cards = {c["id"]: c for c in jsonl(d / "cards.jsonl")}
-        rows.update({e["id"]: (e, cards[e["id"]]) for e in jsonl(d / "explain.jsonl") if "text" in e})
+        rows.update({e["id"]: (row(cards[e["id"]]), cards[e["id"]]) for e in jsonl(d / "explain.jsonl") if "text" in e})
         for c in cards.values():
             games.setdefault(c["id"].split("/")[0], []).append(c)
     if not (AB / "ids.json").exists():

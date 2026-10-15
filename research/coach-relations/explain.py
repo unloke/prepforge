@@ -3,8 +3,9 @@
   py research/coach-relations/explain.py [card id ...]     # default: the round-4 cards
 
 Shield, open file, enter and king exposure never speak (the first blind A/B lost 11 of 12 of
-them), nor a pawn left without pawn support (round 7: a remark, not a reason). Material is recounted from the root to the line's last capture, Stockfish's captures past
-the line included, so a rook traded for a rook in two runs is no rook won; a recount that comes
+them), nor a pawn left without pawn support (round 7: a remark, not a reason). The lines are the full engine PVs (production's depth-12/16 reads); explain.py decides how much
+to show. Material is recounted from the root to the ply where the balance settles for the rest of
+the line, Stockfish's captures past the line included, so a rook traded for a rook in two runs is no rook won; a recount that comes
 out even, or with the wrong side ahead (the mover in the played line: the line stopped too early;
 the opponent in the best line), is dropped. Lost castling speaks only when the king move answers a
 check no other move meets. A pawn-sized gain (net under 3) where the losing side gives a pawn
@@ -35,6 +36,9 @@ GRADE = {"blunder": "Blunder.", "mistake": "Mistake."}
 SILENT = {"shield", "open_file", "enter", "king_exposed"}
 VAL = {"p": 1, "n": 3, "b": 3, "r": 5, "q": 9}
 NUMBER = {1: "one"}
+HORIZON = 10  # plies of the engine line a reason may come from or quote
+WINDOW = 6  # plies after an exchange in which a taking back still belongs to it
+MIN_PLIES = 4
 
 
 def color(white):
@@ -96,6 +100,20 @@ class Line:
     def arrow(self, line, k):
         m = self.moves[k - 1]
         return {"line": line, "ply": k, "from": chess.square_name(m.from_square), "to": chess.square_name(m.to_square)}
+
+
+def horizon(fen, pv):
+    """How much of an engine line the facts look at: MIN_PLIES, then on while the side to move is
+    in check, the next move captures, or the last capture is taken back after one move in between;
+    at most HORIZON."""
+    b, ms, caps = chess.Board(fen), [chess.Move.from_uci(u) for u in pv[:HORIZON]], []
+    for i, m in enumerate(ms):
+        delayed = caps[-1:] == [True] and i + 1 < len(ms) and ms[i + 1].to_square == ms[i - 1].to_square
+        if i >= MIN_PLIES and not (b.is_check() or b.is_capture(m) or delayed):
+            return i
+        caps.append(b.is_capture(m))
+        b.push(m)
+    return len(ms)
 
 
 def kings_first(ln, k, squares):
@@ -196,7 +214,9 @@ def phrase(f, ln, ext, a, root, row):
 def recount(f, ext):
     """The material fact counted from the root to the line's last capture, or None when it comes out
     even or for the wrong side (the opponent ahead in the best line, the mover in the played line)."""
-    end = last_capture(ext)
+    end = settled(ext, ext.h)
+    if end is None:
+        return None
     gone = {}
     for c in chess.COLORS:
         for t in VAL:
@@ -263,6 +283,28 @@ def second(a, b):
             and a["at"][0] in b["targets"])
 
 
+def settled(ln, h):
+    """The capture that settles the line's material, h plies being what the facts look at: the
+    exchanges up to h, then any exchange starting within WINDOW plies of the next quiet position that leaves less (an
+    exchange finished late, as in a delayed recapture) — but not later gains or give-backs, which
+    are other events. Past HORIZON + WINDOW it is too deep to show (None)."""
+    caps = [i for i in range(1, len(ln.moves) + 1) if ln.boards[i - 1].is_capture(ln.moves[i - 1]) or ln.moves[i - 1].promotion]
+    calm = lambda j: j == 0 or not (j in caps or ln.boards[j].is_check())
+    b0 = balance(ln.boards[0], chess.WHITE)
+    end = max((i for i in caps if i <= h), default=0)
+    while True:
+        q = next((j for j in range(end, len(ln.moves) + 1) if calm(j)), len(ln.moves))
+        gain = balance(ln.boards[q], chess.WHITE) - b0
+        settle = lambda r: next((j for j in range(r, len(ln.moves) + 1) if calm(j)), len(ln.moves))
+        back = next((settle(r) for r in caps if q < r <= q + WINDOW
+                     and abs(balance(ln.boards[settle(r)], chess.WHITE) - b0) < abs(gain)), None)
+        if back is None:
+            return max((i for i in caps if i <= q), default=0)
+        if back > HORIZON + 2 * WINDOW:
+            return None
+        end = max(i for i in caps if i <= back)
+
+
 def last_capture(ln):
     return max(i for i in range(len(ln.moves) + 1) if i == 0 or ln.boards[i - 1].is_capture(ln.moves[i - 1])
                or ln.moves[i - 1].promotion)
@@ -304,12 +346,14 @@ def quiet(lines, ext, root):
             if new:
                 allows = f"allows {pl.seq(2, 2)}, which attacks {pl.name(2, chess.square_name(new[0]))}"
     ep, eb = ext["played"], ext["best"]
-    d = balance(eb.boards[last_capture(eb)], me) - balance(ep.boards[last_capture(ep)], me)
-    ends = {k: last_capture(ln) for k, ln in ext.items()}
-    if (d >= 1 and not gifted(eb, ends["best"], "best") and not gifted(ep, ends["played"], "played")
+    ends = {k: settled(ln, ln.h) for k, ln in ext.items()}
+    if None in ends.values():
+        ends = None
+    d = ends and balance(eb.boards[ends["best"]], me) - balance(ep.boards[ends["played"]], me)
+    if (ends and d >= 1 and not gifted(eb, ends["best"], "best") and not gifted(ep, ends["played"], "played")
             and not edge(eb, ends["best"]) and not edge(ep, ends["played"])):
         words = {1: "a pawn", 2: "two pawns", 3: "a piece", 5: "a rook", 9: "a queen"}.get(d, f"{d} pawns' worth")
-        return allows, f"it comes out {words} better{eb.paren(1, last_capture(eb))}"
+        return allows, f"it comes out {words} better{eb.paren(1, ends['best'])}"
     b1 = bl.boards[1]
     if len(pl.moves) > 1 and not b1.is_check():
         r = pl.moves[1]
@@ -328,11 +372,16 @@ def quiet(lines, ext, root):
 def explain(row, cands=None):
     root = chess.Board(row["fen"])
     mover = "white" if root.turn else "black"
-    lines = {"played": Line(row["fen"], row["played_pv"]), "best": Line(row["fen"], row["best_pv"])}
-    P, B = lines["played"].sans[0], lines["best"].sans[0]
+    full = {k: Line(row["fen"], row[f"{k}_pv"]) for k in ("played", "best")}
     ext = {k: Line(row["fen"], ln.moves + ([] if ln.boards[-1].is_game_over() else
                                               [chess.Move.from_uci(u) for u in tactics.tail(ln.boards[-1], root.turn)[0]]))
-           for k, ln in lines.items()}
+           for k, ln in full.items()}
+    # facts come from the line up to its horizon; material is counted on the whole line (recount)
+    row = dict(row, **{k: row[k][:horizon(row["fen"], row[k])] for k in ("played_pv", "best_pv")})
+    lines = {k: Line(row["fen"], row[f"{k}_pv"]) for k in ("played", "best")}
+    for k in ext:
+        ext[k].h = len(lines[k].moves)
+    P, B = lines["played"].sans[0], lines["best"].sans[0]
     cands = said(cands if cands is not None else candidates(row), row, ext)
     ranked = rank([c for c in cands if not c.get("mechanism")], mover)
     facts = ranked[:1] + [c for c in ranked[1:] + [c for c in cands if c.get("mechanism")] if second(ranked[0], c)][:1] if ranked else []

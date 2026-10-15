@@ -2,10 +2,10 @@
 
   py research/coach-relations/prod-depth/explain_cards.py <cards.jsonl> <out.jsonl>
 
-Each inaccuracy, mistake or blunder becomes an explain row the way positions.jsonl was built from
-the depth-22 reads (coach-v5 make_cards.py): played line = the move plus the after-read PV, best
-line = the before-read PV, both cut by make_cards.cut (4 plies, longer through checks and
-captures, at most 8). The grade is production's own (the card's code). Tail searches go to
+Each inaccuracy, mistake or blunder becomes an explain row: played line = the move plus the
+after-read PV, best line = the before-read PV, both whole (explain.py decides how much to show;
+the coach-v5 4-to-8-ply cut hid exchanges finished later in the line). The grade is production's
+own (the card's code). Tail searches go to
 tactics.py's cache (sf_cache.jsonl), at the screen depth.
 """
 import json
@@ -13,22 +13,17 @@ import pathlib
 import sys
 import time
 
-import chess
-
 HERE = pathlib.Path(__file__).resolve().parent
-sys.path[:0] = [str(HERE.parent), str(HERE.parents[1] / "sft/experiment/coach-v5-20261011")]
+sys.path[:0] = [str(HERE.parent)]
 import tactics  # noqa: E402
 from explain import explain  # noqa: E402
-from make_cards import cut  # noqa: E402
 
 ERRORS = ("inaccuracy", "mistake", "blunder")
 
 
 def row(c):
-    b = chess.Board(c["fen"])
     after = c["after"]["pv"] if c["after"] else []
-    return {"id": c["id"], "fen": c["fen"], "grade": c["code"],
-            "played_pv": cut(b, [c["uci"]] + after), "best_pv": cut(b, c["before"]["pv"])}
+    return {"id": c["id"], "fen": c["fen"], "grade": c["code"], "played_pv": [c["uci"]] + after, "best_pv": c["before"]["pv"]}
 
 
 def main():
