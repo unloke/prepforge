@@ -1,7 +1,7 @@
 {
   "schema": "coach-ab-human-review/1",
   "experiment": "ab6",
-  "blind_data_sha256": "b0b24d46a1d550d00dcc7627d7b78771a066f2cd6f73e7381fab4d73d737405a",
+  "blind_data_sha256": "18d02bc4089cd42e4e8f4028a3f7aaf3851b164d3a08538fcc8f2efaf7ebc179",
   "pairs_total": 90,
   "completed": 10,
   "updated_at": "2026-10-15T03:08:59.131Z",

@@ -5,12 +5,14 @@
   py research/coach-relations/make_ab.py ab2
   node research/coach-ab-review/serve.mjs research/coach-relations/ab2 --port 5208
   py research/coach-relations/make_ab.py ab6 --reads artifacts/benchmarks/coach-relations-20261014/prod-depth/out
-  py research/coach-relations/make_ab.py ab10 --reads ... --guard     # only cards the defender mechanism speaks on
+  py research/coach-relations/make_ab.py ab10 --reads ... --lead guard     # only cards the defender mechanism speaks on
+  py research/coach-relations/make_ab.py ab12 --reads ... --lead bishop_pair,queen_chased,promotion
 
 Rounds 1-5 (ab..ab5): the cards and both programs' lines are the coach-v5 depth-22 full-NNUE
 reads, not production's depth. With --reads (round 6 on), both programs read production's own
-reads (prod-depth/ kernels) and one run draws PER_GRADE cards of each error grade (with --guard, GUARD cards of any grade where
-explain.py names a lost guard: a targeted round, as it speaks on ~2%). Otherwise the first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
+reads (prod-depth/ kernels) and one run draws PER_GRADE cards of each error grade (with --lead, LEAD cards of any grade split
+evenly over the named lead facts, "guard" being the defender mechanism: a targeted round for
+facts that speak on a few percent). Otherwise the first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
 second run builds the pairs. Cards: inaccuracies, mistakes and blunders that no
 review round and no earlier A/B (ab*/ids.json) has shown, 60 of them; with --reviewed the review
 rounds' cards may be drawn too (they tuned pick.py, not the wording). Order and A/B side come from os.urandom; the key is sealed
@@ -35,7 +37,7 @@ sys.path.append(str(pathlib.Path(__file__).parent / "prod-depth"))
 from explain_cards import row  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-N, BATCH, PER_GRADE, GUARD = 60, 30, 30, 30
+N, BATCH, PER_GRADE, LEAD = 60, 30, 30, 30
 ERRORS = ("inaccuracy", "mistake", "blunder")
 
 
@@ -94,8 +96,16 @@ def reads_cards(AB, reads):
             games.setdefault(c["id"].split("/")[0], []).append(c)
     if not (AB / "ids.json").exists():
         seen, rng, ids = unseen(), random.Random(int.from_bytes(os.urandom(16), "big")), []
-        if "--guard" in sys.argv:
-            ids = rng.sample(sorted(i for i, (e, _) in rows.items() if i not in seen and explain(e)["guard"]), GUARD)
+        if "--lead" in sys.argv:
+            kinds = sys.argv[sys.argv.index("--lead") + 1].split(",")
+            lead = lambda x: "guard" if x["guard"] else (x["facts"] or [None])[0]
+            pool = {k: [] for k in kinds}
+            for i in sorted(i for i in rows if i not in seen):
+                k = lead(explain(rows[i][0]))
+                if k in pool:
+                    pool[k].append(i)
+            for k in kinds:
+                ids += rng.sample(pool[k], min(len(pool[k]), LEAD // len(kinds)))
         for g in () if ids else ERRORS:
             ids += rng.sample(sorted(i for i, (e, _) in rows.items() if e["grade"] == g and i not in seen), PER_GRADE)
         AB.mkdir(exist_ok=True)

@@ -15,7 +15,7 @@ setting; prod-depth/ makes the same rows from production's lite 12/16 reads.
   and enter in a line with mate or forced_mate (part of the mate), then shield, open_file and the
   positional.py facts other than draw_risk are dropped from a card with a material, mate or
   forced_mate fact, and draw_risk and castling from a card with mate or forced_mate;
-- outpost, piece_harassed, restricted, pawn_weakness, passed_pawn, draw_risk, castling from positional.py;
+- outpost, piece_harassed, restricted, pawn_weakness, passed_pawn, bishop_pair, queen_chased, promotion, draw_risk, castling from positional.py;
 - tactical and material relations from tactics.py: fork, mate_threat, mate,
   material (an exchange one side wins), and between lines forced_mate, king_exposed and trades
   (two or more pieces more off over the plies both lines reach, of about equal worth for both
@@ -42,7 +42,7 @@ import tactics
 HERE = pathlib.Path(__file__).parent
 VALUE = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 ORDER = ["mate", "forced_mate", "mate_threat", "material", "fork", "king_exposed",
-         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "passed_pawn", "draw_risk", "castling"]
+         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "passed_pawn", "bishop_pair", "queen_chased", "promotion", "draw_risk", "castling"]
 HEAVY = (chess.ROOK, chess.QUEEN)
 
 
@@ -234,10 +234,10 @@ def candidates(r):
     for c in out:
         if c["type"] == "fork" and c["check"] and c["line"] in tac:
             c["mechanism"] = True  # speaks only as the way its line's material is won
-    out += positional.facts(r["fen"], r["played_pv"], r["best_pv"])
+    out += positional.facts(r["fen"], r["played_pv"], r["best_pv"], r.get("full_pv"))
     # a card about lost material or mate does not need positional facts, nor a drawing check next to a mate
     if any(c["type"] in ("material", "mate", "forced_mate") for c in out):
-        out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "restricted", "pawn_weakness")]
+        out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "restricted", "pawn_weakness", "bishop_pair", "queen_chased", "promotion")]
     if any(c["type"] in ("mate", "forced_mate") for c in out):
         out = [c for c in out if c["type"] not in ("draw_risk", "castling")]
     # next to won or lost material, king exposure is only the material changing hands

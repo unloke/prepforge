@@ -39,6 +39,10 @@ NUMBER = {1: "one"}
 HORIZON = 10  # plies of the engine line a reason may come from or quote
 WINDOW = 6  # plies after an exchange in which a taking back still belongs to it
 MIN_PLIES = 4
+# the largest loss (centipawns) a quiet fact may explain; past it a bigger story (tactics) is the
+# reason. Bishop pair: worth about half a pawn (sol's check: 3 of the 4 cards over 150 were not the
+# main reason); two tempi lost by the queen: the misses were at 462 and 664, the hits up to 314
+CAP = {"bishop_pair": 150, "queen_chased": 400}
 
 
 def color(white):
@@ -181,6 +185,24 @@ def phrase(f, ln, ext, a, root, row):
         return f"trades off {what}{ln.paren(a, k)}{why}", k, None, []
     what, by = f.get("what"), PIECE.get(f.get("by"), "piece")
     moves = ln.after(a, k) if played else ln.paren(a, k)
+    if t == "promotion":
+        full = Line(row["fen"], row["full_pv"][f["line"]])
+        ps = f["pawn_plies"]
+        ms = [full.seq(j, j) for j in (ps if len(ps) <= 3 else (ps[0], ps[-1]))]
+        moves = ", ".join(ms[:-1]) + f" and {ms[-1]}" if len(ms) > 1 else ms[0]
+        pawn = f"the {chess.square_name(full.moves[ps[0] - 1].from_square)[0]}-pawn"  # named by its file at the start
+        return (f"lets {pawn} through to promote: {moves}" if played else f"gets {pawn} through to promote: {moves}"), ps[-1], None, []
+    if t == "queen_chased":
+        full = Line(row["fen"], row["full_pv"][f["line"]])
+        a1, a2 = f["chasers"]
+        chase = f"{full.seq(a1, a1)} and {full.seq(a2, a2)}"
+        if played or a1 > 1:
+            whose = "the" if played else f"the {color(c).lower()}"
+            return f"lets {chase} chase {whose} queen back to {sq[0]}", a2 + 1, None, sq[:1]
+        return f"chases the {color(c).lower()} queen back to {sq[0]} with {chase}", a2 + 1, None, sq[:1]
+    if t == "bishop_pair":
+        what = f"a knight for the bishop on {sq[0]}, leaving {color(c)} the bishop pair"
+        return (f"lets {ln.seq(a, k)} trade {what}" if played else f"trades {what}{ln.paren(a, k)}"), k, arrow, sq[:1]
     if t == "passed_pawn":
         verb = f"lets {color(c)} get a passed pawn on the {sq[0][0]}-file" if played else f"gets a passed pawn on the {sq[0][0]}-file"
         return verb + moves, k, arrow, sq[:1]
@@ -332,7 +354,8 @@ def said(cands, row, ext):
         if f["type"] == "material":
             f = recount(f, ext[f["line"]])
         if (f and f["type"] not in SILENT and f.get("what") != "chain"
-                and (f["type"] != "castling" or forced_out(f, row))):
+                and (f["type"] != "castling" or forced_out(f, row))
+                and (row.get("loss") or 0) <= CAP.get(f["type"], 10 ** 6)):
             out.append(f)
     return out
 
@@ -439,7 +462,8 @@ def explain(row, cands=None):
     # facts come from both lines up to one horizon (the longer of the two: a line seen further
     # would show facts the other only lacks for being cut sooner); material is counted on the whole line
     h = max(horizon(row["fen"], row[k]) for k in ("played_pv", "best_pv"))
-    row = dict(row, played_pv=row["played_pv"][:h], best_pv=row["best_pv"][:h])
+    # the whole lines stay at hand for facts that must last (full_pv)
+    row = dict(row, played_pv=row["played_pv"][:h], best_pv=row["best_pv"][:h], full_pv={k: row[f"{k}_pv"] for k in ("played", "best")})
     lines = {k: Line(row["fen"], row[f"{k}_pv"]) for k in ("played", "best")}
     for k in ext:
         ext[k].h = len(lines[k].moves)

@@ -23,8 +23,11 @@ ERRORS = ("inaccuracy", "mistake", "blunder")
 
 
 def row(c):
+    """loss: the move's cost in centipawns for the mover (the reads are White's view), None with a mate score."""
     after = c["after"]["pv"] if c["after"] else []
-    return {"id": c["id"], "fen": c["fen"], "grade": c["code"], "played_pv": [c["uci"]] + after, "best_pv": c["before"]["pv"]}
+    b, a = c["before"], c["after"] or {"cp": None, "mate": None}
+    loss = None if None in (b["cp"], a["cp"]) else (b["cp"] - a["cp"]) * (1 if c["mover"] == "white" else -1)
+    return {"id": c["id"], "fen": c["fen"], "grade": c["code"], "played_pv": [c["uci"]] + after, "best_pv": b["pv"], "loss": loss}
 
 
 def main():

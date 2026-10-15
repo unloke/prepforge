@@ -1,0 +1,154 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab10",
+  "blind_data_sha256": "4811867f7044c875088e269fae5efb1ce78b475daa26310108255acae983db9c",
+  "pairs_total": 30,
+  "completed": 10,
+  "updated_at": "2026-10-15T07:51:55.907Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "51a6e1c99d335584cb8fb7aef6f95bc2fc00928c7d4b5b45ae7cdbe470f7464e",
+        "B": "192cde60775f128dd95bf3858c18e44c4ca5b5538dbf1dfb58e47c84c5969265"
+      },
+      "updated_at": "2026-10-15T07:45:29.469Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "1086bb273f8fc1deffc4c514e7eaaf806f1aeb5ba3b1c21e71d6c5311e416762",
+        "B": "14ea31435f708e75bc91baa712c0a117c181dfbb9f22966bd7b48f9d0e797f22"
+      },
+      "updated_at": "2026-10-15T07:45:48.973Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "454c041971c5c383130f9b74072ee97adb4dd78ddf9673f46a2b264438ac1b67",
+        "B": "d3e539746e83dd5b046c61d067f613c8bb5f669a43e0a974ddf94c01a769b32d"
+      },
+      "updated_at": "2026-10-15T07:46:02.729Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "2883622205af04a5e07ce7ced4242fae166561d49d74e527456eaaac7d907f07",
+        "B": "d38ea42c0a958ee102f3478b297d52dc6584d003317b1f4a9b4f2eef568d827c"
+      },
+      "updated_at": "2026-10-15T07:46:32.497Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": []
+      },
+      "note": "A過度解釋/解釋的方式讓我覺得冗",
+      "content_sha256": {
+        "A": "c30c8a8ef65800d7e069715d710b72c924d92d49d80d7c0efa5cff3864363f79",
+        "B": "27b5dc19e306953c4ca385599484933d0b2b7695148e4b596033329c4e143bd0"
+      },
+      "updated_at": "2026-10-15T07:50:35.835Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "9a937467dc3e6983390108d29659d7b55097b30361919194aa3219c3a44fef08",
+        "B": "ca3fd10d3e9c409d2a392aa9841bbd58bf5be82944432761041caf4350504370"
+      },
+      "updated_at": "2026-10-15T07:50:02.469Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": []
+      },
+      "note": "A讓我覺得冗",
+      "content_sha256": {
+        "A": "48e9f2ea50dca04977364f0026b6429afe9399eac7720c17f0f551159ac3b1ea",
+        "B": "3ee729f4db08aec3f71087b47476d277016b94493b77089580211f5cfa506fc3"
+      },
+      "updated_at": "2026-10-15T07:50:44.471Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "d6578af18bc5ffa999e686e006641935f6035a22d13ff7cd7f50d3300957b2e3",
+        "B": "d988cd12c3ae6a1e6c1cab378b66fe4162c53f85ac63a324408ad795a4ac5872"
+      },
+      "updated_at": "2026-10-15T07:50:56.265Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "6c76a1c59999ab9c765307a10851e412e86079205a1dc21d7ddd329a8c542757",
+        "B": "8b8d9644754d3656f66536c7b35567ced443d541ecd4dfcba787127a0a6ffcca"
+      },
+      "updated_at": "2026-10-15T07:51:21.381Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "31126a40b2f0cebe5cf673635e31c05e9d023a87ea887b08f09e1e183fae3b3b",
+        "B": "c41bae6784aab822e9ffcedc8824193e3a04f3bebcb261d5c386286f92931619"
+      },
+      "updated_at": "2026-10-15T07:51:55.599Z"
+    }
+  ]
+}

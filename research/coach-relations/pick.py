@@ -15,8 +15,8 @@ import json
 import pathlib
 
 HERE = pathlib.Path(__file__).parent
-ORDER = ["mate", "forced_mate", "material_big", "mate_threat", "castling", "material_small", "fork", "king_exposed",
-         "passed_pawn", "pawn_weakness", "restricted", "outpost", "piece_harassed", "shield", "trades", "open_file", "enter", "draw_risk"]
+ORDER = ["mate", "forced_mate", "material_big", "promotion", "mate_threat", "castling", "material_small", "fork", "king_exposed",
+         "passed_pawn", "bishop_pair", "queen_chased", "pawn_weakness", "restricted", "outpost", "piece_harassed", "shield", "trades", "open_file", "enter", "draw_risk"]
 
 
 def unfinished(c, mover):

@@ -28,6 +28,16 @@ detectors that held up on a board check:
 - passed_pawn: at the end of a line a side has a passed pawn on a file where it has none at the
   root nor at the end of the other line, and the pawn is not attacked more often than defended.
   Played line: the opponent's; best line: the mover's;
+- bishop_pair: a knight takes a bishop within four plies and is taken back, and the side that took
+  keeps both bishops to the end of the line while the other has fewer; the other line does not end
+  that way. Played line: the opponent takes; best line: the mover;
+- queen_chased: in the whole engine line the queen is newly attacked by a cheaper man twice within
+  plies 2-9 (the first by ply 4) and each time moves away without capturing or checking, ending on
+  its first two ranks or where it started; not so in the other line. Played line: the mover's
+  queen; best line: the opponent's;
+- promotion: in the whole engine line a pawn passed at the root promotes within 16 plies and its
+  side is still 3 or more points up at the line's end; not so in the other line. Played line: the
+  opponent's pawn; best line: the mover's;
 - castling: a side that could castle at the root loses every castling right without castling, by
   a king move in the line or by a king move answering check in Stockfish's next four plies after
   it, while in the other line it castles or keeps a right. Played line: the mover; best line: the
@@ -455,8 +465,105 @@ def castling(lines, mover):
     return out
 
 
-def facts(fen, played_pv, best_pv):
+def queen_chases(nodes, c, loose=False):
+    """(attacking plies, final queen square) when c's queen is chased twice in plies 2-9 of a line: the
+    other side's move newly attacks it with a cheaper man (the first by ply 4), and c's next move
+    takes the queen away without capturing or checking; it ends on its first two ranks or where it
+    started (loose: wherever it ends). None otherwise."""
+    if len(nodes[0][0].pieces(chess.QUEEN, c)) != 1:
+        return None
+    q = start = next(iter(nodes[0][0].pieces(chess.QUEEN, c)))
+    hits = []
+    cheaper = lambda b, sq: any(VAL[b.piece_type_at(a)] < VAL[chess.QUEEN] for a in b.attackers(not c, sq))
+    for i in range(1, min(len(nodes) - 1, 10)):
+        (pb, _), (b, m), (nb, r) = nodes[i - 1], nodes[i], nodes[i + 1]
+        if pb.turn == c and m.from_square == q:  # the queen moves
+            q = m.to_square
+        elif pb.turn != c and m.to_square == q:
+            return None  # the queen is taken
+        elif (pb.turn != c and cheaper(b, q) and not cheaper(pb, q) and r.from_square == q
+                and not b.is_capture(r) and not nb.is_check()):
+            hits.append(i)
+            if len(hits) == 2:  # where the second retreat lands (later queen moves are not the chase)
+                to = r.to_square
+                return (hits, to) if hits[0] <= 4 and (rel(to, c) <= 1 or to == start or loose) else None
+    return None
+
+
+def queen_chased(lines, mover, full):
+    """The queen chased twice (queen_chases) in one whole engine line and not in the other. Played
+    line: the mover's queen; best line: the opponent's."""
+    out = []
+    for line, other in (("played", "best"), ("best", "played")):
+        c = mover if line == "played" else not mover
+        hit = queen_chases(full[line], c)
+        if hit and not queen_chases(full[other], c, loose=True):
+            (a1, a2), q = hit
+            nodes = full[line]
+            out.append(fact("queen_chased", line, a2 + 1, c, [q], f"{side(c)}的后被連續趕兩次，退回 {name(q)}",
+                            chasers=[a1, a2]))
+    return out
+
+
+def promotes(nodes, c):
+    """(plies of the pawn's moves, promotion ply) when a pawn of c's, passed at the root, promotes
+    within 16 plies of the whole line and c is still at least 3 points up on the root balance at
+    the line's end; None otherwise."""
+    root = nodes[0][0]
+    for i in range(1, min(len(nodes), 17)):
+        pb, m = nodes[i - 1][0], nodes[i][1]
+        if pb.turn == c and m.promotion:
+            plies, sq = [i], m.from_square
+            for j in range(i - 1, 0, -1):  # walk the pawn back to its root square
+                if nodes[j][1].to_square == sq and nodes[j - 1][0].piece_type_at(nodes[j][1].from_square) == chess.PAWN:
+                    plies.insert(0, j)
+                    sq = nodes[j][1].from_square
+            if sq not in passed(root, c):
+                return None
+            if material(nodes[-1][0], c) - material(root, c) >= 3:
+                return plies, i
+            return None
+    return None
+
+
+def promotion(lines, mover, full):
+    """A passed pawn promotes in one whole engine line and the gain holds (promotes), not in the
+    other. Played line: the opponent's pawn; best line: the mover's."""
+    out = []
+    for line, other in (("played", "best"), ("best", "played")):
+        c = (not mover) if line == "played" else mover
+        hit = promotes(full[line], c)
+        if hit and not promotes(full[other], c):
+            plies, i = hit
+            out.append(fact("promotion", line, i, c, [full[line][i][1].to_square], f"{side(c)}的通路兵升變", pawn_plies=plies))
+    return out
+
+
+def bishop_pair(lines, mover, full):
+    """A knight takes a bishop in the first four plies and is taken back, leaving the side that took
+    with both bishops and the other with fewer to the end of the whole engine line (full); the
+    other whole line does not end that way. Played line: the opponent takes; best line: the mover."""
+    out = []
+    for line, other in (("played", "best"), ("best", "played")):
+        f = (not mover) if line == "played" else mover
+        nodes = full[line]
+        pair = lambda b, c: len(b.pieces(chess.BISHOP, c)) >= 2
+        for i in range(1, min(5, len(nodes) - 1)):
+            (pb, _), (b, m), (_, r) = nodes[i - 1], nodes[i], nodes[i + 1]
+            if (pb.turn == f and pb.piece_type_at(m.from_square) == chess.KNIGHT and pb.piece_type_at(m.to_square) == chess.BISHOP
+                    and r.to_square == m.to_square and pair(pb, not f)
+                    and all(pair(nb, f) and not pair(nb, not f) for nb, _ in nodes[i + 1:])
+                    and not (pair(full[other][-1][0], f) and not pair(full[other][-1][0], not f))):
+                out.append(fact("bishop_pair", line, i, f, [m.to_square],
+                                f"{side(f)}用馬換掉對方在 {name(m.to_square)} 的象，取得雙象"))
+                break
+    return out
+
+
+def facts(fen, played_pv, best_pv, full_pv=None):
+    """full_pv: {"played", "best"} whole engine lines, for facts that must last past the cut lines."""
     lines = {"played": walk(fen, played_pv), "best": walk(fen, best_pv)}
+    full = {k: walk(fen, v) for k, v in full_pv.items()} if full_pv else lines
     mover = chess.Board(fen).turn
     return (outposts(lines, mover) + harassed(lines, mover) + restricted_pieces(lines, mover) + pawn_weakness(lines, mover)
-            + passed_pawns(lines, mover) + draw_risk(lines, mover) + castling(lines, mover))
+            + passed_pawns(lines, mover) + bishop_pair(lines, mover, full) + queen_chased(lines, mover, full) + promotion(lines, mover, full) + draw_risk(lines, mover) + castling(lines, mover))
