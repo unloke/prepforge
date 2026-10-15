@@ -143,7 +143,14 @@ def phrase(f, ln, ext, a, root, row):
         return f"threatens mate on {f['square']}{ln.paren(a, k)}", k, arrow, [f["square"]]
     if t == "material":
         what = pieces(f["won"]) + (f" for {pieces(f['lost'])}" if f["lost"] else "")
-        return (f"loses {what}{ext.after(a, f['end'])}" if played else f"wins {what}{ext.paren(a, f['end'])}"), f["end"], arrow, []
+        # quote the line to the winner's last capture of a man it wins, or on to a later capture of its
+        # until the count holds after the reply: later trades and take-backs are the count's, not the reader's
+        w = f["side"] == "white"
+        caps = [j for j in range(a, f["end"] + 1) if ext.boards[j - 1].turn == w and ext.boards[j - 1].is_capture(ext.moves[j - 1])]
+        won = [j for j in caps if (ext.boards[j - 1].piece_at(ext.moves[j - 1].to_square) or chess.Piece(chess.PAWN, not w)).symbol().lower() in f["won"]]
+        holds = lambda j: balance(ext.boards[min(j + 1, len(ext.moves))], w) - balance(ext.boards[0], w) >= f["net"]
+        q = next((j for j in caps if j >= max(won, default=f["end"]) and holds(j)), f["end"])
+        return (f"loses {what}{ext.after(a, q)}" if played else f"wins {what}{ext.paren(a, q)}"), q, arrow, []
     if t == "fork":
         targets = " and ".join(ln.name(k, s) for s in kings_first(ln, k, f["targets"]))
         if played:
@@ -193,7 +200,7 @@ def phrase(f, ln, ext, a, root, row):
         return verb + moves, k, arrow, sq
     if t == "pawn_weakness":
         if what == "hole":
-            return (f"gives up {sq[1]}: no pawn can cover it any more, and a {color(not c).lower()} {by} can settle there",
+            return (f"gives up {sq[1]} to a {color(not c).lower()} {by}: no pawn can cover it any more",
                     1, arrow, sq[:2])
         file = sq[0][0]
         verb = {"doubled": (f"leaves doubled pawns on the {file}-file" if played
@@ -452,16 +459,26 @@ def explain(row, cands=None):
         verb, last, arrow, sq = phrase(f, ln, ext[line], shown.get(line, 0) + 1, root, row)
         if i == 0 and fork_first:  # the best move itself forks: one sentence names the fork and its gain
             verb = f"forks {' and '.join(ln.name(1, s) for s in kings_first(ln, 1, facts[1]['targets']))} and {verb}"
-        if guard:  # the material falls for losing its guard: say how, in the line's own moves
+        if guard:  # the material falls for losing its guard: say how, in as few moves as show it
             kind, k, g, v, c = guard
             el = ext[line]
             man, gd = el.name(c - 1, chess.square_name(v)), el.name(k if kind in ("lure", "drive") else k - 1, chess.square_name(g))
+            # just the man won (no other gains or losses): name it and the move that undoes its guard, not the line
+            simple = f["won"] == [el.boards[c - 1].piece_at(v).symbol().lower()] and not f["lost"]
+            gain = "loses" if line == "played" else "wins"
             if kind == "abandon":
-                verb = f"leaves {man} undefended and {verb}"
-            else:
+                verb = f"leaves {man} undefended: {el.seq(2, c)}" if simple else f"leaves {man} undefended and {verb}"
+            elif simple and k == 1:
+                verb = {"lure": f"pulls {gd} away from {man} and wins it", "drive": f"drives {gd} away from {man} and wins it",
+                        "remove": f"takes {gd}, the last guard of {man}, and wins it"}[kind]
+            elif simple:
+                verb = f"{gain} {man} once {el.seq(k, k)} " + {"lure": f"pulls {gd} away", "drive": f"drives {gd} away",
+                                                             "remove": f"takes {gd}, its last guard"}[kind]
+            else:  # the count, and the move that undoes the guard instead of the whole line
                 how = {"lure": f"pulls {gd} away from {man}", "drive": f"drives {gd} away from {man}",
                        "remove": f"takes {gd}, the last guard of {man}"}[kind]
-                verb = f"{how}, and {verb}" if k == 1 else f"{verb}: {el.seq(k, k)} {how}"
+                count = f"{gain} {pieces(f['won'])}" + (f" for {pieces(f['lost'])}" if f["lost"] else "")
+                verb = f"{how} and {count}" if k == 1 else f"{count}: {el.seq(k, k)} {how}"
         if i == 0:
             if line == "played":
                 body = verb
@@ -469,7 +486,7 @@ def explain(row, cands=None):
                 body = f"misses mate in {verb.split('mates in ', 1)[1]}"
             else:
                 body = f"misses {B}, which {verb}"
-            out.append(f"{grade} {P} {body}." if grade else f"{P} is slightly inaccurate: it {body}.")
+            out.append(f"{grade} {P} {body}." if grade else f"{P} {body}.")  # Analyze shows the grade
         elif not fork_first:  # the fork that wins the material, later in the line
             out.append(f"The key move is {ln.seq(f['ply'], f['ply'])}, forking {verb.rsplit('fork', 1)[1].split(' ', 1)[1]}.")
         shown[line] = max(last, shown.get(line, 0))
