@@ -202,6 +202,8 @@ def phrase(f, ln, ext, a, root, row):
         return f"chases the {color(c).lower()} queen back to {sq[0]} with {chase}", a2 + 1, None, sq[:1]
     if t == "bishop_pair":
         what = f"a knight for the bishop on {sq[0]}, leaving {color(c)} the bishop pair"
+        if f.get("doubled"):
+            what += f" and {color(not c)} doubled {f['doubled']}-pawns"
         return (f"lets {ln.seq(a, k)} trade {what}" if played else f"trades {what}{ln.paren(a, k)}"), k, arrow, sq[:1]
     if t == "passed_pawn":
         verb = f"lets {color(c)} get a passed pawn on the {sq[0][0]}-file" if played else f"gets a passed pawn on the {sq[0][0]}-file"

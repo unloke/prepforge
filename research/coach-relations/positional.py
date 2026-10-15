@@ -542,7 +542,8 @@ def promotion(lines, mover, full):
 def bishop_pair(lines, mover, full):
     """A knight takes a bishop in the first four plies and is taken back, leaving the side that took
     with both bishops and the other with fewer to the end of the whole engine line (full); the
-    other whole line does not end that way. Played line: the opponent takes; best line: the mover."""
+    other whole line does not end that way. doubled: the file, when a pawn takes back and stays
+    doubled there to the end of the line, and the other line does not end doubled there. Played line: the opponent takes; best line: the mover."""
     out = []
     for line, other in (("played", "best"), ("best", "played")):
         f = (not mover) if line == "played" else mover
@@ -554,8 +555,13 @@ def bishop_pair(lines, mover, full):
                     and r.to_square == m.to_square and pair(pb, not f)
                     and all(pair(nb, f) and not pair(nb, not f) for nb, _ in nodes[i + 1:])
                     and not (pair(full[other][-1][0], f) and not pair(full[other][-1][0], not f))):
+                fl = chess.square_file(m.to_square)
+                doubled = lambda b: len(b.pieces(chess.PAWN, not f) & chess.BB_FILES[fl]) >= 2
+                pawn = b.piece_type_at(r.from_square) == chess.PAWN
+                dbl = pawn and not doubled(b) and all(doubled(nb) for nb, _ in nodes[i + 1:]) and not doubled(full[other][-1][0])
                 out.append(fact("bishop_pair", line, i, f, [m.to_square],
-                                f"{side(f)}用馬換掉對方在 {name(m.to_square)} 的象，取得雙象"))
+                                f"{side(f)}用馬換掉對方在 {name(m.to_square)} 的象，取得雙象" + ("，對方疊兵" if dbl else ""),
+                                doubled=chess.FILE_NAMES[fl] if dbl else None))
                 break
     return out
 

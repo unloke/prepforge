@@ -1,0 +1,188 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab12",
+  "blind_data_sha256": "9a2c5e99e5d089aad2d9e3e349e06569153ed70e5528a601647b463b1aff4b45",
+  "pairs_total": 30,
+  "completed": 11,
+  "updated_at": "2026-10-15T16:22:52.620Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "A",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "騎士到f6太強了 需要把他換掉 Bb1剛好來得及把他抓掉 然後還順便阻止了f5",
+      "content_sha256": {
+        "A": "d282d5550457779a495ef35a94b5f4bb41aa6ed8b3ae6bd07169f6bf6810f05a",
+        "B": "cd243814568ef488905241e60ad88deb59d3afff6a943e9a0c3bec37bde06bbe"
+      },
+      "updated_at": "2026-10-15T16:07:41.279Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "主要是f5 Nc6這個最佳路線可以把對手往家裡趕還順便出子 但是Bxc5實戰線白方就超級方便出子了",
+      "content_sha256": {
+        "A": "d49183c691471878f0c72a10676fd6923176654dc5bb6ef01bcec81e73e4ef61",
+        "B": "67374895e0d37835cf8f8e54aa4319cd0ac5c6eb0bd6ff527d5adcf2fb4f08c3"
+      },
+      "updated_at": "2026-10-15T16:07:49.405Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "Bf1讓通路兵過了 不過Rxb7最佳線製造counter play還贏回主教 主要就是機動性吧 還有通路兵",
+      "content_sha256": {
+        "A": "ed1c833ef205336f0ce90cdb236ff8c0a52585d04d35bfcae49209396e6fedde",
+        "B": "68f63f100aa1e42297fc65bc26d72711f344e5875f289522ff5649072aee1b53"
+      },
+      "updated_at": "2026-10-15T16:07:56.221Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "沒有主教pair 疊兵 白方黑格主教不好出子",
+      "content_sha256": {
+        "A": "764d68349075d440582a3c28fedfcf35f2a4f6bbcc60cd040bb2b020223938da",
+        "B": "7b64e194c6634ca37d8d81a272e0354d6ebfe8cdf3708d7b759c61790d4ff68e"
+      },
+      "updated_at": "2026-10-15T16:07:33.667Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "主要是黑國王會過來擋兵",
+      "content_sha256": {
+        "A": "b6d7af56fa56a0257d084d234bae1eec4a04a85013585deb52123b6b29b4b0c1",
+        "B": "437130bdfe21948c4a7b3f46966901ade317f4ae0a14c91431bf47ee96bb92af"
+      },
+      "updated_at": "2026-10-15T16:10:04.642Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "A",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "不只是bishop pair, Bd3讓黑方可以走f5, 本來不行因為f5 exf6 這時候不能兵吃 車吃掉交換 主教吃掉馬 可是現在騎士和主教換掉了這時候就可以主教吃了 所以說黑王就安全了",
+      "content_sha256": {
+        "A": "5a25cb61f26dfbd34bb0636ffd3cca06deb3e6d92a7ba0a94113ea8a6a12b9bb",
+        "B": "087d0fde7922b3fea70c2438e2c6140f028b7b665da1a933d834adfe00a97420"
+      },
+      "updated_at": "2026-10-15T16:13:15.017Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "除了bishop pair, 這個馬要吃象也是有王的安全的考量",
+      "content_sha256": {
+        "A": "3753721c84f23f2daf969e929c0b77a3e418e7761215b07465a0b434388fa42f",
+        "B": "ba33221c5c2b5884d7e133fb43548f12c45b642c9df496074604df40a194b14f"
+      },
+      "updated_at": "2026-10-15T16:14:46.823Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "主要還是雙城堡太穩不好求勝",
+      "content_sha256": {
+        "A": "254307f5e33644c1abb804f09604d5b21ff43f71632250a459f9e9481aa0cfd9",
+        "B": "5b5372cd68fb0cbc4f7dcf9d069f3fad1c392a51f48ba106278eb27ed976497e"
+      },
+      "updated_at": "2026-10-15T16:18:49.042Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "重點是兵型和子力",
+      "content_sha256": {
+        "A": "e1f2227a312fc59a170adc73c3403f0ddde55b1c6baa0c81175984b2f5120f56",
+        "B": "7fda78504e2fdb3d4daa99aa8d6d1b60b556abb234d068cb80b826a0a68748c5"
+      },
+      "updated_at": "2026-10-15T16:20:46.954Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "64946b7bd8113dbbbc842137662c5df7a76895ab0324b36781256417f75bd15c",
+        "B": "b07bd5854150f73e5ce628e77fb92ec9aa4bb8e9df8ef90f6fb7af5ec9795f07"
+      },
+      "updated_at": "2026-10-15T16:21:43.559Z"
+    },
+    {
+      "pair_id": "pair-011",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "主要就是出子速度",
+      "content_sha256": {
+        "A": "84857f25f81f3a9612b708cad21f3e9c6b110c7eebce3e98a41cdfdb7350c414",
+        "B": "2aa46a55451505c579af6f33a0996b9524077f4313dec9d8a04222d2c1665046"
+      },
+      "updated_at": "2026-10-15T16:22:52.315Z"
+    }
+  ]
+}

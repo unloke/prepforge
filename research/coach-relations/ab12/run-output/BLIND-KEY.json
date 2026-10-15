@@ -1,0 +1,245 @@
+{
+  "seed_hex": "907c08eb978c7595e267a8ec59d82776",
+  "pairs": {
+    "pair-001": {
+      "id": "t1SiyzCM/40",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-002": {
+      "id": "joGFmaEx/13",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-003": {
+      "id": "rTiytsQN/66",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-004": {
+      "id": "AFrSI2mE/18",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-005": {
+      "id": "WwkpkV7P/86",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-006": {
+      "id": "30P5D7Bp/22",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-007": {
+      "id": "Z5kVZz9M/23",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-008": {
+      "id": "ddS2qEtw/73",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-009": {
+      "id": "4LqUgKgI/20",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-010": {
+      "id": "RBVr2qKD/23",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-011": {
+      "id": "88cl0uaw/21",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-012": {
+      "id": "vsZOrrXx/28",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-013": {
+      "id": "Pab86HWB/75",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-014": {
+      "id": "Iv7aDCAM/32",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-015": {
+      "id": "3hcX07ip/79",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-016": {
+      "id": "4wWFmbTF/40",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-017": {
+      "id": "PB5lRCU6/14",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-018": {
+      "id": "WwkpkV7P/85",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-019": {
+      "id": "NrTG7OIq/106",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-020": {
+      "id": "hy0kprTi/80",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-021": {
+      "id": "8oEFO4Yq/13",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-022": {
+      "id": "epUWbTEP/22",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-023": {
+      "id": "qdrg4Ayw/72",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-024": {
+      "id": "zHhpYgMJ/19",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-025": {
+      "id": "rSZqVBCQ/68",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-026": {
+      "id": "ZydVhIrf/25",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-027": {
+      "id": "j5zxiG6A/27",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "bishop_pair"
+      ]
+    },
+    "pair-028": {
+      "id": "RJrYZphp/24",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "queen_chased"
+      ]
+    },
+    "pair-029": {
+      "id": "ktvzJfrt/92",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "promotion"
+      ]
+    },
+    "pair-030": {
+      "id": "9g4Zb8Gg/35",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "queen_chased"
+      ]
+    }
+  }
+}
