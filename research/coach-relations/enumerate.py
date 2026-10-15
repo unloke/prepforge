@@ -42,7 +42,7 @@ import tactics
 HERE = pathlib.Path(__file__).parent
 VALUE = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 ORDER = ["mate", "forced_mate", "mate_threat", "material", "fork", "king_exposed",
-         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "passed_pawn", "bishop_pair", "queen_chased", "promotion", "draw_risk", "castling"]
+         "shield", "trades", "open_file", "enter", "outpost", "piece_harassed", "restricted", "pawn_weakness", "passed_pawn", "bishop_pair", "queen_chased", "promotion", "allows", "draw_risk", "castling"]
 HEAVY = (chess.ROOK, chess.QUEEN)
 
 
@@ -237,7 +237,7 @@ def candidates(r):
     out += positional.facts(r["fen"], r["played_pv"], r["best_pv"], r.get("full_pv"))
     # a card about lost material or mate does not need positional facts, nor a drawing check next to a mate
     if any(c["type"] in ("material", "mate", "forced_mate") for c in out):
-        out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "restricted", "pawn_weakness", "bishop_pair", "queen_chased", "promotion")]
+        out = [c for c in out if c["type"] not in ("shield", "open_file", "outpost", "piece_harassed", "restricted", "pawn_weakness", "bishop_pair", "queen_chased", "promotion", "allows")]
     if any(c["type"] in ("mate", "forced_mate") for c in out):
         out = [c for c in out if c["type"] not in ("draw_risk", "castling")]
     # next to won or lost material, king exposure is only the material changing hands

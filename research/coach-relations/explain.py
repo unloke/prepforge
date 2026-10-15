@@ -454,6 +454,16 @@ def quiet(lines, ext, root):
     return allows, ""
 
 
+def refutes(row, f):
+    """'after it, ...d3 loses the knight on e4 to Nxe4': the allows fact's reply, played after the best move."""
+    b = chess.Board(row["fen"])
+    b.push_uci(row["best_pv"][0])
+    r, took = chess.Move.from_uci(f["reply"]), chess.Move.from_uci(f["took"])
+    rs = b.san(r)
+    b.push(r)
+    return f"after it, {rs} loses the {PIECE[chess.piece_symbol(b.piece_type_at(took.to_square))]} on {f['at'][0]} to {b.san(took)}"
+
+
 def explain(row, cands=None):
     root = chess.Board(row["fen"])
     mover = "white" if root.turn else "black"
@@ -471,6 +481,8 @@ def explain(row, cands=None):
         ext[k].h = len(lines[k].moves)
     P, B = lines["played"].sans[0], lines["best"].sans[0]
     cands = said(cands if cands is not None else candidates(row), row, ext)
+    stop = next((c for c in cands if c["type"] == "allows"), None)
+    cands = [c for c in cands if c["type"] != "allows"]
     ranked = rank([c for c in cands if not c.get("mechanism")], mover)
     facts = ranked[:1] + [c for c in ranked[1:] + [c for c in cands if c.get("mechanism")] if second(ranked[0], c)][:1] if ranked else []
     if [f["type"] for f in facts] == ["trades"] and any(quiet(lines, ext, root)):  # a trade alone says little
@@ -524,6 +536,8 @@ def explain(row, cands=None):
         allows, better = quiet(lines, ext, root)
         out.append(f"{grade} {P} {allows or 'is not the best move'}." if grade else
                    f"{P} is slightly inaccurate{': it ' + allows if allows else ''}.")
+    if stop and facts and facts[0]["line"] == "played" and facts[0]["ply"] == 2:  # the opponent's gain starts with a reply the best move refutes
+        better = refutes(row, stop)
     if "best" not in shown:
         out.append(f"{B} was the move{': ' + better if better else ''}.")
     arrows = arrows[:3]

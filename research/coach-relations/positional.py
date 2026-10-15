@@ -38,6 +38,10 @@ detectors that held up on a board check:
 - promotion: in the whole engine line a pawn passed at the root promotes within 16 plies and its
   side is still 3 or more points up at the line's end; not so in the other line. Played line: the
   opponent's pawn; best line: the mover's;
+- allows: the opponent's quiet reply in the played line would lose the man it moves (SEE >= 3) if
+  played after the best move instead, and is safe after the played move; the best line answers
+  otherwise. Played line only; explain adds it to the best move only when the played line's
+  chosen fact starts with that reply;
 - castling: a side that could castle at the root loses every castling right without castling, by
   a king move in the line or by a king move answering check in Stockfish's next four plies after
   it, while in the other line it castles or keeps a right. Played line: the mover; best line: the
@@ -539,6 +543,26 @@ def promotion(lines, mover, full):
     return out
 
 
+def allows(lines, mover, full):
+    """The opponent's reply r (ply 2 of the played line, not a capture, not out of check) is safe after
+    the played move (the mover then wins nothing by SEE), but after the best move r is legal and the
+    man it moves can be taken for at least 3 points by SEE; the best line answers with something else.
+    took: the mover's capture that wins it, after the best move and r."""
+    pl, bl = full["played"], full["best"]
+    if len(pl) < 3 or len(bl) < 3:
+        return []
+    r, bb = pl[2][1], bl[1][0].copy(stack=False)
+    if pl[1][0].is_capture(r) or pl[1][0].is_check() or bl[2][1] == r or r not in bb.legal_moves:
+        return []
+    win = lambda b: max(((see(b, sq, mover), sq) for sq in chess.SquareSet(b.occupied_co[not mover]) if b.piece_type_at(sq) != chess.KING), default=(0, None))
+    bb.push(r)
+    gain, sq = see(bb, r.to_square, mover), r.to_square
+    if gain < 3 or win(pl[2][0])[0] > 0:
+        return []
+    took = min((m for m in bb.legal_moves if m.to_square == sq), key=lambda m: VAL[bb.piece_type_at(m.from_square)])
+    return [fact("allows", "played", 2, not mover, [sq], f"最佳著後 {name(r.to_square)} 會丟子", reply=r.uci(), took=took.uci())]
+
+
 def bishop_pair(lines, mover, full):
     """A knight takes a bishop in the first four plies and is taken back, leaving the side that took
     with both bishops and the other with fewer to the end of the whole engine line (full); the
@@ -572,4 +596,4 @@ def facts(fen, played_pv, best_pv, full_pv=None):
     full = {k: walk(fen, v) for k, v in full_pv.items()} if full_pv else lines
     mover = chess.Board(fen).turn
     return (outposts(lines, mover) + harassed(lines, mover) + restricted_pieces(lines, mover) + pawn_weakness(lines, mover)
-            + passed_pawns(lines, mover) + bishop_pair(lines, mover, full) + queen_chased(lines, mover, full) + promotion(lines, mover, full) + draw_risk(lines, mover) + castling(lines, mover))
+            + passed_pawns(lines, mover) + bishop_pair(lines, mover, full) + queen_chased(lines, mover, full) + promotion(lines, mover, full) + allows(lines, mover, full) + draw_risk(lines, mover) + castling(lines, mover))
