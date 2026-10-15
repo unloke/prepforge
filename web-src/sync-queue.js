@@ -102,7 +102,7 @@ const LOCK_STALE_MS = 30_000;
 
 function emptyOutbox() {
   return {
-    build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
+    build: { pending: [], pendingDeletes: [], idMap: {} },
     train: { pending: [], rejected: [] },
     settled: { build: [], deletes: [], train: [] },
   };
@@ -193,7 +193,6 @@ export function mergeOutboxState(stored, incoming, settled = null) {
       ),
       // tmp -> real ids are additive facts: a later flush's mapping always wins.
       idMap: { ...(base.build.idMap || {}), ...(next.build?.idMap || {}) },
-      rejected: mergeById(asArray(base.build.rejected), asArray(next.build?.rejected), rejectedId),
     },
     train: {
       pending: mergeById(
@@ -221,11 +220,7 @@ export function outboxHasWork(state) {
 }
 
 export function outboxHasRejected(state) {
-  return !!(
-    state &&
-    ((state.build.rejected && state.build.rejected.length) ||
-      (state.train.rejected && state.train.rejected.length))
-  );
+  return !!state?.train.rejected?.length;
 }
 
 export function outboxIsQuiescent(state) {

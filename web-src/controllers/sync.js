@@ -209,7 +209,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
           deleteBatch,
           repertoireId,
         );
-        appState.buildRejected = (appState.buildRejected || []).concat(rejected);
         if (idMap && Object.keys(idMap).length) {
           // Ops that landed mid-isolation have real ids now; the local tree and
           // any queued children must be reconciled against them (R-05).
@@ -227,6 +226,8 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
             reapplyPendingBuildDeletes();
           }
         }
+        // Rejected edits are reported here once and dropped: the server will
+        // never accept them, and there is nothing to review them with.
         await persistOutbox(settled);
         setStatusError(
           rejected.length
@@ -236,8 +237,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         if (hasBuildWork()) {
           setBuildSync("dirty");
           scheduleBuildFlush();
-        } else if (appState.buildRejected.length) {
-          setBuildSync("rejected");
         } else {
           await clearOutboxWhenQuiescent();
           setBuildSync("saved");
@@ -610,7 +609,7 @@ function beaconFlushTrain() {
 function outboxSnapshot() {
   return {
     build: { pending: appState.buildPending, pendingDeletes: appState.buildPendingDeletes,
-      idMap: appState.buildIdMap, rejected: appState.buildRejected || [] },
+      idMap: appState.buildIdMap },
     train: { pending: appState.trainSync.pending, rejected: appState.trainRejected || [] },
   };
 }
@@ -633,15 +632,13 @@ async function restoreOutbox() {
   const owner = currentOwnerId(), generation = appState.ownerGeneration;
   const outbox = await loadDurableOutbox(owner);
   if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return null;
-  const rejectedCount =
-    (outbox.build.rejected || []).length + (outbox.train.rejected || []).length;
+  const rejectedCount = (outbox.train.rejected || []).length;
   if (!outboxHasWork(outbox) && !rejectedCount) return null;
   appState.buildPending = outbox.build.pending.concat(appState.buildPending);
   appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
     appState.buildPendingDeletes,
   );
   Object.assign(appState.buildIdMap, outbox.build.idMap);
-  appState.buildRejected = (outbox.build.rejected || []).concat(appState.buildRejected || []);
   appState.trainRejected = (outbox.train.rejected || []).concat(appState.trainRejected || []);
   appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
   if (appState.trainSync.pending.length) {
