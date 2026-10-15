@@ -1,0 +1,188 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "ab9",
+  "blind_data_sha256": "ea260f2919a6b8ed64c256116019d31f4d6b7c517fdd784f9ec262ef58f2eb24",
+  "pairs_total": 90,
+  "completed": 10,
+  "updated_at": "2026-10-15T05:12:17.806Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "這裡白方有兩個攻擊方式 一個是保護國王然後準備c5爆破d線 然後就可以d6 d7去抓雙 或是Qd1準備Ra1打后然後要馬將殺要把得后 但是這個f3什麼都沒做 浪費了一個節奏",
+      "content_sha256": {
+        "A": "a5fad90b5a92f542e3cebd9f590a0467df18509f687556ce899f4314e39923dd",
+        "B": "3b8d649ab260532cfb0a8311f552d53205e46ab686704d6fc0efaea20b38a7ee"
+      },
+      "updated_at": "2026-10-15T04:59:18.442Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "問題點是黑方的白格主教爛透了 然後Nd5讓他可以換掉",
+      "content_sha256": {
+        "A": "f41ad07068a696d0c7830b1c1255c6d3aa4709f3de63b77e7d750be731263339",
+        "B": "8be024f19d577fd0bfc41cfb758912be05082438700935852d0dcf4b71c783ca"
+      },
+      "updated_at": "2026-10-15T05:00:42.134Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "factual_error",
+          "missed_key_point"
+        ],
+        "B": [
+          "factual_error",
+          "missed_key_point"
+        ]
+      },
+      "note": "主要是能用c兵換掉d兵 然後A說的得兵不存在 B說的交換兩條都有",
+      "content_sha256": {
+        "A": "2c3f0d04575ac57cfa713c503036e6653acfebd41f0504e9f7dde0846e9dc2be",
+        "B": "72d456dec18de244fe8e868036134fc7efd1a8546a47f4a20cfd0765e8779985"
+      },
+      "updated_at": "2026-10-15T05:03:24.517Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "c8f59673b1126217577ae65b15bb8400d097cc638e6e3f7908528d87ce606c5d",
+        "B": "3f99318e080ff9e12a3c60133ffacae5a906be9ead9158609754765b31771f78"
+      },
+      "updated_at": "2026-10-15T05:03:48.738Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "tie",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "兩個人都沒抓到問題呀 這個實戰線不是很明顯後面掉子了嘛",
+      "content_sha256": {
+        "A": "fe9109654f6e985351587868556bcbd792aa9c5e96680d51f296ae6605fff7d2",
+        "B": "60d36f9535083f95216879c51a53a719b4488b8c0c3e382a06c203c2aef765a0"
+      },
+      "updated_at": "2026-10-15T05:06:00.217Z"
+    },
+    {
+      "pair_id": "pair-006",
+      "verdict": "tie",
+      "issues": {
+        "A": [
+          "unnatural"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "這個A沒講到folk b太冗了",
+      "content_sha256": {
+        "A": "9d066d969c709c970208be99eb5a2c978ec55d0b84b02921ecb723a3f0a2368b",
+        "B": "cc0ad16e9e818f54991ba62f3c6dd9bfc0f8815de91e66fb03f61565186cd872"
+      },
+      "updated_at": "2026-10-15T05:07:14.989Z"
+    },
+    {
+      "pair_id": "pair-007",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "96125c8e5baaa6879ebe21425301a93173b8c38434f47a831bc3f3e38fe56bc1",
+        "B": "ee26916f66057ba9038e9c260e38d06edd25889c4a7c5ef9be9c4dcb57f12ed3"
+      },
+      "updated_at": "2026-10-15T05:07:50.479Z"
+    },
+    {
+      "pair_id": "pair-008",
+      "verdict": "tie",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "兩者都沒講到王的安全呀 B說的掉兵也是因為王不安全導致的 算是兩邊都講對了一部分吧",
+      "content_sha256": {
+        "A": "4a22025b88382cdac12ecd1b005aa2c9aed2c9a16e9f676e03a6365c3b121ade",
+        "B": "0aaeefcb45d7706321e464c858d06c9de0866753bf8a50eca922f625ae292d03"
+      },
+      "updated_at": "2026-10-15T05:09:19.893Z"
+    },
+    {
+      "pair_id": "pair-009",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "這先發生 比較合理 A掉兵是事實 但是應該講的是浪費步導致掉兵 B也漏了一點 但整體好一些",
+      "content_sha256": {
+        "A": "28eb48388399d155b6a865a0ad5592c68fd196e1349659197200cffaf929a799",
+        "B": "9a294d87017f50a8a6a070246e5faeb5d821f336d7575762e07ac7c3a603455c"
+      },
+      "updated_at": "2026-10-15T05:11:34.235Z"
+    },
+    {
+      "pair_id": "pair-010",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "B還是有點冗 不過重點是對的",
+      "content_sha256": {
+        "A": "7be62e17643f85ee0ffe3ecd584e3aa3058470ad038c308637c61825d8201b9c",
+        "B": "4aa8c116ceb591b29d5583257fe5b9e1af5c3080427932c6ba974ecdcc7e34ac"
+      },
+      "updated_at": "2026-10-15T05:12:17.498Z"
+    }
+  ]
+}
