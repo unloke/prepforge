@@ -2,25 +2,32 @@
 120 cards with one candidate reason and 240 with two or more. Each candidate is written as the
 Coach would write it alone; the judge sees them in shuffled order with no rank.
 
-  py -B selector/make_cands.py      -> cand/batch-NN.jsonl (judge input), cand/key.jsonl (features)
+  py -B selector/make_cands.py          -> cand/batch-NN.jsonl (judge input), cand/key.jsonl (features)
+  py -B selector/make_cands.py confirm  -> confirm/: 250 cards in the pool's mix (147 one, 103 two or
+                                           more), from games neither labels.jsonl nor cand/ touches
 """
+import sys
 import json
 import random
 from collections import defaultdict
 
 import pool
 
-N1, N2, BATCH = 120, 240, 30
+BATCH = 30
+SETS = {"cand": (120, 240, 20261015), "confirm": (147, 103, 20261016)}
 
 
-def main():
+def main(name):
+    N1, N2, seed = SETS[name]
     cards = pool.setup()
     used = {json.loads(l)["id"].split("/")[0] for l in open(pool.HERE / "labels.jsonl", encoding="utf-8")}
+    if name == "confirm":
+        used |= {json.loads(l)["id"].split("/")[0] for l in open(pool.HERE / "cand" / "key.jsonl", encoding="utf-8")}
     by_game = defaultdict(list)
     for i in sorted(cards):
         if i.split("/")[0] not in used:
             by_game[i.split("/")[0]].append(i)
-    rng = random.Random(20261015)
+    rng = random.Random(seed)
     games = sorted(by_game)
     rng.shuffle(games)
     one, many = [], []
@@ -56,7 +63,8 @@ def main():
         key.append({"n": n, "id": i, "grade": r["grade"], "loss": r.get("loss"), "move": c["moveNumber"],
                     "rank_of_k": [order.index(j) for j in range(len(rk))],  # rank position -> shown k
                     "facts": [{x: v for x, v in f.items() if x != "text_zh"} for f in rk]})
-    out = pool.HERE / "cand"
+    out = pool.HERE / name
+    out.mkdir(exist_ok=True)
     for b in range(0, len(items), BATCH):
         (out / f"batch-{b // BATCH + 1:02d}.jsonl").write_text(
             "".join(json.dumps(o, ensure_ascii=False) + "\n" for o in items[b:b + BATCH]), encoding="utf-8")
@@ -65,4 +73,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "cand")
