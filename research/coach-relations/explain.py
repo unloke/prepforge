@@ -376,8 +376,10 @@ def explain(row, cands=None):
     ext = {k: Line(row["fen"], ln.moves + ([] if ln.boards[-1].is_game_over() else
                                               [chess.Move.from_uci(u) for u in tactics.tail(ln.boards[-1], root.turn)[0]]))
            for k, ln in full.items()}
-    # facts come from the line up to its horizon; material is counted on the whole line (recount)
-    row = dict(row, **{k: row[k][:horizon(row["fen"], row[k])] for k in ("played_pv", "best_pv")})
+    # facts come from both lines up to one horizon (the longer of the two: a line seen further
+    # would show facts the other only lacks for being cut sooner); material is counted on the whole line
+    h = max(horizon(row["fen"], row[k]) for k in ("played_pv", "best_pv"))
+    row = dict(row, played_pv=row["played_pv"][:h], best_pv=row["best_pv"][:h])
     lines = {k: Line(row["fen"], row[f"{k}_pv"]) for k in ("played", "best")}
     for k in ext:
         ext[k].h = len(lines[k].moves)
