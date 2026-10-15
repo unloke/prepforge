@@ -1,0 +1,673 @@
+{
+  "seed_hex": "2d40cd928b4f0611f29278a956ef7384",
+  "pairs": {
+    "pair-001": {
+      "id": "GzlSn5Gz/11",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-002": {
+      "id": "XTbDYIsh/29",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-003": {
+      "id": "tatH6Fp4/24",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-004": {
+      "id": "Ddz9LtBp/60",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-005": {
+      "id": "nYoqrTBI/5",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-006": {
+      "id": "rTiytsQN/7",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-007": {
+      "id": "KAYHgLSs/116",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-008": {
+      "id": "t9z0VIEH/54",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-009": {
+      "id": "aBGAPyxP/34",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-010": {
+      "id": "Qlsr95Uq/59",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-011": {
+      "id": "bQ9duviD/54",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "pawn_weakness"
+      ]
+    },
+    "pair-012": {
+      "id": "jrLrV447/7",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "fork"
+      ]
+    },
+    "pair-013": {
+      "id": "GYFSYJ8I/8",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-014": {
+      "id": "SvOv9vvN/32",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "passed_pawn"
+      ]
+    },
+    "pair-015": {
+      "id": "i9ZGHc3z/32",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "piece_harassed"
+      ]
+    },
+    "pair-016": {
+      "id": "vtAS8qss/82",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-017": {
+      "id": "duXiJ0pn/25",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-018": {
+      "id": "Xy8XJUfE/4",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-019": {
+      "id": "ULNqaP25/56",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "mate"
+      ]
+    },
+    "pair-020": {
+      "id": "0AiouCIG/60",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-021": {
+      "id": "acfjZIi9/14",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-022": {
+      "id": "iYlMZPgv/9",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-023": {
+      "id": "O3OasHDr/14",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-024": {
+      "id": "6gcZ6qX7/26",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-025": {
+      "id": "B6UA5TzQ/58",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "trades"
+      ]
+    },
+    "pair-026": {
+      "id": "fHMVqQoL/49",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-027": {
+      "id": "AsWSYyDc/10",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "pawn_weakness"
+      ]
+    },
+    "pair-028": {
+      "id": "Vwtqrok7/56",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-029": {
+      "id": "Uz1tGJyF/47",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-030": {
+      "id": "BD7T26aK/28",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-031": {
+      "id": "SvOv9vvN/91",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-032": {
+      "id": "aMF9UzZJ/3",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-033": {
+      "id": "EWHWTy9B/28",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-034": {
+      "id": "xmXZFqLk/26",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "pawn_weakness"
+      ]
+    },
+    "pair-035": {
+      "id": "ufcR4HPD/16",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "pawn_weakness"
+      ]
+    },
+    "pair-036": {
+      "id": "hb39snyx/68",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-037": {
+      "id": "FTjglcHm/55",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-038": {
+      "id": "PBR9aMUP/40",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "passed_pawn"
+      ]
+    },
+    "pair-039": {
+      "id": "XfyJ4tKl/40",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-040": {
+      "id": "qvoMv041/50",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "piece_harassed"
+      ]
+    },
+    "pair-041": {
+      "id": "EgkS2RLU/17",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-042": {
+      "id": "o66za6e9/82",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-043": {
+      "id": "qOURsOnx/44",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-044": {
+      "id": "pHNlEJDd/49",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "mate_threat"
+      ]
+    },
+    "pair-045": {
+      "id": "wf52f200/14",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-046": {
+      "id": "zLrhPtL4/46",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-047": {
+      "id": "wRReUrfh/91",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-048": {
+      "id": "zCWBY9Dv/30",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "pawn_weakness"
+      ]
+    },
+    "pair-049": {
+      "id": "majbnu67/77",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-050": {
+      "id": "09xFi1vZ/8",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-051": {
+      "id": "y1ElkyO7/56",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-052": {
+      "id": "4Wozw7Zh/44",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-053": {
+      "id": "Jr3VBrtt/26",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-054": {
+      "id": "9tbW4pQS/24",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-055": {
+      "id": "xxxfcBmF/25",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-056": {
+      "id": "nzQ8k5GN/52",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-057": {
+      "id": "AHIxde3Q/81",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-058": {
+      "id": "nGFuIqkz/12",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-059": {
+      "id": "wSFmrrjq/26",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-060": {
+      "id": "cuIUyWYL/26",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "trades"
+      ]
+    },
+    "pair-061": {
+      "id": "JL2BrOUc/37",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-062": {
+      "id": "83YNb3sh/8",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-063": {
+      "id": "wV77QKJh/31",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-064": {
+      "id": "WO8dZWm5/24",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "piece_harassed"
+      ]
+    },
+    "pair-065": {
+      "id": "Uk6KqfG5/32",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-066": {
+      "id": "PBR9aMUP/12",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-067": {
+      "id": "pPRLXuGK/3",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-068": {
+      "id": "KLOCLOcm/46",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-069": {
+      "id": "6t1HAivu/13",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-070": {
+      "id": "GzlSn5Gz/120",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-071": {
+      "id": "B4Q79brn/24",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-072": {
+      "id": "2RY4koME/56",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-073": {
+      "id": "6VF1aJ7O/42",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-074": {
+      "id": "JIK0gMs3/14",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-075": {
+      "id": "sAPPO0NR/12",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-076": {
+      "id": "n2nxpfS7/69",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-077": {
+      "id": "LexXcvwW/17",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-078": {
+      "id": "JhibfuIR/32",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-079": {
+      "id": "oZycl4sw/30",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-080": {
+      "id": "WRNkn1iH/12",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-081": {
+      "id": "B4Q79brn/23",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-082": {
+      "id": "rTiytsQN/82",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-083": {
+      "id": "EAJcH3eg/6",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-084": {
+      "id": "q41gEWQT/94",
+      "A": "production",
+      "B": "relations",
+      "facts": []
+    },
+    "pair-085": {
+      "id": "cWDFjloh/41",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-086": {
+      "id": "7OIE2FIL/33",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "mate_threat"
+      ]
+    },
+    "pair-087": {
+      "id": "ymGiX54u/20",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    },
+    "pair-088": {
+      "id": "jtRttvxl/40",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-089": {
+      "id": "ymGiX54u/43",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-090": {
+      "id": "Ac6CB7hz/33",
+      "A": "relations",
+      "B": "production",
+      "facts": []
+    }
+  }
+}

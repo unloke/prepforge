@@ -8,14 +8,13 @@ Reports, on the 860 positions.jsonl moves (and, for fresh* outs, the no-reason s
   lines that stop mid-exchange (Stockfish's tail continues with captures);
 - explain.py on both, on moves both call an error: lead fact kind, a reason at all (fact or quiet
   sentence) or bare / reply only, and whether the material claim (line, net, pieces) matches depth 22.
-Every kernel's sf_cache.jsonl is merged into a scratch cache so nothing is searched twice; the
-tail searches still run at tactics.py's screen-depth settings.
+Every kernel's sf_cache.jsonl is read (tactics.READ) so nothing is searched twice; the tail
+searches still run at tactics.py's screen-depth settings.
 """
 import json
 import pathlib
 import statistics
 import sys
-import tempfile
 from collections import Counter
 
 import chess
@@ -56,14 +55,8 @@ def q(xs):
 
 def main():
     outs = [pathlib.Path(p) for p in sys.argv[1:]]
-    cache = pathlib.Path(tempfile.gettempdir()) / "prod-depth-sf-cache.jsonl"
-    rows = {}
-    for p in [HERE.parent / "sf_cache.jsonl"] + [o / "sf_cache.jsonl" for o in outs]:
-        if p.exists():
-            rows.update({r["fen"]: r for r in jsonl(p)})
-    cache.write_text("".join(json.dumps(r) + "\n" for r in rows.values()), encoding="utf-8")
-    tactics.CACHE = cache
-    from explain import explain  # noqa: E402  (after the cache is set)
+    tactics.READ += [o / "sf_cache.jsonl" for o in outs]
+    from explain import explain  # noqa: E402
     from explain_cards import row  # noqa: E402
 
     d22 = {(r["fen"], chess.Board(r["fen"]).parse_san(r["san"]).uci()): r for r in jsonl(HERE.parent / "positions.jsonl")}

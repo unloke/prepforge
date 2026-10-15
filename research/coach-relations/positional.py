@@ -25,6 +25,9 @@ detectors that held up on a board check:
 - draw_risk: a line ends in stalemate and the other does not; or in the played line the opponent
   gives two or more checks including the last move, the best line has none, and the mover is two
   points up at the end of either line;
+- passed_pawn: at the end of a line a side has a passed pawn on a file where it has none at the
+  root nor at the end of the other line, and the pawn is not attacked more often than defended.
+  Played line: the opponent's; best line: the mover's;
 - castling: a side that could castle at the root loses every castling right without castling, by
   a king move in the line or by a king move answering check in Stockfish's next four plies after
   it, while in the other line it castles or keeps a right. Played line: the mover; best line: the
@@ -255,6 +258,27 @@ def doubled(b, c):
     return {f for f in files if files.count(f) > 1}
 
 
+def passed(b, c):
+    """c's passed pawns: no enemy pawn ahead on the same or a neighbouring file."""
+    return {s for s in b.pieces(chess.PAWN, c)
+            if not any(abs(chess.square_file(e) - chess.square_file(s)) <= 1 and rel(e, c) > rel(s, c)
+                       for e in b.pieces(chess.PAWN, not c))}
+
+
+def passed_pawns(lines, mover):
+    out, b0 = [], lines["played"][0][0]
+    ends = {line: lines[line][-1][0] for line in lines}
+    for line, other, c in (("played", "best", not mover), ("best", "played", mover)):
+        e = ends[line]
+        for f in sorted(files(passed(e, c)) - files(passed(ends[other], c)) - files(passed(b0, c))):
+            sq = max((s for s in passed(e, c) if chess.square_file(s) == f), key=lambda s: rel(s, c))
+            if len(e.attackers(not c, sq)) > len(e.attackers(c, sq)):
+                continue  # about to be taken
+            ply = next(i for i, (b, _) in enumerate(lines[line]) if f in files(passed(b, c)))
+            out.append(fact("passed_pawn", line, max(ply, 1), c, [sq], f"{side(c)}在 {'abcdefgh'[f]} 線得到通路兵"))
+    return out
+
+
 def pawn_weakness(lines, mover):
     out = []
     k = min(len(lines["played"]), len(lines["best"])) - 1
@@ -435,4 +459,4 @@ def facts(fen, played_pv, best_pv):
     lines = {"played": walk(fen, played_pv), "best": walk(fen, best_pv)}
     mover = chess.Board(fen).turn
     return (outposts(lines, mover) + harassed(lines, mover) + restricted_pieces(lines, mover) + pawn_weakness(lines, mover)
-            + draw_risk(lines, mover) + castling(lines, mover))
+            + passed_pawns(lines, mover) + draw_risk(lines, mover) + castling(lines, mover))

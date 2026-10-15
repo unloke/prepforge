@@ -27,6 +27,7 @@ HERE = pathlib.Path(__file__).parent
 ENGINE = ["node", str(HERE.parents[1] / "node_modules/stockfish/bin/stockfish-19-lite.js")]
 LIMIT = chess.engine.Limit(depth=12, nodes=1_500_000)  # the screen depth of a game analysis (tiered-analysis.js)
 CACHE = HERE / "sf_cache.jsonl"
+READ = []  # more caches to read (the prod-depth kernels' sf_cache.jsonl); new searches go to CACHE only
 _cache, _engine = None, None
 
 VAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100}
@@ -50,10 +51,11 @@ def analyse(b):
     global _cache, _engine
     if _cache is None:
         _cache = {}
-        if CACHE.exists():
-            for line in CACHE.read_text(encoding="utf-8").splitlines():
-                row = json.loads(line)
-                _cache[row["fen"]] = row
+        for p in [*READ, CACHE]:
+            if p.exists():
+                for line in p.read_text(encoding="utf-8").splitlines():
+                    row = json.loads(line)
+                    _cache[row["fen"]] = row
     fen = b.fen()
     if fen not in _cache:
         if _engine is None:

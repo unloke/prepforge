@@ -7,10 +7,12 @@ them). Material is recounted from the root to the line's last capture, Stockfish
 the line included, so a rook traded for a rook in two runs is no rook won; a recount that comes
 out even, or with the wrong side ahead (the mover in the played line: the line stopped too early;
 the opponent in the best line), is dropped. Lost castling speaks only when the king move answers a
-check no other move meets. The first fact from pick.rank speaks; with none, quiet() names what
-the reply does and what the best move does, from the board alone. The second joins it unless the first is a mate, the
-second is a vaguer fact (trades, draw), both are the same kind in the same line, or it is a fork
-that is not how the first fact's material is won. Sentences follow the production Coach's voice
+check no other move meets. A pawn-sized gain (net under 3) where the losing side gives a pawn
+away in the line (a quiet pawn move onto a square the other side takes, not taken back) is no
+win: an engine gambit a reader cannot follow. The first fact from pick.rank speaks; with none, quiet() names what the reply does and
+what the best move does, from the board alone (attacks on pawns are not named: a side remark
+that is not the reason). One reason per card: a second fact speaks only as the fork that wins
+the first fact's material (round 7, after the user's round-6 review). Sentences follow the production Coach's voice
 ("Blunder. Nfe5 loses a bishop after ... d4 was the move."). Marks: the move behind each fact as
 an arrow at its node, then the squares the facts name, at most three in all.
 """
@@ -30,7 +32,6 @@ PIECE = {"p": "pawn", "n": "knight", "b": "bishop", "r": "rook", "q": "queen", "
 COUNT = {2: "two", 3: "three", 4: "four"}
 GRADE = {"blunder": "Blunder.", "mistake": "Mistake."}
 SILENT = {"shield", "open_file", "enter", "king_exposed"}
-VAGUE = {"trades", "draw_risk"}
 VAL = {"p": 1, "n": 3, "b": 3, "r": 5, "q": 9}
 NUMBER = {1: "one"}
 
@@ -150,6 +151,9 @@ def phrase(f, ln, ext, a, root, row):
         return f"trades off {what}{ln.paren(a, k)}{why}", k, None, []
     what, by = f.get("what"), PIECE.get(f.get("by"), "piece")
     moves = ln.after(a, k) if played else ln.paren(a, k)
+    if t == "passed_pawn":
+        verb = f"lets {color(c)} get a passed pawn on the {sq[0][0]}-file" if played else f"gets a passed pawn on the {sq[0][0]}-file"
+        return verb + moves, k, arrow, sq[:1]
     if t == "outpost":
         verb = f"lets the {color(c).lower()} {by} settle on {sq[0]}" if played else f"puts the {by} on {sq[0]}"
         return f"{verb}, an outpost no pawn can challenge{moves}", k, arrow, sq[:1]
@@ -197,7 +201,7 @@ def recount(f, ext):
             gone[c, t] = len(ext.boards[0].pieces(pt, c)) - len(ext.boards[end].pieces(pt, c))
     net = sum(VAL[t] * (gone[chess.BLACK, t] - gone[chess.WHITE, t]) for t in VAL)
     w = net > 0
-    if not net or (w == ext.boards[0].turn) != (f["line"] == "best"):
+    if not net or (w == ext.boards[0].turn) != (f["line"] == "best") or abs(net) < 3 and gifted(ext, end, f["line"]):
         return None
     won = [t for t in VAL for _ in range(gone[not w, t])] + [f"={t}" for t in VAL for _ in range(-gone[w, t])]
     lost = [t for t in VAL for _ in range(gone[w, t])] + [f"={t}" for t in VAL for _ in range(-gone[not w, t])]
@@ -206,6 +210,20 @@ def recount(f, ext):
             won.remove(t)
             lost.remove(t)
     return dict(f, side=color(w).lower(), net=abs(net), won=won[::-1], lost=lost[::-1], end=end)
+
+
+def gifted(ln, end, line):
+    """True when the losing side gives a pawn away within plies 1..end: a quiet pawn move onto a
+    square the other side then takes on and the loser does not take back (a gambit in the engine's
+    line, too abstract to call a win). The played move itself (ply 1) is the mistake, not a gift."""
+    for j in range(2, end + 1):
+        m, prev = ln.moves[j - 1], ln.moves[j - 2]
+        b = ln.boards[j - 2]
+        if (j - 1 >= (3 if line == "played" else 2) and b.piece_type_at(prev.from_square) == chess.PAWN
+                and not b.is_capture(prev) and m.to_square == prev.to_square and ln.boards[j - 1].is_capture(m)
+                and not (j < len(ln.moves) and ln.moves[j].to_square == m.to_square)):
+            return True
+    return False
 
 
 def forced_out(f, row):
@@ -227,13 +245,9 @@ def said(cands, row, ext):
 
 
 def second(a, b):
-    if a["type"] in ("mate", "forced_mate") or b["type"] in VAGUE:
-        return False
-    if a["type"] == b["type"] and a["line"] == b["line"]:
-        return False
-    if b["type"] == "fork":  # a fork earns a place only as the way the first fact's material is won
-        return a["type"] == "material" and a["line"] == b["line"] and bool(a["at"]) and a["at"][0] in b["targets"]
-    return True
+    """One reason per card: a second fact speaks only as the fork that wins the first fact's material."""
+    return (b["type"] == "fork" and a["type"] == "material" and a["line"] == b["line"] and bool(a["at"])
+            and a["at"][0] in b["targets"])
 
 
 def last_capture(ln):
@@ -272,12 +286,13 @@ def quiet(lines, ext, root):
         if b2.is_check() or b1.is_capture(r) and r.to_square != pl.moves[0].to_square:  # not a plain recapture
             allows = f"allows {pl.seq(2, 2)}"
         elif len(pl.moves) > 2:
-            new = [t for t in hits(b2, r.to_square, me) if t not in b1.attacks(r.from_square) and answered(pl, 2, t)]
+            new = [t for t in hits(b2, r.to_square, me) if t not in b1.attacks(r.from_square) and answered(pl, 2, t)
+                   and b2.piece_type_at(t) != chess.PAWN]
             if new:
                 allows = f"allows {pl.seq(2, 2)}, which attacks {pl.name(2, chess.square_name(new[0]))}"
     ep, eb = ext["played"], ext["best"]
     d = balance(eb.boards[last_capture(eb)], me) - balance(ep.boards[last_capture(ep)], me)
-    if d >= 1:
+    if d >= 1 and not gifted(eb, last_capture(eb), "best") and not gifted(ep, last_capture(ep), "played"):
         words = {1: "a pawn", 2: "two pawns", 3: "a piece", 5: "a rook", 9: "a queen"}.get(d, f"{d} pawns' worth")
         return allows, f"it comes out {words} better{eb.paren(1, last_capture(eb))}"
     b1 = bl.boards[1]
@@ -288,7 +303,8 @@ def quiet(lines, ext, root):
                 and r not in b1.legal_moves):
             return allows, f"it stops {pl.seq(2, 2)}"
     m = bl.moves[0]
-    new = [t for t in hits(b1, m.to_square, not me) if t not in root.attacks(m.from_square) and answered(bl, 1, t)]
+    new = [t for t in hits(b1, m.to_square, not me) if t not in root.attacks(m.from_square) and answered(bl, 1, t)
+           and b1.piece_type_at(t) != chess.PAWN]
     if new and not b1.is_check():
         return allows, f"it attacks {bl.name(1, chess.square_name(new[0]))}"
     return allows, ""
@@ -321,12 +337,8 @@ def explain(row, cands=None):
             else:
                 body = f"misses {B}, which {verb}"
             out.append(f"{grade} {P} {body}." if grade else f"{P} is slightly inaccurate: it {body}.")
-        elif f["type"] == "fork":
+        else:  # the fork that wins the material
             out.append(f"The key move is {ln.seq(f['ply'], f['ply'])}, forking {verb.rsplit('fork', 1)[1].split(' ', 1)[1]}.")
-        elif line in shown:
-            out.append(f"It also {verb}.")
-        else:
-            out.append(f"{P} itself {verb}." if line == "played" else f"{B} was the move: it {verb}.")
         shown[line] = max(last, shown.get(line, 0))
         if arrow:
             arrows.append(arrow)

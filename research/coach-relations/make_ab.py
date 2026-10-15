@@ -13,7 +13,8 @@ second run builds the pairs. Cards: inaccuracies, mistakes and blunders that no
 review round and no earlier A/B (ab*/ids.json) has shown, 60 of them; with --reviewed the review
 rounds' cards may be drawn too (they tuned pick.py, not the wording). Order and A/B side come from os.urandom; the key is sealed
 in ab/run-output/BLIND-KEY.json. Codex gets ab/run-output/judge/batchN.jsonl and RUBRIC.md (copied from
-RUBRIC.md here; v2 from round 7 on, after the user's own round-6 review).
+RUBRIC.md here; v2 from round 7 on, after the user's own round-6 review). Once the key is sealed, a
+rerun keeps its order and sides and rewrites only BLINDED.jsonl (the review board's lines, scores and game).
 """
 import hashlib
 import json
@@ -76,7 +77,8 @@ def v5_cards(AB):
 
 def reads_cards(AB, reads):
     """The same from prod-depth kernel outputs (<reads>/fresh*/cards.jsonl, explain.jsonl): both
-    programs on production's reads. Draws PER_GRADE unseen cards of each error grade once."""
+    programs on production's reads. Draws PER_GRADE unseen cards of each error grade once. explain.py
+    runs again here (the kernel's text is from the code it shipped with)."""
     rows, games = {}, {}
     for d in sorted(reads.glob("fresh*")):
         cards = {c["id"]: c for c in jsonl(d / "cards.jsonl")}
@@ -89,7 +91,9 @@ def reads_cards(AB, reads):
             ids += rng.sample(sorted(i for i, (e, _) in rows.items() if e["grade"] == g and i not in seen), PER_GRADE)
         AB.mkdir(exist_ok=True)
         (AB / "ids.json").write_text(json.dumps(ids) + "\n", encoding="utf-8")
-    return [(i, *rows[i], rows[i][0], game(games[i.split("/")[0]], i)) for i in json.loads((AB / "ids.json").read_text(encoding="utf-8"))]
+    tactics.READ += [d / "sf_cache.jsonl" for d in reads.glob("fresh*")]
+    return [(i, *rows[i], explain(rows[i][0]), game(games[i.split("/")[0]], i))
+            for i in json.loads((AB / "ids.json").read_text(encoding="utf-8"))]
 
 
 def game(cards, i):

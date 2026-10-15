@@ -3,7 +3,7 @@
   py research/coach-relations/pick.py
 
 Mate first; then material that wins or loses a piece (net 3 or more), largest net first; then lost
-castling rights; then smaller material, largest net first; then the other tactical facts; then the
+castling rights; then smaller material, largest net first; then the other tactical facts; then a new passed pawn; then the
 positional facts that name a weakness (pawn weakness, restricted, outpost, harassed piece) before
 the vaguer shield, trades, open file and enter. Material the mover wins in the played line goes
 last: the line stopped before the opponent takes it back (1 key in 18 ratings). Ties keep the
@@ -15,7 +15,7 @@ import pathlib
 
 HERE = pathlib.Path(__file__).parent
 ORDER = ["mate", "forced_mate", "mate_threat", "material_big", "castling", "material_small", "fork", "king_exposed",
-         "pawn_weakness", "restricted", "outpost", "piece_harassed", "shield", "trades", "open_file", "enter", "draw_risk"]
+         "passed_pawn", "pawn_weakness", "restricted", "outpost", "piece_harassed", "shield", "trades", "open_file", "enter", "draw_risk"]
 
 
 def unfinished(c, mover):
