@@ -1,6 +1,7 @@
 """Unblinds the Codex verdicts of make_ab.py's A/B and counts them.
 
   py research/coach-relations/ab_tally.py ab2
+  py research/coach-relations/ab_tally.py ab6 --judge judge-v2   (another judge run of the same pairs)
 
 Wins, ties and both-bad by program, an exact two-sided sign test on the decisive pairs, issue tags
 per program (count and share of pairs), the split by grade and by what explain.py led with (its
@@ -28,14 +29,15 @@ def kind(facts):
 
 def main():
     HERE = pathlib.Path(__file__).parent / sys.argv[1] / "run-output"
+    J = HERE / (sys.argv[sys.argv.index("--judge") + 1] if "--judge" in sys.argv else "judge")
     key = json.loads((HERE / "BLIND-KEY.json").read_text(encoding="utf-8"))["pairs"]
     cards = {}
-    for f in sorted((HERE / "judge").glob("batch*.jsonl")):
+    for f in sorted(J.glob("batch*.jsonl")):
         for l in f.read_text(encoding="utf-8").splitlines():
             r = json.loads(l)
             cards[r["pair_id"]] = r
     verdicts = {}
-    for f in sorted((HERE / "judge/out").glob("batch*.jsonl")):
+    for f in sorted((J / "out").glob("batch*.jsonl")):
         for l in f.read_text(encoding="utf-8").splitlines():
             if l.strip():
                 r = json.loads(l)
