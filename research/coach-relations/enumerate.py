@@ -24,7 +24,8 @@ setting; prod-depth/ makes the same rows from production's lite 12/16 reads.
 Pieces are named by their square in the root position. A candidate is an event (type, piece)
 found in one line and not the other. enter, fork and mate_threat are kept only for the side the
 line favours (the opponent in the played line, the mover in the best line), and an entry that
-captures without check or a fork with check is dropped from a line that reports material or mate.
+captures without check is dropped from a line that reports material or mate, a fork with check from
+a line with mate.
 Writes candidates.jsonl and reports, on the v7 misses in
 gold.jsonl, whether the reason the reviewer named is among the candidates.
 """
@@ -224,10 +225,15 @@ def candidates(r):
     # entering, forking or threatening mate explains a line only for the side that line favours
     out = [c for c in out if c["type"] not in ("enter", "fork", "mate_threat")
            or (root.piece_at(chess.parse_square(c["piece"])).color == root.turn) == (c["line"] == "best")]
-    # a capture on entry or a fork with check is the material or mate its line already reports
+    # a capture on entry is the material or mate its line already reports, a fork with check the mate
+    # (next to material it stays, marked "mechanism": explain.py names it only as the way the
+    # material is won)
     tac = {c["line"] for c in out if c["type"] in ("material", "mate", "forced_mate")}
-    out = [c for c in out if not (c["line"] in tac and (c["type"] == "enter" and c["capture"] and not c["check"]
-                                                        or c["type"] == "fork" and c["check"]))]
+    out = [c for c in out if not (c["line"] in tac and c["type"] == "enter" and c["capture"] and not c["check"]
+                                  or c["line"] in mating and c["type"] == "fork" and c["check"])]
+    for c in out:
+        if c["type"] == "fork" and c["check"] and c["line"] in tac:
+            c["mechanism"] = True  # speaks only as the way its line's material is won
     out += positional.facts(r["fen"], r["played_pv"], r["best_pv"])
     # a card about lost material or mate does not need positional facts, nor a drawing check next to a mate
     if any(c["type"] in ("material", "mate", "forced_mate") for c in out):

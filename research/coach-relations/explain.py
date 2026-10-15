@@ -3,13 +3,14 @@
   py research/coach-relations/explain.py [card id ...]     # default: the round-4 cards
 
 Shield, open file, enter and king exposure never speak (the first blind A/B lost 11 of 12 of
-them). Material is recounted from the root to the line's last capture, Stockfish's captures past
+them), nor a pawn left without pawn support (round 7: a remark, not a reason). Material is recounted from the root to the line's last capture, Stockfish's captures past
 the line included, so a rook traded for a rook in two runs is no rook won; a recount that comes
 out even, or with the wrong side ahead (the mover in the played line: the line stopped too early;
 the opponent in the best line), is dropped. Lost castling speaks only when the king move answers a
 check no other move meets. A pawn-sized gain (net under 3) where the losing side gives a pawn
 away in the line (a quiet pawn move onto a square the other side takes, not taken back) is no
-win: an engine gambit a reader cannot follow. The first fact from pick.rank speaks; with none, quiet() names what the reply does and
+win: an engine gambit a reader cannot follow. Neither is a count whose last capture the losing side
+can simply take back: the line (and Stockfish's capture tail) stopped at its edge. The first fact from pick.rank speaks; with none, quiet() names what the reply does and
 what the best move does, from the board alone (attacks on pawns are not named: a side remark
 that is not the reason). One reason per card: a second fact speaks only as the fork that wins
 the first fact's material (round 7, after the user's round-6 review). Sentences follow the production Coach's voice
@@ -97,6 +98,10 @@ class Line:
         return {"line": line, "ply": k, "from": chess.square_name(m.from_square), "to": chess.square_name(m.to_square)}
 
 
+def kings_first(ln, k, squares):
+    return sorted(squares, key=lambda s: ln.name(k, s) != "the king")
+
+
 def phrase(f, ln, ext, a, root, row):
     """(verb phrase for what the line's first move does, last ply it needs, arrow, squares). The
     played move's phrase shows the moves from ply a (at least 2), the best move's from ply a. ext is
@@ -122,7 +127,7 @@ def phrase(f, ln, ext, a, root, row):
         what = pieces(f["won"]) + (f" for {pieces(f['lost'])}" if f["lost"] else "")
         return (f"loses {what}{ext.after(a, f['end'])}" if played else f"wins {what}{ext.paren(a, f['end'])}"), f["end"], arrow, []
     if t == "fork":
-        targets = " and ".join(ln.name(k, s) for s in f["targets"])
+        targets = " and ".join(ln.name(k, s) for s in kings_first(ln, k, f["targets"]))
         if played:
             verb = f"allows {ln.seq(a, k)}, forking {targets}"
         else:
@@ -169,8 +174,6 @@ def phrase(f, ln, ext, a, root, row):
                 "round_trip": f"sends the {by} to {fr} and straight back to {to}"}[what]
         return verb + moves, k, arrow, sq
     if t == "pawn_weakness":
-        if what == "chain":
-            return f"leaves the pawn on {sq[1]} without pawn support", 1, arrow, sq[:2]
         if what == "hole":
             return (f"gives up {sq[1]}: no pawn can cover it any more, and a {color(not c).lower()} {by} can settle there",
                     1, arrow, sq[:2])
@@ -203,6 +206,8 @@ def recount(f, ext):
     w = net > 0
     if not net or (w == ext.boards[0].turn) != (f["line"] == "best") or abs(net) < 3 and gifted(ext, end, f["line"]):
         return None
+    if ext.boards[end].turn != w and edge(ext, end):
+        return None
     won = [t for t in VAL for _ in range(gone[not w, t])] + [f"={t}" for t in VAL for _ in range(-gone[w, t])]
     lost = [t for t in VAL for _ in range(gone[w, t])] + [f"={t}" for t in VAL for _ in range(-gone[not w, t])]
     for t in list(won):  # like for like cancels out
@@ -210,6 +215,13 @@ def recount(f, ext):
             won.remove(t)
             lost.remove(t)
     return dict(f, side=color(w).lower(), net=abs(net), won=won[::-1], lost=lost[::-1], end=end)
+
+
+def edge(ln, end):
+    """True when the line ends on the capture at ply end and the side to move can take back on that
+    square: the count holds only because the line stops there."""
+    b = ln.boards[end]
+    return 0 < end == len(ln.moves) and any(b.is_capture(m) for m in b.legal_moves if m.to_square == ln.moves[end - 1].to_square)
 
 
 def gifted(ln, end, line):
@@ -239,7 +251,8 @@ def said(cands, row, ext):
     for f in cands:
         if f["type"] == "material":
             f = recount(f, ext[f["line"]])
-        if f and f["type"] not in SILENT and (f["type"] != "castling" or forced_out(f, row)):
+        if (f and f["type"] not in SILENT and f.get("what") != "chain"
+                and (f["type"] != "castling" or forced_out(f, row))):
             out.append(f)
     return out
 
@@ -292,7 +305,9 @@ def quiet(lines, ext, root):
                 allows = f"allows {pl.seq(2, 2)}, which attacks {pl.name(2, chess.square_name(new[0]))}"
     ep, eb = ext["played"], ext["best"]
     d = balance(eb.boards[last_capture(eb)], me) - balance(ep.boards[last_capture(ep)], me)
-    if d >= 1 and not gifted(eb, last_capture(eb), "best") and not gifted(ep, last_capture(ep), "played"):
+    ends = {k: last_capture(ln) for k, ln in ext.items()}
+    if (d >= 1 and not gifted(eb, ends["best"], "best") and not gifted(ep, ends["played"], "played")
+            and not edge(eb, ends["best"]) and not edge(ep, ends["played"])):
         words = {1: "a pawn", 2: "two pawns", 3: "a piece", 5: "a rook", 9: "a queen"}.get(d, f"{d} pawns' worth")
         return allows, f"it comes out {words} better{eb.paren(1, last_capture(eb))}"
     b1 = bl.boards[1]
@@ -319,16 +334,19 @@ def explain(row, cands=None):
                                               [chess.Move.from_uci(u) for u in tactics.tail(ln.boards[-1], root.turn)[0]]))
            for k, ln in lines.items()}
     cands = said(cands if cands is not None else candidates(row), row, ext)
-    ranked = rank(cands, mover)
-    facts = ranked[:2] if len(ranked) > 1 and second(*ranked[:2]) else ranked[:1]
+    ranked = rank([c for c in cands if not c.get("mechanism")], mover)
+    facts = ranked[:1] + [c for c in ranked[1:] + [c for c in cands if c.get("mechanism")] if second(ranked[0], c)][:1] if ranked else []
     if [f["type"] for f in facts] == ["trades"] and any(quiet(lines, ext, root)):  # a trade alone says little
         facts = []
     grade = GRADE.get(row["grade"])
     out, arrows, squares, shown = [], [], [], {}
+    fork_first = len(facts) == 2 and facts[0]["line"] == "best" and facts[1]["ply"] == 1
     for i, f in enumerate(facts):
         line = f["line"]
         ln = lines[line]
         verb, last, arrow, sq = phrase(f, ln, ext[line], shown.get(line, 0) + 1, root, row)
+        if i == 0 and fork_first:  # the best move itself forks: one sentence names the fork and its gain
+            verb = f"forks {' and '.join(ln.name(1, s) for s in kings_first(ln, 1, facts[1]['targets']))} and {verb}"
         if i == 0:
             if line == "played":
                 body = verb
@@ -337,7 +355,7 @@ def explain(row, cands=None):
             else:
                 body = f"misses {B}, which {verb}"
             out.append(f"{grade} {P} {body}." if grade else f"{P} is slightly inaccurate: it {body}.")
-        else:  # the fork that wins the material
+        elif not fork_first:  # the fork that wins the material, later in the line
             out.append(f"The key move is {ln.seq(f['ply'], f['ply'])}, forking {verb.rsplit('fork', 1)[1].split(' ', 1)[1]}.")
         shown[line] = max(last, shown.get(line, 0))
         if arrow:

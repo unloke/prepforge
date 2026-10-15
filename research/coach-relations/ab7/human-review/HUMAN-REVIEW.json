@@ -3,8 +3,8 @@
   "experiment": "ab7",
   "blind_data_sha256": "6631fb698aa569b5b9b7989a1f8cee75e0cccd6cbb47a0f4a3c99ed56536abd4",
   "pairs_total": 90,
-  "completed": 10,
-  "updated_at": "2026-10-15T04:18:40.175Z",
+  "completed": 20,
+  "updated_at": "2026-10-15T04:33:36.650Z",
   "reviews": [
     {
       "pair_id": "pair-001",
@@ -165,6 +165,160 @@
         "B": "ae06db4899c3e6c26c27651848eb4cc2b6edc46ed159532441ef9ea75d507105"
       },
       "updated_at": "2026-10-15T04:18:39.859Z"
+    },
+    {
+      "pair_id": "pair-011",
+      "verdict": "both_bad",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "實際上這個的問題是f3不攻擊e4了 所以對方有Be4這個超好堡壘",
+      "content_sha256": {
+        "A": "187d63abba7d84a4ba2a3356eb1aa979a20cce827b762a3e016eda44ac28cdba",
+        "B": "29db9049d77c0e606cd83c0b84272b09bd87113dda987fdfcb91fa4dbd7b120b"
+      },
+      "updated_at": "2026-10-15T04:26:10.917Z"
+    },
+    {
+      "pair_id": "pair-012",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "factual_error"
+        ],
+        "B": []
+      },
+      "note": "A在唬爛吧 哪裡贏兵了 我都沒看到",
+      "content_sha256": {
+        "A": "71615a45891bbd3a8f6e57c2f0397da4e086f9c63422c9fa1e13c77731364162",
+        "B": "4c2b6bf013d3d029a1dd7120420ff3baaf6d98829d6d6c19e0d41466faf41631"
+      },
+      "updated_at": "2026-10-15T04:26:59.436Z"
+    },
+    {
+      "pair_id": "pair-013",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "970373a375a3cd5cc0c061dbb4870eb0b8b0e908643e646024a762efb305292c",
+        "B": "59319ee626a38c49b610a462bbc06ebec0447a45063b9470618b890cdda6050f"
+      },
+      "updated_at": "2026-10-15T04:27:18.451Z"
+    },
+    {
+      "pair_id": "pair-014",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "1ceb64e52d9bbc2f105fef27f7154381db96093dba74eebaf5b8a5c2c4eace28",
+        "B": "2b55f67f9eb9887f2046f9914cf6272c8648102592be9b818ad01842f6747729"
+      },
+      "updated_at": "2026-10-15T04:30:42.026Z"
+    },
+    {
+      "pair_id": "pair-015",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "02d84f58991f4643f7c7a4e9ddcadc7220fec4b790540a3e5c6830135f98cef9",
+        "B": "caeeaadc00f51f01f775f59903885901de920ec0497bb961693fc94777e25397"
+      },
+      "updated_at": "2026-10-15T04:31:18.400Z"
+    },
+    {
+      "pair_id": "pair-016",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "25bd6722378a7561e4794c2fc3f45e541cb4e6427db2d2c8e3d74f3ca748ef6b",
+        "B": "95d296a48dcf2db79dc0aace15441fd313f49dfde65430333a326e699d2cea7d"
+      },
+      "updated_at": "2026-10-15T04:31:35.224Z"
+    },
+    {
+      "pair_id": "pair-017",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "8a8a1b5408c151ce25c6cb471b5bb84b7809f8175bc001eb257b39346c990432",
+        "B": "145120ab96804544a179fdef3b436ef3c11782059fc1bb0559c741cf0ca3f74d"
+      },
+      "updated_at": "2026-10-15T04:31:49.758Z"
+    },
+    {
+      "pair_id": "pair-018",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "b8444b1278575bffc479b6bf7b0448d234ec310722aaede4d9d9cc663b600aa9",
+        "B": "946e4e58b32e4ef7300f3d42a24ad520f1384409662fe12cdec05bb07f44e932"
+      },
+      "updated_at": "2026-10-15T04:31:59.208Z"
+    },
+    {
+      "pair_id": "pair-019",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "8c0db41c3d0f9e4534e3eef13e5015fc1b3ee4808d493e901831625f3788d87c",
+        "B": "bf625812cbdae7ab9686e1d731c28cb6e8870a524eff3efe950ee16698d13534"
+      },
+      "updated_at": "2026-10-15T04:32:15.994Z"
+    },
+    {
+      "pair_id": "pair-020",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "B還是有點太長了 不過講解是好了一點 就是說現在再Re2會發生什麼補進來會好點 當然不強求 現在這樣也還行",
+      "content_sha256": {
+        "A": "4c557bb06edefcb18de8bd82aa7c9e2e65b6d405fcd16251a6c25955679a0537",
+        "B": "a24c9bbd09e77926a56f0965990275db7bbeb3f2280f01f5fed3c34f8bcaf877"
+      },
+      "updated_at": "2026-10-15T04:33:36.348Z"
     }
   ]
 }

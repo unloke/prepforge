@@ -55,6 +55,9 @@ Specifically:
 - **Counts must not stop at the edge of the line.** If the supplied line ends on a capture that the
   other side can simply take back, or the count only holds because the line stops there, the
   material claim is unproven: mark `hallucination`.
+- **Same substance is a `tie`.** When both texts give the same reason with the same facts, the
+  verdict is `tie`: do not decide on wording ("hangs" or "loses"), a square name, or a small extra
+  that does not change what the reader learns.
 - **Coach voice.** Plain words a coach would say ("wins a knight") are fine; extra precision
   ("for a pawn") is welcome but not required.
 
