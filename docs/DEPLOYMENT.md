@@ -38,8 +38,8 @@ The live deploy runs on Render's **free tier**.
    | `PREPFORGE_STRIPE_SECRET_KEY` | For billing | Stripe secret key. |
    | `PREPFORGE_STRIPE_WEBHOOK_SECRET` | For billing | Stripe webhook signing secret. |
    | `PREPFORGE_STRIPE_PRICE_PRO` | For billing | Stripe Price ID for Pro plan. |
-   | `PREPFORGE_GOOGLE_CLIENT_ID` | Optional | Google OAuth sign-in. |
-   | `PREPFORGE_GOOGLE_CLIENT_SECRET` | Optional | Google OAuth sign-in. |
+   | `GOOGLE_CLIENT_ID` | Optional | Google OAuth sign-in. |
+   | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth sign-in. |
    | `PREPFORGE_SENTRY_DSN` | Optional | Error reporting (dark-by-default). |
    | `PREPFORGE_PUBLIC_BASE_URL` | For password recovery | Public HTTPS origin used in reset links. |
    | `PREPFORGE_SMTP_HOST` / `PREPFORGE_SMTP_PORT` | For password recovery | SMTP service with STARTTLS; port defaults to 587. |
