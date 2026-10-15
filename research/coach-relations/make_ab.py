@@ -59,7 +59,7 @@ def answer(text):
 
 def unseen():
     seen = set()
-    for f in HERE.glob("ab*/ids.json"):
+    for f in [*HERE.glob("ab*/ids.json"), *HERE.glob("notes*/ids.json")]:
         seen |= set(json.loads(f.read_text(encoding="utf-8")))
     return seen
 
