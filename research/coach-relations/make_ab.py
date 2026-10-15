@@ -5,10 +5,12 @@
   py research/coach-relations/make_ab.py ab2
   node research/coach-ab-review/serve.mjs research/coach-relations/ab2 --port 5208
   py research/coach-relations/make_ab.py ab6 --reads artifacts/benchmarks/coach-relations-20261014/prod-depth/out
+  py research/coach-relations/make_ab.py ab10 --reads ... --guard     # only cards the defender mechanism speaks on
 
 Rounds 1-5 (ab..ab5): the cards and both programs' lines are the coach-v5 depth-22 full-NNUE
 reads, not production's depth. With --reads (round 6 on), both programs read production's own
-reads (prod-depth/ kernels) and one run draws PER_GRADE cards of each error grade. Otherwise the first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
+reads (prod-depth/ kernels) and one run draws PER_GRADE cards of each error grade (with --guard, GUARD cards of any grade where
+explain.py names a lost guard: a targeted round, as it speaks on ~2%). Otherwise the first run draws the cards (writes <dir>/ids.json), run.mjs builds the production prose, the
 second run builds the pairs. Cards: inaccuracies, mistakes and blunders that no
 review round and no earlier A/B (ab*/ids.json) has shown, 60 of them; with --reviewed the review
 rounds' cards may be drawn too (they tuned pick.py, not the wording). Order and A/B side come from os.urandom; the key is sealed
@@ -33,7 +35,7 @@ sys.path.append(str(pathlib.Path(__file__).parent / "prod-depth"))
 from explain_cards import row  # noqa: E402
 
 HERE = pathlib.Path(__file__).parent
-N, BATCH, PER_GRADE = 60, 30, 30
+N, BATCH, PER_GRADE, GUARD = 60, 30, 30, 30
 ERRORS = ("inaccuracy", "mistake", "blunder")
 
 
@@ -83,6 +85,8 @@ def reads_cards(AB, reads):
     programs on production's reads. Draws PER_GRADE unseen cards of each error grade once. explain.py
     runs again here on the full PVs (explain_cards.row; the kernels' rows are the old cut lines)."""
     rows, games = {}, {}
+    # every search explain.py needs: the kernels' own and the explain-* reruns' (prod-depth/package.py --explain)
+    tactics.READ += [d / "sf_cache.jsonl" for d in reads.glob("fresh*")] + sorted(reads.parents[1].glob("explain-*/*/explain/sf_cache-*.jsonl"))
     for d in sorted(reads.glob("fresh*")):
         cards = {c["id"]: c for c in jsonl(d / "cards.jsonl")}
         rows.update({e["id"]: (row(cards[e["id"]]), cards[e["id"]]) for e in jsonl(d / "explain.jsonl") if "text" in e})
@@ -90,11 +94,12 @@ def reads_cards(AB, reads):
             games.setdefault(c["id"].split("/")[0], []).append(c)
     if not (AB / "ids.json").exists():
         seen, rng, ids = unseen(), random.Random(int.from_bytes(os.urandom(16), "big")), []
-        for g in ERRORS:
+        if "--guard" in sys.argv:
+            ids = rng.sample(sorted(i for i, (e, _) in rows.items() if i not in seen and explain(e)["guard"]), GUARD)
+        for g in () if ids else ERRORS:
             ids += rng.sample(sorted(i for i, (e, _) in rows.items() if e["grade"] == g and i not in seen), PER_GRADE)
         AB.mkdir(exist_ok=True)
         (AB / "ids.json").write_text(json.dumps(ids) + "\n", encoding="utf-8")
-    tactics.READ += [d / "sf_cache.jsonl" for d in reads.glob("fresh*")]
     return [(i, *rows[i], explain(rows[i][0]), game(games[i.split("/")[0]], i))
             for i in json.loads((AB / "ids.json").read_text(encoding="utf-8"))]
 

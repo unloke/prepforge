@@ -1,0 +1,245 @@
+{
+  "seed_hex": "363fcc2b5963ada8d9beccd773252223",
+  "pairs": {
+    "pair-001": {
+      "id": "lJ77EG2g/31",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-002": {
+      "id": "qwDd53VF/43",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-003": {
+      "id": "pWs34LKm/20",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-004": {
+      "id": "FSkgvV2E/40",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-005": {
+      "id": "jUfk3nGI/26",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-006": {
+      "id": "8isWfhZj/30",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-007": {
+      "id": "OW36e3Ps/28",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-008": {
+      "id": "cklM9vsS/38",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-009": {
+      "id": "CPDDgugd/12",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-010": {
+      "id": "1nvnSEVC/99",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-011": {
+      "id": "pOxHlHeQ/8",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-012": {
+      "id": "EqSC4jnk/63",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-013": {
+      "id": "QNnp7Dds/7",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-014": {
+      "id": "fj8Qy0UC/16",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-015": {
+      "id": "YVzk5mDm/46",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-016": {
+      "id": "Z0Cx91Uh/19",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-017": {
+      "id": "TREhSdVM/27",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-018": {
+      "id": "YPKJiyWX/39",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-019": {
+      "id": "PpsmKTAZ/66",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-020": {
+      "id": "JLDAxqct/24",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-021": {
+      "id": "7szGCmj2/12",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-022": {
+      "id": "h37U85CH/47",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-023": {
+      "id": "JMN6bvY3/46",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-024": {
+      "id": "jX4zmQIo/48",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-025": {
+      "id": "trOtBGm9/53",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-026": {
+      "id": "z4OH5yBf/58",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-027": {
+      "id": "sNlSeD4s/59",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-028": {
+      "id": "FPbFTB92/19",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-029": {
+      "id": "YmvxwgHG/14",
+      "A": "relations",
+      "B": "production",
+      "facts": [
+        "material"
+      ]
+    },
+    "pair-030": {
+      "id": "OlvbbxXn/38",
+      "A": "production",
+      "B": "relations",
+      "facts": [
+        "material"
+      ]
+    }
+  }
+}
