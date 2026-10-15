@@ -295,6 +295,8 @@ def pawn_weakness(lines, mover):
             gone = doubled(ends[other], c) - doubled(ends[line], c)
             for f in sorted(new - doubled(b0, c) if hurt else gone & doubled(b0, c)):
                 pawns = [s for s in ends[line].pieces(chess.PAWN, c) if chess.square_file(s) == f]
+                if not pawns:
+                    continue  # both pawns gone from the file: nothing was undoubled
                 if hurt and any(len(ends[line].attackers(not c, s)) > len(ends[line].attackers(c, s)) for s in pawns):
                     continue  # a pawn about to be taken back is not a lasting structure
                 if not hurt and not any(b.turn == c and b.piece_type_at(m.from_square) == chess.PAWN and chess.square_file(m.from_square) == f

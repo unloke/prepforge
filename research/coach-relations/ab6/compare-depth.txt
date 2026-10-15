@@ -1,0 +1,85 @@
+moves: 860 depth-22 cards, 860 found in the production-depth run
+
+grades: same 575/860; error at depth 22 449, at production depth 487
+  depth-22 inaccuracy: inaccuracy 48, mistake 39, blunder 14, good 9, best 3
+  depth-22 mistake: mistake 44, inaccuracy 29, blunder 20, best 3
+  depth-22 blunder: blunder 180, mistake 50, inaccuracy 8, good 1, best 1
+
+reads (plies):
+  before PV: production median 14, p10 6, p90 20; depth 22 median 21, p10 9, p90 29
+  after PV: production median 13, p10 3, p90 20; depth 22 median 20, p10 4, p90 28
+  read depth at production: {0: 7, 12: 478, 16: 1235}
+fresh pool, inaccuracy (10669): bare 20.3%, reply only 4.3%, quiet only 20.9%, a fact 54.4%
+fresh pool, mistake (4539): bare 14.5%, reply only 4.4%, quiet only 17.9%, a fact 63.2%
+fresh pool, blunder (8241): bare 5.5%, reply only 3.0%, quiet only 9.3%, a fact 82.2%
+fresh pool, all errors (23449): bare 14.0%, reply only 3.9%, quiet only 16.2%, a fact 65.9%
+
+lines of the 432 moves both call an error (864 lines each side):
+  short: depth 22 0, production 0
+  mid-exchange: depth 22 51, production 45
+
+explain.py lead:
+  bare: depth 22 39 (9%), production 31 (7%)
+  castling: depth 22 6 (1%), production 8 (2%)
+  draw_risk: depth 22 2 (0%), production 0 (0%)
+  fork: depth 22 9 (2%), production 13 (3%)
+  mate: depth 22 77 (18%), production 75 (17%)
+  material: depth 22 180 (42%), production 194 (45%)
+  outpost: depth 22 4 (1%), production 0 (0%)
+  pawn_weakness: depth 22 35 (8%), production 35 (8%)
+  piece_harassed: depth 22 12 (3%), production 10 (2%)
+  quiet only: depth 22 40 (9%), production 37 (9%)
+  reply only: depth 22 10 (2%), production 11 (3%)
+  restricted: depth 22 4 (1%), production 4 (1%)
+  trades: depth 22 14 (3%), production 14 (3%)
+  same lead kind: 345/432
+
+material claims (moves where either side makes one): {'same': 129, 'different': 52, 'depth 22 only': 16, 'production only': 27}
+
+BTgoPbQe/8 [different]
+  22:   Mistake. e5 loses a pawn after 5.Nxe5 Bd6 6.Nxc6 bxc6. g6 was the move: it wins a pawn (4...g6 5.O-O Bg7 6.c4 dxc4).
+  prod: Mistake. e5 loses a pawn after 5.Nxe5 Bd6 6.Nxc6 bxc6. e6 was the move.
+
+CWUiHxhc/51 [depth 22 only]
+  22:   Mistake. a5 loses a pawn after 26...Nxd5 27.Nxg7 Kxg7 28.Qxd5 bxa5. Qb5 was the move.
+  prod: a5 is slightly inaccurate: it allows 26...Nxd5. Qb5 was the move: it attacks the rook on e8.
+
+CWUiHxhc/60 [different]
+  22:   a4 is slightly inaccurate: it loses a knight after 31.Qb5 Rc8 32.Rxg7+ Rxg7 33.Nxg7 Qxc3 34.Rxe7. Qb2 was the move.
+  prod: Mistake. a4 loses a pawn after 31.Qb5 Rc8 32.Nxg7. Kh8 was the move.
+
+CWUiHxhc/61 [different]
+  22:   Blunder. c4 misses Qb5, which wins a knight (31.Qb5 Rc8 32.Rxg7+ Rxg7 33.Nxg7 Qxc3 34.Rxe7).
+  prod: Blunder. c4 misses Qb5, which wins a knight and two pawns (31.Qb5 Rc8 32.Nxg7 Qe1 33.Nxf5+ Kh8 34.Nxe7).
+
+E0kPh6JS/16 [different]
+  22:   Mistake. d4 loses a pawn after 9.exd4. O-O was the move.
+  prod: Mistake. d4 loses a knight and a pawn for a bishop after 9.exd4 a5 10.Bb5 axb4 11.Bxc6+ bxc6 12.axb4 Rxa1 13.Qxa1. O-O was the move.
+
+EK0L0K5t/51 [different]
+  22:   Blunder. Kg1 loses a rook after 26...Rxc6 27.h4 Bxh1 28.Kxh1 Rxc3 29.Nxc3. Bxf3 was the move.
+  prod: Blunder. Kg1 misses Bxf3, which wins a bishop (26.Bxf3 Rxc3 27.Nxc3). Kg1 itself loses a bishop after 26...Rxc6 27.Rxc6 Bxc6.
+
+FVAINHA2/14 [depth 22 only]
+  22:   Blunder. b4 misses h6, which wins a bishop (7...h6 8.O-O Nf6 9.Nh4 Nxd5).
+  prod: Mistake. b4 allows 8.axb4, which attacks the pawn on c5. h6 was the move.
+
+IZexjDK9/16 [different]
+  22:   Blunder. Ne4 loses a knight after 9.Nxe4. c6 was the move.
+  prod: Blunder. Ne4 loses a pawn after 9.Nxe4 a6 10.Nxd4 Qxd4. c6 was the move.
+
+IZexjDK9/18 [production only]
+  22:   Blunder. fxe4 allows 10.Qh5+ Kf8 11.Bc4, threatening mate on f7. O-O was the move.
+  prod: Mistake. fxe4 allows 10.Qh5+ Kf8 11.Bc4, threatening mate on f7. Nc6 was the move: it wins a knight for a pawn (9...Nc6 10.Ng5 d3 11.Qxd3 Bxg5 12.Qxd8+ Kxd8).
+
+Ielcto2n/64 [production only]
+  22:   Mistake. Kf7 allows 33.f6, which attacks the pawn on g7. Re8 was the move.
+  prod: Blunder. Kf7 misses Re8, which wins a pawn (32...Re8 33.f6 Rxe5).
+
+MCIbrN0I/20 [different]
+  22:   O-O is slightly inaccurate: it loses a bishop after 11.Rxe7. Kf8 was the move.
+  prod: Mistake. O-O loses a bishop and a pawn after 11.Rxe7 Nd5 12.Nxd5 Qxd5 13.Rxb7. Kf8 was the move.
+
+N3PBJ07V/66 [different]
+  22:   Rd8+ is slightly inaccurate: it loses a rook for a bishop after 34.Bxd8 Rd2+ 35.Ke3 Rxd8. Rf5 was the move.
+  prod: Mistake. Rd8+ loses a rook after 34.Bxd8. Rf7 was the move.

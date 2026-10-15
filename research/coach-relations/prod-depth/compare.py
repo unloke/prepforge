@@ -2,12 +2,12 @@
 
   py research/coach-relations/prod-depth/compare.py <v5-kernel-out-dir> [<more kernel out-dirs> ...]
 
-Reports, on the 860 positions.jsonl moves:
+Reports, on the 860 positions.jsonl moves (and, for fresh* outs, the no-reason share of the whole pool):
 - grades: depth-22 grade against production's own code;
 - reads: PV length of the before/after reads, cut lines shorter than make_cards' 4-ply minimum,
   lines that stop mid-exchange (Stockfish's tail continues with captures);
 - explain.py on both, on moves both call an error: lead fact kind, a reason at all (fact or quiet
-  sentence) or bare, and whether the material claim (line, net, pieces) matches depth 22.
+  sentence) or bare / reply only, and whether the material claim (line, net, pieces) matches depth 22.
 Every kernel's sf_cache.jsonl is merged into a scratch cache so nothing is searched twice; the
 tail searches still run at tactics.py's screen-depth settings.
 """
@@ -33,10 +33,14 @@ def jsonl(p):
 
 
 def kind(e):
+    """Lead fact kind; with no fact, "bare" (grade and best move only), "reply only" (names the
+    reply, says nothing about it) or "quiet only" (a one-move sentence: attacks, stops, ...)."""
     if e["facts"]:
         f = e["facts"][0]
         return "mate" if f in ("mate", "mate_threat", "forced_mate") else f
-    return "bare" if "is not the best move" in e["text"] and e["text"].endswith(" was the move.") else "quiet only"
+    if "was the move:" not in e["text"] and ", which" not in e["text"]:
+        return "reply only" if " allows " in e["text"] else "bare"
+    return "quiet only"
 
 
 def claim(e):
@@ -108,6 +112,18 @@ def main():
             if k != "same" and len(examples) < 12:
                 examples.append((a["id"], k, e22["text"], ep["text"]))
     tactics.close()
+    pool = Counter()
+    for o in outs:
+        if o.name.startswith("fresh"):
+            pool.update((e["grade"], kind(e)) for e in jsonl(o / "explain.jsonl") if "text" in e)
+    for g in ERRORS + (None,):
+        sub = Counter()
+        for (gg, k), v in pool.items():
+            sub[k] += v * (g in (None, gg))
+        t = sum(sub.values())
+        if t:
+            print(f"fresh pool, {g or 'all errors'} ({t}): " + ", ".join(
+                f"{k} {sub[k] / t:.1%}" for k in ("bare", "reply only", "quiet only")) + f", a fact {1 - sum(sub[k] for k in ('bare', 'reply only', 'quiet only')) / t:.1%}")
     n = len(pairs)
     print(f"\nlines of the {n} moves both call an error ({stats['22', 'lines']} lines each side):")
     for k in ("short", "mid-exchange"):
