@@ -1,0 +1,3447 @@
+{
+  "meta": {
+    "pool": 23449,
+    "excluded": {
+      "inaccuracy": 4,
+      "mistake": 1
+    },
+    "cache_files": 25,
+    "cache_misses": 0,
+    "seconds": 57.62
+  },
+  "seed": 20261015,
+  "swing_distribution": {
+    "-8": 4,
+    "-7": 7,
+    "-6": 35,
+    "-5": 107,
+    "-4": 288,
+    "-3": 820,
+    "-2": 2057,
+    "-1": 4226,
+    "0": 6030,
+    "1": 4904,
+    "2": 2790,
+    "3": 1324,
+    "4": 522,
+    "5": 204,
+    "6": 86,
+    "7": 28,
+    "8": 12,
+    "9": 1,
+    "10": 4
+  },
+  "independent": {
+    "opening": 11944,
+    "same_material": 6646,
+    "swing_ge_2": 4971
+  },
+  "event_cards_after_first_three_gates": {
+    "king_zone_entry": 533,
+    "lost_castling": 286,
+    "no_safe_square": 23
+  },
+  "chosen_after_event_gate": {
+    "none": 272,
+    "piece_harassed": 83,
+    "pawn_weakness": 70,
+    "material": 51,
+    "trades": 35,
+    "fork": 20,
+    "queen_chased": 8,
+    "passed_pawn": 10,
+    "castling": 47,
+    "restricted": 6,
+    "mate": 2,
+    "bishop_pair": 5,
+    "mate_threat": 14,
+    "outpost": 5,
+    "material+fork": 1
+  },
+  "funnel": [
+    11944,
+    3982,
+    1084,
+    629,
+    272
+  ],
+  "eligible_ids": [
+    "05uL2Hod/15",
+    "0DMmNuA6/16",
+    "0F9UySYU/19",
+    "0SK70dYC/19",
+    "0bkS1DZE/5",
+    "0drtgreY/3",
+    "0jUOGBVG/19",
+    "0zhnlKaU/21",
+    "0zirgLwT/14",
+    "1UFFDUz2/27",
+    "1UFFDUz2/28",
+    "1aVkBHkG/18",
+    "20Ca7fep/6",
+    "2Q7pt348/5",
+    "2RmkFRKu/24",
+    "2Wuw6z0U/27",
+    "2i8M8PYT/15",
+    "2jo8ygKr/5",
+    "2jo8ygKr/6",
+    "39UkMPI7/17",
+    "39UkMPI7/18",
+    "3NpfvYsU/13",
+    "3TEu7KrX/5",
+    "3VvXk4L1/10",
+    "3hcX07ip/5",
+    "3iNTjcRe/6",
+    "3jlmnfiy/25",
+    "3vgxevLI/13",
+    "3vgxevLI/19",
+    "47RJcEJR/18",
+    "47RJcEJR/28",
+    "4XBssZXD/12",
+    "52TB613t/6",
+    "58AwByNw/26",
+    "5FL2ZjQc/13",
+    "5FNPRivK/8",
+    "5S12Ztc7/22",
+    "5uWXgwzi/14",
+    "7KVHHNea/19",
+    "7KVHHNea/9",
+    "7vKSYWh5/15",
+    "8MMJa6c4/27",
+    "8hby15XV/3",
+    "8hby15XV/4",
+    "8oiHoJm2/7",
+    "9B2Xi4uI/3",
+    "9BknF5nX/4",
+    "9INxecqU/11",
+    "9RxL3p8B/18",
+    "9g4Zb8Gg/23",
+    "9meL3k35/29",
+    "AEeLgUZA/3",
+    "AbDhfpnX/23",
+    "AbDhfpnX/24",
+    "AsWSYyDc/11",
+    "AsWSYyDc/17",
+    "B1PTTC9Q/4",
+    "B491wf0g/21",
+    "BS3GFyxW/22",
+    "BXOSAfaa/10",
+    "BmOzKmNt/23",
+    "C4m0Zl3c/17",
+    "CF77TFrA/27",
+    "CsBE5u0y/10",
+    "D1T25WrN/22",
+    "DDc3xk1r/12",
+    "DQKrc9S8/29",
+    "DWSeTh4w/15",
+    "DuYA61BG/24",
+    "EMNITM89/4",
+    "ETHx6DdC/9",
+    "EW9x3t3G/10",
+    "EZzKzUGv/8",
+    "Er5CWA1h/25",
+    "Er5CWA1h/26",
+    "FcIi1dAV/22",
+    "FjcroNzG/18",
+    "Fwn53ghw/28",
+    "G5xsKKIB/16",
+    "GYFSYJ8I/11",
+    "GYFSYJ8I/19",
+    "Gks3rAWp/14",
+    "Gks3rAWp/2",
+    "Gks3rAWp/9",
+    "H3kJWvTz/12",
+    "HXovfv2n/5",
+    "IBGDjPvE/28",
+    "IZIPs7LA/10",
+    "IZIPs7LA/11",
+    "IZIPs7LA/12",
+    "IdK61ztj/10",
+    "JAl8hjBY/13",
+    "JB1JDGYx/6",
+    "JIK0gMs3/17",
+    "JLA9QSdh/13",
+    "JTN2v1Hw/8",
+    "JlmgyAbQ/9",
+    "JoG0uemL/18",
+    "KUCLePTd/14",
+    "KWStdWd8/19",
+    "KWkUmCqw/10",
+    "KcOj5M5H/22",
+    "LOmUjF0f/14",
+    "LVwdlyjK/21",
+    "LYQNu2PW/27",
+    "LkCrXLO7/7",
+    "MNs1u5iJ/16",
+    "MNs1u5iJ/21",
+    "MgL176RS/13",
+    "NTVYXzuf/12",
+    "NUdjhchq/5",
+    "NYlPGBFO/24",
+    "OdOeQ6kE/24",
+    "PHYPEO42/10",
+    "PZgoClrN/8",
+    "Q3VXvZTS/11",
+    "Q9nyAgzy/4",
+    "QDKbbU91/18",
+    "QZlvc1n7/7",
+    "QaTZBr39/22",
+    "Qs51sgU7/9",
+    "R23j6cmd/19",
+    "R8bmQGx9/11",
+    "R8bmQGx9/15",
+    "S06cDgyV/26",
+    "SBmfTe8J/19",
+    "SNQPWouP/13",
+    "SZB16KyN/13",
+    "SfuyK657/18",
+    "T2u6TjQh/8",
+    "TfgkttPZ/10",
+    "TkhdzMRq/24",
+    "UQ686Htv/14",
+    "UTH6E5B6/6",
+    "UU7dyzea/9",
+    "VAcwCILy/15",
+    "VVMmBXVj/15",
+    "Vamluacz/16",
+    "VrZ2Ahqm/12",
+    "W7e8yJqX/6",
+    "WLsc1idb/8",
+    "WRNkn1iH/21",
+    "WgPBuJD6/3",
+    "WiLRYEgT/9",
+    "XjKzN7Dw/11",
+    "XmHXgF4P/29",
+    "XpPCJ7af/20",
+    "XubAzggo/8",
+    "XyM6zTew/21",
+    "YTwEXKwb/17",
+    "YxZpkBIh/22",
+    "Z0Cx91Uh/20",
+    "Z7qXopih/23",
+    "ZGsHiCy6/21",
+    "ZYVb7dkG/22",
+    "Za78ZwA7/7",
+    "a4TVt6fC/20",
+    "aG89PHk1/4",
+    "aj55MdE1/15",
+    "apfiYd1n/20",
+    "bB16n3TZ/29",
+    "bCUwPEJ7/16",
+    "bGiGLLkt/2",
+    "bNTC6k4P/11",
+    "bVPtH47G/13",
+    "bVnFoTHa/6",
+    "btzyiox6/17",
+    "cD3RJTko/9",
+    "cKIQL5qn/11",
+    "cKIQL5qn/16",
+    "cTI3uVtT/15",
+    "cg8n094x/12",
+    "cg8n094x/6",
+    "cxqyX8Hn/2",
+    "dVv7I3rg/12",
+    "dbpKz2ox/21",
+    "dnBTClA5/13",
+    "eSCbAM3A/26",
+    "eYDMBZn3/15",
+    "et3hCRq8/9",
+    "ezV1vSsK/13",
+    "ezV1vSsK/14",
+    "fB0M012q/17",
+    "fbhwYthp/10",
+    "feCKPDg0/13",
+    "feCKPDg0/6",
+    "fj8Qy0UC/25",
+    "fwmyA94X/14",
+    "gDTGX1e3/19",
+    "gDTGX1e3/25",
+    "gfFxAo5B/10",
+    "gfFxAo5B/9",
+    "gjjlb3Wr/11",
+    "gjjlb3Wr/13",
+    "h37U85CH/10",
+    "hBhPrmie/21",
+    "hGFyT6Dd/11",
+    "htWbvrxd/20",
+    "i9ZGHc3z/14",
+    "iKT0TtWr/25",
+    "iiBpgBpb/20",
+    "jIB5KwF1/15",
+    "joGFmaEx/19",
+    "kA0dtBTm/11",
+    "kA0dtBTm/22",
+    "kB1LNBYa/27",
+    "kLJKfTKZ/12",
+    "kLJKfTKZ/13",
+    "kfsgqRyN/16",
+    "ktXtvroH/14",
+    "lBLxMebo/7",
+    "lqTpFzLp/26",
+    "mDuStrgI/10",
+    "mYHuEYQ8/20",
+    "maysFYZc/7",
+    "mnTiZGBX/25",
+    "n3MCK8xW/5",
+    "nGFuIqkz/11",
+    "nSviObhA/14",
+    "nTUQdw6m/21",
+    "niNth6JB/11",
+    "nwnrsKKO/3",
+    "o66za6e9/5",
+    "p0btVtj4/14",
+    "pIGkE4Li/3",
+    "pPRLXuGK/20",
+    "pfqhCuMs/28",
+    "q7i4RcHT/9",
+    "qA7KLs2J/10",
+    "qA7KLs2J/11",
+    "qOURsOnx/2",
+    "qOURsOnx/3",
+    "qdrg4Ayw/6",
+    "qifLXv8r/16",
+    "qpFiMwAQ/7",
+    "rKX2HMWO/28",
+    "rWKqBWzt/9",
+    "rdMFUI5Z/5",
+    "rdWkYoUB/25",
+    "s2LBE9KF/11",
+    "s8LEo7Hq/4",
+    "sIub43Gy/17",
+    "sNlSeD4s/20",
+    "sV0rgk3R/12",
+    "sV0rgk3R/27",
+    "sV0rgk3R/3",
+    "se3vqcyq/29",
+    "sipCV6bn/21",
+    "tyzK86lD/5",
+    "u5aJxrLW/18",
+    "uB75kISZ/11",
+    "uB75kISZ/12",
+    "uB75kISZ/16",
+    "uJb9Cayf/13",
+    "uV7Tz1VK/11",
+    "uV7Tz1VK/12",
+    "uaxh0ZDl/5",
+    "uxYo1Us4/13",
+    "v18bEIjR/18",
+    "vUetNCH2/24",
+    "wZ6cYfAK/14",
+    "x0P6VdqJ/3",
+    "x2KpPZkh/21",
+    "x730tqYD/24",
+    "xHDGKgIo/14",
+    "xJDUaj1h/11",
+    "xJY8MVGA/14",
+    "yTezA1Rw/12",
+    "ytR8qwlM/5",
+    "ytR8qwlM/6",
+    "yzJrB5Ws/14",
+    "zLrhPtL4/23"
+  ],
+  "sample": [
+    "MgL176RS/13",
+    "KcOj5M5H/22",
+    "pPRLXuGK/20",
+    "se3vqcyq/29",
+    "0drtgreY/3",
+    "39UkMPI7/18",
+    "2Wuw6z0U/27",
+    "KWStdWd8/19",
+    "ytR8qwlM/5",
+    "n3MCK8xW/5",
+    "joGFmaEx/19",
+    "jIB5KwF1/15",
+    "QaTZBr39/22",
+    "uV7Tz1VK/11",
+    "47RJcEJR/18",
+    "JB1JDGYx/6",
+    "4XBssZXD/12",
+    "VrZ2Ahqm/12",
+    "5FL2ZjQc/13",
+    "et3hCRq8/9"
+  ],
+  "cards": [
+    {
+      "id": "0drtgreY/3",
+      "fen": "rnbqkbnr/pppp1ppp/4p3/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "c7c5",
+        "d4d5",
+        "g8f6",
+        "b1c3",
+        "g7g6",
+        "e2e4",
+        "d7d6",
+        "h2h3",
+        "f8g7",
+        "g1f3",
+        "e8g8",
+        "f1d3",
+        "e6d5",
+        "c4d5",
+        "f8e8",
+        "e1g1",
+        "c5c4",
+        "d3c4",
+        "f6e4",
+        "c3e4",
+        "e8e4",
+        "c1g5",
+        "d8b6"
+      ],
+      "best_pv": [
+        "g8f6",
+        "g1f3",
+        "b7b6",
+        "b1c3",
+        "c8b7",
+        "e2e3",
+        "f8b4",
+        "c1d2",
+        "b4c3",
+        "d2c3",
+        "f6e4",
+        "c3b4",
+        "c7c5",
+        "b4a3",
+        "e8g8",
+        "f1d3",
+        "d8f6"
+      ],
+      "loss": 57,
+      "ply": 4,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "c8",
+              "b8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [
+              "b8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [],
+        "best": [
+          {
+            "ply": 17,
+            "side": "white",
+            "san": "Ba3",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -2,
+        "best": 0
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "c3",
+          "ply": 9
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "2Wuw6z0U/27",
+      "fen": "rn3rk1/pp2nppp/2p5/2p2bN1/8/2NB4/PPP2PPP/2KR3R b - - 3 14",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "h7h6",
+        "h1e1",
+        "f5d3",
+        "e1e7",
+        "d3f5",
+        "g5e4",
+        "b7b6",
+        "e4d6",
+        "f5g4",
+        "f2f3",
+        "g4c8",
+        "f3f4"
+      ],
+      "best_pv": [
+        "f5d3",
+        "d1d3",
+        "h7h6",
+        "g5e4",
+        "b7b6",
+        "h1d1",
+        "e7f5",
+        "e4g3",
+        "f5d4",
+        "c3e4",
+        "f7f5",
+        "e4d6",
+        "f5f4",
+        "g3e4",
+        "b8d7",
+        "c2c3",
+        "d4e6"
+      ],
+      "loss": 107,
+      "ply": 28,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "c8",
+              "b8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 3
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 18,
+            "side": "black",
+            "san": "Qe6",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 32,
+            "side": "black",
+            "san": "Bf5",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 38,
+            "side": "black",
+            "san": "Bc8",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 18,
+            "side": "black",
+            "san": "Qe6",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 31,
+            "side": "white",
+            "san": "Nge4",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 44,
+            "side": "black",
+            "san": "Ne6",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -5,
+        "best": -1
+      },
+      "swing": 4,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 1,
+        "best": 1
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "rook",
+          "square": "e7",
+          "ply": 4
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "39UkMPI7/18",
+      "fen": "2rqkb1r/1p3ppp/p1n1pn2/3pN3/Q2P1Bb1/2P5/PP1N1PPP/R3KB1R w KQk - 2 10",
+      "grade": "mistake",
+      "played_pv": [
+        "e5c6",
+        "d8d7",
+        "h2h3",
+        "g4f5",
+        "g2g4",
+        "f5g6",
+        "d2f3",
+        "d7c6",
+        "a4c6",
+        "c8c6",
+        "f3e5",
+        "c6b6",
+        "e1c1",
+        "f8d6",
+        "f4e3",
+        "f6d7",
+        "e5g6",
+        "h7g6"
+      ],
+      "best_pv": [
+        "f2f3",
+        "g4f5",
+        "g2g4",
+        "f5g6",
+        "h2h4",
+        "h7h5",
+        "e5g6",
+        "f7g6",
+        "a4c2",
+        "e8f7",
+        "g4g5",
+        "f6d7",
+        "f1d3",
+        "c6e7",
+        "e1c1",
+        "c8c6",
+        "c1b1"
+      ],
+      "loss": 145,
+      "ply": 19,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "f1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 3
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 22,
+            "side": "black",
+            "san": "Bf5",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 24,
+            "side": "black",
+            "san": "Bg6",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 20,
+            "side": "black",
+            "san": "Bf5",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 22,
+            "side": "black",
+            "san": "Bg6",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 30,
+            "side": "black",
+            "san": "Nd7",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 1,
+        "best": 5
+      },
+      "swing": 4,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "lost_castling",
+          "side": "black"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "47RJcEJR/18",
+      "fen": "rn1qk2r/ppp2ppp/3bpnb1/3p4/3P4/4PP1P/PPPNB1PB/RN1QK2R w KQkq - 1 10",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "g2g4",
+        "c7c5",
+        "c2c3",
+        "d6h2",
+        "h1h2",
+        "b8c6",
+        "e1f2",
+        "d8b6",
+        "d1b3",
+        "b6c7",
+        "h2g2",
+        "h7h5",
+        "g4g5"
+      ],
+      "best_pv": [
+        "h2d6",
+        "d8d6",
+        "e1g1",
+        "c7c5",
+        "c2c3",
+        "e8g8",
+        "f1f2",
+        "b8c6",
+        "d2f1",
+        "e6e5",
+        "d4e5",
+        "d6e5",
+        "b1d2",
+        "a8d8",
+        "d1b3"
+      ],
+      "loss": 77,
+      "ply": 19,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "b1"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [],
+        "best": []
+      },
+      "D": {
+        "played": -2,
+        "best": 0
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "lost_castling",
+          "side": "white"
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "bishop",
+          "square": "d6",
+          "ply": 1
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "4XBssZXD/12",
+      "fen": "rn1qk2r/pppbbppp/3p1n2/4p3/4P3/2NP1N1P/PPP1BPP1/R1BQK2R w KQkq - 1 7",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "c1g5",
+        "c7c5",
+        "f3d2",
+        "e8g8",
+        "e1g1",
+        "b8c6",
+        "f2f4",
+        "c6d4",
+        "g5f6",
+        "e7f6",
+        "f4f5",
+        "f6g5",
+        "e2g4",
+        "d7c6",
+        "c3d5",
+        "c6d5",
+        "e4d5",
+        "g5e3",
+        "g1h2",
+        "e3f4",
+        "h2h1",
+        "f4d2",
+        "d1d2",
+        "b7b5"
+      ],
+      "best_pv": [
+        "g2g4",
+        "c7c5",
+        "g4g5",
+        "f6g8",
+        "h3h4",
+        "h7h6",
+        "h1g1",
+        "b8c6",
+        "c3d5",
+        "h6g5",
+        "h4g5",
+        "e7f8",
+        "c2c3"
+      ],
+      "loss": 64,
+      "ply": 13,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "g8",
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 2
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 10,
+            "side": "black",
+            "san": "Bd7",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 33,
+            "side": "white",
+            "san": "Kh1",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 10,
+            "side": "black",
+            "san": "Bd7",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Ng8",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 0,
+        "best": 3
+      },
+      "swing": 3,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "e3",
+          "ply": 18
+        },
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "f4",
+          "ply": 20
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "5FL2ZjQc/13",
+      "fen": "r1bqkb1r/pp1p1p1p/2n2np1/4p3/2B1P3/2N2N2/PPPQ1PPP/R1B1K2R b KQkq - 1 7",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "d8e7",
+        "d2d3",
+        "e7d6",
+        "d3e2",
+        "f8g7",
+        "e1g1",
+        "e8g8",
+        "f1d1",
+        "d6b8",
+        "c1g5",
+        "h7h6",
+        "g5f6",
+        "g7f6",
+        "c3d5"
+      ],
+      "best_pv": [
+        "h7h6",
+        "d2d3",
+        "a7a6",
+        "c1e3",
+        "d7d6",
+        "e1c1",
+        "f8e7",
+        "c1b1",
+        "b7b5",
+        "c4b3",
+        "c8e6",
+        "f3h4",
+        "e6b3",
+        "c2b3",
+        "a8c8",
+        "f2f4",
+        "e5f4",
+        "e3f4"
+      ],
+      "loss": 75,
+      "ply": 14,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          },
+          "black": {
+            "home": [
+              "c8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 1
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 3
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 7,
+            "side": "white",
+            "san": "Qd2",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 7,
+            "side": "white",
+            "san": "Qd2",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 22,
+            "side": "black",
+            "san": "Qb8",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 7,
+            "side": "white",
+            "san": "Qd2",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 7,
+            "side": "white",
+            "san": "Qd2",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 23,
+            "side": "white",
+            "san": "Bb3",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 0,
+        "best": 3
+      },
+      "swing": 3,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "bishop",
+          "square": "f6",
+          "ply": 12
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "b3",
+          "ply": 13
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "88cl0uaw/21",
+      "fen": "rnbq1rk1/p3bppp/1pp5/3p4/4n3/4PQ2/PPPPBPPP/RNB1K1NR b KQ - 5 11",
+      "grade": "mistake",
+      "played_pv": [
+        "d8d6",
+        "d2d3",
+        "e4f6",
+        "f3g3",
+        "d6d8",
+        "f2f4",
+        "f8e8",
+        "g1f3",
+        "c6c5",
+        "e1g1",
+        "e7d6",
+        "f3e5",
+        "b8d7",
+        "d3d4",
+        "f6e4",
+        "g3f3",
+        "f7f6",
+        "e5g4",
+        "c8b7",
+        "g4f2"
+      ],
+      "best_pv": [
+        "e4g5",
+        "f3f4",
+        "g5e6",
+        "f4f3",
+        "b8d7",
+        "b2b3",
+        "e7f6",
+        "d2d4",
+        "e6g5",
+        "f3f4",
+        "g5e4",
+        "c1b2",
+        "c6c5",
+        "b1d2",
+        "c5d4",
+        "b2d4",
+        "f6d4",
+        "e3d4"
+      ],
+      "loss": 114,
+      "ply": 22,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "c1",
+              "b1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 8
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 3
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "g1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 8
+          },
+          "black": {
+            "home": [
+              "c8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 7,
+            "side": "white",
+            "san": "Qg3",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 9,
+            "side": "white",
+            "san": "Qxe5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 11,
+            "side": "white",
+            "san": "Qg5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 15,
+            "side": "white",
+            "san": "Bc4",
+            "kind": "round_trip",
+            "in_line": false
+          },
+          {
+            "ply": 15,
+            "side": "white",
+            "san": "Bc4",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 17,
+            "side": "white",
+            "san": "Be2",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 24,
+            "side": "black",
+            "san": "Nf6",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 24,
+            "side": "black",
+            "san": "Nf6",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 25,
+            "side": "white",
+            "san": "Qg3",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 26,
+            "side": "black",
+            "san": "Qd8",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 39,
+            "side": "white",
+            "san": "Ng4",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 7,
+            "side": "white",
+            "san": "Qg3",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 9,
+            "side": "white",
+            "san": "Qxe5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 11,
+            "side": "white",
+            "san": "Qg5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 15,
+            "side": "white",
+            "san": "Bc4",
+            "kind": "round_trip",
+            "in_line": false
+          },
+          {
+            "ply": 15,
+            "side": "white",
+            "san": "Bc4",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 17,
+            "side": "white",
+            "san": "Be2",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 25,
+            "side": "white",
+            "san": "Qf3",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 25,
+            "side": "white",
+            "san": "Qf3",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 7,
+        "best": 8
+      },
+      "swing": 1,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": -1,
+        "best": -1
+      },
+      "events": [],
+      "facts": [
+        "queen_chased"
+      ],
+      "cache_miss": null,
+      "pass": false
+    },
+    {
+      "id": "JB1JDGYx/6",
+      "fen": "rnbqkbnr/ppp1pp1p/6p1/8/2pP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 4",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "e2e3",
+        "f8g7",
+        "f1c4",
+        "g8f6",
+        "g1f3",
+        "c7c5",
+        "d1a4",
+        "f6d7",
+        "d4c5",
+        "b8c6",
+        "a4a3",
+        "d8a5",
+        "a3a5",
+        "c6a5",
+        "c4e2",
+        "d7c5",
+        "c3d5",
+        "c8e6"
+      ],
+      "best_pv": [
+        "e2e4",
+        "f8g7",
+        "f1c4",
+        "b8c6",
+        "g1f3",
+        "c8g4",
+        "c4f7",
+        "e8f7",
+        "f3g5",
+        "f7e8",
+        "d1g4",
+        "c6d4",
+        "g4d1",
+        "h7h6"
+      ],
+      "loss": 57,
+      "ply": 7,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 1
+          },
+          "black": {
+            "home": [
+              "g8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 2
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [],
+        "best": [
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Ke8",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Ke8",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 19,
+            "side": "white",
+            "san": "Qd1",
+            "kind": "round_trip",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -1,
+        "best": 2
+      },
+      "swing": 3,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "lost_castling",
+          "side": "black"
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "knight",
+          "square": "g5",
+          "ply": 9
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "bishop",
+          "square": "f7",
+          "ply": 7
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "KWStdWd8/19",
+      "fen": "r3kb1r/pp1qppp1/2n4p/2ppP2n/5Pb1/2NP4/PPPNB1PP/R1B1QRK1 b kq - 2 10",
+      "grade": "blunder",
+      "played_pv": [
+        "c6b4",
+        "f4f5",
+        "b4c2",
+        "e5e6",
+        "f7e6",
+        "e2g4",
+        "c2e1",
+        "f5e6",
+        "d7d6",
+        "g4h5",
+        "e8d8",
+        "f1e1",
+        "g7g5",
+        "h5f3",
+        "f8g7",
+        "c3d5",
+        "h8f8"
+      ],
+      "best_pv": [
+        "g4e2",
+        "e1e2",
+        "g7g6",
+        "f4f5",
+        "c6d4",
+        "e2d1",
+        "d4f5",
+        "d2b3",
+        "h5g7",
+        "b3c5",
+        "d7c6",
+        "c5b3"
+      ],
+      "loss": 218,
+      "ply": 20,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 1,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 2
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [],
+        "best": [
+          {
+            "ply": 25,
+            "side": "white",
+            "san": "Qd1",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 31,
+            "side": "white",
+            "san": "Nb3",
+            "kind": "round_trip",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 0,
+        "best": 2
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "lost_castling",
+          "side": "black"
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "e2",
+          "ply": 1
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "KcOj5M5H/22",
+      "fen": "r3kb1r/pp1npp1p/3p1np1/8/1q2P3/2NBBN2/1PP2PPP/1Q1R2K1 w kq - 0 12",
+      "grade": "blunder",
+      "played_pv": [
+        "d3e2",
+        "f8g7",
+        "b1a2",
+        "e8g8",
+        "f3g5",
+        "a8c8",
+        "d1d4",
+        "b4b6",
+        "d4d1",
+        "b6c6"
+      ],
+      "best_pv": [
+        "b1a2",
+        "a8c8",
+        "c3b5",
+        "b7b6",
+        "a2a6",
+        "e8d8",
+        "c2c3",
+        "b4b3"
+      ],
+      "loss": 508,
+      "ply": 23,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 3
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 2
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 10,
+            "side": "black",
+            "san": "Qxc5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 12,
+            "side": "black",
+            "san": "Qb4",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 30,
+            "side": "black",
+            "san": "Qb6",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 31,
+            "side": "white",
+            "san": "Rd1",
+            "kind": "round_trip",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 10,
+            "side": "black",
+            "san": "Qxc5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 12,
+            "side": "black",
+            "san": "Qb4",
+            "kind": "extra_queen",
+            "in_line": false
+          }
+        ]
+      },
+      "D": {
+        "played": 2,
+        "best": 4
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": -3,
+        "best": -3
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "lost_castling",
+          "side": "black"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "MgL176RS/13",
+      "fen": "rn1qkb1r/ppp1pppp/1n2b3/3PB3/2P5/8/PP3PPP/RN1QKBNR b KQkq - 0 7",
+      "grade": "mistake",
+      "played_pv": [
+        "e6d7",
+        "c4c5",
+        "b6a4",
+        "c5c6",
+        "b7c6",
+        "d1a4",
+        "c6d5",
+        "a4d1",
+        "c7c6",
+        "f1d3",
+        "e7e6",
+        "g1e2",
+        "f7f6"
+      ],
+      "best_pv": [
+        "e6f5",
+        "g1f3",
+        "b8d7",
+        "e5c3",
+        "e7e5",
+        "d5e6",
+        "f7e6",
+        "f1e2",
+        "f8e7",
+        "f3d4",
+        "d7c5",
+        "d4f5",
+        "d8d1",
+        "e1d1",
+        "e6f5",
+        "c3g7"
+      ],
+      "loss": 170,
+      "ply": 14,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "b1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 2
+          },
+          "black": {
+            "home": [
+              "f8",
+              "b8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 2
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "b1"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 6,
+            "side": "black",
+            "san": "Nb6",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 14,
+            "side": "black",
+            "san": "Bd7",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 21,
+            "side": "white",
+            "san": "Qd1",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 21,
+            "side": "white",
+            "san": "Qd1",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 6,
+            "side": "black",
+            "san": "Nb6",
+            "kind": "retreat",
+            "in_line": false
+          }
+        ]
+      },
+      "D": {
+        "played": -1,
+        "best": 1
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": -1,
+        "best": -1
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "lost_castling",
+          "side": "white"
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "queen",
+          "square": "d1",
+          "ply": 13
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "QaTZBr39/22",
+      "fen": "rn1q1rk1/pbp1bppp/1p6/3p4/3P4/P1NQB3/1P3PPP/2KR1B1R w - - 0 12",
+      "grade": "mistake",
+      "played_pv": [
+        "g2g3",
+        "b7a6",
+        "d3c2",
+        "a6f1",
+        "h1f1",
+        "d8d7",
+        "f1e1",
+        "b8c6",
+        "e3f4",
+        "f8d8",
+        "c1b1",
+        "e7f8",
+        "h2h4",
+        "c6a5",
+        "h4h5",
+        "h7h6"
+      ],
+      "best_pv": [
+        "d3f5",
+        "d8d7",
+        "f5f3",
+        "c7c6",
+        "f1d3",
+        "b7c8",
+        "f3h5",
+        "f7f5",
+        "g2g4",
+        "d7e8",
+        "h5e8",
+        "f8e8",
+        "g4f5",
+        "e8f8",
+        "h1g1",
+        "c8f5"
+      ],
+      "loss": 128,
+      "ply": 23,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "b8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 1
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 25,
+            "side": "white",
+            "san": "Qc2",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 36,
+            "side": "black",
+            "san": "Rf8",
+            "kind": "round_trip",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 0,
+        "best": 2
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": -1,
+        "best": -1
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "queen",
+          "square": "e8",
+          "ply": 11
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "VrZ2Ahqm/12",
+      "fen": "rn2kbnr/pp2pppp/2p3b1/q7/3PP3/2N5/PP1B1PPP/R2QKBNR w KQkq - 1 7",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "g1f3",
+        "b8d7",
+        "f1c4",
+        "a5c7",
+        "a1c1",
+        "e7e6",
+        "e1g1",
+        "g8f6",
+        "f1e1",
+        "f8b4",
+        "e4e5",
+        "b4c3",
+        "d2c3",
+        "f6e4"
+      ],
+      "best_pv": [
+        "f2f4",
+        "e7e6",
+        "g2g4",
+        "h7h6",
+        "f4f5",
+        "g6h7",
+        "f1c4",
+        "b8d7",
+        "g1f3",
+        "g8f6",
+        "e1g1",
+        "a5b6",
+        "d1e2",
+        "e8c8",
+        "e4e5",
+        "f6g4",
+        "f5e6",
+        "f7e6",
+        "c4e6"
+      ],
+      "loss": 96,
+      "ply": 13,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 3
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 6,
+            "side": "black",
+            "san": "Qa5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 12,
+            "side": "black",
+            "san": "Bg6",
+            "kind": "retreat",
+            "in_line": false
+          }
+        ],
+        "best": [
+          {
+            "ply": 6,
+            "side": "black",
+            "san": "Qa5",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 12,
+            "side": "black",
+            "san": "Bg6",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 18,
+            "side": "black",
+            "san": "Bh7",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 2,
+        "best": 4
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "no_safe_square",
+          "side": "black",
+          "piece": "knight",
+          "square": "g4"
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "bishop",
+          "square": "e6",
+          "ply": 19
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "et3hCRq8/9",
+      "fen": "rnbqkbnr/pp4pp/2p1pp2/3pP3/3P1P2/3B4/PPP3PP/RNBQK1NR b KQkq - 1 5",
+      "grade": "mistake",
+      "played_pv": [
+        "b8d7",
+        "d1h5",
+        "e8e7",
+        "g1f3",
+        "d8e8",
+        "h5h3",
+        "e7d8",
+        "e1g1",
+        "g8h6",
+        "b1c3",
+        "d8c7",
+        "c3e2",
+        "a7a5",
+        "c1d2",
+        "b7b6",
+        "b2b3",
+        "c8a6",
+        "c2c4"
+      ],
+      "best_pv": [
+        "g8h6",
+        "g1f3",
+        "c6c5",
+        "e1g1",
+        "b8c6",
+        "c2c3",
+        "f8e7",
+        "e5f6",
+        "g7f6",
+        "g1h1",
+        "e8g8",
+        "d4c5",
+        "e7c5",
+        "b2b4",
+        "c5d6"
+      ],
+      "loss": 165,
+      "ply": 10,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1",
+              "b1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "c8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 1
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [],
+        "best": [
+          {
+            "ply": 24,
+            "side": "black",
+            "san": "Bd6",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -2,
+        "best": 0
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "lost_castling",
+          "side": "black"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "jIB5KwF1/15",
+      "fen": "r1b1kbnr/ppp5/2np1q1p/4ppp1/2B1P3/2NP1N1P/PPP1KPP1/R1BQR3 b kq - 2 8",
+      "grade": "mistake",
+      "played_pv": [
+        "c8e6",
+        "c3d5",
+        "e6d5",
+        "e4d5",
+        "c6e7",
+        "c2c3",
+        "f6g6",
+        "d1a4",
+        "e8d8",
+        "a4b3",
+        "b7b6",
+        "e2d1",
+        "g8f6",
+        "a2a4",
+        "a7a5",
+        "c1d2",
+        "f6d7"
+      ],
+      "best_pv": [
+        "g5g4",
+        "f3g1",
+        "g8e7",
+        "d1d2",
+        "g4h3",
+        "g1h3",
+        "c8d7",
+        "e2d1",
+        "e8c8",
+        "e1h1",
+        "f5f4"
+      ],
+      "loss": 131,
+      "ply": 16,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 1,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 1
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 1
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 20,
+            "side": "black",
+            "san": "Nce7",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 17,
+            "side": "white",
+            "san": "Ng1",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -2,
+        "best": 2
+      },
+      "swing": 4,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "lost_castling",
+          "side": "black"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "joGFmaEx/13",
+      "fen": "rn2kbnr/ppp1q1pp/4bp2/8/2N1Q3/3B4/PPPP1PPP/RNB1K2R b KQkq - 2 7",
+      "grade": "blunder",
+      "played_pv": [
+        "e6c4",
+        "e4e7",
+        "g8e7",
+        "d3c4",
+        "b8d7",
+        "d2d4",
+        "c7c5",
+        "b1c3",
+        "e7c6",
+        "d4c5",
+        "f8c5",
+        "c3e4",
+        "c6b4",
+        "e1g1",
+        "b4c2",
+        "a1b1",
+        "b7b6",
+        "e4c5",
+        "b6c5",
+        "c1f4"
+      ],
+      "best_pv": [
+        "f6f5",
+        "e4e2",
+        "b8c6",
+        "e1g1",
+        "c6d4",
+        "e2d1",
+        "e8c8",
+        "c2c3",
+        "d4c6",
+        "d3e2",
+        "e7f7",
+        "b1a3",
+        "f5f4",
+        "e2g4",
+        "g8f6"
+      ],
+      "loss": 175,
+      "ply": 14,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 5
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 2
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 9,
+            "side": "white",
+            "san": "Nc4",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 11,
+            "side": "white",
+            "san": "Qxe4",
+            "kind": "extra_queen",
+            "in_line": false
+          }
+        ],
+        "best": [
+          {
+            "ply": 9,
+            "side": "white",
+            "san": "Nc4",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 11,
+            "side": "white",
+            "san": "Qxe4",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 15,
+            "side": "white",
+            "san": "Qe2",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 15,
+            "side": "white",
+            "san": "Qe2",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 19,
+            "side": "white",
+            "san": "Qd1",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 22,
+            "side": "black",
+            "san": "Nc6",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 22,
+            "side": "black",
+            "san": "Nc6",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": 2,
+        "best": 3
+      },
+      "swing": 1,
+      "opening": true,
+      "same_material": false,
+      "material": {
+        "played": 0,
+        "best": -1
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "queen",
+          "square": "e7",
+          "ply": 2
+        }
+      ],
+      "facts": [
+        "queen_chased"
+      ],
+      "cache_miss": null,
+      "pass": false
+    },
+    {
+      "id": "joGFmaEx/19",
+      "fen": "r3kb1r/ppp1n1pp/2n2p2/8/2B5/3P4/PPP2PPP/RNB1K2R b KQkq - 0 10",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "c6e5",
+        "c4e6",
+        "a8d8",
+        "b1c3",
+        "e7c6",
+        "c1e3",
+        "c6d4",
+        "e3d4",
+        "d8d4",
+        "e6b3",
+        "e8d8",
+        "c3e2",
+        "d4d6",
+        "d3d4",
+        "e5d7",
+        "h2h4"
+      ],
+      "best_pv": [
+        "c6d4",
+        "e1d2",
+        "b7b5",
+        "c4b3",
+        "h7h5",
+        "c2c3",
+        "d4b3",
+        "a2b3",
+        "e8f7",
+        "b3b4"
+      ],
+      "loss": 107,
+      "ply": 20,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 2
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1",
+              "b1"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 3,
+            "wasted": 3
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 9,
+            "side": "white",
+            "san": "Nc4",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 11,
+            "side": "white",
+            "san": "Qxe4",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 32,
+            "side": "black",
+            "san": "Rd6",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 34,
+            "side": "black",
+            "san": "Nd7",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 9,
+            "side": "white",
+            "san": "Nc4",
+            "kind": "retreat",
+            "in_line": false
+          },
+          {
+            "ply": 11,
+            "side": "white",
+            "san": "Qxe4",
+            "kind": "extra_queen",
+            "in_line": false
+          },
+          {
+            "ply": 23,
+            "side": "white",
+            "san": "Bb3",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -2,
+        "best": 4
+      },
+      "swing": 6,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": -1,
+        "best": -1
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "bishop",
+          "square": "e6",
+          "ply": 2
+        },
+        {
+          "line": "best",
+          "kind": "lost_castling",
+          "side": "white"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "n3MCK8xW/5",
+      "fen": "rnb1kbnr/ppp1pppp/8/3q4/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3",
+      "grade": "mistake",
+      "played_pv": [
+        "d5e4",
+        "c1e3",
+        "g8f6",
+        "b1c3",
+        "e4f5",
+        "g1f3",
+        "f5a5",
+        "f3e5",
+        "c7c6",
+        "d1f3",
+        "c8e6",
+        "f1c4",
+        "e6c4",
+        "e5c4",
+        "a5h5",
+        "f3h5",
+        "f6h5",
+        "e1c1",
+        "h5f6"
+      ],
+      "best_pv": [
+        "b8c6",
+        "g1f3",
+        "e7e5",
+        "b1c3",
+        "f8b4",
+        "c1d2",
+        "b4c3",
+        "d2c3",
+        "e5e4",
+        "f3e5",
+        "c6e5",
+        "d4e5",
+        "g8e7",
+        "d1d5",
+        "e7d5",
+        "c3d2",
+        "e8g8",
+        "e1c1",
+        "f8e8",
+        "d2a5",
+        "c7c6"
+      ],
+      "loss": 118,
+      "ply": 6,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8",
+              "b8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 5
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "f1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "c8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 6,
+            "side": "black",
+            "san": "Qe4+",
+            "kind": "extra_queen",
+            "in_line": true
+          },
+          {
+            "ply": 10,
+            "side": "black",
+            "san": "Qf5",
+            "kind": "retreat",
+            "in_line": true
+          },
+          {
+            "ply": 10,
+            "side": "black",
+            "san": "Qf5",
+            "kind": "extra_queen",
+            "in_line": true
+          },
+          {
+            "ply": 12,
+            "side": "black",
+            "san": "Qa5",
+            "kind": "extra_queen",
+            "in_line": true
+          },
+          {
+            "ply": 24,
+            "side": "black",
+            "san": "Nf6",
+            "kind": "round_trip",
+            "in_line": true
+          }
+        ],
+        "best": []
+      },
+      "D": {
+        "played": -7,
+        "best": 0
+      },
+      "swing": 7,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "c3",
+          "ply": 7
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "pPRLXuGK/20",
+      "fen": "1rbqkb1r/p1p4p/1pp2p1p/4p3/4P3/P1NP1N2/1PP2PPP/R2Q1RK1 w k - 0 11",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "d3d4",
+        "f8g7",
+        "f3h4",
+        "e8g8",
+        "d4d5",
+        "c6d5",
+        "c3d5",
+        "f6f5",
+        "h4f5",
+        "c8f5",
+        "e4f5",
+        "e5e4",
+        "c2c3",
+        "f8f5",
+        "d5e3",
+        "d8d1",
+        "a1d1",
+        "f5f7",
+        "d1d5",
+        "b8e8",
+        "f1d1",
+        "g7f8",
+        "g1f1",
+        "f8c5",
+        "d5d8",
+        "e8d8",
+        "d1d8",
+        "g8g7",
+        "f1e2",
+        "h6h5",
+        "d8d5"
+      ],
+      "best_pv": [
+        "f3h4",
+        "c8e6",
+        "d1f3",
+        "h8g8",
+        "h4f5",
+        "d8d7",
+        "a1d1",
+        "b8d8",
+        "f1e1",
+        "c6c5",
+        "b2b3"
+      ],
+      "loss": 66,
+      "ply": 21,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 2
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 2,
+            "wasted": 2
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Nc6",
+            "kind": "round_trip",
+            "in_line": false
+          },
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Nc6",
+            "kind": "retreat",
+            "in_line": false
+          }
+        ],
+        "best": [
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Nc6",
+            "kind": "round_trip",
+            "in_line": false
+          },
+          {
+            "ply": 16,
+            "side": "black",
+            "san": "Nc6",
+            "kind": "retreat",
+            "in_line": false
+          }
+        ]
+      },
+      "D": {
+        "played": 2,
+        "best": 4
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "lost_castling",
+          "side": "black"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "se3vqcyq/29",
+      "fen": "1k1r1b1r/pbp1q2p/1pn2p2/4pB2/4N3/2PP2P1/PP2QP1P/R1B1R1K1 b - - 0 15",
+      "grade": "mistake",
+      "played_pv": [
+        "h8g8",
+        "e2h5",
+        "g8h8",
+        "e4d2",
+        "e7g7",
+        "d2c4",
+        "c6e7",
+        "f5e4",
+        "e7d5",
+        "c1d2",
+        "b7c8",
+        "h5f3",
+        "c8g4",
+        "f3g2",
+        "g4e6",
+        "d3d4",
+        "h7h5",
+        "h2h4",
+        "f6f5"
+      ],
+      "best_pv": [
+        "e7f7",
+        "f2f4",
+        "d8e8",
+        "f5h3",
+        "f6f5",
+        "e4g5",
+        "f7g6",
+        "h3g2",
+        "f8c5",
+        "c1e3",
+        "c5e3",
+        "e2e3"
+      ],
+      "loss": 122,
+      "ply": 30,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [
+              "f8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 1
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 1
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 32,
+            "side": "black",
+            "san": "Rh8",
+            "kind": "round_trip",
+            "in_line": true
+          },
+          {
+            "ply": 43,
+            "side": "white",
+            "san": "Qg2",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": [
+          {
+            "ply": 33,
+            "side": "white",
+            "san": "Bh3",
+            "kind": "round_trip",
+            "in_line": true
+          }
+        ]
+      },
+      "D": {
+        "played": -1,
+        "best": 1
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": -1,
+        "best": -1
+      },
+      "events": [
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "e3",
+          "ply": 11
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "uV7Tz1VK/11",
+      "fen": "rnbqk1nr/2pp1ppp/1p2p3/p7/2PPP3/P1P5/5PPP/R1BQKBNR b KQkq - 0 6",
+      "grade": "mistake",
+      "played_pv": [
+        "a8a6",
+        "d1g4",
+        "e8f8",
+        "f1d3",
+        "d7d6",
+        "g4e2",
+        "a6a8",
+        "f2f4",
+        "d8h4",
+        "e1d1",
+        "c8a6",
+        "g1f3",
+        "h4g4",
+        "h2h3",
+        "g4g3",
+        "c1e3",
+        "f8e8"
+      ],
+      "best_pv": [
+        "g8e7",
+        "f1d3",
+        "d7d6",
+        "g1e2",
+        "e8g8",
+        "e1g1",
+        "b8d7",
+        "e2g3",
+        "c8a6",
+        "a1a2",
+        "c7c5",
+        "d1g4",
+        "c5d4",
+        "c3d4",
+        "a8c8"
+      ],
+      "loss": 121,
+      "ply": 12,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [],
+            "lost_castling": 1,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "g8",
+              "b8"
+            ],
+            "lost_castling": 1,
+            "undeveloped": 3,
+            "wasted": 0
+          }
+        },
+        "best": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [],
+        "best": []
+      },
+      "D": {
+        "played": -2,
+        "best": 1
+      },
+      "swing": 3,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "lost_castling",
+          "side": "black"
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    },
+    {
+      "id": "ytR8qwlM/5",
+      "fen": "rnbqkbnr/pppp1pp1/8/4p2p/4P3/3P1N2/PPP2PPP/RNBQKB1R b KQkq - 1 3",
+      "grade": "inaccuracy",
+      "played_pv": [
+        "d7d5",
+        "f3e5",
+        "d8e7",
+        "d3d4",
+        "d5e4",
+        "b1c3",
+        "b8d7",
+        "c3d5",
+        "e7d8",
+        "f1b5",
+        "f8d6",
+        "e5c4",
+        "a7a6",
+        "c4d6",
+        "c7d6",
+        "b5e2"
+      ],
+      "best_pv": [
+        "b8c6",
+        "b1c3",
+        "g8f6",
+        "c1g5",
+        "f8e7",
+        "d1d2",
+        "e8g8",
+        "f1e2",
+        "d7d6",
+        "d3d4",
+        "c8g4",
+        "d4d5",
+        "g4f3",
+        "e2f3",
+        "c6d4",
+        "e1c1",
+        "f6d5",
+        "g5e7",
+        "d5e7",
+        "f3h5",
+        "c7c6"
+      ],
+      "loss": 72,
+      "ply": 6,
+      "counts": {
+        "played": {
+          "white": {
+            "home": [
+              "c1"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 1,
+            "wasted": 0
+          },
+          "black": {
+            "home": [
+              "g8",
+              "c8"
+            ],
+            "lost_castling": 0,
+            "undeveloped": 2,
+            "wasted": 1
+          }
+        },
+        "best": {
+          "white": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          },
+          "black": {
+            "home": [],
+            "lost_castling": 0,
+            "undeveloped": 0,
+            "wasted": 0
+          }
+        }
+      },
+      "wasted_events": {
+        "played": [
+          {
+            "ply": 14,
+            "side": "black",
+            "san": "Qd8",
+            "kind": "retreat",
+            "in_line": true
+          }
+        ],
+        "best": []
+      },
+      "D": {
+        "played": -2,
+        "best": 0
+      },
+      "swing": 2,
+      "opening": true,
+      "same_material": true,
+      "material": {
+        "played": 0,
+        "best": 0
+      },
+      "events": [
+        {
+          "line": "played",
+          "kind": "king_zone_entry",
+          "side": "black",
+          "piece": "knight",
+          "square": "d6",
+          "ply": 14
+        },
+        {
+          "line": "best",
+          "kind": "king_zone_entry",
+          "side": "white",
+          "piece": "bishop",
+          "square": "f3",
+          "ply": 13
+        }
+      ],
+      "facts": [],
+      "cache_miss": null,
+      "pass": true
+    }
+  ]
+}
