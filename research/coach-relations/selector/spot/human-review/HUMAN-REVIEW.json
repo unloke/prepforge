@@ -1,0 +1,211 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "spot",
+  "blind_data_sha256": "96833833ec775c6d84ffb230a3a5d9372d6184d555ac82aaf046778d4f5b6486",
+  "pairs_total": 60,
+  "completed": 20,
+  "updated_at": "2026-10-16T02:39:20.978Z",
+  "reviews": [
+    {
+      "pair_id": "card-01",
+      "verdict": "0",
+      "note": "",
+      "content_sha256": [
+        "64066e224a3b42cbb26260564f61ffd1df0da8d0efb59a333862892de3953570"
+      ],
+      "updated_at": "2026-10-16T01:56:55.702Z"
+    },
+    {
+      "pair_id": "card-02",
+      "verdict": "1",
+      "note": "",
+      "content_sha256": [
+        "1ad164c174bd3b947eb0497775e5f1125f92229a83e9525b8392cf4be06b7f9e",
+        "55428b5d9c2fad9061417cf4eca3e035387db0444910f6deed847925f10ef999"
+      ],
+      "updated_at": "2026-10-16T01:57:18.622Z"
+    },
+    {
+      "pair_id": "card-03",
+      "verdict": "1",
+      "note": "",
+      "content_sha256": [
+        "86c535dd1940506ea81940b93f815f7df73f42d3634229070454f5f00ad427fc",
+        "3c84b9037d0ff50ad19b5479eea0e1f1143e0bdd89df8fee603d87135dcb5ba5"
+      ],
+      "updated_at": "2026-10-16T01:57:39.315Z"
+    },
+    {
+      "pair_id": "card-04",
+      "verdict": "1",
+      "note": "",
+      "content_sha256": [
+        "00ec672b8750af4ef841bb80a98a7e4cc863e6c82fce38eff79fd24e75e7ff48",
+        "07cdbdd17b6b6d63a082050661463b3c3e4493abdcd7e5fc5cbef11ad2a1ade2",
+        "07cdbdd17b6b6d63a082050661463b3c3e4493abdcd7e5fc5cbef11ad2a1ade2"
+      ],
+      "updated_at": "2026-10-16T02:00:01.652Z"
+    },
+    {
+      "pair_id": "card-05",
+      "verdict": "1",
+      "note": "",
+      "content_sha256": [
+        "80052a9c0f95f168c5bf0f9163ac44e68b9a146f6c7c3a4371d1daa63a572724",
+        "740e6510bd31fb2d0862433342e59677663e853b07c98044eb84707c7fe5a68e"
+      ],
+      "updated_at": "2026-10-16T02:00:23.245Z"
+    },
+    {
+      "pair_id": "card-06",
+      "verdict": "none",
+      "note": "1和2都不好 但相較之下2好點 2沒提到掉子 小可惜 但是1太冗然後又沒提到王的問題",
+      "content_sha256": [
+        "6a53537b6fbcf5773ff470fb8d365d0eae2b5ee9e0d72ff444e4a7c1cd781ebb",
+        "bb3de07f7869a9965a21adfcd0c6aff9b69b12660cab682aa09506c6a0fbf9d0"
+      ],
+      "updated_at": "2026-10-16T02:06:01.150Z"
+    },
+    {
+      "pair_id": "card-07",
+      "verdict": "0",
+      "note": "2直接大錯特錯欸 Rxe1不就是純交換嘛= =",
+      "content_sha256": [
+        "4d87c4fad628a27a149cafc29306bc8c5510d83b7948e37c5836fd3ca206754a",
+        "ad21c2caad0fc5afa8450dac3c8ecc652f19d2bf474f7958221cfdf9f7042644",
+        "4d87c4fad628a27a149cafc29306bc8c5510d83b7948e37c5836fd3ca206754a"
+      ],
+      "updated_at": "2026-10-16T02:06:31.561Z"
+    },
+    {
+      "pair_id": "card-08",
+      "verdict": "none",
+      "note": "1漏了掉兵這個問題 然後2沒提到國王 相較之下1好點 但是都不好",
+      "content_sha256": [
+        "1f0b32053d1554401286cd87d1d1f08fbfe59cc662e8fe59f7bdc456648946b9",
+        "1393dbf74807a645be3df3dbc920cfb9c492c6b9f74eea64794af92e960dab12"
+      ],
+      "updated_at": "2026-10-16T02:07:01.305Z"
+    },
+    {
+      "pair_id": "card-09",
+      "verdict": "none",
+      "note": "應該說幫助對手出子然後破壞自己的兵型",
+      "content_sha256": [
+        "7810b885cc0bd2764a6c05097026f200bcb7f280a372a236cc862e38583d25bf"
+      ],
+      "updated_at": "2026-10-16T02:03:31.508Z"
+    },
+    {
+      "pair_id": "card-10",
+      "verdict": "1",
+      "note": "",
+      "content_sha256": [
+        "c8e74e72e7851c392cb91d3e67c2a27d60b62e0f1d0c8cbd696ccf6b5b1d376c",
+        "ab7f86de5f75d88104d0d85c8105866faf563c9227a88da04b6bfbbc8eaced35",
+        "ab7f86de5f75d88104d0d85c8105866faf563c9227a88da04b6bfbbc8eaced35",
+        "ab7f86de5f75d88104d0d85c8105866faf563c9227a88da04b6bfbbc8eaced35"
+      ],
+      "updated_at": "2026-10-16T02:04:14.832Z"
+    },
+    {
+      "pair_id": "card-11",
+      "verdict": "0",
+      "note": "這個1實際上是對的 不過這個stockfish是錯的 他神經網路太爛誤判黑方需要給疊兵 然後這個coach版本沒有寫疊兵 不過我們也不知道這個coach到底是真的沒注意到疊兵還是他判斷不用寫出疊兵 實際的原因就是黑方需要用主教換騎士沒錯",
+      "content_sha256": [
+        "d26ac2d06dba2f441e8a3a5aa9780f190322596a92f7c23fa6db512fa69327b4"
+      ],
+      "updated_at": "2026-10-16T02:24:18.905Z"
+    },
+    {
+      "pair_id": "card-12",
+      "verdict": "0",
+      "note": "",
+      "content_sha256": [
+        "e1efa2e2f9611894f8bb79cc84bfdee38392b90e2f8ed48b691269ce5ce91936"
+      ],
+      "updated_at": "2026-10-16T02:23:06.978Z"
+    },
+    {
+      "pair_id": "card-13",
+      "verdict": "1",
+      "note": "實際上掉的比這個多? 為什麼他沒寫出來 算了 總之掉子是主因",
+      "content_sha256": [
+        "12ce0bf89c83171ddaeedae1a85d30b9815183b0b5c4160f67d839ed5edec486",
+        "1b4e5bcec5cd412d181d09a62f21bac95c6002c907624bd10951572a2ce26b34"
+      ],
+      "updated_at": "2026-10-16T02:25:54.122Z"
+    },
+    {
+      "pair_id": "card-14",
+      "verdict": "0",
+      "note": "1,3都能通 但損失比較大 講損失沒錯 或許能都講? 可是有可能會太長 就是個取捨啦",
+      "content_sha256": [
+        "bbcdf622f0e3df8c2d879c2c238ba8297c442c8882ec24d521aab42c7a5f5080",
+        "18659494bcb445a373852ae8fe4a8cf478fd07706071542dd758bf0210525855",
+        "2cdc47d1084b35727daef0ba2513a1b92e857c96259e2a3f241cf0f6dfce17cd"
+      ],
+      "updated_at": "2026-10-16T02:28:10.771Z"
+    },
+    {
+      "pair_id": "card-15",
+      "verdict": "0",
+      "note": "",
+      "content_sha256": [
+        "487253fa9ea5780303ccbfd0a40741bfba0a742d86c4e4c5b8532b17f53d2c2b"
+      ],
+      "updated_at": "2026-10-16T02:28:23.449Z"
+    },
+    {
+      "pair_id": "card-16",
+      "verdict": "0",
+      "note": "",
+      "content_sha256": [
+        "2b2bc321f75924615c0650594fc2ace788c8c21352160ba75cfe00c1b021995b",
+        "97ea238107f94c74f8e4e3b39a56655376b9f50b971d7486382531ffaed837cb"
+      ],
+      "updated_at": "2026-10-16T02:28:36.938Z"
+    },
+    {
+      "pair_id": "card-17",
+      "verdict": "2",
+      "note": "3是事實上最合理的 1,2都怪怪的 但是3也有更好的講法 一般而言一個區域的戰鬥會一起講 這裡把中間和王翼的損失擺在一起講就怪怪的? 如果是我的話依照這些事實可能會講 blunder. Qd6 allows 12.Bxh6 and you cannot capture the bishop due to the weaker king side compare to best move.\n當然 如果我能使用所有資源的話我就會發現關鍵事實然後我的講解就可以更細: blunder. Qb6 allows 12.Bxh6 since now after gxh6 Qxh6 black don't have Nxe4! which defend the attack.",
+      "content_sha256": [
+        "48de601ebd660383140b051112acb736fa2576010e4eb22966fe46a5fbb82de6",
+        "e8e398b300298e0bd8b70ae4236e670e6c78860b3ac8613490ebf3d911c5e6c9",
+        "ba135578f03a3c1cdac24f65766818fb0cbaf97e4dff989b1df3a491fc47b823"
+      ],
+      "updated_at": "2026-10-16T02:35:56.206Z"
+    },
+    {
+      "pair_id": "card-18",
+      "verdict": "1",
+      "note": "",
+      "content_sha256": [
+        "ec62646661d583b181fb595fc7b0dfc0d4bbf666690b2fda5092d7e68d60fa3f",
+        "339098fbe6a629a42f9885181d289c79eec64618e33384a3e2e77ade9032cf98"
+      ],
+      "updated_at": "2026-10-16T02:36:24.595Z"
+    },
+    {
+      "pair_id": "card-19",
+      "verdict": "0",
+      "note": "對但是可以順便提到黑方損失中央控制然後還幫對手出子",
+      "content_sha256": [
+        "1afbceac826b410676776d2ea41ba74943891851d765e9f0f65b8eb757fb41ce"
+      ],
+      "updated_at": "2026-10-16T02:36:54.284Z"
+    },
+    {
+      "pair_id": "card-20",
+      "verdict": "0",
+      "note": "這三個裡面我最喜歡1的敘事方式 可是老實說drives the king out和wins a pawn連在一起講會更好 因為都是事實 如果是我講的話我會說...misses Bxf3 since this gives black a strong center knight and white has to sacrifice a pawn for development (...)",
+      "content_sha256": [
+        "7bf36e3434d7a1d99b7d1ba1335c6d245f5ea5af6b17fc0c6c94a77d241d4f05",
+        "4f61b11996182c51e13de4f0de6b03b24e888cb00b523d6454e5cf949e0ca73d",
+        "993c84ccf70944fcca727cb1cacd4add3c23e8c7b6f0ded9e039863e4b4b19ab"
+      ],
+      "updated_at": "2026-10-16T02:39:20.669Z"
+    }
+  ]
+}

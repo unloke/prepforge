@@ -350,11 +350,42 @@ def forced_out(f, row):
     return b.is_check() and all(b.piece_type_at(m.from_square) == chess.KING for m in b.legal_moves)
 
 
+def pays(f, ln):
+    """True when the fork wins something in the line: the forking side takes one of its targets
+    (not the king) within its next two moves, and is ahead counting from before the fork move to
+    the end of that exchange. A check that only leads to a trade ('Rxe1+ forking the king and the
+    rook' answered by Rxe1) is no fork."""
+    i = f["ply"]
+    if i > len(ln.moves):
+        return False
+    w = ln.boards[i - 1].turn
+    after = ln.boards[i]
+    tracked = {s for s in map(chess.parse_square, f["targets"]) if after.piece_type_at(s) != chess.KING}
+    for j in range(i + 1, min(i + 4, len(ln.moves)) + 1):
+        b, m = ln.boards[j - 1], ln.moves[j - 1]
+        if b.turn == w and m.to_square in tracked:
+            # the whole run of captures: stopping at the recapture misses a counter-capture (sol: 15 of 17 worse)
+            end = j
+            while end < len(ln.moves) and ln.boards[end].is_capture(ln.moves[end]):
+                end += 1
+            return balance(ln.boards[end], w) > balance(ln.boards[i - 1], w)
+        if b.turn != w and m.from_square in tracked:
+            tracked = tracked - {m.from_square} | {m.to_square}
+    return False
+
+
 def said(cands, row, ext):
-    out = []
+    out, counted = [], set()
     for f in cands:
         if f["type"] == "material":
             f = recount(f, ext[f["line"]])
+            # The recount is per line: the captures of one run all come out as the same count.
+            same = f and (f["line"], f["side"], tuple(f["won"]), tuple(f["lost"]), f["end"])
+            if same in counted:
+                continue
+            counted.add(same)
+        if f and f["type"] == "fork" and not pays(f, ext[f["line"]]):
+            continue
         if (f and f["type"] not in SILENT and f.get("what") != "chain"
                 and (f["type"] != "castling" or forced_out(f, row))
                 and (row.get("loss") or 0) <= CAP.get(f["type"], 10 ** 6)):

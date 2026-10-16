@@ -61,14 +61,15 @@ def load(consensus=False):
     return [c for c in cards if c["n"] in other and other[c["n"]]["good"] == c["good"]]
 
 
-def load_pass(d):
+def load_pass(d, out=None):
+    """out: the labels' folder, when another judge labelled d's cards (default d/out)."""
     key = {k["n"]: k for k in map(json.loads, (HERE / d / "key.jsonl").read_text(encoding="utf-8").splitlines())}
     items = {}
     for p in sorted((HERE / d).glob("batch-*.jsonl")):
         for o in map(json.loads, p.read_text(encoding="utf-8").splitlines()):
             items[o["n"]] = o
     cards = []
-    for p in sorted((HERE / d / "out").glob("batch-*.jsonl")):
+    for p in sorted((HERE / (out or d + "/out")).glob("batch-*.jsonl")):
         for lab in map(json.loads, p.read_text(encoding="utf-8").splitlines()):
             k, it = key[lab["n"]], items[lab["n"]]
             byk = {c["k"]: c for c in lab["candidates"]}

@@ -23,3 +23,13 @@ rule, hit >= +5pp with CI lower bound > 0, recall down by at most 5pp, utility (
 bare 0) not below the rule's.
 
 Choosing among candidates is closed: wrong picks are 3-5% of cards.
+
+## Closed before the test (2026-10-15, no confirmation label read)
+
+The user's spot-check (20 of the 60 cards, spot/) shows a different cost model: the user stays bare
+on 3 of 20 cards (sol 22%, Hark 30% of the 360) and prefers a correct but incomplete reason to none.
+The user's call: show it, and fix the reasons. The "wrong costs 2" utility behind H1 does not hold
+for this reader, so H1/H2 are not run and confirm/ stays sealed. A user-taste rubric for the judges
+(taste/) matched the user on 6 of 10 held-out cards, no better than the plain rubric (7/10), and is
+not used. Work moves to the candidates themselves: duplicates (fixed in explain.said), forks that
+are plain exchanges, material and king safety told together.
