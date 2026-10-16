@@ -1,0 +1,25 @@
+{"n": 0, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Bf3# is real and Bxg4 pockets the pawn with tempo, so the fuller card wins."}
+{"n": 1, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxh4# is real and forces Kxg3, after which the queen falls, so B tells both halves."}
+{"n": 2, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qe7 really mates on h4 and wins queen for rook, so B tells both halves."}
+{"n": 3, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxg7# is real and the line nets a knight for a pawn, so A tells both halves."}
+{"n": 4, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qg7# is real and the line nets two bishops, so A tells both halves."}
+{"n": 5, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxb2# is real after Bxc3 and stops bxc3, so the pawn stays lost and A tells both halves."}
+{"n": 6, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxf6# is real after bxc3 and black is down a bishop for a pawn, so B has the material."}
+{"n": 7, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qe1# is real after gxf6 and white is down the exchange, so B has the material."}
+{"n": 8, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qh4# is real and Qxb7 takes the bishop clean, so B tells both halves."}
+{"n": 9, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxg2# is real and the king flight drops two pawns, so B tells both halves."}
+{"n": 10, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxb7# is real and forces b5, after which Rxc6 takes the knight, so A tells both halves."}
+{"n": 11, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxb7# is real and the knight falls after b5 and Rxc6, so B tells both halves."}
+{"n": 12, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rxf1# is real and Bxa1 nets a rook for the bishop, so B tells both halves."}
+{"n": 13, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rd7# is real and Nc6 drops rook and knight for a bishop, so B tells both halves."}
+{"n": 14, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rd7# is real and Nf6 nets rook and knight for a bishop, so B tells both halves."}
+{"n": 15, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxf7# forces d5 and the block is captured to win queen and pawn, so B tells both halves."}
+{"n": 16, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qg2# is real and the Nxf5+ defence costs bishop and knight for a pawn, so A tells both halves."}
+{"n": 17, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxe1# is real and the Qe3 block leads to Rxc2 winning the bishop, so A tells both halves."}
+{"n": 18, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxd8# is real after dxc5 and the knight falls clean, so B tells both halves."}
+{"n": 19, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxh2# is real and Qxb5 pockets the pawn, so A has the material."}
+{"n": 20, "verdict": "B", "ok": {"A": true, "B": true}, "note": "b5# is real and Nc3 is captured to win the knight, so B tells both halves."}
+{"n": 21, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxf1# is real and the Qe2 block costs a rook for a bishop, so B tells both halves."}
+{"n": 22, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxh7# is real after Rf1 and the queen falls for knight and pawn, so B tells both halves."}
+{"n": 23, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxh7# is real and Rf1 wins queen for knight and pawn, so A tells both halves."}
+{"n": 24, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxg2# is real and the f4 defence costs bishop and pawn for a knight, so A tells both halves."}

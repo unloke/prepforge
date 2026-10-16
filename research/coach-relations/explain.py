@@ -154,6 +154,13 @@ def phrase(f, ln, ext, a, root, row):
         won = [j for j in caps if (ext.boards[j - 1].piece_at(ext.moves[j - 1].to_square) or chess.Piece(chess.PAWN, not w)).symbol().lower() in f["won"]]
         holds = lambda j: balance(ext.boards[min(j + 1, len(ext.moves))], w) - balance(ext.boards[0], w) >= f["net"]
         q = next((j for j in caps if j >= max(won, default=f["end"]) and holds(j)), f["end"])
+        t = f.get("threat")
+        if t:  # the mate threat that wins it, at its move: one sentence for both
+            k, on = t["ply"], f"threatening mate on {t['square']}"
+            if played:
+                return f"allows {ext.seq(a, k)}, {on}, and loses {what}{ext.after(k + 1, q)}", q, ln.arrow("played", k), [t["square"]]
+            lead = f"threatens mate on {t['square']}" if k == 1 else f"sets up {ext.seq(k, k)}, {on},"
+            return f"{lead} and wins {what}{ext.paren(a, q)}", q, ln.arrow("best", k), [t["square"]]
         return (f"loses {what}{ext.after(a, q)}" if played else f"wins {what}{ext.paren(a, q)}"), q, arrow, []
     if t == "fork":
         targets = " and ".join(ln.name(k, s) for s in kings_first(ln, k, f["targets"]))
@@ -393,6 +400,29 @@ def said(cands, row, ext):
     return out
 
 
+def threatened(facts, ranked, ext):
+    """A material gain and the winner's mate threat at or up to two moves before its first capture
+    of a man it wins: one fact, the material carrying the threat (sol on 166 pool cards: a threat
+    first needs both 44 of 61; later, 14 of 46). A threat made by the winning capture itself counts
+    only when the loser could otherwise take back (muse, 81 such cards: acceptable with a retake 50
+    vs 46 without the threat, with none 23 vs 26)."""
+    top = facts[0]
+    for m in [top] if top["type"] == "material" else [c for c in ranked if c["type"] == "material" and c["line"] == top["line"]]:
+        ln, w = ext[m["line"]], m["side"] == "white"
+        won = [j for j in range(1, min(m["end"], len(ln.moves)) + 1) if ln.boards[j - 1].turn == w and ln.boards[j - 1].is_capture(ln.moves[j - 1])
+               and (ln.boards[j - 1].piece_at(ln.moves[j - 1].to_square) or chess.Piece(chess.PAWN, not w)).symbol().lower() in m["won"]]
+        for t in [top] if top["type"] == "mate_threat" else ranked:
+            if (won and t["type"] == "mate_threat" and t["line"] == m["line"] and t["ply"] <= len(ln.moves)
+                    and ln.boards[t["ply"] - 1].turn == w and 0 <= won[0] - t["ply"] <= 4
+                    and not (m["line"] == "best" and won[0] == t["ply"] > 1)  # a later capture that also threatens: the gain is the point
+                    # a capture that threatens: the threat matters only if it is why the man is not taken back
+                    and (won[0] > t["ply"] or ln.boards[won[0]].is_attacked_by(not w, ln.moves[won[0] - 1].to_square))
+                    # no capture between the move and the threat: the sentence quotes the line from the threat on
+                    and not any(ln.boards[j - 1].is_capture(ln.moves[j - 1]) for j in range(2 if m["line"] == "played" else 1, t["ply"]))):
+                return [dict(m, threat=t)]
+    return facts
+
+
 def second(a, b):
     """One reason per card: a second fact speaks only as the fork that wins the first fact's material."""
     return (b["type"] == "fork" and a["type"] == "material" and a["line"] == b["line"] and bool(a["at"])
@@ -516,12 +546,15 @@ def explain(row, cands=None):
     cands = [c for c in cands if c["type"] != "allows"]
     ranked = rank([c for c in cands if not c.get("mechanism")], mover)
     facts = ranked[:1] + [c for c in ranked[1:] + [c for c in cands if c.get("mechanism")] if second(ranked[0], c)][:1] if ranked else []
+    if facts and facts[0]["type"] in ("material", "mate_threat") and not (
+            facts[0]["type"] == "material" and len(facts) == 1 and defender(facts[0], ext[facts[0]["line"]])):  # the lost guard says it better
+        facts = threatened(facts, ranked, ext)
     if [f["type"] for f in facts] == ["trades"] and any(quiet(lines, ext, root)):  # a trade alone says little
         facts = []
     grade = GRADE.get(row["grade"])
     out, arrows, squares, shown = [], [], [], {}
     fork_first = len(facts) == 2 and facts[0]["line"] == "best" and facts[1]["ply"] == 1
-    guard = facts[0]["type"] == "material" and len(facts) == 1 and defender(facts[0], ext[facts[0]["line"]]) if facts else None
+    guard = facts[0]["type"] == "material" and len(facts) == 1 and not facts[0].get("threat") and defender(facts[0], ext[facts[0]["line"]]) if facts else None
     for i, f in enumerate(facts):
         line = f["line"]
         ln = lines[line]

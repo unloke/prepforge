@@ -1,0 +1,25 @@
+{"n": 50, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxf3# is real and Qxf4 pockets the f-pawn, so the fuller card wins."}
+{"n": 51, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rg6# is real and Rxe6+ pockets the e-pawn, so the fuller card wins."}
+{"n": 52, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxc2# is real and the line drops queen and pawn for a knight, so the fuller card wins."}
+{"n": 53, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxh2# is real and Qxc6 nets a knight for a pawn, so the fuller card wins."}
+{"n": 54, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxf2# is real and Qxb2 pockets the b-pawn, so the fuller card wins."}
+{"n": 55, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qg7# is real and the Re5 defence drops queen and rook for a bishop, so the fuller card wins."}
+{"n": 56, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qg7# is real and the Re5 defence drops queen and rook for a bishop, so the fuller card wins."}
+{"n": 57, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qh2# is real and Qxg2+ pockets the g-pawn, so the fuller card wins."}
+{"n": 58, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qh2# is real and Qxg2+ pockets the g-pawn, so the fuller card wins."}
+{"n": 59, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Rxg7 takes the bishop before Qg3# bites, so the shorter card wins."}
+{"n": 60, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Rxd3 is answered by Rxd3 dropping the rook before Qa8# bites, so the shorter card wins."}
+{"n": 61, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qf2# is real and the Qe1 defence drops the queen for a bishop, so the fuller card wins."}
+{"n": 62, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Rxd8# is real and the Qd6 defence drops queen and pawn for a rook, so the fuller card wins."}
+{"n": 63, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rxd8# is real and the Qd6 defence drops queen and pawn for a rook, so the fuller card wins."}
+{"n": 64, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxh7# is real and the Qe7 defence drops the queen for a knight, so the fuller card wins."}
+{"n": 65, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxa4# is real and the Qxd8+ defence drops the queen for a rook, so the fuller card wins."}
+{"n": 66, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qf7# is real and the Qd6 defence drops two knights for a bishop, so the fuller card wins."}
+{"n": 67, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qh7# is real and the f5 defence drops bishop and knight for a pawn, so the fuller card wins."}
+{"n": 68, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxe1# is real and forces h3 before Qxa3 wins the bishop, so the mate card beats the fork card."}
+{"n": 69, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxe1# is real and explains why the rook cannot leave e1, so the mate card beats the fork card."}
+{"n": 70, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qf2# is real and the Qf1 defence drops the h-pawn, so the fuller card wins."}
+{"n": 71, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxg2# is real and the Bg3 defence drops the d-pawn, so the fuller card wins."}
+{"n": 72, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxd8# is real and the Rxd1 defence drops a rook for knight and pawn, so the fuller card wins."}
+{"n": 73, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Bxf6 takes the knight before Qh5# bites, so the shorter card wins."}
+{"n": 74, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qf1# is real but the rook-for-knight-and-pawn loss is the point, so the full card wins."}

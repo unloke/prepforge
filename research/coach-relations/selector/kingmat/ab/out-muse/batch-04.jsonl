@@ -1,0 +1,25 @@
+{"n": 75, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rd2 really threatens Rd1#, forcing Kf1 and the knight loss, so B is complete."}
+{"n": 76, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Bxh3 wins the h-pawn because gxh3 walks into Qxg2#, so mate plus pawn is the point."}
+{"n": 77, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qh4 really mates on f2 and forces Nh3, then Qxe4+ wins the pawn."}
+{"n": 78, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qh4 mates on f2 and wins the e-pawn via Nh3 Qxe4+, so both halves matter."}
+{"n": 79, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rc8 mates on g8, Qa2 blocks it but drops the d-pawn, so both halves matter."}
+{"n": 80, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qg5 mates on g7, Qxf6 blocks it but drops the bishop via Qxd5."}
+{"n": 81, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Qxc4 takes the rook at once; the extra Qc1 mate does not explain the win."}
+{"n": 82, "verdict": "B", "ok": {"A": true, "B": true}, "note": "fxg3 mates on f8, Be6 blocks it but drops the b-pawn after Qxb7."}
+{"n": 83, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Kh1 mates on g7, Nd4 blocks it but drops the rook via Be6+ and gxf4."}
+{"n": 84, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxg6 takes the g-pawn and mates on f7, so mate plus pawn is complete."}
+{"n": 85, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxc5 mates on e7, Qf6 blocks it but drops both pawns via Qb5+ and Qxb7."}
+{"n": 86, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qh4 mates on h2 and pockets the h-pawn after Rfd1 Qxh2+."}
+{"n": 87, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Qxh3 mates on h2 and the queen sac Qg8+ is the cost of stopping it."}
+{"n": 88, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rxd3 mates on d1 and Ra8+ delays it only at the cost of rook and bishop."}
+{"n": 89, "verdict": "B", "ok": {"A": false, "B": true}, "note": "Bxa8 takes the rook at once; the extra Rd1 mate does not explain the win."}
+{"n": 90, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qe4 mates on h1, Rf3 blocks it but drops the bishop via Qd4+ and Bxe6."}
+{"n": 91, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qe4 mates on h1 and forces Rf3, then wins the bishop via Qd4+ and Bxe6."}
+{"n": 92, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Ng4 only sets up Qh4 mate; it does not itself threaten mate and omits the pawn."}
+{"n": 93, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxh5 takes the bishop and mates on f7, so mate plus bishop is complete."}
+{"n": 94, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Bxh6 wins the h-pawn because gxh6 walks into Qxg7#, so both halves matter."}
+{"n": 95, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Bxh6 wins the h-pawn because gxh6 walks into Qxg7#, so both halves matter."}
+{"n": 96, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rxc2 mates on g2, Re2 blocks it but drops the rook via Qd4+ and Qxa1+."}
+{"n": 97, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Bxh3 mates on g2 and Rxd5 stops it only at the cost of rook for knight."}
+{"n": 98, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Rg1 mates on g7, g6 stalls it but drops the rook via Bxf8."}
+{"n": 99, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Bf3 mates on h1, Qg3 blocks it but drops the queen via Rh1+ and Rxg1+."}

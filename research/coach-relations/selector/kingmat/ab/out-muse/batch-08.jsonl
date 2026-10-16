@@ -1,0 +1,24 @@
+{"n": 175, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on f7; only B adds the pawn Qf3 wins via 8.Nxc6."}
+{"n": 176, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on h6; only A adds the bishop-for-pawn loss it forces."}
+{"n": 177, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on h6; only A adds the bishop-for-pawn win it forces."}
+{"n": 178, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on e1; only B adds the pawn Rxf2 wins."}
+{"n": 179, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the knight won; only A adds the real mate on f8 it sets up."}
+{"n": 180, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on g7; only A adds the pawn Qxg6 wins."}
+{"n": 181, "verdict": "A", "ok": {"A": true, "B": false}, "note": "The queen is lost at once by 19.Qxh4, so the later mate on h7 is an irrelevant side remark."}
+{"n": 182, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the queen-for-bishop loss; only B adds the real mate on g4 that forces it."}
+{"n": 183, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on f7; only B adds the pawn Qxe5 wins."}
+{"n": 184, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on f7; only A adds the pawn Qh5 wins via 4.Qxe5."}
+{"n": 185, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on f8; only B adds the pawn bxa5 wins."}
+{"n": 186, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the queen-for-pawn loss; only B adds the real mate on g7 that forces it."}
+{"n": 187, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on g2; only A adds the pawn lost through Rxg2 and Qxe1+."}
+{"n": 188, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the rook-bishop-knight for pawn loss; only A adds the real mate on d2 behind it."}
+{"n": 189, "verdict": "B", "ok": {"A": false, "B": true}, "note": "The mate on h6 already exists before Bd3, so tying it to 26.cxd3 misleads."}
+{"n": 190, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the bishop-and-pawn win; only A adds the real mate on h6 it sustains."}
+{"n": 191, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on e2; only A adds the queen-and-pawn for rook-and-knight win."}
+{"n": 192, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the knight lost; only A adds the real mate on g2 that Ne4 must parry."}
+{"n": 193, "verdict": "B", "ok": {"A": false, "B": true}, "note": "The queen falls at once to 20.Rxg5, so the later mate on f6 is an irrelevant side remark."}
+{"n": 194, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on f1; only B adds the pawn Rxf2 wins."}
+{"n": 195, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on f2; only B adds the pawn lost to 11...exd3."}
+{"n": 196, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both name the real mate on h5; only B adds the pawn Nxg5 wins."}
+{"n": 197, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the real mate on d8; only A adds the pawn Qxc7 wins."}
+{"n": 198, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both name the knight won; only A adds the real mate on f7 behind 7.Ne5."}

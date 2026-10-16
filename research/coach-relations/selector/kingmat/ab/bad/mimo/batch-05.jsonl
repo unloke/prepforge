@@ -1,0 +1,25 @@
+{"n": 100, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds a real g4 mate threat; both texts correctly identify the lost queen."}
+{"n": 101, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real h2 mate threat while retaining the correct rook-and-pawn loss."}
+{"n": 102, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B includes the real g2 threat and the queen loss; A only gives the loss."}
+{"n": 103, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real h2 threat; both texts correctly summarize the queen-for-minor exchange."}
+{"n": 104, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes both the real h7 threat and the queen-for-rook-and-bishop loss."}
+{"n": 105, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both claim a pawn loss that never occurs in the cited line."}
+{"n": 106, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the pawn loss to the real h2 threat; both claims check out."}
+{"n": 107, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the pawn capture as well as the real h2 threat."}
+{"n": 108, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the pawn capture to the real h2 threat."}
+{"n": 109, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the rook-for-bishop exchange to the real f2 mating threat."}
+{"n": 110, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the rook capture and the real f8 threat; B omits the threat."}
+{"n": 111, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the rook capture and the real f8 threat; B omits the threat."}
+{"n": 112, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real g7 threat to the correct rook-for-pawn exchange."}
+{"n": 113, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the pawn capture and the real a6 threat."}
+{"n": 114, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the pawn loss and the real f3 threat; B omits the material point."}
+{"n": 115, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the h2 pawn loss and the real mating threat; B omits the material point."}
+{"n": 116, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the h6 pawn loss and the real g7 threat."}
+{"n": 117, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the knight-for-pawn exchange to the real b1 threat."}
+{"n": 118, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real b7 threat to the correct queen-and-pawn-for-knight exchange."}
+{"n": 119, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the e4 pawn loss to the real f2 threat."}
+{"n": 120, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the bishop capture and the real h7 threat; B omits the threat."}
+{"n": 121, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the bishop-for-pawn exchange and the real h7 threat."}
+{"n": 122, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the full-line bishop-for-pawn exchange to the real e1 threat."}
+{"n": 123, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes the e4 pawn loss and the real h4 threat."}
+{"n": 124, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the pawn capture to the real h4 threat."}

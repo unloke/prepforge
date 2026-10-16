@@ -1,0 +1,25 @@
+{"n": 100, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Queen already gone at Bxd1 before Ng4# bites, so the shorter queen-only card wins."}
+{"n": 101, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Nf3 must meet the real h2 mate yet still drops the rook, so the fuller card wins."}
+{"n": 102, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Kf1 must meet the real g2 mate yet still drops the queen, so the fuller card wins."}
+{"n": 103, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Bxg4 must meet the real h2 mate yet still drops the queen, so the fuller card wins."}
+{"n": 104, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Queen for rook and bishop is the point and h7 comes after it, so mate-only misses the reason."}
+{"n": 105, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "No pawn falls in the Bxe3+ line, so both queen-plus-pawn counts are false."}
+{"n": 106, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Pawn already gone at Rxf2 before h2 bites, so mate-only misses the point."}
+{"n": 107, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Pawn already gone at Rxf2 before h2 bites, so mate-only misses the pawn."}
+{"n": 108, "verdict": "B", "ok": {"A": false, "B": true}, "note": "Pawn already gone at Rxf2 before h2 bites, so the pawn-naming card wins."}
+{"n": 109, "verdict": "B", "ok": {"A": true, "B": true}, "note": "g3 must meet the real f2 mate yet still drops the rook, so the fuller card wins."}
+{"n": 110, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rook already gone at Qxf7 before f8 bites, so the shorter rook-only card wins."}
+{"n": 111, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rook already gone at Qxf7 before f8 bites, so the shorter card wins."}
+{"n": 112, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rxd3+ must meet the real g7 mate yet still drops the rook, so the fuller card wins."}
+{"n": 113, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Pawn already gone at Rxd6 before a6 bites, so mate-only misses the pawn."}
+{"n": 114, "verdict": "A", "ok": {"A": true, "B": true}, "note": "f4 must meet the real f3 mate yet still drops a pawn, so the fuller card wins."}
+{"n": 115, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Re1 must meet the real h2 mate yet still drops the h-pawn, so the fuller card wins."}
+{"n": 116, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Pawn already gone at Bxh6 before g7 bites, so mate-only misses the pawn."}
+{"n": 117, "verdict": "B", "ok": {"A": true, "B": true}, "note": "g4 must meet the real b1 mate yet still drops the knight, so the fuller card wins."}
+{"n": 118, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Rd7 must meet the real b7 mate yet still drops the queen, so the fuller card wins."}
+{"n": 119, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qe2 must meet the real f2 mate yet still drops the e-pawn, so the fuller card wins."}
+{"n": 120, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Bishop already gone at hxg5 before h7 bites, so the shorter bishop-only card wins."}
+{"n": 121, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Bishop already gone at hxg5 before h7 bites, so mate-only misses the bishop."}
+{"n": 122, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Bishop for a pawn after Rxe8+ Kxe8 never happens, so the mate-only card wins by default."}
+{"n": 123, "verdict": "A", "ok": {"A": true, "B": false}, "note": "Pawn already gone at Nxe4 before h4 bites, so mate-only misses the pawn."}
+{"n": 124, "verdict": "B", "ok": {"A": false, "B": true}, "note": "Pawn already gone at Nxe4 before h4 bites, so the pawn-naming card wins."}

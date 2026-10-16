@@ -1,0 +1,25 @@
+{"n": 25, "verdict": "A", "ok": {"A": true, "B": false}, "note": "B's fork is false: the knight on f3 does not attack h1 after Kh1, while A gives the real g2 mate and the bishop loss."}
+{"n": 26, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on g2 that forces Nxg5 before the bishop falls."}
+{"n": 27, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the real mate on g7 to the knight won by Bxf6."}
+{"n": 28, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on f7 that Ne6 must answer."}
+{"n": 29, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the real mate on f7 to the rook-and-pawn win."}
+{"n": 30, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on e7 that forces O-O before Rxe7 wins the bishop."}
+{"n": 31, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the real mate on b2 that forces Nb3 before the rook and pawns fall."}
+{"n": 32, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the rook for knight and pawn lost after the real mate on g7."}
+{"n": 33, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the real mate on f2 that forces Rf1 before the queen and knight fall."}
+{"n": 34, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on e1 that forces Rg1 and the queen loss."}
+{"n": 35, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the pawn won by Bxc5 after h3 answers the real mate on h2."}
+{"n": 36, "verdict": "B", "ok": {"A": false, "B": true}, "note": "A's mate is irrelevant since many replies stop mate on e1 without losing the queen; B gives the clean queen-for-rook line."}
+{"n": 37, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the pawn on a7 that falls after Nb6 blocks the real mate on c7."}
+{"n": 38, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the pawn on a7 won behind the real mate on c7."}
+{"n": 39, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on d8 that Qxe1+ must answer."}
+{"n": 40, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on d8 to the queen-for-rook win."}
+{"n": 41, "verdict": "A", "ok": {"A": true, "B": false}, "note": "B's mate on a8 does not explain the rook already lost on Qxd5; A gives the clean rook loss."}
+{"n": 42, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the rook for knight and pawn lost after g3 answers the real mate on g2."}
+{"n": 43, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the real mate on h2 that forces Rg2 before the heavy material loss."}
+{"n": 44, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the real mate on h7 that forces Qe1+ before the queen and pawn fall."}
+{"n": 45, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the pawn on f7 won after Ra3 answers the real mate on e4."}
+{"n": 46, "verdict": "A", "ok": {"A": true, "B": true}, "note": "Both are correct, but A adds the pawn on f7 won behind the real mate on e4."}
+{"n": 47, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on f7 that forces Bg5+ before the bishop falls."}
+{"n": 48, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the pawn on b4 won alongside the real mate on d3."}
+{"n": 49, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Both are correct, but B adds the real mate on g2 that forces Bxh7+ before the rook and knight fall."}

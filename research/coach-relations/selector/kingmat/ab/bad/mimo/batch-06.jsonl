@@ -1,0 +1,25 @@
+{"n": 125, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both include the same nonexistent h4 mate threat; no acceptable card."}
+{"n": 126, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both include the same nonexistent h4 mate threat; no acceptable card."}
+{"n": 127, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A correctly says Qxd2 wins the knight; B's d1 mate claim is false."}
+{"n": 128, "verdict": "B", "ok": {"A": false, "B": true}, "note": "B correctly gives the Qxd2 knight win; A's d1 mate claim is false."}
+{"n": 129, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false d1 mate claim."}
+{"n": 130, "verdict": "B", "ok": {"A": false, "B": true}, "note": "B gives the real rook loss; A's g5 mate claim is false."}
+{"n": 131, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false f7 mate claim."}
+{"n": 132, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false f7 mate claim."}
+{"n": 133, "verdict": "B", "ok": {"A": false, "B": true}, "note": "B correctly gives the real Qxa2 knight win; A's g2 mate claim is false."}
+{"n": 134, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A correctly gives the real Qd5 knight win; B's g2 mate claim is false."}
+{"n": 135, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false g2 mate claim."}
+{"n": 136, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false h8 mate claim."}
+{"n": 137, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A correctly gives the rook-for-two-pawns loss; B's h8 mate claim is false."}
+{"n": 138, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A correctly gives the bishop win; B's f2 mate claim is false."}
+{"n": 139, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A correctly gives the real Ne5 knight loss; B's g5 mate claim is false."}
+{"n": 140, "verdict": "B", "ok": {"A": false, "B": true}, "note": "B correctly gives the real Nf5 knight win; A's g5 mate claim is false."}
+{"n": 141, "verdict": "B", "ok": {"A": false, "B": true}, "note": "B correctly gives the real bishop loss; A's g7 mate claim is false."}
+{"n": 142, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false g2 mate claim."}
+{"n": 143, "verdict": "B", "ok": {"A": false, "B": true}, "note": "B correctly gives the real rook loss; A's f8 mate claim is false."}
+{"n": 144, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false h7 mate claim."}
+{"n": 145, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false f7 mate claim."}
+{"n": 146, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A correctly gives the real knight loss; B's e1 mate claim is false."}
+{"n": 147, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false f7 mate claim."}
+{"n": 148, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false c7 mate claim."}
+{"n": 149, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both hinge on a false f7 mate claim."}

@@ -1,0 +1,25 @@
+{"n": 150, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the true pawn loss to the real f7 mate."}
+{"n": 151, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the true bishop-and-pawn win to the real f7 mate."}
+{"n": 152, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the true bishop-and-pawn win to the real f7 mate."}
+{"n": 153, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real h2 mate to the true queen-for-knight loss."}
+{"n": 154, "verdict": "A", "ok": {"A": true, "B": false}, "note": "A's d7 mate is real but B's bishop-for-pawn count is false."}
+{"n": 155, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A gives the real h5 mate plus bishop loss; B gives only material with a fork aside."}
+{"n": 156, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the true two-pawn loss to the real b1 mate."}
+{"n": 157, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real e7 mate to the true queen-and-bishop win."}
+{"n": 158, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real h2 mate to the true bishop loss."}
+{"n": 159, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real h1 mate to the true rook-and-pawns win."}
+{"n": 160, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the true pawn loss to the real g2 mate."}
+{"n": 161, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the true pawn loss to the real f8 mate."}
+{"n": 162, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the true pawn loss to the real g7 mate."}
+{"n": 163, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real h8 mate to the true rook-for-pawns loss."}
+{"n": 164, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real h8 mate to the true rook-for-pawns win."}
+{"n": 165, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real g5 mate to the true queen-and-knight loss."}
+{"n": 166, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real h7 mate to the true knight loss."}
+{"n": 167, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the real g7 mate to the true bishop loss."}
+{"n": 168, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real g7 mate to the true bishop win."}
+{"n": 169, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the true pawn loss to the real g7 mate."}
+{"n": 170, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real d1 mate to the true queen loss."}
+{"n": 171, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the true queen exchange to the real b5 mate."}
+{"n": 172, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A adds the real g2 mate to the true rook-and-knight loss."}
+{"n": 173, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the true knight-for-pawn loss to the real a1 mate."}
+{"n": 174, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B adds the true knight-for-pawn win to the real a1 mate."}
