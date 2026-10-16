@@ -1,0 +1,36 @@
+{"n": 0, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The f8 mate threat explains why Black must leave the captured rook unrecovered."}
+{"n": 1, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Rxe4, which supplies the pawn compensation."}
+{"n": 2, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The c1 mate threat forces the rook away and makes the rook gain concrete."}
+{"n": 3, "verdict": "A", "ok": {"A": true, "B": false}, "note": "The line ignores the available Qe1 mate, so B misleadingly links it to the queen gain."}
+{"n": 4, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Bxb3, accounting for the pawn paid for the knight."}
+{"n": 5, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The Qf6 mate threat explains the defensive f6 instead of recovering material."}
+{"n": 6, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B gives the same bishop-winning liquidation without an unfinished pawn exchange."}
+{"n": 7, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The h7 mate threat forces Qe7 and explains why Black cannot recover the bishop."}
+{"n": 8, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A shows the later queen-for-rook liquidation needed to explain the net knight loss."}
+{"n": 9, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The f8 mate threat explains why Black must defend instead of recovering the rook."}
+{"n": 10, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B includes Bxb2, which reduces the displayed gain to one pawn."}
+{"n": 11, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Bxd3, accounting for the pawn in the exchange sacrifice."}
+{"n": 12, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A shows Bxf8, making the knight cost of the rook and pawn explicit."}
+{"n": 13, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Nxf7, showing the pawn compensation for the captured knight."}
+{"n": 14, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A shows the knight recapture and pawn exchanges that establish the stated net gain."}
+{"n": 15, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B supplies the material gain as well as the real d7 mate threat."}
+{"n": 16, "verdict": "B", "ok": {"A": true, "B": true}, "note": "Qxf7 offsets the pawn lost on c3 and makes the stated material balance clear."}
+{"n": 17, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes bxc6, the second pawn received for the knight."}
+{"n": 18, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Qxf4, the third pawn received for the rook."}
+{"n": 19, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B shows the two pawn recoveries that qualify the knight gain."}
+{"n": 20, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The h5 mate threat forces Bg4 and helps explain why the knight stays lost."}
+{"n": 21, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B includes Nxf7, showing the pawn recovered for the knight."}
+{"n": 22, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A shows Kxe2, completing the knight compensation for the queen and pawn."}
+{"n": 23, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "The continuation recovers the bishop on d1, so both overstate the loss as a queen for a pawn."}
+{"n": 24, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Rxe6, showing the knight compensation for the rook and pawn."}
+{"n": 25, "verdict": "B", "ok": {"A": false, "B": true}, "note": "The line ignores the f8 mate threat with Rg2, so A adds a misleading explanation."}
+{"n": 26, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B includes Qxe4+, the pawn compensation for the knight."}
+{"n": 27, "verdict": "both_bad", "ok": {"A": false, "B": false}, "note": "Both omit Bxa8 and Rxa8, which recover a rook for another bishop and change the material account."}
+{"n": 28, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The h8 mate threat forces the checking queen sacrifice that wins the rook."}
+{"n": 29, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B shows the pawn recoveries and rook liquidation behind the stated compensation."}
+{"n": 30, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B shows both pawn captures that qualify the knight gain."}
+{"n": 31, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A includes Bxb7, showing the pawn compensation for the queen."}
+{"n": 32, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A shows Bxf6 and Bxd4, establishing the net bishop-for-pawn loss."}
+{"n": 33, "verdict": "B", "ok": {"A": true, "B": true}, "note": "B includes Qxc6, the second pawn received for the knight."}
+{"n": 34, "verdict": "B", "ok": {"A": true, "B": true}, "note": "The a8 mate threat explains the defensive Qb2 instead of an immediate recapture."}
+{"n": 35, "verdict": "A", "ok": {"A": true, "B": true}, "note": "A shows the knight recapture and Bxb2, accounting for both forms of compensation."}

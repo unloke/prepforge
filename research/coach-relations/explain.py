@@ -148,12 +148,15 @@ def phrase(f, ln, ext, a, root, row):
     if t == "material":
         what = pieces(f["won"]) + (f" for {pieces(f['lost'])}" if f["lost"] else "")
         # quote the line to the winner's last capture of a man it wins, or on to a later capture of its
-        # until the count holds after the reply: later trades and take-backs are the count's, not the reader's
+        # until the stated count stands after the reply; the reply is the reader's to see only when it
+        # takes elsewhere (a take-back on the square is not quoted)
         w = f["side"] == "white"
         caps = [j for j in range(a, f["end"] + 1) if ext.boards[j - 1].turn == w and ext.boards[j - 1].is_capture(ext.moves[j - 1])]
         won = [j for j in caps if (ext.boards[j - 1].piece_at(ext.moves[j - 1].to_square) or chess.Piece(chess.PAWN, not w)).symbol().lower() in f["won"]]
-        holds = lambda j: balance(ext.boards[min(j + 1, len(ext.moves))], w) - balance(ext.boards[0], w) >= f["net"]
-        q = next((j for j in caps if j >= max(won, default=f["end"]) and holds(j)), f["end"])
+        count = lambda j: balance(ext.boards[j], w) - balance(ext.boards[0], w)
+        q = next((j for j in caps if j >= max(won, default=f["end"]) and count(min(j + 1, len(ext.moves))) == f["net"]), f["end"])
+        if q < len(ext.moves) and count(q) != f["net"] and ext.moves[q].to_square != ext.moves[q - 1].to_square:
+            q += 1
         t = f.get("threat")
         if t:  # the mate threat that wins it, at its move: one sentence for both
             k, on = t["ply"], f"threatening mate on {t['square']}"

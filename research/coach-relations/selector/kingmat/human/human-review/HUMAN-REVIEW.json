@@ -1,0 +1,86 @@
+{
+  "schema": "coach-ab-human-review/1",
+  "experiment": "human",
+  "blind_data_sha256": "a1a983d7a6f4d57936d0473fececbccdaff8f9b8c391ade353636f80171cf8d5",
+  "pairs_total": 5,
+  "completed": 5,
+  "updated_at": "2026-10-16T08:53:17.857Z",
+  "reviews": [
+    {
+      "pair_id": "pair-001",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "008b95bea4d8a2ca7a4116581d592cfa77fdb602e5c2571291710dbb49c0e108",
+        "B": "b3cead041f9a1233448131d8bc5f1757370062ee345dcad7825f88f60cb38cb7"
+      },
+      "updated_at": "2026-10-16T08:49:30.288Z"
+    },
+    {
+      "pair_id": "pair-002",
+      "verdict": "tie",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "a25fa15afecfac0812ec2f3ba4cf2144c5f03637688c81b3614fb2a7ad6c4bcd",
+        "B": "67eb3443fd82943bc6d571c6a8dae2323e7480fb257c34de82e6bfaf54c97e6d"
+      },
+      "updated_at": "2026-10-16T08:49:53.059Z"
+    },
+    {
+      "pair_id": "pair-003",
+      "verdict": "B",
+      "issues": {
+        "A": [
+          "missed_key_point"
+        ],
+        "B": [
+          "missed_key_point"
+        ]
+      },
+      "note": "Re2實際上允許了將殺 不過我猜這個stockfish偏弱沒看到= =",
+      "content_sha256": {
+        "A": "0ea18a53388ca60097f3ff911e76f972262e5ec3402fa4d89bc5670219e1e17a",
+        "B": "8dc1a8044485c8ae56e4dbf23365ea1fc28eb1ff631dd7a1b827091e40620db3"
+      },
+      "updated_at": "2026-10-16T08:52:27.297Z"
+    },
+    {
+      "pair_id": "pair-004",
+      "verdict": "A",
+      "issues": {
+        "A": [],
+        "B": []
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "8cb0b544d8f2279f18c84cae84b9b69335eae9de50d2a1a817707808dd981700",
+        "B": "fa5819c9c018228b41a1ca6d51e3197b3f8c91a4cb67a46ac4e62ee2b921e9c3"
+      },
+      "updated_at": "2026-10-16T08:52:56.037Z"
+    },
+    {
+      "pair_id": "pair-005",
+      "verdict": "B",
+      "issues": {
+        "A": [],
+        "B": [
+          "unnatural"
+        ]
+      },
+      "note": "",
+      "content_sha256": {
+        "A": "94b3dad60929acbb2019f5d84c709518238e831150e49b7409a036aa365c816f",
+        "B": "9e579eb3d9f1928d26a7494d00896a9ca34edec2c8640e4f90f2968cda07b4a1"
+      },
+      "updated_at": "2026-10-16T08:53:17.856Z"
+    }
+  ]
+}
