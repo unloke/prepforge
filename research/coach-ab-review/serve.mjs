@@ -56,14 +56,20 @@ const pairs = blindBytes.toString("utf8").split("\n").filter(Boolean).map((line)
     facts_text: factLines(r.prompt),
     // The best move is only "in the facts" when the prompt names it.
     best_in_prompt: r.prompt.includes(f.best_san),
+    // Lines are the cut lines the judge saw (a set without them walks just the two moves);
+    // scores are White's view; the game, when the set carries it, is moves, scores and grades.
     board: {
-      fen_before: f.fen_before, fen_after: f.fen_after, side: f.side, move_number: f.move_number,
+      fen_before: f.fen_before, side: f.side, move_number: f.move_number,
       played_uci: f.played_uci, played_san: f.played_san, best_uci: f.best_uci, best_san: f.best_san,
       is_best: f.is_best, grade: f.grade,
+      played_pv: f.played_pv || [f.played_uci], best_pv: f.best_pv || [f.best_uci],
+      before: f.before || null, after: f.after || null, game: f.game || null,
     },
-    A: slot(r.A),
+    A: r.A ? slot(r.A) : null,
     // Spot-check sets have one answer per position: no B, verdict ok / bad.
     B: r.B ? slot(r.B) : null,
+    // Pick sets (the reason selector's spot check) have candidates: pick one by index or "none".
+    candidates: r.candidates ? r.candidates.map(slot) : null,
   };
 });
 
@@ -84,6 +90,11 @@ function validLedger(doc) {
   if (!Array.isArray(doc.reviews)) return false;
   return doc.reviews.every((r) => {
     const p = byId.get(r.pair_id);
+    if (p?.candidates) {
+      return (r.verdict === null || r.verdict === "none" || p.candidates[Number(r.verdict)] !== undefined) &&
+        typeof r.note === "string" && Array.isArray(r.content_sha256) &&
+        r.content_sha256.length === p.candidates.length && p.candidates.every((c, i) => c.content_sha256 === r.content_sha256[i]);
+    }
     return p && (r.verdict === null || VERDICTS.has(r.verdict)) && typeof r.note === "string" &&
       r.content_sha256?.A === p.A.content_sha256 && r.content_sha256?.B === (p.B?.content_sha256 ?? null) &&
       ["A", "B"].every((s) => Array.isArray(r.issues?.[s]) && r.issues[s].every((t) => ISSUES.has(t)));

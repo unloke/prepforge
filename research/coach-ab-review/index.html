@@ -26,9 +26,11 @@
         <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>T</kbd> <kbd>X</kbd></dt><dd>A better · B better · Tie · Both bad</dd>
         <dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd>Issue on answer A</dd>
         <dt><kbd>7</kbd>–<kbd>0</kbd></dt><dd>Issue on answer B</dd>
-        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous · next pair</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Step the line on the board</dd>
+        <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Played line · best line</dd>
+        <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>Start · end of the line</dd>
+        <dt><kbd>K</kbd> <kbd>J</kbd></dt><dd>Previous · next pair</dd>
         <dt><kbd>Enter</kbd></dt><dd>Next unreviewed pair</dd>
-        <dt><kbd>V</kbd></dt><dd>Before / after the move</dd>
         <dt><kbd>F</kbd></dt><dd>Flip board</dd>
         <dt><kbd>N</kbd></dt><dd>Note · <kbd>Esc</kbd> leaves it</dd>
       </dl>
@@ -44,16 +46,33 @@
           <div class="chessboard" id="abr-board"></div>
           <svg class="annotations" id="abr-annotations"></svg>
         </div>
-        <div class="abr-board-bar">
-          <div class="seg" role="group" aria-label="Position shown">
-            <button class="seg-btn" type="button" data-view="before">Before <kbd>V</kbd></button>
-            <button class="seg-btn" type="button" data-view="after">After</button>
+        <div class="board-bar">
+          <div class="bb-nav">
+            <button class="ib" type="button" data-step="start" title="Start (Home)" aria-label="Go to start">⏮</button>
+            <button class="ib" type="button" data-step="prev" title="Previous (←)" aria-label="Previous move">◀</button>
+            <button class="ib" type="button" data-step="next" title="Next (→)" aria-label="Next move">▶</button>
+            <button class="ib" type="button" data-step="end" title="End (End)" aria-label="Go to end">⏭</button>
           </div>
-          <button class="btn ghost" id="abr-flip" type="button" title="Flip board (F)">Flip</button>
+          <span class="board-label" id="abr-board-label"></span>
+          <div class="bb-right">
+            <button class="ib" id="abr-flip" type="button" title="Flip board (F)" aria-label="Flip board"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v15M4.5 7.5 8 4l3.5 3.5M16 20V5M12.5 16.5 16 20l3.5-3.5"/></svg></button>
+          </div>
         </div>
       </section>
 
       <section class="abr-review-col" aria-label="Answers">
+        <section class="res-block eval-card" id="analysis-eval-card" aria-label="Evaluation">
+          <div class="rb-head ev-head" id="abr-ev-head">
+            <b class="ev-title">Evaluation</b>
+            <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
+            <span class="ev-meter" id="analysis-eval-meter" aria-hidden="true"><i></i></span>
+          </div>
+          <div class="eval-chart-wrap" id="analysis-eval-graph" hidden>
+            <svg class="eval-chart" id="eval-chart" viewBox="0 0 640 96" role="img" aria-label="Evaluation by move"></svg>
+            <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
+          </div>
+          <div class="engine-window is-docked abr-lines"><div class="engine-window-pvs" id="abr-lines"></div></div>
+        </section>
         <ul class="abr-facts" id="abr-facts" aria-label="Facts given to the model"></ul>
         <div class="abr-answers">
           <article class="abr-answer" data-slot="A">
@@ -68,6 +87,8 @@
           </article>
         </div>
 
+        <div class="abr-cands" id="abr-cands" role="radiogroup" aria-label="Reason to show" hidden></div>
+
         <div class="abr-verdicts" role="radiogroup" aria-label="Verdict">
           <button type="button" role="radio" data-verdict="A">A better <kbd>A</kbd></button>
           <button type="button" role="radio" data-verdict="B">B better <kbd>B</kbd></button>
@@ -80,10 +101,12 @@
         <textarea id="abr-note" class="abr-note" rows="2" placeholder="Note" aria-label="Note"></textarea>
 
         <nav class="abr-nav">
-          <button class="btn" id="abr-prev" type="button">← Prev</button>
-          <button class="btn" id="abr-next" type="button">Next →</button>
+          <button class="btn" id="abr-prev" type="button" title="Previous pair (K)">Prev</button>
+          <button class="btn" id="abr-next" type="button" title="Next pair (J)">Next</button>
           <button class="btn primary" id="abr-next-open" type="button">Next unreviewed <kbd>Enter</kbd></button>
         </nav>
+
+        <div class="moves-grid" id="analysis-moves" aria-label="Game moves" hidden></div>
 
         <ol class="abr-map" id="abr-map" aria-label="All pairs"></ol>
       </section>

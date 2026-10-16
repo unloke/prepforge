@@ -26,6 +26,23 @@ The experiment directory defaults to `research/sft/experiment/next-499-20261010`
 - On best-tier rows where the played move is not the engine move, the board still draws
   the engine move and labels it as absent from the model's facts.
 
+## Board
+
+The right column is Analyze's Evaluation card: the score of the board's position and the
+win meter, the game's eval graph, and two engine rows, the best line (score before the
+move) and the played line (score after it). ← → step the line on the board, ↑ ↓ switch
+lines, Home / End jump; a click on a move, the graph or the game's move list goes there.
+K / J change pair. Sets from `coach-relations/make_ab.py --reads` (round 6 on) carry the
+cut lines the judge saw, both scores (White's view) and the game in `facts`; other sets
+show only the played and the best move.
+
+## Set kinds
+
+A/B pairs (`A`, `B`), spot checks (`A` only, verdict `ok` / `bad`) and pick sets
+(`candidates`, from `coach-relations/selector/hark.py`): the verdict is the index of the
+reason to show or `none` to stay bare (keys 1–4, 0), and `content_sha256` is one hash per
+candidate.
+
 ## Ledger
 
 ```json

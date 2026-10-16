@@ -84,8 +84,9 @@ body.abr {
 
 .abr-engine { margin-left: 8px; color: var(--label); font: 600 var(--fs-s) var(--mono); border-bottom: 1px dashed var(--arrow-better); }
 
-.abr-board-bar { display: flex; justify-content: space-between; align-items: center; }
-.abr-board-bar .seg-btn kbd { margin-left: 4px; }
+/* Analyze's Evaluation card with the two lines in its docked-engine rows; no engine
+   controls, so only the eval and meter columns. */
+#analysis-eval-card { grid-template-columns: auto minmax(24px, 1fr); }
 
 .abr-facts {
   margin: 0;
@@ -228,3 +229,33 @@ body.abr {
   .abr-verdicts { grid-template-columns: repeat(2, 1fr); }
   .abr-map { grid-template-columns: repeat(10, 1fr); }
 }
+
+/* Analyze's phone rules spread the card over its view; here it stays one card. */
+@media (max-width: 760px) {
+  #analysis-eval-card { display: flex; flex-direction: column; align-items: stretch; }
+  #analysis-eval-card > * { order: 0; }
+}
+
+.abr-cands { display: grid; gap: 10px; }
+.abr-cand {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: var(--shadow-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.abr-cand:hover { border-color: var(--btn-border-hover); }
+.abr-cand.is-none { color: var(--muted); font-size: var(--fs-m, 15px); font-weight: 600; }
+.abr-cand[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow-1); color: var(--text); }
+.abr-cand.is-none[aria-checked="true"] { border-color: var(--inert); box-shadow: 0 0 0 1px var(--inert), var(--shadow-1); }
+.abr-cand[aria-checked="true"] kbd { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
