@@ -67,6 +67,12 @@ def _redirect_uri(request: Request) -> str:
     return f"{base}/api/lichess/callback"
 
 
+def _oauth_failure(error: str) -> RedirectResponse:
+    response = RedirectResponse(f"/?oauth_error={error}", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(_FLOW_COOKIE, path="/")
+    return response
+
+
 def _links_for(db: Session, user_id: str) -> list[LinkedAccount]:
     return list(
         db.scalars(
@@ -192,24 +198,24 @@ def callback(
 ) -> Response:
     raw = request.cookies.get(_FLOW_COOKIE)
     if not raw:
-        raise HTTPException(status_code=400, detail="missing or expired oauth flow")
+        return _oauth_failure("lichess_flow_expired")
     try:
         flow = json.loads(decrypt_token(raw))
-    except Exception as exc:  # noqa: BLE001 - any tamper/expiry -> reject
-        raise HTTPException(status_code=400, detail="invalid oauth flow") from exc
+    except Exception:  # noqa: BLE001 - any tamper/expiry -> reject
+        return _oauth_failure("lichess_flow_invalid")
 
     # Bind the flow to this session: state must match and the flow must belong to
     # the logged-in user (it was minted for them).
     if not code or not state or state != flow.get("state") or flow.get("uid") != user.id:
-        raise HTTPException(status_code=400, detail="oauth state mismatch")
+        return _oauth_failure("lichess_state_mismatch")
 
     try:
         token = exchange_code(
             code=code, code_verifier=flow["verifier"], redirect_uri=_redirect_uri(request)
         )
         username = fetch_username(token["access_token"])
-    except LichessOAuthError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except LichessOAuthError:
+        return _oauth_failure("lichess_provider_error")
 
     # External requests finish before taking the database mutation lock.
     _lock_linked_accounts(db, user.id)
@@ -220,10 +226,7 @@ def callback(
         )
     )
     if existing is not None and existing.user_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="this Lichess account is already linked to another user",
-        )
+        return _oauth_failure("lichess_account_taken")
 
     encrypted = encrypt_token(json.dumps(token))
     same_identity = db.scalar(

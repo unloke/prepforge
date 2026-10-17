@@ -157,6 +157,38 @@ describe("scout view initialization reentrancy", () => {
     expect(streamGames).not.toHaveBeenCalled();
   });
 
+  it("shows a failed source as retryable instead of claiming the player has no games", async () => {
+    streamGames.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(String(results.innerHTML)).toContain("Couldn&#39;t load rival");
+    expect(String(results.innerHTML)).toContain("Retry failed sources");
+    expect(String(results.innerHTML)).not.toContain("No games found");
+  });
+
+  it("keeps the genuine empty result when the source succeeded with no games", async () => {
+    streamGames.mockReset();
+    streamGames.mockResolvedValue({ accepted: 0, received: 0, lastDatestamp: null });
+    const scoutModule = await import("../scout.js");
+    scoutModule.createScoutClient({});
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(String(results.innerHTML)).toContain("No games found for this player");
+    expect(String(results.innerHTML)).not.toContain("Retry failed sources");
+  });
+
+  it("reports failed and empty sources separately when the run has no games", async () => {
+    view.__setPickedUsernames(["failed", "empty"]);
+    streamGames.mockImplementation(async (username) => {
+      if (username === "failed") throw new TypeError("Failed to fetch");
+      return { accepted: 0, received: 0, lastDatestamp: null };
+    });
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(String(results.innerHTML)).toContain("Couldn&#39;t load failed");
+    expect(String(results.innerHTML)).toContain("Retry failed sources");
+  });
+
   it("repaints the existing report when Replay is shown after the results DOM was emptied", async () => {
     await view.runScout();
     const results = elements.get("scout-results");

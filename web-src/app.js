@@ -5,6 +5,8 @@ import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
 import { createNotices } from "./notices.js";
+import { watchMaiaInit } from "./maia-init-notice.js";
+import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
 import { classBadgeSymbol } from "./move-grades.js";
 import { countOf } from "./plural.js";
@@ -831,7 +833,16 @@ async function maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }) {
   if (maiaAnalysisEnabled()) {
     try {
       const provider = getSharedMaia3Provider();
-      predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
+      const maiaNotice = watchMaiaInit(provider, {
+        notices,
+        onRetry: () => void maiaPhaseCoach({ fen, expectedUci, expectedSan, playedUci }),
+      });
+      try {
+        predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
+        maiaNotice.succeed();
+      } catch (error) {
+        maiaNotice.fail(error);
+      }
     } catch (_) {
       /* engine off → still return a phase-generic tip */
     }
@@ -4124,7 +4135,7 @@ function loadTrainSession() {
     boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
+    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
     queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
     setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
@@ -6741,9 +6752,38 @@ async function init() {
   // A password-reset link (/?reset_password=<token>) opens the reset form, and a
   // Stripe return (/?billing=success|cancelled) reports the outcome once.
   accountService().openResetFromUrl();
+  handleOAuthErrorFromUrl();
   handleBillingReturn();
   syncWorkspaceUrl();
   await resumeAfterSignIn(signInReturn);
+}
+
+function handleOAuthErrorFromUrl() {
+  const failure = oauthErrorFromUrl(window.location.href);
+  if (!failure) return false;
+  try {
+    window.history.replaceState(window.history.state, "", failure.cleanHref);
+  } catch (_) {
+    /* the notice still explains the failure */
+  }
+  notices.show(failure.message, {
+    tone: "error",
+    key: `oauth-error:${failure.code}`,
+    actions: [{
+      label: "Try again",
+      primary: true,
+      onClick: () => {
+        if (failure.provider === "google") {
+          openAuthModal("login", { notice: failure.message });
+        } else if (appState.signedIn) {
+          startLichessOAuth();
+        } else {
+          openAuthModal("login", { notice: "Sign in to connect Lichess." });
+        }
+      },
+    }],
+  });
+  return true;
 }
 
 // Phase 1 of the sign-in return (before the route is restored). Strips

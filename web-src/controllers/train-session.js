@@ -6,6 +6,7 @@ import { html } from "../html.js";
 import { isAuthError } from "../auth-gate.js";
 import { isStartFen, localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
+import { watchMaiaInit } from "../maia-init-notice.js";
 import { describeMove } from "../explain.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
 import { countOf } from "../plural.js";
@@ -17,7 +18,7 @@ import { trainStartDisabled } from "../train-start.js";
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
   loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
-  optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
+  notices, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
   refreshAuthStatus, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
   setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
   syncWorkspaceUrl, updateTrainTurnBadge;
@@ -28,7 +29,7 @@ export function createTrainSession(deps) {
     boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
+    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
     queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
     setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
@@ -794,7 +795,21 @@ async function fetchPlayMaia(fen) {
   // fall back to human-like replies), independent of the Analyze-layer switch.
   try {
     const provider = getSharedMaia3Provider();
-    return await provider.predictions({ fen, rating: effectiveMaiaRating() });
+    const maiaNotice = watchMaiaInit(provider, {
+      notices,
+      onRetry: () => {
+        const play = appState.play;
+        if (play?.active && play.fen === fen) void playOpponentReply();
+      },
+    });
+    try {
+      const predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
+      maiaNotice.succeed();
+      return predictions;
+    } catch (error) {
+      maiaNotice.fail(error);
+      return [];
+    }
   } catch (_) {
     return [];
   }
@@ -1665,6 +1680,22 @@ function startBlitzTimer(smart, prompt) {
 }
 
 let smartStartSeq = 0;
+
+export function smartSessionOutcomeText(smart = {}, stats = {}) {
+  const correct = Number(stats.correct) || 0;
+  const missed = Number(stats.mistakes) || 0;
+  const scored = correct + missed;
+  const recall = scored
+    ? `First-try recall: ${correct} of ${scored} review move${scored === 1 ? "" : "s"}.`
+    : "New moves learned — no review moves scored yet.";
+  const details = [];
+  if (missed) details.push(`${missed} missed first try`);
+  if (smart.retriesFixed) details.push(`${smart.retriesFixed} fixed on retry`);
+  if (smart.blitz && smart.timeouts) details.push(`${smart.timeouts} timed out`);
+  if (stats.skipped) details.push(`${stats.skipped} skipped`);
+  return details.length ? `${recall} ${details.join(" · ")}.` : recall;
+}
+
 async function startSmartTraining(options = {}) {
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
@@ -1673,7 +1704,7 @@ async function startSmartTraining(options = {}) {
   setTrainBanner(
     "runin",
     fresh ? "Building a new queue…" : "Building your queue…",
-    "",
+    "Saving repertoire edits…",
   );
   // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
   // before the server builds the queue, else a just-added line wouldn't be in
@@ -1686,6 +1717,12 @@ async function startSmartTraining(options = {}) {
     setTrainBanner("done", "Couldn't save your repertoire edits", "Try Start again in a moment.");
     return;
   }
+  if (!isCurrent()) return;
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Syncing your last session…",
+  );
   // Land any leftover graded attempts (an abandoned previous session) before
   // the new queue is scheduled from SR state. Strict: starting anyway would
   // schedule the queue off stale SR state, so block until the sync lands.
@@ -1704,6 +1741,12 @@ async function startSmartTraining(options = {}) {
     // the current tree + SR state — a resumed stale queue is exactly the desync
     // this avoids.
     trainResume = await loadTrainResume();
+    if (!isCurrent()) return;
+    setTrainBanner(
+      "runin",
+      fresh ? "Building a new queue…" : "Building your queue…",
+      "Building the queue on the server…",
+    );
     const targets = options.targetNodeIds || [];
     payload = await postJson("/api/train/smart/start", {
       mixed: !options.repertoireId,
@@ -1729,6 +1772,11 @@ async function startSmartTraining(options = {}) {
   }
   if (!isCurrent()) return;
   appState.trainingRepertoireId = payload.repertoire_id;
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Loading session tools…",
+  );
   try {
     trainSessionMemo ||= await import("../train-session-memo.js");
   } catch (_) { /* recovery is optional if the chunk cannot load */ }
@@ -1750,6 +1798,11 @@ async function startSmartTraining(options = {}) {
     setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Repertoire, then train.");
     return;
   }
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Opening your first card…",
+  );
   appState.smart = {
     sessionId: mapped.sessionId,
     generation: mapped.generation,
@@ -2236,12 +2289,10 @@ async function finishSmartSession() {
   document.getElementById("train-progress-fill").style.width = "100%";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
-  const fixed = smart.retriesFixed ? ` · ${smart.retriesFixed} fixed on retry` : "";
-  const blitzed = smart.blitz && smart.timeouts ? ` (${smart.timeouts} timed out)` : "";
   setTrainBanner(
     "done",
     smart.blitz ? "Blitz session complete!" : "Session complete!",
-    `${stats.correct || 0} first-try correct · ${stats.mistakes || 0} missed${blitzed}${fixed}${stats.skipped ? ` · ${stats.skipped} skipped` : ""}`
+    smartSessionOutcomeText(smart, stats),
   );
   // End on the last card's final position (its last answer, plus the reply when the
   // line has one) instead of wherever the board happened to be mid-line.

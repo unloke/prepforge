@@ -2,7 +2,7 @@
 
 Register / login mint a server-side session and set an HttpOnly cookie. The
 cookie carries an opaque token; the DB stores only its hash. In production the
-cookie is Secure + SameSite=Lax (set in main.set_session_cookie).
+cookie is Secure + SameSite=Lax (set in session_cookie.set_session_cookie).
 """
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.middleware import CSRF_COOKIE
 from prepforge_chess.api.models import AuthSession, PasswordResetToken, User
+from prepforge_chess.api.session_cookie import set_session_cookie
 from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import (
@@ -73,18 +74,6 @@ class UserOut(BaseModel):
         return data
 
 
-def _set_session_cookie(response: Response, settings: Settings, token: str) -> None:
-    response.set_cookie(
-        key=settings.session_cookie_name,
-        value=token,
-        max_age=settings.session_ttl_days * 24 * 3600,
-        httponly=True,
-        secure=settings.is_production,
-        samesite="lax",
-        path="/",
-    )
-
-
 def _purge_expired(db: Session, settings: Settings) -> int:
     """Delete sessions idle longer than ``session_ttl_days``. Does NOT commit — the
     caller owns the transaction (called inside ``_open_session``)."""
@@ -121,7 +110,7 @@ def _open_session(db: Session, response: Response, settings: Settings, user: Use
     # Opportunistic global cleanup of long-idle sessions (no scheduler needed).
     _purge_expired(db, settings)
     db.commit()
-    _set_session_cookie(response, settings, token)
+    set_session_cookie(response, settings, token)
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)

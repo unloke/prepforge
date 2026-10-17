@@ -23,6 +23,7 @@ from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddleware
 from prepforge_chess.api.observability import configure_logging, init_sentry
 from prepforge_chess.api.ratelimit import limiter
+from prepforge_chess.api.session_sliding import SlidingSessionMiddleware
 from prepforge_chess.api.routers import (
     account,
     analyze,
@@ -96,6 +97,10 @@ def create_app() -> FastAPI:
     # (index JS ~280 KB, CSS ~61 KB) by ~70%. Binary engine assets (.wasm) are
     # already compact and the ONNX weights are CDN-hosted, so they rarely hit this.
     app.add_middleware(GZipMiddleware, minimum_size=1024)
+    # Authenticated responses re-arm the cookie's browser lifetime. The server
+    # still enforces idle expiry from last_seen_at, so this cannot extend a
+    # session the user has abandoned.
+    app.add_middleware(SlidingSessionMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     # The Stripe webhook authenticates by signature, not the session cookie, so it
     # bypasses CSRF. The client-error beacon can't set a CSRF header (sendBeacon)
