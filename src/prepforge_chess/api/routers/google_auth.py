@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -42,6 +42,12 @@ def _redirect_uri(request: Request) -> str:
     return f"{base}/api/auth/google/callback"
 
 
+def _oauth_failure(error: str) -> RedirectResponse:
+    response = RedirectResponse(f"/?oauth_error={error}", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(_FLOW_COOKIE, path="/")
+    return response
+
+
 @router.get("/login", name="google_login")
 @limiter.limit("20/minute")
 def login(
@@ -49,7 +55,7 @@ def login(
     settings: Settings = Depends(get_settings),
 ) -> Response:
     if not settings.google_oauth_enabled:
-        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+        return _oauth_failure("google_not_configured")
     verifier = generate_code_verifier()
     state = generate_state()
     url = build_authorize_url(
@@ -82,16 +88,16 @@ def callback(
     settings: Settings = Depends(get_settings),
 ) -> Response:
     if not settings.google_oauth_enabled:
-        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+        return _oauth_failure("google_not_configured")
     raw = request.cookies.get(_FLOW_COOKIE)
     if not raw:
-        raise HTTPException(status_code=400, detail="missing or expired oauth flow")
+        return _oauth_failure("google_flow_expired")
     try:
         flow = json.loads(decrypt_token(raw))
-    except Exception as exc:  # noqa: BLE001 - any tamper/expiry -> reject
-        raise HTTPException(status_code=400, detail="invalid oauth flow") from exc
+    except Exception:  # noqa: BLE001 - any tamper/expiry -> reject
+        return _oauth_failure("google_flow_invalid")
     if not code or not state or state != flow.get("state"):
-        raise HTTPException(status_code=400, detail="oauth state mismatch")
+        return _oauth_failure("google_state_mismatch")
 
     try:
         token = exchange_code(
@@ -102,8 +108,8 @@ def callback(
             client_secret=settings.google_client_secret,
         )
         info = fetch_userinfo(token["access_token"])
-    except GoogleOAuthError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+    except GoogleOAuthError:
+        return _oauth_failure("google_provider_error")
 
     email = str(info["email"]).lower()
     # Find-or-create on the verified email. Google verifies email ownership, so a

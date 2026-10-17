@@ -26,6 +26,10 @@
 @keyframes scout-count-spin { to { transform: rotate(360deg); } }
 
 .scout-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 10px 12px;
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--danger) 12%, transparent);
@@ -33,6 +37,7 @@
   color: var(--text);
   font-size: 13px;
 }
+.scout-error > span { flex: 1 1 220px; }
 
 .scout-btn {
   font-size: 11px;

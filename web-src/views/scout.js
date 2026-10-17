@@ -29,6 +29,7 @@ import {
   scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
+import { watchMaiaInit } from "../maia-init-notice.js";
 import { sameFetchSources } from "./shared/source-composer.js";
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
@@ -110,8 +111,10 @@ export function scoutPathGuardEnabled(search = typeof location === "undefined" ?
   return new URLSearchParams(search).get("scoutPathGuard") !== "0";
 }
 
-function scoutErrorHtml(message) {
-  return html`<div class="scout-error" role="alert">${message}</div>`;
+function scoutErrorHtml(message, action = null) {
+  return html`<div class="scout-error" role="alert"><span>${message}</span>${action
+    ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`
+    : ""}</div>`;
 }
 
 // Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
@@ -349,6 +352,8 @@ export function createScoutView(deps) {
       const hasReport = !!results?.innerHTML?.trim();
       if (scoutState.games?.length && !hasReport) {
         renderScoutReport({ force: true });
+      } else if (!scoutState.games?.length && !hasReport && scoutSession?.emptyStateMessage) {
+        showScoutEmptyState(scoutSession, scoutSession.emptyStateMessage);
       } else {
         patchEngineProgressUI();
       }
@@ -1024,31 +1029,41 @@ export function createScoutView(deps) {
       const { getSharedMaia3Provider } = await import("../engine/maia3-provider.js");
       if (gen !== maiaEnrich.generation) return;
       const provider = getSharedMaia3Provider();
-      const globalPool = globalMaiaRankedPool();
-      if (
-        globalMaiaPoolNeedsWork(globalPool, {
-          successTarget: SCOUT_MAIA_SUCCESS_TARGET,
-          attemptsUsed: scoutState.maiaAttemptsUsed,
-          ...maiaPoolContext(),
-        })
-      ) {
-        const { attempts } = await enrichGlobalMaiaPool(globalPool, {
-          successTarget: SCOUT_MAIA_SUCCESS_TARGET,
-          attemptsUsed: scoutState.maiaAttemptsUsed,
-          provider,
-          fenAfterLine: scoutModule.fenAfterLine,
-          getRating: (oppColor) => scoutState.maiaRatings[oppColor],
-          getBaselineScorePct: (oppColor) =>
-            scoutState.sections?.[oppColor]?.baselineScorePct ?? 0,
-          cache: scoutState.maiaCache,
-          maiaResults: scoutState.maiaResults,
-          shouldCancel: () => gen !== maiaEnrich.generation,
-          onProgress: (p) => {
-            if (gen === maiaEnrich.generation) setEngineProgress(p);
-          },
-        });
-        if (gen !== maiaEnrich.generation) return;
-        scoutState.maiaAttemptsUsed = attempts;
+      const maiaNotice = watchMaiaInit(provider, {
+        notices,
+        onRetry: () => scheduleMaiaEnrich(),
+      });
+      try {
+        const globalPool = globalMaiaRankedPool();
+        if (
+          globalMaiaPoolNeedsWork(globalPool, {
+            successTarget: SCOUT_MAIA_SUCCESS_TARGET,
+            attemptsUsed: scoutState.maiaAttemptsUsed,
+            ...maiaPoolContext(),
+          })
+        ) {
+          const { attempts } = await enrichGlobalMaiaPool(globalPool, {
+            successTarget: SCOUT_MAIA_SUCCESS_TARGET,
+            attemptsUsed: scoutState.maiaAttemptsUsed,
+            provider,
+            fenAfterLine: scoutModule.fenAfterLine,
+            getRating: (oppColor) => scoutState.maiaRatings[oppColor],
+            getBaselineScorePct: (oppColor) =>
+              scoutState.sections?.[oppColor]?.baselineScorePct ?? 0,
+            cache: scoutState.maiaCache,
+            maiaResults: scoutState.maiaResults,
+            shouldCancel: () => gen !== maiaEnrich.generation,
+            onProgress: (p) => {
+              if (gen === maiaEnrich.generation) setEngineProgress(p);
+            },
+          });
+          if (gen !== maiaEnrich.generation) return;
+          scoutState.maiaAttemptsUsed = attempts;
+        }
+        maiaNotice.succeed();
+      } catch (error) {
+        maiaNotice.fail(error);
+        throw error;
       }
 
       if (gen !== maiaEnrich.generation) return;
@@ -1820,13 +1835,38 @@ export function createScoutView(deps) {
     updateLiveCounter();
 
     if (!scoutState?.games?.length && session.state === "done") {
-      const results = getResultsEl();
-      const message = SCOUT_ERR_NO_GAMES;
-      if (results) results.innerHTML = scoutErrorHtml(message);
-      const profile = getProfileEl();
-      if (profile) profile.hidden = true;
+      showScoutEmptyState(session, scoutSourceFailureMessage(session) || SCOUT_ERR_NO_GAMES);
       return;
     }
+  }
+
+  function scoutSourceFailureMessage(session) {
+    const failed = Object.entries(session.sourceStatus || {})
+      .filter(([, status]) => status.status === "failed");
+    if (!failed.length) return null;
+    if (failed.length === 1) {
+      const [username, status] = failed[0];
+      return `Couldn't load ${username}. ${status.error || "Try again."}`;
+    }
+    return `Couldn't load ${failed.length} sources. Retry the failed ones.`;
+  }
+
+  function showScoutEmptyState(session, message) {
+    const results = getResultsEl();
+    session.emptyStateMessage = message;
+    const failedUsers = Object.entries(session.sourceStatus || {})
+      .filter(([, status]) => status.status === "failed")
+      .map(([username]) => username);
+    if (results) results.innerHTML = scoutErrorHtml(message, failedUsers.length > 0);
+    results?.querySelector?.("#scout-retry-failed")?.addEventListener("click", () => {
+      if (!failedUsers.length) return;
+      results.classList.add("is-streaming");
+      void runStream({ session, only: failedUsers }).finally(() => {
+        if (isActiveSession(session)) results.classList.remove("is-streaming");
+      });
+    });
+    const profile = getProfileEl();
+    if (profile) profile.hidden = true;
   }
 
   // R-05: per-source outcome tracking. A merged report must SAY which sources
@@ -1844,6 +1884,12 @@ export function createScoutView(deps) {
     const statuses = Object.entries(session.sourceStatus || {}).filter(
       ([, s]) => s.status !== "ok",
     );
+    // With no source left, the report area already shows the reason; don't repeat it.
+    const anyOk = Object.values(session.sourceStatus || {}).some((s) => s.status === "ok");
+    if (!anyOk && !scoutState?.games?.length) {
+      document.getElementById("scout-source-warnings")?.remove();
+      return;
+    }
     let bar = document.getElementById("scout-source-warnings");
     if (!statuses.length) {
       if (bar) bar.remove();
@@ -1855,8 +1901,6 @@ export function createScoutView(deps) {
       bar.className = "scout-source-warnings";
       results.parentNode.insertBefore(bar, results);
     }
-    // With no source left, the report area already shows the reason; don't repeat it.
-    const anyOk = Object.values(session.sourceStatus || {}).some((s) => s.status === "ok");
     const chips = Object.entries(session.sourceStatus || {})
       .map(([user, s]) => {
         const label =
@@ -1956,9 +2000,6 @@ export function createScoutView(deps) {
       session.batchFull = settled.some(
         (r) => r.status === "fulfilled" && (r.value?.received || 0) >= SCOUT_STREAM_BATCH,
       );
-      if (batchAccepted === 0 && failures.length) {
-        throw failures[0];
-      }
       // R-05: partial failure with results — the report stands, but the gap is
       // visible (persistent warning above the report, not just a toast).
       await onStreamEnd({ accepted: batchAccepted }, session);
@@ -1987,10 +2028,7 @@ export function createScoutView(deps) {
         }
         flushRender();
       } else {
-        const results = getResultsEl();
-        if (results) results.innerHTML = scoutErrorHtml(message);
-        const profile = getProfileEl();
-        if (profile) profile.hidden = true;
+        showScoutEmptyState(session, scoutSourceFailureMessage(session) || message);
       }
       updateScoutControls();
     }

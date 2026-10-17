@@ -25,6 +25,37 @@ def test_idle_expired_session_cannot_be_refreshed(client):
     assert client.get("/api/auth/me").status_code == 401
 
 
+def test_active_request_refreshes_session_cookie(client):
+    from prepforge_chess.api.config import get_settings
+
+    h = csrf_headers(client)
+    client.post(
+        "/api/auth/register",
+        json={"email": "active@example.com", "password": "longpassword1"},
+        headers=h,
+    )
+    r = client.get("/api/auth/me")
+    assert r.status_code == 200
+    max_age = get_settings().session_ttl_days * 24 * 3600
+    assert any(
+        c.startswith("pf_session=") and f"Max-Age={max_age}" in c
+        for c in r.headers.get_list("set-cookie")
+    )
+
+
+def test_account_deletion_cookie_is_not_rearmed(client):
+    h = csrf_headers(client)
+    client.post(
+        "/api/auth/register",
+        json={"email": "gone@example.com", "password": "longpassword1"},
+        headers=h,
+    )
+    r = client.request("DELETE", "/api/account", json={"confirm": "DELETE"}, headers=csrf_headers(client))
+    assert r.status_code == 200
+    cookies = [c for c in r.headers.get_list("set-cookie") if c.startswith("pf_session=")]
+    assert len(cookies) == 1 and "Max-Age=0" in cookies[0]
+
+
 def test_health(client):
     r = client.get("/healthz")
     assert r.status_code == 200

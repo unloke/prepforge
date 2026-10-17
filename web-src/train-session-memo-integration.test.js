@@ -70,6 +70,18 @@ describe("Smart memo integration at Start", () => {
     expect(h.present).toHaveBeenCalledWith({ cardIndex: 1, targetIndex: 1 }, { attempt: 2 });
     expect(h.appState.smart.timeouts).toBe(1);
   });
+  it("names each setup step before it waits", async () => {
+    const h = harness();
+    await h.start();
+    const subtitles = h.deps.setTrainBanner.mock.calls.map((call) => call[2]);
+    expect(subtitles).toEqual(expect.arrayContaining([
+      "Saving repertoire edits…",
+      "Syncing your last session…",
+      "Building the queue on the server…",
+      "Loading session tools…",
+      "Opening your first card…",
+    ]));
+  });
   it.each([{ resumed: false, card_index: 0 }, { resumed: true, fresh: true }])
   ("never restores for a non-resumed/fresh start ($resumed/$fresh)", async ({ fresh, ...payload }) => {
     const h = harness(payload);
@@ -157,6 +169,7 @@ describe("Smart memo integration at Start", () => {
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
       syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(),
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
+      smartSessionOutcomeText: () => "",
     });
     await finish();
     expect(loadSessionMemo("alice", "session", "start-1")).toBeNull();

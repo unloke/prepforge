@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from api_helpers import csrf_headers
+from prepforge_chess.services.lichess_oauth import LichessOAuthError
 
 
 @pytest.fixture(autouse=True)
@@ -74,7 +75,31 @@ def test_callback_rejects_state_mismatch(client):
     _register(client, "coach@example.com")
     client.get("/api/lichess/login", follow_redirects=False)
     r = client.get("/api/lichess/callback?code=abc&state=wrong", follow_redirects=False)
-    assert r.status_code == 400
+    assert r.status_code == 303
+    assert r.headers["location"] == "/?oauth_error=lichess_state_mismatch"
+    assert any(
+        c.startswith("pf_lichess_oauth=") and "Max-Age=0" in c
+        for c in r.headers.get_list("set-cookie")
+    )
+
+
+def test_callback_provider_failure_redirects_without_raw_error(client, monkeypatch):
+    _register(client, "provider-error@example.com")
+    start = client.get("/api/lichess/login", follow_redirects=False)
+    state = parse_qs(
+        urlparse(start.headers["location"]).query
+    )["state"][0]
+
+    def fail(**kwargs):
+        raise LichessOAuthError("upstream secret detail")
+
+    monkeypatch.setattr("prepforge_chess.api.routers.lichess.exchange_code", fail)
+    r = client.get(
+        f"/api/lichess/callback?code=abc&state={state}", follow_redirects=False
+    )
+    assert r.status_code == 303
+    assert r.headers["location"] == "/?oauth_error=lichess_provider_error"
+    assert "upstream" not in r.headers["location"]
 
 
 def test_cannot_link_account_owned_by_another_user(client):
@@ -86,7 +111,8 @@ def test_cannot_link_account_owned_by_another_user(client):
     # User B tries to link the same Lichess identity -> 409.
     _register(client, "b@example.com")
     r = _run_link_flow(client)
-    assert r.status_code == 409
+    assert r.status_code == 303
+    assert r.headers["location"] == "/?oauth_error=lichess_account_taken"
 
 
 def test_link_requires_auth(client):
