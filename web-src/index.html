@@ -595,12 +595,13 @@
           <section class="card dir">
             <header class="card-head">
               <h2>Directory</h2>
-              <label class="search-field" for="teams-search">
-                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
-                <input id="teams-search" type="search" aria-label="Search your teams" placeholder="Search your teams" autocomplete="off" />
-              </label>
+              <span class="spacer"></span>
               <button class="btn sm primary" id="teams-new" data-testid="teams-new">New team</button>
             </header>
+            <label class="search-field" for="teams-search">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
+              <input id="teams-search" type="search" aria-label="Search your teams" placeholder="Search your teams" autocomplete="off" />
+            </label>
             <div id="teams-list" class="list-enter" data-testid="teams-list"></div>
           </section>
 

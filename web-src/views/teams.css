@@ -29,9 +29,10 @@
 /* A dashed box floating on margins read as a stray widget; inside a card a
    "nothing here yet" line is a row like any other, the way the Library does it. */
 .teams .empty-state:not(.big) { margin: 0; border: 0; border-radius: 0; background: none; text-align: left; }
-/* The search sits in the head beside the title (Library's own treatment), so a
-   filter never floats as a stray control under the header. */
-.dir .search-field { flex: 1 1 auto; min-width: 0; margin-left: auto; }
+.dir .search-field {
+  width: auto;
+  margin: 10px 12px;
+}
 .teams .sub {
   color: var(--muted);
   font-size: var(--fs-xs);
