@@ -420,6 +420,15 @@ describe("workspace chrome layout", () => {
     // analyses over the same PGN box.
     expect(app).toMatch(/button\.disabled = true;/);
     expect(css).toContain(".btn.is-unavailable");
+
+    // B6: Ctrl+K opens within one frame, so it never awaits the repertoire
+    // fetch. The list is refreshed behind the open palette instead.
+    expect(app).toMatch(/function openPalette\(\) \{\n  const el = document\.getElementById\("command-palette"\);/);
+    expect(app).not.toMatch(/async function openPalette\(\)/);
+    expect(app).toMatch(/function refreshPaletteRepertoires\(\)/);
+    expect(app).not.toMatch(/await api\("\/api\/repertoires"\);\s*\n\s*paletteItems/);
+    // A query typed while the refresh was in flight survives it.
+    expect(app).toMatch(/const query = input\?\.value \|\| "";\s*\n\s*paletteItems = filterPaletteItems\(buildPaletteItems\(\{ repertoires \}\), query\)/);
     // Games compare aggregates self by default, narrowing only on explicit picks.
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);

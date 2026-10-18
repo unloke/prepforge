@@ -1228,20 +1228,12 @@ function paintPalette() {
   }
 }
 
-async function openPalette() {
+function openPalette() {
   const el = document.getElementById("command-palette");
   if (!el) return;
-  let repertoires = appState.repertoireList || [];
-  if (appState.signedIn) {
-    try {
-      const payload = await api("/api/repertoires");
-      repertoires = payload.repertoires || [];
-      appState.repertoireList = repertoires;
-    } catch (_) {
-      /* keep the last cached list */
-    }
-  }
-  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), "");
+  // Open from what is already here: the keypress must not wait on a network
+  // round trip. Repertoires arrive (or stay missing) behind it.
+  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires: appState.repertoireList || [] }), "");
   paletteActive = 0;
   el.hidden = false;
   const input = document.getElementById("palette-input");
@@ -1251,6 +1243,28 @@ async function openPalette() {
   }
   paintPalette();
   paletteA11yCleanup = activateModal(el, { initialFocus: input });
+  void refreshPaletteRepertoires();
+}
+
+// The palette opens with whatever the library cache holds. A signed-in user's
+// list is refreshed in the background once; a slower response only means the
+// repertoire rows appear a beat later, never that Ctrl+K waited for them.
+async function refreshPaletteRepertoires() {
+  if (!appState.signedIn) return;
+  try {
+    const payload = await api("/api/repertoires");
+    const repertoires = payload.repertoires || [];
+    appState.repertoireList = repertoires;
+    if (!paletteIsOpen()) return;
+    // A query typed while the fetch was in flight must survive the refresh.
+    const input = document.getElementById("palette-input");
+    const query = input?.value || "";
+    paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), query);
+    paletteActive = 0;
+    paintPalette();
+  } catch (_) {
+    /* keep the last cached list */
+  }
 }
 
 function dismissTransientOverlays() {
