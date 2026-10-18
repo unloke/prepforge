@@ -157,6 +157,15 @@ async function runViewport(vp) {
   const openRows = await page.locator("#replay-results .lr.is-open").count();
   check(openRows === 1, `exactly one focused row, got ${openRows}`);
 
+  // One badge word per outcome: the row badge matches the chip it is counted by.
+  const badges = await page.locator("#replay-results .lr .kind-badge").allTextContents();
+  check(badges.length === 3, `each ledger row should carry a badge, got ${badges.length}`);
+  check(new Set(badges).size === 3, `badges should name the outcome, got ${JSON.stringify(badges)}`);
+  check(badges.includes("You left prep"), `first row is the user's own departure, got ${JSON.stringify(badges)}`);
+  check(badges.includes("Opponent left prep"),
+    `the opponent's early departure is badged by who left, got ${JSON.stringify(badges)}`);
+  check(badges.includes("Stayed in prep"), `stayed-in-prep row badge, got ${JSON.stringify(badges)}`);
+
   // Focus detail: derived board + expected/played arrows for the user-error game.
   const board = await page.locator('[data-testid="replay-focus-board"] .scout-minisquare').count();
   check(board === 64, `focus board should render 64 squares, got ${board}`);

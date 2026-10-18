@@ -67,10 +67,13 @@ function findLineByKey(sections, color, lineKey) {
   return null;
 }
 
-export function renderScoutColorTabsHtml(profile, { hidden = false, username = "" } = {}) {
-  const colors = ["white", "black"].filter(
-    (c) => profile?.colorStats?.[c] && profile.colorStats[c].games > 0,
-  );
+export function renderScoutColorTabsHtml(profile, { hidden = false, username = "", counts = null } = {}) {
+  // A tab's count must be the section's count. profile.colorStats is the raw
+  // per-colour total: it ignores the speed filter and counts games the section's
+  // trie skips (early resignations), so the tab and the heading below it read as
+  // two different numbers of games. `counts` is that per-colour trie gameCount.
+  const gamesFor = (c) => (counts?.[c] != null ? counts[c] : profile?.colorStats?.[c]?.games) || 0;
+  const colors = ["white", "black"].filter((c) => gamesFor(c) > 0);
   // With a real opponent history both colours almost always have games; single-
   // colour histories render a lone (still-correct) tab. No data → no bar.
   if (!colors.length) return "";
@@ -78,17 +81,17 @@ export function renderScoutColorTabsHtml(profile, { hidden = false, username = "
   // the active tab is tabbable, the rest stay focusable via arrow keys.
   const buttons = colors
     .map((c, i) => {
-      const stats = profile.colorStats[c];
+      const games = gamesFor(c);
       const label = c === "white" ? "With White" : "With Black";
       const you = c === "white" ? "you have Black" : "you have White";
       const selected = i === 0 ? "true" : "false";
       const tabindex = i === 0 ? "" : html` tabindex="-1"`;
-      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${countOf(stats.games, "game")}; in these games ${you}`;
+      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${countOf(games, "game")}; in these games ${you}`;
       // The "you have <Colour>" clause lives in `title` only. Inlining it in the
       // always-visible label made each tab ~246px wide, and the nowrap flex row
       // then pushed the whole page to 503px at 390px. Keeping it in the tooltip
       // (and the a11y name) preserves the wording without the overflow.
-      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(stats.games, "game")}</small></button>`;
+      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(games, "game")}</small></button>`;
     });
   return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
 }
@@ -1062,7 +1065,7 @@ export function scoutDistRowHtml(m, { clickable = true } = {}) {
         <b class="scout-dist-san">${m.san}</b>
         <span class="scout-dist-bar share"><i style="width:${Math.round(m.share * 100)}%"></i></span>
         <span class="scout-dist-share" title="${games} game${games === 1 ? "" : "s"}">${formatSharePct(m.share)}</span>
-        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small>${m.scorePct}%</span>
+        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small> ${m.scorePct}%</span>
       </div>`;
 }
 
@@ -1361,6 +1364,9 @@ export function buildScoutSectionReport(
 
   const sectionData = {
     moduleB: PRODUCTION_MODULE_B_ID,
+    // The total the section itself states, so the colour tab can quote the same
+    // number instead of the raw per-colour total.
+    gameCount: trie.gameCount,
     // The selector's input, kept so the flagged path guard can run on exactly these lines.
     gamePlanSource,
     gradedLines: graded,
@@ -1413,7 +1419,7 @@ export function buildScoutSectionReport(
             <span class="scout-sub-label">${who}'s first moves</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
-  const listHead = html`<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
+  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
   const prepPanel = prepRows.length
     ? html`<div class="scout-game-plan plan">
           ${planHead}

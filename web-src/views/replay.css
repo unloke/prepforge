@@ -38,14 +38,13 @@
   text-align: left;
   cursor: pointer;
 }
+/* Games ledger column header — the shared `.col-head` treatment (styles.css)
+   plus this row's sticky positioning. */
 .lr.head {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--panel);
-  color: var(--label);
-  font-size: var(--fs-xs);
-  font-weight: 600;
   cursor: default;
 }
 .lr:not(.head):hover { background: var(--panel-soft); }
@@ -56,11 +55,33 @@
 .players small { color: var(--label); font-size: var(--fs-xs); }
 .acct { padding: 0 4px; border-radius: 3px; background: var(--surface-3); font-style: normal; }
 .open-prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
-.res { font-weight: 700; white-space: nowrap; }
+/* Result and Departure are numbers and move numbers: right-aligned with
+   tabular figures, and the header above them is right-aligned the same way. */
+.res { font-weight: 700; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
 .lr-date { white-space: nowrap; }
 .res.r-win { color: var(--good-text); }
 .res.r-loss { color: var(--danger); }
 .res.r-draw { color: var(--muted); }
+.lr.head > :nth-child(3),
+.lr.head > :nth-child(5) { text-align: right; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Loading rows reuse the `.lr` grid exactly, so the ledger keeps one geometry
+   while the fetch is in flight: the bars are inert, the text is gone. */
+.lr.is-skeleton { cursor: default; pointer-events: none; }
+.lr.is-skeleton .pl,
+.lr.is-skeleton .open-prev { color: transparent; }
+.focus.is-skeleton .focus-info h2 { color: transparent; }
+/* The focus board's own shape (an 8×8 board) as one pulsing block, the board
+   not having loaded being the only unknown here. */
+.skeleton-board {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+}
 .kind-badge {
   display: inline-block;
   padding: 2px 7px;

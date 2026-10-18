@@ -21,7 +21,12 @@ function widgetHarness() {
   widget.currentFen = () => widget.lastFen;
   widget.evalHead = { textContent: "-1.92", dataset: { side: "black" } };
   widget.evalBarWhite = { style: { height: "33%" } };
-  widget.depthReadout = { textContent: "16 / 16" };
+  widget.depthReadout = {
+    textContent: "16 / 16",
+    dataset: {},
+    style: { setProperty() {} },
+    title: "",
+  };
   widget.pvsEl = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
   return { widget, arrow: deps.setEngineBestArrow };
 }
@@ -36,6 +41,8 @@ describe("Analyze engine stepping", () => {
     expect(widget.evalHead.dataset.pending).toBe("true");
     expect(widget.evalBarWhite.style.height).toBe("33%");
     expect(widget.depthReadout.textContent).toBe("0 / ?");
+    expect(widget.depthReadout.dataset.d).toBe("0");
+    expect(widget.depthReadout.title).toBe("Search depth 0");
     expect(String(widget.pvsEl.innerHTML)).toContain("Calculating…");
     // MultiPV can deliver rank 2 first, leaving a scoreless rank-1 slot.
     widget._renderEvalBar({ score_cp: null, mate_in: null });

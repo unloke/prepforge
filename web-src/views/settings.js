@@ -663,7 +663,7 @@ export function createSettingsView({
     renderMaiaAnalysis,
     renderConnections,
     refreshConnections,
-    renderAccount: () => accountSection.refresh(),
+    renderAccount: () => accountSection.render(),
     retryMaia3,
     verifyMaia3,
     resetMaia3Cache,

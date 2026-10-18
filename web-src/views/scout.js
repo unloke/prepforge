@@ -236,6 +236,34 @@ export function createScoutView(deps) {
     const fetched = scoutState?.games?.length || 0;
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(fetched);
+    updateStreamPhase();
+  }
+
+  // Live progress while a fetch is in flight. The count and the phase come from
+  // data the fetch already has: games accepted so far, plus which phase we are in
+  // (init → streaming). The streaming card is the only surface mid-stream, before
+  // the first report render exists.
+  let lastPhaseKey = "";
+  function updateStreamPhase() {
+    const phase = document.getElementById("scout-stream-phase");
+    if (!phase) return;
+    const detail = document.getElementById("scout-stream-detail");
+    const initializing = initGuard.isInitializing;
+    const fetched = scoutState?.games?.length || 0;
+    // Fires once per streamed game; skip the DOM write when nothing changed.
+    const key = `${initializing ? "init" : "fetch"}:${fetched}`;
+    if (key === lastPhaseKey) return;
+    lastPhaseKey = key;
+    if (initializing) {
+      phase.textContent = "Loading your repertoires…";
+      if (detail) detail.textContent = "Loading your repertoires";
+    } else if (fetched > 0) {
+      phase.textContent = "Reading their games…";
+      if (detail) detail.textContent = `${fetched} so far`;
+    } else {
+      phase.textContent = "Fetching games from Lichess…";
+      if (detail) detail.textContent = "";
+    }
   }
 
   function engineProgressLabel(p) {
@@ -336,8 +364,12 @@ export function createScoutView(deps) {
       colorSel.disabled = state !== "idle";
     }
     if (card) {
-      card.classList.toggle("is-streaming", state === "running");
+      // The card shows the live stream card from the moment Start is pressed:
+      // the init phase (repertoire loads) happens before the first game arrives,
+      // and that used to look like nothing was happening at all.
+      card.classList.toggle("is-streaming", initGuard.isInitializing || state === "running");
     }
+    updateLiveCounter();
   }
 
   function syncVisibleState() {
@@ -464,12 +496,6 @@ export function createScoutView(deps) {
     const profileEl = getProfileEl();
     const results = getResultsEl();
     const captured = results ? captureScoutExpanded(results) : null;
-    // Prototype "With White / With Black" tabs: real per-colour game counts
-    // from the opponent profile; hidden while streaming (both sections build live).
-    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, {
-      hidden: isStreaming(),
-      username: scoutState.username,
-    });
 
     if (profileEl) {
       profileEl.innerHTML = renderScoutProfile(
@@ -503,6 +529,18 @@ export function createScoutView(deps) {
         speedFilter: scoutState.activeSpeed,
       });
     }
+    // Built after the sections so a tab's count is the section's gameCount: the
+    // raw per-colour total ignores the speed filter and counts games the trie
+    // skips, which left the tab and the heading quoting different numbers.
+    // Hidden while streaming (both sections build live).
+    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, {
+      hidden: isStreaming(),
+      username: scoutState.username,
+      counts: {
+        white: scoutState.sections.white?.gameCount ?? 0,
+        black: scoutState.sections.black?.gameCount ?? 0,
+      },
+    });
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
     const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
     if (results) {
@@ -2066,6 +2104,7 @@ export function createScoutView(deps) {
     }
     if (profile) profile.hidden = true;
     clearScoutSide();
+    lastPhaseKey = "";
     updateLiveCounter();
     updateScoutControls();
     setStatus("");

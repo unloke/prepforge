@@ -48,9 +48,29 @@ export function createBuildView({
     return make(rootNode);
   }
 
+  // The Generate button stays out of the head until it applies: it offers *your*
+  // reply, so a position where your side already has a prepared move in the tree
+  // would only re-search a line you have. Everywhere else — and for the first
+  // move of a line — it is one hover/focus of the current move row away, and the
+  // ⋯ menu's "Move …" entry reaches it at any position.
+  function generateAppliesHere() {
+    if (!appState.build || !appState.buildCurrentNodeId) return false;
+    const own = appState.build.color === "black" ? "black" : "white";
+    return !appState.build.nodes.some(
+      (n) => n.parent_id === appState.buildCurrentNodeId && n.depth > 0 && n.move_side === own
+    );
+  }
+
+  function paintGenerateVisibility() {
+    const btn = document.getElementById("build-generate-node");
+    if (!btn) return;
+    btn.hidden = !generateAppliesHere();
+  }
+
   function renderBuildRepHeader() {
     const nameEl = document.getElementById("build-rep-name");
     if (!nameEl) return;
+    paintGenerateVisibility();
     if (!appState.build) {
       nameEl.textContent = "No repertoire open";
       return;
@@ -218,6 +238,7 @@ export function createBuildView({
     if (focusBtn) moveTreeRenderer.scrollIntoViewWithin(container, focusBtn);
     renderBuildBranchBar();
     onTreeRendered();
+    paintGenerateVisibility();
   }
 
   return {
@@ -225,5 +246,6 @@ export function createBuildView({
     renderBuilderTree,
     renderBuildBreadcrumb,
     renderBuildBranchBar,
+    paintGenerateVisibility,
   };
 }

@@ -56,7 +56,6 @@ import { classifySyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
 import { buildAddId, buildDeleteId, withRequestDeadline } from "./sync-queue.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
-import { trainStartDisabled } from "./train-start.js";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { nodeMenuHeading } from "./node-menu.js";
@@ -116,6 +115,8 @@ import {
   resolveFetchUsernames,
   sameFetchSources,
 } from "./views/shared/source-composer.js";
+import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
+import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 let _coachReady = null;
 function loadTrainResume() {
   return import("./train-resume.js");
@@ -1394,6 +1395,28 @@ function bindCommandPalette() {
   }
 }
 
+// The URL owns the route on every reload: restoreWorkspaceLocation reads it and
+// switches to it, so the static markup's view-dashboard default is only ever a
+// first paint — never a route the user is sent to. What a deep link DOES need is
+// for that default to be invisible, so hold the boot shell until the real view is
+// painted. The hold ships hidden in index.html (nothing flashes before JS runs)
+// and is shown at the top of init().
+let bootHold = null;
+let bootHeld = false;
+
+function holdBootView() {
+  bootHold = document.getElementById("boot-hold");
+  if (bootHold) bootHold.hidden = false;
+  bootHeld = !!bootHold;
+}
+
+function releaseBootView() {
+  if (!bootHeld) return;
+  bootHeld = false;
+  if (bootHold) bootHold.remove();
+  bootHold = null;
+}
+
 async function restoreWorkspaceLocation() {
   if (navigatedDuringBoot) {
     // The user already moved on: stay there, re-entering the page so it loads
@@ -1527,11 +1550,14 @@ function syncAnalyzeHead() {
   title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
   const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
     .filter(Boolean);
+  // The tag line rides under the board beside the move, not in the panel head:
+  // the head is one row of title and actions.
   meta.textContent = bits.length
     ? bits.join(" · ")
     : plies
       ? `${plies} half-move${plies === 1 ? "" : "s"}`
       : "";
+  meta.title = meta.textContent;
 }
 
 // Per-view heads that live inside the pages: Analyze's game identity, the
@@ -2728,7 +2754,7 @@ function deleteSavedAnalysis(delButton) {
   };
   showUndoToast({
     title: "Analysis deleted",
-    message: `"${label}" will be removed from your history.`,
+    message: `"${label}" removed from your history.`,
     onUndo: () => {
       setStatus("Delete undone");
       restore();
@@ -2880,18 +2906,18 @@ async function openTeamDetail(teamId) {
     if (button) { button.hidden = true; button.onclick = null; }
   }
   const name = document.getElementById("team-detail-name");
-  if (name) name.innerHTML = html`<span class="skeleton-text">Loading…</span>`;
+  if (name) name.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%;vertical-align:middle"></span>`;
   const role = document.getElementById("team-detail-role");
   if (role) role.textContent = "";
   const shares = document.getElementById("team-shared-repertoires");
-  if (shares) shares.innerHTML = "";
+  if (shares) shares.innerHTML = sharedRepRowsSkeleton(2);
   teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
   teamsView?.renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
   card.hidden = false;
-  membersEl.innerHTML = html`<div class="empty-state">Loading…</div>`;
+  membersEl.innerHTML = memberRowsSkeleton(3);
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
@@ -3023,28 +3049,35 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
 
 async function createTeam() {
   if (!requireSignIn("Sign in to create a team", "new-team")) return;
-  const result = await showInputModal({
+  const created = await showInputModal({
     title: "New team",
     okLabel: "Create",
     fields: [{ name: "name", label: "Team name", default: "" }],
+    // The dialog holds its pending state while the request runs, so the click
+    // reads as work in progress instead of a dropped click.
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim();
+      if (!name) {
+        setStatus("Team name is empty");
+        return;
+      }
+      try {
+        const team = await postJson("/api/teams", { name });
+        appState.selectedTeamId = team.id;
+        // A fresh team starts empty: land on the Members tab (the empty Shared
+        // tab would read as a glitch).
+        teamsView?.selectTeamPane?.("members");
+        setStatus(`Created team "${name}"`, { severity: "success" });
+        await loadTeams();
+        close(null);
+        return team;
+      } catch (error) {
+        setStatusError(error.message);
+        return null;
+      }
+    },
   });
-  if (!result) return;
-  const name = (result.name || "").trim();
-  if (!name) {
-    setStatus("Team name is empty");
-    return;
-  }
-  try {
-    const team = await postJson("/api/teams", { name });
-    appState.selectedTeamId = team.id;
-    // A fresh team starts empty: land on the Members tab (the empty Shared
-    // tab would read as a glitch).
-    teamsView?.selectTeamPane?.("members");
-    setStatus(`Created team "${name}"`, { severity: "success" });
-    await loadTeams();
-  } catch (error) {
-    setStatusError(error.message);
-  }
+  return created || null;
 }
 
 async function renameTeam(teamId, currentName) {
@@ -3260,6 +3293,9 @@ async function loadSharedRepertoires() {
   const isCurrent = () => seq === sharedRepertoiresSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const container = document.getElementById("teams-shared");
   if (!container) return;
+  // The pane had no in-flight state at all; show the same skeleton the team
+  // detail uses while /api/repertoires is out.
+  container.innerHTML = sharedRepRowsSkeleton(2);
   try {
     const payload = await api("/api/repertoires");
     if (!isCurrent()) return;
@@ -3281,7 +3317,7 @@ async function loadSharedRepertoires() {
             <span class="color-dot ${color}"></span>
             <span class="mem-id">
               <span class="name">${name}</span>
-              <span class="sub">· ${via}</span>
+              <span class="sub">${via}</span>
             </span>
             <span class="team-member-tail">
               <span class="team-role-badge">read-only</span>
@@ -3394,8 +3430,11 @@ async function shareRepertoireWithTeam(repertoireId) {
 
 // `hint` is an on-demand tooltip on a number/text field's label; `onInput`
 // (values, overlay) runs on open and on every change — e.g. to repaint a live
-// note (a `note` field is addressable as [data-note="<name>"]).
-function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel = true }) {
+// note (a `note` field is addressable as [data-note="<name>"]). `onSubmit`
+// (values, close) lets a caller run its request while the dialog holds the
+// pending state: it calls `close(values)` on success, or returns/throws to leave
+// the form open for another try.
+function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
@@ -3403,6 +3442,11 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
         const safeName = field.name;
         const safeLabel = field.label || field.name;
         const safeValue = field.default == null ? "" : String(field.default);
+        if (field.type === "stat") {
+          // A live number the caller re-writes on input. Bigger than a note so
+          // the one figure that drives the decision is the dialog's focal point.
+          return html`<div class="modal-stat" data-note="${safeName}"><b>${safeLabel}</b><span>${field.unit || ""}</span></div>`;
+        }
         if (field.type === "note") {
           // Read-only informational line (no input, never collected).
           return html`<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
@@ -3437,13 +3481,23 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
             : "";
         const hint = field.hint ? html` title="${field.hint}"` : "";
         return html`
-          <label class="modal-field"${hint}>
+          <label class="modal-field${field.type === "number" ? " is-num" : ""}"${hint}>
             <span>${safeLabel}</span>
             <input name="${safeName}" type="${inputType}" value="${safeValue}"${numericAttrs} data-field />
           </label>
         `;
     };
-    const inputsHtml = fields.map(fieldHtml);
+    // A group heading before each named run of fields; a field with no `group`
+    // (or a repeated one) starts a new run, so callers only set the name.
+    const inputsHtml = [];
+    let lastGroup;
+    for (const field of fields) {
+      if (field.group && field.group !== lastGroup) {
+        inputsHtml.push(html`<div class="modal-group-label">${field.group}</div>`);
+      }
+      lastGroup = field.group || "";
+      inputsHtml.push(fieldHtml(field));
+    }
     overlay.innerHTML = html`
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">${title}</div>
@@ -3466,7 +3520,10 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
       document.removeEventListener("keydown", onKey);
       overlay.remove();
     };
+    let closed = false;
     const close = (values) => {
+      if (closed) return;
+      closed = true;
       cleanup();
       resolve(values);
     };
@@ -3477,18 +3534,51 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
       });
       return values;
     };
+    // Submitting hands the dialog a promise the caller keeps pending while its
+    // request is in flight. Callers that don't (plain data entry) close on
+    // submit, exactly as before.
+    const submit = () => {
+      const values = collect();
+      if (typeof onSubmit !== "function") {
+        close(values);
+        return;
+      }
+      const okBtn = overlay.querySelector('[data-action="ok"]');
+      const controls = [...overlay.querySelectorAll(".modal-footer .btn, [data-field]")];
+      okBtn.classList.add("is-loading");
+      okBtn.disabled = true;
+      for (const el of controls) if (el !== okBtn) el.disabled = true;
+      overlay.setAttribute("aria-busy", "true");
+      let settled = false;
+      // Silence/`controls` capture lets a failed submit re-enable the form
+      // unless the caller closed the dialog (success) or submitted again.
+      const idle = () => {
+        if (settled) return;
+        okBtn.classList.remove("is-loading");
+        for (const el of controls) el.disabled = false;
+        overlay.setAttribute("aria-busy", "false");
+      };
+      const finish = (fn) => (result) => {
+        settled = true;
+        fn(result);
+      };
+      Promise.resolve()
+        .then(() => onSubmit(values, finish(close)))
+        .catch(() => {})
+        .then(idle);
+    };
     const onKey = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
         close(null);
       } else if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") {
         event.preventDefault();
-        close(collect());
+        submit();
       }
     };
     document.addEventListener("keydown", onKey);
     overlay.querySelector('[data-action="cancel"]')?.addEventListener("click", () => close(null));
-    overlay.querySelector('[data-action="ok"]').addEventListener("click", () => close(collect()));
+    overlay.querySelector('[data-action="ok"]').addEventListener("click", () => submit());
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close(null);
     });
@@ -3640,7 +3730,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = true;
   const nameEl = document.getElementById("build-rep-name");
-  if (nameEl) nameEl.innerHTML = html`<span class="skeleton-text">Loading repertoire…</span>`;
+  if (nameEl) nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
   const stats = document.getElementById("build-rep-stats");
   if (stats) stats.hidden = true;
   const meta = document.getElementById("build-tree-meta");
@@ -3648,7 +3738,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   const tree = document.getElementById("builder-tree");
   if (tree) {
     tree.innerHTML =
-      html`<div class="tree-skeleton" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span style="width:${w}%"></span>`)}</div>`;
+      html`<div class="skeleton-row" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span class="skeleton-bar" style="width:${w}%"></span>`)}</div>`;
   }
 }
 
@@ -3879,7 +3969,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       await refreshDashboardRepertoires();
       showUndoToast({
         title: "Repertoire deleted",
-        message: `"${meta?.name || "Repertoire"}" and every move in it will be removed.`,
+        message: `Removed "${meta?.name || "Repertoire"}" and every move in it.`,
         onUndo: () => {
           appState.pendingRepDeletes.delete(repKey);
           setStatus("Delete undone");
@@ -4168,7 +4258,8 @@ function loadBuildSession() {
       engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
       isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
-      postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd,
+      reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
       refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
       requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
       setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,
@@ -4215,16 +4306,13 @@ async function ensureBuildView() {
 }
 
 // The sidebar's repertoire identity line: which repertoire is open and for which
-// colour. The ⋯ button next to it carries the repertoire-scoped actions.
+// colour. The ⋯ button next to it carries the repertoire-scoped actions. The view
+// repaints Generate's visibility alongside the name.
 function renderBuildRepHeader() {
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = !!appState.build;
-  if (!appState.build) {
-    nameEl.textContent = "No repertoire open";
-    return;
-  }
   if (buildView) return buildView.renderBuildRepHeader();
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
 }
@@ -5286,6 +5374,10 @@ async function runLichessCompare() {
   const button = document.getElementById("lichess-compare-btn");
   button.disabled = true;
   setStatus("Fetching games from Lichess");
+  // Paint the ledger's own rows as bars while the fetch runs, so the panel
+  // shows what it will fill instead of the flat pre-check text.
+  const skeletonHost = document.getElementById("replay-results");
+  void renderLedgerSkeleton(skeletonHost);
   try {
     const payload = await postJson("/api/lichess/compare", {
       count,
@@ -5386,7 +5478,13 @@ function paintGamesSource() {
   if (!tray) return;
   // Signed out there is no "Self" (no linked accounts) and Check needs an
   // account anyway: a selected-looking "Self · all linked" chip contradicted
-  // the "No Games sources selected" error. Offer the sign-in instead.
+  // the "No Games sources selected" error. Offer the sign-in instead. While the
+  // session is unread neither is true yet, so the tray stays empty.
+  if (!appState.authKnown) {
+    tray.hidden = true;
+    tray.innerHTML = "";
+    return;
+  }
   if (!appState.signedIn) {
     tray.hidden = false;
     tray.innerHTML =
@@ -5396,7 +5494,7 @@ function paintGamesSource() {
   const selection = gamesSourceSelection();
   const { chips, selfState } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
-  const label = n > 0 ? `Self · ${n}` : "Self · all linked";
+  const label = n > 0 ? `Self · ${n} linked account${n === 1 ? "" : "s"}` : "Self · all linked";
   const visible = chips.length ? chips : [{ kind: "self", label }];
   tray.hidden = false;
   // Signed in with nothing linked and no usernames added: "Self · all linked"
@@ -5418,6 +5516,19 @@ function paintGamesSource() {
     tray.innerHTML =
       html`<span class="src-empty">No sources — open Add and pick one</span>`;
     return;
+  }
+  // The idle card names the next step for where the user actually is. While the
+  // session is unread it says nothing: a guest/signed-in distinction is a guess.
+  // It only shows before a check — a rendered result replaces the whole host.
+  const hint = document.getElementById("games-idle-hint");
+  if (hint) {
+    hint.textContent = !appState.authKnown
+      ? ""
+      : !appState.signedIn
+        ? "Sign in to check your games against your repertoires."
+        : lichessAccounts().length || selection.external.length
+          ? "Pick a sample size, then run a check."
+          : "Connect a Lichess account, then run a check.";
   }
 }
 
@@ -5517,7 +5628,7 @@ function paintScoutSource() {
   const visible = chips.length
     ? chips
     : linked.length && selfState === "all"
-      ? [{ kind: "self", label: `Self · ${linked.length}`, count: linked.length }]
+      ? [{ kind: "self", label: `Self · ${linked.length} linked account${linked.length === 1 ? "" : "s"}`, count: linked.length }]
       : [];
   tray.hidden = false;
   tray.innerHTML = visible.length
@@ -5526,20 +5637,23 @@ function paintScoutSource() {
           c.kind === "external"
             ? html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-scout-unpick-external="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
             : c.kind === "self"
-              ? html`<span class="src-chip is-self" data-scout-chip-self>Self · ${c.count}</span>`
+              ? html`<span class="src-chip is-self" data-scout-chip-self>${c.label}</span>`
               : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
         )}`
     : html`<span class="src-empty">No sources — open Add and pick one</span>`;
-  // The empty state names the next step for where the user actually is.
+  // The empty state names the next step for where the user actually is. While the
+  // session is unread it says nothing: a guest/signed-in distinction is a guess.
   const hint = document.getElementById("scout-empty-hint");
   if (hint) {
-    hint.textContent = !appState.signedIn
-      ? "Sign in, add a Lichess username, then Start."
-      : visible.length
-        ? "Press Start."
-        : linked.length
-          ? "Add a Lichess username or pick Self, then Start."
-          : "Add a Lichess username as a source, then Start.";
+    hint.textContent = !appState.authKnown
+      ? ""
+      : !appState.signedIn
+        ? "Sign in, add a Lichess username, then Start."
+        : visible.length
+          ? "Press Start."
+          : linked.length
+            ? "Add a Lichess username or pick Self, then Start."
+            : "Add a Lichess username as a source, then Start.";
   }
 }
 
@@ -5638,6 +5752,12 @@ async function ensureReplayView() {
 async function renderReplayResults(payload, isCurrent = () => true) {
   const view = await ensureReplayView();
   if (isCurrent()) return view.renderReplayResults(payload);
+}
+
+async function renderLedgerSkeleton(host) {
+  if (!host) return;
+  const view = await ensureReplayView();
+  host.innerHTML = view.renderLedgerSkeleton();
 }
 
 // F-06: the Games→Train/Analyze handoff record — source game, the decision
@@ -6777,6 +6897,12 @@ function bindEvents() {
 }
 
 async function init() {
+  // First thing: show the boot hold so nothing auth-dependent paints a guess
+  // while the session is being read (and so a deep link's route is never
+  // replaced by the static markup's dashboard default in anything the user sees).
+  holdBootView();
+  const libraryRows = document.getElementById("dashboard-repertoires");
+  if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
   initAccountController();
   applyPref("theme");
@@ -6842,8 +6968,13 @@ async function init() {
   // not fire /api/settings, /api/dashboard, /api/board, /api/lichess — they 401 and
   // spam the console. Gate that whole workspace load behind a real session.
   await refreshAuthProviders();
+  // The hold is already up (see the top of init), so a signed-in reload never
+  // shows the signed-out shell. The Library is the default route and has its own
+  // skeleton, so it shows as soon as the session is known; other routes hold
+  // until they are restored.
   await refreshAuthStatus();
   setHandoffOwner(currentOwnerId());
+  if (parseWorkspaceLocation(window.location.href).view === "dashboard") releaseBootView();
   // "Last game" depends on the linked Lichess account, which refreshAuthStatus
   // just told us about; paint its availability now rather than on first click.
   syncFetchMyGameButton();
@@ -6862,6 +6993,10 @@ async function init() {
   paintScoutSource();
   workspaceUrlReady = true;
   await restoreWorkspaceLocation();
+  // The URL route is live and the session is known: nothing left to guess, so
+  // the hold can go and the real view shows. Drop it in its own frame so the
+  // paint above and the reveal never land in the same one.
+  releaseBootView();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
   // workspace state loaded — and works for signed-out visitors too.
   await maybeOpenSharedView();
@@ -7101,9 +7236,16 @@ async function loadSignedInWorkspace() {
   await Promise.allSettled([settingsReady, dashboardReady]);
 }
 
-appReadyPromise = init().then(() => {
-  document.documentElement.dataset.appReady = "true";
-}).catch((error) => setStatusError(error.message));
+appReadyPromise = init()
+  .then(() => {
+    document.documentElement.dataset.appReady = "true";
+  })
+  // A boot failure must not leave the hold up for good: the views underneath are
+  // the honest state, and the status line names the failure.
+  .catch((error) => {
+    releaseBootView();
+    return setStatusError(error.message);
+  });
 
 // Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
 export {

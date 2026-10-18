@@ -71,7 +71,7 @@ const api = (path) => {
     };
   }
   if (path.startsWith("/api/dashboard")) {
-    return { games: 0, repertoires: 1, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: { reviews_7d: 0, mastered_now: 0, mastered_delta: 0, weak_now: 0, weak_delta: 0 }, recommendations: [] };
+    return { games: 0, repertoires: 1, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: { moves_reviewed_7d: 0, mastered_now: 0, mastered_delta: 0, weak_now: 0, weak_delta: 0 }, recommendations: [] };
   }
   if (path.startsWith("/api/lichess/explorer")) {
     return {
@@ -173,10 +173,59 @@ async function runViewport(vp) {
   const crumbs = await page.locator("#build-tree-meta .mtree-crumb").count();
   check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
 
-  // Build header: size summary + Generate live next to the repertoire name.
+  // Build header: size summary + Generate's applicability rule. The button only
+  // applies where a move of yours is missing, so at 3.e5 (where Bf5 already
+  // answers for black) it must be OUT of the head — and reachable from the
+  // ⋯ menu's "Move …" entry instead.
   const repStats = await page.locator("#build-rep-stats").textContent().catch(() => "");
   check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
-  check((await page.locator("#build-generate-node:visible").count()) === 1, "Generate moves should be visible in the build header");
+  const genAtE5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
+  check(genAtE5 === true, `Generate should be hidden at 3.e5 (your Bf5 reply exists), got hidden=${genAtE5}`);
+
+  // Move to 2...d5 — the tree ends on your move there, so Generate applies.
+  await page.locator('#builder-tree .mtree-move[data-node-id="n4"]').click();
+  await page.waitForTimeout(250);
+  const genAtD5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
+  const genShownAtD5 = await page.locator("#build-generate-node:visible").count();
+  check(genAtD5 === false, `Generate should apply at 2...d5, got hidden=${genAtD5}`);
+  check(genShownAtD5 === 1, "Generate should be visible in the head where it applies");
+
+  // Hovering the current move row reveals it even where it does not apply.
+  // (Above the phone breakpoint only: a phone has no hover and the button is
+  // the board bar's pill.)
+  await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
+  await page.waitForTimeout(250);
+  if (vp.width > 760) {
+    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').hover();
+    await page.waitForTimeout(150);
+    const genOnHover = await page.locator("#build-generate-node:visible").count();
+    check(genOnHover === 1, "hovering the current move row should reveal Generate");
+    await page.mouse.move(4, 4);
+    await page.waitForTimeout(150);
+    const genAfterLeave = await page.locator("#build-generate-node").evaluate((el) => el.hidden);
+    check(genAfterLeave === true, "Generate should hide again once the row is left");
+  }
+
+  // Back to 3.e5: the ⋯ menu still reaches Generate at any position.
+  await page.locator('[data-testid="build-menu"]').click();
+  await page.waitForTimeout(150);
+  const moreItems = await page.locator("#repertoire-context-menu button").allTextContents();
+  check(moreItems.some((t) => /^Move 3\./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => { const m = document.getElementById("repertoire-context-menu"); if (m) m.hidden = true; });
+  await page.waitForTimeout(100);
+
+  // Phones: the same rule drives the board bar's pill.
+  if (vp.width <= 760) {
+    const genAtD5Phone = await page.evaluate(() => document.getElementById("build-generate-node").hidden);
+    check(genAtD5Phone === true, `the phone pill should also hide at 3.e5, got hidden=${genAtD5Phone}`);
+    await page.locator('#builder-tree .mtree-move[data-node-id="n4"]').click();
+    await page.waitForTimeout(250);
+    const genAtN4Phone = await page.locator("#build-generate-node:visible").count();
+    check(genAtN4Phone === 1, "the phone pill should show where Generate applies");
+    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
+    await page.waitForTimeout(250);
+  }
 
   // Fork bar at e5: two chips, count, and the real practical share on Bf5.
   const barVisible = await page.locator("#build-branchbar:not([hidden])").count();
@@ -214,6 +263,57 @@ async function runViewport(vp) {
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
+
+  // The seam between the move tree and the inspector drags. Regression guard:
+  // phone.css once set `.sidebar > .panel-body { display: contents }` outside
+  // its media query, so the Build panel body had no box at any width —
+  // `panel.clientHeight` read 0, buildDockMaxHeight() clamped to the minimum
+  // and every drag snapped the dock back down to 150px.
+  // Only checked above the phone breakpoint: the handle is hidden below 760.
+  if (vp.width > 760) {
+    const resizer = page.locator('[data-testid="build-dock-resizer"]');
+    const seam = await resizer.evaluate((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y }));
+    const dockH = () => page.evaluate(() => document.getElementById("build-inspector").getBoundingClientRect().height);
+    const growBy = 120;
+    const startDock = await dockH();
+    const startTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    // Drag in the right half of the seam, well clear of the tree's left gutter.
+    const atX = seam.x + 200;
+    await page.mouse.move(atX, seam.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y - (growBy * i) / 4);
+    await page.waitForTimeout(120);
+    const midDock = await dockH();
+    // Release where the drag ended: moving the pointer back first would let the
+    // drag's own track-back resize the dock before pointerup lands.
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+    const endDock = await dockH();
+    const endLabel = await page.locator("#build-board-label").textContent().catch(() => "");
+    check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
+    check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
+    check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
+    // The tree is the other half of the seam: it must give up what the dock
+    // took, or the dock grew out of the panel instead of out of the tree.
+    const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    check(startTree - endTree > growBy * 0.7 || endTree <= 90, `the move tree should shrink as the dock grows, got ${startTree} → ${endTree}`);
+    const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);
+    check(cursorOnHandle === "row-resize", `the handle should carry a resize cursor, got "${cursorOnHandle}"`);
+
+    // Double-click still folds the dock (it never depended on the panel's box).
+    // The seam moves with the dock height, so re-read it before every click:
+    // a stale y lands inside the panel instead of on the handle.
+    const seamAt = async () => resizer.evaluate((el) => el.getBoundingClientRect());
+    let box = await seamAt();
+    await page.mouse.dblclick(box.x + 200, box.y);
+    await page.waitForTimeout(150);
+    check((await page.locator("#build-inspector.is-folded").count()) === 1, "double-click on the seam should fold the inspector");
+    box = await seamAt();
+    await page.mouse.dblclick(box.x + 200, box.y);
+    await page.waitForTimeout(150);
+    check((await page.locator("#build-inspector.is-folded").count()) === 0, "double-click again should unfold the inspector");
+  }
+
   // Phones switch panes with the segmented control above the tree.
   const tool = (name) => page.locator(vp.width <= 760 ? `#build-panes [data-pane="${name}"]` : `[data-testid="build-tool-${name}"]`);
   await tool("coverage").click();

@@ -1,5 +1,6 @@
-// UX walkthrough 2026-09-30 P3-8: an opponent leaving the repertoire on their very first
-// move was badged "Opponent novelty @ Ply 2" — it's a different opening, not a novelty.
+// An opponent leaving the repertoire within the first couple of moves did not
+// play a "novelty" — they chose a different opening. The bucket is shared with
+// late novelties (filter, Add reply); this splits the detail copy only.
 import { describe, expect, it } from "vitest";
 
 import { isDifferentOpening } from "./replay.js";
@@ -7,7 +8,7 @@ import { isDifferentOpening } from "./replay.js";
 const game = (ply) => ({ departure_reason: "opponent_unprepared_branch", departure_ply: ply });
 
 describe("isDifferentOpening", () => {
-  it("labels very early opponent departures as a different opening", () => {
+  it("treats very early opponent departures as a different opening", () => {
     expect(isDifferentOpening(game(2))).toBe(true);
     expect(isDifferentOpening(game(4))).toBe(true);
   });

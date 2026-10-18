@@ -391,7 +391,14 @@ describe("account menu focus", () => {
     document.body = { classList: { toggle: (name, on) => on ? classes.add(name) : classes.delete(name) } };
     const api = vi.fn().mockResolvedValueOnce({ id: "alice" }).mockResolvedValueOnce({})
       .mockResolvedValueOnce({ id: "bob" });
-    const { controller } = makeController({ api });
+    const { appState, controller } = makeController({ api });
+    controller.renderAccountChip();
+    // Before the first session read `!signedIn` means UNKNOWN, not "signed out",
+    // so the marker stays off rather than announcing a guest that isn't proven.
+    appState.authKnown = false;
+    controller.renderAccountChip();
+    expect(classes.has("is-guest")).toBe(false);
+    appState.authKnown = true;
     controller.renderAccountChip();
     expect(classes.has("is-guest")).toBe(true);
     await controller.refreshAuthStatus();

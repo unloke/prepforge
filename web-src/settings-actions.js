@@ -19,6 +19,10 @@ async function loadSettingsOnce({ render = true } = {}) {
     return;
   }
   if (seq !== appState.settingsReadSeq || owner !== currentOwnerId() || generation !== appState.ownerGeneration) return;
+  // Paint the account from what /api/auth/me already put in state NOW; the
+  // /api/settings read below fills in the rest. Waiting on that read before
+  // the first paint is what held "Loading account…" on screen.
+  view?.renderAccount?.();
   if (!appState.signedIn) {
     // Signed out: browser-local settings only (theme, board, engine status) —
     // no /api/settings call and no 401 in the top bar.

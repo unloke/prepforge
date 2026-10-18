@@ -9,6 +9,15 @@ const swallowClick = (event) => {
 };
 
 export function createMoveTreeRenderer() {
+  // Screen readers get the SAN alone ("e4"), which no one can act on. Name the
+  // button the way a person reads the line: move number and side, the SAN, and
+  // the grade (or "variation") when the view decorates one.
+  function moveTokenLabel(node, deco) {
+    const num = node.moveNumber == null ? "" : `${node.moveNumber}${node.side === "black" ? "..." : "."}`;
+    const side = node.side === "black" ? "Black" : "White";
+    return [`${num} ${node.san}`, side, deco.label].filter(Boolean).join(", ");
+  }
+
   function renderMoveToken(node, opts, forceNumber) {
     const isWhite = node.side === "white";
     const numHtml =
@@ -21,8 +30,9 @@ export function createMoveTreeRenderer() {
     if (node.id === opts.currentId) classes.push("is-current");
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
     const title = deco.title ? html` title="${String(deco.title)}"` : "";
+    const label = moveTokenLabel(node, deco);
     return (
-      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}</button>`
+      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}</button>`
     );
   }
 

@@ -243,6 +243,7 @@ class EngineWidget {
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
     if (this.pvsEl) this.pvsEl.innerHTML = this._pendingRows(0);
     if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
+    this._paintDepth(0, null);
     if (this.evalBarText) this.evalBarText.textContent = "...";
     if (this.evalHead) {
       // Analyze keeps the last live number while the next position warms up.
@@ -281,6 +282,7 @@ class EngineWidget {
         html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
     }
     if (this.depthReadout) this.depthReadout.textContent = "—";
+    this._paintDepth(null, null);
     if (this.evalBarWhite) {
       const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
       this.evalBarWhite.style.transform = `scaleY(${share})`;
@@ -292,6 +294,20 @@ class EngineWidget {
       delete this.evalHead.dataset.pending;
     }
     return true;
+  }
+
+  // Depth reads as its own number with a progress hairline; the tooltip names it.
+  _paintDepth(current, target) {
+    const el = this.depthReadout;
+    if (!el) return;
+    const cur = Number(current);
+    const max = Number(target);
+    // Number(null) is 0, so only a real positive ceiling counts as a target.
+    const hasCur = Number.isFinite(cur);
+    const hasMax = Number.isFinite(max) && max > 0;
+    el.dataset.d = hasCur ? String(cur) : "";
+    el.style.setProperty("--p", hasCur && hasMax ? String(Math.min(1, cur / max)) : "0");
+    el.title = hasCur ? `Search depth ${cur}${hasMax ? ` of ${max}` : ""}` : "";
   }
 
   _renderLinesReadout() {
@@ -424,6 +440,7 @@ class EngineWidget {
     if (!snapshot || !snapshot.session_id) {
       setEngineBestArrow(null);
       if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
+      this._paintDepth(0, 0);
       return;
     }
     this.lastSnapshot = snapshot;
@@ -438,6 +455,7 @@ class EngineWidget {
     }
     const depthText = `${snapshot.current_depth || 0} / ${snapshot.max_depth || "?"}`;
     if (this.depthReadout) this.depthReadout.textContent = depthText;
+    this._paintDepth(snapshot.current_depth, snapshot.max_depth);
     // Render only as many PV slots as the user asked for; engines occasionally
     // emit transient extra ranks while changing multipv. Missing ranks keep a
     // placeholder row so the block never changes height mid-search.

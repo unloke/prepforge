@@ -102,6 +102,32 @@ describe("createMoveTreeRenderer", () => {
     expect(String(html)).toContain("&lt;img onerror=&quot;x&quot;&gt;");
   });
 
+  it("names each move button by number, side, SAN and grade", () => {
+    const graded = {
+      id: "root",
+      children: [
+        { id: "n1", san: "e4", moveNumber: 1, side: "white", children: [] },
+        { id: "n2", san: "e5", moveNumber: 1, side: "black", classification: "blunder", children: [] },
+      ],
+    };
+    graded.children[0].children = [graded.children[1]];
+    const html = renderMoveTree(graded, {
+      decorate: (node) => ({
+        classes: [],
+        title: node.classification,
+        label: node.classification,
+      }),
+    });
+    expect(String(html)).toContain('aria-label="1. e4, White"');
+    expect(String(html)).toContain('aria-label="1... e5, Black, blunder"');
+  });
+
+  it("still names a button whose node carries no grade", () => {
+    const html = renderMoveTree(sampleTree(), {});
+    expect(String(html)).toContain('aria-label="1. e4, White"');
+    expect(String(html)).toContain('aria-label="1... c5, Black"');
+  });
+
   it("binds move clicks and optional context-menu callbacks", () => {
     const html = renderMoveTree(sampleTree(), { currentId: "n1" });
     const container = stubMoveTreeContainer(html);

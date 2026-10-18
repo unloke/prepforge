@@ -109,7 +109,9 @@ describe("Generate dialog", () => {
     expect(helpers.generateEstimateRange({ ...base, mainThreshold: 0.05 }).high).toBeGreaterThan(range.high);
     const deep = helpers.generateEstimateRange({ ...base, plyDepth: 11 }).high;
     expect(helpers.generateEstimateRange({ ...base, plyDepth: 11, branchThreshold: 0.5 }).high).toBeLessThan(deep);
-    expect(helpers.generateEstimateText(base)).toMatch(/^About \d+–\d+ new moves$/);
+    // The range is the value; the field's own "new moves" unit names it, so the
+    // text is figures only (they carry tabular-nums in the dialog).
+    expect(helpers.generateEstimateText(base)).toMatch(/^\d+–\d+$/);
   });
 
   it("has no presets, no own-side alternatives and nothing folded away", () => {
@@ -119,6 +121,30 @@ describe("Generate dialog", () => {
     expect(fields).not.toContain("depth_preset");
     expect(fields).not.toContain("own_color");
     expect(app).not.toContain("GEN_DEPTH_PRESETS");
+  });
+
+  it("groups the knobs and puts the estimate in a stat, at the bottom", () => {
+    const fields = extractByMarker("function generateDialogFields() {");
+    const names = [...fields.matchAll(/name: "(\w+)"/g)].map((m) => m[1]);
+    // Three knobs shape the tree, two shape the engine — two named runs.
+    expect(fields.match(/group: "Coverage"/g)).toHaveLength(3);
+    expect(fields.match(/group: "Engines"/g)).toHaveLength(2);
+    // The estimate is last, and it is a stat (not a note) so it can be emphasised.
+    const estimateIdx = fields.indexOf('name: "estimate"');
+    expect(names[names.length - 1]).toBe("estimate");
+    expect(fields.slice(estimateIdx)).toContain('type: "stat"');
+    expect(fields.slice(estimateIdx)).toContain('unit: "new moves"');
+    expect(fields).not.toMatch(/name: "estimate"[\s\S]{0,120}type: "note"/);
+  });
+
+  it("repaints only the range figure, and keeps the reuse caveat on it", () => {
+    const open = extractByMarker("async function generateFromCurrentNode() {");
+    expect(open).toContain("fields: generateDialogFields(),");
+    expect(open).toContain('\'[data-note="estimate"] b\'');
+    // The stat holds the unit as a span, so writing textContent must not target
+    // the whole row (it would drop "new moves").
+    expect(open).not.toContain("overlay.querySelector('[data-note=\"estimate\"]').textContent");
+    expect(open).toContain('"Fewer where your repertoire already has the moves"');
   });
 });
 
@@ -194,13 +220,31 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
   });
 });
 
+describe("Notices report finished work in past tense", () => {
+  // The undo window opens only once the action has already been applied, so
+  // "will be removed" described something that had already happened.
+  const undoSites = ["deleteSavedAnalysis", "handleRepertoireContextAction"];
+  for (const fn of undoSites) {
+    it(`${fn} speaks past tense`, () => {
+      const body = extractByMarker(`function ${fn}(`);
+      expect(body).not.toMatch(/will be/);
+    });
+  }
+  it("keeps confirm bodies that describe a consequence that has not happened", async () => {
+    // A confirm modal asks about the future, so it may stay in future tense.
+    const team = extractByMarker("async function deleteTeam(teamId, name) {");
+    expect(team).toContain("will be removed");
+  });
+});
+
 describe("Repertoire opens immediately with a loading state (P2-5)", () => {
   it("switches view and shows a skeleton before the load resolves", () => {
     const edit = extractByMarker("async function editRepertoire(repertoireId, nodeId = null) {");
     expect(edit.indexOf("setBuildLoading(true)")).toBeLessThan(edit.indexOf("await api("));
     const loading = extractByMarker("function setBuildLoading(on, { restore = true } = {}) {");
     expect(loading).toContain('switchView("build", { fromUrl: true })');
-    expect(loading).toContain("tree-skeleton");
+    expect(loading).toContain("skeleton-row");
+    expect(loading).toContain("skeleton-bar");
   });
 });
 

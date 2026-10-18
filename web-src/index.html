@@ -68,15 +68,22 @@
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
           <span class="nav-label">Settings</span>
         </button>
-        <button class="account-btn" id="account-chip" data-testid="account-chip" type="button" aria-expanded="false" title="Sign in to PrepForge">
+        <button class="account-btn" id="account-chip" data-testid="account-chip" type="button" aria-expanded="false" title="">
           <span class="avatar" id="account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
-          <span class="nav-label account-text"><b id="account-label">Sign in</b><small id="account-sub">Save your library</small></span>
+          <span class="nav-label account-text"><b id="account-label"></b><small id="account-sub"></small></span>
         </button>
       </div>
     </nav>
     <!-- No top bar at any width: the active nav item names the page. -->
 
     <main class="workspace" id="workspace-main" tabindex="-1">
+      <!-- Until the session is read the workspace holds: the views below read an
+           unread session as "signed out", and a signed-in reload would flash that
+           guess. app.js drops this hold once /api/auth/me answers. -->
+      <div class="boot-hold" id="boot-hold" data-testid="boot-hold" role="status" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading your workspace…</p>
+      </div>
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
         <div class="lib">
           <header class="page-head">
@@ -106,7 +113,7 @@
               </header>
               <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
               <div id="library-refresh-status" role="alert" hidden></div>
-              <div id="dashboard-repertoires" class="lib-rep-list list-enter"><div class="empty-state lib-loading" role="status" data-testid="library-loading"><div class="spinner" aria-hidden="true"></div><p>Loading your library…</p></div></div>
+              <div id="dashboard-repertoires" class="lib-rep-list list-enter" role="status" aria-label="Loading your library"></div>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
             <section class="steps card" id="dashboard-steps" aria-label="Next steps" hidden></section>
@@ -129,6 +136,7 @@
                 <button class="btn icon" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
               </div>
               <span class="board-label" id="analysis-board-label">Initial position</span>
+              <span class="board-sub" id="analysis-game-meta" data-testid="analysis-game-meta"></span>
               <button class="pv-exit" id="analysis-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <button class="btn icon bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>
@@ -143,10 +151,9 @@
             <div class="panel-head">
               <div class="game-id">
                 <b id="analysis-game-title">Analysis board</b>
-                <span class="faint" id="analysis-game-meta"></span>
               </div>
               <span class="panel-actions" id="analyze-actions">
-                <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
+                <button class="btn icon sm" id="fetch-my-game" data-testid="fetch-my-game" aria-label="Last game" title="Load and analyze your latest Lichess game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
                 <button class="btn sm primary" id="run-analysis" data-testid="run-analysis"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.2"/></svg><span class="bl">Analyze</span></button>
               </span>
             </div>
@@ -172,7 +179,7 @@
                   <div class="rb-head ev-head">
                     <b class="ev-title">Evaluation</b>
                     <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
-                    <span class="ev-meter" id="analysis-eval-meter" aria-hidden="true"><i></i></span>
+                    <span class="ev-meter" id="analysis-eval-meter" title="Win chance"><i></i></span>
                     <span class="ev-move" id="analysis-ev-move" aria-hidden="true"></span>
                     <button class="ev-report" type="button" data-sheet-open="analyze-sheet" aria-expanded="false" aria-controls="analyze-sheet">Report</button>
                     <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Engine</button>
@@ -284,7 +291,7 @@
               <button class="btn icon phone-back" type="button" data-mirror='.nav-item[data-view="dashboard"]' aria-label="Library" title="Library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <span class="rep-stats faint" id="build-rep-stats" hidden></span>
-              <button class="btn sm primary" id="build-generate-node" data-testid="build-generate-node" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
+              <button class="btn icon sm primary" id="build-generate-node" data-testid="build-generate-node" aria-label="Generate moves" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
               <button class="row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
             <div class="panel-body">
@@ -407,7 +414,6 @@
             </section>
             <div class="panel-scroll">
               <section class="tcard train-setup">
-                <h3 id="train-setup-title">Smart queue</h3>
                 <p class="train-session-preview" id="train-session-preview" data-testid="train-session-preview" hidden></p>
                 <div class="field" id="train-srs-picker">
                   <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
@@ -512,7 +518,7 @@
                 </div>
               </section>
 
-              <section class="tcard summary train-summary" id="train-summary" hidden data-testid="train-summary">
+              <section class="tcard train-summary" id="train-summary" hidden data-testid="train-summary">
                 <h3 id="train-summary-title">Session results</h3>
                 <div class="sum-cells" id="train-summary-stats"></div>
                 <div class="delta" id="train-summary-delta"></div>
@@ -548,7 +554,7 @@
               <span class="spacer"></span>
               <div id="replay-summary" class="sum-chips" role="group" aria-label="Filter by outcome" hidden></div>
             </div>
-            <div id="replay-results" class="replay-results"></div>
+            <div id="replay-results" class="replay-results"><div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div>
           </section>
           <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <header class="page-head"><h1>Scout</h1></header>
@@ -572,7 +578,7 @@
             </div>
             <div class="scout-grid">
               <div class="scout-main">
-                <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b>Streaming games from Lichess…</b></div></div>
+                <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b id="scout-stream-phase">Loading your repertoire…</b><p id="scout-stream-detail" class="scout-stream-detail"></p></div></div>
                 <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p id="scout-empty-hint">Add a Lichess username as a source, then Start.</p></div>
                 <div id="scout-profile" class="scout-profile profile card" hidden></div>
                 <div id="scout-results" class="scout-results"></div>
@@ -614,14 +620,14 @@
             </div>
             <section id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members">
               <div class="sub-head">
-                <b>Members</b>
+                <span class="spacer"></span>
                 <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
               <div id="team-members" data-testid="team-members"></div>
             </section>
             <section id="team-panel-repertoires" data-team-panel="repertoires" role="tabpanel" aria-labelledby="team-tab-repertoires" hidden>
               <div class="sub-head">
-                <b>Shared repertoires</b>
+                <span class="spacer"></span>
                 <button class="btn sm" id="team-share-rep" data-testid="team-share-rep" hidden>Share a repertoire</button>
               </div>
               <div id="team-shared-repertoires" data-testid="team-shared-repertoires"></div>
@@ -657,9 +663,7 @@
           <div class="settings-content">
             <section class="card set" id="set-account" data-testid="settings-account">
               <h2>Account</h2>
-              <div id="settings-account-body" data-testid="settings-account-body">
-                <p class="muted small">Loading account…</p>
-              </div>
+              <div id="settings-account-body" data-testid="settings-account-body" role="status" aria-label="Loading account"><div class="acct-id"><span class="skeleton-dot acct-skeleton-avatar"></span><span class="acct-id-text"><span class="skeleton-bar skeleton-line" style="width:42%"></span><span class="skeleton-bar skeleton-thin" style="width:26%"></span><span class="acct-id-meta"><span class="skeleton-bar acct-skeleton-tag"></span><span class="skeleton-bar acct-skeleton-pill"></span></span></span></div></div>
               <!-- Chess accounts sit with the account: each linked Lichess
                    identity IS you ("Self") in Games and Scout. -->
               <div class="acct-block" id="set-connections" data-testid="settings-connections">
@@ -839,12 +843,12 @@
         <div class="engine-head-meta">
           <span class="engine-head-label">SF</span>
           <span class="engine-head-eval" id="engine-head-eval">—</span>
-          <span class="engine-head-depth" id="engine-window-depth-readout">—</span>
+          <span class="engine-head-depth" id="engine-window-depth-readout" title="Search depth">—</span>
         </div>
         <div class="engine-head-tools">
-          <div class="engine-lines" title="Lines shown">
+          <div class="engine-lines" role="group" aria-label="Lines shown">
             <button class="engine-step" id="engine-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
-            <span class="engine-lines-readout" id="engine-lines-readout">1</span>
+            <span class="engine-lines-readout" id="engine-lines-readout" title="Lines shown">1</span>
             <button class="engine-step" id="engine-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
           </div>
           <button class="engine-window-close" id="engine-window-close" type="button" title="Close" aria-label="Close">×</button>

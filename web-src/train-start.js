@@ -9,3 +9,15 @@ export function trainStartDisabled({ mode, signedIn, hasRepertoire }) {
   if (!signedIn) return false;
   return !hasRepertoire;
 }
+
+// Why the smart queue's Start cannot build a queue right now, "" when it can.
+// Reads the same /smart/summary?preview=true payload that labels the button, so
+// a Start with nothing behind it is dead instead of failing server-side. A
+// missing payload (fetch failed, cache cleared) blocks nothing: the server
+// still owns the real answer, and Start must not guess.
+export function trainStartBlockReason(nextSession, { hasActiveRepertoire }) {
+  if (!nextSession || Number(nextSession.cards) > 0) return "";
+  return hasActiveRepertoire
+    ? "Nothing due. Add lines in Repertoire."
+    : "No active repertoire. Create one in Library.";
+}

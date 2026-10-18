@@ -8,6 +8,7 @@ import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
+import { teamRowsSkeleton } from "./team-skeleton.js";
 
 export function createTeamsView({
   appState,
@@ -80,17 +81,24 @@ export function createTeamsView({
     const list = document.getElementById("teams-list");
     const shared = document.getElementById("teams-shared");
     if (!list) return;
+    // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting
+    // guest state here is what flashed "Sign in to create or join a team" for a
+    // signed-in user on reload, so hold a neutral loading state until auth is
+    // known instead — including the owner-scoped affordances.
+    if (!appState.authKnown) {
+      const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
+      if (sharedCard) sharedCard.hidden = true;
+      const searchField = document.getElementById("teams-search")?.closest?.(".search-field");
+      if (searchField) searchField.hidden = true;
+      const newTeam = document.getElementById("teams-new");
+      if (newTeam) newTeam.hidden = true;
+      list.innerHTML = teamRowsSkeleton(3);
+      return;
+    }
     // A guest gets one Sign in, in the main card; the list and the shares card
     // have nothing to show yet, so they don't repeat it.
     const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
     if (sharedCard) sharedCard.hidden = !appState.signedIn;
-    // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting the
-    // guest copy here is what flashed "Sign in to create or join a team" for a signed-in
-    // user on reload, so hold a neutral loading state until auth is known instead.
-    if (!appState.authKnown) {
-      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
-      return;
-    }
     if (!appState.signedIn) {
       list.innerHTML = "";
       if (shared) shared.innerHTML = "";
@@ -98,7 +106,7 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
-    list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+    list.innerHTML = teamRowsSkeleton(3);
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
@@ -190,7 +198,7 @@ export function createTeamsView({
     // Same rule as loadTeams(): until the session is known the collection is not
     // "empty", it is unread.
     if (!appState.authKnown) {
-      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      list.innerHTML = teamRowsSkeleton(3);
       return;
     }
     // hideTeamDetail() re-renders the list; keep the guest's sign-in line.

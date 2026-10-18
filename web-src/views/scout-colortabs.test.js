@@ -8,9 +8,10 @@ import {
 } from "../scout-report.js";
 
 // Characterization for the ui-prototype-v2 "With White / With Black" tabs on
-// Scout: tabs come from the opponent profile's real per-colour game counts, the
-// switch is visibility-only (sections keep their computed line state), and the
-// active colour survives re-renders via the results element's dataset.
+// Scout: a tab's count is the section's own gameCount (the raw per-colour
+// profile total is only a fallback), the switch is visibility-only (sections
+// keep their computed line state), and the active colour survives re-renders via
+// the results element's dataset.
 
 
 
@@ -261,6 +262,40 @@ describe("scout colour tabs", () => {
 // visible label. .scout-color-tabs is a nowrap flex row, so two ~246px tabs
 // pushed the page to 503px at a 390px viewport (smoke: mobile-390 horizontal
 // overflow of 113px). The wording must stay in the title / accessible name.
+// Regression: the tab and the section heading quoted different game totals for
+// the same colour — the tab read the raw per-colour total (every game of that
+// colour, no speed filter, games the trie skips) while the heading read the
+// section's trie gameCount. A tab must now quote the section's own count.
+describe("scout colour tab count matches the section", () => {
+  const divergentProfile = {
+    colorStats: { white: { games: 203 }, black: { games: 80 } },
+  };
+
+  it("prefers the section's count over the raw per-colour total", () => {
+    const html = renderScoutColorTabsHtml(divergentProfile, {
+      counts: { white: 201, black: 80 },
+    });
+    expect(String(html)).toContain("<small>201 games</small>");
+    expect(String(html)).toContain("<small>80 games</small>");
+    expect(String(html)).not.toContain("203 games");
+    expect(String(html)).toContain('title="Opponent with White: 201 games');
+  });
+
+  it("hides a colour whose section has no trie, even with raw games", () => {
+    const html = renderScoutColorTabsHtml(divergentProfile, {
+      counts: { white: 0, black: 80 },
+    });
+    expect(String(html)).not.toContain('data-scout-tab="white"');
+    expect(String(html)).toContain('data-scout-tab="black"');
+  });
+
+  it("falls back to the profile total when a section count is missing", () => {
+    const html = renderScoutColorTabsHtml(divergentProfile);
+    expect(String(html)).toContain("<small>203 games</small>");
+    expect(String(html)).toContain("<small>80 games</small>");
+  });
+});
+
 describe("scout colour tab label width", () => {
   it("keeps the visible label short but retains the colour context accessibly", () => {
     const html = renderScoutColorTabsHtml(profile, { username: "scouttarget" });

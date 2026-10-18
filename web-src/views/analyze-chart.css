@@ -9,11 +9,14 @@
    classes carry a colour role only: .eval-dot fills with currentColor,
    .eval-cliff strokes with it. */
 
-/* ---- Panel head + coach card ------------------------------------------ */
+/* Panel head + coach card ------------------------------------------ */
 
+/* The head is one row: the game's identity, then the actions. The tag line
+   (result · event · date) rides under the board beside the move, as .board-sub. */
 .game-id {
   display: flex;
-  flex-direction: column;
+  flex: 1 1 auto;
+  align-items: center;
   min-width: 0;
 }
 .game-id > * {
@@ -239,7 +242,7 @@
    in the header and its lines run under the chart instead of a second row. */
 #analysis-eval-card {
   display: grid;
-  grid-template-columns: auto minmax(24px, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(72px, 1fr) auto auto auto;
   align-items: center;
   column-gap: 10px;
   row-gap: 8px;
@@ -283,53 +286,58 @@
 .eval-now:empty { display: none; }
 /* The previous position's number, held while the engine warms up on this one. */
 .eval-now[data-pending="true"] { opacity: 0.5; }
-.eval-now::before {
-  content: "";
-  flex: none;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1px solid #8a8d93;
-  background: #8a8d93;
-}
-.eval-now[data-side="white"]::before { background: #f4f3ef; border-color: #b9b4a6; }
-.eval-now[data-side="black"]::before { background: #25282d; border-color: #5b5f66; }
-/* White's share of the win chance: light from the left over a dark track. */
+/* White's share of the win chance, scaled (never laid out) so a search can
+   update it many times a second. */
 .ev-meter {
-  height: 6px;
-  border-radius: 999px;
-  background: #3a3d43;
+  height: 12px;
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--eval-side-black);
   overflow: hidden;
 }
 .ev-meter > i {
   display: block;
-  height: 100%;
-  /* Full width, scaled to White's share: scaling never lays the meter out,
-     so a search updating it many times a second stays composited. */
   width: 100%;
+  height: 100%;
   transform-origin: left center;
   transform: scaleX(0.5);
-  border-radius: inherit;
-  background: #ecebe6;
+  background: var(--eval-side-white);
   transition: transform var(--dur-slow) var(--ease-out);
 }
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
-/* Search depth as quiet figures with a hairline of progress under them. */
+/* Search depth as a word plus quiet figures and a hairline of progress. */
 #analysis-engine-slot .engine-head-depth {
   --p: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
   min-width: 0;
   padding: 0 0 2px;
   border: 0;
   border-radius: 0;
-  background: linear-gradient(var(--accent), var(--accent)) 0 100% / calc(var(--p) * 100%) 2px no-repeat,
-    linear-gradient(var(--line), var(--line)) 0 100% / 100% 2px no-repeat;
   color: var(--muted);
   font-size: 0;
 }
+#analysis-engine-slot .engine-head-depth::before {
+  content: "Depth";
+  font-size: 11px;
+  font-weight: 400;
+}
 #analysis-engine-slot .engine-head-depth::after {
-  content: "d" attr(data-d);
+  content: attr(data-d);
   font-size: 11px;
   font-weight: 650;
+  background: linear-gradient(var(--accent), var(--accent)) 0 100% / calc(var(--p) * 100%) 2px no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 100% / 100% 2px;
+}
+#analysis-engine-slot .engine-head-depth:not([data-d])::after { content: ""; }
+/* Lines: a word before the stepper, so the count has a name. Only in the
+   card - the floating panel keeps its bare − N + cluster and tooltips. */
+#analysis-engine-slot .engine-lines::before {
+  content: "Lines";
+  font-size: 11px;
+  color: var(--muted);
 }
 #analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
 #analysis-engine-slot .engine-step {
@@ -878,8 +886,8 @@
     background: var(--bg);
   }
   #analysis-eval-card .ev-title { color: var(--muted); }
-  #analysis-eval-card .eval-now { min-width: 60px; font-size: 16px; }
-  #analysis-eval-card .ev-meter { display: none; }
+  #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
+  #analysis-eval-card .ev-meter { flex: none; width: 86px; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */

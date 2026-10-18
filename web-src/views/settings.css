@@ -263,6 +263,17 @@
   font-weight: 650;
 }
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
+/* Account skeleton: the identity header's shape while the session is unread. */
+.acct-skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  margin-top: 0;
+}
+.acct-id-text > .skeleton-bar { justify-self: start; }
+.acct-id-text > .skeleton-line { height: 16px; }
+.acct-id-text .acct-id-meta { margin-top: 4px; }
+.acct-skeleton-tag { width: 72px; height: 18px; border-radius: 10px; }
+.acct-skeleton-pill { width: 82px; height: 20px; border-radius: 10px; }
 .acct-row-text { display: grid; gap: 1px; min-width: 0; }
 .acct-row > .btn { flex: none; white-space: nowrap; }
 .acct-block { margin-top: 14px; }

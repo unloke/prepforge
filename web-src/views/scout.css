@@ -148,7 +148,6 @@
 }
 .cs-head .spacer { flex: 1; }
 .wdl-compact { display: inline-flex; align-items: baseline; gap: 5px; }
-.scout-n { color: var(--label); font-size: 10.5px; font-weight: 500; white-space: nowrap; }
 .scout-wdl { display: inline-flex; gap: 3px; }
 .scout-wdl-pill {
   padding: 0 4px;
@@ -157,18 +156,20 @@
   font-size: 10.5px;
   font-weight: 700;
   line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 .scout-wdl-w { color: var(--good-text); }
 .scout-wdl-d { color: var(--muted); }
 .scout-wdl-l { color: var(--danger); }
-.scout-section-score { font-size: var(--fs-s); }
+/* "scores 44%" and the coverage fraction are figures in a row of them. */
+.scout-section-score { font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scout-coverage-label { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .cov { display: flex; align-items: center; gap: 8px; min-width: 190px; color: var(--muted); font-size: var(--fs-s); }
 .scout-coverage-bar { flex: 1; min-width: 40px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .scout-coverage-fill { height: 100%; border-radius: 3px; transition: width var(--dur-slow) var(--ease-out); }
 .scout-coverage-fill.good { background: var(--good); }
 .scout-coverage-fill.warn { background: var(--warn); }
 .scout-coverage-fill.bad { background: var(--danger); }
-.scout-coverage-label { white-space: nowrap; }
 
 .intel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
 .headline { margin: 0; font-size: 14px; font-weight: 650; }
@@ -196,20 +197,17 @@
 .scout-first-moves { display: flex; flex-direction: column; gap: 4px; }
 .scout-sub-label { font-size: var(--fs-xs); font-weight: 650; }
 .scout-sub-label small { margin-left: 6px; color: var(--label); font-weight: 500; }
-.scout-lines-head {
-  color: var(--label);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.fm .sc small { margin-right: 3px; color: var(--label); font-size: 9.5px; font-weight: 500; }
+/* Scout plan column header — the shared `.col-head` treatment (styles.css);
+   this sheet only lays its cells out. */
 .scout-lines-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
   gap: 10px;
   padding: 0 10px;
 }
+/* The score header sits over a right-aligned column. */
+.scout-lines-head > :nth-child(3) { text-align: right; }
+.fm .sc small { margin-right: 3px; color: var(--label); font-size: 9.5px; font-weight: 500; }
 .scout-section-who { font-size: var(--fs-s); font-weight: 700; }
 .fm {
   display: grid;
@@ -289,10 +287,17 @@
 .scout-refutation-gap-actions { align-items: center; }
 /* Row bars carry no count labels (tooltip has them): a thin strip, not a slab. */
 .lr-wdl .scout-wdlbar { min-width: 0; height: 8px; }
-.scout-one-game { color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
-.scout-score-cell { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
-.scout-score-pct { font-size: 14px; font-weight: 700; }
-.scout-gap { color: var(--danger); font-size: 10.5px; white-space: nowrap; }
+.scout-one-game { color: var(--muted); font-size: var(--fs-s); font-weight: 650; white-space: nowrap; }
+/* One number column: score, sample size and their usual score share a right
+   edge, so the eye compares percentages down the column instead of hunting for
+   where each one starts. */
+.scout-score-cell { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.25; }
+.scout-score-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scout-n { color: var(--label); font-size: 10.5px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scout-gap { color: var(--danger); font-size: 10.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The ×N sample count is a number too: it sits right beside the moves, but it
+   still reads down the column as a count. */
+.scout-lr-count { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Maia-modelled score/WDL: dotted underline / hatched bar = "estimate, not their actual results". */
 .scout-score-cell.scout-maia-estimate .scout-score-pct { text-decoration: underline dotted; text-underline-offset: 2px; }
 .scout-score-cell.scout-maia-estimate .scout-score-pct::before { content: "~"; margin-right: 1px; color: var(--muted); }
@@ -509,6 +514,7 @@
   .line-row .lr-meta,
   .line-row .lr-flags { display: none; }
   .line-row .lr-score { text-align: right; }
+  .scout-lines-head > :nth-child(3) { text-align: right; }
   .cs-head .cov { flex: 1 1 100%; min-width: 0; }
   .cs-head .scout-coverage-label { min-width: 0; white-space: normal; }
   .scout-side .actions .btn { min-height: 44px; }

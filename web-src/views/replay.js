@@ -8,16 +8,18 @@ import "./replay.css";
 const REPLAY_KINDS = {
   "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
   "user-error": { icon: "✗", badge: "You left prep", label: "you left prep", tone: "bad" },
-  // Covers both a late novelty and an early "Different opening": the filter names what they share.
-  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "opponent left prep", tone: "warn" },
+  // One bucket (filter, Add reply) for both a late novelty and an early
+  // "different opening": the badge says what they share — the OPPONENT was the
+  // one who stepped out. Who left, not which opening, is the useful signal.
+  "left-prep": { icon: "⚡", badge: "Opponent left prep", label: "opponent left prep", tone: "warn" },
   "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", tone: "none", departure: "—" },
 };
 
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 // An opponent who leaves the repertoire within the first couple of moves didn't play a
-// "novelty" — they simply chose a different opening. Same bucket (filter, Add reply), but
-// the badge and copy say what actually happened.
+// "novelty" — they simply chose a different opening. Same bucket (filter, Add reply),
+// but the detail copy says what actually happened.
 const EARLY_DEPARTURE_PLY = 4;
 
 export function isDifferentOpening(game) {
@@ -28,10 +30,6 @@ export function isDifferentOpening(game) {
     ply > 0 &&
     ply <= EARLY_DEPARTURE_PLY
   );
-}
-
-function replayBadge(game, meta) {
-  return isDifferentOpening(game) ? "Different opening" : meta.badge;
 }
 
 function replayGameKind(game) {
@@ -329,7 +327,7 @@ export function createReplayView({
       ? plyMoveLabel(game.departure_ply, game.move_san_history)
       : meta.departure || "—";
     return (
-      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${replayBadge(game, meta)}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
+      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
     );
   }
 
@@ -351,8 +349,34 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${replayBadge(game, meta)}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${meta.badge}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
     );
+  }
+
+  // Ledger loading rows: the `.lr` row's own grid with the unknown values as
+  // bars, the same primitives as the Library and Teams skeletons. aria-hidden;
+  // the Check button carries the busy state.
+  const LEDGER_ROW_SIZES = [
+    { badge: 86, players: 62, res: 30, preview: 74, dep: 42 },
+    { badge: 74, players: 48, res: 30, preview: 66, dep: 42 },
+    { badge: 86, players: 70, res: 30, preview: 80, dep: 42 },
+    { badge: 74, players: 54, res: 30, preview: 58, dep: 42 },
+  ];
+  function replayLedgerSkeleton() {
+    const rows = LEDGER_ROW_SIZES.map(
+      (size) => html`
+      <div class="lr is-skeleton" aria-hidden="true">
+        <span><span class="skeleton-bar skeleton-chip" style="width:${size.badge}%"></span></span>
+        <span class="players"><span class="skeleton-bar" style="width:${size.players}%"></span><span class="skeleton-bar skeleton-thin" style="width:${size.players - 18}%"></span></span>
+        <span class="res"><span class="skeleton-bar" style="width:${size.res}%"></span></span>
+        <span class="open-prev"><span class="skeleton-bar" style="width:${size.preview}%"></span></span>
+        <span class="num"><span class="skeleton-bar" style="width:${size.dep}%"></span></span>
+      </div>`
+    );
+    // The focus card mirrors the board-plus-text shape it is replaced by, so
+    // the triage does not jump when the first rows land.
+    const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><span class="skeleton-bar skeleton-thin" style="width:38%"></span><span class="skeleton-bar" style="width:62%"></span><span class="skeleton-bar" style="width:80%"></span><span class="skeleton-bar" style="width:44%"></span><span class="skeleton-bar skeleton-chip" style="width:64px"></span></div></div><span class="skeleton-bar skeleton-thin" style="width:70%"></span></section>`;
+    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
   }
 
   function renderReplayResults(payload) {
@@ -362,7 +386,7 @@ export function createReplayView({
       `${error.username}: ${error.message}`).join(" ? ");
     const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors} · Retry Check</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
-      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark">♙</div><h3>No recent games found</h3></div>`;
+      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No recent games found</h3></div>`;
       return;
     }
     const filter = getReplayFilter();
@@ -389,7 +413,7 @@ export function createReplayView({
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header><div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);
@@ -419,5 +443,6 @@ export function createReplayView({
 
   return {
     renderReplayResults,
+    renderLedgerSkeleton: replayLedgerSkeleton,
   };
 }

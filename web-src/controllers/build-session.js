@@ -25,11 +25,12 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
   hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-  openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
-  reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
-  renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
-  sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError, showInputModal,
-  START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH, switchView, syncWorkspaceUrl;
+  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+  preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+  refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
+  requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
+  setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
+  switchView, syncWorkspaceUrl;
 
 export function createBuildSession(deps) {
   ({
@@ -40,20 +41,20 @@ export function createBuildSession(deps) {
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
     hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-    openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
-    reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
-    renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
-    sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError,
-    showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH, switchView,
-    syncWorkspaceUrl,
+    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+    preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+    refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
+    requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
+    setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
+    switchView, syncWorkspaceUrl,
   } = deps);
   initBuildDockLayout();
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
     closeNodeContextMenu, createRepertoirePrompt, generateFromCurrentNode, hydrateBuild,
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
-    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel, saveBuildAnnotations,
-    scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
+    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
+    saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
   };
 }
 
@@ -212,6 +213,13 @@ async function renameRepertoire() {
   }
 }
 
+// The paint rule lives in the build view because it reads appState, exactly like
+// renderBuildBranchBar below.
+function paintGenerateVisibility() {
+  if (buildView) return buildView.paintGenerateVisibility();
+  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
+}
+
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
   appState.buildCurrentNodeId = nodeId;
@@ -231,6 +239,7 @@ async function selectBuildNode(nodeId) {
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
+  paintGenerateVisibility();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -968,28 +977,129 @@ async function onBuildBoardMove(moveUci) {
 
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
-  const result = await showInputModal({
+  const created = await showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
     ],
+    // The dialog keeps its pending state until the server answers: the create
+    // used to leave the modal dead on the screen and the click to look ignored.
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim() || "New repertoire";
+      const color = normalizeRepertoireColor(result.color);
+      // When opening it, show an empty repertoire on the tab's own temp id right away, so the
+      // board and tree are there while the request runs. On failure the
+      // optimistic tree is dropped and the previous repertoire is restored.
+      const optimistic = openAfter ? optimisticEmptyRepertoire(name, color) : null;
+      try {
+        const payload = await postJson("/api/repertoires/create", { name, color });
+        await hydrateBuild(payload, payload.selected_node_id);
+        appState.trainingRepertoireId = payload.repertoire_id;
+        close(payload);
+        setStatus(`Created ${name}`);
+        await refreshDashboardRepertoires();
+      } catch (error) {
+        if (optimistic) rollbackOptimisticRepertoire(optimistic);
+        setStatusError(error.message);
+      }
+    },
   });
-  if (!result) return null;
-  const name = (result.name || "").trim() || "New repertoire";
-  const color = normalizeRepertoireColor(result.color);
-  try {
-    const payload = await postJson("/api/repertoires/create", { name, color });
-    await hydrateBuild(payload, payload.selected_node_id);
-    appState.trainingRepertoireId = payload.repertoire_id;
-    if (openAfter) switchView("build");
-    setStatus(`Created ${name}`);
-    await refreshDashboardRepertoires();
-    return payload;
-  } catch (error) {
-    setStatusError(error.message);
-    return null;
+  return created || null;
+}
+
+// A local-only placeholder for a repertoire the server has not confirmed yet.
+// It mirrors the Build payload shape so the view, tree and board render the
+// empty repertoire with no loading state.
+function optimisticEmptyRepertoire(name, color) {
+  const previous = appState.build;
+  const rootFen = START_FEN;
+  const info = localBoardInfo(rootFen);
+  const rootId = `tmp-rep-${OUTBOX_TAB_ID}-${Date.now().toString(36)}`;
+  appState.build = {
+    repertoire_id: null,
+    revision: 0,
+    name,
+    color,
+    root_fen: rootFen,
+    selected_node_id: rootId,
+    writable: true,
+    optimistic: true,
+    nodes_total: 0,
+    summary: {},
+    health: {},
+    nodes: [{
+      id: rootId,
+      parent_id: null,
+      depth: 0,
+      san: null,
+      uci: null,
+      fen: rootFen,
+      fen_before: null,
+      fen_after: rootFen,
+      move_number: 1,
+      ply: 0,
+      move_side: null,
+      side_to_move: "white",
+      source: "manual",
+      is_mainline: false,
+      is_enabled: true,
+      is_prepared: false,
+      maia_probability: null,
+      engine_evaluation: null,
+      tags: [],
+      comment: "",
+      arrows: [],
+      circles: [],
+      mastery: null,
+    }],
+  };
+  appState.buildNodeById = new Map(appState.build.nodes.map((node) => [node.id, node]));
+  appState.buildCurrentNodeId = rootId;
+  appState.buildPending = [];
+  appState.buildPendingDeletes = [];
+  appState.buildSyncState = "saved";
+  if (boards.build) {
+    boards.build.setOrientation(color);
+    boards.build.setPosition({ fen: rootFen, legalMoves: info.legal_moves, lastMove: null });
+  }
+  switchView("build");
+  renderBuildRepHeader();
+  renderBuildSync();
+  renderBuilderTree();
+  syncWorkspaceUrl();
+  return { previous, rootId };
+}
+
+// Discard an unconfirmed optimistic repertoire and put the previous tree back.
+function rollbackOptimisticRepertoire({ previous, rootId }) {
+  if (!previous) {
+    appState.build = null;
+    appState.buildNodeById = new Map();
+    appState.buildCurrentNodeId = null;
+  } else {
+    appState.build = previous;
+    appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    // The open tree had selected the optimistic root: the previous repertoire's
+    // own node goes back under the cursor, exactly like hydrateBuild does.
+    appState.buildCurrentNodeId = previous.selected_node_id || previous.nodes[0]?.id || null;
+  }
+  if (boards.build && appState.build) {
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    if (node) {
+      boards.build.setOrientation(appState.build.color === "black" ? "black" : "white");
+      boards.build.setPosition({ fen: node.fen, legalMoves: [], lastMove: node.uci });
+    }
+  }
+  renderBuildRepHeader();
+  renderBuildSync();
+  renderBuilderTree();
+  syncWorkspaceUrl();
+  if (rootId && appState.build && appState.build.repertoire_id !== null) {
+    // The optimistic node's id never reaches the server; dropping it from the id
+    // map keeps a later flush from translating it onto a real node.
+    appState.buildIdMap?.delete?.(rootId);
   }
 }
 
@@ -1033,24 +1143,27 @@ function generateDialogFields() {
       default: GEN_DEFAULT_OWN_MOVES,
       min: 1,
       max: GEN_MAX_OWN_MOVES,
+      group: "Coverage",
     },
     {
       name: "main_pct",
-      label: "Cover mainline replies played at least (%)",
+      label: "Mainline replies, min %",
       hint: "Opponent moves below this share of human games are left out.",
       type: "number",
       default: GEN_DEFAULT_MAIN_PCT,
       min: 1,
       max: 50,
+      group: "Coverage",
     },
     {
       name: "branch_pct",
-      label: "Cover branch replies played at least (%)",
+      label: "Branch replies, min %",
       hint: "Same cut-off, applied inside side branches.",
       type: "number",
       default: GEN_DEFAULT_BRANCH_PCT,
       min: 1,
       max: 50,
+      group: "Coverage",
     },
     // Defaults to the player's own strength (Settings → Playing strength), so the
     // tree leans toward replies THEIR opponents actually play.
@@ -1062,6 +1175,7 @@ function generateDialogFields() {
       min: 600,
       max: 2600,
       step: 50,
+      group: "Engines",
     },
     // Per-position Stockfish search depth for this run; Settings holds the default.
     {
@@ -1071,8 +1185,11 @@ function generateDialogFields() {
       default: effectiveStockfishDepth(),
       min: STOCKFISH_MIN_DEPTH,
       max: STOCKFISH_MAX_DEPTH,
+      group: "Engines",
     },
-    { name: "estimate", label: "", type: "note" },
+    // Last in the body, above the buttons: the estimate of what this run adds.
+    // The label is the range the knobs produce; `unit` names it.
+    { name: "estimate", label: "", type: "stat", unit: "new moves" },
   ];
 }
 
@@ -1114,7 +1231,7 @@ function generateEstimateRange(options) {
 
 function generateEstimateText(options) {
   const { low, high } = generateEstimateRange(options);
-  return `About ${low}–${high} new moves`;
+  return `${low}–${high}`;
 }
 
 async function generateFromCurrentNode() {
@@ -1162,10 +1279,10 @@ async function generateFromCurrentNode() {
     okLabel: "Generate",
     fields: generateDialogFields(),
     onInput: (current, overlay) => {
-      const note = overlay.querySelector('[data-note="estimate"]');
-      if (!note) return;
-      note.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
-      note.title = "Fewer where your repertoire already has the moves";
+      const range = overlay.querySelector('[data-note="estimate"] b');
+      if (!range) return;
+      range.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
+      range.title = "Fewer where your repertoire already has the moves";
     },
   });
   if (!values || !isCurrent()) return;
