@@ -5474,7 +5474,7 @@ function paintGamesSource() {
   const selection = gamesSourceSelection();
   const { chips, selfState } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
-  const label = n > 0 ? `Self · ${n}` : "Self · all linked";
+  const label = n > 0 ? `Self · ${n} linked account${n === 1 ? "" : "s"}` : "Self · all linked";
   const visible = chips.length ? chips : [{ kind: "self", label }];
   tray.hidden = false;
   // Signed in with nothing linked and no usernames added: "Self · all linked"
@@ -5595,7 +5595,7 @@ function paintScoutSource() {
   const visible = chips.length
     ? chips
     : linked.length && selfState === "all"
-      ? [{ kind: "self", label: `Self · ${linked.length}`, count: linked.length }]
+      ? [{ kind: "self", label: `Self · ${linked.length} linked account${linked.length === 1 ? "" : "s"}`, count: linked.length }]
       : [];
   tray.hidden = false;
   tray.innerHTML = visible.length
@@ -5604,7 +5604,7 @@ function paintScoutSource() {
           c.kind === "external"
             ? html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-scout-unpick-external="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
             : c.kind === "self"
-              ? html`<span class="src-chip is-self" data-scout-chip-self>Self · ${c.count}</span>`
+              ? html`<span class="src-chip is-self" data-scout-chip-self>${c.label}</span>`
               : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
         )}`
     : html`<span class="src-empty">No sources — open Add and pick one</span>`;

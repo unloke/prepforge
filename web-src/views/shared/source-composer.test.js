@@ -71,7 +71,9 @@ describe("source composer selection model", () => {
   it("collapses full Self to one chip, partial to account chips", () => {
     const full = selectionChips(selectSelf(null, linked), linked);
     expect(full.selfState).toBe("all");
-    expect(full.chips).toEqual([{ kind: "self", label: "Self · 2", count: 2 }]);
+    expect(full.chips).toEqual([
+      { kind: "self", label: "Self · 2 linked accounts", count: 2 },
+    ]);
     const partial = selectionChips({ linkedMode: "subset", accountIds: ["b"] }, linked);
     expect(partial.selfState).toBe("mixed");
     expect(partial.chips).toEqual([

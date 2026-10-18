@@ -137,8 +137,13 @@ export function selectionChips(selection, linkedAccounts) {
   if (state === "all" && linked.length) {
     // Full Self collapses to one chip; Self + external keeps the collapsed
     // Self chip alongside the external chips so the tray reads as one union,
-    // matching the fetch.
-    chips.push({ kind: "self", label: `Self · ${linked.length}`, count: linked.length });
+    // matching the fetch. The number is named ("2 linked accounts"): a bare
+    // "Self · 2" left the count unexplained.
+    chips.push({
+      kind: "self",
+      label: `Self · ${linked.length} linked account${linked.length === 1 ? "" : "s"}`,
+      count: linked.length,
+    });
   } else if (state === "mixed") {
     const byId = new Map(linked.map((a) => [a.id, a]));
     for (const id of sel.accountIds) {
@@ -175,7 +180,7 @@ export function selectionChips(selection, linkedAccounts) {
 // (not a modal) with a single source list:
 //
 //   Sources
-//   Self · N
+//   Self · 2 linked accounts
 //   ─────────
 //   accountA       Primary
 //   accountB
