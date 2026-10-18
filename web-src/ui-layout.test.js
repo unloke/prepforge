@@ -169,7 +169,11 @@ describe("workspace chrome layout", () => {
     // Same database, new position: the old rows stay (dimmed) instead of a
     // one-line "Loading…" that collapses the panel on every move.
     expect(app).toMatch(/const keepRows = rows\.dataset\.db === db/);
-    expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(/transition:\s*opacity\s+\d+ms\s+\w+\s+\d+ms/);
+    // The dim is delayed so a cached answer never flashes, and the delay
+    // comes from a token rather than a bare number.
+    expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(
+      /transition:\s*opacity\s+var\(--dur[^)]*\)\s+var\(--[^)]*\)\s+\d+ms/,
+    );
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
@@ -406,6 +410,25 @@ describe("workspace chrome layout", () => {
     // out across linked identities and ranks by canonical finish timestamp.
     expect(app).toMatch(/async function fetchMyLichessGame\(accountId = null\)/);
     expect(app).toMatch(/api\(`\/api\/lichess\/latest\$\{query\}`\)/);
+    // "Last game" is inert but never dead: with no linked Lichess account it
+    // reads as unavailable (aria-disabled + the fix in the tooltip) and its
+    // click still opens the connect flow, rather than doing nothing.
+    expect(app).toMatch(/function syncFetchMyGameButton\(\)/);
+    expect(app).toMatch(/aria-disabled", String\(disabled\)/);
+    expect(app).toMatch(/Connect a Lichess account to load your last game/);
+    // A fetch in flight disables it for real, so two clicks cannot race two
+    // analyses over the same PGN box.
+    expect(app).toMatch(/button\.disabled = true;/);
+    expect(css).toContain(".btn.is-unavailable");
+
+    // B6: Ctrl+K opens within one frame, so it never awaits the repertoire
+    // fetch. The list is refreshed behind the open palette instead.
+    expect(app).toMatch(/function openPalette\(\) \{\n  const el = document\.getElementById\("command-palette"\);/);
+    expect(app).not.toMatch(/async function openPalette\(\)/);
+    expect(app).toMatch(/function refreshPaletteRepertoires\(\)/);
+    expect(app).not.toMatch(/await api\("\/api\/repertoires"\);\s*\n\s*paletteItems/);
+    // A query typed while the refresh was in flight survives it.
+    expect(app).toMatch(/const query = input\?\.value \|\| "";\s*\n\s*paletteItems = filterPaletteItems\(buildPaletteItems\(\{ repertoires \}\), query\)/);
     // Games compare aggregates self by default, narrowing only on explicit picks.
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);
@@ -440,7 +463,7 @@ describe("workspace chrome layout", () => {
     expect(html).not.toContain('id="scout-source-picked"');
     expect(html).not.toContain('id="scout-username"');
     expect(html).not.toContain('id="replay-account"');
-    expect(html).toMatch(/id="scout-source-add"[^>]*aria-label="Add"/);
+    expect(html).toMatch(/id="scout-source-add"[^>]*aria-label="Add Scout source"/);
     expect(css).not.toContain(".source-add");
     expect(css).not.toContain(".source-pick");
     expect(css).not.toContain(".replay-account");
@@ -670,9 +693,9 @@ describe("workspace chrome layout", () => {
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
     expect(mobile).toMatch(/\.account-btn,\s*\.icon-btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
-    expect(mobile).toMatch(/\.ib\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.btn\.icon\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);
-    expect(mobile).toMatch(/#view-train \.board-bar \.ib\s*\{[^}]*min-width:\s*44px/s);
+    expect(mobile).toMatch(/#view-train \.board-bar \.btn\.icon\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);
   });
 });

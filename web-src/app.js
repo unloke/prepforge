@@ -506,6 +506,8 @@ const appState = {
   buildUndoCommitByMove: new Map(),
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
+  // Game ids hidden from the Analyze history while their delete-undo window is open.
+  pendingAnalysisDeletes: new Set(),
   trainingRepertoireId: null,
   // Practice game keeps its own multi-select independent of the
   // line-rehearsal picker. `null` means the list has not been hydrated yet;
@@ -554,6 +556,10 @@ const appState = {
   // Guests see the sign-in action; signed-in users get the account menu and may link
   // a Lichess account separately.
   signedIn: false,
+  // Whether the session has been read yet. Until it has, `signedIn` is "unknown",
+  // NOT "signed out": an owner-scoped view must hold a neutral loading state rather
+  // than paint guest copy that a signed-in user would then see flashing on reload.
+  authKnown: false,
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
   replayOpen: new Set(), // at most one selected game in the inspector
@@ -1226,20 +1232,12 @@ function paintPalette() {
   }
 }
 
-async function openPalette() {
+function openPalette() {
   const el = document.getElementById("command-palette");
   if (!el) return;
-  let repertoires = appState.repertoireList || [];
-  if (appState.signedIn) {
-    try {
-      const payload = await api("/api/repertoires");
-      repertoires = payload.repertoires || [];
-      appState.repertoireList = repertoires;
-    } catch (_) {
-      /* keep the last cached list */
-    }
-  }
-  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), "");
+  // Open from what is already here: the keypress must not wait on a network
+  // round trip. Repertoires arrive (or stay missing) behind it.
+  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires: appState.repertoireList || [] }), "");
   paletteActive = 0;
   el.hidden = false;
   const input = document.getElementById("palette-input");
@@ -1249,6 +1247,28 @@ async function openPalette() {
   }
   paintPalette();
   paletteA11yCleanup = activateModal(el, { initialFocus: input });
+  void refreshPaletteRepertoires();
+}
+
+// The palette opens with whatever the library cache holds. A signed-in user's
+// list is refreshed in the background once; a slower response only means the
+// repertoire rows appear a beat later, never that Ctrl+K waited for them.
+async function refreshPaletteRepertoires() {
+  if (!appState.signedIn) return;
+  try {
+    const payload = await api("/api/repertoires");
+    const repertoires = payload.repertoires || [];
+    appState.repertoireList = repertoires;
+    if (!paletteIsOpen()) return;
+    // A query typed while the fetch was in flight must survive the refresh.
+    const input = document.getElementById("palette-input");
+    const query = input?.value || "";
+    paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), query);
+    paletteActive = 0;
+    paintPalette();
+  } catch (_) {
+    /* keep the last cached list */
+  }
 }
 
 function dismissTransientOverlays() {
@@ -2148,6 +2168,7 @@ function initAccountController() {
       scoutView?.syncSources();
       paintGamesSource();
       paintScoutSource();
+      syncFetchMyGameButton();
     },
     onOpenSettings: () => {
       switchView("settings");
@@ -2157,6 +2178,12 @@ function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
+    // Boot race: an owner-scoped view entered while the session was still being read
+    // painted a neutral loading state (the Teams flash). Auth is known now, so load
+    // it for real — a guest gets the sign-in state, a member gets their teams.
+    onAuthKnown: () => {
+      if (appReadyPromise) void appReadyPromise.then(() => loadTeams().catch(() => {}));
+    },
     onOwnerChanged: () => {
       setHandoffOwner(currentOwnerId());
       coverageView?.clear();
@@ -2245,6 +2272,24 @@ function syncReplayControls() {
   }
   paintGamesSource();
   paintScoutSource();
+}
+
+// Analyze's "Last game": it can only load anything once a Lichess account is
+// linked, so a guest or an unlinked account sees it disabled with the fix in
+// the tooltip rather than a button that silently does nothing. aria-disabled
+// rather than disabled: the click is what opens the connect flow, so it must
+// still fire.
+function syncFetchMyGameButton() {
+  const button = document.getElementById("fetch-my-game");
+  if (!button) return;
+  if (button.dataset.wasDisabled) return;
+  const linked = !!(appState.lichessUsername || lichessAccounts().length);
+  const disabled = !linked || !appState.signedIn;
+  button.classList.toggle("is-unavailable", disabled);
+  button.setAttribute("aria-disabled", String(disabled));
+  button.title = disabled
+    ? "Connect a Lichess account to load your last game"
+    : "Load and analyze your latest Lichess game";
 }
 
 // Pull the server's stored Lichess connection state. This is not a PrepForge sign-out;
@@ -2568,14 +2613,29 @@ async function fetchMyLichessGame(accountId = null) {
   }
   const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
   setStatus("Fetching your latest game...");
+  const button = document.getElementById("fetch-my-game");
+  // A second click while the fetch is in flight would race two analyses over
+  // the same PGN box; the button says it is working instead.
+  if (button) {
+    button.dataset.wasDisabled = "1";
+    button.disabled = true;
+  }
   let latest;
+  const done = () => {
+    if (button?.dataset.wasDisabled) {
+      delete button.dataset.wasDisabled;
+      syncFetchMyGameButton();
+    }
+  };
   try {
     latest = await api(`/api/lichess/latest${query}`);
   } catch (error) {
+    done();
     setStatusError(error.message);
     return;
   }
   if (!latest.has_game) {
+    done();
   setStatus("No recent games found", { severity: "warning" });
     return;
   }
@@ -2588,7 +2648,11 @@ async function fetchMyLichessGame(accountId = null) {
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
   setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} · analyzing`);
-  await runAnalysis();
+  try {
+    await runAnalysis();
+  } finally {
+    done();
+  }
 }
 
 // Analyze "History": list previously analyzed games; click to recall a saved
@@ -2608,7 +2672,7 @@ async function loadAnalysisHistory() {
   const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
-  host.innerHTML = html`<div class="muted hint">Loading...</div>`;
+  host.innerHTML = html`<div class="muted hint">Loading…</div>`;
   const rows = new Map();
   let cursor = null, loading = false;
   async function loadPage() {
@@ -2623,14 +2687,17 @@ async function loadAnalysisHistory() {
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
       host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button>`
+        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${a.white || "?"} vs ${a.black || "?"}" title="Delete this analysis" aria-label="Delete analysis of ${a.white || "?"} vs ${a.black || "?"}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;
-      host.querySelectorAll(".history-item").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          if (isCurrent()) recallAnalysis(btn.dataset.gameId, rows.get(btn.dataset.gameId));
+      host.querySelectorAll(".hi-open").forEach((open) => {
+        open.addEventListener("click", () => {
+          if (isCurrent()) recallAnalysis(open.closest(".history-item").dataset.gameId, rows.get(open.closest(".history-item").dataset.gameId));
         });
+      });
+      host.querySelectorAll("[data-history-delete]").forEach((del) => {
+        del.addEventListener("click", () => deleteSavedAnalysis(del));
       });
       host.querySelector("[data-history-more]")?.addEventListener("click", loadPage);
     } catch (error) {
@@ -2645,6 +2712,43 @@ async function loadAnalysisHistory() {
     }
   }
   await loadPage();
+}
+
+// Delete one saved analysis, with an undo window: the row disappears at once and
+// the DELETE only fires once the window closes, so a misclick costs one notice
+// rather than a lost analysis.
+function deleteSavedAnalysis(delButton) {
+  const gameId = delButton.dataset.historyDelete;
+  const label = delButton.dataset.historyLabel || "this game";
+  if (!gameId || appState.pendingAnalysisDeletes.has(gameId)) return;
+  appState.pendingAnalysisDeletes.add(gameId);
+  const restore = () => {
+    appState.pendingAnalysisDeletes.delete(gameId);
+    void loadAnalysisHistory();
+  };
+  showUndoToast({
+    title: "Analysis deleted",
+    message: `"${label}" will be removed from your history.`,
+    onUndo: () => {
+      setStatus("Delete undone");
+      restore();
+    },
+    onCommit: () => {
+      api(`/api/analyses/${encodeURIComponent(gameId)}`, { method: "DELETE" })
+        .then(() => appState.pendingAnalysisDeletes.delete(gameId))
+        .catch((error) => {
+          setStatus(`Delete failed — ${error.message}`, { severity: "error" });
+          restore();
+        });
+    },
+  });
+  // Optimistic paint: the row goes now, the server hears about it when the
+  // undo window closes.
+  delButton.closest(".history-item")?.remove();
+  const host = document.getElementById("analysis-history");
+  if (host && !host.querySelector(".history-item")) {
+    host.innerHTML = html`<div class="muted hint">No saved analyses yet.</div>`;
+  }
 }
 
 // All Analyze sources share an order: a recall, paste or new review must not
@@ -2776,7 +2880,7 @@ async function openTeamDetail(teamId) {
     if (button) { button.hidden = true; button.onclick = null; }
   }
   const name = document.getElementById("team-detail-name");
-  if (name) name.textContent = "Loading?";
+  if (name) name.innerHTML = html`<span class="skeleton-text">Loading…</span>`;
   const role = document.getElementById("team-detail-role");
   if (role) role.textContent = "";
   const shares = document.getElementById("team-shared-repertoires");
@@ -2860,11 +2964,11 @@ async function openTeamDetail(teamId) {
             (r) =>
               html`<option value="${r}"${m.role === r ? " selected" : ""}>${teamRoleLabel(r)}</option>`
           );
-        const removeBtn = html`<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member"`}>${isMe ? "Leave" : "×"}</button>`;
+        const removeBtn = html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member" aria-label="Remove ${uname}"`}>${isMe ? "Leave" : "×"}</button>`;
         tail = html`<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
       } else {
         const leaveBtn = isMe
-          ? html`<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
+          ? html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
           : "";
         tail = html`<span class="team-role-badge r-${m.role}">${teamRoleLabel(m.role)}</span>${leaveBtn}`;
       }
@@ -6264,7 +6368,18 @@ function bindEvents() {
       onCreateRepertoireFromGameClick().catch(() => {});
     });
   }
-  document.getElementById("fetch-my-game").addEventListener("click", () => fetchMyLichessGame());
+  const fetchMyGameBtn = document.getElementById("fetch-my-game");
+  if (fetchMyGameBtn) {
+    // Keep the click: with no linked account it is what starts the connect flow.
+    fetchMyGameBtn.addEventListener("click", () => {
+      if (fetchMyGameBtn.getAttribute("aria-disabled") === "true") {
+        requireSignIn("Sign in to load your latest Lichess game", "my-last-game");
+        return;
+      }
+      fetchMyLichessGame();
+    });
+    syncFetchMyGameButton();
+  }
   // Lazy-load the analysis history list the first time its drawer is opened.
   const historyDrawer = document.getElementById("history-drawer");
   if (historyDrawer) {
@@ -6729,6 +6844,9 @@ async function init() {
   await refreshAuthProviders();
   await refreshAuthStatus();
   setHandoffOwner(currentOwnerId());
+  // "Last game" depends on the linked Lichess account, which refreshAuthStatus
+  // just told us about; paint its availability now rather than on first click.
+  syncFetchMyGameButton();
   if (appState.signedIn) {
     await loadSignedInWorkspace();
   } else {

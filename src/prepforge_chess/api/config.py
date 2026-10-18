@@ -101,7 +101,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = Field(default="")
     stripe_price_pro: str = Field(default="")
 
-    # Free-plan quota: max repertoires a Free user may own. Pro is unlimited.
+    # A real storage limit: max repertoires a user may own. There is no paid tier.
     free_repertoire_limit: int = Field(default=5)
 
     # Observability. Sentry stays dark until a DSN is set (no-op otherwise).

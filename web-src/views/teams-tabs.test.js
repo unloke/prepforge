@@ -78,7 +78,7 @@ function makeHarness(overrides = {}) {
     querySelector: () => null,
   };
   const view = createTeamsView({
-    appState: { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+    appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
     api: async () => ({ teams: [] }),
     hideTeamDetail: () => {},
     openTeamDetail: async () => {},
@@ -168,7 +168,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
   it("auto-opens the only team instead of a 'Choose a team' blank (P2-11)", async () => {
     const opened = [];
-    const appState = { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" };
+    const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" };
     const { view } = makeHarness({
       appState,
       api: async () => ({ teams: [{ id: "t9", name: "magnus", role: "owner", member_count: 2 }] }),
@@ -182,7 +182,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     const opened = [];
     const hidden = [];
     const { view, byId } = makeHarness({
-      appState: { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
       api: async () => ({
         teams: [
           { id: "a", name: "A", role: "owner", member_count: 1 },
@@ -200,24 +200,24 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
   it("signed out: the empty card says how to start", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: false, teams: [], selectedTeamId: null },
+      appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },
     });
     await view.loadTeams();
     expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
     expect(String(byId("teams-shared").innerHTML)).toBe("");
   });
   it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
-    const guest = makeHarness({ appState: { signedIn: false, teams: [], selectedTeamId: null } });
+    const guest = makeHarness({ appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null } });
     await guest.view.loadTeams();
     guest.view.renderTeamsList();
     expect(guest.byId("teams-new").hidden).toBe(true);
-    const member = makeHarness({ appState: { signedIn: true, teams: [], selectedTeamId: null } });
+    const member = makeHarness({ appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null } });
     member.view.renderTeamsList();
     expect(member.byId("teams-new").hidden).toBe(false);
   });
   it("signed out: a list re-render (hideTeamDetail) stays empty, not 'No teams yet'", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: false, teams: [], selectedTeamId: null },
+      appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },
     });
     await view.loadTeams();
     // app.js hideTeamDetail() calls renderTeamsList() after the signed-out paint.
@@ -226,7 +226,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(String(byId("teams-list").innerHTML)).toBe("");
   });
   it("search visibility follows the team collection, including an unmatched typed filter", () => {
-    const appState = { signedIn: true, teams: [], selectedTeamId: null };
+    const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null };
     const { view, byId } = makeHarness({ appState });
     const field = { hidden: false };
     const search = byId("teams-search");
@@ -253,6 +253,25 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T12:00:00Z" } });
     expect(String(byId("team-invite-foot").innerHTML)).toContain("expires Oct 4");
     expect(String(byId("team-invite-foot").innerHTML)).not.toMatch(/月|日/);
+  });
+
+  it("a failed directory load says what failed and offers a Retry", async () => {
+    let attempts = 0;
+    const { view, byId } = makeHarness({
+      api: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("Failed to fetch");
+        return { teams: [{ id: "a", name: "Club", role: "owner", member_count: 1 }] };
+      },
+    });
+    byId("teams-list").querySelector = () => ({ addEventListener: () => {} });
+    await view.loadTeams();
+    const html = String(byId("teams-list").innerHTML);
+    expect(html).toContain("Failed to fetch");
+    expect(html).toContain('role="alert"');
+    // Retry is wired back into the same load, so the next attempt repaints.
+    await view.loadTeams();
+    expect(String(byId("teams-list").innerHTML)).toContain('data-team-id="a"');
   });
 
   it("the signed-out empty card offers a Sign in button (UX 2026-10-01 P2-10)", () => {

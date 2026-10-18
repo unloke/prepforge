@@ -171,6 +171,14 @@ function xOfIdx(idx, n) {
   return n === 1 ? 320 : (idx / (n - 1)) * 640;
 }
 
+// Win% to chart units, mirroring evalChartYOf (analyze.js): a 9px inset keeps a
+// marker at either extreme inside the frame, and the rest is the plotted band.
+// Matched to the fake chart's measured 96px height, so the inset converts 1:1.
+function yOfWinPct(pct) {
+  const padY = Math.min((9 * 96) / 96, 96 / 4);
+  return padY + (1 - pct / 100) * (96 - 2 * padY);
+}
+
 afterEach(() => {
   delete globalThis.document;
 });
@@ -265,7 +273,12 @@ describe("eval chart current-ply indicator", () => {
 
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     expect(ring.getAttribute("visibility")).toBe("visible");
+    // Same win% sigmoid the view uses, mapped onto the plot band.
+    const cp = POINTS[2].score_cp;
+    const pct = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * Math.max(-1500, Math.min(1500, cp)))) - 1);
+    const y = yOfWinPct(pct);
     expect(ring.getAttribute("cx")).toBe(String(x));
+    expect(Number(ring.getAttribute("cy"))).toBeCloseTo(y, 6);
   });
 
   it("hides the indicator when the current ply is not on the chart", () => {

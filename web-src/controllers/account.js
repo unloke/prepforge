@@ -80,6 +80,9 @@ export function createAccountController({
   // this owner's key — never sent as another account.
   beforeSignOut = null,
   onOwnerChanged = () => {},
+  // Fired once, the first time the session is read (including a 401 that proves the
+  // visitor is a guest). Lets the app load the view that boot paused for auth.
+  onAuthKnown = () => {},
 }) {
   function getStoredLichessUsername() {
     try {
@@ -623,6 +626,9 @@ export function createAccountController({
 
   async function refreshAuthStatus() {
     const previousOwner = appState.accountUserId;
+    // The session is being read right now. Anything that renders "signed out" while
+    // this is false is guessing, and a signed-in user sees that guess flash on reload.
+    const wasKnown = appState.authKnown;
     try {
       const me = await api("/api/auth/me");
       appState.signedIn = !!me.id;
@@ -644,6 +650,8 @@ export function createAccountController({
       appState.accountUserId = null;
       appState.account = null;
     }
+    appState.authKnown = true;
+    if (!wasKnown) onAuthKnown();
     if (previousOwner !== appState.accountUserId) {
       appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
       onOwnerChanged();
@@ -805,6 +813,7 @@ export function createAccountController({
     toggleAccountMenu,
     handleAccountMenuAction,
     refreshAuthStatus,
+    authKnown: () => appState.authKnown === true,
     signOut,
     syncReplayControls,
     refreshLichessStatus,

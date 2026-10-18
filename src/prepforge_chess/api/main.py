@@ -84,7 +84,9 @@ def create_app() -> FastAPI:
     @app.exception_handler(RepertoireQuotaExceeded)
     async def repertoire_quota(request: Request, exc: RepertoireQuotaExceeded):
         return JSONResponse(status_code=402, content={"detail": (
-            "Free plan is limited to {0} repertoires. Upgrade to Pro for unlimited.".format(exc.limit)
+            # There is no Pro plan: this is a real storage limit, so say what it is
+            # and what clears it.
+            "You can keep up to {0} repertoires. Delete one to add another.".format(exc.limit)
         )})
 
     # Middleware order: last added is outermost. We want CORS outermost so even

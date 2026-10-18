@@ -6,6 +6,7 @@ import { html } from "../html.js";
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
+import { staggerRows } from "../list-enter.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 
 export function createTeamsView({
@@ -83,6 +84,13 @@ export function createTeamsView({
     // have nothing to show yet, so they don't repeat it.
     const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
     if (sharedCard) sharedCard.hidden = !appState.signedIn;
+    // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting the
+    // guest copy here is what flashed "Sign in to create or join a team" for a signed-in
+    // user on reload, so hold a neutral loading state until auth is known instead.
+    if (!appState.authKnown) {
+      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      return;
+    }
     if (!appState.signedIn) {
       list.innerHTML = "";
       if (shared) shared.innerHTML = "";
@@ -107,7 +115,9 @@ export function createTeamsView({
       }
     } catch (error) {
       if (!isCurrent()) return;
-      list.innerHTML = html`<div class="empty-state">${error.message}</div>`;
+      // A failure says what went wrong and how to retry, like the Library's.
+      list.innerHTML = html`<div role="alert" class="empty-state">${error.message} <button class="btn sm" type="button">Retry</button></div>`;
+      list.querySelector("button")?.addEventListener("click", loadTeams);
     }
     if (isCurrent()) loadSharedRepertoires();
   }
@@ -177,6 +187,12 @@ export function createTeamsView({
     // primary "New team" beside it only competes with it.
     const newTeam = document.getElementById("teams-new");
     if (newTeam) newTeam.hidden = !appState.signedIn;
+    // Same rule as loadTeams(): until the session is known the collection is not
+    // "empty", it is unread.
+    if (!appState.authKnown) {
+      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      return;
+    }
     // hideTeamDetail() re-renders the list; keep the guest's sign-in line.
     if (!appState.signedIn) {
       list.innerHTML = "";
@@ -205,6 +221,7 @@ export function createTeamsView({
           <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
       })}` : html`<div class="empty-state">No teams match your search.</div>`;
+    staggerRows(list);
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);

@@ -30,7 +30,11 @@ const REQUIRED_TOKENS = [
   "--radius-card",
   "--control-h",
   "--surface-3",
-  "--btn-hover",
+  "--dur-fast",
+  "--dur",
+  "--dur-slow",
+  "--ease-out",
+  "--ease-emphasis",
   "--on-accent",
   "--board-frame",
   "--danger-soft",
@@ -366,5 +370,20 @@ describe("status semantics", () => {
     expect(css).toContain('.notice[data-tone="success"]');
     expect(css).toContain('.notice[data-tone="warning"]');
     expect(css).toContain('.notice[data-tone="error"]');
+  });
+});
+
+describe("accessible names", () => {
+  it("gives every icon-only button a name, and matches the label to the placeholder", () => {
+    for (const tag of html.match(/<button\b[^>]*>/g) || []) {
+      if (!/\bicon\b/.test(tag) || />[^<]*[A-Za-z]/.test(tag)) continue;
+      expect(tag, `icon-only button without a name: ${tag}`).toMatch(/aria-label="/);
+    }
+    // The Teams search's accessible name must be what the placeholder says, so a
+    // screen-reader user and a sighted user search for the same thing.
+    const search = /<input id="teams-search"[^>]*>/.exec(html)[0];
+    expect(/aria-label="([^"]*)"/.exec(search)[1]).toBe(
+      /placeholder="([^"]*)"/.exec(search)[1],
+    );
   });
 });

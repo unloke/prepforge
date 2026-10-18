@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { createTeamsView } from "./views/teams.js";
 
 // Top-level `createX({ ... })` calls in app.js run while the module evaluates. Passing a
 // `const` declared further down throws in dev (TDZ) and hands the controller `undefined`
@@ -55,5 +57,91 @@ describe("app.js init order", () => {
       }
     }
     expect(late).toEqual([]);
+  });
+});
+
+// C2: Teams flashed the logged-out state on reload for a signed-in user.
+// Cause: a Team view entered while /api/auth/me was still in flight rendered the
+// guest copy ("Sign in to create or join a team") and hid the shares card, because
+// the code read appState.signedIn as "false" when it was in fact UNKNOWN. The fix
+// splits the two: authKnown gates every owner-scoped paint, so an unread session
+// shows a neutral loading state and the real one lands when auth resolves.
+describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
+  function teamsHarness(appState) {
+    const elements = new Map();
+    const makeEl = (id) => ({
+      id,
+      dataset: {},
+      hidden: false,
+      textContent: "",
+      _innerHTML: "",
+      classList: { _set: new Set(), toggle: () => {}, contains: () => false },
+      setAttribute: () => {},
+      addEventListener: () => {},
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      closest: () => null,
+      focus: () => {},
+      set innerHTML(v) { this._innerHTML = v; },
+      get innerHTML() { return this._innerHTML; },
+    });
+    const byId = (id) => {
+      if (!elements.has(id)) elements.set(id, makeEl(id));
+      return elements.get(id);
+    };
+    globalThis.document = {
+      getElementById: byId,
+      querySelectorAll: () => [],
+      querySelector: () => null,
+    };
+    const view = createTeamsView({
+      appState,
+      api: async () => ({ teams: [] }),
+      hideTeamDetail: () => {},
+      openTeamDetail: async () => {},
+      loadSharedRepertoires: () => {},
+      editRepertoire: () => {},
+      unshareRepertoireFromTeam: () => {},
+      copySharedRepertoire: () => {},
+      teamRoleLabel: (r) => r,
+    });
+    return { view, byId };
+  }
+
+  afterEach(() => {
+    delete globalThis.document;
+  });
+
+  it("holds a loading state, not the guest state, while the session is unread", async () => {
+    const { view, byId } = teamsHarness({ signedIn: false, authKnown: false, teams: [] });
+    await view.loadTeams();
+    expect(String(byId("teams-list").innerHTML)).toContain("Loading");
+    expect(String(byId("teams-list").innerHTML)).not.toContain("Loading\u2026\u2026");
+    // The guest copy is never painted, so the sign-in button is never revealed by
+    // this path either.
+    expect(byId("team-empty-title").textContent).toBe("");
+    // A list re-render (hideTeamDetail) must not fall through to "No teams yet".
+    view.renderTeamsList();
+    expect(String(byId("teams-list").innerHTML)).toContain("Loading");
+    expect(String(byId("teams-list").innerHTML)).not.toContain("No teams yet");
+    expect(byId("team-empty-title").textContent).toBe("");
+  });
+
+  it("shows the guest state once a 401 proves the visitor is signed out", async () => {
+    const { view, byId } = teamsHarness({ signedIn: false, authKnown: true, teams: [] });
+    await view.loadTeams();
+    expect(byId("team-empty-signin").hidden).toBe(false);
+    expect(String(byId("teams-list").innerHTML)).toBe("");
+  });
+
+  it("app.signedIn is only meaningful once auth is known", () => {
+    const state = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    expect(state).toMatch(/authKnown: false/);
+    // The account controller settles the flag on the first session read, and the
+    // Teams list honours it.
+    const controller = readFileSync(new URL("./controllers/account.js", import.meta.url), "utf8");
+    expect(controller).toMatch(/appState\.authKnown = true/);
+    const teams = readFileSync(new URL("./views/teams.js", import.meta.url), "utf8");
+    expect(teams).toMatch(/if \(!appState\.authKnown\)/);
   });
 });

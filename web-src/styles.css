@@ -1,85 +1,98 @@
 :root {
   color-scheme: light only;
-  /* Design system: neutral graphite surfaces, one accent (ink blue) reserved
-     for selection, primary actions and focus; every other hue is semantic and
+
+  /* ========================================================================
+     ONE TOKEN SET. Every colour, size, radius, shadow and duration below is
+     referenced by name everywhere else in the app (styles.css, phone.css and
+     every views/*.css). Dark values are re-declared once in the dark-theme
+     block further down; nothing else overrides them.
+
+     Colour: neutral graphite surfaces, ONE accent (ink blue) reserved for
+     selection, primary actions and focus. Every other hue is semantic and
      keeps the same meaning in every view (status, mastery/queue kinds, prep
-     outcome, move classification). Token NAMES are the production contract;
-     VALUES follow the approved prototype design system. */
-  --bg: #f3f3f1;
-  --panel: #ffffff;
-  --panel-soft: #f8f8f6;
-  --surface-3: #efefec;
-  --explorer-white: #f2f2ef;
-  --explorer-draw: #9a9fa6;
-  --explorer-black: #2e3136;
-  --explorer-track: #e6e6e2;
-  --explorer-white-ink: #1b1c1e;
-  --explorer-draw-ink: #1b1c1e;
-  --line: #e2e1dc;
-  --line-soft: #eeeeec;
-  --line-strong: #cfcdc6;
-  --text: #1b1c1e;
-  --muted: #55585e;
-  /* Small-caps labels are text-only, so the token itself carries the AA value. */
-  --label: #67696e;
-  --btn-hover: #f8f8f6;
-  --btn-active: #efefec;
-  --btn-border-hover: #8a8d93;
+     outcome, move classification) -- "colour means chess".
+
+     Surfaces are separated by a small step in tone, never by a line:
+     --bg is the page, --surface-3 the recessed track, --panel-soft the quiet
+     fill, --panel the raised card.
+     ==================================================================== */
+
+  /* -- Surfaces -------------------------------------------------------- */
+  --bg: #f3f3f1;         /* page ground */
+  --surface-3: #efefec;  /* recessed tracks, hover fills */
+  --panel-soft: #f8f8f6; /* quiet fills inside a card */
+  --panel: #ffffff;      /* raised cards */
+
+  /* -- Text ------------------------------------------------------------ */
+  --text: #1b1c1e;   /* body */
+  --muted: #55585e;  /* secondary copy */
+  --label: #67696e;  /* small-caps labels, quiet affordances */
+
+  /* -- Hairlines (tone steps, not decoration) -------------------------- */
+  --line: #e2e1dc;       /* between surfaces inside a card */
+  --line-soft: #eeeeec;  /* nested / secondary separation */
+  --line-strong: #cfcdc6; /* control outlines */
+
+  /* -- The one accent -------------------------------------------------- */
   --accent: #2f5bd3;
   --accent-soft: #e8eefc;
   --accent-line: #c9d6f7;
   --accent-strong: #2447a8;
-  --accent-dark: #2447a8;
-  --accent-text: #2447a8;
   --on-accent: #ffffff;
-  /* Ink on accent fills (prototype --accent-ink): white in light, near-black in dark. */
+
+  /* Ink on an accent fill: white in light, near-black in dark. */
   --accent-ink: #ffffff;
+  /* Text-safe companion for --accent (AA on panel/panel-soft/bg and on
+     --accent-soft; pinned by visual-system.test.js). */
+  --accent-text: #2447a8;
   --focus-ring: rgba(47, 91, 211, 0.35);
+
+  /* -- Semantic status -------------------------------------------------- */
   --danger: #c73a2c;
   --danger-soft: #fbe7e4;
   --danger-strong: #a32b1f;
-  --danger-dark: #87241a;
   --warn: #b26a00;
+  --warn-soft: #fbf0dc;
   --good: #1d8a4f;
+  --good-soft: #e3f4ea;
   --brilliant: #2f7fe0;
   --great: #4a7fb5;
+  --none: #7b7f86;      /* "nothing to report" grey */
+  --none-soft: #eeeeec;
+
   /* Text-only companions for the semantic colours. The base tokens also fill
-     charts, dots, badges, and borders, so darkening them for WCAG AA would
-     change the visual language; text usages pick up the *-text variants instead
-     (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background —
-     pinned by the contrast guard in visual-system.test.js). */
+     charts, dots, badges and borders, so darkening them for WCAG AA would
+     change the visual language; text usages pick the *-text variants instead
+     (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background --
+     pinned by the contrast guard in visual-system.test.js). Dark surfaces
+     already clear AA for these hues by a wide margin, so there the text
+     variants alias the base colours. */
   --warn-text: #8a5200;
   --good-text: #166b3e;
   --brilliant-text: #2563b8;
   --great-text: #3d6c9c;
-  /* Semantic status family (fills, badges, banners) and its text-safe shades. */
-  --good-soft: #e3f4ea;
-  --warn-soft: #fbf0dc;
-  --none: #7b7f86;
-  --none-soft: #eeeeec;
-  /* Mastery / queue kinds — colour means chess: the same hue in every view. */
+
+  /* Classification palette completion: inaccuracy/missed had no semantic token
+     (they were hard-coded in the bars, tree dots and eval chart). */
+  --inaccuracy: #c98a2b;
+  --missed: #7a5fb8;
+
+  /* -- Mastery / queue kinds -------------------------------------------- */
   --k-mastered: #1d8a4f;
   --k-learning: #3a7bd5;
   --k-due: #d08a0b;
   --k-weak: #d2452f;
   --k-new: #8b6fd6;
   --k-polish: #8a9099;
-  /* Classification palette completion: inaccuracy/missed had no semantic token
-     (hardcoded in the bars, tree dots, and eval chart). */
-  --inaccuracy: #c98a2b;
-  --missed: #7a5fb8;
-  --inert: #67696e;
-  --chip: #55585e;
-  --dot-white: #ffffff;
-  --board-frame: #6f8394;
-  --radius: 6px;
-  --radius-card: 10px;
-  --control-h: 30px;
-  --ib-h: 30px;
+
+  /* -- Board ------------------------------------------------------------ */
   --square-light: #e4e8eb;
   --square-dark: #97a8b6;
-  /* Board marks (styles.css "Board marks"): last move, selection, legal targets,
-     arrows and the per-grade square tints. */
+  --board-frame: #6f8394;
+  --dot-white: #ffffff; /* the white side's dot/face */
+
+  /* Board marks (styles.css "Board marks"): last move, selection, legal
+     targets, arrows and the per-grade square tints. */
   --last-move: rgba(64, 190, 172, 0.36);
   --highlight: rgba(47, 91, 211, 0.38);
   --mark-select: rgba(47, 91, 211, 0.3);
@@ -91,30 +104,54 @@
   --mark-mistake: rgba(226, 128, 40, 0.48);
   --mark-blunder: rgba(214, 64, 48, 0.46);
   --mark-missed: rgba(122, 95, 184, 0.42);
-  /* Board annotation arrows: user arrows take the ink-blue accent, the engine's
-     best-move arrow keeps the calm "good" green (colour means chess). */
+
+  /* Board annotation arrows: user arrows take the ink-blue accent, the
+     engine's best-move arrow keeps the calm "good" green (colour means
+     chess). */
   --arrow-user: rgba(47, 91, 211, 0.78);
   --arrow-engine: rgba(29, 138, 79, 0.8);
   --arrow-better: rgba(176, 62, 196, 0.8);
   /* Repertoire line options: neutral slate, drawn as a dashed outline. */
   --arrow-line: rgba(52, 64, 78, 0.9);
   --arrow-rim: rgba(255, 255, 255, 0.9);
+
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
-  /* Type: 13px base, 12px small, 11px extra-small; tabular numbers everywhere,
-     mono for SAN/lines. */
+
+  /* -- Explorer result bar ---------------------------------------------- */
+  --explorer-white: #f2f2ef;
+  --explorer-draw: #9a9fa6;
+  --explorer-black: #2e3136;
+  --explorer-track: #e6e6e2;
+  --explorer-white-ink: #1b1c1e;
+  --explorer-draw-ink: #1b1c1e;
+
+  /* -- Type ---------------------------------------------------------------
+     13px base / 12px small / 11px extra-small. Tabular figures are set once
+     on <body> below so every number that changes or lines up already reads as
+     a column. The mono stack is for SAN, lines and code. */
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace;
   --fs: 13px;
   --fs-s: 12px;
   --fs-xs: 11px;
-  --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);
-  --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08);
-  /* Overlay stacking: one ordered ladder instead of ad-hoc numbers. Floating
-     tools (engine window) never out-rank a modal and its scrim; menus and the
-     command palette escape overlays; toasts stay visible above everything and
-     the skip link wins when focused. */
+
+  /* -- Radii, elevation, control sizes ------------------------------------ */
+  --radius: 6px;      /* controls, small chips */
+  --radius-card: 10px; /* cards, popovers, dialogs */
+  --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);    /* resting cards */
+  --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08); /* dialogs, floating tools */
+
+  /* -- Motion: three durations, two curves, and nothing else ----------------- */
+  --dur-fast: 150ms; /* hover, press, colour, opacity */
+  --dur: 220ms;      /* list entry, reveal, show/hide */
+  --dur-slow: 300ms; /* the eval bar landing, a panel settling */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
+  --ease-emphasis: cubic-bezier(0.3, 1.3, 0.4, 1); /* emphasized: a small pop */
+
+  /* -- Overlay stacking: one ordered ladder instead of ad-hoc numbers -------- */
   --z-chrome: 45;    /* app chrome (rail) */
   --z-popover: 300;  /* in-page popovers (train selector, promotion picker) */
   --z-tool: 500;     /* floating tools (engine window) */
@@ -122,71 +159,89 @@
   --z-menu: 1100;    /* context/account menus, command palette, drag ghost */
   --z-toast: 1200;   /* toast stack, confetti */
   --z-skip: 1300;    /* skip link */
+
   font-family: var(--font);
   font-size: var(--fs);
+  /* Numbers that change or line up read as columns: evals, move numbers,
+     clocks, counts, percentages, stats tables. Set once here instead of per
+     component so a new numeric surface inherits it. */
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
 /* The dark palette keeps the warm amber identity but lifts text and borders
    independently instead of inverting the light theme. This preserves contrast
    for boards, data labels, and status colors in low-light study sessions. */
+/* The dark palette lifts text and borders independently instead of inverting
+   the light theme. This preserves contrast for boards, data labels and status
+   colours in low-light study sessions. Every token declared above is re-declared
+   here -- the two blocks together are the whole colour system. */
 :root[data-theme="dark"] {
   color-scheme: dark;
+
+  /* Surfaces */
   --bg: #111315;
-  --panel: #191c1f;
-  --panel-soft: #1e2226;
   --surface-3: #262a2f;
-  --line: #2b3035;
-  --line-soft: #25292d;
-  --line-strong: #3a4046;
+  --panel-soft: #1e2226;
+  --panel: #191c1f;
+
+  /* Text */
   --text: #e8eaec;
   --muted: #a9aeb4;
   --label: #a9aeb4;
-  --btn-hover: #262a2f;
-  --btn-active: #2b3035;
-  --btn-border-hover: #5c646c;
+
+  /* Hairlines */
+  --line: #2b3035;
+  --line-soft: #25292d;
+  --line-strong: #3a4046;
+
+  /* The accent */
   --accent: #6d8ff0;
   --accent-soft: #1f2a48;
   --accent-line: #2d3c66;
   --accent-strong: #9db4f7;
-  --accent-dark: #2b53c4;
   --accent-text: #93abf2;
   --on-accent: #ffffff;
   --accent-ink: #0d1020;
   --focus-ring: rgba(109, 143, 240, 0.42);
+
+  /* Semantic status */
   --danger: #ef6b5b;
   --danger-soft: #3a1c18;
   --danger-strong: #ff8a7a;
-  --danger-dark: #d75c4c;
   --warn: #e0a23a;
+  --warn-soft: #33270f;
   --good: #45b97a;
+  --good-soft: #17301f;
   --brilliant: #6d9ff0;
   --great: #8db0da;
-  /* Dark surfaces already clear AA for these hues by a wide margin, so the
-     text variants alias the base colours (kept as separate tokens so text and
-     fill can diverge per theme if a future tuning needs it). */
+  --none: #8d939a;
+  --none-soft: #25292d;
+
+  /* Dark surfaces already clear AA for these hues by a wide margin, so the text
+     variants alias the base colours (kept as separate tokens so text and fill
+     can diverge per theme if a future tuning needs it). */
   --warn-text: #e0a23a;
   --good-text: #45b97a;
   --brilliant-text: #6d9ff0;
   --great-text: #8db0da;
-  --good-soft: #17301f;
-  --warn-soft: #33270f;
-  --none: #8d939a;
-  --none-soft: #25292d;
+
+  /* Classification + mastery kinds */
+  --inaccuracy: #e6bc72;
+  --missed: #a992ef;
   --k-mastered: #45b97a;
   --k-learning: #6d9ff0;
   --k-due: #e0a23a;
   --k-weak: #ef6b5b;
   --k-new: #a992ef;
   --k-polish: #8d939a;
-  --inaccuracy: #e6bc72;
-  --missed: #a992ef;
-  --inert: #a9aeb4;
-  --chip: #e8eaec;
+
+  /* Board */
   --dot-white: #f8f8f6;
   --board-frame: #5a6c7b;
   --square-light: #b9c3cb;
   --square-dark: #6f8292;
+
+  /* Board marks */
   --last-move: rgba(90, 214, 192, 0.36);
   --highlight: rgba(109, 143, 240, 0.42);
   --mark-select: rgba(109, 143, 240, 0.38);
@@ -205,10 +260,13 @@
   --arrow-rim: rgba(14, 17, 22, 0.85);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
+
+  /* Elevation */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
-  /* Explorer W/D/B bar: the draw grey sits between the two ends and the
-     Black end is lifted off the panel so it never melts into the background. */
+
+  /* Explorer W/D/B bar: the draw grey sits between the two ends and the Black
+     end is lifted off the panel so it never melts into the background. */
   --explorer-white: #e9eaec;
   --explorer-draw: #7c838c;
   --explorer-black: #45494f;
@@ -234,10 +292,10 @@
   border: 1px solid var(--accent-strong);
   border-radius: var(--radius);
   background: var(--panel);
-  color: var(--accent-dark);
+  color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;
-  transition: top 120ms ease;
+  transition: top var(--dur-fast) var(--ease-out);
 }
 
 .skip-link:focus-visible {
@@ -289,6 +347,11 @@ button,
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  /* Press feedback on the row-body controls that are not .btn. */
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.mtree-move:active {
+  transform: scale(0.97);
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
@@ -307,7 +370,6 @@ button,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -348,7 +410,7 @@ h2 {
   padding: 10px 8px 12px;
   gap: 8px;
   overflow: hidden auto;
-  transition: width 0.14s ease, box-shadow 0.14s ease;
+  transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
 .rail:not(.is-nav-collapsed):hover,
@@ -403,7 +465,7 @@ h2 {
 
 .nav-group-label span {
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 /* Collapsed: labels fade out and group headings become divider lines. */
@@ -414,7 +476,7 @@ h2 {
   right: 10px;
   top: 50%;
   border-top: 1px solid var(--line);
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .nav-group:first-of-type .nav-group-label::after {
@@ -424,7 +486,7 @@ h2 {
 .brand-name,
 .nav-label {
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span),
@@ -518,6 +580,10 @@ h2 {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.tabbar-item:active {
+  transform: scale(0.94);
 }
 
 .tabbar-item .ic {
@@ -937,11 +1003,11 @@ h2 {
   flex-shrink: 0;
   cursor: pointer;
   padding: 0;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 .pf-switch:hover {
-  border-color: var(--btn-border-hover);
+  border-color: var(--line-strong);
   background: var(--surface-3);
 }
 
@@ -980,7 +1046,7 @@ h2 {
   border-radius: 50%;
   background: var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 160ms ease, background 160ms ease;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
 .pf-switch.is-on .pf-knob {
@@ -1106,32 +1172,63 @@ h2 {
 .view.is-active {
   display: block;
   height: 100%;
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+
+/* A view switch is a cross-fade plus a few px of travel, never a layout
+   change: opacity and transform only. */
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .muted {
   color: var(--muted);
 }
 
-/* Buttons */
+/* ---- Buttons: one system ----------------------------------------------
+   `.btn` is the whole vocabulary. Variants: primary (the one accent),
+   secondary (the default surface fill), ghost (no fill until hover), danger
+   (destructive, with a quiet ghost form), icon (square, icon only). Sizes: md
+   (default) and sm. Hover, press, focus-visible, disabled and loading are
+   defined once here; every button in the app is `.btn` plus at most one
+   variant class and one size class. */
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: var(--control-h);
+  min-height: var(--control-h);
   padding: 0 14px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
   font-weight: 600;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.btn:hover {
-  border-color: var(--btn-border-hover);
-  background: var(--btn-hover);
+.btn:hover:not(:disabled, .is-coming-soon) {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
 }
 
-.btn:active {
-  background: var(--btn-active);
+.btn:active:not(:disabled, .is-coming-soon) {
+  transform: scale(0.97);
 }
 
 .btn.primary {
@@ -1140,24 +1237,36 @@ h2 {
   color: var(--accent-ink);
 }
 
-.btn.primary:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  filter: brightness(1.07);
+.btn.primary:hover:not(:disabled, .is-coming-soon) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .btn.danger {
   background: var(--danger);
-  border-color: var(--danger-strong);
+  border-color: var(--danger);
   color: var(--on-accent);
 }
 
-.btn.danger:hover {
+.btn.danger:hover:not(:disabled, .is-coming-soon) {
   background: var(--danger-strong);
-  border-color: var(--danger-dark);
+  border-color: var(--danger-strong);
 }
 
-/* Prototype ghost: no fill, no border — a quiet text action. */
+/* Quiet destructive action: no fill until hover, then a danger tint. */
+.btn.danger.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger);
+}
+
+.btn.danger.ghost:hover:not(:disabled, .is-coming-soon) {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--danger-strong);
+}
+
+/* Ghost: no fill or border until hover — a quiet text action. */
 .btn.ghost {
   background: transparent;
   border-color: transparent;
@@ -1165,32 +1274,98 @@ h2 {
   color: var(--muted);
 }
 
-.btn.ghost:hover {
+.btn.ghost:hover:not(:disabled, .is-coming-soon) {
   background: var(--surface-3);
   color: var(--text);
 }
 
+/* Icon-only: square, centred, no label. */
+.btn.icon {
+  width: var(--control-h);
+  min-width: var(--control-h);
+  padding: 0;
+  justify-content: center;
+}
+
+.btn.sm {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: var(--fs-s);
+}
+
+.btn.sm.icon {
+  width: 26px;
+  min-width: 26px;
+}
+
+.btn.block {
+  width: 100%;
+}
+
 .btn:disabled,
-.ib:disabled {
+.btn.is-coming-soon {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
 /* Compute actions whose engine is unavailable in this browser: clearly inert
    rather than looking like a live button that errors on click. Covers the
-   primary `.btn` (Analyze, Build → Generate moves) and icon buttons. */
-.btn.is-coming-soon,
-.ib.is-coming-soon {
-  background: var(--btn-hover);
+   primary `.btn` (Analyze, Build — Generate moves) and icon buttons. */
+.btn.is-coming-soon {
+  background: var(--surface-3);
   border-color: var(--line-strong);
-  color: var(--inert);
-  cursor: not-allowed;
+  color: var(--label);
 }
 
-.btn.is-coming-soon:hover,
-.ib.is-coming-soon:hover {
-  background: var(--btn-hover);
+.btn.is-coming-soon:hover {
+  background: var(--surface-3);
   border-color: var(--line-strong);
+}
+
+/* Reachable but inert: the control still handles the click (that is the point
+   — it opens the connect flow), it just reads as unavailable. */
+.btn.is-unavailable {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn.is-unavailable:hover {
+  border-color: var(--line);
+  background: none;
+  color: inherit;
+}
+.btn.is-unavailable:active {
+  transform: none;
+}
+
+/* Loading: the label hides behind a busy dot; the width never changes. */
+.btn.is-loading {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+}
+
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  animation: btn-spin 600ms linear infinite;
+}
+
+.btn.primary.is-loading::after,
+.btn.danger.is-loading::after {
+  border-color: var(--accent-ink);
+  border-top-color: transparent;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .link {
@@ -1338,7 +1513,7 @@ h2 {
   font: inherit;
   text-align: left;
 }
-.metric b { font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.metric b { font-size: 18px; line-height: 1.2; }
 .metric span { font-size: var(--fs-xs); color: var(--label); }
 .metric.is-due { background: var(--warn-soft); cursor: pointer; }
 .metric.is-due b { color: var(--warn-text); }
@@ -1381,7 +1556,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: 26px;
   padding: 0;
   border: 0;
-  outline: none;
   background: transparent;
   box-shadow: none;
 }
@@ -1426,6 +1600,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-row:hover { background: var(--panel-soft); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
+
+/* ---- One list-entry primitive -----------------------------------------
+   A fresh list fades in item by item. `--i` is the row index; the cap keeps a
+   long list from dragging. Every row is transform/opacity only, so the rows
+   below never move. Callers: dashboard (library), teams, replay summary. */
+.list-enter > * {
+  animation: row-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 25ms);
+}
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
   background: var(--accent-soft);
@@ -1475,7 +1664,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
-.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
    missing one) and enough height to compare rows at a glance. */
 .lib-mbar {
@@ -1492,7 +1681,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  transition: width 0.4s ease;
+  transition: width var(--dur-slow) var(--ease-out);
 }
 .lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
 .lib-mbar i.is-mastered { background: var(--k-mastered); box-shadow: 1px 0 0 var(--surface-3); }
@@ -1527,8 +1716,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
   justify-self: end;
-  width: 24px;
-  height: 24px;
+  width: var(--control-h);
+  min-width: var(--control-h);
+  height: var(--control-h);
   padding: 0;
   border: 0;
   border-radius: var(--radius);
@@ -1537,11 +1727,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: 14px;
   line-height: 1;
   opacity: 0.7;
+  /* Press feedback: same scale as .btn, on a control that is not a .btn. */
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.row-menu-btn:active {
+  transform: scale(0.97);
 }
 .lib-row:hover .row-menu-btn,
 .lib-row.is-selected .row-menu-btn,
 .row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
 .row-menu-btn:hover { background: var(--surface-3); }
+.row-menu-btn:active { transform: scale(0.97); }
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 .empty-state.big {
   display: flex;
@@ -1596,16 +1792,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
 /* Setup checklist: progress in the head, finished steps tick and quiet down. */
 .steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
+.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; }
 .steps .card-head h2 { margin-right: auto; }
 .setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
-/* The later generic .ib rule re-adds a border (a heavy boxed × on mobile, where
-   .ib grows to a 44px tap target). Keep the target, drop the box. */
-.ib.setup-dismiss:not(:hover) { border-color: transparent; background: none; }
-.ib.setup-dismiss { border-color: transparent; }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
-.setup-bar i { display: block; height: 100%; background: var(--good); transition: width 0.3s ease; }
+.setup-bar i { display: block; height: 100%; background: var(--good); transition: width var(--dur-slow) var(--ease-out); }
 .step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
 .step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
@@ -1825,7 +2017,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .annot-arrow {
   stroke: none;
   filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
-  transition: opacity 120ms ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .annot-user {
@@ -2044,7 +2236,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
   pointer-events: none;
   display: none;
   z-index: 4;
@@ -2052,7 +2243,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .square:focus-visible {
-  outline: none;
   box-shadow: inset 0 0 0 3px var(--accent);
 }
 
@@ -2083,11 +2273,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   line-height: 1;
   letter-spacing: -0.06em;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
   box-shadow:
     0 0 0 1.5px rgba(255, 255, 255, 0.92),
     0 1px 3px rgba(0, 0, 0, 0.38);
-  animation: badgeIn 180ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  animation: badgeIn var(--dur-fast) var(--ease-emphasis);
 }
 
 .square-badge.class-brilliant { --badge: var(--brilliant); }
@@ -2101,7 +2290,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .square-badge.class-blunder { --badge: var(--danger); }
 .square-badge.class-missed_win,
 .square-badge.class-missed_tactic { --badge: var(--missed); }
-.square-badge.class-unknown { --badge: var(--inert); }
+.square-badge.class-unknown { --badge: var(--label); }
 
 .square-badge.class-brilliant {
   box-shadow:
@@ -2145,7 +2334,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .square.move-pulse {
-  animation: squarePulse 480ms ease-out;
+  animation: squarePulse var(--dur-slow) var(--ease-out);
 }
 
 /* Flip animation */
@@ -2156,7 +2345,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .chessboard.is-flipping {
-  animation: boardFlip 400ms ease;
+  animation: boardFlip var(--dur-slow) var(--ease-emphasis);
 }
 
 /* Coach header review switch: compact shared primitive, not a native checkbox. */
@@ -2217,7 +2406,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .train-repertoire-chevron {
   flex: none;
   color: var(--muted);
-  transition: transform 160ms ease;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 .train-repertoire-menu[open] .train-repertoire-chevron { transform: rotate(180deg); }
 .train-repertoire-popover {
@@ -2344,39 +2533,26 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 2px;
 }
 
-/* Bar icons: line icons; their word labels show only in the phone toolbar. */
+/* Bar icons: line icons; their word labels show only in the phone toolbar.
+   Icon-only buttons carry the `icon` variant class on `.btn`, so there is one
+   button system rather than two. */
 .bi { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ib .bl,
+.btn.icon .bl,
 .rep-menu-btn .bl,
 .panel-head .btn > .bi { display: none; }
-.ib:has(> .bi) { display: inline-flex; align-items: center; justify-content: center; }
 
 /* Board-bar icons are plain glyphs (no boxed buttons). */
-.board-bar .ib {
+.board-bar .btn.icon {
   border-color: transparent;
   background: transparent;
+  color: var(--muted);
 }
 
-.board-bar .ib:hover {
+.board-bar .btn.icon:hover {
   background: var(--surface-3);
-}
-
-.ib {
-  height: var(--ib-h);
-  min-width: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--panel);
   color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
 }
 
-.ib:hover {
-  background: var(--btn-hover);
-  border-color: var(--line-strong);
-}
 
 .sep {
   width: 1px;
@@ -2439,7 +2615,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border: 1px solid transparent;
   background: var(--surface-3);
   white-space: nowrap;
-  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .build-sync.is-saved {
   color: var(--good-text);
@@ -2477,6 +2653,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   overflow: hidden;
 }
 #view-build .sidebar { gap: 0; }
+
+/* The panel body is the flex column its children were always written as:
+   .tree-wrap grows into the leftover height and .dock takes what the drag
+   handle set. Without a column here, `flex` on the children has nothing to
+   resolve against, so the tree never filled the panel and the inspector's
+   dragged flex-basis was ignored. */
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
 
 .panel-head {
   display: flex;
@@ -2581,7 +2771,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font: inherit;
   font-size: 13px;
   font-weight: 650;
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 .fork-chip .mtree-num { padding: 0; margin: 0; font-size: 11px; font-weight: 500; }
@@ -2593,17 +2782,23 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .tree-wrap {
   flex: 1 1 auto;
   min-height: 90px;
-  padding: 10px 12px;
+  padding: 12px 12px;
   overflow: auto;
   overscroll-behavior: contain;
   font-size: 13px;
-  line-height: 1.95;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.75;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
 
 .dock {
   flex: 0 0 clamp(210px, 40%, 330px);
+  /* The drag handle writes a px `flex-basis` inline; `flex` sets all three
+     sub-properties, so without `grow`/`shrink` declared separately here the
+     inline basis is dropped on the next style recalc and the snap-back makes
+     the drag look dead. Keeping the shorthand for the initial size and then
+     overriding the basis keeps the inline value. */
+  flex-grow: 0;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2660,13 +2855,19 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 2px;
   background: var(--line-strong);
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
 .dock-resizer:hover::after,
 .dock-resizer:focus-visible::after,
-.dock-resizer.is-dragging::after { opacity: 1; background: var(--accent); }
-.dock-resizer:focus-visible { outline: none; }
+.dock-resizer.is-dragging::after {
+  background: var(--accent);
+  opacity: 1;
+}
+.dock-resizer.is-dragging::after {
+  width: 56px;
+  margin-left: -28px;
+}
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-tabs .dock-fold {
   margin-left: auto;
@@ -2676,7 +2877,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   line-height: 1;
 }
 .dock-tabs .dock-fold:hover { color: var(--text); }
-.dock-fold span { display: inline-block; transition: transform 140ms ease; }
+.dock-fold span { display: inline-block; transition: transform var(--dur-fast) var(--ease-out); }
 .dock.is-folded { flex: none !important; }
 .dock.is-folded > .dock-body { display: none; }
 .dock.is-folded .dock-tabs { border-bottom: 0; }
@@ -2809,8 +3010,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Idle has nothing to signal; a ▶ in a circle read as a play button. */
 #train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
 #train-banner[data-state="idle"] .train-coach-icon { display: none; }
-#train-banner.flash { animation: trainFlash 420ms ease; }
-#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
+#train-banner.flash { animation: trainFlash var(--dur-slow) var(--ease-out); }
+#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms var(--ease-out); }
 @keyframes trainFlash {
   0% { transform: scale(0.99); }
   40% { transform: scale(1.012); }
@@ -2913,7 +3114,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
-.train-accuracy { color: var(--good-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {
   display: block;
@@ -2938,7 +3139,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .card-dots i.cur { background: var(--accent); }
 .card-dots span { margin-left: 6px; }
 .prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
-.prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 320ms ease; }
+.prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-slow) var(--ease-out); }
 .qstrip { display: flex; flex-direction: column; gap: 6px; }
 .qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
 .qbar i { display: block; min-width: 4px; }
@@ -2964,13 +3165,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 3px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  transition: background 200ms ease, border-color 200ms ease;
+  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
 }
-.stat b { font-size: var(--fs-sm, 13px); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat b { font-size: var(--fs); line-height: 1.2; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
 .stat span { color: var(--label); font-size: var(--fs-xs); }
-.stat.pop { animation: streakPop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
+.stat.pop { animation: streakPop var(--dur) var(--ease-emphasis); }
 .stat.milestone { border-color: var(--good); background: var(--good-soft); }
 .stat.milestone b { color: var(--good-text); }
 .stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
@@ -3000,7 +3201,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .summary { padding: 0; }
 .sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
-.sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sum-cells b { font-size: 18px; }
 .sum-cells span { color: var(--label); font-size: var(--fs-xs); }
 .delta { display: flex; flex-direction: column; }
 .tsum-row {
@@ -3012,7 +3213,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-s);
 }
 .tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
-.tsum-row .num { font-variant-numeric: tabular-nums; text-align: right; }
+.tsum-row .num { text-align: right; }
 .tsum-row .up { color: var(--good-text); font-weight: 650; }
 .tsum-row .down { color: var(--danger); font-weight: 650; }
 .btn.block { width: 100%; }
@@ -3100,6 +3301,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-s);
   font-weight: 600;
   cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.sum-chip:active {
+  transform: scale(0.97);
 }
 .sum-chip.t-good { color: var(--good-text); }
 .sum-chip.t-bad { color: var(--danger); }
@@ -3109,7 +3314,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .queued { color: var(--label); font-size: var(--fs-xs); }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; font-variant-numeric: tabular-nums; }
+.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 .eyebrow { color: var(--label); font-size: var(--fs-xs); font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
 
 /* ===========================================================================
@@ -3283,7 +3488,7 @@ body.is-guest .replay-results:empty::before {
   color: var(--accent-text);
 }
 
-.ib.danger {
+.btn.icon.danger {
   color: var(--danger);
 }
 
@@ -3360,7 +3565,7 @@ body.is-guest .replay-results:empty::before {
 .coverage-totals { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .coverage-gap-path { color: var(--muted); font-family: var(--mono); font-size: var(--fs-s); overflow-wrap: anywhere; }
 .coverage-gap-line { display: flex; align-items: center; gap: 10px; }
-.coverage-gap-impact { margin-left: auto; font-variant-numeric: tabular-nums; }
+.coverage-gap-impact { margin-left: auto; }
 .coverage-gap-track { display: block; height: 3px; background: var(--surface-3); }
 .coverage-gap-track i { display: block; height: 100%; background: var(--warn); }
 .coverage-gap-select { display: grid; place-items: center; min-width: 30px; min-height: 44px; cursor: pointer; }
@@ -3465,7 +3670,7 @@ body.is-guest .replay-results:empty::before {
   text-align: left;
   cursor: pointer;
 }
-.explorer-pick:focus-visible { outline: none; }
+
 .explorer-row:has(.explorer-pick:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
@@ -3481,9 +3686,9 @@ body.is-guest .replay-results:empty::before {
   gap: 8px;
   margin: 4px 10px;
   padding: 6px 8px 6px 10px;
-  border: 1px solid var(--line-strong, var(--line));
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: var(--panel-soft, var(--panel));
+  background: var(--panel-soft);
   font-size: var(--fs-s);
   color: var(--text);
 }
@@ -3499,7 +3704,7 @@ body.is-guest .replay-results:empty::before {
   border-radius: 4px;
   background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
   background-size: 200% 100%;
-  animation: tree-skeleton-pulse 1.2s ease-in-out infinite;
+  animation: tree-skeleton-pulse 1.2s var(--ease-out) infinite;
 }
 .skeleton-text { color: var(--muted); font-style: italic; }
 @keyframes tree-skeleton-pulse {
@@ -3517,7 +3722,7 @@ body.is-guest .replay-results:empty::before {
   /* Dim only if the next position's stats take a moment: a cached answer lands
      before the delay, so stepping through a line doesn't flash. Leaving the
      stale state uses the row's own (no) transition, so fresh rows are instant. */
-  transition: opacity 120ms ease 180ms;
+  transition: opacity var(--dur-fast) var(--ease-out) 180ms;
 }
 
 .explorer-rows.is-stale .explorer-row:hover {
@@ -3539,7 +3744,6 @@ body.is-guest .replay-results:empty::before {
 .explorer-games {
   text-align: right;
   color: var(--text);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Always full width: the split is the reading, the game count beside it is
@@ -3573,7 +3777,6 @@ body.is-guest .replay-results:empty::before {
 .explorer-rows.has-eval .explorer-eval {
   display: block;
   text-align: right;
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--muted);
 }
@@ -3613,21 +3816,37 @@ body.is-guest .replay-results:empty::before {
   display: block;
 }
 
-/* A variation block. Indentation + the guide rail come from nesting depth. */
+/* A variation: one notch in, with a rail down its whole height. Its moves
+   flow inline, so the rail is the only connector; nested variations stack
+   their rails a notch apart. */
 .mtree-var {
+  --mtree-indent: 10px;
+  --mtree-rail: 2px;
   display: block;
-  margin: 2px 0 2px 6px;
-  padding: 0 0 0 10px;
-  border-left: 2px solid var(--line);
+  position: relative;
+  margin: 2px 0 2px var(--mtree-indent);
+  padding: 1px 0 1px calc(var(--mtree-indent) + var(--mtree-rail));
   color: var(--muted);
 }
-.mtree-var .mtree-var {
-  border-left-color: var(--line-soft);
+
+.mtree-var::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  width: var(--mtree-rail);
+  border-radius: var(--mtree-rail);
+  background: var(--line);
 }
+
+.mtree-var .mtree-var::before {
+  background: var(--line-soft);
+}
+
 /* The variation that leads to the current move gets an accent rail. */
-.mtree-var:has(> .mtree-move.is-current),
-.mtree-var:has(> .mtree-move.on-path) {
-  border-left-color: var(--accent-line);
+.mtree-var:has(> .mtree-move.is-current, > .mtree-move.on-path)::before {
+  background: var(--accent-line);
 }
 
 .mtree-num {
@@ -3647,10 +3866,9 @@ body.is-guest .replay-results:empty::before {
   color: inherit;
   font: inherit;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 110ms ease, color 110ms ease, box-shadow 110ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .mtree-line.is-main > .mtree-move {
@@ -3827,7 +4045,7 @@ body.is-guest .replay-results:empty::before {
 }
 
 .context-menu button:active {
-  background: var(--btn-active);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -4063,7 +4281,6 @@ body.is-guest .replay-results:empty::before {
 .modal-field input:focus,
 .modal-field select:focus,
 .modal-field textarea:focus {
-  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
@@ -4186,7 +4403,7 @@ body.is-guest .replay-results:empty::before {
     height: 52px;
   }
 
-  #view-train .board-bar .ib {
+  #view-train .board-bar .btn.icon {
     width: 44px;
     min-width: 44px;
     height: 44px;
@@ -4212,8 +4429,9 @@ body.is-guest .replay-results:empty::before {
   .btn {
     min-height: 44px;
   }
-  .ib {
+  .btn.icon {
     min-height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -4252,7 +4470,7 @@ body.is-guest .replay-results:empty::before {
   pointer-events: auto;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
   touch-action: pan-y;
 }
 .notice[data-tone="success"] { --tone: var(--good); }
@@ -4263,7 +4481,7 @@ body.is-guest .replay-results:empty::before {
 }
 .notice.is-visible { opacity: 1; transform: none; }
 .notice.is-leaving { opacity: 0; transform: translateX(18px); }
-.notice.is-bump { animation: notice-bump 260ms ease; }
+.notice.is-bump { animation: notice-bump var(--dur) var(--ease-out); }
 @keyframes notice-bump { 40% { transform: scale(1.02); } }
 
 .notice-icon {
@@ -4279,7 +4497,7 @@ body.is-guest .replay-results:empty::before {
   background: none;
   border: 2px solid color-mix(in srgb, var(--tone) 25%, transparent);
   border-top-color: var(--tone);
-  animation: notice-spin 0.9s linear infinite;
+  animation: notice-spin 900ms linear infinite;
 }
 @keyframes notice-spin { to { transform: rotate(360deg); } }
 
@@ -4291,7 +4509,6 @@ body.is-guest .replay-results:empty::before {
   overflow-wrap: anywhere;
 }
 .notice-title[hidden] + .notice-text { color: var(--text); font-size: var(--fs); }
-.notice[data-state="running"] .notice-text { font-variant-numeric: tabular-nums; }
 
 .notice-track {
   height: 3px;
@@ -4305,9 +4522,9 @@ body.is-guest .replay-results:empty::before {
   height: 100%;
   border-radius: inherit;
   background: var(--tone);
-  transition: width 300ms ease;
+  transition: width var(--dur-slow) var(--ease-out);
 }
-.notice-fill.is-indeterminate { width: 30%; animation: notice-scan 1.4s ease-in-out infinite; }
+.notice-fill.is-indeterminate { width: 30%; animation: notice-scan 1.4s var(--ease-out) infinite; }
 @keyframes notice-scan { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 .notice[data-state="cancelled"] .notice-fill,
 .notice.is-cancelling .notice-fill { background: var(--muted); }
@@ -4413,7 +4630,7 @@ body.is-guest .replay-results:empty::before {
   overflow: hidden;
   opacity: 0;
   transform: translateY(-6px) scale(0.96);
-  transition: opacity 200ms ease, transform 200ms ease;
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
 }
 
 /* Docked in the Repertoire inspector's Engine tab: in flow, no chrome. */
@@ -4545,7 +4762,6 @@ body.is-guest .replay-results:empty::before {
 .engine-head-eval {
   font-size: 12px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
   color: var(--text);
   background: var(--accent-soft);
   border: 1px solid var(--accent-line);
@@ -4561,7 +4777,6 @@ body.is-guest .replay-results:empty::before {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
   background: var(--panel);
   border: 1px solid var(--line-soft);
   border-radius: 999px;
@@ -4586,7 +4801,6 @@ body.is-guest .replay-results:empty::before {
 }
 
 .engine-lines-readout {
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 11px;
   color: var(--text);
@@ -4608,7 +4822,7 @@ body.is-guest .replay-results:empty::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 120ms ease, background 120ms ease;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
 .engine-step:hover {
@@ -4636,7 +4850,7 @@ body.is-guest .replay-results:empty::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .engine-window-close:hover {
@@ -4662,10 +4876,15 @@ body.is-guest .replay-results:empty::before {
 
 .engine-bar-white {
   position: absolute;
-  inset: auto 0 0 0;
-  height: 50%;
+  inset: 0 0 auto 0;
+  /* White's share as a scale on a full-height element, not a height: the
+     search updates this many times a second, and a height change relaid out
+     the whole window every time. */
+  height: 100%;
+  transform-origin: center top;
+  transform: scaleY(0.5);
   background: #f4f1e8;
-  transition: height 220ms ease;
+  transition: transform var(--dur) var(--ease-out);
 }
 
 .engine-bar-text.is-white-side {
@@ -4686,7 +4905,6 @@ body.is-guest .replay-results:empty::before {
   font-size: 8px;
   letter-spacing: -0.04em;
   color: rgba(255, 255, 255, 0.92);
-  font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   font-weight: 600;
 }
@@ -4698,7 +4916,6 @@ body.is-guest .replay-results:empty::before {
   align-content: start;
   gap: 4px;
   font-size: 13px;
-  font-variant-numeric: tabular-nums;
 }
 
 .engine-pv {
@@ -4711,7 +4928,7 @@ body.is-guest .replay-results:empty::before {
   border-radius: 7px;
   background: var(--panel-soft);
   border: 1px solid var(--line-soft);
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
   min-width: 0;
   overflow: hidden;
 }
@@ -4786,6 +5003,10 @@ body.is-guest .replay-results:empty::before {
 /* Respect the OS "reduce motion" setting: keep meaningful state changes but
    drop looping/decorative animation (confetti, pulses, board flip, toast
    slide) and collapse transitions to near-instant. */
+/* Respect the OS "reduce motion" setting: no travel, only a quick fade.
+   Transforms that carry meaning (the press scale, the sheet rising, a card
+   entering) are removed; colour and opacity changes still land so state stays
+   legible. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -4798,6 +5019,13 @@ body.is-guest .replay-results:empty::before {
 
   .confetti-layer {
     display: none !important;
+  }
+
+  .btn:active,
+  .btn.icon:active,
+  .row-menu-btn:active,
+  .sheet-row:active {
+    transform: none;
   }
 }
 
@@ -4943,7 +5171,6 @@ body.is-guest .replay-results:empty::before {
   padding: 0 14px;
   background: var(--panel);
   color: var(--text);
-  outline: none;
 }
 
 .palette-results {

@@ -282,8 +282,8 @@ class EngineWidget {
     }
     if (this.depthReadout) this.depthReadout.textContent = "—";
     if (this.evalBarWhite) {
-      this.evalBarWhite.style.height =
-        over.winner === "white" ? "100%" : over.winner === "black" ? "0%" : "50%";
+      const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
+      this.evalBarWhite.style.transform = `scaleY(${share})`;
     }
     if (this.evalBarText) this.evalBarText.textContent = over.result;
     if (this.evalHead) {
@@ -520,7 +520,7 @@ class EngineWidget {
     }
     const evalStr = formatEngineEval(topPv.score_cp, topPv.mate_in);
     if (this.evalBarWhite) {
-      this.evalBarWhite.style.height = `${Math.round(wc * 100)}%`;
+      this.evalBarWhite.style.transform = `scaleY(${wc.toFixed(4)})`;
     }
     if (this.evalBarText) {
       this.evalBarText.textContent = evalStr;

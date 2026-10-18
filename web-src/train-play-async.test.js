@@ -32,15 +32,35 @@ function harness() {
     playRepertoireReplies: () => [], playChildren: () => [], playBookLabel: () => "Explorer",
     playAdvanceNode: () => ({}), playCursorSnapshot: () => ({}),
     recordPlayPly: (ply) => appState.play.history.push(ply),
-    setTrainBanner: (state, title) => { banner.title = title; },
+    setTrainBanner: (state, title, sub) => { banner.title = title; banner.sub = sub; },
     paintPlayPosition: (next) => { board.setPosition(next); banner.title = next.banner; },
     updateTrainTurnBadge: vi.fn(), syncTrainSessionControls: vi.fn(),
+    maiaOpponentErrorText: (error) => String(error?.message || "Maia could not start."),
   };
   const reply = compile("async function playOpponentReply(", deps);
   return { play, appState, board, banner, explorer, deps, reply };
 }
 
 describe("Play opponent response ownership", () => {
+  function loadMaiaErrorText() {
+    const start = source.indexOf("function maiaOpponentErrorText(");
+    const end = source.indexOf("\n}\n", start) + 3;
+    // eslint-disable-next-line no-new-func
+    return new Function("return (" + source.slice(start, end) + ");")();
+  }
+
+  it("names the real reason on the board, and says to retry", () => {
+    const reason = loadMaiaErrorText();
+    expect(reason(new Error("weight size mismatch: download truncated"))).toContain("incomplete");
+    // The stall case is its own message: a download that stopped part-way is not
+    // the same problem as a download that failed.
+    expect(reason(new Error("weight download stalled: no bytes from /m.onnx for 20s"))).toContain("stopped part-way");
+    expect(reason(new Error("Maia3 predict timed out after 20000ms"))).toContain("in time");
+    expect(reason(new Error("Failed to fetch"))).toContain("download failed");
+    expect(reason(new Error("Maia3 worker request failed"))).toBe("Maia3 worker request failed");
+    expect(reason(undefined)).toContain("could not start");
+  });
+
   it("routes the palette practice action through the New game confirmation button", async () => {
     const click = vi.fn();
     const directStart = vi.fn();
@@ -139,6 +159,28 @@ describe("Play opponent response ownership", () => {
     expect(h.banner.title).toBe("Current banner");
     expect(h.appState.play.history).toEqual([]);
     expect(h.play.ply).toBe(0);
+  });
+
+  it("names the Maia failure instead of blaming the book", async () => {
+    const h = harness();
+    h.deps.fetchPlayMaia.mockImplementation(async () => ({ error: new Error("Maia3 worker request failed") }));
+    const pending = h.reply();
+    h.explorer.resolve({ totalGames: 0, moves: [] });
+    await pending;
+    expect(h.play.active).toBe(false);
+    expect(h.banner.title).toBe("Opponent unavailable");
+    expect(h.banner.sub).toContain("worker request failed");
+    // The one banner that means "the move generator returned nothing" is NOT shown.
+    expect(h.banner.sub).not.toContain("no legal move");
+  });
+
+  it("keeps the no-legal-move message for an empty move generator", async () => {
+    const h = harness();
+    h.deps.fetchPlayMaia.mockImplementation(async () => []);
+    const pending = h.reply();
+    h.explorer.resolve({ totalGames: 0, moves: [] });
+    await pending;
+    expect(h.banner.sub).toBe("The opponent has no legal move from this book.");
   });
 
   it("drops a Maia reply when the session ends during inference", async () => {

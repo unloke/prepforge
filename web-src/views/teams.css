@@ -160,22 +160,21 @@
   font-size: var(--fs-s);
   cursor: pointer;
 }
-/* Detail-head and member-row icon actions are ghost (prototype .icon-btn):
-   no border or fill until hover; delete turns red only on hover. */
-.teams .card-head .ib,
+/* Detail-head and member-row icon actions are ghost: no border or fill until
+   hover; delete turns red only on hover. */
+.teams .card-head .btn.icon,
 .team-remove {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
   color: var(--muted);
 }
-.teams .card-head .ib:hover { background: var(--surface-3); color: var(--text); }
-.teams .card-head .ib.danger:hover { background: var(--danger-soft, var(--surface-3)); color: var(--danger); }
+.teams .card-head .btn.icon:hover { background: var(--surface-3); color: var(--text); }
+.teams .card-head .btn.icon.danger:hover { background: var(--danger-soft); color: var(--danger); }
 .team-remove {
-  min-width: 26px;
-  height: 26px;
+  min-width: var(--control-h);
+  height: var(--control-h);
   padding: 0 8px;
-  font-size: 13px;
   color: var(--muted);
 }
 .team-remove:hover {
@@ -232,7 +231,7 @@
 
 @media (max-width: 760px) {
   .teams .btn.sm,
-  .teams .ib,
+  .teams .btn.icon,
   .team-role-select,
   .teams .tabs button { min-height: 44px; }
   .teams .card-head { flex-wrap: wrap; }

@@ -430,7 +430,7 @@ async function runViewport(vp) {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(api("/api/analyses/g1")) });
   });
   await openGamesSheet(page);
-  await page.locator('.history-item[data-game-id="g1"]').focus();
+  await page.locator('.history-item[data-game-id="g1"] .hi-open').focus();
   await page.keyboard.press("Enter");
   await recallRequested;
   await openGamesSheet(page);
@@ -446,7 +446,7 @@ async function runViewport(vp) {
 
   // The history row supplies Black's linked identity, so recall uses that side.
   await openGamesSheet(page);
-  await page.locator('.history-item[data-game-id="g2"]').focus();
+  await page.locator('.history-item[data-game-id="g2"] .hi-open').focus();
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => /opp_two/.test(document.getElementById("analysis-game-title").textContent));
   check(await page.locator("#analysis-board [data-square]").first().getAttribute("data-square") === "h1", "a recalled Self-as-Black game should face Black");
@@ -508,7 +508,7 @@ async function runViewport(vp) {
     await page.locator("#pgn-input").fill(DEMO_PGN_MOVETEXT);
     await page.locator("#run-analysis").click();
     await saveRequested;
-    await page.locator('.history-item[data-game-id="g2"]').focus();
+    await page.locator('.history-item[data-game-id="g2"] .hi-open').focus();
     await page.keyboard.press("Enter");
     await page.waitForFunction(() => document.getElementById("pgn-input").value.includes('[Black "me_user"]'));
     releaseSave();
