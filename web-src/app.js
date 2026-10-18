@@ -3442,6 +3442,11 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
         const safeName = field.name;
         const safeLabel = field.label || field.name;
         const safeValue = field.default == null ? "" : String(field.default);
+        if (field.type === "stat") {
+          // A live number the caller re-writes on input. Bigger than a note so
+          // the one figure that drives the decision is the dialog's focal point.
+          return html`<div class="modal-stat" data-note="${safeName}"><b>${safeLabel}</b><span>${field.unit || ""}</span></div>`;
+        }
         if (field.type === "note") {
           // Read-only informational line (no input, never collected).
           return html`<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
@@ -3482,7 +3487,17 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
           </label>
         `;
     };
-    const inputsHtml = fields.map(fieldHtml);
+    // A group heading before each named run of fields; a field with no `group`
+    // (or a repeated one) starts a new run, so callers only set the name.
+    const inputsHtml = [];
+    let lastGroup;
+    for (const field of fields) {
+      if (field.group && field.group !== lastGroup) {
+        inputsHtml.push(html`<div class="modal-group-label">${field.group}</div>`);
+      }
+      lastGroup = field.group || "";
+      inputsHtml.push(fieldHtml(field));
+    }
     overlay.innerHTML = html`
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">${title}</div>
