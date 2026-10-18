@@ -369,7 +369,6 @@ button,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -1443,7 +1442,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: 26px;
   padding: 0;
   border: 0;
-  outline: none;
   background: transparent;
   box-shadow: none;
 }
@@ -2113,7 +2111,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .square:focus-visible {
-  outline: none;
   box-shadow: inset 0 0 0 3px var(--accent);
 }
 
@@ -2724,7 +2721,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .dock-resizer:hover::after,
 .dock-resizer:focus-visible::after,
 .dock-resizer.is-dragging::after { opacity: 1; background: var(--accent); }
-.dock-resizer:focus-visible { outline: none; }
+
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-tabs .dock-fold {
   margin-left: auto;
@@ -3523,7 +3520,7 @@ body.is-guest .replay-results:empty::before {
   text-align: left;
   cursor: pointer;
 }
-.explorer-pick:focus-visible { outline: none; }
+
 .explorer-row:has(.explorer-pick:focus-visible) {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
@@ -4118,7 +4115,6 @@ body.is-guest .replay-results:empty::before {
 .modal-field input:focus,
 .modal-field select:focus,
 .modal-field textarea:focus {
-  outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
@@ -4993,7 +4989,6 @@ body.is-guest .replay-results:empty::before {
   padding: 0 14px;
   background: var(--panel);
   color: var(--text);
-  outline: none;
 }
 
 .palette-results {
