@@ -168,8 +168,6 @@
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
-   counts, percentages, stats tables. Set once here instead of per component so
-   a new numeric surface inherits it. */
 /* The dark palette keeps the warm amber identity but lifts text and borders
    independently instead of inverting the light theme. This preserves contrast
    for boards, data labels, and status colors in low-light study sessions. */
