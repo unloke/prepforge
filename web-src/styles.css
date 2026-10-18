@@ -1585,6 +1585,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .search-field input:focus-visible { box-shadow: none; }
 
+/* One column-header treatment for every table in the app: the Library grid,
+   the Games ledger and the Scout plan all label their columns the same way.
+   The number columns are right-aligned by the view that owns them. */
+.col-head,
+.lib-cols,
+.lr.head {
+  color: var(--label);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
 /* Table: column header + one grid row per repertoire */
 .lib-cols,
 .lib-row {
@@ -1597,9 +1607,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cols {
   min-height: 30px;
   border-bottom: 1px solid var(--line);
-  color: var(--label);
-  font-size: var(--fs-xs);
-  font-weight: 600;
 }
 /* Empty library (signed out / no repertoires): the onboarding card has no
    filter chips or column header — only the search stays. */
@@ -3443,17 +3450,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.replay-results:empty::before {
-  content: "Choose your games and run a check to see your preparation review here.";
-  padding: 48px 24px;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-}
-body.is-guest .replay-results:empty::before {
-  content: "Sign in to check your games against your repertoires.";
-}
 
 @media (max-width: 1279px) {
   .scout-grid { grid-template-columns: minmax(0, 1fr) 300px; }
