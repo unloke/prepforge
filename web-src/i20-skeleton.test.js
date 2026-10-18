@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
+import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton, teamRowsSkeleton } from "./views/team-skeleton.js";
 
 // Item 20: the panes used to disagree on how they said "loading" — the
@@ -58,27 +59,23 @@ describe("Settings → Account loading", () => {
 });
 
 // The Library's cold start used to sit on a spinner plus "Loading your
-// library…". It now ships skeleton rows at the real row geometry, so the list
-// appears at its final height and shape the moment the view paints.
+// library…". It now paints skeleton rows at the real row geometry, so the list
+// appears at its final height and shape.
 describe("Library cold-start skeleton", () => {
-  it("ships skeleton rows instead of a spinner in the static markup", () => {
-    const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
-    const list = html.match(/<div id="dashboard-repertoires"[\s\S]*?<\/div><\/div>/)[0];
-    expect(list).toContain("is-skeleton");
-    expect(list).not.toContain("library-loading");
-    // The status label is the load announcement; no visible sentence stays.
-    expect(list).toContain('aria-label="Loading your library"');
-    expect(list).not.toMatch(/<p>[^<]*Loading/);
-    expect(list).not.toContain('class="spinner"');
-    // Enough rows to read as a table, and they keep the real row classes so the
-    // grid columns (and the phone layout) match the rows that replace them.
-    expect(list.match(/lib-row is-skeleton/g)).toHaveLength(4);
-    for (const cell of ["lib-cell-rep", "lib-cell-mastery", "lib-cell-queue"]) {
-      expect(list).toContain(cell);
-    }
+  it("paints skeleton rows, not a spinner, from one generator", () => {
+    const markup = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+    const list = markup.match(/<div id="dashboard-repertoires"[^>]*>/)[0];
     // The pane announces the load once, as a status, rather than per row.
     expect(list).toContain('role="status"');
-    expect(list).toContain("aria-hidden=\"true\"");
+    expect(list).toContain('aria-label="Loading your library"');
+    const rows = String(libraryRowsSkeleton());
+    expect(rows).not.toContain("spinner");
+    expect(rows).not.toMatch(/>[^<\s][^<]*</);
+    // Enough rows to read as a table, with the real row classes so the grid
+    // columns (and the phone layout) match the rows that replace them.
+    expect(rows.match(/lib-row is-skeleton" aria-hidden="true"/g)).toHaveLength(4);
+    for (const cell of ["lib-cell-rep", "lib-cell-mastery", "lib-cell-queue"]) expect(rows).toContain(cell);
+    expect(rows).toContain('style="width:58%"');
   });
 
   it("gives the skeleton the same bar and pulse as the tree skeleton", () => {

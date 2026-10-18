@@ -1,8 +1,6 @@
 import { html } from "../html.js";
 import {
   AUTH_REQUIRED_MESSAGE,
-  BOOT_AUTH_STATE,
-  accountChipForBoot,
   clearPendingAction,
   isPendingActionId,
   markAuthReturn,
@@ -165,7 +163,7 @@ export function createAccountController({
       if (sheetLabel) sheetLabel.textContent = "";
       chip.removeAttribute("aria-haspopup");
       chip.setAttribute("aria-expanded", "false");
-      chip.title = accountChipForBoot(BOOT_AUTH_STATE.pending).title;
+      chip.title = "Checking your session…";
       if (sheetItem) {
         sheetItem.removeAttribute("aria-haspopup");
         sheetItem.removeAttribute("aria-expanded");

@@ -130,7 +130,6 @@
   /* Eval bars: a near-white and a near-black face, never two greys. */
   --eval-side-white: #f4f3ef;
   --eval-side-black: #25282d;
-  --eval-ink-dark: #101114;
 
   /* -- Type ---------------------------------------------------------------
      13px base / 12px small / 11px extra-small. Tabular figures are set once
@@ -280,7 +279,6 @@
   --explorer-draw-ink: #111315;
   --eval-side-white: #e9eaec;
   --eval-side-black: #0e0f11;
-  --eval-ink-dark: #111315;
 }
 
 /* `hidden` always wins: no view's display rule can resurrect a hidden element. */
@@ -1194,6 +1192,11 @@ h2 {
   display: block;
   height: 100%;
   animation: view-enter var(--dur) var(--ease-out) both;
+}
+
+/* One loading state: while the hold is up the default view stays hidden. */
+.boot-hold:not([hidden]) ~ .view.is-active {
+  display: none;
 }
 
 /* A view switch is a cross-fade plus a few px of travel, never a layout
@@ -3648,10 +3651,6 @@ body.is-guest .replay-results:empty::before {
 .coverage-stale { color: var(--warn-text); }
 .coverage-gap.is-readonly { grid-template-columns: 1fr; }
 
-/* Empty: one mark, one heading, one line naming the action. Disappears the
-   moment a scan result, a live scan or a stale mark replaces it. */
-.coverage-empty { align-items: flex-start; }
-.coverage-empty .btn { margin-top: 8px; }
 @media (max-width: 760px) {
   .coverage-gap { min-height: 56px; }
   .coverage-gap-select { min-width: 44px; }
@@ -4749,7 +4748,6 @@ body.is-guest .replay-results:empty::before {
      narrow bar beside the dock added noise, not information. */
   grid-template-columns: 1fr;
 }
-.engine-window.is-docked .engine-bar { display: none; }
 .engine-window.is-docked .engine-window-pvs { padding: 4px 0; }
 /* Docked lines: one fixed-height row each, cut at the edge, so N lines always
    take N rows — the block never grows while searching or jumps when a line
@@ -4953,49 +4951,14 @@ body.is-guest .replay-results:empty::before {
   overflow: hidden;
 }
 
-/* A vertical win-chance bar: two solid faces, split by White's share. Wider
-   than it is readable at a glance, and independent of the text, so the fill
-   alone answers "who is ahead and by how much". */
-.engine-bar {
-  position: relative;
-  background: var(--eval-side-black);
-  border-right: 1px solid var(--line-strong);
-}
-
-.engine-bar-white {
-  position: absolute;
-  inset: 0 0 auto 0;
-  /* White's share as a scale on a full-height element, not a height: the
-     search updates this many times a second, and a height change relaid out
-     the whole window every time. */
-  height: 100%;
-  transform-origin: center top;
-  transform: scaleY(0.5);
-  background: var(--eval-side-white);
-  transition: transform var(--dur-slow) var(--ease-out);
-}
-
-.engine-bar-text.is-white-side {
-  inset: auto 0 3px 0;
-  color: var(--eval-ink-dark);
-  text-shadow: none;
-}
+/* The engine window is always docked; its bar only carries the value the
+   Analyze meter reads. */
+.engine-bar { display: none; }
 
 /* Eval chip: a two-tone pill that says whose advantage it is by shape of
    fill, not by an accent colour that reads the same for both sides. */
 .engine-head-eval[data-side="white"] { background: var(--explorer-white); color: var(--explorer-white-ink); border-color: var(--line-strong); }
 .engine-head-eval[data-side="black"] { background: var(--explorer-black); color: var(--on-accent); border-color: var(--muted); }
-
-.engine-bar-text {
-  position: absolute;
-  inset: 3px 0 auto 0;
-  text-align: center;
-  font-size: 9px;
-  letter-spacing: -0.04em;
-  color: var(--on-accent);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  font-weight: 700;
-}
 
 .engine-window-pvs {
   padding: 8px;

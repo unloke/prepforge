@@ -98,19 +98,19 @@ describe("Coverage panel state", () => {
 
   it("names the action that fills the panel when it is empty", () => {
     h.controller.paint();
-    expect(h.gaps.innerHTML).toContain("coverage-empty-run");
-    expect(h.gaps.innerHTML).toContain(">Scan<");
+    expect(h.gaps.innerHTML).toContain("coverage-empty");
+    expect(h.gaps.innerHTML).not.toContain("<button");
   });
 
   it("hides the empty state once a scan has run", async () => {
     h.controller.paint();
-    expect(h.gaps.innerHTML).toContain("coverage-empty-run");
+    expect(h.gaps.innerHTML).toContain("coverage-empty");
     const running = h.controller.scan();
-    expect(h.gaps.innerHTML).not.toContain("coverage-empty-run");
+    expect(h.gaps.innerHTML).not.toContain("coverage-empty");
     expect(h.gaps.innerHTML).toContain("Starting Maia engine");
     await running;
     // The empty state is gone for good: the result summary replaces it.
-    expect(h.gaps.innerHTML).not.toContain("coverage-empty-run");
+    expect(h.gaps.innerHTML).not.toContain("coverage-empty");
     expect(h.gaps.innerHTML).toContain("coverage-summary");
   });
 

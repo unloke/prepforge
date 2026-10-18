@@ -175,8 +175,11 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     expect(showAt).toBeLessThan(authAt);
   });
 
-  it("reveals the real route only after the URL has been restored", () => {
-    const release = src.indexOf("releaseBootView();");
+  it("reveals the Library once the session is known, and other routes once restored", () => {
+    const early = src.indexOf('view === "dashboard") releaseBootView();');
+    expect(early).toBeGreaterThan(src.indexOf("await refreshAuthStatus();"));
+    expect(early).toBeLessThan(src.indexOf("await loadSignedInWorkspace();"));
+    const release = src.indexOf("\n  releaseBootView();");
     const restore = src.indexOf("await restoreWorkspaceLocation();");
     expect(release).toBeGreaterThan(restore);
     // And the reveal happens before the sign-in return / shared view land, so a

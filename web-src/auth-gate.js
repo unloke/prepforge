@@ -209,22 +209,6 @@ export function isAuthError(error) {
 // authenticated". That string is for developers; users get an explanation.
 // Other 401s (e.g. "invalid email or password" from the sign-in form) keep
 // their own wording.
-// Boot state. Until the session has been read, nothing auth-dependent may
-// render: the sign-in chip, the owner-scoped views and every default action all
-// read "no session" as "signed out", and a signed-in reload would see that
-// guess flash before /api/auth/me lands. `pending` is the neutral hold; `known`
-// is the real state.
-export const BOOT_AUTH_STATE = Object.freeze({ pending: "pending", known: "known" });
-
-// The account chip stands for a person, not for "we couldn't reach the server".
-// While the session is unread it announces nothing and exposes no action, so the
-// only thing the reload paints is the shell.
-export function accountChipForBoot(bootState) {
-  return bootState === BOOT_AUTH_STATE.pending
-    ? { label: null, title: "Checking your session…", action: false, bodyGuest: false }
-    : null;
-}
-
 export function isSessionAuthFailure(status, detail) {
   return status === 401 && typeof detail === "string" && /^not authenticated$/i.test(detail.trim());
 }

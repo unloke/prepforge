@@ -116,6 +116,7 @@ import {
   sameFetchSources,
 } from "./views/shared/source-composer.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
+import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 let _coachReady = null;
 function loadTrainResume() {
   return import("./train-resume.js");
@@ -3950,7 +3951,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       await refreshDashboardRepertoires();
       showUndoToast({
         title: "Repertoire deleted",
-        message: `"${meta?.name || "Repertoire"}" and every move in it removed.`,
+        message: `Removed "${meta?.name || "Repertoire"}" and every move in it.`,
         onUndo: () => {
           appState.pendingRepDeletes.delete(repKey);
           setStatus("Delete undone");
@@ -6861,6 +6862,8 @@ async function init() {
   // while the session is being read (and so a deep link's route is never
   // replaced by the static markup's dashboard default in anything the user sees).
   holdBootView();
+  const libraryRows = document.getElementById("dashboard-repertoires");
+  if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
   initAccountController();
   applyPref("theme");
@@ -6926,11 +6929,13 @@ async function init() {
   // not fire /api/settings, /api/dashboard, /api/board, /api/lichess — they 401 and
   // spam the console. Gate that whole workspace load behind a real session.
   await refreshAuthProviders();
-  // The hold is already up (see the top of init) and stays until the whole
-  // workspace has painted the real session, so a signed-in reload never shows
-  // the signed-out shell at any point.
+  // The hold is already up (see the top of init), so a signed-in reload never
+  // shows the signed-out shell. The Library is the default route and has its own
+  // skeleton, so it shows as soon as the session is known; other routes hold
+  // until they are restored.
   await refreshAuthStatus();
   setHandoffOwner(currentOwnerId());
+  if (parseWorkspaceLocation(window.location.href).view === "dashboard") releaseBootView();
   // "Last game" depends on the linked Lichess account, which refreshAuthStatus
   // just told us about; paint its availability now rather than on first click.
   syncFetchMyGameButton();

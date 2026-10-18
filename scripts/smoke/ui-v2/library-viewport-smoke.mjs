@@ -72,7 +72,7 @@ const api = (path, url) => {
       games: 12, repertoires: 3, training_sessions: 7, open_mistakes: 6,
       due_reviews: 9, due_soon: 4,
       streak: { current: 5, best: 13, trained_today: false },
-      recap: { reviews_7d: 61, mastered_now: 24, mastered_delta: 2, weak_now: 6, weak_delta: -1 },
+      recap: { moves_reviewed_7d: 61, mastered_now: 24, mastered_delta: 2, weak_now: 6, weak_delta: -1 },
       recommendations: [
         { id: "due-review", title: "9 reviews due", detail: "Clear the spaced-repetition queue", cta: { label: "Train now", view: "train" } },
       ],

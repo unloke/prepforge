@@ -255,7 +255,7 @@ export function createScoutView(deps) {
     if (key === lastPhaseKey) return;
     lastPhaseKey = key;
     if (initializing) {
-      phase.textContent = "Preparing your prep…";
+      phase.textContent = "Loading your repertoires…";
       if (detail) detail.textContent = "Loading your repertoires";
     } else if (fetched > 0) {
       phase.textContent = "Reading their games…";

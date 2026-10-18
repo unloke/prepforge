@@ -109,7 +109,7 @@ export function createCoverageController({
         body = html`${body}<div class="coverage-live" role="status">${result.unknownMass > 0 ? "No gaps in checked positions" : "No gaps"}</div>`;
       } else body = html`${body}${gapRows(c.readOnly)}`;
     } else {
-      body = html`<div class="empty-state coverage-empty" role="status"><div class="es-mark" aria-hidden="true">◎</div><h3>Find your gaps</h3><p>Scan this repertoire to see the moves your opponents will actually play.</p><button type="button" class="btn primary" id="coverage-empty-run" data-testid="coverage-empty-run">Scan</button></div>`;
+      body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Scan to find the moves your opponents play that this repertoire misses.</p>`;
     }
     el.innerHTML = body;
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];
@@ -135,7 +135,6 @@ export function createCoverageController({
         if (valid()) previewGap(gap);
       } catch (error) { onError(error); }
     }));
-    el.querySelector("#coverage-empty-run")?.addEventListener("click", () => { void scan(); });
   }
   async function scan() {
     sync();
