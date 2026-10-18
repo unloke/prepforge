@@ -1,85 +1,98 @@
 :root {
   color-scheme: light only;
-  /* Design system: neutral graphite surfaces, one accent (ink blue) reserved
-     for selection, primary actions and focus; every other hue is semantic and
+
+  /* ========================================================================
+     ONE TOKEN SET. Every colour, size, radius, shadow and duration below is
+     referenced by name everywhere else in the app (styles.css, phone.css and
+     every views/*.css). Dark values are re-declared once in the dark-theme
+     block further down; nothing else overrides them.
+
+     Colour: neutral graphite surfaces, ONE accent (ink blue) reserved for
+     selection, primary actions and focus. Every other hue is semantic and
      keeps the same meaning in every view (status, mastery/queue kinds, prep
-     outcome, move classification). Token NAMES are the production contract;
-     VALUES follow the approved prototype design system. */
-  --bg: #f3f3f1;
-  --panel: #ffffff;
-  --panel-soft: #f8f8f6;
-  --surface-3: #efefec;
-  --explorer-white: #f2f2ef;
-  --explorer-draw: #9a9fa6;
-  --explorer-black: #2e3136;
-  --explorer-track: #e6e6e2;
-  --explorer-white-ink: #1b1c1e;
-  --explorer-draw-ink: #1b1c1e;
-  --line: #e2e1dc;
-  --line-soft: #eeeeec;
-  --line-strong: #cfcdc6;
-  --text: #1b1c1e;
-  --muted: #55585e;
-  /* Small-caps labels are text-only, so the token itself carries the AA value. */
-  --label: #67696e;
-  --btn-hover: #f8f8f6;
-  --btn-active: #efefec;
-  --btn-border-hover: #8a8d93;
+     outcome, move classification) -- "colour means chess".
+
+     Surfaces are separated by a small step in tone, never by a line:
+     --bg is the page, --surface-3 the recessed track, --panel-soft the quiet
+     fill, --panel the raised card.
+     ==================================================================== */
+
+  /* -- Surfaces -------------------------------------------------------- */
+  --bg: #f3f3f1;         /* page ground */
+  --surface-3: #efefec;  /* recessed tracks, hover fills */
+  --panel-soft: #f8f8f6; /* quiet fills inside a card */
+  --panel: #ffffff;      /* raised cards */
+
+  /* -- Text ------------------------------------------------------------ */
+  --text: #1b1c1e;   /* body */
+  --muted: #55585e;  /* secondary copy */
+  --label: #67696e;  /* small-caps labels, quiet affordances */
+
+  /* -- Hairlines (tone steps, not decoration) -------------------------- */
+  --line: #e2e1dc;       /* between surfaces inside a card */
+  --line-soft: #eeeeec;  /* nested / secondary separation */
+  --line-strong: #cfcdc6; /* control outlines */
+
+  /* -- The one accent -------------------------------------------------- */
   --accent: #2f5bd3;
   --accent-soft: #e8eefc;
   --accent-line: #c9d6f7;
   --accent-strong: #2447a8;
-  --accent-dark: #2447a8;
-  --accent-text: #2447a8;
   --on-accent: #ffffff;
-  /* Ink on accent fills (prototype --accent-ink): white in light, near-black in dark. */
+
+  /* Ink on an accent fill: white in light, near-black in dark. */
   --accent-ink: #ffffff;
+  /* Text-safe companion for --accent (AA on panel/panel-soft/bg and on
+     --accent-soft; pinned by visual-system.test.js). */
+  --accent-text: #2447a8;
   --focus-ring: rgba(47, 91, 211, 0.35);
+
+  /* -- Semantic status -------------------------------------------------- */
   --danger: #c73a2c;
   --danger-soft: #fbe7e4;
   --danger-strong: #a32b1f;
-  --danger-dark: #87241a;
   --warn: #b26a00;
+  --warn-soft: #fbf0dc;
   --good: #1d8a4f;
+  --good-soft: #e3f4ea;
   --brilliant: #2f7fe0;
   --great: #4a7fb5;
+  --none: #7b7f86;      /* "nothing to report" grey */
+  --none-soft: #eeeeec;
+
   /* Text-only companions for the semantic colours. The base tokens also fill
-     charts, dots, badges, and borders, so darkening them for WCAG AA would
-     change the visual language; text usages pick up the *-text variants instead
-     (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background —
-     pinned by the contrast guard in visual-system.test.js). */
+     charts, dots, badges and borders, so darkening them for WCAG AA would
+     change the visual language; text usages pick the *-text variants instead
+     (>= 4.5:1 on panel/panel-soft/bg and each colour's own tinted background --
+     pinned by the contrast guard in visual-system.test.js). Dark surfaces
+     already clear AA for these hues by a wide margin, so there the text
+     variants alias the base colours. */
   --warn-text: #8a5200;
   --good-text: #166b3e;
   --brilliant-text: #2563b8;
   --great-text: #3d6c9c;
-  /* Semantic status family (fills, badges, banners) and its text-safe shades. */
-  --good-soft: #e3f4ea;
-  --warn-soft: #fbf0dc;
-  --none: #7b7f86;
-  --none-soft: #eeeeec;
-  /* Mastery / queue kinds — colour means chess: the same hue in every view. */
+
+  /* Classification palette completion: inaccuracy/missed had no semantic token
+     (they were hard-coded in the bars, tree dots and eval chart). */
+  --inaccuracy: #c98a2b;
+  --missed: #7a5fb8;
+
+  /* -- Mastery / queue kinds -------------------------------------------- */
   --k-mastered: #1d8a4f;
   --k-learning: #3a7bd5;
   --k-due: #d08a0b;
   --k-weak: #d2452f;
   --k-new: #8b6fd6;
   --k-polish: #8a9099;
-  /* Classification palette completion: inaccuracy/missed had no semantic token
-     (hardcoded in the bars, tree dots, and eval chart). */
-  --inaccuracy: #c98a2b;
-  --missed: #7a5fb8;
-  --inert: #67696e;
-  --chip: #55585e;
-  --dot-white: #ffffff;
-  --board-frame: #6f8394;
-  --radius: 6px;
-  --radius-card: 10px;
-  --control-h: 30px;
-  --ib-h: 30px;
+
+  /* -- Board ------------------------------------------------------------ */
   --square-light: #e4e8eb;
   --square-dark: #97a8b6;
-  /* Board marks (styles.css "Board marks"): last move, selection, legal targets,
-     arrows and the per-grade square tints. */
+  --board-frame: #6f8394;
+  --dot-white: #ffffff; /* the white side's dot/face */
+
+  /* Board marks (styles.css "Board marks"): last move, selection, legal
+     targets, arrows and the per-grade square tints. */
   --last-move: rgba(64, 190, 172, 0.36);
   --highlight: rgba(47, 91, 211, 0.38);
   --mark-select: rgba(47, 91, 211, 0.3);
@@ -91,30 +104,54 @@
   --mark-mistake: rgba(226, 128, 40, 0.48);
   --mark-blunder: rgba(214, 64, 48, 0.46);
   --mark-missed: rgba(122, 95, 184, 0.42);
-  /* Board annotation arrows: user arrows take the ink-blue accent, the engine's
-     best-move arrow keeps the calm "good" green (colour means chess). */
+
+  /* Board annotation arrows: user arrows take the ink-blue accent, the
+     engine's best-move arrow keeps the calm "good" green (colour means
+     chess). */
   --arrow-user: rgba(47, 91, 211, 0.78);
   --arrow-engine: rgba(29, 138, 79, 0.8);
   --arrow-better: rgba(176, 62, 196, 0.8);
   /* Repertoire line options: neutral slate, drawn as a dashed outline. */
   --arrow-line: rgba(52, 64, 78, 0.9);
   --arrow-rim: rgba(255, 255, 255, 0.9);
+
   /* Board coordinate labels. */
   --coord-on-light: #354655;
   --coord-on-dark: #172a38;
-  /* Type: 13px base, 12px small, 11px extra-small; tabular numbers everywhere,
-     mono for SAN/lines. */
+
+  /* -- Explorer result bar ---------------------------------------------- */
+  --explorer-white: #f2f2ef;
+  --explorer-draw: #9a9fa6;
+  --explorer-black: #2e3136;
+  --explorer-track: #e6e6e2;
+  --explorer-white-ink: #1b1c1e;
+  --explorer-draw-ink: #1b1c1e;
+
+  /* -- Type ---------------------------------------------------------------
+     13px base / 12px small / 11px extra-small. Tabular figures are set once
+     on <body> below so every number that changes or lines up already reads as
+     a column. The mono stack is for SAN, lines and code. */
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace;
   --fs: 13px;
   --fs-s: 12px;
   --fs-xs: 11px;
-  --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);
-  --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08);
-  /* Overlay stacking: one ordered ladder instead of ad-hoc numbers. Floating
-     tools (engine window) never out-rank a modal and its scrim; menus and the
-     command palette escape overlays; toasts stay visible above everything and
-     the skip link wins when focused. */
+
+  /* -- Radii, elevation, control sizes ------------------------------------ */
+  --radius: 6px;      /* controls, small chips */
+  --radius-card: 10px; /* cards, popovers, dialogs */
+  --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);    /* resting cards */
+  --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08); /* dialogs, floating tools */
+
+  /* -- Motion: three durations, two curves, and nothing else ----------------- */
+  --dur-fast: 150ms; /* hover, press, colour, opacity */
+  --dur: 220ms;      /* list entry, reveal, show/hide */
+  --dur-slow: 300ms; /* the eval bar landing, a panel settling */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
+  --ease-emphasis: cubic-bezier(0.3, 1.3, 0.4, 1); /* emphasized: a small pop */
+
+  /* -- Overlay stacking: one ordered ladder instead of ad-hoc numbers -------- */
   --z-chrome: 45;    /* app chrome (rail) */
   --z-popover: 300;  /* in-page popovers (train selector, promotion picker) */
   --z-tool: 500;     /* floating tools (engine window) */
@@ -122,71 +159,93 @@
   --z-menu: 1100;    /* context/account menus, command palette, drag ghost */
   --z-toast: 1200;   /* toast stack, confetti */
   --z-skip: 1300;    /* skip link */
+
   font-family: var(--font);
   font-size: var(--fs);
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
+/* Numbers that change or line up read as columns: evals, move numbers, clocks,
+   counts, percentages, stats tables. Set once here instead of per component so
+   a new numeric surface inherits it. */
+body {
+}
+
+
 /* The dark palette keeps the warm amber identity but lifts text and borders
    independently instead of inverting the light theme. This preserves contrast
    for boards, data labels, and status colors in low-light study sessions. */
+/* The dark palette lifts text and borders independently instead of inverting
+   the light theme. This preserves contrast for boards, data labels and status
+   colours in low-light study sessions. Every token declared above is re-declared
+   here -- the two blocks together are the whole colour system. */
 :root[data-theme="dark"] {
   color-scheme: dark;
+
+  /* Surfaces */
   --bg: #111315;
-  --panel: #191c1f;
-  --panel-soft: #1e2226;
   --surface-3: #262a2f;
-  --line: #2b3035;
-  --line-soft: #25292d;
-  --line-strong: #3a4046;
+  --panel-soft: #1e2226;
+  --panel: #191c1f;
+
+  /* Text */
   --text: #e8eaec;
   --muted: #a9aeb4;
   --label: #a9aeb4;
-  --btn-hover: #262a2f;
-  --btn-active: #2b3035;
-  --btn-border-hover: #5c646c;
+
+  /* Hairlines */
+  --line: #2b3035;
+  --line-soft: #25292d;
+  --line-strong: #3a4046;
+
+  /* The accent */
   --accent: #6d8ff0;
   --accent-soft: #1f2a48;
   --accent-line: #2d3c66;
   --accent-strong: #9db4f7;
-  --accent-dark: #2b53c4;
   --accent-text: #93abf2;
   --on-accent: #ffffff;
   --accent-ink: #0d1020;
   --focus-ring: rgba(109, 143, 240, 0.42);
+
+  /* Semantic status */
   --danger: #ef6b5b;
   --danger-soft: #3a1c18;
   --danger-strong: #ff8a7a;
-  --danger-dark: #d75c4c;
   --warn: #e0a23a;
+  --warn-soft: #33270f;
   --good: #45b97a;
+  --good-soft: #17301f;
   --brilliant: #6d9ff0;
   --great: #8db0da;
-  /* Dark surfaces already clear AA for these hues by a wide margin, so the
-     text variants alias the base colours (kept as separate tokens so text and
-     fill can diverge per theme if a future tuning needs it). */
+  --none: #8d939a;
+  --none-soft: #25292d;
+
+  /* Dark surfaces already clear AA for these hues by a wide margin, so the text
+     variants alias the base colours (kept as separate tokens so text and fill
+     can diverge per theme if a future tuning needs it). */
   --warn-text: #e0a23a;
   --good-text: #45b97a;
   --brilliant-text: #6d9ff0;
   --great-text: #8db0da;
-  --good-soft: #17301f;
-  --warn-soft: #33270f;
-  --none: #8d939a;
-  --none-soft: #25292d;
+
+  /* Classification + mastery kinds */
+  --inaccuracy: #e6bc72;
+  --missed: #a992ef;
   --k-mastered: #45b97a;
   --k-learning: #6d9ff0;
   --k-due: #e0a23a;
   --k-weak: #ef6b5b;
   --k-new: #a992ef;
   --k-polish: #8d939a;
-  --inaccuracy: #e6bc72;
-  --missed: #a992ef;
-  --inert: #a9aeb4;
-  --chip: #e8eaec;
+
+  /* Board */
   --dot-white: #f8f8f6;
   --board-frame: #5a6c7b;
   --square-light: #b9c3cb;
   --square-dark: #6f8292;
+
+  /* Board marks */
   --last-move: rgba(90, 214, 192, 0.36);
   --highlight: rgba(109, 143, 240, 0.42);
   --mark-select: rgba(109, 143, 240, 0.38);
@@ -205,10 +264,13 @@
   --arrow-rim: rgba(14, 17, 22, 0.85);
   --coord-on-light: #354655;
   --coord-on-dark: #07121a;
+
+  /* Elevation */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
-  /* Explorer W/D/B bar: the draw grey sits between the two ends and the
-     Black end is lifted off the panel so it never melts into the background. */
+
+  /* Explorer W/D/B bar: the draw grey sits between the two ends and the Black
+     end is lifted off the panel so it never melts into the background. */
   --explorer-white: #e9eaec;
   --explorer-draw: #7c838c;
   --explorer-black: #45494f;
@@ -234,7 +296,7 @@
   border: 1px solid var(--accent-strong);
   border-radius: var(--radius);
   background: var(--panel);
-  color: var(--accent-dark);
+  color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;
   transition: top 120ms ease;
@@ -941,7 +1003,7 @@ h2 {
 }
 
 .pf-switch:hover {
-  border-color: var(--btn-border-hover);
+  border-color: var(--line-strong);
   background: var(--surface-3);
 }
 
@@ -1126,12 +1188,12 @@ h2 {
 }
 
 .btn:hover {
-  border-color: var(--btn-border-hover);
-  background: var(--btn-hover);
+  border-color: var(--line-strong);
+  background: var(--surface-3);
 }
 
 .btn:active {
-  background: var(--btn-active);
+  background: var(--surface-3);
 }
 
 .btn.primary {
@@ -1154,7 +1216,7 @@ h2 {
 
 .btn.danger:hover {
   background: var(--danger-strong);
-  border-color: var(--danger-dark);
+  border-color: var(--danger-strong);
 }
 
 /* Prototype ghost: no fill, no border — a quiet text action. */
@@ -1181,15 +1243,15 @@ h2 {
    primary `.btn` (Analyze, Build → Generate moves) and icon buttons. */
 .btn.is-coming-soon,
 .ib.is-coming-soon {
-  background: var(--btn-hover);
+  background: var(--surface-3);
   border-color: var(--line-strong);
-  color: var(--inert);
+  color: var(--label);
   cursor: not-allowed;
 }
 
 .btn.is-coming-soon:hover,
 .ib.is-coming-soon:hover {
-  background: var(--btn-hover);
+  background: var(--surface-3);
   border-color: var(--line-strong);
 }
 
@@ -1338,7 +1400,7 @@ h2 {
   font: inherit;
   text-align: left;
 }
-.metric b { font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.metric b { font-size: 18px; line-height: 1.2; }
 .metric span { font-size: var(--fs-xs); color: var(--label); }
 .metric.is-due { background: var(--warn-soft); cursor: pointer; }
 .metric.is-due b { color: var(--warn-text); }
@@ -1475,7 +1537,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
-.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
    missing one) and enough height to compare rows at a glance. */
 .lib-mbar {
@@ -1596,7 +1658,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .step-text p { margin: 0; color: var(--muted); font-size: var(--fs-s); }
 /* Setup checklist: progress in the head, finished steps tick and quiet down. */
 .steps .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; font-variant-numeric: tabular-nums; }
+.setup-count { color: var(--muted); font-size: var(--fs-xs); font-weight: 650; }
 .steps .card-head h2 { margin-right: auto; }
 .setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
@@ -2044,7 +2106,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
   pointer-events: none;
   display: none;
   z-index: 4;
@@ -2083,7 +2144,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   line-height: 1;
   letter-spacing: -0.06em;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
   box-shadow:
     0 0 0 1.5px rgba(255, 255, 255, 0.92),
     0 1px 3px rgba(0, 0, 0, 0.38);
@@ -2101,7 +2161,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .square-badge.class-blunder { --badge: var(--danger); }
 .square-badge.class-missed_win,
 .square-badge.class-missed_tactic { --badge: var(--missed); }
-.square-badge.class-unknown { --badge: var(--inert); }
+.square-badge.class-unknown { --badge: var(--label); }
 
 .square-badge.class-brilliant {
   box-shadow:
@@ -2362,7 +2422,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .ib {
-  height: var(--ib-h);
+  height: var(--control-h);
   min-width: 34px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -2374,7 +2434,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .ib:hover {
-  background: var(--btn-hover);
+  background: var(--surface-3);
   border-color: var(--line-strong);
 }
 
@@ -2581,7 +2641,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font: inherit;
   font-size: 13px;
   font-weight: 650;
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 .fork-chip .mtree-num { padding: 0; margin: 0; font-size: 11px; font-weight: 500; }
@@ -2598,7 +2657,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   overscroll-behavior: contain;
   font-size: 13px;
   line-height: 1.95;
-  font-variant-numeric: tabular-nums;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
 
@@ -2913,7 +2971,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
-.train-accuracy { color: var(--good-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {
   display: block;
@@ -2966,7 +3024,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 999px;
   transition: background 200ms ease, border-color 200ms ease;
 }
-.stat b { font-size: var(--fs-sm, 13px); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat b { font-size: var(--fs); line-height: 1.2; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
 .stat span { color: var(--label); font-size: var(--fs-xs); }
@@ -3000,7 +3058,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .summary { padding: 0; }
 .sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
-.sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sum-cells b { font-size: 18px; }
 .sum-cells span { color: var(--label); font-size: var(--fs-xs); }
 .delta { display: flex; flex-direction: column; }
 .tsum-row {
@@ -3012,7 +3070,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-s);
 }
 .tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
-.tsum-row .num { font-variant-numeric: tabular-nums; text-align: right; }
+.tsum-row .num { text-align: right; }
 .tsum-row .up { color: var(--good-text); font-weight: 650; }
 .tsum-row .down { color: var(--danger); font-weight: 650; }
 .btn.block { width: 100%; }
@@ -3109,7 +3167,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .queued { color: var(--label); font-size: var(--fs-xs); }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; font-variant-numeric: tabular-nums; }
+.toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 .eyebrow { color: var(--label); font-size: var(--fs-xs); font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
 
 /* ===========================================================================
@@ -3360,7 +3418,7 @@ body.is-guest .replay-results:empty::before {
 .coverage-totals { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .coverage-gap-path { color: var(--muted); font-family: var(--mono); font-size: var(--fs-s); overflow-wrap: anywhere; }
 .coverage-gap-line { display: flex; align-items: center; gap: 10px; }
-.coverage-gap-impact { margin-left: auto; font-variant-numeric: tabular-nums; }
+.coverage-gap-impact { margin-left: auto; }
 .coverage-gap-track { display: block; height: 3px; background: var(--surface-3); }
 .coverage-gap-track i { display: block; height: 100%; background: var(--warn); }
 .coverage-gap-select { display: grid; place-items: center; min-width: 30px; min-height: 44px; cursor: pointer; }
@@ -3539,7 +3597,6 @@ body.is-guest .replay-results:empty::before {
 .explorer-games {
   text-align: right;
   color: var(--text);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Always full width: the split is the reading, the game count beside it is
@@ -3573,7 +3630,6 @@ body.is-guest .replay-results:empty::before {
 .explorer-rows.has-eval .explorer-eval {
   display: block;
   text-align: right;
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--muted);
 }
@@ -3647,7 +3703,6 @@ body.is-guest .replay-results:empty::before {
   color: inherit;
   font: inherit;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
   white-space: nowrap;
   transition: background 110ms ease, color 110ms ease, box-shadow 110ms ease;
@@ -3827,7 +3882,7 @@ body.is-guest .replay-results:empty::before {
 }
 
 .context-menu button:active {
-  background: var(--btn-active);
+  background: var(--surface-3);
   color: var(--text);
 }
 
@@ -4291,7 +4346,7 @@ body.is-guest .replay-results:empty::before {
   overflow-wrap: anywhere;
 }
 .notice-title[hidden] + .notice-text { color: var(--text); font-size: var(--fs); }
-.notice[data-state="running"] .notice-text { font-variant-numeric: tabular-nums; }
+.notice[data-state="running"] .notice-text { }
 
 .notice-track {
   height: 3px;
@@ -4545,7 +4600,6 @@ body.is-guest .replay-results:empty::before {
 .engine-head-eval {
   font-size: 12px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
   color: var(--text);
   background: var(--accent-soft);
   border: 1px solid var(--accent-line);
@@ -4561,7 +4615,6 @@ body.is-guest .replay-results:empty::before {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
   background: var(--panel);
   border: 1px solid var(--line-soft);
   border-radius: 999px;
@@ -4586,7 +4639,6 @@ body.is-guest .replay-results:empty::before {
 }
 
 .engine-lines-readout {
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 11px;
   color: var(--text);
@@ -4686,7 +4738,6 @@ body.is-guest .replay-results:empty::before {
   font-size: 8px;
   letter-spacing: -0.04em;
   color: rgba(255, 255, 255, 0.92);
-  font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   font-weight: 600;
 }
@@ -4698,7 +4749,6 @@ body.is-guest .replay-results:empty::before {
   align-content: start;
   gap: 4px;
   font-size: 13px;
-  font-variant-numeric: tabular-nums;
 }
 
 .engine-pv {

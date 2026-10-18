@@ -99,7 +99,6 @@
   padding: 0 4px;
   color: var(--muted);
   font-size: var(--fs-s);
-  font-variant-numeric: tabular-nums;
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
 .scout-engine-progress[hidden] { display: none; }
@@ -222,7 +221,6 @@
   border-radius: 6px;
   background: var(--panel-soft);
   font-size: var(--fs-s);
-  font-variant-numeric: tabular-nums;
 }
 .fm[data-first-uci] { cursor: pointer; }
 .fm[data-first-uci]:hover { background: var(--surface-3); }
@@ -244,7 +242,6 @@
   border-bottom: 1px solid var(--line);
   background: var(--panel);
   font-size: var(--fs-s);
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 .line-row:last-child { border-bottom: 0; }
@@ -288,7 +285,6 @@
   justify-content: space-between;
   color: var(--muted);
   font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
 }
 .scout-refutation-gap-actions { align-items: center; }
 /* Row bars carry no count labels (tooltip has them): a thin strip, not a slab. */
@@ -372,7 +368,6 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-xs);
-  font-variant-numeric: tabular-nums;
 }
 .scout-bar-label { color: var(--muted); font: 600 11px var(--mono); }
 .scout-bar-track { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
@@ -459,7 +454,7 @@
 }
 .sv span { font: 11px var(--mono); overflow-wrap: anywhere; }
 .sv i { display: block; height: 5px; border-radius: 3px; background: var(--accent); }
-.sv b { text-align: right; font-variant-numeric: tabular-nums; }
+.sv b { text-align: right; }
 .sv.muted { opacity: 0.5; }
 
 /* R-05: per-source outcome bar — a merged report must say which sources it covers. */

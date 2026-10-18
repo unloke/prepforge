@@ -110,7 +110,6 @@
 }
 .strength-readout {
   min-width: 44px;
-  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
