@@ -347,13 +347,13 @@ export function createAnalyzeView({
         const cls = String(node.classification || "unknown");
         const group = CLASS_GROUP_OF[cls.toLowerCase()];
         const glyph = group ? classBadgeSymbol(cls) : "";
+        // "unknown" is the absent-grade sentinel: nothing to show or read out.
+        const grade = group ? CLASS_GROUPS.find((g) => g.key === group).label : "";
         return {
           classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
           suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",
-          title: cls,
-          // Only a real grade reaches the name: "unknown" is the absent-grade
-          // sentinel, not something to read out.
-          label: group ? CLASS_GROUPS.find((g) => g.key === group).label : "",
+          title: grade,
+          label: grade,
         };
       },
     });

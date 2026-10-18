@@ -195,7 +195,7 @@ export function createBuildView({
         if (b.move_side !== appState.build.color) classes.push("is-opp");
         if (b.is_prepared) classes.push("is-prep");
         if (!b.comment) return { classes };
-        return { classes, title: b.comment, label: b.comment, suffix: html`<i class="mtree-note" aria-label="Has comment"></i>` };
+        return { classes, title: b.comment, suffix: html`<i class="mtree-note" aria-label="Has comment"></i>` };
       },
     });
     renderTreeMeta();
