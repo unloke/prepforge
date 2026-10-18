@@ -981,25 +981,20 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
     onSubmit: async (result, close) => {
       const name = (result.name || "").trim() || "New repertoire";
       const color = normalizeRepertoireColor(result.color);
-      // Open an empty repertoire on the tab's own temp id right away, so the
+      // When opening it, show an empty repertoire on the tab's own temp id right away, so the
       // board and tree are there while the request runs. On failure the
       // optimistic tree is dropped and the previous repertoire is restored.
-      const optimistic = optimisticEmptyRepertoire(name, color);
+      const optimistic = openAfter ? optimisticEmptyRepertoire(name, color) : null;
       try {
         const payload = await postJson("/api/repertoires/create", { name, color });
         await hydrateBuild(payload, payload.selected_node_id);
         appState.trainingRepertoireId = payload.repertoire_id;
-        if (openAfter) {
-          switchView("build");
-          close(null);
-        }
+        close(payload);
         setStatus(`Created ${name}`);
         await refreshDashboardRepertoires();
-        return payload;
       } catch (error) {
-        rollbackOptimisticRepertoire(optimistic);
+        if (optimistic) rollbackOptimisticRepertoire(optimistic);
         setStatusError(error.message);
-        return null;
       }
     },
   });

@@ -167,10 +167,11 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     const postJson = vi.fn(create);
     const prompt = compileFunctionRange("async function createRepertoirePrompt(", {
       requireSignIn: () => true,
-      showInputModal: (options) => options.onSubmit(
-        { name: "Najdorf", color: "black" },
-        () => {},
-      ),
+      // Like the real dialog: it resolves with what close() was given; a submit
+      // that never closes leaves it open, which the user then cancels (null).
+      showInputModal: (options) => new Promise((resolve) => {
+        Promise.resolve(options.onSubmit({ name: "Najdorf", color: "black" }, resolve)).then(() => resolve(null));
+      }),
       repertoireColorField: () => ({ name: "color", type: "select", options: ["white", "black"] }),
       normalizeRepertoireColor: (value) => (value === "black" ? "black" : "white"),
       optimisticEmptyRepertoire: undefined, // compiled in from the same range below
@@ -228,6 +229,21 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
       expect.objectContaining({ fen: START_FEN }),
     );
     expect(h.postJson.mock.results).toBeTruthy();
+  });
+
+  it("resolves with the created repertoire, so a first Build move can play onto it", async () => {
+    const payload = { repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] };
+    const h = repHarness(async () => payload);
+    await expect(h.prompt({ title: "Start a new repertoire" })).resolves.toBe(payload);
+    expect(h.views).toEqual(["build"]);
+  });
+
+  it("creates without leaving the current view when not opening it (Scout)", async () => {
+    const payload = { repertoire_id: "rep-2", selected_node_id: "root-2", revision: 1, nodes: [] };
+    const h = repHarness(async () => payload);
+    await expect(h.prompt({ openAfter: false })).resolves.toBe(payload);
+    expect(h.views).toEqual([]);
+    expect(h.rendered).toEqual([]);
   });
 
   it("rolls all the way back when there was no repertoire to restore", async () => {
