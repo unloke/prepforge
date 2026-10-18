@@ -214,6 +214,57 @@ async function runViewport(vp) {
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
+
+  // The seam between the move tree and the inspector drags. Regression guard:
+  // phone.css once set `.sidebar > .panel-body { display: contents }` outside
+  // its media query, so the Build panel body had no box at any width —
+  // `panel.clientHeight` read 0, buildDockMaxHeight() clamped to the minimum
+  // and every drag snapped the dock back down to 150px.
+  // Only checked above the phone breakpoint: the handle is hidden below 760.
+  if (vp.width > 760) {
+    const resizer = page.locator('[data-testid="build-dock-resizer"]');
+    const seam = await resizer.evaluate((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y }));
+    const dockH = () => page.evaluate(() => document.getElementById("build-inspector").getBoundingClientRect().height);
+    const growBy = 120;
+    const startDock = await dockH();
+    const startTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    // Drag in the right half of the seam, well clear of the tree's left gutter.
+    const atX = seam.x + 200;
+    await page.mouse.move(atX, seam.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y - (growBy * i) / 4);
+    await page.waitForTimeout(120);
+    const midDock = await dockH();
+    // Release where the drag ended: moving the pointer back first would let the
+    // drag's own track-back resize the dock before pointerup lands.
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+    const endDock = await dockH();
+    const endLabel = await page.locator("#build-board-label").textContent().catch(() => "");
+    check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
+    check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
+    check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
+    // The tree is the other half of the seam: it must give up what the dock
+    // took, or the dock grew out of the panel instead of out of the tree.
+    const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    check(startTree - endTree > growBy * 0.7 || endTree <= 90, `the move tree should shrink as the dock grows, got ${startTree} → ${endTree}`);
+    const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);
+    check(cursorOnHandle === "row-resize", `the handle should carry a resize cursor, got "${cursorOnHandle}"`);
+
+    // Double-click still folds the dock (it never depended on the panel's box).
+    // The seam moves with the dock height, so re-read it before every click:
+    // a stale y lands inside the panel instead of on the handle.
+    const seamAt = async () => resizer.evaluate((el) => el.getBoundingClientRect());
+    let box = await seamAt();
+    await page.mouse.dblclick(box.x + 200, box.y);
+    await page.waitForTimeout(150);
+    check((await page.locator("#build-inspector.is-folded").count()) === 1, "double-click on the seam should fold the inspector");
+    box = await seamAt();
+    await page.mouse.dblclick(box.x + 200, box.y);
+    await page.waitForTimeout(150);
+    check((await page.locator("#build-inspector.is-folded").count()) === 0, "double-click again should unfold the inspector");
+  }
+
   // Phones switch panes with the segmented control above the tree.
   const tool = (name) => page.locator(vp.width <= 760 ? `#build-panes [data-pane="${name}"]` : `[data-testid="build-tool-${name}"]`);
   await tool("coverage").click();

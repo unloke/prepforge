@@ -2830,12 +2830,17 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .dock-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
 /* Drag handle between the move tree and the inspector: the whole seam is the
-   grab area, the visible grip is a short pill in the middle. */
+   grab area, the visible grip is a short pill in the middle. The element is
+   zero-height, so the cursor and the touch-action live on both it and its
+   ::before hit area — a rule on the pseudo alone leaves `getComputedStyle` and
+   any tooling that hovers the element itself reading `auto`. */
 .dock-resizer {
   position: relative;
   flex: none;
   height: 0;
   z-index: 2;
+  cursor: row-resize;
+  touch-action: none;
 }
 .dock-resizer::before {
   content: "";
