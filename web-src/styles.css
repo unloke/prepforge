@@ -1321,6 +1321,7 @@ h2 {
 .btn.sm.icon {
   width: 26px;
   min-width: 26px;
+  padding: 0;
 }
 
 .btn.block {
