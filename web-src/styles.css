@@ -127,14 +127,10 @@
   --explorer-white-ink: #1b1c1e;
   --explorer-draw-ink: #1b1c1e;
 
-  /* -- Eval meter (Analyze win-chance bar) --------------------------------
-     Two solid faces, not two greys: a near-white side and a near-black side,
-     split by the fill so the size of each half is the reading. The inks are the
-     two sides' own text colours, so the score reads whichever side it sits on. */
+  /* Eval bars: a near-white and a near-black face, never two greys. */
   --eval-side-white: #f4f3ef;
   --eval-side-black: #25282d;
   --eval-ink-dark: #101114;
-  --eval-ink-light: #f4f3ef;
 
   /* -- Type ---------------------------------------------------------------
      13px base / 12px small / 11px extra-small. Tabular figures are set once
@@ -283,9 +279,8 @@
   --explorer-white-ink: #1b1c1e;
   --explorer-draw-ink: #111315;
   --eval-side-white: #e9eaec;
-  --eval-side-black: #45494f;
+  --eval-side-black: #0e0f11;
   --eval-ink-dark: #111315;
-  --eval-ink-light: #ffffff;
 }
 
 /* `hidden` always wins: no view's display rule can resurrect a hidden element. */

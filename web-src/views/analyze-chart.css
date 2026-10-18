@@ -283,14 +283,10 @@
 .eval-now:empty { display: none; }
 /* The previous position's number, held while the engine warms up on this one. */
 .eval-now[data-pending="true"] { opacity: 0.5; }
-/* White's share of the win chance. A solid white face over a solid black track,
-   split down the middle: the bar half-fills at equality, so the size of each
-   half is the reading and the colour only says which side it is. Full width,
-   scaled to the share — scaling never lays the bar out, so a search updating it
-   many times a second stays composited. */
+/* White's share of the win chance, scaled (never laid out) so a search can
+   update it many times a second. */
 .ev-meter {
-  position: relative;
-  height: 14px;
+  height: 12px;
   min-width: 0;
   border: 1px solid var(--line-strong);
   border-radius: 4px;
@@ -305,47 +301,6 @@
   transform: scaleX(0.5);
   background: var(--eval-side-white);
   transition: transform var(--dur-slow) var(--ease-out);
-}
-/* The score sits inside the bar on the leading side, in that side's ink, so the
-   number and the fill never fight each other. Anchored to the leading edge:
-   the fill's scale is set in JS, so the two stay together by construction. The
-   label has a fixed width and its own translate, so a face narrower than the
-   text then pins the label to that edge instead of overflowing it. */
-.ev-meter-score {
-  --w: 0.5;
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  transform: translateY(-50%);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-align: center;
-  white-space: nowrap;
-  pointer-events: none;
-}
-/* A leading White edge: the label is centred inside White's share, whose width
-   the JS writes as --w so the label and the fill never drift apart. */
-.ev-meter[data-side="white"] .ev-meter-score {
-  left: 0;
-  right: auto;
-  margin-left: calc(var(--w) * 50%);
-  transform: translate(-50%, -50%);
-  color: var(--eval-ink-dark);
-}
-.ev-meter[data-side="black"] .ev-meter-score {
-  left: auto;
-  right: 0;
-  margin-right: calc((1 - var(--w)) * 50%);
-  transform: translate(50%, -50%);
-  color: var(--eval-ink-light);
-}
-/* Even: the two faces meet under the middle of the number, so it takes the
-   text colour with a shadow that reads on either side. */
-.ev-meter[data-side="even"] .ev-meter-score {
-  color: var(--text);
-  text-shadow: 0 0 3px var(--panel), 0 0 3px var(--panel), 0 0 3px var(--panel);
 }
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
 /* Search depth as a word plus quiet figures and a hairline of progress. */
@@ -929,15 +884,7 @@
   }
   #analysis-eval-card .ev-title { color: var(--muted); }
   #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
-  /* The bar is fixed-width and full-height, so the move label beside it keeps
-     the rest of the row and the split stays readable at arm's length. */
-  #analysis-eval-card .ev-meter {
-    flex: none;
-    width: 86px;
-    height: 26px;
-    border-radius: 6px;
-  }
-  #analysis-eval-card .ev-meter-score { font-size: 12px; }
+  #analysis-eval-card .ev-meter { flex: none; width: 86px; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
