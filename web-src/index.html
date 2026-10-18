@@ -106,7 +106,7 @@
               </header>
               <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
               <div id="library-refresh-status" role="alert" hidden></div>
-              <div id="dashboard-repertoires" class="lib-rep-list"><div class="empty-state lib-loading" role="status" data-testid="library-loading"><div class="spinner" aria-hidden="true"></div><p>Loading your library…</p></div></div>
+              <div id="dashboard-repertoires" class="lib-rep-list list-enter"><div class="empty-state lib-loading" role="status" data-testid="library-loading"><div class="spinner" aria-hidden="true"></div><p>Loading your library…</p></div></div>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
             <section class="steps card" id="dashboard-steps" aria-label="Next steps" hidden></section>
@@ -595,7 +595,7 @@
               <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
               <input id="teams-search" type="search" aria-label="Find a team" placeholder="Search your teams" autocomplete="off" />
             </label>
-            <div id="teams-list" data-testid="teams-list"></div>
+            <div id="teams-list" class="list-enter" data-testid="teams-list"></div>
           </section>
 
           <section class="card team-detail" id="team-detail-card" data-testid="team-detail-card" hidden>
@@ -638,7 +638,7 @@
 
           <section class="card incoming">
             <header class="card-head"><h2 id="teams-shared-title">Incoming shares</h2></header>
-            <div id="teams-shared" data-testid="teams-shared"></div>
+            <div id="teams-shared" class="list-enter" data-testid="teams-shared"></div>
           </section>
         </div>
       </section>

@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { loadTeamDirectory } from "../team-directory.js";
+import { staggerRows } from "../list-enter.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -479,6 +480,7 @@ export function createDashboardView({
         `;
       })}${sharedRowsHtml(shared)}`;
     applySelectionHighlight();
+    staggerRows(container);
     container.querySelectorAll(".lib-row").forEach((row) => {
       const repId = row.dataset.repertoireId;
       if (row.dataset.shared) {

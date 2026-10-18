@@ -349,6 +349,11 @@ button,
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  /* Press feedback on the row-body controls that are not .btn. */
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.mtree-move:active {
+  transform: scale(0.97);
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
@@ -577,6 +582,10 @@ h2 {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.tabbar-item:active {
+  transform: scale(0.94);
 }
 
 .tabbar-item .ic {
@@ -1578,6 +1587,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-row:hover { background: var(--panel-soft); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
+
+/* ---- One list-entry primitive -----------------------------------------
+   A fresh list fades in item by item. `--i` is the row index; the cap keeps a
+   long list from dragging. Every row is transform/opacity only, so the rows
+   below never move. Callers: dashboard (library), teams, replay summary. */
+.list-enter > * {
+  animation: row-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 25ms);
+}
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
   background: var(--accent-soft);
@@ -1690,6 +1714,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: 14px;
   line-height: 1;
   opacity: 0.7;
+  /* Press feedback: same scale as .btn, on a control that is not a .btn. */
+  transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.row-menu-btn:active {
+  transform: scale(0.97);
 }
 .lib-row:hover .row-menu-btn,
 .lib-row.is-selected .row-menu-btn,
@@ -3257,6 +3286,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-s);
   font-weight: 600;
   cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.sum-chip:active {
+  transform: scale(0.97);
 }
 .sum-chip.t-good { color: var(--good-text); }
 .sum-chip.t-bad { color: var(--danger); }

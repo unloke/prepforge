@@ -584,22 +584,27 @@ export function createAnalyzeView({
     }
     const point = points[idx];
     const x = evalChartXOf(idx, points.length);
-    tooltip.innerHTML = evalChartTooltipHtml(point, {
-      isCurrent: point.ply === appState.analysisPly,
-    });
-    tooltip.hidden = false;
-    // Anchor under the hovered ply: the SVG maps its width onto the wrap box.
     const rect = chart.getBoundingClientRect();
     const px = rect.width > 0 ? (x / EVAL_CHART_W) * rect.width : 0;
-    // Clamp the centred box so its edges stay inside the chart (it used to spill
-    // past the panel's right edge on the last plies).
-    const half = (tooltip.offsetWidth || 0) / 2;
-    const left = rect.width > 2 * half ? Math.max(half, Math.min(px, rect.width - half)) : rect.width / 2;
-    tooltip.style.left = `${left}px`;
+    const markup = evalChartTooltipHtml(point, {
+      isCurrent: point.ply === appState.analysisPly,
+    });
+    // Same markup as the last move: keep the measured width instead of writing
+    // content and then reading its box back on every pointermove.
+    if (tooltip.innerHTML !== markup) {
+      tooltip.innerHTML = markup;
+      // Clamp the centred box so its edges stay inside the chart (it used to
+      // spill past the panel's right edge on the last plies).
+      const half = (tooltip.offsetWidth || 0) / 2;
+      const left = rect.width > 2 * half ? Math.max(half, Math.min(px, rect.width - half)) : rect.width / 2;
+      tooltip.style.left = `${left}px`;
+    }
+    tooltip.hidden = false;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
-      hover.setAttribute("x1", String(x));
-      hover.setAttribute("x2", String(x));
+      // Transform, like the cursor line: the hover marker follows the pointer,
+      // and an x1/x2 change invalidates the chart's layout on every move.
+      hover.style.transform = `translateX(${x}px)`;
       hover.setAttribute("visibility", "visible");
     }
   }

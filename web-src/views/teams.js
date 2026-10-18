@@ -6,6 +6,7 @@ import { html } from "../html.js";
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
+import { staggerRows } from "../list-enter.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 
 export function createTeamsView({
@@ -205,6 +206,7 @@ export function createTeamsView({
           <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
       })}` : html`<div class="empty-state">No teams match your search.</div>`;
+    staggerRows(list);
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);
