@@ -48,6 +48,12 @@
   cursor: pointer;
 }
 .team-row:hover { background: var(--panel-soft); }
+/* Loading: the row's own geometry, bars where the values go. */
+.team-row.is-skeleton:hover { background: none; }
+.team-row.is-skeleton { cursor: default; }
+.team-badge-skeleton { flex: none; width: 46px; height: 15px; border-radius: 10px; }
+.team-btn-skeleton { width: 52px; height: 24px; border-radius: var(--radius); }
+.mem-row.is-skeleton { cursor: default; }
 .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .team-row.is-selected {
   background: var(--accent-soft);

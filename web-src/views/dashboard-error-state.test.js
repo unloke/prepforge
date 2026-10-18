@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { html } from "../html.js";
 
 import { createDashboardView } from "./dashboard.js";
 
@@ -150,20 +151,25 @@ describe("Library error state", () => {
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });
 
-  it("the first-load spinner state (is-loading from index.html) clears on success and on failure", async () => {
+  it("the first-load skeleton state (is-loading from index.html) clears on success and on failure", async () => {
     build(async (url) => {
       if (String(url).startsWith("/api/dashboard")) return DASHBOARD;
       return REPS;
     });
     card.classList.set.add("is-loading");
+    // The skeleton ships in index.html, so a cold start must replace it.
+    container.innerHTML = html`<div class="lib-row is-skeleton"></div>`;
     await view.loadDashboard();
     expect(card.classList.contains("is-loading")).toBe(false);
+    expect(String(container.innerHTML)).not.toContain("is-skeleton");
     build(async () => {
       throw new Error("dashboard 500");
     });
     card.classList.set.add("is-loading");
+    container.innerHTML = html`<div class="lib-row is-skeleton"></div>`;
     await expect(view.loadDashboard()).rejects.toThrow();
     expect(card.classList.contains("is-loading")).toBe(false);
+    expect(String(container.innerHTML)).not.toContain("is-skeleton");
   });
 
   it("a later successful load clears is-error and reports Ready", async () => {

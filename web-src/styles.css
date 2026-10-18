@@ -1603,7 +1603,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-list.is-empty:not(.is-error) .lib-actions,
 .lib-list.is-loading .card-head .seg,
 .lib-list.is-loading .lib-cols { display: none; }
-.lib-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 12px; }
+/* Cold-start skeleton: real .lib-row geometry (grid columns, phone layout,
+   list-enter stagger) with the content replaced by bars. Nothing is clickable
+   and nothing announces content that isn't there yet. */
+.lib-row.is-skeleton { cursor: default; }
+.lib-row.is-skeleton:hover { background: none; }
+.skeleton-dot {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+}
+.skeleton-stack { display: grid; flex: 1; gap: 5px; min-width: 0; }
+.skeleton-bar.skeleton-thin { height: 8px; }
+.skeleton-bar.skeleton-chip { width: 64px; height: 16px; border-radius: 8px; }
 .lib-row {
   min-height: 54px;
   padding-top: 8px;
@@ -3710,22 +3727,28 @@ body.is-guest .replay-results:empty::before {
   font-size: var(--fs-s);
   color: var(--text);
 }
-/* Repertoire loading skeleton (editRepertoire → setBuildLoading). */
-.tree-skeleton {
-  display: grid;
-  gap: 10px;
-  padding: 14px 12px;
-}
-.tree-skeleton span {
+/* One skeleton for every list-shaped load: a pulse bar the width of the thing
+   that is coming (Library rows, team rows, member rows). The real content's own
+   row classes set the shape; only the bar and the pulse are defined here. */
+.skeleton-bar {
   display: block;
   height: 12px;
   border-radius: 4px;
   background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
   background-size: 200% 100%;
-  animation: tree-skeleton-pulse 1.2s var(--ease-out) infinite;
+  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
 }
-.skeleton-text { color: var(--muted); font-style: italic; }
-@keyframes tree-skeleton-pulse {
+/* A placeholder for a headline-sized element (a repertoire name, a team name):
+   the same bar, taller, with its own row. */
+.skeleton-line {
+  height: 16px;
+}
+.skeleton-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 12px;
+}
+@keyframes skeleton-pulse {
   0% { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }

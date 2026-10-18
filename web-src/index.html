@@ -113,7 +113,7 @@
               </header>
               <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
               <div id="library-refresh-status" role="alert" hidden></div>
-              <div id="dashboard-repertoires" class="lib-rep-list list-enter"><div class="empty-state lib-loading" role="status" data-testid="library-loading"><div class="spinner" aria-hidden="true"></div><p>Loading your library…</p></div></div>
+              <div id="dashboard-repertoires" class="lib-rep-list list-enter" role="status" aria-label="Loading your library"><div class="lib-row is-skeleton" aria-hidden="true"><span class="lib-cell-rep"><span class="skeleton-dot"></span><span class="skeleton-stack"><span class="skeleton-bar" style="width:58%"></span><span class="skeleton-bar skeleton-thin" style="width:34%"></span></span></span><span class="lib-cell-mastery"><span class="skeleton-bar" style="width:82%"></span></span><span class="lib-cell-queue"><span class="skeleton-bar skeleton-chip"></span><span class="skeleton-bar skeleton-chip" style="width:52%"></span></span></div><div class="lib-row is-skeleton" aria-hidden="true"><span class="lib-cell-rep"><span class="skeleton-dot"></span><span class="skeleton-stack"><span class="skeleton-bar" style="width:44%"></span><span class="skeleton-bar skeleton-thin" style="width:28%"></span></span></span><span class="lib-cell-mastery"><span class="skeleton-bar" style="width:60%"></span></span><span class="lib-cell-queue"><span class="skeleton-bar skeleton-chip"></span></span></div><div class="lib-row is-skeleton" aria-hidden="true"><span class="lib-cell-rep"><span class="skeleton-dot"></span><span class="skeleton-stack"><span class="skeleton-bar" style="width:66%"></span><span class="skeleton-bar skeleton-thin" style="width:40%"></span></span></span><span class="lib-cell-mastery"><span class="skeleton-bar" style="width:74%"></span></span><span class="lib-cell-queue"><span class="skeleton-bar skeleton-chip" style="width:64%"></span></span></div><div class="lib-row is-skeleton" aria-hidden="true"><span class="lib-cell-rep"><span class="skeleton-dot"></span><span class="skeleton-stack"><span class="skeleton-bar" style="width:36%"></span><span class="skeleton-bar skeleton-thin" style="width:22%"></span></span></span><span class="lib-cell-mastery"><span class="skeleton-bar" style="width:52%"></span></span><span class="lib-cell-queue"><span class="skeleton-bar skeleton-chip" style="width:46%"></span></span></div></div>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
             <section class="steps card" id="dashboard-steps" aria-label="Next steps" hidden></section>
@@ -664,9 +664,7 @@
           <div class="settings-content">
             <section class="card set" id="set-account" data-testid="settings-account">
               <h2>Account</h2>
-              <div id="settings-account-body" data-testid="settings-account-body">
-                <p class="muted small">Loading account…</p>
-              </div>
+              <div id="settings-account-body" data-testid="settings-account-body" role="status" aria-label="Loading account"><div class="acct-id"><span class="skeleton-dot acct-skeleton-avatar"></span><span class="acct-id-text"><span class="skeleton-bar skeleton-line" style="width:42%"></span><span class="skeleton-bar skeleton-thin" style="width:26%"></span><span class="acct-id-meta"><span class="skeleton-bar acct-skeleton-tag"></span><span class="skeleton-bar acct-skeleton-pill"></span></span></span></div></div>
               <!-- Chess accounts sit with the account: each linked Lichess
                    identity IS you ("Self") in Games and Scout. -->
               <div class="acct-block" id="set-connections" data-testid="settings-connections">

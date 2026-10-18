@@ -217,7 +217,8 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
     expect(edit.indexOf("setBuildLoading(true)")).toBeLessThan(edit.indexOf("await api("));
     const loading = extractByMarker("function setBuildLoading(on, { restore = true } = {}) {");
     expect(loading).toContain('switchView("build", { fromUrl: true })');
-    expect(loading).toContain("tree-skeleton");
+    expect(loading).toContain("skeleton-row");
+    expect(loading).toContain("skeleton-bar");
   });
 });
 

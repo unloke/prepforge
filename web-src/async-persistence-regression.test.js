@@ -8,6 +8,7 @@ import { classifySyncError } from "./sync-errors.js";
 import { rebaseBuildOps } from "./build-revision.js";
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
 const source = appSource();
 function compile(marker, deps, prelude = "", code = source) {
   deps = { html, ...deps };
@@ -89,7 +90,7 @@ it("team detail B stays visible after slow A responds", async () => {
   const deps = { appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
-    renderTeamSharedRepertoires: vi.fn() };
+    renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton };
   const open = compile("async function openTeamDetail(", deps, "let teamDetailSeq = 0");
   const a = open("A"), b = open("B");
   second.resolve({ name: "B", role: "member", members: [] }); await b;

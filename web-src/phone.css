@@ -166,6 +166,14 @@
     box-shadow: none;
   }
   #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); }
+  /* The skeleton row is the phone row's flex shape without the ⋯ button. */
+  #view-dashboard .lib-row.is-skeleton .lib-opt,
+  #view-dashboard .lib-row.is-skeleton { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
+  #view-dashboard .lib-row.is-skeleton .skeleton-dot { flex: none; width: 26px; height: 26px; margin-top: 0; }
+  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 6px; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-mastery { display: none; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-queue { gap: 6px; padding-left: 38px; }
   #view-dashboard .lib-row .lib-opt { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
   #view-dashboard .lib-row .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
   #view-dashboard .lib-row .color-dot { flex: none; width: 26px; height: 26px; }

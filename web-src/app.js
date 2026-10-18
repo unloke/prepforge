@@ -116,6 +116,7 @@ import {
   resolveFetchUsernames,
   sameFetchSources,
 } from "./views/shared/source-composer.js";
+import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
 let _coachReady = null;
 function loadTrainResume() {
   return import("./train-resume.js");
@@ -2902,18 +2903,18 @@ async function openTeamDetail(teamId) {
     if (button) { button.hidden = true; button.onclick = null; }
   }
   const name = document.getElementById("team-detail-name");
-  if (name) name.innerHTML = html`<span class="skeleton-text">Loading…</span>`;
+  if (name) name.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%;vertical-align:middle"></span>`;
   const role = document.getElementById("team-detail-role");
   if (role) role.textContent = "";
   const shares = document.getElementById("team-shared-repertoires");
-  if (shares) shares.innerHTML = "";
+  if (shares) shares.innerHTML = sharedRepRowsSkeleton(2);
   teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
   teamsView?.renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
   card.hidden = false;
-  membersEl.innerHTML = html`<div class="empty-state">Loading…</div>`;
+  membersEl.innerHTML = memberRowsSkeleton(3);
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
@@ -3289,6 +3290,9 @@ async function loadSharedRepertoires() {
   const isCurrent = () => seq === sharedRepertoiresSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const container = document.getElementById("teams-shared");
   if (!container) return;
+  // The pane had no in-flight state at all; show the same skeleton the team
+  // detail uses while /api/repertoires is out.
+  container.innerHTML = sharedRepRowsSkeleton(2);
   try {
     const payload = await api("/api/repertoires");
     if (!isCurrent()) return;
@@ -3708,7 +3712,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = true;
   const nameEl = document.getElementById("build-rep-name");
-  if (nameEl) nameEl.innerHTML = html`<span class="skeleton-text">Loading repertoire…</span>`;
+  if (nameEl) nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
   const stats = document.getElementById("build-rep-stats");
   if (stats) stats.hidden = true;
   const meta = document.getElementById("build-tree-meta");
@@ -3716,7 +3720,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   const tree = document.getElementById("builder-tree");
   if (tree) {
     tree.innerHTML =
-      html`<div class="tree-skeleton" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span style="width:${w}%"></span>`)}</div>`;
+      html`<div class="skeleton-row" role="status" aria-label="Loading repertoire">${[72, 56, 84, 48, 64, 40].map((w) => html`<span class="skeleton-bar" style="width:${w}%"></span>`)}</div>`;
   }
 }
 

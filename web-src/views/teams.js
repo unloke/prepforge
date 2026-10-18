@@ -8,6 +8,7 @@ import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
+import { teamRowsSkeleton } from "./team-skeleton.js";
 
 export function createTeamsView({
   appState,
@@ -91,7 +92,7 @@ export function createTeamsView({
       if (searchField) searchField.hidden = true;
       const newTeam = document.getElementById("teams-new");
       if (newTeam) newTeam.hidden = true;
-      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      list.innerHTML = teamRowsSkeleton(3);
       return;
     }
     // A guest gets one Sign in, in the main card; the list and the shares card
@@ -105,7 +106,7 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
-    list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+    list.innerHTML = teamRowsSkeleton(3);
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
@@ -197,7 +198,7 @@ export function createTeamsView({
     // Same rule as loadTeams(): until the session is known the collection is not
     // "empty", it is unread.
     if (!appState.authKnown) {
-      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      list.innerHTML = teamRowsSkeleton(3);
       return;
     }
     // hideTeamDetail() re-renders the list; keep the guest's sign-in line.

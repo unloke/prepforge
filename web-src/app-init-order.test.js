@@ -115,14 +115,16 @@ describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
   it("holds a loading state, not the guest state, while the session is unread", async () => {
     const { view, byId } = teamsHarness({ signedIn: false, authKnown: false, teams: [] });
     await view.loadTeams();
-    expect(String(byId("teams-list").innerHTML)).toContain("Loading");
-    expect(String(byId("teams-list").innerHTML)).not.toContain("Loading\u2026\u2026");
+    // The skeleton carries no text and no guest copy: aria-hidden bars only.
+    expect(String(byId("teams-list").innerHTML)).toContain("is-skeleton");
+    expect(String(byId("teams-list").innerHTML)).toContain('aria-hidden="true"');
+    expect(String(byId("teams-list").innerHTML)).not.toContain("No teams");
     // The guest copy is never painted, so the sign-in button is never revealed by
     // this path either.
     expect(byId("team-empty-title").textContent).toBe("");
     // A list re-render (hideTeamDetail) must not fall through to "No teams yet".
     view.renderTeamsList();
-    expect(String(byId("teams-list").innerHTML)).toContain("Loading");
+    expect(String(byId("teams-list").innerHTML)).toContain("is-skeleton");
     expect(String(byId("teams-list").innerHTML)).not.toContain("No teams yet");
     expect(byId("team-empty-title").textContent).toBe("");
   });
