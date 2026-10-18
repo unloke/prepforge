@@ -129,11 +129,11 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.hp:hover { border-color: var(--line-strong, var(--muted)); }
+.hp:hover { border-color: var(--line-strong); }
 .hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .hp-pct { color: var(--muted); }
 .hp.is-played { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.hp.is-best b::before { content: "✓ "; color: var(--good-text, var(--good)); }
+.hp.is-best b::before { content: "✓ "; color: var(--good-text); }
 .coach-bookline {
   padding-top: 8px;
   border-top: 1px dashed var(--line);
@@ -151,7 +151,7 @@
   border: 1px solid var(--accent);
   border-radius: 10px;
   background: none;
-  color: var(--accent-text, var(--accent-strong));
+  color: var(--accent-text);
   font: inherit;
   font-size: var(--fs-xs);
   font-weight: 650;
@@ -361,7 +361,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--line-strong, var(--line));
+  background: var(--line-strong);
 }
 .ev-engine:hover { color: var(--text); }
 .ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -685,7 +685,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid var(--warn-border, var(--line));
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
   border-radius: 8px;
   background: var(--panel-soft);
 }

@@ -162,16 +162,14 @@
 
   font-family: var(--font);
   font-size: var(--fs);
+  /* Numbers that change or line up read as columns: evals, move numbers,
+     clocks, counts, percentages, stats tables. Set once here instead of per
+     component so a new numeric surface inherits it. */
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
-/* Numbers that change or line up read as columns: evals, move numbers, clocks,
    counts, percentages, stats tables. Set once here instead of per component so
    a new numeric surface inherits it. */
-body {
-}
-
-
 /* The dark palette keeps the warm amber identity but lifts text and borders
    independently instead of inverting the light theme. This preserves contrast
    for boards, data labels, and status colors in low-light study sessions. */
@@ -2236,7 +2234,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   box-shadow:
     0 0 0 1.5px rgba(255, 255, 255, 0.92),
     0 1px 3px rgba(0, 0, 0, 0.38);
-  animation: badgeIn 180ms cubic-bezier(0.2, 0.9, 0.3, 1.25);
+  animation: badgeIn var(--dur-fast) var(--ease-emphasis);
 }
 
 .square-badge.class-brilliant { --badge: var(--brilliant); }
@@ -2294,7 +2292,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .square.move-pulse {
-  animation: squarePulse 480ms ease-out;
+  animation: squarePulse var(--dur-slow) var(--ease-out);
 }
 
 /* Flip animation */
@@ -2305,7 +2303,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .chessboard.is-flipping {
-  animation: boardFlip 400ms ease;
+  animation: boardFlip var(--dur-slow) var(--ease-emphasis);
 }
 
 /* Coach header review switch: compact shared primitive, not a native checkbox. */
@@ -2968,8 +2966,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Idle has nothing to signal; a ▶ in a circle read as a play button. */
 #train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
 #train-banner[data-state="idle"] .train-coach-icon { display: none; }
-#train-banner.flash { animation: trainFlash 420ms ease; }
-#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms ease; }
+#train-banner.flash { animation: trainFlash var(--dur-slow) var(--ease-out); }
+#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms var(--ease-out); }
 @keyframes trainFlash {
   0% { transform: scale(0.99); }
   40% { transform: scale(1.012); }
@@ -3129,7 +3127,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
 .stat span { color: var(--label); font-size: var(--fs-xs); }
-.stat.pop { animation: streakPop 360ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
+.stat.pop { animation: streakPop var(--dur) var(--ease-emphasis); }
 .stat.milestone { border-color: var(--good); background: var(--good-soft); }
 .stat.milestone b { color: var(--good-text); }
 .stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
@@ -3640,9 +3638,9 @@ body.is-guest .replay-results:empty::before {
   gap: 8px;
   margin: 4px 10px;
   padding: 6px 8px 6px 10px;
-  border: 1px solid var(--line-strong, var(--line));
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
-  background: var(--panel-soft, var(--panel));
+  background: var(--panel-soft);
   font-size: var(--fs-s);
   color: var(--text);
 }
@@ -3658,7 +3656,7 @@ body.is-guest .replay-results:empty::before {
   border-radius: 4px;
   background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
   background-size: 200% 100%;
-  animation: tree-skeleton-pulse 1.2s ease-in-out infinite;
+  animation: tree-skeleton-pulse 1.2s var(--ease-out) infinite;
 }
 .skeleton-text { color: var(--muted); font-style: italic; }
 @keyframes tree-skeleton-pulse {
@@ -4460,7 +4458,7 @@ body.is-guest .replay-results:empty::before {
 }
 .notice.is-visible { opacity: 1; transform: none; }
 .notice.is-leaving { opacity: 0; transform: translateX(18px); }
-.notice.is-bump { animation: notice-bump 260ms ease; }
+.notice.is-bump { animation: notice-bump var(--dur) var(--ease-out); }
 @keyframes notice-bump { 40% { transform: scale(1.02); } }
 
 .notice-icon {
@@ -4476,7 +4474,7 @@ body.is-guest .replay-results:empty::before {
   background: none;
   border: 2px solid color-mix(in srgb, var(--tone) 25%, transparent);
   border-top-color: var(--tone);
-  animation: notice-spin 0.9s linear infinite;
+  animation: notice-spin 900ms linear infinite;
 }
 @keyframes notice-spin { to { transform: rotate(360deg); } }
 
@@ -4503,7 +4501,7 @@ body.is-guest .replay-results:empty::before {
   background: var(--tone);
   transition: width var(--dur-slow) var(--ease-out);
 }
-.notice-fill.is-indeterminate { width: 30%; animation: notice-scan 1.4s ease-in-out infinite; }
+.notice-fill.is-indeterminate { width: 30%; animation: notice-scan 1.4s var(--ease-out) infinite; }
 @keyframes notice-scan { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 .notice[data-state="cancelled"] .notice-fill,
 .notice.is-cancelling .notice-fill { background: var(--muted); }

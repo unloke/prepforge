@@ -562,7 +562,7 @@
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
     overflow-y: auto;
     overscroll-behavior: contain;
-    animation: phone-sheet-up 200ms ease-out;
+    animation: phone-sheet-up var(--dur) var(--ease-out);
   }
   .phone-sheet.is-open::before {
     content: "";
@@ -783,7 +783,7 @@
     border: 0;
     border-radius: 16px;
     box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
-    animation: phone-sheet-up 180ms ease-out;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
   .context-menu button {
     min-height: 44px;

@@ -389,7 +389,7 @@
   border-left: 1.5px dashed var(--text);
   opacity: 0.6;
 }
-.scout-chart-title { margin: 4px 0 2px; color: var(--label, var(--muted)); font-size: var(--fs-xs, 11px); font-weight: 600; }
+.scout-chart-title { margin: 4px 0 2px; color: var(--label); font-size: var(--fs-xs); font-weight: 600; }
 /* Mini chart with labelled axes: y range on the left, x span underneath. */
 .scout-axis-chart {
   display: grid;
@@ -483,7 +483,7 @@
   white-space: nowrap;
 }
 .scout-source-warnings .source-chip.is-ok { border-color: var(--good); color: var(--good-text); background: var(--good-soft); }
-.scout-source-warnings .source-chip.is-failed { border-color: var(--danger); color: var(--danger); background: var(--danger-soft, var(--warn-soft)); }
+.scout-source-warnings .source-chip.is-failed { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 .scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
 .scout-source-warnings .btn { margin-left: auto; }
 
@@ -523,6 +523,6 @@
   to { opacity: 1; transform: none; }
 }
 .scout-weakness-row.is-entering {
-  animation: scout-row-enter 260ms ease-out both;
+  animation: scout-row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--enter-index, 0), 11) * 35ms);
 }
