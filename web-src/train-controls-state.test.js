@@ -24,9 +24,15 @@ const CONTROLS = body("function syncTrainSessionControls()");
 function runTrainControls(appState) {
   const lucky = { disabled: false, title: "" };
   const start = { disabled: false, title: "" };
+  const summary = { hidden: appState.__summaryHidden !== false };
+  const modeTabs = ["smart", "all_lines", "play"].map((mode) => {
+    const tab = { disabled: false, title: "", dataset: { mode }, setAttribute: (k, v) => { tab[k] = v; } };
+    return tab;
+  });
   const doc = {
-    getElementById: (id) => (id === "feeling-lucky" ? lucky : id === "start-train" ? start : null),
+    getElementById: (id) => (id === "feeling-lucky" ? lucky : id === "start-train" ? start : id === "train-summary" ? summary : null),
     querySelector: () => null,
+    querySelectorAll: (sel) => (sel === "#train-modes .train-mode" ? modeTabs : []),
   };
   const deps = {
     appState, document: doc, syncViewHeads: vi.fn(), blitzEnabled: () => false,
@@ -40,7 +46,7 @@ function runTrainControls(appState) {
   const controls = build(trainStartBlockReason, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
   controls.syncTrainSessionControls();
   controls.paintTrainStartDisabled();
-  return { lucky, start };
+  return { lucky, start, modeTabs };
 }
 
 describe("syncTrainSessionControls", () => {
@@ -66,6 +72,36 @@ describe("syncTrainSessionControls", () => {
     });
     expect(lucky.disabled).toBe(false);
     expect(lucky.title).toBe("Jump to a key position instead of move 1");
+  });
+
+  it("disables the mode tabs on the result screen and names the way back", () => {
+    const { modeTabs } = runTrainControls({
+      trainMode: "smart",
+      signedIn: true,
+      repertoireList: [],
+      pendingRepDeletes: new Set(),
+      smart: { prompt: {}, cardsDone: 4, queue: [], cardIndex: 4, cardKinds: {} },
+      training: null,
+      nextSession: { cards: 4, resumed: 0 },
+      __summaryHidden: false,
+    });
+    expect(modeTabs.every((t) => t.disabled)).toBe(true);
+    expect(modeTabs.every((t) => t["aria-disabled"] === "true")).toBe(true);
+    expect(modeTabs[0].title).toBe("New session starts another queue — use New session");
+  });
+
+  it("keeps the mode tabs live while a session runs", () => {
+    const { modeTabs } = runTrainControls({
+      trainMode: "smart",
+      signedIn: true,
+      repertoireList: [],
+      pendingRepDeletes: new Set(),
+      smart: { prompt: { card_index: 0 }, queue: [], cardIndex: 0, cardKinds: {} },
+      training: null,
+      nextSession: { cards: 4, resumed: 0 },
+    });
+    expect(modeTabs.every((t) => !t.disabled)).toBe(true);
+    expect(modeTabs[2].title).toBe("Play a game from the opening against Lichess database moves or Maia");
   });
 });
 

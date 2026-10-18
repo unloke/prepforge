@@ -444,6 +444,17 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
+  // The result screen is a report on a finished session. Switching mode here would
+  // throw the finished session away without the player asking, the way Lucky would
+  // mid-game; "New session" is the deliberate way to start again.
+  const modeTabs = document.querySelectorAll("#train-modes .train-mode");
+  const summaryLive = !play && summaryVisible;
+  modeTabs.forEach((btn) => {
+    btn.disabled = summaryLive;
+    btn.setAttribute("aria-disabled", String(summaryLive));
+    const playTip = btn.dataset.mode === "play" ? "Play a game from the opening against Lichess database moves or Maia" : "";
+    btn.title = summaryLive ? "New session starts another queue — use New session" : playTip;
+  });
   syncViewHeads();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;

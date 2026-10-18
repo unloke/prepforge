@@ -18,8 +18,8 @@ const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; cha
 const CARDS = [
   { kind: "due", repertoire_name: "Caro-Kann: Advance", color: "black", targets: [{ node_id: "t1", uci: "c7c6", san: "c6", fen_before: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
   { kind: "weak", repertoire_name: "London System", color: "white", targets: [{ node_id: "t2", uci: "g1f3", san: "Nf3", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
-  { kind: "new", repertoire_name: "Najdorf prep", color: "black", targets: [{ node_id: "t3", uci: "e7e6", san: "e6", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
-  { kind: "polish", repertoire_name: "Ruy Lopez", color: "white", targets: [{ node_id: "t4", uci: "f1b5", san: "Bb5", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
+  { kind: "new", repertoire_name: "Najdorf prep", color: "black", targets: [{ node_id: "t3", uci: "e7e6", san: "e6", fen_before: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
+  { kind: "polish", repertoire_name: "Ruy Lopez", color: "white", targets: [{ node_id: "t4", uci: "f1b5", san: "Bb5", fen_before: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
 ];
 
 const api = (path) => {
@@ -161,6 +161,54 @@ async function runViewport(vp) {
   await page.waitForTimeout(1500);
 
   await shot("active");
+
+  // Result screen: the finished session is a report, so the mode tabs go dead —
+  // "New session" is the deliberate way to start another queue. Reach it by
+  // playing the whole 4-card fixture queue, one card at a time.
+  for (const [from, to] of [["c7", "c6"], ["g1", "f3"], ["e7", "e6"], ["f1", "b5"]]) {
+    for (const sq of [from, to]) {
+      await page.evaluate((name) => {
+        document.querySelector(`#train-board .square[data-square="${name}"]`).click();
+      }, sq);
+      await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(2600);
+  }
+  const summaryUp = await page.locator("#train-summary:not([hidden])").count();
+  check(summaryUp === 1, "finishing the last card should show the session results");
+  await shot("summary");
+  for (const mode of ["smart", "all_lines", "play"]) {
+    const tab = page.locator(`#train-modes .train-mode[data-mode="${mode}"]`);
+    check(await tab.isDisabled(), `${mode} tab should be disabled on the result screen`);
+    check(/New session/.test((await tab.getAttribute("title")) || ""), `${mode} tab should point at New session`);
+  }
+  await page.evaluate(() => document.getElementById("train-summary-new").click());
+  await page.waitForTimeout(400);
+  check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isEnabled(), "New session should re-enable the mode tabs");
+  check(await page.locator("#train-summary").evaluate((el) => el.hidden), "New session should clear the result screen");
+
+  // Start a fresh session for the rest of the checks.
+  await page.route("**/api/train/smart/start", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      session_id: "s1", mode: "smart", mixed: true, fresh: true, resumed: false,
+      repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
+      card_index: 0, total_cards: 4,
+      requeue_gap: 3,
+      card_kinds: [
+        { key: "weak", label: "Weak spot", title: "Missed more than answered" },
+        { key: "due", label: "Due review", title: "Spaced repetition says now" },
+        { key: "new", label: "New move", title: "Shown once, then tested" },
+        { key: "polish", label: "Polish", title: "Kept warm with an occasional rep" },
+      ],
+      counts: { weak: 1, due: 1, new: 1, polish: 1 },
+      health: { trainable: 4, mastered: 0, weak: 1, due: 1, learning: 0, untrained: 2, mastery_pct: 0 },
+      cards: CARDS,
+    }),
+  }));
+  await page.evaluate(() => document.getElementById("start-train").click());
+  await page.waitForTimeout(1500);
 
   // Progress panel visible with real card counter.
   const panelHidden = await page.locator("#train-progress-panel").evaluate((el) => el.hidden);
