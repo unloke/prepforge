@@ -3444,17 +3444,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.replay-results:empty::before {
-  content: "Choose your games and run a check to see your preparation review here.";
-  padding: 48px 24px;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-}
-body.is-guest .replay-results:empty::before {
-  content: "Sign in to check your games against your repertoires.";
-}
-
 @media (max-width: 1279px) {
   .scout-grid { grid-template-columns: minmax(0, 1fr) 300px; }
 }

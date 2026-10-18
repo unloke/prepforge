@@ -5358,6 +5358,10 @@ async function runLichessCompare() {
   const button = document.getElementById("lichess-compare-btn");
   button.disabled = true;
   setStatus("Fetching games from Lichess");
+  // Paint the ledger's own rows as bars while the fetch runs, so the panel
+  // shows what it will fill instead of the flat pre-check text.
+  const skeletonHost = document.getElementById("replay-results");
+  void renderLedgerSkeleton(skeletonHost);
   try {
     const payload = await postJson("/api/lichess/compare", {
       count,
@@ -5496,6 +5500,19 @@ function paintGamesSource() {
     tray.innerHTML =
       html`<span class="src-empty">No sources — open Add and pick one</span>`;
     return;
+  }
+  // The idle card names the next step for where the user actually is. While the
+  // session is unread it says nothing: a guest/signed-in distinction is a guess.
+  // It only shows before a check — a rendered result replaces the whole host.
+  const hint = document.getElementById("games-idle-hint");
+  if (hint) {
+    hint.textContent = !appState.authKnown
+      ? ""
+      : !appState.signedIn
+        ? "Sign in to check your games against your repertoires."
+        : lichessAccounts().length || selection.external.length
+          ? "Pick a sample size, then run a check."
+          : "Connect a Lichess account, then run a check.";
   }
 }
 
@@ -5719,6 +5736,12 @@ async function ensureReplayView() {
 async function renderReplayResults(payload, isCurrent = () => true) {
   const view = await ensureReplayView();
   if (isCurrent()) return view.renderReplayResults(payload);
+}
+
+async function renderLedgerSkeleton(host) {
+  if (!host) return;
+  const view = await ensureReplayView();
+  host.innerHTML = view.renderLedgerSkeleton();
 }
 
 // F-06: the Games→Train/Analyze handoff record — source game, the decision
