@@ -478,16 +478,9 @@
   stroke: var(--accent);
   stroke-width: 2;
 }
-.eval-chart .eval-cursor,
-.eval-chart .eval-cursor-dot {
-  transition:
-    transform var(--dur) var(--ease-emphasis),
-    opacity var(--dur-fast) var(--ease-out);
-}
 .eval-chart .eval-hover {
   stroke: var(--text);
   stroke-opacity: 0.35;
-  transition: transform var(--dur-fast) var(--ease-out);
 }
 .eval-chart.is-entering .eval-line,
 .eval-chart.is-entering .eval-area {

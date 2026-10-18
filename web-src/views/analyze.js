@@ -532,14 +532,14 @@ export function createAnalyzeView({
     // While a run is in progress the stored points are the previous game's (the
     // CSS hides that graph too), so they are not this position's eval.
     const running = !!document.querySelector('#analysis-eval-card .notice[data-state="running"]');
-    // The marker moves by transform, not by rewriting x1/x2: changing an SVG
-    // geometry attribute invalidates layout for the whole chart every ply step,
-    // while a transform is composited. cx/cy on the ring are parked off-chart
-    // and the same translate carries it.
     const x = hidden ? -10 : evalChartXOf(idx, points.length);
     const y = hidden || !points[idx] ? -10 : evalChartYOf(pointWinPct(points[idx]));
-    marker.style.transform = `translateX(${x}px)`;
-    if (dot) dot.style.transform = `translate(${x}px, ${y}px)`;
+    marker.setAttribute("x1", String(x));
+    marker.setAttribute("x2", String(x));
+    if (dot) {
+      dot.setAttribute("cx", String(x));
+      dot.setAttribute("cy", String(y));
+    }
     // The chart overflows its frame (edge plies' markers overhang), so a parked
     // line at x=-10 would show beside it: the start position has no point.
     marker.setAttribute("visibility", hidden ? "hidden" : "visible");
@@ -593,6 +593,8 @@ export function createAnalyzeView({
     // content and then reading its box back on every pointermove.
     if (tooltip.innerHTML !== markup) {
       tooltip.innerHTML = markup;
+      // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
+      tooltip.hidden = false;
       // Clamp the centred box so its edges stay inside the chart (it used to
       // spill past the panel's right edge on the last plies).
       const half = (tooltip.offsetWidth || 0) / 2;
@@ -602,9 +604,8 @@ export function createAnalyzeView({
     tooltip.hidden = false;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
-      // Transform, like the cursor line: the hover marker follows the pointer,
-      // and an x1/x2 change invalidates the chart's layout on every move.
-      hover.style.transform = `translateX(${x}px)`;
+      hover.setAttribute("x1", String(x));
+      hover.setAttribute("x2", String(x));
       hover.setAttribute("visibility", "visible");
     }
   }
