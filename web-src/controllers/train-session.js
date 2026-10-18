@@ -301,11 +301,6 @@ function syncTrainPickerVisibility() {
   if (srs) srs.hidden = play;
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
-  const setupTitle = document.getElementById("train-setup-title");
-  if (setupTitle) {
-    setupTitle.hidden = play;
-    setupTitle.textContent = smart ? "Smart queue" : "Line rehearsal";
-  }
   if (play) {
     if (progress) progress.hidden = true;
     if (summary) summary.hidden = true;
