@@ -299,7 +299,7 @@ body {
   color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;
-  transition: top 120ms ease;
+  transition: top var(--dur-fast) var(--ease-out);
 }
 
 .skip-link:focus-visible {
@@ -409,7 +409,7 @@ h2 {
   padding: 10px 8px 12px;
   gap: 8px;
   overflow: hidden auto;
-  transition: width 0.14s ease, box-shadow 0.14s ease;
+  transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
 .rail:not(.is-nav-collapsed):hover,
@@ -464,7 +464,7 @@ h2 {
 
 .nav-group-label span {
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 /* Collapsed: labels fade out and group headings become divider lines. */
@@ -475,7 +475,7 @@ h2 {
   right: 10px;
   top: 50%;
   border-top: 1px solid var(--line);
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .nav-group:first-of-type .nav-group-label::after {
@@ -485,7 +485,7 @@ h2 {
 .brand-name,
 .nav-label {
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span),
@@ -998,7 +998,7 @@ h2 {
   flex-shrink: 0;
   cursor: pointer;
   padding: 0;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 .pf-switch:hover {
@@ -1041,7 +1041,7 @@ h2 {
   border-radius: 50%;
   background: var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 160ms ease, background 160ms ease;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
 .pf-switch.is-on .pf-knob {
@@ -1167,32 +1167,63 @@ h2 {
 .view.is-active {
   display: block;
   height: 100%;
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+
+/* A view switch is a cross-fade plus a few px of travel, never a layout
+   change: opacity and transform only. */
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .muted {
   color: var(--muted);
 }
 
-/* Buttons */
+/* ---- Buttons: one system ----------------------------------------------
+   `.btn` is the whole vocabulary. Variants: primary (the one accent),
+   secondary (the default surface fill), ghost (no fill until hover), danger
+   (destructive, with a quiet ghost form), icon (square, icon only). Sizes: md
+   (default) and sm. Hover, press, focus-visible, disabled and loading are
+   defined once here; every button in the app is `.btn` plus at most one
+   variant class and one size class. */
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: var(--control-h);
+  min-height: var(--control-h);
   padding: 0 14px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
   font-weight: 600;
-  transition: background-color 0.12s ease, border-color 0.12s ease;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 
-.btn:hover {
+.btn:hover:not(:disabled, .is-coming-soon) {
   border-color: var(--line-strong);
   background: var(--surface-3);
 }
 
-.btn:active {
-  background: var(--surface-3);
+.btn:active:not(:disabled, .is-coming-soon) {
+  transform: scale(0.97);
 }
 
 .btn.primary {
@@ -1201,24 +1232,36 @@ h2 {
   color: var(--accent-ink);
 }
 
-.btn.primary:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  filter: brightness(1.07);
+.btn.primary:hover:not(:disabled, .is-coming-soon) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .btn.danger {
   background: var(--danger);
-  border-color: var(--danger-strong);
+  border-color: var(--danger);
   color: var(--on-accent);
 }
 
-.btn.danger:hover {
+.btn.danger:hover:not(:disabled, .is-coming-soon) {
   background: var(--danger-strong);
   border-color: var(--danger-strong);
 }
 
-/* Prototype ghost: no fill, no border — a quiet text action. */
+/* Quiet destructive action: no fill until hover, then a danger tint. */
+.btn.danger.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--danger);
+}
+
+.btn.danger.ghost:hover:not(:disabled, .is-coming-soon) {
+  background: var(--danger-soft);
+  border-color: transparent;
+  color: var(--danger-strong);
+}
+
+/* Ghost: no fill or border until hover — a quiet text action. */
 .btn.ghost {
   background: transparent;
   border-color: transparent;
@@ -1226,32 +1269,83 @@ h2 {
   color: var(--muted);
 }
 
-.btn.ghost:hover {
+.btn.ghost:hover:not(:disabled, .is-coming-soon) {
   background: var(--surface-3);
   color: var(--text);
 }
 
+/* Icon-only: square, centred, no label. */
+.btn.icon {
+  width: var(--control-h);
+  min-width: var(--control-h);
+  padding: 0;
+  justify-content: center;
+}
+
+.btn.sm {
+  height: 26px;
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: var(--fs-s);
+}
+
+.btn.sm.icon {
+  width: 26px;
+  min-width: 26px;
+}
+
+.btn.block {
+  width: 100%;
+}
+
 .btn:disabled,
-.ib:disabled {
+.btn.is-coming-soon {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
 /* Compute actions whose engine is unavailable in this browser: clearly inert
    rather than looking like a live button that errors on click. Covers the
-   primary `.btn` (Analyze, Build → Generate moves) and icon buttons. */
-.btn.is-coming-soon,
-.ib.is-coming-soon {
+   primary `.btn` (Analyze, Build — Generate moves) and icon buttons. */
+.btn.is-coming-soon {
   background: var(--surface-3);
   border-color: var(--line-strong);
   color: var(--label);
-  cursor: not-allowed;
 }
 
-.btn.is-coming-soon:hover,
-.ib.is-coming-soon:hover {
+.btn.is-coming-soon:hover {
   background: var(--surface-3);
   border-color: var(--line-strong);
+}
+
+/* Loading: the label hides behind a busy dot; the width never changes. */
+.btn.is-loading {
+  color: transparent;
+  pointer-events: none;
+  position: relative;
+}
+
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  animation: btn-spin 600ms linear infinite;
+}
+
+.btn.primary.is-loading::after,
+.btn.danger.is-loading::after {
+  border-color: var(--accent-ink);
+  border-top-color: transparent;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .link {
@@ -1552,7 +1646,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  transition: width 0.4s ease;
+  transition: width var(--dur-slow) var(--ease-out);
 }
 .lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
 .lib-mbar i.is-mastered { background: var(--k-mastered); box-shadow: 1px 0 0 var(--surface-3); }
@@ -1587,8 +1681,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
   justify-self: end;
-  width: 24px;
-  height: 24px;
+  width: var(--control-h);
+  min-width: var(--control-h);
+  height: var(--control-h);
   padding: 0;
   border: 0;
   border-radius: var(--radius);
@@ -1602,6 +1697,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row.is-selected .row-menu-btn,
 .row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
 .row-menu-btn:hover { background: var(--surface-3); }
+.row-menu-btn:active { transform: scale(0.97); }
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 .empty-state.big {
   display: flex;
@@ -1660,12 +1756,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .steps .card-head h2 { margin-right: auto; }
 .setup-dismiss { align-self: center; min-width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
-/* The later generic .ib rule re-adds a border (a heavy boxed × on mobile, where
-   .ib grows to a 44px tap target). Keep the target, drop the box. */
-.ib.setup-dismiss:not(:hover) { border-color: transparent; background: none; }
-.ib.setup-dismiss { border-color: transparent; }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
-.setup-bar i { display: block; height: 100%; background: var(--good); transition: width 0.3s ease; }
+.setup-bar i { display: block; height: 100%; background: var(--good); transition: width var(--dur-slow) var(--ease-out); }
 .step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
 .step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
@@ -1885,7 +1977,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .annot-arrow {
   stroke: none;
   filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
-  transition: opacity 120ms ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .annot-user {
@@ -2274,7 +2366,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .train-repertoire-chevron {
   flex: none;
   color: var(--muted);
-  transition: transform 160ms ease;
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 .train-repertoire-menu[open] .train-repertoire-chevron { transform: rotate(180deg); }
 .train-repertoire-popover {
@@ -2401,39 +2493,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 2px;
 }
 
-/* Bar icons: line icons; their word labels show only in the phone toolbar. */
+/* Bar icons: line icons; their word labels show only in the phone toolbar.
+   Icon-only buttons carry the `icon` variant class on `.btn`, so there is one
+   button system rather than two. */
 .bi { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.ib .bl,
-.rep-menu-btn .bl,
 .panel-head .btn > .bi { display: none; }
-.ib:has(> .bi) { display: inline-flex; align-items: center; justify-content: center; }
 
 /* Board-bar icons are plain glyphs (no boxed buttons). */
-.board-bar .ib {
+.board-bar .btn.icon {
   border-color: transparent;
   background: transparent;
+  color: var(--muted);
 }
 
-.board-bar .ib:hover {
+.board-bar .btn.icon:hover {
   background: var(--surface-3);
-}
-
-.ib {
-  height: var(--control-h);
-  min-width: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--panel);
   color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
 }
 
-.ib:hover {
-  background: var(--surface-3);
-  border-color: var(--line-strong);
-}
 
 .sep {
   width: 1px;
@@ -2496,7 +2573,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border: 1px solid transparent;
   background: var(--surface-3);
   white-space: nowrap;
-  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .build-sync.is-saved {
   color: var(--good-text);
@@ -2715,7 +2792,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 2px;
   background: var(--line-strong);
   opacity: 0;
-  transition: opacity 120ms ease;
+  transition: opacity var(--dur-fast) var(--ease-out);
   pointer-events: none;
 }
 .dock-resizer:hover::after,
@@ -2731,7 +2808,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   line-height: 1;
 }
 .dock-tabs .dock-fold:hover { color: var(--text); }
-.dock-fold span { display: inline-block; transition: transform 140ms ease; }
+.dock-fold span { display: inline-block; transition: transform var(--dur-fast) var(--ease-out); }
 .dock.is-folded { flex: none !important; }
 .dock.is-folded > .dock-body { display: none; }
 .dock.is-folded .dock-tabs { border-bottom: 0; }
@@ -2993,7 +3070,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .card-dots i.cur { background: var(--accent); }
 .card-dots span { margin-left: 6px; }
 .prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
-.prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width 320ms ease; }
+.prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-slow) var(--ease-out); }
 .qstrip { display: flex; flex-direction: column; gap: 6px; }
 .qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
 .qbar i { display: block; min-width: 4px; }
@@ -3019,7 +3096,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 3px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  transition: background 200ms ease, border-color 200ms ease;
+  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
 }
 .stat b { font-size: var(--fs); line-height: 1.2; }
 .stat b.good { color: var(--good-text); }
@@ -3338,7 +3415,7 @@ body.is-guest .replay-results:empty::before {
   color: var(--accent-text);
 }
 
-.ib.danger {
+.btn.icon.danger {
   color: var(--danger);
 }
 
@@ -3572,7 +3649,7 @@ body.is-guest .replay-results:empty::before {
   /* Dim only if the next position's stats take a moment: a cached answer lands
      before the delay, so stepping through a line doesn't flash. Leaving the
      stale state uses the row's own (no) transition, so fresh rows are instant. */
-  transition: opacity 120ms ease 180ms;
+  transition: opacity var(--dur-fast) var(--ease-out) 180ms;
 }
 
 .explorer-rows.is-stale .explorer-row:hover {
@@ -3702,7 +3779,7 @@ body.is-guest .replay-results:empty::before {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 110ms ease, color 110ms ease, box-shadow 110ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .mtree-line.is-main > .mtree-move {
@@ -4237,7 +4314,7 @@ body.is-guest .replay-results:empty::before {
     height: 52px;
   }
 
-  #view-train .board-bar .ib {
+  #view-train .board-bar .btn.icon {
     width: 44px;
     min-width: 44px;
     height: 44px;
@@ -4263,8 +4340,9 @@ body.is-guest .replay-results:empty::before {
   .btn {
     min-height: 44px;
   }
-  .ib {
+  .btn.icon {
     min-height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -4303,7 +4381,7 @@ body.is-guest .replay-results:empty::before {
   pointer-events: auto;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
   touch-action: pan-y;
 }
 .notice[data-tone="success"] { --tone: var(--good); }
@@ -4342,7 +4420,6 @@ body.is-guest .replay-results:empty::before {
   overflow-wrap: anywhere;
 }
 .notice-title[hidden] + .notice-text { color: var(--text); font-size: var(--fs); }
-.notice[data-state="running"] .notice-text { }
 
 .notice-track {
   height: 3px;
@@ -4356,7 +4433,7 @@ body.is-guest .replay-results:empty::before {
   height: 100%;
   border-radius: inherit;
   background: var(--tone);
-  transition: width 300ms ease;
+  transition: width var(--dur-slow) var(--ease-out);
 }
 .notice-fill.is-indeterminate { width: 30%; animation: notice-scan 1.4s ease-in-out infinite; }
 @keyframes notice-scan { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
@@ -4464,7 +4541,7 @@ body.is-guest .replay-results:empty::before {
   overflow: hidden;
   opacity: 0;
   transform: translateY(-6px) scale(0.96);
-  transition: opacity 200ms ease, transform 200ms ease;
+  transition: opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
 }
 
 /* Docked in the Repertoire inspector's Engine tab: in flow, no chrome. */
@@ -4656,7 +4733,7 @@ body.is-guest .replay-results:empty::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 120ms ease, background 120ms ease;
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
 .engine-step:hover {
@@ -4684,7 +4761,7 @@ body.is-guest .replay-results:empty::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .engine-window-close:hover {
@@ -4713,7 +4790,7 @@ body.is-guest .replay-results:empty::before {
   inset: auto 0 0 0;
   height: 50%;
   background: #f4f1e8;
-  transition: height 220ms ease;
+  transition: height var(--dur) var(--ease-out);
 }
 
 .engine-bar-text.is-white-side {
@@ -4757,7 +4834,7 @@ body.is-guest .replay-results:empty::before {
   border-radius: 7px;
   background: var(--panel-soft);
   border: 1px solid var(--line-soft);
-  transition: border-color 160ms ease, background 160ms ease;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
   min-width: 0;
   overflow: hidden;
 }
@@ -4832,6 +4909,10 @@ body.is-guest .replay-results:empty::before {
 /* Respect the OS "reduce motion" setting: keep meaningful state changes but
    drop looping/decorative animation (confetti, pulses, board flip, toast
    slide) and collapse transitions to near-instant. */
+/* Respect the OS "reduce motion" setting: no travel, only a quick fade.
+   Transforms that carry meaning (the press scale, the sheet rising, a card
+   entering) are removed; colour and opacity changes still land so state stays
+   legible. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -4844,6 +4925,13 @@ body.is-guest .replay-results:empty::before {
 
   .confetti-layer {
     display: none !important;
+  }
+
+  .btn:active,
+  .btn.icon:active,
+  .row-menu-btn:active,
+  .sheet-row:active {
+    transform: none;
   }
 }
 

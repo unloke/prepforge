@@ -75,7 +75,7 @@
   font-size: 13.5px;
   line-height: 1.5;
   color: var(--text);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-fast) var(--ease-out);
 }
 .coach-prose.is-good { border-left-color: var(--good); }
 .coach-prose.is-warn { border-left-color: var(--warn); }
@@ -174,7 +174,7 @@
   gap: 14px;
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 380ms ease, transform 380ms ease;
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
 }
 .res-stack[hidden] {
   display: none;
@@ -289,7 +289,7 @@
   height: 100%;
   border-radius: inherit;
   background: #ecebe6;
-  transition: width 0.3s ease;
+  transition: width var(--dur-slow) var(--ease-out);
 }
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
 /* Search depth as quiet figures with a hairline of progress under them. */
@@ -588,7 +588,7 @@
   line-height: 16px;
   text-align: center;
   cursor: pointer;
-  transition: filter 0.12s ease;
+  transition: filter var(--dur-fast) var(--ease-out);
 }
 .cbar-seg:hover {
   filter: brightness(1.08);

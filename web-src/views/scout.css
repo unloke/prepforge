@@ -164,7 +164,7 @@
 .scout-section-score { font-size: var(--fs-s); }
 .cov { display: flex; align-items: center; gap: 8px; min-width: 190px; color: var(--muted); font-size: var(--fs-s); }
 .scout-coverage-bar { flex: 1; min-width: 40px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.scout-coverage-fill { height: 100%; border-radius: 3px; transition: width 0.35s ease; }
+.scout-coverage-fill { height: 100%; border-radius: 3px; transition: width var(--dur-slow) var(--ease-out); }
 .scout-coverage-fill.good { background: var(--good); }
 .scout-coverage-fill.warn { background: var(--warn); }
 .scout-coverage-fill.bad { background: var(--danger); }

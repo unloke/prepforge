@@ -396,7 +396,7 @@
   :is(#analysis-start, #analysis-end, #build-root, #build-end) { display: none !important; }
 
   /* Icon buttons: the label stays in title / aria-label. */
-  .study .board-bar .ib,
+  .study .board-bar .btn.icon,
   .phone-back,
   #build-menu {
     display: flex;
@@ -442,10 +442,10 @@
   .study .board-bar :is(#analysis-next, #build-next)::before { transform: translateX(-2px) rotate(-135deg); }
 
   /* Touch screens keep :hover after a tap; show the press instead. */
-  .study .board-bar .ib:hover,
+  .study .board-bar .btn.icon:hover,
   :is(.phone-back, #build-menu):hover { filter: none; background: none; }
   .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):hover { background: var(--surface-3); }
-  .study .board-bar .ib:active,
+  .study .board-bar .btn.icon:active,
   :is(.phone-back, #build-menu):active { background: var(--surface-3); }
   .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):active { background: var(--line-strong); }
 
@@ -479,7 +479,7 @@
   @media (max-width: 359px) {
     #view-build .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
-    #view-analyze .board-bar .ib { width: 40px; }
+    #view-analyze .board-bar .btn.icon { width: 40px; }
     .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
     :is(#run-analysis, #build-generate-node) {
       right: 106px;
@@ -538,12 +538,12 @@
     box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.3);
     transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
     visibility: hidden;
-    transition: transform 180ms ease, visibility 0s linear 180ms;
+    transition: transform var(--dur) var(--ease-out), visibility 0s linear var(--dur);
   }
   body.phone-nav-open:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
     transform: none;
     visibility: visible;
-    transition: transform 180ms ease;
+    transition: transform var(--dur) var(--ease-out);
   }
   /* ---- Bottom sheet (Analyze's report) ----------------------------------- */
   .phone-sheet.is-open {

@@ -223,7 +223,7 @@ export function createDashboardView({
       return;
     }
     card.innerHTML =
-      html`<header class="card-head"><h2>Get started</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="ib setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide Get started" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
+      html`<header class="card-head"><h2>Get started</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon" setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide Get started" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
         .map((step, i) => {
           const mark = step.done
             ? html`<span class="step-n is-done" aria-hidden="true">✓</span>`

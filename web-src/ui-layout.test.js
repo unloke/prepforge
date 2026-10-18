@@ -169,7 +169,11 @@ describe("workspace chrome layout", () => {
     // Same database, new position: the old rows stay (dimmed) instead of a
     // one-line "Loading…" that collapses the panel on every move.
     expect(app).toMatch(/const keepRows = rows\.dataset\.db === db/);
-    expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(/transition:\s*opacity\s+\d+ms\s+\w+\s+\d+ms/);
+    // The dim is delayed so a cached answer never flashes, and the delay
+    // comes from a token rather than a bare number.
+    expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(
+      /transition:\s*opacity\s+var\(--dur[^)]*\)\s+var\(--[^)]*\)\s+\d+ms/,
+    );
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
@@ -670,9 +674,9 @@ describe("workspace chrome layout", () => {
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
     expect(mobile).toMatch(/\.account-btn,\s*\.icon-btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
-    expect(mobile).toMatch(/\.ib\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.btn\.icon\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);
-    expect(mobile).toMatch(/#view-train \.board-bar \.ib\s*\{[^}]*min-width:\s*44px/s);
+    expect(mobile).toMatch(/#view-train \.board-bar \.btn\.icon\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);
   });
 });

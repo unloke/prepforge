@@ -2860,11 +2860,11 @@ async function openTeamDetail(teamId) {
             (r) =>
               html`<option value="${r}"${m.role === r ? " selected" : ""}>${teamRoleLabel(r)}</option>`
           );
-        const removeBtn = html`<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member"`}>${isMe ? "Leave" : "×"}</button>`;
+        const removeBtn = html`<button type="button" class="btn icon" team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member"`}>${isMe ? "Leave" : "×"}</button>`;
         tail = html`<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
       } else {
         const leaveBtn = isMe
-          ? html`<button type="button" class="ib team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
+          ? html`<button type="button" class="btn icon" team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="1">Leave</button>`
           : "";
         tail = html`<span class="team-role-badge r-${m.role}">${teamRoleLabel(m.role)}</span>${leaveBtn}`;
       }
