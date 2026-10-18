@@ -14,6 +14,7 @@ const SMALL = { p: 1, n: 3, b: 3, r: 5, q: 9 };
 const HORIZON = 10;  // plies of the engine line a reason may come from or quote
 const WINDOW = 6;  // plies after an exchange in which a taking back still belongs to it
 const MIN_PLIES = 4;
+const QUOTED_MATE = 5;  // the longest mate (moves) whose line is quoted (sol's A/B: a mate in 17 written out lost)
 const CAP = { bishop_pair: 150, queen_chased: 400 };  // the largest loss (centipawns) these quiet facts may explain
 const color = (white) => (white ? "White" : "Black");
 const range = (a, b) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => a + i);
@@ -179,7 +180,8 @@ function phrase(f, ln, ext, a, root, row) {
   const sq = [...(f.at || [])], c = f.side === "white";
   if (t === "mate") {
     const n = played ? Math.floor(k / 2) : Math.floor((k + 1) / 2);
-    return [`${played ? "allows mate in" : "mates in"} ${NUMBER[n] || n}: ${ln.seq(a, k)}`, k];
+    const line = n <= QUOTED_MATE ? `: ${ln.seq(a, k)}` : `, starting with ${ln.seq(a, a)}`;  // a longer one: its first move
+    return [`${played ? "allows mate in" : "mates in"} ${NUMBER[n] || n}${line}`, k];
   }
   if (t === "material") {
     const what = pieces(f.won) + (f.lost.length ? ` for ${pieces(f.lost)}` : "");
