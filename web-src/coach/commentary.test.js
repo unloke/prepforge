@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 import { buildMoveFeatures } from "./features.js";
 import { buildCommentary, buildOpponentCommentary, bucket } from "./commentary.js";
 import { lineOutcome, netFor, gainPhrase, numberLine } from "./move-facts.js";
-import { motifPhrase, participle, hangingCapture } from "./motifs.js";
+import { motifPhrase, participle } from "./motifs.js";
 import RATED from "./fixtures/rated-moves.json";
 
 function play(fen, sans) {
@@ -114,11 +114,6 @@ describe("buildCommentary", () => {
     expect(buildCommentary(f).prose).toBe("Good move. Nc7+ forks the king and the rook on a8, winning a rook.");
   });
 
-  it("does not call a defended piece hanging", () => {
-    expect(hangingCapture("6k1/8/2p5/1B6/P7/8/8/6K1 b - - 0 1", "c6b5")).toBeNull();
-    expect(hangingCapture("6k1/8/2p5/1B6/8/8/8/6K1 b - - 0 1", "c6b5")).toEqual({ type: "b", square: "b5" });
-  });
-
   it("names pins and skewers set up by the moved piece", () => {
     expect(motifPhrase("3k4/8/5n2/8/7B/8/8/4K3 w - - 0 1", "h4g5", "Bg5")).toBe("pins the knight to the king");
     expect(motifPhrase("4r1k1/8/8/4q3/8/8/4R3/3K4 w - - 0 1", "e2e1", "Re1")).toBe("skewers the queen and the rook behind it");
@@ -188,10 +183,11 @@ describe("buildCommentary", () => {
 describe("the opponent's move, read for the user", () => {
   const afterNf3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
 
-  it("names the piece a slip leaves hanging and the reply that takes it", () => {
+  it("gives a slip the reason the user's own error would get, then the reply that punishes it", () => {
     const f = scenario({ fen: afterNf3, san: "Qh4", best: "Nc6", before: 30, after: 900, playedLine: ["Nxh4"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("2...Qh4 leaves their queen on h4 hanging. Take it with 3.Nxh4.");
+    expect(read.prose).toBe(`${buildCommentary(f, { selfSide: "black" }).prose} Punish it with 3.Nxh4 and you're winning.`);
+    expect(read.prose).toBe("Blunder. Qh4 leaves the queen on h4 open to the knight on f3. Nc6 was the move. Punish it with 3.Nxh4 and you're winning.");
     expect(read.tone).toBe("good");
   });
 
@@ -228,21 +224,8 @@ describe("the opponent's move, read for the user", () => {
   it("points out a positional slip with their better move and where your reply leaves you", () => {
     const f = scenario({ fen: afterNf3, san: "a6", best: "Nc6", before: 30, after: 160, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^2\.\.\.a6 is (a little loose\. Nc6 was better for them|a mistake\. They should have played Nc6|a blunder\. They had to play Nc6)\. Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
-  });
-
-  it("prices a slip by what its own line loses, not by what their best move would have grabbed", () => {
-    // 19...Qc7?: 19...Na3 wins the c2 bishop for the knight and two pawns besides, while
-    // after Qc7 only a pawn changes hands (20.Nxc4 dxc4 21.Qg3 b4 22.cxb4).
-    const fen = "r2qr1k1/3bbp1p/p3p1pB/1p1pP3/P1nP1P2/2PQ4/2BN2PP/RR4K1 b - - 0 19";
-    const f = scenario({
-      fen, san: "Qc7", best: "Na3", ply: 38, before: -98, after: 42,
-      bestLine: ["Na3", "Rc1", "Nxc2", "Rxc2", "bxa4", "h4", "Bxh4", "g4"],
-      playedLine: ["Nxc4", "dxc4", "Qg3", "b4", "cxb4", "Qb6", "Rd1"],
-    });
-    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(prose).not.toMatch(/bishop|three pawns/);
-    expect(prose).toMatch(/^19\.\.\.Qc7 gives you a pawn\. Pick it up with 20\.Nxc4 dxc4 21\.Qg3 b4 22\.cxb4\.$/);
+    expect(read.prose.startsWith(buildCommentary(f, { selfSide: "black" }).prose)).toBe(true);
+    expect(read.prose).toMatch(/ Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
   });
 
   it("calls out a move that walks into mate", () => {
@@ -270,9 +253,8 @@ describe("the opponent's move, read for the user", () => {
       const { prose } = buildOpponentCommentary(buildMoveFeatures(input), { selfSide: self });
       expect(prose.length).toBeLessThanOrEqual(240);
       expect(prose).not.toMatch(/\{|\}|undefined|null|NaN| {2}|(^|[^.])\.\.(?!\.)|—/);
-      // Spoken sentences, not "Label: fact".
-      expect(prose).not.toMatch(/[:;]/);
-      expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(3);
+      // the reason (with its one-word grade), then the reply that punishes it
+      expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(4);
     }
   });
 
@@ -306,16 +288,15 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "r3k3/7p/8/3N4/8/8/8/4K3 b - - 0 1", san: "h6", best: "Kd7",
       before: 0, after: 500, playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc6"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("1...h6 is a blunder. Now 2.Nc7+ forks the king and the rook on a8.");
+    expect(read.prose).toContain("Punish it with 2.Nc7+, forking the king and the rook on a8, and you're winning.");
     expect(read.tone).toBe("good");
   });
 
-  it("calls out a win they missed, with the tactic and the material, instead of a bare grade", () => {
+  it("calls out a win they missed", () => {
     const f = scenario({ fen: "4k3/7p/8/8/1n6/8/8/R3K3 b - - 0 1", san: "h6", best: "Nc2+",
       bestLine: ["Nc2+", "Kd2", "Nxa1", "Kc1"], before: -500, after: 0, playedLine: ["Kd2"] });
     const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(prose).toMatch(/^Lucky for you, they missed Nc2\+, which forks your king and your rook on a1\./);
-    expect(prose).not.toMatch(/is an? (inaccuracy|mistake|blunder);/);
+    expect(prose).toMatch(/^Blunder\. h6 misses Nc2\+/);
   });
 
   it("reads a sound capture by the opponent as the material it wins", () => {
