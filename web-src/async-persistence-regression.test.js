@@ -188,6 +188,72 @@ function buildFlushHarness() {
   return { op, appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
 
+it("deleting a saved analysis hides the row and only calls the server after the undo window", async () => {
+  const appState = { pendingAnalysisDeletes: new Set() };
+  const statuses = [];
+  const removed = [];
+  const row = { remove: vi.fn(), closest: () => row };
+  const button = { dataset: { historyDelete: "g1", historyLabel: "me_user vs opp_one" }, closest: () => row };
+  const deps = {
+    appState, html,
+    showUndoToast: vi.fn(),
+    setStatus: (message, options) => statuses.push([message, options]),
+    loadAnalysisHistory: vi.fn(),
+    api: vi.fn((path, options) => {
+      removed.push([path, options.method]);
+      return Promise.resolve({ deleted: true });
+    }),
+  };
+  const del = compile("function deleteSavedAnalysis(", deps);
+
+  // No host element: the row still leaves and the empty hint is skipped safely.
+  globalThis.document = { getElementById: () => null };
+  del(button);
+  expect(appState.pendingAnalysisDeletes.has("g1")).toBe(true);
+  expect(row.remove).toHaveBeenCalled();
+  expect(deps.api).not.toHaveBeenCalled(); // the window is still open
+  expect(deps.loadAnalysisHistory).not.toHaveBeenCalled();
+
+  // Undo restores the list from the server without ever deleting.
+  deps.showUndoToast.mock.calls[0][0].onUndo();
+  expect(appState.pendingAnalysisDeletes.has("g1")).toBe(false);
+  expect(deps.loadAnalysisHistory).toHaveBeenCalled();
+  expect(deps.api).not.toHaveBeenCalled();
+
+  // Committing the window deletes, and clears the pending marker on success.
+  deps.showUndoToast.mock.calls[0][0].onCommit();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(removed).toEqual([["/api/analyses/g1", "DELETE"]]);
+  expect(appState.pendingAnalysisDeletes.has("g1")).toBe(false);
+
+  delete globalThis.document;
+});
+
+it("a failed analysis delete restores the row and says why", async () => {
+  const appState = { pendingAnalysisDeletes: new Set() };
+  const statuses = [];
+  const row = { remove: vi.fn(), closest: () => row };
+  const button = { dataset: { historyDelete: "g9", historyLabel: "a vs b" }, closest: () => row };
+  const deps = {
+    appState, html,
+    showUndoToast: vi.fn(),
+    setStatus: (message, options) => statuses.push([message, options]),
+    loadAnalysisHistory: vi.fn(),
+    api: vi.fn(() => Promise.reject(new Error("Request failed (500)"))),
+  };
+  globalThis.document = { getElementById: () => null };
+  compile("function deleteSavedAnalysis(", deps)(button);
+  deps.showUndoToast.mock.calls[0][0].onCommit();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(statuses[0][0]).toContain("Request failed (500)");
+  expect(statuses[0][1]).toEqual({ severity: "error" });
+  expect(deps.loadAnalysisHistory).toHaveBeenCalled();
+  delete globalThis.document;
+});
+
 // Production 2026-10-14: one edit made elsewhere moved the server revision, and
 // every queued edit kept its stale base, so each flush (and each reload) hit
 // 409 again while new edits piled onto the queue. A conflict now loads the

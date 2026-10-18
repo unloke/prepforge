@@ -748,21 +748,49 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  width: 100%;
   padding: 6px 4px;
   border: 0;
   border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.history-item .hi-open {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
   background: none;
   color: inherit;
+  font: inherit;
   font-size: var(--fs-s);
   text-align: left;
   cursor: pointer;
+}
+/* The delete affordance is hidden until the row is hovered or focused, so the
+   list stays a list of games and not a list of games with a bin each. */
+.history-item .hi-delete {
+  flex: none;
+  opacity: 0;
+  color: var(--label);
+}
+.history-item:hover .hi-delete,
+.history-item:focus-within .hi-delete {
+  opacity: 1;
+}
+.history-item .hi-delete:hover {
+  color: var(--danger);
 }
 .history-item:last-child {
   border-bottom: 0;
 }
 .history-item:hover {
   background: var(--panel-soft);
+}
+.history-item:hover .hi-open {
+  color: var(--accent-text);
 }
 .hi-players {
   min-width: 0;
@@ -924,6 +952,14 @@
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
   #analyze-open .history-item .hi-meta { font-size: 13px; }
+  /* Touch target, and always visible: a phone has no hover to reveal it. */
+  #analyze-open .history-item .hi-delete {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    opacity: 1;
+  }
 
   /* No game yet: the sources fill the screen under the board. */
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open {

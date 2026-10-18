@@ -506,6 +506,8 @@ const appState = {
   buildUndoCommitByMove: new Map(),
   // Repertoire ids hidden from lists while their delete-undo window is open.
   pendingRepDeletes: new Set(),
+  // Game ids hidden from the Analyze history while their delete-undo window is open.
+  pendingAnalysisDeletes: new Set(),
   trainingRepertoireId: null,
   // Practice game keeps its own multi-select independent of the
   // line-rehearsal picker. `null` means the list has not been hydrated yet;
@@ -2661,14 +2663,17 @@ async function loadAnalysisHistory() {
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
       host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<button class="history-item" data-game-id="${a.game_id}"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button>`
+        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${a.white || "?"} vs ${a.black || "?"}" title="Delete this analysis" aria-label="Delete analysis of ${a.white || "?"} vs ${a.black || "?"}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;
-      host.querySelectorAll(".history-item").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          if (isCurrent()) recallAnalysis(btn.dataset.gameId, rows.get(btn.dataset.gameId));
+      host.querySelectorAll(".hi-open").forEach((open) => {
+        open.addEventListener("click", () => {
+          if (isCurrent()) recallAnalysis(open.closest(".history-item").dataset.gameId, rows.get(open.closest(".history-item").dataset.gameId));
         });
+      });
+      host.querySelectorAll("[data-history-delete]").forEach((del) => {
+        del.addEventListener("click", () => deleteSavedAnalysis(del));
       });
       host.querySelector("[data-history-more]")?.addEventListener("click", loadPage);
     } catch (error) {
@@ -2683,6 +2688,43 @@ async function loadAnalysisHistory() {
     }
   }
   await loadPage();
+}
+
+// Delete one saved analysis, with an undo window: the row disappears at once and
+// the DELETE only fires once the window closes, so a misclick costs one notice
+// rather than a lost analysis.
+function deleteSavedAnalysis(delButton) {
+  const gameId = delButton.dataset.historyDelete;
+  const label = delButton.dataset.historyLabel || "this game";
+  if (!gameId || appState.pendingAnalysisDeletes.has(gameId)) return;
+  appState.pendingAnalysisDeletes.add(gameId);
+  const restore = () => {
+    appState.pendingAnalysisDeletes.delete(gameId);
+    void loadAnalysisHistory();
+  };
+  showUndoToast({
+    title: "Analysis deleted",
+    message: `"${label}" will be removed from your history.`,
+    onUndo: () => {
+      setStatus("Delete undone");
+      restore();
+    },
+    onCommit: () => {
+      api(`/api/analyses/${encodeURIComponent(gameId)}`, { method: "DELETE" })
+        .then(() => appState.pendingAnalysisDeletes.delete(gameId))
+        .catch((error) => {
+          setStatus(`Delete failed — ${error.message}`, { severity: "error" });
+          restore();
+        });
+    },
+  });
+  // Optimistic paint: the row goes now, the server hears about it when the
+  // undo window closes.
+  delButton.closest(".history-item")?.remove();
+  const host = document.getElementById("analysis-history");
+  if (host && !host.querySelector(".history-item")) {
+    host.innerHTML = html`<div class="muted hint">No saved analyses yet.</div>`;
+  }
 }
 
 // All Analyze sources share an order: a recall, paste or new review must not

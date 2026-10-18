@@ -640,6 +640,24 @@ class GameRepository(EvaluationRepository):
                 t.games.c.owner_user_id == owner_user_id,
             )) is not None
 
+    def delete_analysis_results(self, game_id: str, owner_user_id: Optional[str] = None) -> int:
+      """Drop every saved analysis snapshot for one game. Analyses are owned
+      transitively through their game, so scoping joins on ``games.owner_user_id``
+      exactly like the reads do: a foreign game matches nothing and reports 0.
+      The game row itself stays (the PGN is the user's, the analysis is ours)."""
+      stmt = delete(t.analysis_results).where(
+          t.analysis_results.c.game_id == game_id
+      )
+      if owner_user_id is not None:
+          stmt = stmt.where(
+              t.analysis_results.c.game_id.in_(
+                  select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
+              )
+          )
+      with self.engine.begin() as conn:
+          result = conn.execute(stmt)
+      return int(result.rowcount or 0)
+
     @staticmethod
     def _analysis_from_row(row) -> AnalysisResult:
         quality = _json_load(row["quality_json"], None)
