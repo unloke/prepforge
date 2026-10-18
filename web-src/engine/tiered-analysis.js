@@ -1,10 +1,11 @@
 // Two-tier whole-game analysis. Every position is searched SCREEN_DEPTH_DROP below the
 // analysis depth (Settings → Stockfish depth); then the positions whose grade could hinge on
-// the full depth are searched again at it. At the default depth 16 a trained model picks them
-// (deepening-router.js). At other depths, where the model was not trained, both positions of
-// any move whose win-chance loss at the screen depth is at least DEEP_LOSS_FLAG points, or
-// that shows a mate, are deepened (research/analyze-speed/RESULTS.md, arm tiered1).
-import { ROUTER_DEPTH, routerFlags } from "./deepening-router.js";
+// the full depth are searched again at it. At the default depth 16 trained models pick them and
+// send some to depth 20 instead, under a wider node cap (deepening-router.js). At other
+// depths, where the models were not trained, both positions of any move whose win-chance loss
+// at the screen depth is at least DEEP_LOSS_FLAG points, or that shows a mate, are deepened
+// (research/analyze-speed/RESULTS.md, arm tiered1).
+import { ROUTER_DEEP_MAX_NODES, ROUTER_DEPTH, routerDepths } from "./deepening-router.js";
 
 export const SCREEN_DEPTH_DROP = 4;
 export const SCREEN_MIN_DEPTH = 8;
@@ -66,17 +67,25 @@ export async function analyzeTiered({ analyze, positions, moves, depth, onResult
     analyze({ positions, depth: screenDepth, shouldCancel, onProgress: progress("screen"), onResult: result }),
     routed ? import("./deepening-router-model.json").then((m) => m.default) : null,
   ]);
-  const flagged = routed ? routerFlags(model, moves, screened) : deepFlags(moves, screened);
-  // A read the store already had at full depth (reused in the screen pass) needs no second search.
-  const deep = positions.filter((fen) => flagged.has(fen) && !((screened.get(fen)?.depth ?? 0) >= depth));
+  const target = routed
+    ? routerDepths(model, moves, screened)
+    : new Map([...deepFlags(moves, screened)].map((fen) => [fen, depth]));
+  // A read the store already had at the target depth (reused in the screen pass) needs no second search.
+  const deep = positions.filter((fen) => target.has(fen) && !((screened.get(fen)?.depth ?? 0) >= target.get(fen)));
   const pending = new Set(deep);
   for (const [fen, ev] of screened) if (!pending.has(fen)) final(fen, ev);
   const evals = new Map(screened);
-  if (deep.length) {
+  // Deepest wave first, so the long searches don't trail at the end; progress counts both waves.
+  const waves = [...new Set(deep.map((fen) => target.get(fen)))].sort((a, b) => b - a);
+  let done = 0;
+  for (const d of waves) {
+    const fens = deep.filter((fen) => target.get(fen) === d);
     const deepEvals = await analyze({
-      positions: deep, depth, shouldCancel, onProgress: progress("deep"),
+      positions: fens, depth: d, shouldCancel, ...(d > depth ? { maxNodes: ROUTER_DEEP_MAX_NODES } : {}),
+      onProgress: (n) => progress("deep")(done + n, deep.length),
       onResult: (fen, ev) => { result(fen, ev); final(fen, ev); },
     });
+    done += fens.length;
     for (const [fen, ev] of deepEvals) evals.set(fen, ev);
   }
   return { evals, screenDepth };

@@ -1,18 +1,21 @@
 import { Chess } from "chess.js";
 
-// Which moves of a depth-16 analysis need their depth-16 read. Every position is first
-// searched at depth 12 (tiered-analysis.js); this boosted-tree model scores each move from
-// its two screen reads (the FEN and the search's per-depth history) and deepens both
-// positions of every move it scores at or above the threshold. Trained on screen reads made
-// like the browser's (hash carried between a worker's positions) and frozen in
-// research/analyze-router (PROTOCOL.md, round 9). It does not chase Best/Excellent swaps
-// between near-equal moves: on 1,905 holdout games it caught 0.926 of the other grade
-// changes at depth 16 and 0.827 of the Great/Brilliant flips in 0.752x the engine time of a
-// full-depth pass (round 3: 0.919, 0.902, 0.845x).
-// The model and features are a port of research/analyze-router/{features,predict}.mjs;
-// deepening-router.test.js checks both against those files.
+// How deep each move of a depth-16 analysis is read. Every position is first searched at
+// depth 12 (tiered-analysis.js); two boosted-tree models score each move from its two screen
+// reads (the FEN and the search's per-depth history) and the moves around it. Both positions
+// of a move `to20` flags are read at depth 20, of a move only `deepen` flags at depth 16; the
+// rest keep the screen read. Trained on screen reads made like the browser's (hash carried
+// between a worker's positions) against lite depth 20, and frozen in research/analyze-router
+// (PROTOCOL.md, round 11, direct at the 0.5 budget). On 1,917 holdout games: 7.4 output
+// changes per 100 moves against all-depth-20 (round 9: 17.9) in 0.52x its engine time.
+// The models and features are a port of research/analyze-router/{features,predict}.mjs and
+// round10.py's context; deepening-router.test.js checks both against those files.
 
 export const ROUTER_DEPTH = 16;
+export const ROUTER_DEEP_DEPTH = 20;
+// The router was validated on uncapped depth-20 reads; 15% of them pass the 1.5M analysis cap,
+// none of 300 sampled passed 7.1M. This cap only bounds a forcing finish that explodes.
+export const ROUTER_DEEP_MAX_NODES = 10_000_000;
 
 const VALUE = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
@@ -96,12 +99,17 @@ function screenPosition(fen, ev) {
 }
 
 // The 11 move features after the two position blocks.
+// The server's grade tier (0 = best move) and win% loss of a move from its two reads.
+function grade(m, rb, ra) {
+  const loss = Math.max(0, m.side !== "black" ? rb.w - ra.w : ra.w - rb.w);
+  const best = rb.best != null && rb.best === m.uci;
+  return [best ? 0 : loss <= 2 ? 1 : loss <= 5 ? 2 : loss <= 10 ? 3 : loss <= 15 ? 4 : 5, loss];
+}
+
 function moveFeatures(m, before, after, prevMove) {
   const white = m.side !== "black";
   const rb = before.read, ra = after.read;
-  const loss = Math.max(0, white ? rb.w - ra.w : ra.w - rb.w);
-  const best = rb.best != null && rb.best === m.uci;
-  const tier = best ? 0 : loss <= 2 ? 1 : loss <= 5 ? 2 : loss <= 10 ? 3 : loss <= 15 ? 4 : 5;
+  const [tier, loss] = grade(m, rb, ra);
   const game = new Chess(m.fen_before);
   const mv = game.move({ from: m.uci.slice(0, 2), to: m.uci.slice(2, 4), promotion: m.uci[4] });
   const capture = mv.isCapture() || mv.isEnPassant();
@@ -127,8 +135,26 @@ export function score(model, x) {
   return 1 / (1 + Math.exp(-s));
 }
 
-// Feature rows of every move in order (null when a read is missing). Training stored
-// features as float32.
+// The two moves before and after move i (round10.py context): known, loss, tier, a mate on
+// either read, eval swing; then the ply and its share of the game.
+const CONTEXT = [-2, -1, 1, 2];
+
+function context(moves, reads, i) {
+  const out = [];
+  for (const d of CONTEXT) {
+    const m = moves[i + d], r = reads[i + d];
+    if (!m || !r) {
+      out.push(0, 0, 0, 0, 0);
+      continue;
+    }
+    const [tier, loss] = grade(m, r.rb, r.ra);
+    out.push(1, loss, tier, r.rb.mate != null || r.ra.mate != null ? 1 : 0, Math.abs(r.rb.w - r.ra.w));
+  }
+  return [...out, i, i / Math.max(1, moves.length)];
+}
+
+// Feature rows of every move in order (null when a read is missing). Training stored the
+// move's own features as float32 and its context as float64.
 export function moveRows(moves, evals) {
   const pos = new Map();
   const at = (fen) => {
@@ -136,7 +162,7 @@ export function moveRows(moves, evals) {
     return pos.get(fen);
   };
   let prevMove = null;
-  return moves.map((m) => {
+  const own = moves.map((m) => {
     const before = at(m.fen_before), after = at(m.fen_after);
     if (!before || !after) {
       prevMove = null;
@@ -144,23 +170,30 @@ export function moveRows(moves, evals) {
     }
     const mf = moveFeatures(m, before, after, prevMove);
     prevMove = mf.capture;
-    return [...before.features, ...after.features, ...mf.x].map(Math.fround);
+    return { x: [...before.features, ...after.features, ...mf.x].map(Math.fround), rb: before.read, ra: after.read };
   });
+  return own.map((r, i) => (r ? [...r.x, ...context(moves, own, i)] : null));
 }
 
-// FENs that need the depth-16 read: both positions of every move the model flags, and
-// any position whose screen read came without a search history (reused from another pass).
-export function routerFlags(model, moves, evals) {
-  const flagged = new Set();
+// The read depth of each position past the screen: ROUTER_DEEP_DEPTH for both positions of
+// every move `to20` flags, ROUTER_DEPTH for those of a move only `deepen` flags and for any
+// position whose screen read came without a search history (reused from another pass).
+export function routerDepths(model, moves, evals) {
+  const depths = new Map();
   const all = moves || [];
   const rows = moveRows(all, evals);
+  const set = (f, d) => depths.set(f, Math.max(depths.get(f) || 0, d));
   all.forEach((m, i) => {
-    const bare = [m.fen_before, m.fen_after].filter((f) => evals.get(f)?.depth > 0 && !evals.get(f).iterations);
-    for (const f of bare) flagged.add(f);
-    if (rows[i] && score(model, rows[i]) >= model.threshold) {
-      flagged.add(m.fen_before);
-      flagged.add(m.fen_after);
+    for (const f of [m.fen_before, m.fen_after]) {
+      if (evals.get(f)?.depth > 0 && !evals.get(f).iterations) set(f, ROUTER_DEPTH);
+    }
+    if (!rows[i]) return;
+    const d = score(model.to20, rows[i]) >= model.to20.threshold ? ROUTER_DEEP_DEPTH
+      : score(model.deepen, rows[i]) >= model.deepen.threshold ? ROUTER_DEPTH : 0;
+    if (d) {
+      set(m.fen_before, d);
+      set(m.fen_after, d);
     }
   });
-  return flagged;
+  return depths;
 }
