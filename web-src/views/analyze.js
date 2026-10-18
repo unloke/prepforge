@@ -342,7 +342,7 @@ export function createAnalyzeView({
       pathIds,
       decorate: (node) => {
         if (node.isVariation) {
-          return { classes: ["is-variation"], title: "variation" };
+          return { classes: ["is-variation"], title: "variation", label: "variation" };
         }
         const cls = String(node.classification || "unknown");
         const group = CLASS_GROUP_OF[cls.toLowerCase()];
@@ -351,6 +351,9 @@ export function createAnalyzeView({
           classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
           suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",
           title: cls,
+          // Only a real grade reaches the name: "unknown" is the absent-grade
+          // sentinel, not something to read out.
+          label: group ? CLASS_GROUPS.find((g) => g.key === group).label : "",
         };
       },
     });
@@ -418,21 +421,20 @@ export function createAnalyzeView({
     chip.dataset.side = side;
     chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
+    // The win-chance bar carries the same number inside itself, on the leading
+    // side's face, in that side's ink.
+    const meter = document.getElementById("analysis-eval-meter");
+    const score = document.getElementById("analysis-eval-score");
+    if (meter) meter.dataset.side = side;
+    if (score) score.textContent = text;
     const fill = document.querySelector("#analysis-eval-meter > i");
     if (fill) {
       const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 50;
       fill.style.transform = `scaleX(${(share / 100).toFixed(4)})`;
+      // The score reads inside the leading side's share, so it needs that share's
+      // width too (a CSS custom property: zero layout, same composited frame).
+      score?.style.setProperty("--w", (share / 100).toFixed(4));
     }
-  }
-
-  // "12 / 16" -> a ring filled to 12/16 showing "12"; the full text is the tooltip.
-  function paintDepthRing() {
-    const el = document.getElementById("engine-window-depth-readout");
-    if (!el) return;
-    const m = /(\d+)\s*\/\s*(\d+)/.exec(el.textContent || "");
-    el.dataset.d = m ? m[1] : "";
-    el.style.setProperty("--p", m && Number(m[2]) ? String(Math.min(1, Number(m[1]) / Number(m[2]))) : "0");
-    el.title = m ? `Depth ${m[1]} of ${m[2]}` : "";
   }
 
   const watch = (id, fn, options) => {
@@ -442,7 +444,6 @@ export function createAnalyzeView({
   const TEXT_CHANGES = { childList: true, characterData: true, subtree: true };
   watch("engine-head-eval", paintEvalHead, { ...TEXT_CHANGES, attributes: true });
   watch("analysis-eval-card", paintEvalHead, { attributes: true, attributeFilter: ["class"] });
-  watch("engine-window-depth-readout", paintDepthRing, TEXT_CHANGES);
 
   function updateChartCaption(point) {
     chartPoint = point || null;

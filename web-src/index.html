@@ -179,7 +179,7 @@
                   <div class="rb-head ev-head">
                     <b class="ev-title">Evaluation</b>
                     <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
-                    <span class="ev-meter" id="analysis-eval-meter" aria-hidden="true"><i></i></span>
+                    <span class="ev-meter" id="analysis-eval-meter" data-side="even" title="Win chance"><i></i><b class="ev-meter-score" id="analysis-eval-score"></b></span>
                     <span class="ev-move" id="analysis-ev-move" aria-hidden="true"></span>
                     <button class="ev-report" type="button" data-sheet-open="analyze-sheet" aria-expanded="false" aria-controls="analyze-sheet">Report</button>
                     <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Engine</button>
@@ -844,12 +844,12 @@
         <div class="engine-head-meta">
           <span class="engine-head-label">SF</span>
           <span class="engine-head-eval" id="engine-head-eval">—</span>
-          <span class="engine-head-depth" id="engine-window-depth-readout">—</span>
+          <span class="engine-head-depth" id="engine-window-depth-readout" title="Search depth">—</span>
         </div>
         <div class="engine-head-tools">
-          <div class="engine-lines" title="Lines shown">
+          <div class="engine-lines" role="group" aria-label="Lines shown">
             <button class="engine-step" id="engine-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
-            <span class="engine-lines-readout" id="engine-lines-readout">1</span>
+            <span class="engine-lines-readout" id="engine-lines-readout" title="Lines shown">1</span>
             <button class="engine-step" id="engine-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
           </div>
           <button class="engine-window-close" id="engine-window-close" type="button" title="Close" aria-label="Close">×</button>
