@@ -7,6 +7,8 @@ Pins the config/docs/code triples that silently drift apart:
   means a blueprint deploy crashes on boot instead of configuring it.
 - ``Dockerfile`` must run uvicorn with the forwarded-header flags the rate
   limiter's correctness depends on (see api/ratelimit.py).
+- ``pyproject.toml`` package-data must cover every file of the served static tree
+  (bar the CDN-hosted Maia weights and source maps): the wheel drops anything else.
 - The Terms page must state the license actually declared by ``pyproject.toml``
   and shipped in ``LICENSE``.
 """
@@ -84,3 +86,28 @@ def test_terms_state_the_actual_project_license() -> None:
     assert stated.group(1) == license_id, (
         f"Terms state {stated.group(1)} but pyproject/LICENSE declare {license_id}"
     )
+
+
+def test_package_data_ships_the_whole_static_tree() -> None:
+    # setuptools package-data globs match one directory level each; a new folder
+    # (the hashed engine/<sha8>/ build) is silently left out of the wheel and the
+    # engine worker 404s in production.
+    pyproject = _read("pyproject.toml")
+    block = re.search(r'"prepforge_chess\.web" = \[(.*?)\]', pyproject, re.S)
+    assert block, "package-data for prepforge_chess.web not found"
+    package = ROOT / "src/prepforge_chess/web"
+    shipped = {
+        path
+        for pattern in re.findall(r'"([^"]+)"', block.group(1))
+        for path in package.glob(pattern)
+    }
+    static = package / "static"
+    wanted = {
+        path
+        for path in static.rglob("*")
+        if path.is_file()
+        and path.suffix != ".map"
+        and (path.parent.name != "maia3" or path.name == "maia3.manifest.json")
+    }
+    missing = sorted(str(p.relative_to(static)) for p in wanted - shipped)
+    assert not missing, f"left out of the wheel: {missing}"
