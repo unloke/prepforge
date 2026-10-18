@@ -3579,6 +3579,11 @@ body.is-guest .replay-results:empty::before {
 .coverage-live, .coverage-stale { padding: 12px 6px; }
 .coverage-stale { color: var(--warn-text); }
 .coverage-gap.is-readonly { grid-template-columns: 1fr; }
+
+/* Empty: one mark, one heading, one line naming the action. Disappears the
+   moment a scan result, a live scan or a stale mark replaces it. */
+.coverage-empty { align-items: flex-start; }
+.coverage-empty .btn { margin-top: 8px; }
 @media (max-width: 760px) {
   .coverage-gap { min-height: 56px; }
   .coverage-gap-select { min-width: 44px; }

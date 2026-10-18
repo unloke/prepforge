@@ -1,6 +1,7 @@
 import { html } from "../html.js";
 import { coverageTreeKey, runCoverageScan } from "../coverage.js";
 import { localBoardAfterMove } from "../chess-local.js";
+import { maiaInitMessage } from "../maia-init-notice.js";
 
 // Scope, horizon and Scan live in the inspector header row (like Explorer's
 // database switch; app.js wires them); the panel body only shows the scan
@@ -85,6 +86,13 @@ export function createCoverageController({
     if (result.omittedGapCount) markup = html`${markup}<div class="coverage-live">${result.omittedGapCount} more gaps</div>`;
     return markup;
   }
+  // Before the first position the only thing to report is the Maia cold init
+  // itself (it fetches ~46 MB), which must show up here instead of leaving the
+  // panel at "0 positions" with no explanation.
+  function liveText() {
+    if (!active) return "";
+    return active.init ? maiaInitMessage(active.init) : `Scanning · ${active.scanned} positions`;
+  }
   function paint() {
     const el = host();
     if (!el) return;
@@ -93,13 +101,15 @@ export function createCoverageController({
     const c = getContext();
     let body = "";
     if (!c.build) body = "";
-    else if (active) body = html`<div class="coverage-live" role="status">Scanning · ${active.scanned} positions</div>`;
+    else if (active) body = html`<div class="coverage-live" role="status" aria-live="polite">${liveText()}</div>`;
     else if (stale) body = html`<div class="coverage-stale" role="status">Preparation changed — scan again</div>`;
     else if (result) {
       body = summary();
       if (!result.gaps.length) {
         body = html`${body}<div class="coverage-live" role="status">${result.unknownMass > 0 ? "No gaps in checked positions" : "No gaps"}</div>`;
       } else body = html`${body}${gapRows(c.readOnly)}`;
+    } else {
+      body = html`<div class="empty-state coverage-empty" role="status"><div class="es-mark" aria-hidden="true">◎</div><h3>Find your gaps</h3><p>Scan this repertoire to see the moves your opponents will actually play.</p><button type="button" class="btn primary" id="coverage-empty-run" data-testid="coverage-empty-run">Scan</button></div>`;
     }
     el.innerHTML = body;
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];
@@ -125,6 +135,7 @@ export function createCoverageController({
         if (valid()) previewGap(gap);
       } catch (error) { onError(error); }
     }));
+    el.querySelector("#coverage-empty-run")?.addEventListener("click", () => { void scan(); });
   }
   async function scan() {
     sync();
@@ -136,22 +147,39 @@ export function createCoverageController({
     identity = key();
     result = null;
     stale = false;
-    const run = { controller: new AbortController(), scanned: 0, key: identity };
+    const run = { controller: new AbortController(), scanned: 0, key: identity, init: { phase: "session" } };
     active = run;
     const nodes = c.build.nodes.map((n) => ({ ...n }));
     job.startJob({ id: `coverage-${Date.now()}`, title: "Scanning coverage", tab: "build",
       dock: document.getElementById("coverage-job-dock"), total: 0, onCancel: () => run.controller.abort() });
+    // No denominator exists (positions are only known as they are read), so the
+    // card's bar stays indeterminate until the first position lands.
+    job.updateJob({ phase: "init", message: maiaInitMessage(run.init), current: 0, total: 0 });
     paint(); sync();
+    // The first position needs a warm provider. A cold Maia spends seconds to
+    // minutes fetching ~46 MB before it answers anything, and that wait used to
+    // be invisible: the panel said "Scanning · 0 positions" until the first
+    // reply. Watch the provider's own init progress and report the real step.
+    const provider = getProvider();
+    let unwatchInit = null;
+    if (provider && typeof provider.subscribeInitProgress === "function") {
+      unwatchInit = provider.subscribeInitProgress((progress) => {
+        if (active !== run || !maiaInitMessage(progress)) return;
+        run.init = progress;
+        job.updateJob({ phase: `init:${progress.phase}`, message: maiaInitMessage(progress) });
+        paint();
+      });
+    }
     try {
       const next = await runCoverageScan({ nodes, myColor: c.build.color, rating: c.rating,
         rootNodeId: scopeNodeId, maxDepth: maxDepth(),
-        provider: getProvider(), signal: run.controller.signal,
+        provider, signal: run.controller.signal,
         onProgress: ({ scanned }) => {
           if (active !== run) return;
           run.scanned = scanned;
-          job.updateJob({ current: scanned, total: 0, message: `${scanned} positions` });
-          const live = host()?.querySelector(".coverage-live");
-          if (live) live.textContent = `Scanning · ${scanned} positions`;
+          run.init = null;
+          job.updateJob({ phase: "scan", current: scanned, total: 0, message: `${scanned} positions` });
+          paint();
         } });
       if (active !== run || run.key !== key()) { job.cancelJob("Scan discarded"); return; }
       result = next;
@@ -161,6 +189,7 @@ export function createCoverageController({
       if (error.name === "AbortError") job.cancelJob("Scan stopped");
       else { job.failJob(error.message); onError(error); }
     } finally {
+      unwatchInit?.();
       if (active === run) { active = null; paint(); sync(); }
     }
   }
