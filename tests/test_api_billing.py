@@ -226,7 +226,11 @@ def test_free_plan_repertoire_quota_blocks_with_402(client, monkeypatch):
     assert _create_rep(client, "two").status_code == 200
     r = _create_rep(client, "three")
     assert r.status_code == 402
-    assert "Upgrade to Pro" in r.json()["detail"]
+    # No Pro plan exists: the message names the real limit and what clears it.
+    detail = r.json()["detail"]
+    assert "up to 2 repertoires" in detail
+    assert "Delete one to add another" in detail
+    assert "Pro" not in detail
 
 
 def test_pro_plan_bypasses_repertoire_quota(client, monkeypatch):

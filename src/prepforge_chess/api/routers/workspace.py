@@ -452,7 +452,7 @@ def create_repertoire(
     """Create a new repertoire owned by the caller and return its Build payload.
 
     Free-plan users are capped at ``settings.free_repertoire_limit`` repertoires;
-    exceeding it returns 402 so the SPA can prompt an upgrade. Pro is unlimited."""
+    exceeding it returns 402 naming the limit and what clears it."""
     name = body.name.strip() or "Untitled repertoire"
     builder = OpeningBuilderService(repo)
     repertoire = builder.create_repertoire(
