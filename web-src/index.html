@@ -595,13 +595,12 @@
           <section class="card dir">
             <header class="card-head">
               <h2>Directory</h2>
-              <span class="spacer"></span>
+              <label class="search-field" for="teams-search">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
+                <input id="teams-search" type="search" aria-label="Search your teams" placeholder="Search your teams" autocomplete="off" />
+              </label>
               <button class="btn sm primary" id="teams-new" data-testid="teams-new">New team</button>
             </header>
-            <label class="search-field" for="teams-search">
-              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
-              <input id="teams-search" type="search" aria-label="Search your teams" placeholder="Search your teams" autocomplete="off" />
-            </label>
             <div id="teams-list" class="list-enter" data-testid="teams-list"></div>
           </section>
 
@@ -621,14 +620,14 @@
             </div>
             <section id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members">
               <div class="sub-head">
-                <b>Members</b>
+                <span class="spacer"></span>
                 <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
               <div id="team-members" data-testid="team-members"></div>
             </section>
             <section id="team-panel-repertoires" data-team-panel="repertoires" role="tabpanel" aria-labelledby="team-tab-repertoires" hidden>
               <div class="sub-head">
-                <b>Shared repertoires</b>
+                <span class="spacer"></span>
                 <button class="btn sm" id="team-share-rep" data-testid="team-share-rep" hidden>Share a repertoire</button>
               </div>
               <div id="team-shared-repertoires" data-testid="team-shared-repertoires"></div>
