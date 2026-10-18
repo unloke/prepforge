@@ -5,6 +5,7 @@ import {
   createReplayView,
   displayReplayResult,
   formatReplayDate,
+  isDifferentOpening,
   moveNumberLabel,
   plyMoveLabel,
   revealIfOffscreen,
@@ -112,6 +113,32 @@ const stayedGame = {
   training_recorded: false,
   source_account: "self",
 };
+
+// Early opponent departure ("different opening") and a late one ("novelty")
+// share the left-prep bucket: one badge for both, so the ledger and the
+// summary chip read the same word for the same count.
+const earlyOpeningGame = {
+  lichess_id: "early1",
+  white: "me_user",
+  black: "opp_two",
+  result: "1-0",
+  user_color: "white",
+  in_repertoire: true,
+  matched_plies: 3,
+  departure_ply: 4,
+  departure_move_uci: "g8f6",
+  departure_reason: "opponent_unprepared_branch",
+  repertoire_id: "rep-1",
+  repertoire_name: "Caro-Kann: Advance",
+  move_san_history: ["e4", "c6", "d4", "Nf6"],
+  expected_move_uci: null,
+  expected_move_san: null,
+  training_recorded: false,
+  source_account: "self",
+};
+
+const lateNoveltyGame = { ...earlyOpeningGame, lichess_id: "late1", departure_ply: 12,
+  departure_move_uci: "h7h6", move_san_history: [...earlyOpeningGame.move_san_history] };
 
 describe("replay focus internals", () => {
   it("escapes API text and attributes while preserving generated detail markup", () => {
@@ -300,6 +327,35 @@ describe("replay focus internals", () => {
     expect(String(html)).not.toMatch(/plies/);
     expect(String(html)).toContain("2… d5");
     expect(String(html)).toContain("in prep through 2. Nf3");
+  });
+
+  it("badges every opponent departure by who left, not which opening", () => {
+    // One name for the shared bucket: the row badge, the focus badge and the
+    // summary chip must match, so the count on the chip is the count under it.
+    makeView(elements).renderReplayResults({
+      games: [earlyOpeningGame, lateNoveltyGame],
+      misses_recorded: 0,
+    });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html).match(/kind-badge t-warn/g)).toHaveLength(3); // 2 rows + focus
+    expect(String(html)).toContain(">Opponent left prep<");
+    expect(String(html)).not.toContain("Different opening");
+    expect(String(html)).not.toContain("Opponent novelty");
+    // The summary chip reads the same words as the rows it counts.
+    const summary = String(elements["replay-summary"].innerHTML);
+    expect(summary).toContain("2 opponent left prep");
+  });
+
+  it("still splits the detail copy between an early opening and a late novelty", () => {
+    for (const game of [earlyOpeningGame, lateNoveltyGame]) {
+      const el = makeElements();
+      makeView(el).renderReplayResults({ games: [game], misses_recorded: 0 });
+      const html = String(el["replay-results"].innerHTML);
+      const early = isDifferentOpening(game);
+      if (early) expect(html).toContain("Opponent chose a different opening at");
+      else expect(html).toContain("Opponent took an unprepared branch at");
+      expect(html).not.toContain("novelty");
+    }
   });
 });
 

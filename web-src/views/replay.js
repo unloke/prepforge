@@ -8,16 +8,18 @@ import "./replay.css";
 const REPLAY_KINDS = {
   "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
   "user-error": { icon: "✗", badge: "You left prep", label: "you left prep", tone: "bad" },
-  // Covers both a late novelty and an early "Different opening": the filter names what they share.
-  "left-prep": { icon: "⚡", badge: "Opponent novelty", label: "opponent left prep", tone: "warn" },
+  // One bucket (filter, Add reply) for both a late novelty and an early
+  // "different opening": the badge says what they share — the OPPONENT was the
+  // one who stepped out. Who left, not which opening, is the useful signal.
+  "left-prep": { icon: "⚡", badge: "Opponent left prep", label: "opponent left prep", tone: "warn" },
   "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", tone: "none", departure: "—" },
 };
 
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 // An opponent who leaves the repertoire within the first couple of moves didn't play a
-// "novelty" — they simply chose a different opening. Same bucket (filter, Add reply), but
-// the badge and copy say what actually happened.
+// "novelty" — they simply chose a different opening. Same bucket (filter, Add reply),
+// but the detail copy says what actually happened.
 const EARLY_DEPARTURE_PLY = 4;
 
 export function isDifferentOpening(game) {
@@ -28,10 +30,6 @@ export function isDifferentOpening(game) {
     ply > 0 &&
     ply <= EARLY_DEPARTURE_PLY
   );
-}
-
-function replayBadge(game, meta) {
-  return isDifferentOpening(game) ? "Different opening" : meta.badge;
 }
 
 function replayGameKind(game) {
@@ -329,7 +327,7 @@ export function createReplayView({
       ? plyMoveLabel(game.departure_ply, game.move_san_history)
       : meta.departure || "—";
     return (
-      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${replayBadge(game, meta)}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
+      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
     );
   }
 
@@ -351,7 +349,7 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${replayBadge(game, meta)}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${meta.badge}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
     );
   }
 
