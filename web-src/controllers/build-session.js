@@ -317,18 +317,32 @@ function initBuildDockLayout() {
   });
 
   let drag = null;
+  // One render per animation frame: applyBuildDockHeight measures the panel and
+  // its siblings, so a naive per-event loop would interleave a read of the
+  // subtree we are writing to (layout thrash) and draw behind the pointer.
+  let frame = 0;
   const onMove = (event) => {
     if (!drag) return;
-    const want = drag.startHeight + (drag.startY - event.clientY);
-    // Dragging well below the minimum folds the dock; dragging back up unfolds.
-    if (want < BUILD_DOCK_MIN * 0.5) {
-      if (!buildDockFolded()) setBuildDockFolded(true);
-      return;
+    drag.want = drag.startHeight + (drag.startY - event.clientY);
+    if (!frame) {
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!drag) return;
+        // Dragging well below the minimum folds the dock; dragging back up unfolds.
+        if (drag.want < BUILD_DOCK_MIN * 0.5) {
+          if (!buildDockFolded()) setBuildDockFolded(true);
+          return;
+        }
+        if (buildDockFolded()) setBuildDockFolded(false);
+        drag.height = applyBuildDockHeight(drag.want);
+      });
     }
-    if (buildDockFolded()) setBuildDockFolded(false);
-    drag.height = applyBuildDockHeight(want);
   };
   const onUp = () => {
+    if (frame) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    }
     if (!drag) return;
     if (drag.height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, drag.height);
     drag = null;
@@ -342,9 +356,14 @@ function initBuildDockLayout() {
     if (event.button !== 0) return;
     event.preventDefault();
     const startHeight = buildDockFolded() ? BUILD_DOCK_MIN * 0.5 : dock.getBoundingClientRect().height;
-    drag = { startY: event.clientY, startHeight, height: null };
+    drag = { startY: event.clientY, startHeight, height: null, want: startHeight };
     resizer.classList.add("is-dragging");
     document.body.classList.add("is-resizing-dock");
+    // Pointer capture keeps the drag on the handle even when the pointer leaves
+    // it (or the window), which is what made the seam look undraggable.
+    try {
+      resizer.setPointerCapture(event.pointerId);
+    } catch { /* a synthetic pointer without an id: the window listeners still cover it */ }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);

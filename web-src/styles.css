@@ -2612,6 +2612,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 #view-build .sidebar { gap: 0; }
 
+/* The panel body is the flex column its children were always written as:
+   .tree-wrap grows into the leftover height and .dock takes what the drag
+   handle set. Without a column here, `flex` on the children has nothing to
+   resolve against, so the tree never filled the panel and the inspector's
+   dragged flex-basis was ignored. */
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
 .panel-head {
   display: flex;
   align-items: center;
@@ -2726,16 +2740,23 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .tree-wrap {
   flex: 1 1 auto;
   min-height: 90px;
-  padding: 10px 12px;
+  padding: 12px 12px;
   overflow: auto;
   overscroll-behavior: contain;
   font-size: 13px;
-  line-height: 1.95;
+  line-height: 1.75;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
 
 .dock {
   flex: 0 0 clamp(210px, 40%, 330px);
+  /* The drag handle writes a px `flex-basis` inline; `flex` sets all three
+     sub-properties, so without `grow`/`shrink` declared separately here the
+     inline basis is dropped on the next style recalc and the snap-back makes
+     the drag look dead. Keeping the shorthand for the initial size and then
+     overriding the basis keeps the inline value. */
+  flex-grow: 0;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2797,8 +2818,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .dock-resizer:hover::after,
 .dock-resizer:focus-visible::after,
-.dock-resizer.is-dragging::after { opacity: 1; background: var(--accent); }
-
+.dock-resizer.is-dragging::after {
+  background: var(--accent);
+  opacity: 1;
+}
+.dock-resizer.is-dragging::after {
+  width: 56px;
+  margin-left: -28px;
+}
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-tabs .dock-fold {
   margin-left: auto;
@@ -3743,21 +3770,62 @@ body.is-guest .replay-results:empty::before {
   display: block;
 }
 
-/* A variation block. Indentation + the guide rail come from nesting depth. */
+/* A variation block. One rule draws the whole connector: a vertical rail on
+   the left edge of the block and a horizontal elbow into the first move.
+   Both are sized from --mtree-indent so the rail stays centred in the notch
+   the child text is indented by, whatever the row height. */
 .mtree-var {
+  --mtree-indent: 10px;
+  --mtree-rail: 2px;
   display: block;
-  margin: 2px 0 2px 6px;
-  padding: 0 0 0 10px;
-  border-left: 2px solid var(--line);
+  position: relative;
+  margin: 3px 0 3px calc(var(--mtree-indent) * 2);
+  padding: 0 0 0 var(--mtree-indent);
   color: var(--muted);
 }
-.mtree-var .mtree-var {
-  border-left-color: var(--line-soft);
+
+/* The rail: only as tall as the block, and only as wide as the elbow needs.
+   Deep nesting stacks these, each one a step lighter than its parent. */
+.mtree-var::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--mtree-rail) * -1);
+  width: var(--mtree-rail);
+  background: var(--line);
 }
+
+/* The elbow into the first move. */
+.mtree-var > .mtree-line:first-child::before,
+.mtree-var > .mtree-move:first-child::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  left: calc(var(--mtree-rail) * -1);
+  width: var(--mtree-indent);
+  height: var(--mtree-rail);
+  background: var(--line);
+}
+
+.mtree-var .mtree-var::before {
+  background: var(--line-soft);
+}
+
+/* The last child's rail stops at its elbow instead of running to the bottom
+   of the block, so a closed branch does not trail a tail. */
+.mtree-var:has(> .mtree-line:last-child)::before,
+.mtree-var:has(> .mtree-move:last-child)::before {
+  bottom: auto;
+  height: 13px;
+}
+
 /* The variation that leads to the current move gets an accent rail. */
-.mtree-var:has(> .mtree-move.is-current),
-.mtree-var:has(> .mtree-move.on-path) {
-  border-left-color: var(--accent-line);
+.mtree-var:has(> .mtree-move.is-current)::before,
+.mtree-var:has(> .mtree-move.on-path)::before,
+.mtree-var:has(> .mtree-line:first-child > .mtree-move.is-current)::before,
+.mtree-var:has(> .mtree-line:first-child > .mtree-move.on-path)::before {
+  background: var(--accent-line);
 }
 
 .mtree-num {
