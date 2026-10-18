@@ -52,6 +52,9 @@ describe("Play opponent response ownership", () => {
   it("names the real reason on the board, and says to retry", () => {
     const reason = loadMaiaErrorText();
     expect(reason(new Error("weight size mismatch: download truncated"))).toContain("incomplete");
+    // The stall case is its own message: a download that stopped part-way is not
+    // the same problem as a download that failed.
+    expect(reason(new Error("weight download stalled: no bytes from /m.onnx for 20s"))).toContain("stopped part-way");
     expect(reason(new Error("Maia3 predict timed out after 20000ms"))).toContain("in time");
     expect(reason(new Error("Failed to fetch"))).toContain("download failed");
     expect(reason(new Error("Maia3 worker request failed"))).toBe("Maia3 worker request failed");

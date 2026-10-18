@@ -795,6 +795,7 @@ async function fetchPlayExplorer(fen) {
 function maiaOpponentErrorText(error) {
   const message = String(error?.message || "");
   if (/timed out/i.test(message)) return "Maia did not answer in time. Retry to load the model again.";
+  if (/stalled/i.test(message)) return "The Maia model download stopped part-way. Retry to start it again.";
   if (/network|fetch|offline|Failed to/i.test(message)) return "The Maia model download failed. Check your connection and retry.";
   if (/size mismatch|truncated|exceeds manifest/i.test(message)) return "The Maia model download was incomplete. Retry to download it again.";
   return message || "Maia could not start. Retry to try again.";
