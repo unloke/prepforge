@@ -421,10 +421,19 @@ export function createAnalyzeView({
     chip.dataset.side = side;
     chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
+    // The win-chance bar carries the same number inside itself, on the leading
+    // side's face, in that side's ink.
+    const meter = document.getElementById("analysis-eval-meter");
+    const score = document.getElementById("analysis-eval-score");
+    if (meter) meter.dataset.side = side;
+    if (score) score.textContent = text;
     const fill = document.querySelector("#analysis-eval-meter > i");
     if (fill) {
       const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 50;
       fill.style.transform = `scaleX(${(share / 100).toFixed(4)})`;
+      // The score reads inside the leading side's share, so it needs that share's
+      // width too (a CSS custom property: zero layout, same composited frame).
+      score?.style.setProperty("--w", (share / 100).toFixed(4));
     }
   }
 

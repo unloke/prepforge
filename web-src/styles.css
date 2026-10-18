@@ -127,6 +127,15 @@
   --explorer-white-ink: #1b1c1e;
   --explorer-draw-ink: #1b1c1e;
 
+  /* -- Eval meter (Analyze win-chance bar) --------------------------------
+     Two solid faces, not two greys: a near-white side and a near-black side,
+     split by the fill so the size of each half is the reading. The inks are the
+     two sides' own text colours, so the score reads whichever side it sits on. */
+  --eval-side-white: #f4f3ef;
+  --eval-side-black: #25282d;
+  --eval-ink-dark: #101114;
+  --eval-ink-light: #f4f3ef;
+
   /* -- Type ---------------------------------------------------------------
      13px base / 12px small / 11px extra-small. Tabular figures are set once
      on <body> below so every number that changes or lines up already reads as
@@ -273,6 +282,10 @@
   --explorer-track: #2b3035;
   --explorer-white-ink: #1b1c1e;
   --explorer-draw-ink: #111315;
+  --eval-side-white: #e9eaec;
+  --eval-side-black: #45494f;
+  --eval-ink-dark: #111315;
+  --eval-ink-light: #ffffff;
 }
 
 /* `hidden` always wins: no view's display rule can resurrect a hidden element. */
@@ -4867,15 +4880,18 @@ body.is-guest .replay-results:empty::before {
 
 .engine-window-body {
   display: grid;
-  grid-template-columns: 22px 1fr;
+  grid-template-columns: 26px 1fr;
   flex: 1;
   min-height: 0;
   overflow: hidden;
 }
 
+/* A vertical win-chance bar: two solid faces, split by White's share. Wider
+   than it is readable at a glance, and independent of the text, so the fill
+   alone answers "who is ahead and by how much". */
 .engine-bar {
   position: relative;
-  background: #1a1a1a;
+  background: var(--eval-side-black);
   border-right: 1px solid var(--line-strong);
 }
 
@@ -4888,13 +4904,13 @@ body.is-guest .replay-results:empty::before {
   height: 100%;
   transform-origin: center top;
   transform: scaleY(0.5);
-  background: #f4f1e8;
-  transition: transform var(--dur) var(--ease-out);
+  background: var(--eval-side-white);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 .engine-bar-text.is-white-side {
   inset: auto 0 3px 0;
-  color: #1a1a1a;
+  color: var(--eval-ink-dark);
   text-shadow: none;
 }
 
@@ -4907,11 +4923,11 @@ body.is-guest .replay-results:empty::before {
   position: absolute;
   inset: 3px 0 auto 0;
   text-align: center;
-  font-size: 8px;
+  font-size: 9px;
   letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--on-accent);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .engine-window-pvs {
