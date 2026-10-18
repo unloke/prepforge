@@ -1062,7 +1062,7 @@ export function scoutDistRowHtml(m, { clickable = true } = {}) {
         <b class="scout-dist-san">${m.san}</b>
         <span class="scout-dist-bar share"><i style="width:${Math.round(m.share * 100)}%"></i></span>
         <span class="scout-dist-share" title="${games} game${games === 1 ? "" : "s"}">${formatSharePct(m.share)}</span>
-        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small>${m.scorePct}%</span>
+        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small> ${m.scorePct}%</span>
       </div>`;
 }
 

@@ -2750,7 +2750,7 @@ function deleteSavedAnalysis(delButton) {
   };
   showUndoToast({
     title: "Analysis deleted",
-    message: `"${label}" will be removed from your history.`,
+    message: `"${label}" removed from your history.`,
     onUndo: () => {
       setStatus("Delete undone");
       restore();
@@ -3947,7 +3947,7 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       await refreshDashboardRepertoires();
       showUndoToast({
         title: "Repertoire deleted",
-        message: `"${meta?.name || "Repertoire"}" and every move in it will be removed.`,
+        message: `"${meta?.name || "Repertoire"}" and every move in it removed.`,
         onUndo: () => {
           appState.pendingRepDeletes.delete(repKey);
           setStatus("Delete undone");

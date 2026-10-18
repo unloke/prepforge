@@ -28,6 +28,7 @@ import {
   scoutWdlBar,
   scoutLineWdlCounts,
   buildScoutIntelligenceA11ySummary,
+  scoutDistRowHtml,
 } from "./scout-report.js";
 import {
   MAIA_ENRICH_LOADING,
@@ -1322,6 +1323,16 @@ describe("scoutDisplayDistribution", () => {
     expect(rows[0].san).toBe("e4");
     expect(rows[0].share).toBeCloseTo(0.49);
     expect(rows[1].share).toBeCloseTo(0.01);
+  });
+});
+
+describe("scoutDistRowHtml", () => {
+  it("separates the 'scores' label from the percentage", () => {
+    // The label is a <small> inline element, so "scores48%" only read as one
+    // word once the 3px margin was stripped (or in copied/accessed text).
+    const row = String(scoutDistRowHtml({ san: "Nf3", uci: "g1f3", share: 0.13, gameCount: 12, scorePct: 57 }));
+    const text = row.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+    expect(text).toContain("scores 57%");
   });
 });
 

@@ -194,6 +194,23 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
   });
 });
 
+describe("Notices report finished work in past tense", () => {
+  // The undo window opens only once the action has already been applied, so
+  // "will be removed" described something that had already happened.
+  const undoSites = ["deleteSavedAnalysis", "handleRepertoireContextAction"];
+  for (const fn of undoSites) {
+    it(`${fn} speaks past tense`, () => {
+      const body = extractByMarker(`function ${fn}(`);
+      expect(body).not.toMatch(/will be/);
+    });
+  }
+  it("keeps confirm bodies that describe a consequence that has not happened", async () => {
+    // A confirm modal asks about the future, so it may stay in future tense.
+    const team = extractByMarker("async function deleteTeam(teamId, name) {");
+    expect(team).toContain("will be removed");
+  });
+});
+
 describe("Repertoire opens immediately with a loading state (P2-5)", () => {
   it("switches view and shows a skeleton before the load resolves", () => {
     const edit = extractByMarker("async function editRepertoire(repertoireId, nodeId = null) {");
