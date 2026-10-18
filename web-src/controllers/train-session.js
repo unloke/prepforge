@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { trainStartDisabled } from "../train-start.js";
+import { trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -221,6 +221,14 @@ function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
   return (appState.repertoireList || []).filter((rep) => wanted.has(String(rep.id)));
 }
 
+// The repertoires the smart queue mixes: active, and not deleted off-device
+// waiting for the delete to land.
+function activeTrainRepertoires() {
+  return (appState.repertoireList || []).filter(
+    (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
+  );
+}
+
 function renderPlayRepertoirePicker(active = null) {
   const list = Array.isArray(active)
     ? active
@@ -315,6 +323,7 @@ function syncTrainPickerVisibility() {
     // A guest's Start opens the sign-in gate; say so on the button instead of
     // promising a session that cannot begin.
     startBtn.textContent = appState.signedIn ? "Start" : "Sign in to start";
+    paintTrainStartDisabled();
   }
   const startPlay = document.getElementById("start-play");
   const bookEl = document.getElementById("train-play-book");
@@ -337,10 +346,13 @@ function syncTrainPickerVisibility() {
 }
 
 // Before Start: the card counts of the queue Start will serve. Cached briefly
-// so the many syncTrainPickerVisibility() calls don't each refetch.
-const trainPreviewCache = { at: 0, text: "", loading: null };
+// so the many syncTrainPickerVisibility() calls don't each refetch. The raw
+// counts ride along, because they are also what tells Start whether a queue
+// exists at all.
+const trainPreviewCache = { at: 0, text: "", nextSession: null, loading: null };
 function invalidateTrainSessionPreview() {
   trainPreviewCache.at = 0;
+  trainPreviewCache.nextSession = null;
 }
 async function refreshTrainSessionPreview() {
   const el = document.getElementById("train-session-preview");
@@ -364,14 +376,40 @@ async function refreshTrainSessionPreview() {
         preloadTrainView(),
         api(`/api/train/smart/summary?mixed=true&preview=true&local_date=${encodeURIComponent(localDateString())}`),
       ]);
-      trainPreviewCache.text = mod.sessionPreviewText(payload && payload.next_session);
+      trainPreviewCache.nextSession = payload && payload.next_session;
+      trainPreviewCache.text = mod.sessionPreviewText(trainPreviewCache.nextSession);
       trainPreviewCache.at = Date.now();
-    })().finally(() => {
+    })().catch(() => {
+      // No answer, so no opinion: Start stays live and Start itself reports
+      // why the queue could not be built.
+      trainPreviewCache.nextSession = null;
+      trainPreviewCache.text = "";
+    }).finally(() => {
       trainPreviewCache.loading = null;
     });
   }
   await trainPreviewCache.loading;
   paint(trainPreviewCache.text);
+  // The payload just decided whether Start is live: repaint it now rather than
+  // leaving a dead/enabled button until the next unrelated sync.
+  paintTrainStartDisabled();
+}
+
+// Start's enabled/title state, without the rest of the setup sync (which would
+// re-enter the preview fetch). Cheap and idempotent.
+function paintTrainStartDisabled() {
+  const startBtn = document.getElementById("start-train");
+  if (!startBtn) return;
+  const smart = (appState.trainMode || "smart") === "smart";
+  if (!smart || !appState.signedIn) {
+    startBtn.title = "";
+    return;
+  }
+  const blocked = trainStartBlockReason(trainPreviewCache.nextSession, {
+    hasActiveRepertoire: !!activeTrainRepertoires().length,
+  });
+  if (blocked) startBtn.disabled = true;
+  startBtn.title = blocked;
 }
 
 function trainSessionLive() {
@@ -411,6 +449,17 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
+  // The result screen is a report on a finished session. Switching mode here would
+  // throw the finished session away without the player asking, the way Lucky would
+  // mid-game; "New session" is the deliberate way to start again.
+  const modeTabs = document.querySelectorAll("#train-modes .train-mode");
+  const summaryLive = !play && summaryVisible;
+  modeTabs.forEach((btn) => {
+    btn.disabled = summaryLive;
+    btn.setAttribute("aria-disabled", String(summaryLive));
+    const playTip = btn.dataset.mode === "play" ? "Play a game from the opening against Lichess database moves or Maia" : "";
+    btn.title = summaryLive ? "New session starts another queue — use New session" : playTip;
+  });
   syncViewHeads();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;
@@ -430,6 +479,16 @@ function syncTrainSessionControls() {
   if (takeback) takeback.disabled = !play || !hasMoves;
   if (resign) resign.disabled = !play || !appState.play || !appState.play.active;
   if (analyze) analyze.disabled = !play || !hasMoves;
+  // Lucky abandons the running game for a fresh position, so mid-game it is a
+  // way to lose the game to a stray click. It comes back with the next game.
+  const lucky = document.getElementById("feeling-lucky");
+  if (lucky) {
+    const liveGame = play && !!(appState.play && appState.play.active);
+    lucky.disabled = liveGame;
+    lucky.title = liveGame
+      ? "Finish, resign or take back first — Lucky starts another position"
+      : "Jump to a key position instead of move 1";
+  }
 }
 
 async function resetTrainBoardIdle(label) {

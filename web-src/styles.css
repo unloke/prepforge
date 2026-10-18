@@ -2997,9 +2997,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    Train — Opus prototype composition
    One raised panel beside the board: mode segmented control, coach banner
    strip, then a scrolling stack of .tcard sections (setup / progress /
-   summary / help). The blitz clock overlays the board's top edge, so toggling
+   summary). The blitz clock overlays the board's top edge, so toggling
    it never moves the board. Mirrors prototype .train .panel / .coach-banner /
-   .tcard / .stats / .upnext / .summary.
+   .tcard / .stats / .upnext.
    =========================================================================== */
 #view-train .train-sidebar {
   gap: 0;
@@ -3118,14 +3118,34 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-turn-badge[data-side="black"] { background: var(--dot-white); }
 .train-turn-badge .piece { width: 78%; height: 78%; }
 
-/* Cards */
-.tcard { display: flex; flex-direction: column; gap: 10px; }
-.tcard h3 { margin: 0; font-size: 14px; }
+/* Cards. A .tcard is the section unit the Games triage builds its ledger and
+   focus cards from: a bordered, panel-filled block whose quiet inner rows and
+   chips sit on --panel-soft, so three levels of hierarchy (panel → card → fill)
+   instead of one undifferentiated white sheet. */
+.tcard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+}
 .tcard p { margin: 0; font-size: var(--fs-s); }
 .tcard .field,
 .train-play-setup { display: flex; flex-direction: column; gap: 10px; }
 .tcard .field { gap: 4px; }
-.train-picker-label { color: var(--muted); font-size: var(--fs-s); font-weight: 550; }
+.train-picker-label { color: var(--label); font-size: var(--fs-s); font-weight: 550; }
+/* The card's own head, in the Games ledger-head terms: title, then a hairline
+   separating it from the controls below. */
+.tcard > h3 {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+}
 .train-setup select {
   width: 100%;
   height: 32px;
@@ -3139,6 +3159,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs-s); font-weight: 600; user-select: none; }
 .train-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-start-row .btn { flex: 1; min-width: 0; }
+/* The setup's primary action: one size taller than the Games toolbar buttons,
+   because it is the only thing the whole panel is for. */
+.btn.lg {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 18px;
+  font-size: var(--fs);
+}
 .note {
   padding: 7px 9px;
   border: 1px solid var(--line);
@@ -3213,6 +3241,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 3px 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
+  /* Recessed, not outlined-and-white: the same quiet fill the Games summary
+     chips and ledger rows use inside their card. */
+  background: var(--panel-soft);
   transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
 }
 .stat b { font-size: var(--fs); line-height: 1.2; }
@@ -3245,8 +3276,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .un-line { color: var(--label); font: var(--fs-xs) var(--mono); white-space: nowrap; }
 
-/* Session summary */
-.summary { padding: 0; }
+/* Session summary. A .tcard like the rest; the stat cells are its fills. */
 .sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
 .sum-cells b { font-size: 18px; }
