@@ -2580,7 +2580,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .bi { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .btn.icon .bl,
 .rep-menu-btn .bl,
-.panel-head .btn > .bi { display: none; }
+.panel-head .btn:not(.icon) > .bi { display: none; }
 
 /* Board-bar icons are plain glyphs (no boxed buttons). */
 .board-bar .btn.icon {
@@ -2640,6 +2640,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The game's tag line (result · event · date) under the board, beside the move:
+   it belongs to the position, not the panel head. Hidden while empty, so the
+   board bar sits at one row. */
+.board-sub {
+  flex: none;
+  max-width: 40%;
+  color: var(--label);
+  font-size: var(--fs-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-sub:empty { display: none; }
 
 /* Google-Docs-style save indicator for local-first Build sync. A quiet chip that
    only earns attention when something's wrong (error). Tokens keep it on-theme. */

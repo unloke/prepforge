@@ -1550,11 +1550,14 @@ function syncAnalyzeHead() {
   title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
   const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
     .filter(Boolean);
+  // The tag line rides under the board beside the move, not in the panel head:
+  // the head is one row of title and actions.
   meta.textContent = bits.length
     ? bits.join(" · ")
     : plies
       ? `${plies} half-move${plies === 1 ? "" : "s"}`
       : "";
+  meta.title = meta.textContent;
 }
 
 // Per-view heads that live inside the pages: Analyze's game identity, the

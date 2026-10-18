@@ -9,11 +9,14 @@
    classes carry a colour role only: .eval-dot fills with currentColor,
    .eval-cliff strokes with it. */
 
-/* ---- Panel head + coach card ------------------------------------------ */
+/* Panel head + coach card ------------------------------------------ */
 
+/* The head is one row: the game's identity, then the actions. The tag line
+   (result · event · date) rides under the board beside the move, as .board-sub. */
 .game-id {
   display: flex;
-  flex-direction: column;
+  flex: 1 1 auto;
+  align-items: center;
   min-width: 0;
 }
 .game-id > * {

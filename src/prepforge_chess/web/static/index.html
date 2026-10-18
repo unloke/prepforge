@@ -7,7 +7,7 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-C0xQR-QX.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-7gSa-m60.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/rolldown-runtime-DK3Fl9T5.js">
     <link rel="modulepreload" crossorigin href="/static/assets/html-A1qdFlh3.js">
     <link rel="modulepreload" crossorigin href="/static/assets/shared-constants-BulHn_HJ.js">
@@ -15,7 +15,7 @@
     <link rel="modulepreload" crossorigin href="/static/assets/sync-queue-CaP6MztR.js">
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
     <link rel="modulepreload" crossorigin href="/static/assets/material-DPbFImjt.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-BqYoDVNH.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-XVzXl2hC.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -145,6 +145,7 @@
                 <button class="btn icon" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
               </div>
               <span class="board-label" id="analysis-board-label">Initial position</span>
+              <span class="board-sub" id="analysis-game-meta" data-testid="analysis-game-meta"></span>
               <button class="pv-exit" id="analysis-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <button class="btn icon bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>
@@ -159,10 +160,9 @@
             <div class="panel-head">
               <div class="game-id">
                 <b id="analysis-game-title">Analysis board</b>
-                <span class="faint" id="analysis-game-meta"></span>
               </div>
               <span class="panel-actions" id="analyze-actions">
-                <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
+                <button class="btn icon sm" id="fetch-my-game" data-testid="fetch-my-game" aria-label="Last game" title="Load and analyze your latest Lichess game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
                 <button class="btn sm primary" id="run-analysis" data-testid="run-analysis"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.2"/></svg><span class="bl">Analyze</span></button>
               </span>
             </div>
@@ -300,7 +300,7 @@
               <button class="btn icon phone-back" type="button" data-mirror='.nav-item[data-view="dashboard"]' aria-label="Library" title="Library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <span class="rep-stats faint" id="build-rep-stats" hidden></span>
-              <button class="btn sm primary" id="build-generate-node" data-testid="build-generate-node" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
+              <button class="btn icon sm primary" id="build-generate-node" data-testid="build-generate-node" aria-label="Generate moves" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
               <button class="row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
             <div class="panel-body">
