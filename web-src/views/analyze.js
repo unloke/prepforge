@@ -154,10 +154,10 @@ export function createAnalyzeView({
       const counts = tally[side];
       const total = CLASS_GROUPS.reduce((sum, g) => sum + (counts[g.key] || 0), 0);
       const segs = CLASS_GROUPS.filter((g) => counts[g.key] > 0)
-        .map((g) => {
+        .map((g, i) => {
           const n = counts[g.key];
           return (
-            html`<button class="cbar-seg seg-${g.key}" style="flex:${n}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${classBadgeSymbol(g.members[0])} ${n}</span></button>`
+            html`<button class="cbar-seg seg-${g.key}" style="flex:${n};--i:${i}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${classBadgeSymbol(g.members[0])} ${n}</span></button>`
           );
         });
       const track = total ? segs : html`<span class="cbar-empty">no scored moves</span>`;
@@ -403,7 +403,10 @@ export function createAnalyzeView({
       if (/\d|#|M/.test(live)) {
         text = live;
         side = head.dataset.side || "even";
-        pct = parseFloat(document.getElementById("engine-eval-bar-white")?.style.height);
+        // The engine bar now carries White's share as a scaleY, so read it back
+        // out of the transform rather than a height.
+        const scale = Number(/scaleY\(([\d.]+)\)/.exec(document.getElementById("engine-eval-bar-white")?.style.transform || "")?.[1]);
+        pct = Number.isFinite(scale) ? scale * 100 : NaN;
       }
     }
     if (!engineOn && chartPoint) {
@@ -416,7 +419,10 @@ export function createAnalyzeView({
     chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
     const fill = document.querySelector("#analysis-eval-meter > i");
-    if (fill) fill.style.width = `${Number.isFinite(pct) ? Math.round(pct) : 50}%`;
+    if (fill) {
+      const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 50;
+      fill.style.transform = `scaleX(${(share / 100).toFixed(4)})`;
+    }
   }
 
   // "12 / 16" -> a ring filled to 12/16 showing "12"; the full text is the tooltip.
@@ -526,9 +532,14 @@ export function createAnalyzeView({
     // While a run is in progress the stored points are the previous game's (the
     // CSS hides that graph too), so they are not this position's eval.
     const running = !!document.querySelector('#analysis-eval-card .notice[data-state="running"]');
+    // The marker moves by transform, not by rewriting x1/x2: changing an SVG
+    // geometry attribute invalidates layout for the whole chart every ply step,
+    // while a transform is composited. cx/cy on the ring are parked off-chart
+    // and the same translate carries it.
     const x = hidden ? -10 : evalChartXOf(idx, points.length);
-    marker.setAttribute("x1", String(x));
-    marker.setAttribute("x2", String(x));
+    const y = hidden || !points[idx] ? -10 : evalChartYOf(pointWinPct(points[idx]));
+    marker.style.transform = `translateX(${x}px)`;
+    if (dot) dot.style.transform = `translate(${x}px, ${y}px)`;
     // The chart overflows its frame (edge plies' markers overhang), so a parked
     // line at x=-10 would show beside it: the start position has no point.
     marker.setAttribute("visibility", hidden ? "hidden" : "visible");
@@ -542,8 +553,6 @@ export function createAnalyzeView({
       return;
     }
     dot.setAttribute("visibility", "visible");
-    dot.setAttribute("cx", String(x));
-    dot.setAttribute("cy", String(evalChartYOf(pointWinPct(points[idx]))));
   }
 
   // White-POV win chance (0..100) from an eval-graph point, via the Lichess sigmoid —
@@ -690,6 +699,25 @@ export function createAnalyzeView({
     );
     chart.removeAttribute("tabindex");
     chart.style.cursor = points && points.length ? "pointer" : "default";
+    // The chart draws itself in once per dataset: a re-render of the SAME game
+    // (a later pass animating the same graph) must not replay it.
+    if (points && points.length && chart.dataset.drawnFor !== String(points.length)) {
+      chart.dataset.drawnFor = String(points.length);
+      chart.classList.add("is-entering");
+      // Drop the class once the draw finishes so a later re-render can replay it
+      // for a genuinely different game.
+      const done = () => chart.classList.remove("is-entering");
+      if (typeof chart.addEventListener === "function") {
+        chart.addEventListener("animationend", done, { once: true });
+        // A chart hidden while it animates never fires animationend; the timeout
+        // is the belt to that braces.
+        setTimeout(done, 900);
+      } else {
+        chart.classList.remove("is-entering");
+      }
+    } else {
+      chart.classList.remove("is-entering");
+    }
 
     const axis = document.createElementNS(svgNS, "line");
     axis.setAttribute("class", "eval-axis");
@@ -828,6 +856,50 @@ export function createAnalyzeView({
     renderMovePairs(payload.moves);
     renderEvalChart(payload.eval_graph);
     renderClassificationBars(payload.moves);
+    // Blocks arrive one after another: the chart first, then the grade bars.
+    // The staggering is CSS (--i), capped so a long stack never drags.
+    const stack = document.getElementById("analysis-results");
+    stack?.querySelectorAll(".res-block").forEach((block, i) => {
+      block.style.setProperty("--i", String(Math.min(i, 5)));
+    });
+    countUpGradeBars();
+  }
+
+  // The grade counts brief count-up as the result lands. Runs once per result:
+  // re-rendering the same analysis (a later pass) leaves the settled numbers.
+  let countUpToken = 0;
+  function countUpGradeBars() {
+    const host = document.getElementById("analysis-summary");
+    if (!host) return;
+    const segs = [...host.querySelectorAll(".cbar-seg")];
+    if (!segs.length) return;
+    const token = ++countUpToken;
+    segs.forEach((seg, i) => {
+      const label = seg.querySelector(".cbar-seg-n");
+      const raw = (label?.textContent || "").trim();
+      const m = /^(\S+)\s+(\d+)$/.exec(raw);
+      if (!m) return;
+      const [, glyph, endRaw] = m;
+      const end = Number(endRaw) || 0;
+      const start = performance.now();
+      const dur = 360;
+      const delay = Math.min(i, 5) * 45;
+      label.textContent = `${glyph} 0`;
+      const tick = (now) => {
+        if (token !== countUpToken) return;
+        if (now - start < delay) {
+          requestAnimationFrame(tick);
+          return;
+        }
+        const t = Math.min(1, (now - start - delay) / dur);
+        // Ease-out: the number settles instead of stopping dead.
+        const eased = 1 - (1 - t) * (1 - t);
+        label.textContent = `${glyph} ${Math.round(end * eased)}`;
+        if (t < 1) requestAnimationFrame(tick);
+        else label.textContent = `${glyph} ${end}`;
+      };
+      requestAnimationFrame(tick);
+    });
   }
 
   return {

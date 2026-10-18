@@ -171,6 +171,14 @@ function xOfIdx(idx, n) {
   return n === 1 ? 320 : (idx / (n - 1)) * 640;
 }
 
+// Win% to chart units, mirroring evalChartYOf (analyze.js): a 9px inset keeps a
+// marker at either extreme inside the frame, and the rest is the plotted band.
+// Matched to the fake chart's measured 96px height, so the inset converts 1:1.
+function yOfWinPct(pct) {
+  const padY = Math.min((9 * 96) / 96, 96 / 4);
+  return padY + (1 - pct / 100) * (96 - 2 * padY);
+}
+
 afterEach(() => {
   delete globalThis.document;
 });
@@ -246,8 +254,12 @@ describe("eval chart current-ply indicator", () => {
     view.updateEvalChartCursor();
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     const cursor = doc(chart).getElementById("eval-chart-cursor");
-    expect(ring.getAttribute("cx")).toBe(cursor.getAttribute("x1"));
-    expect(Number(ring.getAttribute("cx"))).toBeCloseTo(640, 6);
+    // Both markers move by transform, so the ring and the line share a
+    // translateX rather than rewriting SVG geometry (which invalidates layout
+    // per ply).
+    const tx = /translateX\(([\d.-]+)px\)/.exec(cursor.style.transform)[1];
+    expect(Number(tx)).toBeCloseTo(640, 6);
+    expect(ring.style.transform.startsWith(`translate(${tx}px, `)).toBe(true);
   });
 
   it("marks the current ply with a dashed line and a ring (shape, not colour)", () => {
@@ -258,14 +270,17 @@ describe("eval chart current-ply indicator", () => {
 
     const cursor = doc(chart).getElementById("eval-chart-cursor");
     const x = xOfIdx(2, 5); // ply 3 sits at index 2
-    expect(cursor.getAttribute("x1")).toBe(String(x));
-    expect(cursor.getAttribute("x2")).toBe(String(x));
+    expect(cursor.style.transform).toBe(`translateX(${x}px)`);
     expect(cursor.getAttribute("stroke-dasharray")).toBe("3 3"); // pattern cue
     expect(cursor.getAttribute("visibility")).toBe("visible");
 
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     expect(ring.getAttribute("visibility")).toBe("visible");
-    expect(ring.getAttribute("cx")).toBe(String(x));
+    // Same win% sigmoid the view uses, mapped onto the plot band.
+    const cp = POINTS[2].score_cp;
+    const pct = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * Math.max(-1500, Math.min(1500, cp)))) - 1);
+    const y = yOfWinPct(pct);
+    expect(ring.style.transform).toBe(`translate(${x}px, ${y}px)`);
   });
 
   it("hides the indicator when the current ply is not on the chart", () => {
@@ -277,6 +292,7 @@ describe("eval chart current-ply indicator", () => {
     const cursor = doc(chart).getElementById("eval-chart-cursor");
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     expect(cursor.getAttribute("x1")).toBe("-10");
+    expect(cursor.style.transform).toBe("translateX(-10px)");
     // The SVG overflows its frame, so the parked line must be hidden too.
     expect(cursor.getAttribute("visibility")).toBe("hidden");
     expect(ring.getAttribute("visibility")).toBe("hidden");

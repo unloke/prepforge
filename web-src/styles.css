@@ -4855,10 +4855,15 @@ body.is-guest .replay-results:empty::before {
 
 .engine-bar-white {
   position: absolute;
-  inset: auto 0 0 0;
-  height: 50%;
+  inset: 0 0 auto 0;
+  /* White's share as a scale on a full-height element, not a height: the
+     search updates this many times a second, and a height change relaid out
+     the whole window every time. */
+  height: 100%;
+  transform-origin: center top;
+  transform: scaleY(0.5);
   background: #f4f1e8;
-  transition: height var(--dur) var(--ease-out);
+  transition: transform var(--dur) var(--ease-out);
 }
 
 .engine-bar-text.is-white-side {

@@ -25,12 +25,12 @@ function setup() {
     "analysis-chart-caption": el({ parentElement: head }),
     "analysis-eval-card": el(),
     "engine-head-eval": el(),
-    "engine-eval-bar-white": el({ style: { height: "" } }),
+    "engine-eval-bar-white": el({ style: { transform: "" } }),
     "eval-chart-live": el(),
     "analysis-eval-live": el(),
     "eval-chart-cursor": el({ setAttribute() {} }),
   };
-  const fill = el({ style: { width: "" } });
+    const fill = el({ style: { transform: "" } });
   globalThis.document = {
     getElementById: (id) => ids[id] || null,
     querySelector: (sel) => (sel === "#analysis-eval-meter > i" ? fill : null),
@@ -59,7 +59,8 @@ describe("Evaluation head", () => {
     expect(ids["analysis-chart-caption"].textContent).toBe("+2.50");
     expect(ids["analysis-chart-caption"].dataset.side).toBe("white");
     expect(head.classList.contains("has-eval")).toBe(true);
-    expect(parseInt(fill.style.width, 10)).toBeGreaterThan(70);
+    // The meter is a scaleX, so the number is a share rather than a pixel width.
+    expect(parseFloat(/scaleX\(([\d.]+)\)/.exec(fill.style.transform)[1])).toBeGreaterThan(0.7);
   });
 
   it("is empty (no fabricated number) where nothing has been evaluated", () => {
@@ -67,7 +68,7 @@ describe("Evaluation head", () => {
     view.updateEvalChartCursor();
     expect(ids["analysis-chart-caption"].textContent).toBe("");
     expect(head.classList.contains("has-eval")).toBe(false);
-    expect(fill.style.width).toBe("50%");
+    expect(fill.style.transform).toBe("scaleX(0.5000)");
   });
 
   it("never substitutes a saved score while the live engine starts", () => {
@@ -80,17 +81,17 @@ describe("Evaluation head", () => {
     expect(ids["analysis-chart-caption"].textContent).toBe("");
     ids["engine-head-eval"].textContent = "−0.40";
     ids["engine-head-eval"].dataset.side = "black";
-    ids["engine-eval-bar-white"].style.height = "46%";
+    ids["engine-eval-bar-white"].style.transform = "scaleY(0.46)";
     view.paintEvalHead();
     expect(ids["analysis-chart-caption"].textContent).toBe("−0.40");
     expect(ids["analysis-chart-caption"].dataset.side).toBe("black");
-    expect(fill.style.width).toBe("46%");
+    expect(fill.style.transform).toBe("scaleX(0.4600)");
     ids["engine-head-eval"].dataset.pending = "true";
     appState.analysisPly = 2;
     appState.evalChartPoints = [{ ply: 2, score_cp: -1259 }];
     view.updateEvalChartCursor();
     expect(ids["analysis-chart-caption"].textContent).toBe("−0.40");
-    expect(fill.style.width).toBe("46%");
+    expect(fill.style.transform).toBe("scaleX(0.4600)");
     expect(ids["analysis-chart-caption"].dataset.pending).toBe("true");
     ids["analysis-eval-card"].classList.toggle("is-engine", false);
     view.paintEvalHead();

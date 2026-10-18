@@ -184,6 +184,24 @@
   transform: translateY(0);
 }
 
+/* Analysis landing: the stack fades in as a whole, then its blocks arrive
+   one after another a beat later. Each block only fades and rises a few px;
+   nothing below it moves. */
+.res-stack.is-visible > .res-block {
+  animation: res-block-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+@keyframes res-block-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .res-block {
   display: flex;
   flex-direction: column;
@@ -285,11 +303,15 @@
 }
 .ev-meter > i {
   display: block;
-  width: 50%;
   height: 100%;
+  /* Full width, scaled to White's share: scaling never lays the meter out,
+     so a search updating it many times a second stays composited. */
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(0.5);
   border-radius: inherit;
   background: #ecebe6;
-  transition: width var(--dur-slow) var(--ease-out);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
 /* Search depth as quiet figures with a hairline of progress under them. */
@@ -456,7 +478,40 @@
   stroke: var(--accent);
   stroke-width: 2;
 }
+.eval-chart .eval-cursor,
+.eval-chart .eval-cursor-dot {
+  transition:
+    transform var(--dur) var(--ease-emphasis),
+    opacity var(--dur-fast) var(--ease-out);
+}
 .eval-chart .eval-hover { stroke: var(--text); stroke-opacity: 0.35; }
+.eval-chart.is-entering .eval-line,
+.eval-chart.is-entering .eval-area {
+  transform-origin: left center;
+  animation: eval-chart-draw var(--dur-slow) var(--ease-out) both;
+}
+@keyframes eval-chart-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.eval-chart.is-entering .eval-marker {
+  animation: eval-dot-pop var(--dur) var(--ease-emphasis) both;
+  animation-delay: calc(var(--dur-slow) + var(--i, 0) * 30ms);
+}
+@keyframes eval-dot-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 .eval-chart .eval-m-brilliant { color: var(--brilliant); }
 .eval-chart .eval-m-great { color: var(--great); }
 .eval-chart .eval-m-inaccuracy { color: var(--inaccuracy); }
