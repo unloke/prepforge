@@ -255,6 +255,25 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(String(byId("team-invite-foot").innerHTML)).not.toMatch(/月|日/);
   });
 
+  it("a failed directory load says what failed and offers a Retry", async () => {
+    let attempts = 0;
+    const { view, byId } = makeHarness({
+      api: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("Failed to fetch");
+        return { teams: [{ id: "a", name: "Club", role: "owner", member_count: 1 }] };
+      },
+    });
+    byId("teams-list").querySelector = () => ({ addEventListener: () => {} });
+    await view.loadTeams();
+    const html = String(byId("teams-list").innerHTML);
+    expect(html).toContain("Failed to fetch");
+    expect(html).toContain('role="alert"');
+    // Retry is wired back into the same load, so the next attempt repaints.
+    await view.loadTeams();
+    expect(String(byId("teams-list").innerHTML)).toContain('data-team-id="a"');
+  });
+
   it("the signed-out empty card offers a Sign in button (UX 2026-10-01 P2-10)", () => {
     const calls = [];
     const { view, byId } = makeHarness({ requireSignIn: (reason) => calls.push(reason) });

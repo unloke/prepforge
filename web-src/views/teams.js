@@ -108,7 +108,9 @@ export function createTeamsView({
       }
     } catch (error) {
       if (!isCurrent()) return;
-      list.innerHTML = html`<div class="empty-state">${error.message}</div>`;
+      // A failure says what went wrong and how to retry, like the Library's.
+      list.innerHTML = html`<div role="alert" class="empty-state">${error.message} <button class="btn sm" type="button">Retry</button></div>`;
+      list.querySelector("button")?.addEventListener("click", loadTeams);
     }
     if (isCurrent()) loadSharedRepertoires();
   }

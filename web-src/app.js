@@ -2608,7 +2608,7 @@ async function loadAnalysisHistory() {
   const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const host = document.getElementById("analysis-history");
   if (!host) return;
-  host.innerHTML = html`<div class="muted hint">Loading...</div>`;
+  host.innerHTML = html`<div class="muted hint">Loading…</div>`;
   const rows = new Map();
   let cursor = null, loading = false;
   async function loadPage() {
@@ -2776,7 +2776,7 @@ async function openTeamDetail(teamId) {
     if (button) { button.hidden = true; button.onclick = null; }
   }
   const name = document.getElementById("team-detail-name");
-  if (name) name.textContent = "Loading?";
+  if (name) name.innerHTML = html`<span class="skeleton-text">Loading…</span>`;
   const role = document.getElementById("team-detail-role");
   if (role) role.textContent = "";
   const shares = document.getElementById("team-shared-repertoires");
@@ -2860,7 +2860,7 @@ async function openTeamDetail(teamId) {
             (r) =>
               html`<option value="${r}"${m.role === r ? " selected" : ""}>${teamRoleLabel(r)}</option>`
           );
-        const removeBtn = html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member"`}>${isMe ? "Leave" : "×"}</button>`;
+        const removeBtn = html`<button type="button" class="btn icon team-remove" data-user-id="${uid}" data-user-name="${uname}" data-self="${isMe ? "1" : "0"}"${isMe ? "" : html` title="Remove member" aria-label="Remove ${uname}"`}>${isMe ? "Leave" : "×"}</button>`;
         tail = html`<select class="team-role-select" data-user-id="${uid}" aria-label="Role for ${uname}">${opts}</select>${removeBtn}`;
       } else {
         const leaveBtn = isMe
