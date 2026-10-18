@@ -790,6 +790,20 @@ async function fetchPlayExplorer(fen) {
   }
 }
 
+// A Maia failure on the board, in the same voice as the Retry notice that
+// already showed: name the reason, and the action that clears it.
+function maiaOpponentErrorText(error) {
+  const message = String(error?.message || "");
+  if (/timed out/i.test(message)) return "Maia did not answer in time. Retry to load the model again.";
+  if (/network|fetch|offline|Failed to/i.test(message)) return "The Maia model download failed. Check your connection and retry.";
+  if (/size mismatch|truncated|exceeds manifest/i.test(message)) return "The Maia model download was incomplete. Retry to download it again.";
+  return message || "Maia could not start. Retry to try again.";
+}
+
+// Returns Maia's predictions, or { error } when it produced none. The caller must
+// tell the two apart: "the opponent has no legal move" is only true when the move
+// generator really came back empty, while an engine failure owes the user the
+// actual reason and a retry, not a misleading book message.
 async function fetchPlayMaia(fen) {
   // Train Play opponent fallback is Maia-by-design (thin Explorer positions
   // fall back to human-like replies), independent of the Analyze-layer switch.
@@ -798,8 +812,14 @@ async function fetchPlayMaia(fen) {
     const maiaNotice = watchMaiaInit(provider, {
       notices,
       onRetry: () => {
+        // The failure above sets play.active = false, so gating on it would make
+        // the notice's Retry a dead button exactly when it is needed. Re-asking
+        // the same position is what the user asked for.
         const play = appState.play;
-        if (play?.active && play.fen === fen) void playOpponentReply();
+        if (play?.fen === fen) {
+          play.active = true;
+          void playOpponentReply();
+        }
       },
     });
     try {
@@ -808,10 +828,10 @@ async function fetchPlayMaia(fen) {
       return predictions;
     } catch (error) {
       maiaNotice.fail(error);
-      return [];
+      return { error };
     }
-  } catch (_) {
-    return [];
+  } catch (error) {
+    return { error };
   }
 }
 
@@ -1042,8 +1062,19 @@ async function playOpponentReply() {
     maiaPredictions,
   });
   if (!reply.uci) {
-    maiaPredictions = await fetchPlayMaia(fen);
+    const maia = await fetchPlayMaia(fen);
     if (!isCurrent()) return;
+    // Maia could not start at all: say so and keep the session retryable. The
+    // download/init failure already carries a Retry notice, so this only names
+    // the reason on the board instead of blaming the book.
+    if (maia.error) {
+      play.active = false;
+      updateTrainTurnBadge(null);
+      setTrainBanner("done", "Opponent unavailable", maiaOpponentErrorText(maia.error));
+      syncTrainSessionControls();
+      return;
+    }
+    maiaPredictions = maia;
     reply = pickOpponentReply({
       book: play.book,
       legalUcis: info.legal_moves,
