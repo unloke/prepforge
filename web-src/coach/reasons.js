@@ -5,20 +5,13 @@
 // the claim puts them. When no check passes the detector returns null and the coach keeps
 // its plain verdict. Research and audit: research/coach-precision/REPORT.md, REPORT-r2.md.
 //
-// A reason is { kind, type, square, reply? } and is worded by the caller, which knows
+// A reason is { kind, type, square, from? } and is worded by the caller, which knows
 // whose pieces they are:
 //   defend  - the move adds a defender to a piece that was en prise ("defends the pawn on b7")
 //   escape  - the move takes an attacked, undefended piece to a square nothing attacks
 //   block   - the move stops an enemy passed pawn on the square in front of it
-//   attack  - a move newly attacks a piece it can win, or a pawn that drives a piece back
-//             (best-move and reply reasons)
-//   stops   - the better move makes the opponent's reply illegal ("stops 28.f5")
-//   pinned  - an error leaves one of the mover's pieces pinned to its king to the end of
-//             the engine line ("leaves the bishop on e2 pinned", "steps into a pin")
-//   shut    - an error lands a piece where its own bishop needed to go ("shuts in the bishop on f1")
-//   centre  - an error lets the opponent end the line with two centre pawns against none
 import { Chess } from "chess.js";
-import { playUci, winnableTargets } from "./move-facts.js";
+import { playUci } from "./move-facts.js";
 import { seeCapture, PIECE_NAME, PIECE_VALUE } from "./material.js";
 
 const ERRORS = new Set(["inaccuracy", "mistake", "blunder"]);
@@ -65,15 +58,6 @@ function legalGuard(b, sq, from) {
   caps.sort((a, c) => PIECE_VALUE[a.piece] - PIECE_VALUE[c.piece]);
   work.move(caps[0]);
   return work.moves({ verbose: true }).some((m) => m.from === from && m.to === sq && m.captured);
-}
-
-// `color` could legally capture on `sq` with the piece on `from` if it were its turn.
-function legalHit(b, from, sq, color) {
-  const parts = b.fen().split(" ");
-  parts[1] = color;
-  parts[3] = "-";
-  const work = board(parts.join(" "));
-  return !!work && work.moves({ verbose: true }).some((m) => m.from === from && m.to === sq && m.captured);
 }
 
 // What the move `uci` does for its own pieces: escape, defend or block. `pv` starts with `uci`.
@@ -144,92 +128,16 @@ export function soundReason(f) {
   return guardReason(f.fenBefore, f.uci, pv) || blockReason(f.fenBefore, f.uci, pv);
 }
 
-// The attack is what the line is about: the opponent's reply moves the attacked piece, or
-// the attacker's side takes it within its next two moves of `pv` (which starts with the move).
-function attackAnswered(fen, pv, square) {
-  const b = board(fen);
-  if (!b || !pv || pv.length < 2) return false;
-  for (let i = 0; i < Math.min(pv.length, 5); i++) {
-    const mv = playUci(b, pv[i]);
-    if (!mv) return false;
-    if (i === 1 && mv.from === square) return true;
-    if (i % 2 === 0 && i > 0 && mv.to === square && mv.captured) return true;
-  }
-  return false;
-}
-
-// An error: what the better move would have done (attack, defend or escape), when the
-// played move doesn't do the same and the engine lines show it matters: the better line
-// makes the opponent answer the attack, or the played line takes the piece left en prise.
-// A true fact that the lines ignore ("Rd7 attacks a7" when Rd7 is about dodging a fork)
-// is not a reason.
-export function betterReason(f) {
-  if (!f || !isError(f) || f.isBest || !f.bestUci || f.bestUci === f.uci) return null;
-  const best = after(f.fenBefore, f.bestUci);
-  if (!best) return null;
-  if (!best.board.isCheck()) {
-    const color = best.move.color;
-    const t = winnableTargets(best.board.fen(), best.move.to, color).find((x) => legalHit(best.board, best.move.to, x.square, color));
-    if (t) {
-      const before = board(f.fenBefore);
-      const already = before.attackers(t.square, color).includes(best.move.from);
-      const played = after(f.fenBefore, f.uci);
-      const same = played && winnableTargets(played.board.fen(), played.move.to, played.move.color).some((x) => x.square === t.square);
-      if (!already && played && !same && attackAnswered(f.fenBefore, f.bestPvUci, t.square)) {
-        return { kind: "attack", type: t.type, square: t.square };
-      }
-    }
-  }
-  const guard = guardReason(f.fenBefore, f.bestUci, f.bestPvUci || []);
-  if (!guard) return stopsReason(f, best);
-  const own = guardReason(f.fenBefore, f.uci, f.playedPvUci || []);
-  if (own && own.kind === guard.kind && own.type === guard.type) return null;
-  // The played line's reply takes the piece the better move would have looked after.
-  const target = guard.kind === "escape" ? guard.from : guard.square;
-  const played = after(f.fenBefore, f.uci);
-  const reply = played && f.replyUci ? after(played.board.fen(), f.replyUci) : null;
-  if (!reply || reply.move.to !== target || !reply.move.captured) return stopsReason(f, best);
-  return guard;
-}
-
-// The better move makes the engine's reply to the error illegal: a quiet reply to a square
-// that was empty, by the same piece, and not merely postponed by a check.
-function stopsReason(f, best) {
-  if (!f.replyUci || best.board.isCheck()) return null;
-  const played = after(f.fenBefore, f.uci);
-  const reply = played && after(played.board.fen(), f.replyUci);
-  if (!reply || reply.move.captured || reply.move.promotion) return null;
-  const before = board(f.fenBefore);
-  if (before.get(reply.move.to)) return null;
-  const p = before.get(reply.move.from);
-  const q = best.board.get(reply.move.from);
-  if (!p || !q || p.type !== q.type || p.color !== q.color || p.color === played.move.color) return null;
-  if (after(best.board.fen(), f.replyUci)) return null;
-  const [, turn, , , , n] = played.board.fen().split(" ");
-  return { kind: "stops", reply: `${n}${turn === "w" ? "." : "..."}${reply.move.san}` };
-}
-
 // The reason as a verb phrase. `owner` words the pieces: "the" on the user's own read,
 // "your"/"their" on the opponent's read (the mover's pieces are "their", the user's "your").
 //   escape -> "moves the bishop out of attack"
 //   defend -> "defends the pawn on b7"
 //   block  -> "blocks the passed pawn on e5"
-//   attack -> "attacks the knight on g5"
 export function reasonPhrase(r, { mine = "the", theirs = "the" } = {}) {
   if (!r) return "";
   const name = PIECE_NAME[r.type];
   if (r.kind === "escape") return `moves the ${name} out of attack`;
   if (r.kind === "defend") return `defends ${mine} ${name} on ${r.square}`;
   if (r.kind === "block") return `blocks ${theirs} passed pawn on ${r.square}`;
-  if (r.kind === "attack") return `attacks ${theirs} ${name} on ${r.square}`;
-  if (r.kind === "stops") return `stops ${r.reply}`;
-  if (r.kind === "pinned") return r.moved ? `puts the ${name} in a pin` : `leaves ${mine} ${name} on ${r.square} pinned`;
-  if (r.kind === "shut") return `shuts in ${mine} bishop on ${r.square}`;
-  if (r.kind === "centre") return `lets the opponent take the centre with pawns on ${r.squares.join(" and ")}`;
   return "";
-}
-
-// "attacks ..." -> "attacking ...", for "Bh5 was the move, attacking ...".
-export function reasonParticiple(phrase) {
-  return String(phrase || "").replace(/^(moves|defends|blocks|attacks|stops) /, (_, v) => `${{ moves: "moving", stops: "stopping" }[v] || `${v.slice(0, -1)}ing`} `);
 }
