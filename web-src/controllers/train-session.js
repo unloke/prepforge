@@ -794,11 +794,11 @@ async function fetchPlayExplorer(fen) {
 // already showed: name the reason, and the action that clears it.
 function maiaOpponentErrorText(error) {
   const message = String(error?.message || "");
-  if (/timed out/i.test(message)) return "Maia did not answer in time. Retry to load the model again.";
-  if (/stalled/i.test(message)) return "The Maia model download stopped part-way. Retry to start it again.";
-  if (/network|fetch|offline|Failed to/i.test(message)) return "The Maia model download failed. Check your connection and retry.";
-  if (/size mismatch|truncated|exceeds manifest/i.test(message)) return "The Maia model download was incomplete. Retry to download it again.";
-  return message || "Maia could not start. Retry to try again.";
+  if (/timed out/i.test(message)) return "Maia did not answer in time. Retry.";
+  if (/stalled/i.test(message)) return "The Maia download stopped part-way. Retry.";
+  if (/network|fetch|offline|Failed to/i.test(message)) return "The Maia download failed. Check your connection and retry.";
+  if (/size mismatch|truncated|exceeds manifest/i.test(message)) return "The Maia download was incomplete. Retry.";
+  return message || "Maia could not start. Retry.";
 }
 
 // Returns Maia's predictions, or { error } when it produced none. The caller must

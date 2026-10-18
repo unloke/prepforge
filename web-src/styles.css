@@ -2537,6 +2537,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    Icon-only buttons carry the `icon` variant class on `.btn`, so there is one
    button system rather than two. */
 .bi { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn.icon .bl,
+.rep-menu-btn .bl,
 .panel-head .btn > .bi { display: none; }
 
 /* Board-bar icons are plain glyphs (no boxed buttons). */
@@ -3814,41 +3816,27 @@ body.is-guest .replay-results:empty::before {
   display: block;
 }
 
-/* A variation block. One rule draws the whole connector: a vertical rail on
-   the left edge of the block and a horizontal elbow into the first move.
-   Both are sized from --mtree-indent so the rail stays centred in the notch
-   the child text is indented by, whatever the row height. */
+/* A variation: one notch in, with a rail down its whole height. Its moves
+   flow inline, so the rail is the only connector; nested variations stack
+   their rails a notch apart. */
 .mtree-var {
   --mtree-indent: 10px;
   --mtree-rail: 2px;
   display: block;
   position: relative;
-  margin: 3px 0 3px calc(var(--mtree-indent) * 2);
-  padding: 0 0 0 var(--mtree-indent);
+  margin: 2px 0 2px var(--mtree-indent);
+  padding: 1px 0 1px calc(var(--mtree-indent) + var(--mtree-rail));
   color: var(--muted);
 }
 
-/* The rail: only as tall as the block, and only as wide as the elbow needs.
-   Deep nesting stacks these, each one a step lighter than its parent. */
 .mtree-var::before {
   content: "";
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(var(--mtree-rail) * -1);
+  top: 2px;
+  bottom: 2px;
+  left: 0;
   width: var(--mtree-rail);
-  background: var(--line);
-}
-
-/* The elbow into the first move. */
-.mtree-var > .mtree-line:first-child::before,
-.mtree-var > .mtree-move:first-child::before {
-  content: "";
-  position: absolute;
-  top: 11px;
-  left: calc(var(--mtree-rail) * -1);
-  width: var(--mtree-indent);
-  height: var(--mtree-rail);
+  border-radius: var(--mtree-rail);
   background: var(--line);
 }
 
@@ -3856,19 +3844,8 @@ body.is-guest .replay-results:empty::before {
   background: var(--line-soft);
 }
 
-/* The last child's rail stops at its elbow instead of running to the bottom
-   of the block, so a closed branch does not trail a tail. */
-.mtree-var:has(> .mtree-line:last-child)::before,
-.mtree-var:has(> .mtree-move:last-child)::before {
-  bottom: auto;
-  height: 13px;
-}
-
 /* The variation that leads to the current move gets an accent rail. */
-.mtree-var:has(> .mtree-move.is-current)::before,
-.mtree-var:has(> .mtree-move.on-path)::before,
-.mtree-var:has(> .mtree-line:first-child > .mtree-move.is-current)::before,
-.mtree-var:has(> .mtree-line:first-child > .mtree-move.on-path)::before {
+.mtree-var:has(> .mtree-move.is-current, > .mtree-move.on-path)::before {
   background: var(--accent-line);
 }
 
