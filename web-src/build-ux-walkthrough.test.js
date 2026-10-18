@@ -128,7 +128,7 @@ describe("Generate dialog", () => {
     const names = [...fields.matchAll(/name: "(\w+)"/g)].map((m) => m[1]);
     // Three knobs shape the tree, two shape the engine — two named runs.
     expect(fields.match(/group: "Coverage"/g)).toHaveLength(3);
-    expect(fields.match(/group: "Models"/g)).toHaveLength(2);
+    expect(fields.match(/group: "Engines"/g)).toHaveLength(2);
     // The estimate is last, and it is a stat (not a note) so it can be emphasised.
     const estimateIdx = fields.indexOf('name: "estimate"');
     expect(names[names.length - 1]).toBe("estimate");
@@ -137,14 +137,9 @@ describe("Generate dialog", () => {
     expect(fields).not.toMatch(/name: "estimate"[\s\S]{0,120}type: "note"/);
   });
 
-  it("opens with the default estimate already in the stat", () => {
-    const withDefault = extractByMarker("function generateDialogFieldsWithDefault() {");
-    expect(withDefault).toContain("generateEstimateText(readGenerateOptions({}))");
-  });
-
   it("repaints only the range figure, and keeps the reuse caveat on it", () => {
     const open = extractByMarker("async function generateFromCurrentNode() {");
-    expect(open).toContain("generateDialogFieldsWithDefault()");
+    expect(open).toContain("fields: generateDialogFields(),");
     expect(open).toContain('\'[data-note="estimate"] b\'');
     // The stat holds the unit as a span, so writing textContent must not target
     // the whole row (it would drop "new moves").

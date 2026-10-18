@@ -1147,7 +1147,7 @@ function generateDialogFields() {
     },
     {
       name: "main_pct",
-      label: "Cover mainline replies played at least (%)",
+      label: "Mainline replies, min %",
       hint: "Opponent moves below this share of human games are left out.",
       type: "number",
       default: GEN_DEFAULT_MAIN_PCT,
@@ -1157,7 +1157,7 @@ function generateDialogFields() {
     },
     {
       name: "branch_pct",
-      label: "Cover branch replies played at least (%)",
+      label: "Branch replies, min %",
       hint: "Same cut-off, applied inside side branches.",
       type: "number",
       default: GEN_DEFAULT_BRANCH_PCT,
@@ -1175,7 +1175,7 @@ function generateDialogFields() {
       min: 600,
       max: 2600,
       step: 50,
-      group: "Models",
+      group: "Engines",
     },
     // Per-position Stockfish search depth for this run; Settings holds the default.
     {
@@ -1185,22 +1185,12 @@ function generateDialogFields() {
       default: effectiveStockfishDepth(),
       min: STOCKFISH_MIN_DEPTH,
       max: STOCKFISH_MAX_DEPTH,
-      group: "Models",
+      group: "Engines",
     },
     // Last in the body, above the buttons: the estimate of what this run adds.
     // The label is the range the knobs produce; `unit` names it.
     { name: "estimate", label: "", type: "stat", unit: "new moves" },
   ];
-}
-
-// The estimate's opening value: the same defaults the fields carry, read
-// through the same clamps, so the stat is right before the first keystroke.
-function generateDialogFieldsWithDefault() {
-  return generateDialogFields().map((field) =>
-    field.name === "estimate"
-      ? { ...field, label: generateEstimateText(readGenerateOptions({})) }
-      : field
-  );
 }
 
 function clampGenerateInt(raw, min, max, fallback) {
@@ -1287,7 +1277,7 @@ async function generateFromCurrentNode() {
   const values = await showInputModal({
     title: "Generate moves from this position",
     okLabel: "Generate",
-    fields: generateDialogFieldsWithDefault(),
+    fields: generateDialogFields(),
     onInput: (current, overlay) => {
       const range = overlay.querySelector('[data-note="estimate"] b');
       if (!range) return;

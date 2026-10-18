@@ -3317,7 +3317,7 @@ async function loadSharedRepertoires() {
             <span class="color-dot ${color}"></span>
             <span class="mem-id">
               <span class="name">${name}</span>
-              <span class="sub">· ${via}</span>
+              <span class="sub">${via}</span>
             </span>
             <span class="team-member-tail">
               <span class="team-role-badge">read-only</span>
@@ -3481,7 +3481,7 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
             : "";
         const hint = field.hint ? html` title="${field.hint}"` : "";
         return html`
-          <label class="modal-field"${hint}>
+          <label class="modal-field${field.type === "number" ? " is-num" : ""}"${hint}>
             <span>${safeLabel}</span>
             <input name="${safeName}" type="${inputType}" value="${safeValue}"${numericAttrs} data-field />
           </label>

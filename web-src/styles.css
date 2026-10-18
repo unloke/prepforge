@@ -335,7 +335,8 @@ body {
 
 button,
 textarea,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
 }
@@ -4213,8 +4214,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-width: 0;
 }
 
-/* Group heading inside a dialog body. Sentence case, no rule: the spacing
-   carries the grouping, and a divider here would fight the field outlines. */
+/* Group heading inside a dialog body, in the small caps of the Settings
+   section heads. No rule: the spacing carries the grouping, and a divider
+   here would fight the field outlines. */
 .modal-group-label {
   color: var(--label);
   font-size: var(--fs-xs);
@@ -4383,6 +4385,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 4px;
   background: var(--panel);
   color: var(--text);
+}
+
+/* A number is a short value: label left, a narrow right-aligned box right,
+   so a dialog of knobs reads as one compact list. */
+.modal-field.is-num {
+  grid-template-columns: minmax(0, 1fr) 84px;
+  align-items: center;
+  column-gap: 12px;
+}
+.modal-field.is-num input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .modal-field textarea {
