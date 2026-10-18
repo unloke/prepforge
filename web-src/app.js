@@ -1550,11 +1550,14 @@ function syncAnalyzeHead() {
   title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
   const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
     .filter(Boolean);
+  // The tag line rides under the board beside the move, not in the panel head:
+  // the head is one row of title and actions.
   meta.textContent = bits.length
     ? bits.join(" · ")
     : plies
       ? `${plies} half-move${plies === 1 ? "" : "s"}`
       : "";
+  meta.title = meta.textContent;
 }
 
 // Per-view heads that live inside the pages: Analyze's game identity, the
@@ -3439,6 +3442,11 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
         const safeName = field.name;
         const safeLabel = field.label || field.name;
         const safeValue = field.default == null ? "" : String(field.default);
+        if (field.type === "stat") {
+          // A live number the caller re-writes on input. Bigger than a note so
+          // the one figure that drives the decision is the dialog's focal point.
+          return html`<div class="modal-stat" data-note="${safeName}"><b>${safeLabel}</b><span>${field.unit || ""}</span></div>`;
+        }
         if (field.type === "note") {
           // Read-only informational line (no input, never collected).
           return html`<p class="modal-note muted" data-note="${safeName}">${safeLabel}</p>`;
@@ -3479,7 +3487,17 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
           </label>
         `;
     };
-    const inputsHtml = fields.map(fieldHtml);
+    // A group heading before each named run of fields; a field with no `group`
+    // (or a repeated one) starts a new run, so callers only set the name.
+    const inputsHtml = [];
+    let lastGroup;
+    for (const field of fields) {
+      if (field.group && field.group !== lastGroup) {
+        inputsHtml.push(html`<div class="modal-group-label">${field.group}</div>`);
+      }
+      lastGroup = field.group || "";
+      inputsHtml.push(fieldHtml(field));
+    }
     overlay.innerHTML = html`
       <div class="modal" role="dialog" aria-modal="true">
         <div class="modal-title">${title}</div>
@@ -4240,7 +4258,8 @@ function loadBuildSession() {
       engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
       isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
-      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd,
+      reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
       refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
       requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
       setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,
@@ -4287,16 +4306,13 @@ async function ensureBuildView() {
 }
 
 // The sidebar's repertoire identity line: which repertoire is open and for which
-// colour. The ⋯ button next to it carries the repertoire-scoped actions.
+// colour. The ⋯ button next to it carries the repertoire-scoped actions. The view
+// repaints Generate's visibility alongside the name.
 function renderBuildRepHeader() {
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = !!appState.build;
-  if (!appState.build) {
-    nameEl.textContent = "No repertoire open";
-    return;
-  }
   if (buildView) return buildView.renderBuildRepHeader();
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
 }

@@ -2587,7 +2587,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .bi { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .btn.icon .bl,
 .rep-menu-btn .bl,
-.panel-head .btn > .bi { display: none; }
+.panel-head .btn:not(.icon) > .bi { display: none; }
 
 /* Board-bar icons are plain glyphs (no boxed buttons). */
 .board-bar .btn.icon {
@@ -2647,6 +2647,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The game's tag line (result · event · date) under the board, beside the move:
+   it belongs to the position, not the panel head. Hidden while empty, so the
+   board bar sits at one row. */
+.board-sub {
+  flex: none;
+  max-width: 40%;
+  color: var(--label);
+  font-size: var(--fs-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-sub:empty { display: none; }
 
 /* Google-Docs-style save indicator for local-first Build sync. A quiet chip that
    only earns attention when something's wrong (error). Tokens keep it on-theme. */
@@ -4213,6 +4227,42 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-width: 0;
 }
 
+/* Group heading inside a dialog body. Sentence case, no rule: the spacing
+   carries the grouping, and a divider here would fight the field outlines. */
+.modal-group-label {
+  color: var(--label);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.modal-body > .modal-group-label:first-child { margin-top: -2px; }
+.modal-body > .modal-group-label:not(:first-child) {
+  margin-top: 4px;
+}
+
+/* The dialog's one live figure. Tabular figures so a re-estimated range does
+   not jitter the digits as the knobs move. */
+.modal-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--surface-3);
+}
+.modal-stat b {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.modal-stat span {
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+
 .modal-note {
   margin: 0;
   font-size: 12px;
@@ -5329,6 +5379,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .rail .nav-group-label { height: 14px; line-height: 14px; }
   .rail-foot { gap: 2px; padding-top: 6px; }
   .rail .account-btn { height: 36px; }
+  /* A head row stays quiet until the action is wanted. The `hidden` attribute
+     carries whether Generate applies at this position; the row act overrides it,
+     above the phone breakpoint only — on a phone there is no hover and the
+     button is the board bar's pill. The attribute keeps the button out of the
+     a11y tree and the Tab order, so this costs no focus stop. Overriding the
+     global `[hidden]` rule below is the whole point of this rule. */
+  #build-sidebar:has(#builder-tree .mtree-move.is-current:hover) #build-generate-node,
+  #build-sidebar:has(#builder-tree .mtree-move.is-current:focus) #build-generate-node { display: inline-flex !important; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a

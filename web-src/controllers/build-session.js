@@ -25,8 +25,8 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
   hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson, preloadBuildGen,
-  queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+  preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
   refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
   requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
   setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
@@ -41,8 +41,8 @@ export function createBuildSession(deps) {
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
     hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson, preloadBuildGen,
-    queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+    preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
     refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
     requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
     setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
@@ -53,8 +53,8 @@ export function createBuildSession(deps) {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
     closeNodeContextMenu, createRepertoirePrompt, generateFromCurrentNode, hydrateBuild,
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
-    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel, saveBuildAnnotations,
-    scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
+    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
+    saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
   };
 }
 
@@ -213,6 +213,13 @@ async function renameRepertoire() {
   }
 }
 
+// The paint rule lives in the build view because it reads appState, exactly like
+// renderBuildBranchBar below.
+function paintGenerateVisibility() {
+  if (buildView) return buildView.paintGenerateVisibility();
+  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
+}
+
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
   appState.buildCurrentNodeId = nodeId;
@@ -232,6 +239,7 @@ async function selectBuildNode(nodeId) {
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
+  paintGenerateVisibility();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
@@ -1135,6 +1143,7 @@ function generateDialogFields() {
       default: GEN_DEFAULT_OWN_MOVES,
       min: 1,
       max: GEN_MAX_OWN_MOVES,
+      group: "Coverage",
     },
     {
       name: "main_pct",
@@ -1144,6 +1153,7 @@ function generateDialogFields() {
       default: GEN_DEFAULT_MAIN_PCT,
       min: 1,
       max: 50,
+      group: "Coverage",
     },
     {
       name: "branch_pct",
@@ -1153,6 +1163,7 @@ function generateDialogFields() {
       default: GEN_DEFAULT_BRANCH_PCT,
       min: 1,
       max: 50,
+      group: "Coverage",
     },
     // Defaults to the player's own strength (Settings → Playing strength), so the
     // tree leans toward replies THEIR opponents actually play.
@@ -1164,6 +1175,7 @@ function generateDialogFields() {
       min: 600,
       max: 2600,
       step: 50,
+      group: "Models",
     },
     // Per-position Stockfish search depth for this run; Settings holds the default.
     {
@@ -1173,9 +1185,22 @@ function generateDialogFields() {
       default: effectiveStockfishDepth(),
       min: STOCKFISH_MIN_DEPTH,
       max: STOCKFISH_MAX_DEPTH,
+      group: "Models",
     },
-    { name: "estimate", label: "", type: "note" },
+    // Last in the body, above the buttons: the estimate of what this run adds.
+    // The label is the range the knobs produce; `unit` names it.
+    { name: "estimate", label: "", type: "stat", unit: "new moves" },
   ];
+}
+
+// The estimate's opening value: the same defaults the fields carry, read
+// through the same clamps, so the stat is right before the first keystroke.
+function generateDialogFieldsWithDefault() {
+  return generateDialogFields().map((field) =>
+    field.name === "estimate"
+      ? { ...field, label: generateEstimateText(readGenerateOptions({})) }
+      : field
+  );
 }
 
 function clampGenerateInt(raw, min, max, fallback) {
@@ -1216,7 +1241,7 @@ function generateEstimateRange(options) {
 
 function generateEstimateText(options) {
   const { low, high } = generateEstimateRange(options);
-  return `About ${low}–${high} new moves`;
+  return `${low}–${high}`;
 }
 
 async function generateFromCurrentNode() {
@@ -1262,12 +1287,12 @@ async function generateFromCurrentNode() {
   const values = await showInputModal({
     title: "Generate moves from this position",
     okLabel: "Generate",
-    fields: generateDialogFields(),
+    fields: generateDialogFieldsWithDefault(),
     onInput: (current, overlay) => {
-      const note = overlay.querySelector('[data-note="estimate"]');
-      if (!note) return;
-      note.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
-      note.title = "Fewer where your repertoire already has the moves";
+      const range = overlay.querySelector('[data-note="estimate"] b');
+      if (!range) return;
+      range.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
+      range.title = "Fewer where your repertoire already has the moves";
     },
   });
   if (!values || !isCurrent()) return;

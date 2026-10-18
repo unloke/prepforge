@@ -137,6 +137,68 @@ describe("create dialogs hold a pending state while the request runs", () => {
   });
 });
 
+// i06: the Generate dialog's knobs read as one flat stack, and the move-count
+// estimate — the one figure the decision turns on — sat at the bottom in 12px
+// muted. The modal now renders a small-caps group label per named run of fields
+// and a stat row whose <b> carries the range and whose <span> names the unit.
+describe("input modal renders group labels and stat rows", () => {
+  function renderModal(fields) {
+    const overlay = fakeEl();
+    const body = fakeEl();
+    const okBtn = fakeEl();
+    const cancelBtn = fakeEl();
+    overlay.querySelector = (sel) => {
+      if (sel === '[data-action="ok"]') return okBtn;
+      if (sel === '[data-action="cancel"]') return cancelBtn;
+      if (sel === "[data-field]") return null;
+      return null;
+    };
+    let document_ = { body, createElement: () => overlay, addEventListener() {}, removeEventListener() {} };
+    const showInputModal = compileFunction("function showInputModal(", {
+      html, document: document_, activateModal: () => () => {},
+    });
+    return { show: showInputModal({ title: "T", fields }), overlay };
+  }
+
+  // html`` indents the whole row; assertions care about the element order.
+  const tight = (markup) => markup.replace(/\s+/g, " ");
+
+  it("puts one group label before each named run of fields, none before the rest", () => {
+    const { overlay } = renderModal([
+      { name: "a", label: "A", group: "Coverage" },
+      { name: "b", label: "B", group: "Coverage" },
+      { name: "c", label: "C", group: "Models" },
+    ]);
+    const markup = tight(String(overlay.innerHTML));
+    // Two runs, so two labels: not one per field.
+    expect(markup.match(/modal-group-label/g)).toHaveLength(2);
+    expect(markup).toContain('<div class="modal-group-label">Coverage</div> <label class="modal-field">');
+    // A repeated group name does not repeat the label.
+    const one = renderModal([{ name: "a", group: "G" }, { name: "b", group: "G" }]).overlay;
+    expect(tight(String(one.innerHTML)).match(/modal-group-label/g)).toHaveLength(1);
+    // Ungrouped fields (every existing caller) get no label at all.
+    const plain = renderModal([{ name: "a" }, { name: "b" }]).overlay;
+    expect(tight(String(plain.innerHTML))).not.toContain("modal-group-label");
+  });
+
+  it("writes a stat as the figure plus a unit, with no data-field to collect", () => {
+    const { overlay } = renderModal([
+      { name: "estimate", label: "140–340", type: "stat", unit: "new moves" },
+    ]);
+    expect(tight(String(overlay.innerHTML))).toContain(
+      '<div class="modal-stat" data-note="estimate"><b>140–340</b><span>new moves</span></div>',
+    );
+    expect(String(overlay.innerHTML)).not.toContain("data-field");
+  });
+
+  it("keeps the note as a plain muted line (its callers still work)", () => {
+    const { overlay } = renderModal([{ name: "n", label: "Members get read-only access.", type: "note" }]);
+    expect(tight(String(overlay.innerHTML))).toContain(
+      '<p class="modal-note muted" data-note="n">Members get read-only access.</p>',
+    );
+  });
+});
+
 describe("New team behaves like New repertoire", () => {
   const createTeam = source.slice(
     source.indexOf("async function createTeam("),

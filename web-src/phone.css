@@ -386,7 +386,7 @@
   .study .board-bar .bb-views { order: 1; }
   .study .board-bar .bb-sheet { order: 2; }
   .study .board-bar [id$="-flip"] { order: 3; }
-  .study .board-bar :is(.board-label, .pv-exit) {
+  .study .board-bar :is(.board-label, .board-sub, .pv-exit) {
     grid-area: 1 / -4 / 2 / -3;
     justify-self: center;
     min-width: 0;
@@ -396,7 +396,7 @@
     white-space: nowrap;
   }
   .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
-  :is(#view-analyze, #view-build) .board-bar .board-label { visibility: hidden; }
+  :is(#view-analyze, #view-build) .board-bar :is(.board-label, .board-sub) { display: none; }
   .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
   .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; }
   .study .board-bar :is(#analysis-next, #build-next, #train-skip) { order: 6; }

@@ -262,6 +262,29 @@ describe("workspace chrome layout", () => {
     };
     expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
     expect(view).toContain('id="analysis-game-title"');
+    expect(view).toContain('class="board-label" id="analysis-board-label"');
+    // It sits in the board bar under the board, not in the panel head: the
+    // head's own block is just the one title line plus the actions.
+    const headRow = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
+    expect(headRow).not.toContain("analysis-game-meta");
+    const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
+    expect(boardBar).toContain('class="board-sub" id="analysis-game-meta"');
+    expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
+    expect(analyzeCss).toContain(".game-id {");
+    // An icon action, not a word button, keeps the row compact; the icon must
+    // survive .panel-head's rule that hides icons in word buttons.
+    expect(view).toContain('class="btn icon sm" id="fetch-my-game"');
+    expect(css).toContain(".panel-head .btn:not(.icon) > .bi");
+    // Build's row keeps the same shape: an icon action beside the repertoire
+    // name, with the ⋯ menu carrying the rest.
+    const build = html.slice(html.indexOf('id="view-build"'));
+    const buildHead = build.slice(build.indexOf('id="build-rep-header"'), build.indexOf("<div class=\"panel-body\""));
+    expect(buildHead).toContain('class="btn icon sm primary" id="build-generate-node"');
+    expect(buildHead).toContain('id="build-menu"');
+    // The row is one line of title, meta and actions; the size summary stays
+    // the only meta, with no second description row.
+    expect(buildHead).toContain('id="build-rep-name"');
+    expect(buildHead).toContain('id="build-rep-stats"');
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
     expect(view).toContain('class="moves-grid" id="analysis-moves"');
