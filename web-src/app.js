@@ -3023,28 +3023,35 @@ async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
 
 async function createTeam() {
   if (!requireSignIn("Sign in to create a team", "new-team")) return;
-  const result = await showInputModal({
+  const created = await showInputModal({
     title: "New team",
     okLabel: "Create",
     fields: [{ name: "name", label: "Team name", default: "" }],
+    // The dialog holds its pending state while the request runs, so the click
+    // reads as work in progress instead of a dropped click.
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim();
+      if (!name) {
+        setStatus("Team name is empty");
+        return;
+      }
+      try {
+        const team = await postJson("/api/teams", { name });
+        appState.selectedTeamId = team.id;
+        // A fresh team starts empty: land on the Members tab (the empty Shared
+        // tab would read as a glitch).
+        teamsView?.selectTeamPane?.("members");
+        setStatus(`Created team "${name}"`, { severity: "success" });
+        await loadTeams();
+        close(null);
+        return team;
+      } catch (error) {
+        setStatusError(error.message);
+        return null;
+      }
+    },
   });
-  if (!result) return;
-  const name = (result.name || "").trim();
-  if (!name) {
-    setStatus("Team name is empty");
-    return;
-  }
-  try {
-    const team = await postJson("/api/teams", { name });
-    appState.selectedTeamId = team.id;
-    // A fresh team starts empty: land on the Members tab (the empty Shared
-    // tab would read as a glitch).
-    teamsView?.selectTeamPane?.("members");
-    setStatus(`Created team "${name}"`, { severity: "success" });
-    await loadTeams();
-  } catch (error) {
-    setStatusError(error.message);
-  }
+  return created || null;
 }
 
 async function renameTeam(teamId, currentName) {
@@ -3394,8 +3401,11 @@ async function shareRepertoireWithTeam(repertoireId) {
 
 // `hint` is an on-demand tooltip on a number/text field's label; `onInput`
 // (values, overlay) runs on open and on every change — e.g. to repaint a live
-// note (a `note` field is addressable as [data-note="<name>"]).
-function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel = true }) {
+// note (a `note` field is addressable as [data-note="<name>"]). `onSubmit`
+// (values, close) lets a caller run its request while the dialog holds the
+// pending state: it calls `close(values)` on success, or returns/throws to leave
+// the form open for another try.
+function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
@@ -3466,7 +3476,10 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
       document.removeEventListener("keydown", onKey);
       overlay.remove();
     };
+    let closed = false;
     const close = (values) => {
+      if (closed) return;
+      closed = true;
       cleanup();
       resolve(values);
     };
@@ -3477,18 +3490,51 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, cancel 
       });
       return values;
     };
+    // Submitting hands the dialog a promise the caller keeps pending while its
+    // request is in flight. Callers that don't (plain data entry) close on
+    // submit, exactly as before.
+    const submit = () => {
+      const values = collect();
+      if (typeof onSubmit !== "function") {
+        close(values);
+        return;
+      }
+      const okBtn = overlay.querySelector('[data-action="ok"]');
+      const controls = [...overlay.querySelectorAll(".modal-footer .btn, [data-field]")];
+      okBtn.classList.add("is-loading");
+      okBtn.disabled = true;
+      for (const el of controls) if (el !== okBtn) el.disabled = true;
+      overlay.setAttribute("aria-busy", "true");
+      let settled = false;
+      // Silence/`controls` capture lets a failed submit re-enable the form
+      // unless the caller closed the dialog (success) or submitted again.
+      const idle = () => {
+        if (settled) return;
+        okBtn.classList.remove("is-loading");
+        for (const el of controls) el.disabled = false;
+        overlay.setAttribute("aria-busy", "false");
+      };
+      const finish = (fn) => (result) => {
+        settled = true;
+        fn(result);
+      };
+      Promise.resolve()
+        .then(() => onSubmit(values, finish(close)))
+        .catch(() => {})
+        .then(idle);
+    };
     const onKey = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
         close(null);
       } else if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") {
         event.preventDefault();
-        close(collect());
+        submit();
       }
     };
     document.addEventListener("keydown", onKey);
     overlay.querySelector('[data-action="cancel"]')?.addEventListener("click", () => close(null));
-    overlay.querySelector('[data-action="ok"]').addEventListener("click", () => close(collect()));
+    overlay.querySelector('[data-action="ok"]').addEventListener("click", () => submit());
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close(null);
     });
@@ -4168,7 +4214,7 @@ function loadBuildSession() {
       engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
       isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
-      postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
       refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
       requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
       setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,

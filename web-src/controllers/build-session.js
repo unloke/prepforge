@@ -25,11 +25,12 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
   hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-  openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
-  reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
-  renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
-  sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError, showInputModal,
-  START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH, switchView, syncWorkspaceUrl;
+  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson, preloadBuildGen,
+  queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+  refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
+  requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
+  setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
+  switchView, syncWorkspaceUrl;
 
 export function createBuildSession(deps) {
   ({
@@ -40,12 +41,12 @@ export function createBuildSession(deps) {
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
     hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-    openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
-    reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
-    renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
-    sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError,
-    showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH, switchView,
-    syncWorkspaceUrl,
+    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson, preloadBuildGen,
+    queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+    refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
+    requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
+    setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
+    switchView, syncWorkspaceUrl,
   } = deps);
   initBuildDockLayout();
   return {
@@ -968,28 +969,134 @@ async function onBuildBoardMove(moveUci) {
 
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
-  const result = await showInputModal({
+  const created = await showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
     ],
+    // The dialog keeps its pending state until the server answers: the create
+    // used to leave the modal dead on the screen and the click to look ignored.
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim() || "New repertoire";
+      const color = normalizeRepertoireColor(result.color);
+      // Open an empty repertoire on the tab's own temp id right away, so the
+      // board and tree are there while the request runs. On failure the
+      // optimistic tree is dropped and the previous repertoire is restored.
+      const optimistic = optimisticEmptyRepertoire(name, color);
+      try {
+        const payload = await postJson("/api/repertoires/create", { name, color });
+        await hydrateBuild(payload, payload.selected_node_id);
+        appState.trainingRepertoireId = payload.repertoire_id;
+        if (openAfter) {
+          switchView("build");
+          close(null);
+        }
+        setStatus(`Created ${name}`);
+        await refreshDashboardRepertoires();
+        return payload;
+      } catch (error) {
+        rollbackOptimisticRepertoire(optimistic);
+        setStatusError(error.message);
+        return null;
+      }
+    },
   });
-  if (!result) return null;
-  const name = (result.name || "").trim() || "New repertoire";
-  const color = normalizeRepertoireColor(result.color);
-  try {
-    const payload = await postJson("/api/repertoires/create", { name, color });
-    await hydrateBuild(payload, payload.selected_node_id);
-    appState.trainingRepertoireId = payload.repertoire_id;
-    if (openAfter) switchView("build");
-    setStatus(`Created ${name}`);
-    await refreshDashboardRepertoires();
-    return payload;
-  } catch (error) {
-    setStatusError(error.message);
-    return null;
+  return created || null;
+}
+
+// A local-only placeholder for a repertoire the server has not confirmed yet.
+// It mirrors the Build payload shape so the view, tree and board render the
+// empty repertoire with no loading state.
+function optimisticEmptyRepertoire(name, color) {
+  const previous = appState.build;
+  const rootFen = START_FEN;
+  const info = localBoardInfo(rootFen);
+  const rootId = `tmp-rep-${OUTBOX_TAB_ID}-${Date.now().toString(36)}`;
+  appState.build = {
+    repertoire_id: null,
+    revision: 0,
+    name,
+    color,
+    root_fen: rootFen,
+    selected_node_id: rootId,
+    writable: true,
+    optimistic: true,
+    nodes_total: 0,
+    summary: {},
+    health: {},
+    nodes: [{
+      id: rootId,
+      parent_id: null,
+      depth: 0,
+      san: null,
+      uci: null,
+      fen: rootFen,
+      fen_before: null,
+      fen_after: rootFen,
+      move_number: 1,
+      ply: 0,
+      move_side: null,
+      side_to_move: "white",
+      source: "manual",
+      is_mainline: false,
+      is_enabled: true,
+      is_prepared: false,
+      maia_probability: null,
+      engine_evaluation: null,
+      tags: [],
+      comment: "",
+      arrows: [],
+      circles: [],
+      mastery: null,
+    }],
+  };
+  appState.buildNodeById = new Map(appState.build.nodes.map((node) => [node.id, node]));
+  appState.buildCurrentNodeId = rootId;
+  appState.buildPending = [];
+  appState.buildPendingDeletes = [];
+  appState.buildSyncState = "saved";
+  if (boards.build) {
+    boards.build.setOrientation(color);
+    boards.build.setPosition({ fen: rootFen, legalMoves: info.legal_moves, lastMove: null });
+  }
+  switchView("build");
+  renderBuildRepHeader();
+  renderBuildSync();
+  renderBuilderTree();
+  syncWorkspaceUrl();
+  return { previous, rootId };
+}
+
+// Discard an unconfirmed optimistic repertoire and put the previous tree back.
+function rollbackOptimisticRepertoire({ previous, rootId }) {
+  if (!previous) {
+    appState.build = null;
+    appState.buildNodeById = new Map();
+    appState.buildCurrentNodeId = null;
+  } else {
+    appState.build = previous;
+    appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    // The open tree had selected the optimistic root: the previous repertoire's
+    // own node goes back under the cursor, exactly like hydrateBuild does.
+    appState.buildCurrentNodeId = previous.selected_node_id || previous.nodes[0]?.id || null;
+  }
+  if (boards.build && appState.build) {
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    if (node) {
+      boards.build.setOrientation(appState.build.color === "black" ? "black" : "white");
+      boards.build.setPosition({ fen: node.fen, legalMoves: [], lastMove: node.uci });
+    }
+  }
+  renderBuildRepHeader();
+  renderBuildSync();
+  renderBuilderTree();
+  syncWorkspaceUrl();
+  if (rootId && appState.build && appState.build.repertoire_id !== null) {
+    // The optimistic node's id never reaches the server; dropping it from the id
+    // map keeps a later flush from translating it onto a real node.
+    appState.buildIdMap?.delete?.(rootId);
   }
 }
 
