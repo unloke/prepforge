@@ -428,16 +428,6 @@ export function createAnalyzeView({
     }
   }
 
-  // "12 / 16" -> a ring filled to 12/16 showing "12"; the full text is the tooltip.
-  function paintDepthRing() {
-    const el = document.getElementById("engine-window-depth-readout");
-    if (!el) return;
-    const m = /(\d+)\s*\/\s*(\d+)/.exec(el.textContent || "");
-    el.dataset.d = m ? m[1] : "";
-    el.style.setProperty("--p", m && Number(m[2]) ? String(Math.min(1, Number(m[1]) / Number(m[2]))) : "0");
-    el.title = m ? `Depth ${m[1]} of ${m[2]}` : "";
-  }
-
   const watch = (id, fn, options) => {
     const el = globalThis.document?.getElementById(id);
     if (el && typeof MutationObserver === "function") new MutationObserver(fn).observe(el, options);
@@ -445,7 +435,6 @@ export function createAnalyzeView({
   const TEXT_CHANGES = { childList: true, characterData: true, subtree: true };
   watch("engine-head-eval", paintEvalHead, { ...TEXT_CHANGES, attributes: true });
   watch("analysis-eval-card", paintEvalHead, { attributes: true, attributeFilter: ["class"] });
-  watch("engine-window-depth-readout", paintDepthRing, TEXT_CHANGES);
 
   function updateChartCaption(point) {
     chartPoint = point || null;
