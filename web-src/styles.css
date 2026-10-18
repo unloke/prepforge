@@ -1473,7 +1473,7 @@ h2 {
 /* Today strip */
 .today {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
 }
@@ -1513,6 +1513,11 @@ h2 {
 .today-queue b { font-size: 14px; }
 .today-recap .up { color: var(--good-text); }
 .today-recap .down { color: var(--danger); }
+/* Lifetime counts (games · repertoires · sessions): one quiet line beside the
+   recap. Nothing here is what the Train button turns on, so it takes no
+   clickable weight and no tile chrome. */
+.today-counts { color: var(--label); font-size: var(--fs-s); }
+.today-counts b { color: var(--muted); font-variant-numeric: tabular-nums; }
 /* Streak-at-risk: replaces the note line when local midnight is <5h away and
    nothing has been trained yet — same slot, louder voice. */
 .today-warning {
@@ -1524,25 +1529,6 @@ h2 {
   font-size: var(--fs-s);
   font-weight: 600;
 }
-.today-metrics { display: flex; gap: 4px; }
-.metric {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 76px;
-  padding: 4px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-}
-.metric b { font-size: 18px; line-height: 1.2; }
-.metric span { font-size: var(--fs-xs); color: var(--label); }
-.metric.is-due { background: var(--warn-soft); cursor: pointer; }
-.metric.is-due b { color: var(--warn-text); }
-.metric.is-due:hover { outline: 1px solid var(--warn); }
 .today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
 .btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
@@ -1855,7 +1841,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 @media (max-width: 1279px) {
   .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr) 290px; }
   .today { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .today-metrics { display: none; }
 }
 /* ≤ 1020px: single column. The 1279px rule above uses
    `.lib-grid:not(:has(> .steps[hidden]))` (specificity 0,2,0), so the plain

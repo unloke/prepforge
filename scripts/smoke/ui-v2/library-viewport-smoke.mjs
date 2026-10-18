@@ -171,8 +171,14 @@ async function runViewport(vp) {
   check((await page.locator("#dashboard-steps .step.is-done").count()) === 2, "fixture state should tick 2 of the 3 setup steps");
   check(((await page.locator("#dashboard-steps .setup-count").textContent().catch(() => "")) || "").includes("2 of 3 done"), "setup progress should read 2 of 3 done");
   check((await page.locator("#dashboard-repertoires .list-item").count()) === 0, "rows must not use the legacy list-item card");
-  const metricsShown = await page.locator("#dashboard-today .today-metrics").isVisible();
-  check(metricsShown === (vp.width > 1279), `today metrics visible=${metricsShown} at ${vp.width}px`);
+  // The lifetime counts are one quiet line, not the old tile row.
+  check((await page.locator("#dashboard-today .metric").count()) === 0, "today strip should not keep the metric tiles");
+  const countsShown = await page.locator("#dashboard-today .today-counts").isVisible();
+  check(countsShown === (vp.width > 760), `today counts visible=${countsShown} at ${vp.width}px`);
+  if (vp.width > 760) {
+    const counts = (await page.locator("#dashboard-today .today-counts").textContent()) || "";
+    check(counts.includes("12") && counts.includes("3") && counts.includes("7"), `counts should carry games/repertoires/sessions, got "${counts}"`);
+  }
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 

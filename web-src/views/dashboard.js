@@ -339,18 +339,16 @@ export function createDashboardView({
       }
       recapHtml = html`<div class="today-recap">${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</div>`;
     }
-    // Counters from the real dashboard payload; "Due review" is a shortcut into
-    // the smart queue when something is waiting (same action as Train).
-    const metric = (label, value, dueShortcut) =>
-      dueShortcut
-        ? html`<button type="button" class="metric is-due" data-action="due-review"><b>${value}</b><span>${label}</span></button>`
-        : html`<div class="metric"><b>${value}</b><span>${label}</span></div>`;
-    const metricsHtml = [
-      metric("Games", payload.games || 0, false),
-      metric("Repertoires", payload.repertoires || 0, false),
-      metric("Sessions", payload.training_sessions || 0, false),
-      metric("Due review", due, due > 0),
-    ];
+    // The three lifetime counters are not what a user decides on before
+    // pressing Train, and "Due review" already carries the queue number the
+    // strip leads with — so one chip holds them and the Due shortcut stays
+    // inline, where the action is.
+    const metric = (label, value) => html`<b>${value}</b> ${label}`;
+    const countsHtml = [
+      metric("games", payload.games || 0),
+      metric("repertoires", payload.repertoires || 0),
+      metric("sessions", payload.training_sessions || 0),
+    ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
     card.innerHTML = html`
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
          title="Calendar days with at least one graded move">
@@ -361,9 +359,10 @@ export function createDashboardView({
     <div class="today-body">
       ${warningHtml || html`<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
+      <div class="today-counts" data-testid="dashboard-counts"
+           title="Everything stored in this account">${countsHtml}</div>
       ${recapHtml}
     </div>
-    <div class="today-metrics">${metricsHtml}</div>
     <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>
   `;
     card.hidden = false;
@@ -372,8 +371,6 @@ export function createDashboardView({
         due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
       );
     document.getElementById("dashboard-train-now").addEventListener("click", trainNow);
-    const dueMetric = card.querySelector('[data-action="due-review"]');
-    if (dueMetric) dueMetric.addEventListener("click", trainNow);
   }
 
   // ---- Library list rendering ----------------------------------------------

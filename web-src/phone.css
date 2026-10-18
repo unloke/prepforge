@@ -99,7 +99,7 @@
   #view-dashboard .today-unit,
   #view-dashboard .today-note,
   #view-dashboard .today-recap,
-  #view-dashboard .today-metrics { display: none; }
+  #view-dashboard .today-counts { display: none; }
   #view-dashboard .today > * { grid-column: auto; grid-row: 1; }
   #view-dashboard .today-body { gap: 2px; min-width: 0; }
   #view-dashboard .today-warning { font-size: 12px; }
