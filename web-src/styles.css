@@ -5347,6 +5347,14 @@ body.is-guest .replay-results:empty::before {
   .rail .nav-group-label { height: 14px; line-height: 14px; }
   .rail-foot { gap: 2px; padding-top: 6px; }
   .rail .account-btn { height: 36px; }
+  /* A head row stays quiet until the action is wanted. The `hidden` attribute
+     carries whether Generate applies at this position; the row act overrides it,
+     above the phone breakpoint only — on a phone there is no hover and the
+     button is the board bar's pill. The attribute keeps the button out of the
+     a11y tree and the Tab order, so this costs no focus stop. Overriding the
+     global `[hidden]` rule below is the whole point of this rule. */
+  #build-sidebar:has(#builder-tree .mtree-move.is-current:hover) #build-generate-node,
+  #build-sidebar:has(#builder-tree .mtree-move.is-current:focus) #build-generate-node { display: inline-flex !important; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a

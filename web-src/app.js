@@ -4243,7 +4243,8 @@ function loadBuildSession() {
       engineLifecycleMark, engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES, explorerDrawerOpen, explorerEvalEngine,
       handleRepertoireContextAction, hardFlushBuild, hasPendingBuildOpsFor, invalidateBook,
       isBuildReadOnly, notices, normalizeUci, openSettingsSection, optimisticBoardMove,
-      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+      OUTBOX_TAB_ID, postJson, preloadBuildGen, queueBuildAdd,
+      reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
       refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
       requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync,
       setStatus, setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH,
@@ -4290,16 +4291,13 @@ async function ensureBuildView() {
 }
 
 // The sidebar's repertoire identity line: which repertoire is open and for which
-// colour. The ⋯ button next to it carries the repertoire-scoped actions.
+// colour. The ⋯ button next to it carries the repertoire-scoped actions. The view
+// repaints Generate's visibility alongside the name.
 function renderBuildRepHeader() {
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = !!appState.build;
-  if (!appState.build) {
-    nameEl.textContent = "No repertoire open";
-    return;
-  }
   if (buildView) return buildView.renderBuildRepHeader();
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
 }

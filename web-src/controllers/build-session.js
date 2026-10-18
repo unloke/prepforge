@@ -25,8 +25,8 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
   hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson, preloadBuildGen,
-  queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+  preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
   refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
   requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
   setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
@@ -41,8 +41,8 @@ export function createBuildSession(deps) {
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
     hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
-    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson, preloadBuildGen,
-    queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+    preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
     refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
     requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
     setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
@@ -53,8 +53,8 @@ export function createBuildSession(deps) {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
     closeNodeContextMenu, createRepertoirePrompt, generateFromCurrentNode, hydrateBuild,
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
-    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel, saveBuildAnnotations,
-    scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
+    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
+    saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
   };
 }
 
@@ -213,6 +213,13 @@ async function renameRepertoire() {
   }
 }
 
+// The paint rule lives in the build view because it reads appState, exactly like
+// renderBuildBranchBar below.
+function paintGenerateVisibility() {
+  if (buildView) return buildView.paintGenerateVisibility();
+  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
+}
+
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
   appState.buildCurrentNodeId = nodeId;
@@ -232,6 +239,7 @@ async function selectBuildNode(nodeId) {
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
+  paintGenerateVisibility();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
