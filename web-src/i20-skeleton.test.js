@@ -55,29 +55,6 @@ describe("Settings → Account loading", () => {
     expect(html).toContain("acct-skeleton-avatar");
     expect(html).toContain("skeleton-bar");
   });
-
-  it("shares one billing read between the first paint and the settings re-render", async () => {
-    const { createAccountSection } = await import("./views/settings-account.js");
-    const body = { _html: "", set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; }, addEventListener: vi.fn() };
-    globalThis.document = { getElementById: (id) => (id === "settings-account-body" ? body : null) };
-    const api = vi.fn(async (path) => {
-      if (path === "/api/billing/status") return { plan: "pro", billing_enabled: true, price_configured: true };
-      return {};
-    });
-    const appState = { signedIn: true, account: { email: "a@b.test", displayName: "A", hasPassword: true, plan: "pro" } };
-    const section = createAccountSection({
-      appState, api, postJson: vi.fn(), setStatus: vi.fn(), showConfirmModal: vi.fn(),
-      download: vi.fn(), navigate: vi.fn(),
-    });
-    // Both refreshes in flight together (first paint + the settings re-render)
-    // must collapse into one billing request.
-    await Promise.all([section.refresh(), section.refresh()]);
-    expect(api.mock.calls.filter(([path]) => path === "/api/billing/status")).toHaveLength(1);
-    // And the identity painted from state without waiting for anything.
-    expect(body.innerHTML).toContain("a@b.test");
-    expect(body.innerHTML).toContain("Manage subscription");
-    delete globalThis.document;
-  });
 });
 
 // The Library's cold start used to sit on a spinner plus "Loading your

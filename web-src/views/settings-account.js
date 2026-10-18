@@ -27,7 +27,6 @@ export function createAccountSection({
   navigate = (url) => window.location.assign(url),
 }) {
   let billing = null; // { plan, billing_enabled, price_configured } once fetched
-  let billingPromise = null; // the in-flight read, shared by concurrent refreshes
   let bound = false;
 
   function body() {
@@ -109,14 +108,11 @@ export function createAccountSection({
   async function refresh() {
     render();
     if (!appState.signedIn || typeof api !== "function") return;
-    // One in-flight billing read at a time: refresh() runs once from the settings
-    // view's first paint and once more when the /api/settings read lands, and
-    // only the plan row waits on this.
-    billingPromise ||= api("/api/billing/status")
-      .then((payload) => { billing = payload; return payload; })
-      .catch(() => { billing = null; return null; });
-    await billingPromise;
-    billingPromise = null;
+    try {
+      billing = await api("/api/billing/status");
+    } catch (_) {
+      billing = null;
+    }
     render();
   }
 
