@@ -68,15 +68,22 @@
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
           <span class="nav-label">Settings</span>
         </button>
-        <button class="account-btn" id="account-chip" data-testid="account-chip" type="button" aria-expanded="false" title="Sign in to PrepForge">
+        <button class="account-btn" id="account-chip" data-testid="account-chip" type="button" aria-expanded="false" title="">
           <span class="avatar" id="account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
-          <span class="nav-label account-text"><b id="account-label">Sign in</b><small id="account-sub">Save your library</small></span>
+          <span class="nav-label account-text"><b id="account-label"></b><small id="account-sub"></small></span>
         </button>
       </div>
     </nav>
     <!-- No top bar at any width: the active nav item names the page. -->
 
     <main class="workspace" id="workspace-main" tabindex="-1">
+      <!-- Until the session is read the workspace holds: the views below read an
+           unread session as "signed out", and a signed-in reload would flash that
+           guess. app.js drops this hold once /api/auth/me answers. -->
+      <div class="boot-hold" id="boot-hold" data-testid="boot-hold" role="status" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading your workspace…</p>
+      </div>
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
         <div class="lib">
           <header class="page-head">

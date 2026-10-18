@@ -142,10 +142,15 @@ async function loadTrainRepertoireOptions() {
             html`<option value="${r.id}">${r.name} (${r.color})</option>`,
         )
       : [
-          appState.signedIn
-            ? html`<option value="" disabled selected>Create a repertoire first</option>`
-            : html`<option value="" disabled selected>Sign in to train your repertoires</option>`,
-        ];
+        // Three states, not two: the session may be UNREAD (a reload before
+        // /api/auth/me lands). Reading that as "signed out" is what flashed
+        // "Sign in to train your repertoires" for a signed-in user.
+        appState.signedIn
+          ? html`<option value="" disabled selected>Create a repertoire first</option>`
+          : appState.authKnown
+            ? html`<option value="" disabled selected>Sign in to train your repertoires</option>`
+            : html`<option value="" disabled selected>Loading…</option>`,
+      ];
     select.innerHTML = html`${options}`;
     const valid = new Set(active.map((r) => r.id));
     select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";

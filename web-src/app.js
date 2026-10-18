@@ -1394,6 +1394,28 @@ function bindCommandPalette() {
   }
 }
 
+// The URL owns the route on every reload: restoreWorkspaceLocation reads it and
+// switches to it, so the static markup's view-dashboard default is only ever a
+// first paint — never a route the user is sent to. What a deep link DOES need is
+// for that default to be invisible, so hold the boot shell until the real view is
+// painted. The hold ships hidden in index.html (nothing flashes before JS runs)
+// and is shown at the top of init().
+let bootHold = null;
+let bootHeld = false;
+
+function holdBootView() {
+  bootHold = document.getElementById("boot-hold");
+  if (bootHold) bootHold.hidden = false;
+  bootHeld = !!bootHold;
+}
+
+function releaseBootView() {
+  if (!bootHeld) return;
+  bootHeld = false;
+  if (bootHold) bootHold.remove();
+  bootHold = null;
+}
+
 async function restoreWorkspaceLocation() {
   if (navigatedDuringBoot) {
     // The user already moved on: stay there, re-entering the page so it loads
@@ -5432,7 +5454,13 @@ function paintGamesSource() {
   if (!tray) return;
   // Signed out there is no "Self" (no linked accounts) and Check needs an
   // account anyway: a selected-looking "Self · all linked" chip contradicted
-  // the "No Games sources selected" error. Offer the sign-in instead.
+  // the "No Games sources selected" error. Offer the sign-in instead. While the
+  // session is unread neither is true yet, so the tray stays empty.
+  if (!appState.authKnown) {
+    tray.hidden = true;
+    tray.innerHTML = "";
+    return;
+  }
   if (!appState.signedIn) {
     tray.hidden = false;
     tray.innerHTML =
@@ -5576,16 +5604,19 @@ function paintScoutSource() {
               : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
         )}`
     : html`<span class="src-empty">No sources — open Add and pick one</span>`;
-  // The empty state names the next step for where the user actually is.
+  // The empty state names the next step for where the user actually is. While the
+  // session is unread it says nothing: a guest/signed-in distinction is a guess.
   const hint = document.getElementById("scout-empty-hint");
   if (hint) {
-    hint.textContent = !appState.signedIn
-      ? "Sign in, add a Lichess username, then Start."
-      : visible.length
-        ? "Press Start."
-        : linked.length
-          ? "Add a Lichess username or pick Self, then Start."
-          : "Add a Lichess username as a source, then Start.";
+    hint.textContent = !appState.authKnown
+      ? ""
+      : !appState.signedIn
+        ? "Sign in, add a Lichess username, then Start."
+        : visible.length
+          ? "Press Start."
+          : linked.length
+            ? "Add a Lichess username or pick Self, then Start."
+            : "Add a Lichess username as a source, then Start.";
   }
 }
 
@@ -6823,6 +6854,10 @@ function bindEvents() {
 }
 
 async function init() {
+  // First thing: show the boot hold so nothing auth-dependent paints a guess
+  // while the session is being read (and so a deep link's route is never
+  // replaced by the static markup's dashboard default in anything the user sees).
+  holdBootView();
   appState.prefs = loadPrefs();
   initAccountController();
   applyPref("theme");
@@ -6888,6 +6923,9 @@ async function init() {
   // not fire /api/settings, /api/dashboard, /api/board, /api/lichess — they 401 and
   // spam the console. Gate that whole workspace load behind a real session.
   await refreshAuthProviders();
+  // The hold is already up (see the top of init) and stays until the whole
+  // workspace has painted the real session, so a signed-in reload never shows
+  // the signed-out shell at any point.
   await refreshAuthStatus();
   setHandoffOwner(currentOwnerId());
   // "Last game" depends on the linked Lichess account, which refreshAuthStatus
@@ -6908,6 +6946,10 @@ async function init() {
   paintScoutSource();
   workspaceUrlReady = true;
   await restoreWorkspaceLocation();
+  // The URL route is live and the session is known: nothing left to guess, so
+  // the hold can go and the real view shows. Drop it in its own frame so the
+  // paint above and the reveal never land in the same one.
+  releaseBootView();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
   // workspace state loaded — and works for signed-out visitors too.
   await maybeOpenSharedView();
@@ -7147,9 +7189,16 @@ async function loadSignedInWorkspace() {
   await Promise.allSettled([settingsReady, dashboardReady]);
 }
 
-appReadyPromise = init().then(() => {
-  document.documentElement.dataset.appReady = "true";
-}).catch((error) => setStatusError(error.message));
+appReadyPromise = init()
+  .then(() => {
+    document.documentElement.dataset.appReady = "true";
+  })
+  // A boot failure must not leave the hold up for good: the views underneath are
+  // the honest state, and the status line names the failure.
+  .catch((error) => {
+    releaseBootView();
+    return setStatusError(error.message);
+  });
 
 // Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
 export {

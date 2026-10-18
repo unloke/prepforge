@@ -145,3 +145,99 @@ describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
     expect(teams).toMatch(/if \(!appState\.authKnown\)/);
   });
 });
+
+// Reload flash: boot read `signedIn` as "signed out" while /api/auth/me was still
+// in flight, and the static markup's dashboard view painted as the route until
+// restoreWorkspaceLocation caught up. Both are app-level (the Teams fix above only
+// covered the Teams list), so the hold lives around the whole init.
+describe("app boot holds auth-dependent state until the session is known", () => {
+  const src = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+  const markup = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+
+  it("ships the hold in the markup and shows it before anything else in init()", () => {
+    // The hold starts hidden: JS may be slow, but nothing auth-dependent may
+    // paint a guess while it is still loading.
+    expect(markup).toMatch(/<div[^>]*id="boot-hold"[^>]*\bhidden\b/);
+    // Hold FIRST in init(), before the first owner-scoped call: not just before
+    // the view switch — the whole workspace must paint against the real session.
+    const showAt = src.indexOf("holdBootView();");
+    expect(showAt).toBeGreaterThan(-1);
+    const initAt = src.indexOf("async function init() {");
+    const beforeHold = src
+      .slice(initAt, showAt)
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("//") && line !== "async function init() {");
+    expect(beforeHold).toEqual([]);
+    const authAt = src.indexOf("await refreshAuthStatus();");
+    expect(showAt).toBeLessThan(authAt);
+  });
+
+  it("reveals the real route only after the URL has been restored", () => {
+    const release = src.indexOf("releaseBootView();");
+    const restore = src.indexOf("await restoreWorkspaceLocation();");
+    expect(release).toBeGreaterThan(restore);
+    // And the reveal happens before the sign-in return / shared view land, so a
+    // boot failure or a late overlay never leaves the hold in the DOM.
+    expect(release).toBeLessThan(src.indexOf("await resumeAfterSignIn("));
+    // A thrown boot must not strand the hold: the views underneath are honest.
+    expect(src).toMatch(/\.catch\(\(error\) => \{\s*releaseBootView\(\);/);
+  });
+
+  it("keeps the URL's route rather than the markup default", () => {
+    // restoreWorkspaceLocation reads the hash and switches to it; the markup's
+    // view-dashboard default is only the paint under the hold.
+    expect(src).toMatch(/const loc = parseWorkspaceLocation\(window\.location\.href\);/);
+    expect(src).toMatch(/switchView\(loc\.view, \{ fromUrl: true \}\);/);
+  });
+
+  it("holds the account chip too: an unread session is not a signed-out one", () => {
+    const chip = readFileSync(new URL("./controllers/account.js", import.meta.url), "utf8");
+    expect(chip).toMatch(/else if \(!appState\.authKnown\) \{/);
+    // The page guest marker is copy that only applies signed out.
+    expect(chip).toMatch(/toggle\("is-guest", appState\.authKnown === true && !appState\.signedIn\)/);
+  });
+
+  function bootHoldHarness() {
+    const removed = [];
+    const el = { hidden: true, remove: () => removed.push("boot-hold") };
+    const document = { getElementById: (id) => (id === "boot-hold" ? el : null) };
+    const compiled = new Function("document", [
+      "let bootHold = null;",
+      "let bootHeld = false;",
+      src.slice(src.indexOf("function holdBootView() {"), src.indexOf("async function restoreWorkspaceLocation(")),
+      "return { holdBootView, releaseBootView, isHeld: () => bootHeld };",
+    ].join("\n"))(document);
+    return { ...compiled, el, removed };
+  }
+
+  it("the hold covers boot and is removed, not just hidden, once", () => {
+    const { holdBootView, releaseBootView, isHeld, el, removed } = bootHoldHarness();
+    // Nothing before JS runs: the markup ships it hidden.
+    expect(el.hidden).toBe(true);
+    holdBootView();
+    expect(el.hidden).toBe(false);
+    expect(isHeld()).toBe(true);
+    releaseBootView();
+    // Removed, so the workspace underneath is a real subtree and nothing stale
+    // can be revealed by a later class change.
+    expect(removed).toEqual(["boot-hold"]);
+    expect(isHeld()).toBe(false);
+    // A second release (the catch path after the happy path) is a no-op.
+    releaseBootView();
+    expect(removed).toEqual(["boot-hold"]);
+  });
+
+  it("with no hold element the workspace is never signalled as held", () => {
+    const compiled = new Function("document", [
+      "let bootHold = null;",
+      "let bootHeld = false;",
+      src.slice(src.indexOf("function holdBootView() {"), src.indexOf("async function restoreWorkspaceLocation(")),
+      "return { holdBootView, releaseBootView, isHeld: () => bootHeld };",
+    ].join("\n"))({ getElementById: () => null });
+    compiled.holdBootView();
+    expect(compiled.isHeld()).toBe(false);
+    compiled.releaseBootView();
+    expect(compiled.isHeld()).toBe(false);
+  });
+});

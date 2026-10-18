@@ -7,7 +7,7 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-Bwqgj1xa.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-BFqjAlOG.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/rolldown-runtime-DK3Fl9T5.js">
     <link rel="modulepreload" crossorigin href="/static/assets/html-A1qdFlh3.js">
     <link rel="modulepreload" crossorigin href="/static/assets/shared-constants-BulHn_HJ.js">
@@ -15,7 +15,7 @@
     <link rel="modulepreload" crossorigin href="/static/assets/sync-queue-CaP6MztR.js">
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
     <link rel="modulepreload" crossorigin href="/static/assets/material-DPbFImjt.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-Cmw_oRsB.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-n_2zCIdi.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -77,15 +77,22 @@
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
           <span class="nav-label">Settings</span>
         </button>
-        <button class="account-btn" id="account-chip" data-testid="account-chip" type="button" aria-expanded="false" title="Sign in to PrepForge">
+        <button class="account-btn" id="account-chip" data-testid="account-chip" type="button" aria-expanded="false" title="">
           <span class="avatar" id="account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
-          <span class="nav-label account-text"><b id="account-label">Sign in</b><small id="account-sub">Save your library</small></span>
+          <span class="nav-label account-text"><b id="account-label"></b><small id="account-sub"></small></span>
         </button>
       </div>
     </nav>
     <!-- No top bar at any width: the active nav item names the page. -->
 
     <main class="workspace" id="workspace-main" tabindex="-1">
+      <!-- Until the session is read the workspace holds: the views below read an
+           unread session as "signed out", and a signed-in reload would flash that
+           guess. app.js drops this hold once /api/auth/me answers. -->
+      <div class="boot-hold" id="boot-hold" data-testid="boot-hold" role="status" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Loading your workspace…</p>
+      </div>
       <section class="view is-active" id="view-dashboard" data-testid="view-dashboard">
         <div class="lib">
           <header class="page-head">
