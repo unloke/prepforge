@@ -315,11 +315,6 @@ function syncTrainPickerVisibility() {
   if (skip) skip.hidden = false;
   const startBtn = document.getElementById("start-train");
   if (startBtn) {
-    startBtn.disabled = trainStartDisabled({
-      mode: smart ? "smart" : play ? "play" : "all_lines",
-      signedIn: appState.signedIn,
-      hasRepertoire: !!selectedTrainRepertoireId(),
-    });
     // A guest's Start opens the sign-in gate; say so on the button instead of
     // promising a session that cannot begin.
     startBtn.textContent = appState.signedIn ? "Start" : "Sign in to start";
@@ -400,15 +395,13 @@ async function refreshTrainSessionPreview() {
 function paintTrainStartDisabled() {
   const startBtn = document.getElementById("start-train");
   if (!startBtn) return;
-  const smart = (appState.trainMode || "smart") === "smart";
-  if (!smart || !appState.signedIn) {
-    startBtn.title = "";
-    return;
-  }
-  const blocked = trainStartBlockReason(trainPreviewCache.nextSession, {
-    hasActiveRepertoire: !!activeTrainRepertoires().length,
+  const mode = appState.trainMode || "smart";
+  const blocked = mode === "smart" && appState.signedIn
+    ? trainStartBlockReason(trainPreviewCache.nextSession, { hasActiveRepertoire: !!activeTrainRepertoires().length })
+    : "";
+  startBtn.disabled = !!blocked || trainStartDisabled({
+    mode, signedIn: appState.signedIn, hasRepertoire: !!selectedTrainRepertoireId(),
   });
-  if (blocked) startBtn.disabled = true;
   startBtn.title = blocked;
 }
 
@@ -455,10 +448,9 @@ function syncTrainSessionControls() {
   const modeTabs = document.querySelectorAll("#train-modes .train-mode");
   const summaryLive = !play && summaryVisible;
   modeTabs.forEach((btn) => {
+    btn.dataset.tip ??= btn.title;
     btn.disabled = summaryLive;
-    btn.setAttribute("aria-disabled", String(summaryLive));
-    const playTip = btn.dataset.mode === "play" ? "Play a game from the opening against Lichess database moves or Maia" : "";
-    btn.title = summaryLive ? "New session starts another queue — use New session" : playTip;
+    btn.title = summaryLive ? "Start again with New session" : btn.dataset.tip;
   });
   syncViewHeads();
   if (blitzToggle) {

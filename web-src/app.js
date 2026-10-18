@@ -56,7 +56,6 @@ import { classifySyncError } from "./sync-errors.js";
 import { apiErrorMessage } from "./api-errors.js";
 import { buildAddId, buildDeleteId, withRequestDeadline } from "./sync-queue.js";
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
-import { trainStartDisabled } from "./train-start.js";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { nodeMenuHeading } from "./node-menu.js";

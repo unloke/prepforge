@@ -3,7 +3,7 @@
 // the way the other train-session regression tests run the real functions.
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
-import { trainStartBlockReason } from "./train-start.js";
+import { trainStartBlockReason, trainStartDisabled } from "./train-start.js";
 
 const source = appSource();
 function body(marker) {
@@ -26,7 +26,7 @@ function runTrainControls(appState) {
   const start = { disabled: false, title: "" };
   const summary = { hidden: appState.__summaryHidden !== false };
   const modeTabs = ["smart", "all_lines", "play"].map((mode) => {
-    const tab = { disabled: false, title: "", dataset: { mode }, setAttribute: (k, v) => { tab[k] = v; } };
+    const tab = { disabled: false, title: mode === "play" ? "Play a game" : "", dataset: { mode } };
     return tab;
   });
   const doc = {
@@ -39,11 +39,11 @@ function runTrainControls(appState) {
     trainStartBlockReason,
   };
   const build = new Function(
-    "trainStartBlockReason", "appState", "document",
+    "trainStartBlockReason", "trainStartDisabled", "selectedTrainRepertoireId", "appState", "document",
     "syncViewHeads", "blitzEnabled", "nextSession",
     `${PREVIEW}\n${ACTIVE}\n${PAINT}\n${LIVE}\n${CONTROLS}\npreviewCache.nextSession = nextSession;\nreturn { syncTrainSessionControls, paintTrainStartDisabled };`,
   );
-  const controls = build(trainStartBlockReason, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
+  const controls = build(trainStartBlockReason, trainStartDisabled, () => appState.selectedRepertoireId ?? null, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
   controls.syncTrainSessionControls();
   controls.paintTrainStartDisabled();
   return { lucky, start, modeTabs };
@@ -86,8 +86,7 @@ describe("syncTrainSessionControls", () => {
       __summaryHidden: false,
     });
     expect(modeTabs.every((t) => t.disabled)).toBe(true);
-    expect(modeTabs.every((t) => t["aria-disabled"] === "true")).toBe(true);
-    expect(modeTabs[0].title).toBe("New session starts another queue — use New session");
+    expect(modeTabs[0].title).toBe("Start again with New session");
   });
 
   it("keeps the mode tabs live while a session runs", () => {
@@ -101,7 +100,7 @@ describe("syncTrainSessionControls", () => {
       nextSession: { cards: 4, resumed: 0 },
     });
     expect(modeTabs.every((t) => !t.disabled)).toBe(true);
-    expect(modeTabs[2].title).toBe("Play a game from the opening against Lichess database moves or Maia");
+    expect(modeTabs[2].title).toBe("Play a game");
   });
 });
 
@@ -151,7 +150,8 @@ describe("paintTrainStartDisabled", () => {
       pendingRepDeletes: new Set(),
       nextSession: { cards: 0, resumed: 0 },
     };
-    expect(state({ ...base, trainMode: "all_lines" }).disabled).toBe(false);
+    expect(state({ ...base, trainMode: "all_lines", selectedRepertoireId: "r1" }).disabled).toBe(false);
+    expect(state({ ...base, trainMode: "all_lines" }).disabled).toBe(true); // waits on the picker
     expect(state({ ...base, trainMode: "play" }).disabled).toBe(false);
     expect(state({ ...base, signedIn: false }).disabled).toBe(false);
   });
