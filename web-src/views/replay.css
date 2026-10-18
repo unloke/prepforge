@@ -38,14 +38,13 @@
   text-align: left;
   cursor: pointer;
 }
+/* Games ledger column header — the shared `.col-head` treatment (styles.css)
+   plus this row's sticky positioning. */
 .lr.head {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--panel);
-  color: var(--label);
-  font-size: var(--fs-xs);
-  font-weight: 600;
   cursor: default;
 }
 .lr:not(.head):hover { background: var(--panel-soft); }

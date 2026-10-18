@@ -376,7 +376,7 @@ export function createReplayView({
     // The focus card mirrors the board-plus-text shape it is replaced by, so
     // the triage does not jump when the first rows land.
     const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><span class="skeleton-bar skeleton-thin" style="width:38%"></span><span class="skeleton-bar" style="width:62%"></span><span class="skeleton-bar" style="width:80%"></span><span class="skeleton-bar" style="width:44%"></span><span class="skeleton-bar skeleton-chip" style="width:64px"></span></div></div><span class="skeleton-bar skeleton-thin" style="width:70%"></span></section>`;
-    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
+    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
   }
 
   function renderReplayResults(payload) {
@@ -413,7 +413,7 @@ export function createReplayView({
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header><div class="ledger-table"><div class="lr head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);

@@ -197,14 +197,8 @@
 .scout-first-moves { display: flex; flex-direction: column; gap: 4px; }
 .scout-sub-label { font-size: var(--fs-xs); font-weight: 650; }
 .scout-sub-label small { margin-left: 6px; color: var(--label); font-weight: 500; }
-.scout-lines-head {
-  color: var(--label);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.fm .sc small { margin-right: 3px; color: var(--label); font-size: 9.5px; font-weight: 500; }
+/* Scout plan column header — the shared `.col-head` treatment (styles.css);
+   this sheet only lays its cells out. */
 .scout-lines-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
@@ -213,6 +207,7 @@
 }
 /* The score header sits over a right-aligned column. */
 .scout-lines-head > :nth-child(3) { text-align: right; }
+.fm .sc small { margin-right: 3px; color: var(--label); font-size: 9.5px; font-weight: 500; }
 .scout-section-who { font-size: var(--fs-s); font-weight: 700; }
 .fm {
   display: grid;

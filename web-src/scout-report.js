@@ -1419,7 +1419,7 @@ export function buildScoutSectionReport(
             <span class="scout-sub-label">${who}'s first moves</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
-  const listHead = html`<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
+  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
   const prepPanel = prepRows.length
     ? html`<div class="scout-game-plan plan">
           ${planHead}
