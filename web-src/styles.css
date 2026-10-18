@@ -3356,6 +3356,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-stream { display: none; align-items: center; gap: 14px; padding: 16px 20px; }
 .scout-stream > div:last-child { flex: 1; display: flex; flex-direction: column; gap: 6px; }
 .scout-stream p { margin: 0; }
+.scout-stream-detail { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1em; }
 .scout-panel.is-streaming .scout-stream { display: flex; }
 .scout-panel .scout-empty { display: none; }
 .scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
