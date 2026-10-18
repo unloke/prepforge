@@ -2148,6 +2148,7 @@ function initAccountController() {
       scoutView?.syncSources();
       paintGamesSource();
       paintScoutSource();
+      syncFetchMyGameButton();
     },
     onOpenSettings: () => {
       switchView("settings");
@@ -2245,6 +2246,24 @@ function syncReplayControls() {
   }
   paintGamesSource();
   paintScoutSource();
+}
+
+// Analyze's "Last game": it can only load anything once a Lichess account is
+// linked, so a guest or an unlinked account sees it disabled with the fix in
+// the tooltip rather than a button that silently does nothing. aria-disabled
+// rather than disabled: the click is what opens the connect flow, so it must
+// still fire.
+function syncFetchMyGameButton() {
+  const button = document.getElementById("fetch-my-game");
+  if (!button) return;
+  if (button.dataset.wasDisabled) return;
+  const linked = !!(appState.lichessUsername || lichessAccounts().length);
+  const disabled = !linked || !appState.signedIn;
+  button.classList.toggle("is-unavailable", disabled);
+  button.setAttribute("aria-disabled", String(disabled));
+  button.title = disabled
+    ? "Connect a Lichess account to load your last game"
+    : "Load and analyze your latest Lichess game";
 }
 
 // Pull the server's stored Lichess connection state. This is not a PrepForge sign-out;
@@ -2568,14 +2587,29 @@ async function fetchMyLichessGame(accountId = null) {
   }
   const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
   setStatus("Fetching your latest game...");
+  const button = document.getElementById("fetch-my-game");
+  // A second click while the fetch is in flight would race two analyses over
+  // the same PGN box; the button says it is working instead.
+  if (button) {
+    button.dataset.wasDisabled = "1";
+    button.disabled = true;
+  }
   let latest;
+  const done = () => {
+    if (button?.dataset.wasDisabled) {
+      delete button.dataset.wasDisabled;
+      syncFetchMyGameButton();
+    }
+  };
   try {
     latest = await api(`/api/lichess/latest${query}`);
   } catch (error) {
+    done();
     setStatusError(error.message);
     return;
   }
   if (!latest.has_game) {
+    done();
   setStatus("No recent games found", { severity: "warning" });
     return;
   }
@@ -2588,7 +2622,11 @@ async function fetchMyLichessGame(accountId = null) {
   if (latest.lichess_id) markLichessSeen(latest.lichess_id);
   const source = latest.source_account ? ` · from ${latest.source_account}` : "";
   setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} · analyzing`);
-  await runAnalysis();
+  try {
+    await runAnalysis();
+  } finally {
+    done();
+  }
 }
 
 // Analyze "History": list previously analyzed games; click to recall a saved
@@ -6264,7 +6302,18 @@ function bindEvents() {
       onCreateRepertoireFromGameClick().catch(() => {});
     });
   }
-  document.getElementById("fetch-my-game").addEventListener("click", () => fetchMyLichessGame());
+  const fetchMyGameBtn = document.getElementById("fetch-my-game");
+  if (fetchMyGameBtn) {
+    // Keep the click: with no linked account it is what starts the connect flow.
+    fetchMyGameBtn.addEventListener("click", () => {
+      if (fetchMyGameBtn.getAttribute("aria-disabled") === "true") {
+        requireSignIn("Sign in to load your latest Lichess game", "my-last-game");
+        return;
+      }
+      fetchMyLichessGame();
+    });
+    syncFetchMyGameButton();
+  }
   // Lazy-load the analysis history list the first time its drawer is opened.
   const historyDrawer = document.getElementById("history-drawer");
   if (historyDrawer) {
@@ -6729,6 +6778,9 @@ async function init() {
   await refreshAuthProviders();
   await refreshAuthStatus();
   setHandoffOwner(currentOwnerId());
+  // "Last game" depends on the linked Lichess account, which refreshAuthStatus
+  // just told us about; paint its availability now rather than on first click.
+  syncFetchMyGameButton();
   if (appState.signedIn) {
     await loadSignedInWorkspace();
   } else {

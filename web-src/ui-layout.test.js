@@ -410,6 +410,16 @@ describe("workspace chrome layout", () => {
     // out across linked identities and ranks by canonical finish timestamp.
     expect(app).toMatch(/async function fetchMyLichessGame\(accountId = null\)/);
     expect(app).toMatch(/api\(`\/api\/lichess\/latest\$\{query\}`\)/);
+    // "Last game" is inert but never dead: with no linked Lichess account it
+    // reads as unavailable (aria-disabled + the fix in the tooltip) and its
+    // click still opens the connect flow, rather than doing nothing.
+    expect(app).toMatch(/function syncFetchMyGameButton\(\)/);
+    expect(app).toMatch(/aria-disabled", String\(disabled\)/);
+    expect(app).toMatch(/Connect a Lichess account to load your last game/);
+    // A fetch in flight disables it for real, so two clicks cannot race two
+    // analyses over the same PGN box.
+    expect(app).toMatch(/button\.disabled = true;/);
+    expect(css).toContain(".btn.is-unavailable");
     // Games compare aggregates self by default, narrowing only on explicit picks.
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);
