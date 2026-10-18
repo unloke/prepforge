@@ -84,6 +84,13 @@ export function createTeamsView({
     // have nothing to show yet, so they don't repeat it.
     const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
     if (sharedCard) sharedCard.hidden = !appState.signedIn;
+    // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting the
+    // guest copy here is what flashed "Sign in to create or join a team" for a signed-in
+    // user on reload, so hold a neutral loading state until auth is known instead.
+    if (!appState.authKnown) {
+      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      return;
+    }
     if (!appState.signedIn) {
       list.innerHTML = "";
       if (shared) shared.innerHTML = "";
@@ -180,6 +187,12 @@ export function createTeamsView({
     // primary "New team" beside it only competes with it.
     const newTeam = document.getElementById("teams-new");
     if (newTeam) newTeam.hidden = !appState.signedIn;
+    // Same rule as loadTeams(): until the session is known the collection is not
+    // "empty", it is unread.
+    if (!appState.authKnown) {
+      list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+      return;
+    }
     // hideTeamDetail() re-renders the list; keep the guest's sign-in line.
     if (!appState.signedIn) {
       list.innerHTML = "";

@@ -78,7 +78,7 @@ function makeHarness(overrides = {}) {
     querySelector: () => null,
   };
   const view = createTeamsView({
-    appState: { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+    appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
     api: async () => ({ teams: [] }),
     hideTeamDetail: () => {},
     openTeamDetail: async () => {},
@@ -168,7 +168,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
   it("auto-opens the only team instead of a 'Choose a team' blank (P2-11)", async () => {
     const opened = [];
-    const appState = { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" };
+    const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" };
     const { view } = makeHarness({
       appState,
       api: async () => ({ teams: [{ id: "t9", name: "magnus", role: "owner", member_count: 2 }] }),
@@ -182,7 +182,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     const opened = [];
     const hidden = [];
     const { view, byId } = makeHarness({
-      appState: { signedIn: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
       api: async () => ({
         teams: [
           { id: "a", name: "A", role: "owner", member_count: 1 },
@@ -200,24 +200,24 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 
   it("signed out: the empty card says how to start", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: false, teams: [], selectedTeamId: null },
+      appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },
     });
     await view.loadTeams();
     expect(byId("team-empty-body").textContent).toMatch(/Sign in to create or join a team/);
     expect(String(byId("teams-shared").innerHTML)).toBe("");
   });
   it("New team is offered only when signed in (guests get the card's Sign in)", async () => {
-    const guest = makeHarness({ appState: { signedIn: false, teams: [], selectedTeamId: null } });
+    const guest = makeHarness({ appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null } });
     await guest.view.loadTeams();
     guest.view.renderTeamsList();
     expect(guest.byId("teams-new").hidden).toBe(true);
-    const member = makeHarness({ appState: { signedIn: true, teams: [], selectedTeamId: null } });
+    const member = makeHarness({ appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null } });
     member.view.renderTeamsList();
     expect(member.byId("teams-new").hidden).toBe(false);
   });
   it("signed out: a list re-render (hideTeamDetail) stays empty, not 'No teams yet'", async () => {
     const { view, byId } = makeHarness({
-      appState: { signedIn: false, teams: [], selectedTeamId: null },
+      appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },
     });
     await view.loadTeams();
     // app.js hideTeamDetail() calls renderTeamsList() after the signed-out paint.
@@ -226,7 +226,7 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(String(byId("teams-list").innerHTML)).toBe("");
   });
   it("search visibility follows the team collection, including an unmatched typed filter", () => {
-    const appState = { signedIn: true, teams: [], selectedTeamId: null };
+    const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null };
     const { view, byId } = makeHarness({ appState });
     const field = { hidden: false };
     const search = byId("teams-search");

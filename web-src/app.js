@@ -556,6 +556,10 @@ const appState = {
   // Guests see the sign-in action; signed-in users get the account menu and may link
   // a Lichess account separately.
   signedIn: false,
+  // Whether the session has been read yet. Until it has, `signedIn` is "unknown",
+  // NOT "signed out": an owner-scoped view must hold a neutral loading state rather
+  // than paint guest copy that a signed-in user would then see flashing on reload.
+  authKnown: false,
   replayResults: null,
   replayFilter: null, // summary-chip filter: an outcome kind, or null = all
   replayOpen: new Set(), // at most one selected game in the inspector
@@ -2174,6 +2178,12 @@ function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
+    // Boot race: an owner-scoped view entered while the session was still being read
+    // painted a neutral loading state (the Teams flash). Auth is known now, so load
+    // it for real — a guest gets the sign-in state, a member gets their teams.
+    onAuthKnown: () => {
+      if (appReadyPromise) void appReadyPromise.then(() => loadTeams().catch(() => {}));
+    },
     onOwnerChanged: () => {
       setHandoffOwner(currentOwnerId());
       coverageView?.clear();
