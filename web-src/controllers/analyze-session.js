@@ -13,7 +13,7 @@ import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
-import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
+import { isBrowserEngineAvailable, ENGINE_ID } from "../engine/stockfish-provider.js";
 import { describeMove } from "../explain.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
@@ -1016,7 +1016,7 @@ async function runAnalysis(options = {}) {
       requestId: crypto.randomUUID(),
       savedAt: Date.now(),
       ownerId: analysisOwnerId,
-      engine: prep.engine || "stockfish (browser)",
+      engine: ENGINE_ID,
       depth: prep.depth,
       screenDepth,
       positions,
@@ -1028,7 +1028,7 @@ async function runAnalysis(options = {}) {
     const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
-      engine: prep.engine || "stockfish (browser)",
+      engine: ENGINE_ID,
       depth: prep.depth,
     });
     if (!checkpointStored) inMemoryCheckpoint = { ...checkpoint, inMemoryOnly: true };
@@ -1038,7 +1038,7 @@ async function runAnalysis(options = {}) {
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
         request_id: checkpoint.requestId,
-        engine: prep.engine || "stockfish (browser)",
+        engine: ENGINE_ID,
         depth: prep.depth,
         screen_depth: screenDepth,
         positions: positions.map((fen) => {
@@ -1241,7 +1241,7 @@ async function retryAnalyzeSave() {
     const payload = await postJson("/api/analyze/classify-save", {
       game_id: checkpoint.gameId,
       request_id: checkpoint.requestId,
-      engine: checkpoint.engine || "stockfish (browser)",
+      engine: checkpoint.engine,
       depth: checkpoint.depth,
       screen_depth: checkpoint.screenDepth ?? null,
       positions: (checkpoint.positions || []).map((fen) => {

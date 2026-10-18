@@ -255,7 +255,6 @@ def analyze_prepare(
     return {
         "game_id": game_id,
         "import_summary": import_summary,
-        "engine": "stockfish (browser)",
         "depth": owner_stockfish_depth(repo, owner),
         "positions": positions,
         "moves": moves_skeleton,
@@ -274,7 +273,8 @@ def analyze_prepare(
 class ClassifySavePayload(BaseModel):
     game_id: str = ""
     request_id: UUID = Field(default_factory=uuid4)
-    engine: str = "stockfish (browser)"
+    # The browser engine's identity and search settings (ENGINE_ID in stockfish-provider.js).
+    engine: str = Field(min_length=1, max_length=120)
     depth: int | None = None
     # Two-tier analysis: every position searched to this depth, the moves a grade could
     # hinge on to ``depth``. None for a single-depth run.
@@ -341,7 +341,7 @@ def analyze_classify_save(
         )
     timings_ms["validate_ms"] = int((time.perf_counter() - mark) * 1000)
 
-    engine_name = (body.engine or "stockfish (browser)").strip() or "stockfish (browser)"
+    engine_name = body.engine.strip()
     resolved_depth = (
         int(body.depth)
         if body.depth is not None

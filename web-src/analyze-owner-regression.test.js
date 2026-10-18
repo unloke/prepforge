@@ -81,7 +81,7 @@ it("switching accounts during classify-save releases the analysis job without re
   };
   const deps = {
     appState, notices, currentOwnerId: () => owner,
-    isBrowserEngineAvailable: () => true, requireSignIn: () => true,
+    isBrowserEngineAvailable: () => true, ENGINE_ID: "sf-test", requireSignIn: () => true,
     document: { getElementById: (id) => id === "pgn-input" ? { value: "1. e4" } : runButton },
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true,

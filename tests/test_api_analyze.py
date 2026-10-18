@@ -66,7 +66,7 @@ def _classify_save(client: TestClient, prepared: dict, **overrides) -> "object":
     """Submit one trivial eval per prepared position (a slight White edge), so the
     browser classifier has a complete payload."""
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
-    body = {"game_id": prepared["game_id"], "positions": positions}
+    body = {"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions}
     body.update(overrides)
     return client.post("/api/analyze/classify-save", json=body, headers=csrf_headers(client))
 
@@ -88,7 +88,7 @@ def test_prepare_requires_auth(client):
 def test_prepare_returns_positions_and_move_skeleton(client):
     _register(client, "a@example.com")
     body = _prepare(client)
-    assert body["engine"] == "stockfish (browser)"
+    assert "engine" not in body
     assert isinstance(body["depth"], int)
     assert body["game_id"]
     # 4 plies => 4 fen_before + the final fen_after = 5 distinct positions.
@@ -138,7 +138,7 @@ def test_classify_save_rejects_missing_game_id(client):
     _register(client, "a@example.com")
     r = client.post(
         "/api/analyze/classify-save",
-        json={"positions": [{"fen": "x"}]},
+        json={"engine": "sf-test", "positions": [{"fen": "x"}]},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
@@ -211,7 +211,7 @@ def test_classify_save_rejects_empty_positions(client):
     prepared = _prepare(client)
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": []},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": []},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
@@ -224,7 +224,7 @@ def test_classify_save_incomplete_payload_is_400(client):
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": positions},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
@@ -282,7 +282,7 @@ def test_classify_save_is_owner_gated(client):
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
     r = other.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": positions},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions},
         headers=csrf_headers(other),
     )
     assert r.status_code == 404

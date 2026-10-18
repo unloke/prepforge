@@ -91,6 +91,8 @@ _IMMUTABLE_EXT = {".wasm", ".onnx", ".nnue"}
 # Only these (not every file under assets/) are safe to mark immutable — the
 # hash changes whenever the content does.
 _HASHED_NAME = re.compile(r"-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$")
+# The Stockfish build sits in engine/<hash of its files>/ (scripts/sync-stockfish.mjs).
+_HASHED_DIR = re.compile(r"^[0-9a-f]{8}$")
 
 
 def _static_mime(path: Path) -> str:
@@ -102,7 +104,8 @@ def _static_mime(path: Path) -> str:
 
 
 def _cache_control(path: Path) -> str:
-    if path.suffix.lower() in _IMMUTABLE_EXT or _HASHED_NAME.search(path.name):
+    hashed_dir = path.parent.parent.name == "engine" and _HASHED_DIR.match(path.parent.name)
+    if path.suffix.lower() in _IMMUTABLE_EXT or _HASHED_NAME.search(path.name) or hashed_dir:
         return "public, max-age=31536000, immutable"
     # App shell + unhashed assets (index.html, styles, icons): always revalidate so
     # deploys/edits are picked up immediately.

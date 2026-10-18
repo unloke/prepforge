@@ -6,7 +6,7 @@ import { preparationValue, selectPreparationRoutes, routeKey, canonicalPosition 
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import {
   createEngineProvider,
-  STOCKFISH_PACKAGE_VERSION,
+  ENGINE_ID,
 } from "./engine/stockfish-provider.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
@@ -28,7 +28,7 @@ export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
 /** Run the bounded leaf queue to completion unless cancelled. */
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = Infinity;
-export const SCOUT_PREFILTER_ENGINE_VERSION = `stockfish-${STOCKFISH_PACKAGE_VERSION}-lite`;
+export const SCOUT_PREFILTER_ENGINE_VERSION = ENGINE_ID;
 export const PREFILTER_IDLE = "idle";
 export const PREFILTER_LOADING = "loading";
 export const PREFILTER_READY = "ready";

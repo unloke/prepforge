@@ -68,7 +68,7 @@ try {
     const manifest = await fetch("/static/engine/stockfish.manifest.json").then((r) => r.json());
     const lines = await new Promise((resolve, reject) => {
       const output = [];
-      const worker = new Worker("/static/engine/stockfish-lite.js");
+      const worker = new Worker(`/static/engine/${manifest.dir}/stockfish-lite.js`);
       const timer = setTimeout(() => {
         worker.terminate();
         reject(new Error(`UCI timeout; output: ${output.join(" | ")}`));

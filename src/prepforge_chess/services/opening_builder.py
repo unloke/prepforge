@@ -139,8 +139,12 @@ def _engine_eval_from_payload(data) -> Optional[EngineEvaluation]:
         if abs(sum(parsed_wdl.values()) - 1) > 0.01:
             raise ValueError("engineEvaluation.wdl must sum to 1")
 
+    engine = data.get("engine")
+    if not isinstance(engine, str) or not engine.strip():
+        raise ValueError("engineEvaluation.engine is required")
+
     return EngineEvaluation(
-        engine=str(data.get("engine") or "stockfish (browser)"),
+        engine=engine.strip(),
         depth=validate_int(data.get("depth"), "engineEvaluation.depth", lo=0, hi=MAX_EVAL_DEPTH),
         score_cp=validate_int(data.get("score_cp"), "engineEvaluation.score_cp",
                               lo=-MAX_EVAL_SCORE_CP, hi=MAX_EVAL_SCORE_CP),

@@ -2,13 +2,7 @@ import { defineConfig } from "vite";
 import { fileURLToPath, URL } from "node:url";
 import { readdirSync, rmSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-
-function installedStockfishVersion() {
-  const packageJson = fileURLToPath(
-    new URL("./node_modules/stockfish/package.json", import.meta.url),
-  );
-  return JSON.parse(readFileSync(packageJson, "utf8")).version;
-}
+import { stockfishIdentity } from "./scripts/sync-stockfish.mjs";
 
 // ORT's threaded WASM runtime does import('/engine/ort/ort-wasm-simd-threaded.asyncify.mjs')
 // at runtime. In Vite dev mode, Vite's module resolver intercepts this *before* any
@@ -127,7 +121,7 @@ export default defineConfig({
   root: "web-src",
   base: "/static/",
   define: {
-    "globalThis.__STOCKFISH_PACKAGE_VERSION__": JSON.stringify(installedStockfishVersion()),
+    "globalThis.__STOCKFISH__": JSON.stringify(stockfishIdentity()),
   },
   plugins: [publicMjsPlugin(), trimDeployAssets()],
   build: {
