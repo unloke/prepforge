@@ -25,12 +25,11 @@ import {
   hasCaptures,
   playUci,
 } from "./move-facts.js";
-import { motifPhrase, participle, hangingCapture } from "./motifs.js";
+import { motifPhrase, participle } from "./motifs.js";
 import { Chess } from "chess.js";
-import { PIECE_VALUE, PIECE_NAME } from "./material.js";
-import { soundReason, replyReason, betterReason, costReason, reasonPhrase, reasonParticiple } from "./reasons.js";
-
-const TYPES = ["q", "r", "b", "n", "p"];
+import { why } from "./why/index.js";
+import { PIECE_VALUE } from "./material.js";
+import { soundReason, reasonPhrase } from "./reasons.js";
 
 function capturedBy(fen, uci) {
   if (!fen || !uci) return null;
@@ -51,10 +50,6 @@ function hash(s) {
 // Deterministic variety: the same move always reads the same way.
 function pick(f, key, options) {
   return options[hash(`${key}:${f.san}:${f.uci}:${f.ply ?? ""}`) % options.length];
-}
-
-function cap(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 // -3..3 from the mover's point of view: lost .. level .. winning.
@@ -101,12 +96,6 @@ function negate(net) {
   return out;
 }
 
-function minus(a, b) {
-  const out = {};
-  for (const t of TYPES) out[t] = (a[t] || 0) - (b[t] || 0);
-  return out;
-}
-
 // The line after the first move of `outcome`, numbered and trimmed to the capture that
 // settles it: the last capture by `byColor` within `cap` plies (or two plies when none).
 function trimmedLine(startFen, outcome, byColor, cap = 4) {
@@ -120,31 +109,10 @@ function trimmedLine(startFen, outcome, byColor, cap = 4) {
   return numberLine(startFen, rest.slice(0, n).map((mv) => mv.san));
 }
 
-// The best line including its first move: "20.c5 Rfd8 21.Bd6".
-function bestLineText(f, outcome, byColor) {
-  if (!outcome || !outcome.moves.length) return "";
-  const moves = outcome.moves.slice(0, 5);
-  let end = 0;
-  moves.forEach((mv, i) => {
-    if (mv.captured && mv.color === byColor) end = i;
-  });
-  return numberLine(f.fenBefore, moves.slice(0, end + 1).map((mv) => mv.san));
-}
-
 // Everything the wording needs, computed once.
-export function readFacts(f) {
+function readFacts(f) {
   const m = f.mover === "white" ? "w" : "b";
-  const opp = m === "w" ? "b" : "w";
-  const played = lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 8 });
   const own = /x/.test(f.san || "") ? lineOutcome(f.fenBefore, f.playedPvUci || [], { maxPlies: 6, first: true }) : null;
-  const best = lineOutcome(f.fenBefore, f.bestPvUci || [], { maxPlies: 8 });
-  const playedNet = played && played.quiet ? netValue(netFor(played, m)) : null;
-  const bestNet = best && best.quiet ? netValue(netFor(best, m)) : null;
-  // What the played move costs against the best line, per piece type (+ = the best line
-  // keeps/wins it). Both lines start from the same position, so a pending recapture
-  // cancels out instead of reading as a loss or a gain.
-  const rel = played && best && played.quiet && best.quiet ? minus(netFor(best, m), netFor(played, m)) : null;
-  const relValue = rel ? netValue(rel) : 0;
   const prevWasCapture = /x/.test(f.prevSan || "");
   const prevDest = f.prevUci ? f.prevUci.slice(2, 4) : null;
   // A take-back answers the opponent's capture on the same square and only restores what
@@ -155,12 +123,7 @@ export function readFacts(f) {
   // Classify this exchange from its captures, independent of material won earlier.
   const restores = prevTook && nowTook ? PIECE_VALUE[nowTook] <= PIECE_VALUE[prevTook] : true;
   const recapture = prevWasCapture && !!prevDest && /x/.test(f.san || "") && f.uci?.slice(2, 4) === prevDest && restores;
-  const bestTakesBack = prevWasCapture && !!prevDest && f.bestUci?.slice(2, 4) === prevDest && /x/.test(f.bestSan || "");
-  // What an error drops. Against the best line when that line only takes back (the
-  // recapture the move skipped); otherwise what changes hands in the played line itself,
-  // so material the best line would grab elsewhere never reads as dropped.
-  const lost = bestTakesBack ? rel : played && played.quiet ? negate(netFor(played, m)) : null;
-  return { m, opp, played, own, best, playedNet, bestNet, rel, relValue, lost, prevWasCapture, recapture, bestTakesBack };
+  return { m, own, prevWasCapture, recapture };
 }
 
 // The engine line to mate, numbered: "20...Nd4+ 21.Kd2 Qc2+ 22.Ke1 Qc1#". `fen` is where
@@ -284,141 +247,12 @@ function brilliantProse(f, x) {
 
 // --- Errors ------------------------------------------------------------------
 
-// "You were clearly better; now it's level." "" when the verdict didn't move.
-function changeSentence(f, v) {
-  const b0 = bucket(f.winBeforeMover);
-  const b1 = bucket(f.winAfterMover);
-  if (b1 >= b0) return ""; // two separate searches can disagree slightly; never narrate a gain
-  if (b0 === 0) return `${cap(v.standing(b1))} now.`;
-  return `${cap(v.standing(b0, true))}; now ${v.standing(b1)}.`;
-}
-
-// What should have been played and what it would have kept or won.
-function betterSentence(f, x, v) {
-  if (!f.bestSan || f.isBest) return "";
-  if (f.hadMateBefore && Number.isFinite(f.mateBefore)) return `${f.bestSan} was the move, with ${mateCount(f.mateBefore)}.`;
-  if (x.bestTakesBack) return `${f.bestSan} was the right way to take back.`;
-  if (x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) {
-    const motif = motifPhrase(f.fenBefore, f.bestUci, f.bestSan);
-    return `${f.bestSan} was the move, ${motif ? `${participle(motif)} and ` : ""}winning ${gainPhrase(netFor(x.best, x.m))}.`;
-  }
-  if (x.relValue >= 1) return `${f.bestSan} was the move, keeping the material.`;
-  const why = reasonPhrase(betterReason(f));
-  if (why) return `${f.bestSan} was the move, ${reasonParticiple(why)}.`;
-  const b0 = bucket(f.winBeforeMover);
-  if (b0 !== bucket(f.winAfterMover)) return `${f.bestSan} was the move, ${v.keeping(b0)}.`;
-  return `${f.bestSan} was the move.`;
-}
-
-// "a trade of bishops" / "a bishop-for-knight trade" for an even exchange the reply starts.
-function replyTrade(f, x) {
-  if (!/x/.test(f.replySan || "")) return "";
-  const after = lineOutcome(f.fenAfter, (f.playedPvUci || []).slice(1), { maxPlies: 6, first: true });
-  if (!after || !after.quiet || netValue(netFor(after, x.m)) !== 0 || !hasCaptures(after)) return "";
-  const phrase = tradePhrase(after, x.m);
-  const same = /^trades (\w+)$/.exec(phrase);
-  if (same) return `a trade of ${same[1]}`;
-  const mixed = /^gives an? (\w+) for an? (\w+)$/.exec(phrase);
-  return mixed ? `a ${mixed[1]}-for-${mixed[2]} trade` : "";
-}
-
-// The concrete consequence of an error, as a sentence. Mate first, then material against
-// the better line, then the reply it allows and how the position changed.
-function errorConsequence(f, x, v) {
-  if (f.missedMate && f.bestSan) {
-    const line = mateLine(f.fenBefore, f.bestPvUci, f.mateBefore);
-    const n = Math.abs(f.mateBefore);
-    if (n === 1) return { text: `${f.san} misses mate in one: ${line || f.bestSan}.`, namedBest: true };
-    return { text: `${f.san} misses mate in ${n}${line ? `: ${line}` : ` with ${f.bestSan}`}.`, namedBest: true };
-  }
-  if (f.inMateNet && !lostAnyway(f)) {
-    const line = mateLine(f.fenAfter, (f.playedPvUci || []).slice(1), f.mateAfter);
-    return { text: `${f.san} allows ${mateCount(f.mateAfter)}${line ? `: ${line}` : ""}.` };
-  }
-  // Traded into opposite-coloured bishops while the better line avoids it.
-  const playedEnd = x.played && x.played.quiet ? fenAfterLine(f.fenBefore, f.playedPvUci, x.played.plies) : null;
-  const bestEnd = x.best && x.best.quiet ? fenAfterLine(f.fenBefore, f.bestPvUci, x.best.plies) : null;
-  if (f.replySan && playedEnd && oppositeBishopsOnly(playedEnd) && !(bestEnd && oppositeBishopsOnly(bestEnd))) {
-    const reply = numberLine(f.fenAfter, [f.replySan]);
-    const change = changeSentence(f, v);
-    return { text: `${f.san} allows ${reply} and a trade into opposite-coloured bishops, usually a draw.${change ? ` ${change}` : ""}` };
-  }
-  if (x.rel && x.relValue >= 1) {
-    const lossText = () => {
-      const lost = x.lost ? gainPhrase(x.lost) : "";
-      if (!lost) return null;
-      // Name the tactic the reply executes: a piece left hanging, or a fork / pin / skewer.
-      const reply = f.replySan ? numberLine(f.fenAfter, [f.replySan]) : "";
-      const hung = reply ? hangingCapture(f.fenAfter, f.replyUci) : null;
-      if (hung && (x.lost[hung.type] || 0) >= 1) {
-        const what = hung.square === f.uci?.slice(2, 4) ? `the ${PIECE_NAME[hung.type]}` : `the ${PIECE_NAME[hung.type]} on ${hung.square}`;
-        return { text: `${f.san} hangs ${what} to ${reply}.` };
-      }
-      const motif = reply ? motifPhrase(f.fenAfter, f.replyUci, f.replySan) : "";
-      if (motif) return { text: `${f.san} loses ${lost} to ${reply}, which ${motif}.` };
-      const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
-      return { text: `${f.san} loses ${lost}${line ? ` after ${line}` : ""}.` };
-    };
-    if (x.bestTakesBack) {
-      const t = lossText();
-      if (t) return t;
-    } else if (x.bestNet !== null && x.bestNet >= 1 && f.bestSan) {
-      const line = bestLineText(f, x.best, x.m);
-      const gain = gainPhrase(netFor(x.best, x.m));
-      const motif = motifPhrase(f.fenBefore, f.bestUci, f.bestSan);
-      if (gain && motif) return { text: `${f.san} misses ${f.bestSan}, which ${motif} and wins ${gain}.`, namedBest: true };
-      if (gain) return { text: `${f.san} misses ${f.bestSan}, which wins ${gain}${line && line.includes(" ") ? ` (${line})` : ""}.`, namedBest: true };
-    } else if (x.playedNet !== null && x.playedNet < 0) {
-      const t = lossText();
-      if (t) return t;
-    }
-  }
-  // Positional: name the reply the move allows, then how the verdict moved.
-  let text;
-  if (f.replySan) {
-    const reply = numberLine(f.fenAfter, [f.replySan]);
-    const trade = replyTrade(f, x);
-    const did = trade ? "" : describeMove(f.fenAfter, f.replyUci, f.replySan);
-    const shown = did && !/^takes the/.test(did) ? did : "";
-    const why = trade || shown ? "" : reasonPhrase(replyReason(f));
-    // A static cost (pin, shut-in bishop, centre) when the reply threatens nothing.
-    const cost = trade || why || /attacks|hits|forks|promotes|mate/.test(shown) ? "" : reasonPhrase(costReason(f));
-    if (trade) text = `${f.san} allows ${reply} and ${trade}.`;
-    else if (why) {
-      const change = changeSentence(f, v);
-      const said = `${f.san} allows ${reply}, which ${why}.`;
-      return { text: change ? `${said} ${change}` : said, reason: why, reply };
-    } else if (cost) {
-      const change = changeSentence(f, v);
-      return { text: `${f.san} ${cost}.${change ? ` ${change}` : ""}`, cost };
-    } else text = shown ? `${f.san} allows ${reply}, which ${shown}.` : `${f.san} allows ${reply}.`;
-  } else {
-    text = `${f.san} isn't the right idea here.`;
-  }
-  const change = changeSentence(f, v);
-  return { text: change ? `${text} ${change}` : text };
-}
-
-function errorProse(f, x, v) {
-  const code = f.classification.code;
-  const { text, namedBest, reason, reply, cost } = errorConsequence(f, x, v);
-  const better = namedBest ? "" : betterSentence(f, x, v);
-  if (code === "inaccuracy") {
-    // Gentler: a small slip only needs the fix and, if it tipped the balance, that. One
-    // reason at most: what the reply it allows does, else what the better move does.
-    if (/ (loses|hangs|allows mate|misses)/.test(text)) return `${text}${better ? ` ${better}` : ""}`;
-    const change = changeSentence(f, v);
-    const head = cost
-      ? `${f.san} is slightly inaccurate: it ${cost}.`
-      : reason
-        ? `${f.san} is slightly inaccurate: it allows ${reply}, which ${reason}.`
-        : `${f.san} is slightly inaccurate.`;
-    const why = reason || cost ? "" : reasonPhrase(betterReason(f));
-    const fix = f.bestSan && !f.isBest ? ` ${f.bestSan} was better${why ? `: it ${why}` : ""}.` : "";
-    return `${head}${fix}${change ? ` ${change}` : ""}`;
-  }
-  const lead = code === "blunder" ? "Blunder." : "Mistake.";
-  return `${lead} ${text}${better ? ` ${better}` : ""}`;
+// One reason, picked by the frozen selector from the facts of both engine lines (why/).
+function errorProse(f) {
+  return why({
+    fen: f.fenBefore, grade: f.classification.code, played: f.playedPvUci, best: f.bestPvUci,
+    before: { cp: f.evalBeforeCp, mate: f.mateBefore }, after: { cp: f.evalAfterCp, mate: f.mateAfter },
+  });
 }
 
 // --- Entry -------------------------------------------------------------------
@@ -439,7 +273,7 @@ function buildProse(f, opts) {
   if (code === "great") return greatProse(f, x);
   if (code === "best") return bestProse(f, x);
   if (code === "good") return goodProse(f, x);
-  return errorProse(f, x, v);
+  return errorProse(f);
 }
 
 // `features.opponentRead` (set by the Analyze coach on a game the user played)
@@ -464,7 +298,7 @@ export function buildCommentary(features, opts = {}) {
 // that leaves them, said the way a coach beside the board would say it: "you", "they",
 // never a colour name. Same facts as the user's own read: the engine line and the board.
 
-const SLIP_WORD = { inaccuracy: "a small slip", mistake: "a mistake", blunder: "a blunder" };
+const SLIPS = new Set(["inaccuracy", "mistake", "blunder"]);
 const EDGE = { 3: "winning", 2: "clearly better", 1: "slightly better" };
 
 // Pieces the opponent's move hits, takes, pins or skewers belong to the user:
@@ -533,58 +367,17 @@ function answerSentence(f, afterSlip) {
   return `Your best answer is ${rEnd}, but ${standingClause(u)}.`;
 }
 
-// The slip, in what it gives the user: mate, a hanging piece, material (with the tactic
-// that wins it), a chance they missed, or just the position. `named` = the user's reply
-// already appears in the text. Mirrors errorConsequence for the user's own moves.
-function opponentSlip(f, x, san) {
+// The opponent's slip: a mate they walked into or missed, else the same reason the user's
+// own error would get (why/). `named` = the user's reply already appears in the text.
+function opponentSlip(f) {
   const reply = f.replySan ? numberLine(f.fenAfter, [f.replySan]) : "";
-  const word = SLIP_WORD[f.classification.code];
   if (f.inMateNet && reply) {
     const finish = Math.abs(f.mateAfter) <= 1 ? `${reply} is mate.` : `It starts with ${reply}.`;
-    return { text: `${san} walks into ${mateCount(f.mateAfter)}. ${finish}`, named: true };
+    return { text: `${numberLine(f.fenBefore, [f.san])} walks into ${mateCount(f.mateAfter)}. ${finish}`, named: true };
   }
   if (f.missedMate && f.bestSan) return { text: `They had mate with ${f.bestSan} and missed it.`, named: false };
-  const lost = x.rel && x.relValue >= 1 && x.playedNet !== null && x.playedNet < 0 && x.lost ? gainPhrase(x.lost) : "";
-  // Taking back on the square the slip captured on is a trade, not a hanging piece.
-  const recapture = /x/.test(f.san || "") && f.replyUci?.slice(2, 4) === f.uci?.slice(2, 4);
-  const hung = reply && !recapture ? hangingCapture(f.fenAfter, f.replyUci) : null;
-  if (hung && (!x.lost || (x.lost[hung.type] || 0) >= 1)) {
-    return { text: `${san} leaves their ${PIECE_NAME[hung.type]} on ${hung.square} hanging. Take it with ${reply}.`, named: true };
-  }
-  if (lost) {
-    // Name the tactic the user's reply executes when there is one: the engine line
-    // confirms it wins material, so a fork / pin / skewer is a fact, not a guess.
-    const motif = reply ? motifPhrase(f.fenAfter, f.replyUci, f.replySan) : "";
-    if (motif) {
-      // "forks the king and the rook on a8" already says what goes; only add the price when it doesn't.
-      const said = motif.includes(lost.replace(/^an? /, ""));
-      return { text: `${san} is ${word}. Now ${reply} ${motif}${said ? "" : ` and wins ${lost}`}.`, named: true };
-    }
-    const line = trimmedLine(f.fenAfter, x.played, x.opp, 6);
-    if (line) return { text: `${san} gives you ${lost}. Pick it up with ${line}.`, named: true };
-    return { text: `${san} gives you ${lost}.`, named: false };
-  }
-  // A chance they missed: their best move won material and the one played doesn't.
-  if (f.bestSan && !f.isBest && x.rel && x.relValue >= 1 && x.bestNet !== null && x.bestNet >= 1) {
-    const gain = gainPhrase(netFor(x.best, x.m));
-    const motif = motifPhrase(f.fenBefore, f.bestUci, f.bestSan);
-    if (gain) {
-      const said = motif && motif.includes(gain.replace(/^an? /, ""));
-      const how = motif ? `${yours(motif)}${said ? "" : ` and wins ${gain}`}` : `wins ${gain}`;
-      return { text: `Lucky for you, they missed ${f.bestSan}, which ${how}.`, named: false };
-    }
-  }
-  // Positional: nothing changes hands yet, so name the move they should have played.
-  if (!f.bestSan || f.isBest) return { text: `${san} is ${word} from them.`, named: false };
-  // What their better move would have done; your reply already says what the slip allows.
-  const why = reasonPhrase(betterReason(f), { mine: "their", theirs: "your" });
-  const tail = why ? `, ${reasonParticiple(why)}` : "";
-  const fix = {
-    inaccuracy: `${san} is a little loose. ${f.bestSan} was better for them${tail}.`,
-    mistake: `${san} is a mistake. They should have played ${f.bestSan}${tail}.`,
-    blunder: `${san} is a blunder. They had to play ${f.bestSan}${tail}.`,
-  }[f.classification.code];
-  return { text: fix, named: false };
+  const text = errorProse(f);
+  return { text, named: !!reply && text.includes(reply) };
 }
 
 // What a sound move by the opponent does, said for the user: the same point the user's
@@ -618,9 +411,8 @@ function opponentProse(f) {
   const san = numberLine(f.fenBefore, [f.san]);
   if (/#/.test(f.san || "")) return { tone: "danger", prose: `${san} is checkmate.` };
   if (code === "forced") return { tone: "info", prose: `${san} was forced. ${answerSentence(f, false)}`.trim() };
-  const x = readFacts(f);
-  if (SLIP_WORD[code]) {
-    const { text, named } = opponentSlip(f, x, san);
+  if (SLIPS.has(code)) {
+    const { text, named } = opponentSlip(f);
     const answer = named ? "" : answerSentence(f, true);
     return { tone: "good", prose: answer ? `${text} ${answer}` : text };
   }
@@ -633,7 +425,7 @@ function opponentProse(f) {
     const tail = mate || (reply ? `Keep going with ${reply}.` : "");
     return { tone: "good", prose: `${lead}, but you're still winning.${tail ? ` ${tail}` : ""}` };
   }
-  const point = opponentPoint(f, x);
+  const point = opponentPoint(f, readFacts(f));
   const threat = threatPhrase(f.fenBefore, f.uci, f.san);
   // A move that wins material, forces mate or hits a piece asks for an answer: say so in the tone.
   const forcing = /^(forces|wins)|mate/.test(point);
