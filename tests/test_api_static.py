@@ -146,3 +146,11 @@ def test_worker_script_csp_allows_weight_cdn(client):
         worker = next(p for p in assets.iterdir() if p.suffix == ".js" and ".map" not in p.name)
     resp = client.get(f"/static/assets/{worker.name}")
     assert "https://*.hf.co" in resp.headers["content-security-policy"]
+
+
+def test_engine_build_folder_served_immutable():
+    folder = static_mod.STATIC_DIR / "engine"
+    assert static_mod._cache_control(folder / "76ff1a9b" / "stockfish-lite.js") == "public, max-age=31536000, immutable"
+    # The manifest and unhashed folders revalidate.
+    assert static_mod._cache_control(folder / "stockfish.manifest.json") == "no-cache"
+    assert static_mod._cache_control(folder / "ort" / "ort.min.js") == "no-cache"

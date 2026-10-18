@@ -17,8 +17,16 @@ import { stockfishBudget } from "./compute-budget.js";
 // resolution (see engine-base.js). The wasm is only ~6.8 MB, so the bandwidth win
 // did not justify the fragility. Only the much larger ORT wasm is offloaded (its
 // .mjs glue stays local — see ortWasmPaths in engine-base.js).
-const ENGINE_SCRIPT_URL = "/static/engine/stockfish-lite.js";
-export const STOCKFISH_PACKAGE_VERSION = globalThis.__STOCKFISH_PACKAGE_VERSION__;
+// The bundled build (scripts/sync-stockfish.mjs, defined at build time): its folder and identity.
+export const STOCKFISH = globalThis.__STOCKFISH__;
+const ENGINE_SCRIPT_URL = `/static/engine/${STOCKFISH.dir}/stockfish-lite.js`;
+// The search settings every read uses, set explicitly at startup.
+const THREADS = 1;
+const HASH_MB = 16;
+// What produced a read: the engine and its search settings. Depth and nodes travel with each
+// read; saved analyses and the evaluation fingerprint carry this string, so a new build never
+// passes for the old one.
+export const ENGINE_ID = `${STOCKFISH.id} t${THREADS} h${HASH_MB}`;
 
 const DEFAULT_MAX_DEPTH = 18;
 // Node budget for searches that must finish (whole-game analysis, the coach's verdict),
@@ -176,7 +184,7 @@ export function createStockfishWasmProvider({
 
   const state = {
     session_id: null,
-    engine: "stockfish (browser)",
+    engine: ENGINE_ID,
     fen: null,
     side_to_move: "white",
     multipv: 1,
@@ -370,6 +378,8 @@ export function createStockfishWasmProvider({
       failReady((event && event.message) || "engine worker failed to load");
     };
     worker.postMessage("uci");
+    worker.postMessage(`setoption name Threads value ${THREADS}`);
+    worker.postMessage(`setoption name Hash value ${HASH_MB}`);
     worker.postMessage("isready");
     return readyPromise;
   }

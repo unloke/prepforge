@@ -3,14 +3,17 @@
   "packageVersion": "19.0.0",
   "engineVersion": "19",
   "variant": "lite-threaded",
+  "id": "sf19@19.0.0+18727c9a/nn-61e7af4bb97d",
+  "net": "nn-61e7af4bb97d",
+  "dir": "76ff1a9b",
   "files": {
     "script": {
-      "bundled": "stockfish-lite.js",
+      "bundled": "76ff1a9b/stockfish-lite.js",
       "source": "stockfish-19-lite.js",
       "sha256": "83c0d55a84eaf05d0aff888e4dec278b60da1fe37f25854807a7237b4619fbfd"
     },
     "wasm": {
-      "bundled": "stockfish-lite.wasm",
+      "bundled": "76ff1a9b/stockfish-lite.wasm",
       "source": "stockfish-19-lite.wasm",
       "sha256": "18727c9ade11a8ca04391ab5a298232bc6fffebe2002e7cfffac82e7ad453447"
     }

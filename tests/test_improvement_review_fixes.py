@@ -57,7 +57,7 @@ def _prepare(client: TestClient, pgn: str, **body) -> dict:
 
 def _classify_save(client: TestClient, prepared: dict, **overrides):
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
-    body = {"game_id": prepared["game_id"], "positions": positions}
+    body = {"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions}
     body.update(overrides)
     return client.post("/api/analyze/classify-save", json=body, headers=csrf_headers(client))
 
@@ -98,7 +98,7 @@ def test_classify_save_missing_position_is_400_and_writes_nothing(client):
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": positions},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
@@ -114,7 +114,7 @@ def test_classify_save_terminal_depth_zero_still_works(client):
     ]
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": positions},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions},
         headers=csrf_headers(client),
     )
     assert r.status_code == 200, r.text
@@ -154,7 +154,7 @@ def test_quality_metadata_labels_run_completeness(client):
     ]
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": good},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": good},
         headers=csrf_headers(client),
     )
     assert r.status_code == 200, r.text
@@ -174,7 +174,7 @@ def test_quality_metadata_labels_run_completeness(client):
     ]
     r2 = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "depth": 20, "positions": shallow},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "depth": 20, "positions": shallow},
         headers=csrf_headers(client),
     )
     quality2 = r2.json()["quality"]
@@ -186,7 +186,7 @@ def test_quality_metadata_labels_run_completeness(client):
     # A two-tier run screened at 12 on purpose: depth-12 reads are not "shallow".
     r3 = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "depth": 16, "screen_depth": 12, "positions": shallow},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "depth": 16, "screen_depth": 12, "positions": shallow},
         headers=csrf_headers(client),
     )
     quality3 = r3.json()["quality"]
