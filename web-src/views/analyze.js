@@ -342,7 +342,7 @@ export function createAnalyzeView({
       pathIds,
       decorate: (node) => {
         if (node.isVariation) {
-          return { classes: ["is-variation"], title: "variation" };
+          return { classes: ["is-variation"], title: "variation", label: "variation" };
         }
         const cls = String(node.classification || "unknown");
         const group = CLASS_GROUP_OF[cls.toLowerCase()];
@@ -351,6 +351,9 @@ export function createAnalyzeView({
           classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
           suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",
           title: cls,
+          // Only a real grade reaches the name: "unknown" is the absent-grade
+          // sentinel, not something to read out.
+          label: group ? CLASS_GROUPS.find((g) => g.key === group).label : "",
         };
       },
     });
