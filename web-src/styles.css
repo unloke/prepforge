@@ -1484,6 +1484,8 @@ h2 {
 }
 
 /* Today strip */
+#view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
+#view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
 .today {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1662,6 +1664,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .list-enter > * {
   animation: row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 25ms);
+}
+#view-dashboard .list-enter > *,
+#view-teams .list-enter > * {
+  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
 }
 @keyframes row-enter {
   from {
@@ -5197,6 +5203,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
