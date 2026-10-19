@@ -1474,6 +1474,20 @@ async function restoreWorkspaceLocation() {
   }
 }
 
+// In-page route changes (back/forward and location.hash) take the same path as
+// boot restore: switch the view, then rebuild Train's queue for the URL's
+// repertoire. Without this, ?rep= only took effect on a full reload.
+async function handleWorkspacePopstate() {
+  const loc = parseWorkspaceLocation(window.location.href);
+  if (loc.view === "replay" && loc.replaySection) {
+    appState.replaySection = loc.replaySection;
+  }
+  switchView(loc.view, { fromUrl: true });
+  if (loc.view === "train" && appState.signedIn) {
+    await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
+  }
+}
+
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
   // Games ↔ Scout is a page change for the user even though both live in the
@@ -6718,11 +6732,7 @@ function bindEvents() {
   }
   bindCommandPalette();
   window.addEventListener("popstate", () => {
-    const loc = parseWorkspaceLocation(window.location.href);
-    if (loc.view === "replay" && loc.replaySection) {
-      appState.replaySection = loc.replaySection;
-    }
-    switchView(loc.view, { fromUrl: true });
+    void handleWorkspacePopstate().catch(() => {});
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const blitzToggle = document.getElementById("train-blitz-toggle");
