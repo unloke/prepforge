@@ -4391,8 +4391,8 @@ function loadTrainSession() {
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
-    queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
+    queueTrainAttempt, refreshAuthStatus, renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   })).catch((error) => {
     trainSessionLoading = null;
@@ -4933,6 +4933,10 @@ async function renderTrainSync() {
 
 async function renderTrainStats() {
   return (await ensureTrainView()).renderTrainStats();
+}
+
+async function renderSmartSummaryStats(smart, stats) {
+  return (await ensureTrainView()).renderSmartSummaryStats(smart, stats);
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which

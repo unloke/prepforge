@@ -7,6 +7,7 @@ import { appSource } from "./test-app-source.js";
 const source = appSource();
 function compile(marker, deps) {
   const start = source.indexOf(marker);
+  if (start < 0) throw new Error(`not found: ${marker}`);
   const end = source.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `let smartStartSeq = 0; return (${source.slice(start, end)});`)(...Object.values(deps));
 }
@@ -40,13 +41,19 @@ function harness(overrides = {}) {
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},
-    document: { getElementById: () => ({ hidden: false }) }, setSmartPanelsHidden: vi.fn(),
+    document: { getElementById: () => ({ hidden: false }) },
     renderSmartQueueStrip: async () => {}, renderTrainStats: async () => {}, setTrainSyncState: vi.fn(),
     loadPhaseCoach: () => phase.promise, syncWorkspaceUrl: vi.fn(),
     smartLocalPrompt: (smart) => smart.cardIndex < smart.queue.length
       ? { cardIndex: smart.cardIndex, targetIndex: smart.targetIndex } : null,
     presentSmartPrompt: present, finishSmartSession: vi.fn(async () => {}),
   };
+  deps.setSmartPanelsHidden = compile("function setSmartPanelsHidden(", deps);
+  deps.renderSmartSummaryStats = vi.fn();
+  deps.syncTrainSessionControls = vi.fn();
+  deps.showSmartSummary = compile("function showSmartSummary(", deps);
+  deps.smartSessionOutcomeText = compile("function smartSessionOutcomeText(", deps);
+  deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
   return { appState, deps, start: compile("async function startSmartTraining(", deps), present, phase, payload };
 }
@@ -179,6 +186,48 @@ describe("Smart memo integration at Start", () => {
     expect(h.present).not.toHaveBeenCalled();
     expect(loadSessionMemo("alice", "session", "start-1")).toBeNull();
   });
+  it("a new queue clears the last session's result cells", async () => {
+    const h = harness();
+    const cells = { innerHTML: "old cells" };
+    const delta = { innerHTML: "old delta" };
+    const foot = { textContent: "old foot" };
+    const els = { "train-summary-stats": cells, "train-summary-delta": delta, "train-summary-foot": foot };
+    // The clear lives in setSmartPanelsHidden; call it as Start does.
+    const dom = { getElementById: (id) => els[id] || null };
+    const clear = compile("function setSmartPanelsHidden(", { ...h.deps, document: dom });
+    clear();
+    expect(String(cells.innerHTML)).toBe("");
+    expect(String(delta.innerHTML)).toBe("");
+    expect(foot.textContent).toBe("");
+  });
+
+  it("the finished session speaks without exclamation marks", async () => {
+    const h = harness();
+    const setAttribute = vi.fn();
+    const node = { style: {}, innerHTML: "", textContent: "", setAttribute, hidden: false, className: "", appendChild() {}, remove() {} };
+    const el = () => node;
+    const fakeDoc = { getElementById: el, createElement: () => node };
+    h.deps.celebrate = compile("function celebrate(", { ...h.deps, document: fakeDoc, window: { setTimeout: () => {} } });
+    const finish = compile("async function finishSmartSession(", {
+      ...h.deps, document: fakeDoc,
+      boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
+      syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), updateTrainTurnBadge: vi.fn(),
+      localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
+    });
+    await h.start();
+    h.appState.smart.blitz = false;
+    await finish();
+    // The report is on screen before the flush and the summary fetch answer.
+    expect(h.deps.renderSmartSummaryStats).toHaveBeenCalledWith(h.appState.smart, h.appState.trainStats);
+    const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
+    expect(titles.filter((title) => /session complete/i.test(title))).toEqual(["Session complete"]);
+    for (const title of titles) expect(title).not.toContain("!");
+    // The end label names the position in a few words: the phone's thumb bar
+    // ellipsized "Final position of the last card". The fixture cards carry no
+    // fen_after, so the label is cleared here.
+    expect(String(node.textContent)).toBe("");
+  });
+
   it("Finish clears only this owner/session's memo", async () => {
     const h = harness();
     await h.start();

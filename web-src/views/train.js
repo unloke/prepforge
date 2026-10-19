@@ -257,19 +257,31 @@ export function createTrainView({
     }
   }
 
+  // The result cells, painted the moment the session ends (the health delta and
+  // the day streak arrive with the server summary).
+  function renderSmartSummaryStats(smart, stats) {
+    const host = document.getElementById("train-summary-stats");
+    if (!host) return;
+    host.innerHTML = html`${summaryStatCells(smart, stats)
+      .map(
+        ([value, label]) =>
+          html`<div><b>${value}</b><span>${label}</span></div>`
+      )}`;
+  }
+
   function renderSmartSummary(smart, stats, after, dayStreak) {
     const panel = document.getElementById("train-summary");
     if (!panel) return;
     const queue = document.getElementById("train-queue");
     if (queue) queue.hidden = true;
-    const statCells = summaryStatCells(smart, stats);
+    renderSmartSummaryStats(smart, stats);
     const day = dayStreak;
-    if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
-    document.getElementById("train-summary-stats").innerHTML = html`${statCells
-      .map(
-        ([value, label]) =>
-          html`<div><b>${value}</b><span>${label}</span></div>`
-      )}`;
+    if (day && day.current > 0) {
+      document.getElementById("train-summary-stats").insertAdjacentHTML(
+        "beforeend",
+        `<div><b>\u{1F525}${day.current}</b><span>day streak</span></div>`,
+      );
+    }
     const deltaEl = document.getElementById("train-summary-delta");
     const footEl = document.getElementById("train-summary-foot");
     const before = smart.healthBefore;
@@ -308,5 +320,6 @@ export function createTrainView({
     renderSmartQueueStrip,
     renderSmartProgress,
     renderSmartSummary,
+    renderSmartSummaryStats,
   };
 }

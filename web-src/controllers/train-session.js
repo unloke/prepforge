@@ -19,7 +19,7 @@ let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, 
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
   loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
   notices, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
-  refreshAuthStatus, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
+  refreshAuthStatus, renderSmartSummaryStats, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
   setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
   syncWorkspaceUrl, updateTrainTurnBadge;
 
@@ -30,8 +30,8 @@ export function createTrainSession(deps) {
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
-    queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
+    queueTrainAttempt, refreshAuthStatus, renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   } = deps);
   initTrainControls();
@@ -1521,7 +1521,7 @@ async function submitTrainingMove(playedUci) {
     legalMoves: [],
     lastMove: result.played_uci,
   });
-  setTrainBanner("correct", hinted ? "Correct, with a hint" : "Correct!", result.played_san ? `You played ${result.played_san}` : "");
+  setTrainBanner("correct", hinted ? "Correct, with a hint" : "Correct", result.played_san ? `You played ${result.played_san}` : "");
 
   // 2) After a beat, let the opponent reply as its own animated step.
   if (result.reply_uci && result.fen_after_reply) {
@@ -1601,7 +1601,7 @@ async function submitReviewMove(playedUci) {
     review.recovered += 1;
     // The trail mirrors the first-try counters; recovery answers are not graded.
     await renderTrainStats();
-    setTrainBanner("correct", "Recovered!", "Mistake fixed");
+    setTrainBanner("correct", "Recovered", "Mistake fixed");
     playSound("move");
     await sleep(640);
     appState.trainBusy = false;
@@ -1623,9 +1623,9 @@ function finishReviewRound() {
     stats.streak = review.savedStreak;
     stats.best = Math.max(stats.best, review.savedStreak);
     void renderTrainStats().catch(() => {});
-    setTrainBanner("done", "Run recovered!", `Fixed ${review.recovered} · back to ${review.savedStreak} in a row · best ${stats.best}`);
+    setTrainBanner("done", "Run recovered", `Fixed ${review.recovered} · back to ${review.savedStreak} in a row · best ${stats.best}`);
   } else {
-    setTrainBanner("done", "All cleaned up!", `Fixed ${countOf(review.recovered, "missed move")}`);
+    setTrainBanner("done", "All cleaned up", `Fixed ${countOf(review.recovered, "missed move")}`);
   }
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "Session complete";
@@ -1637,7 +1637,7 @@ function finishTrainingSession() {
   if (appState.training) appState.training.prompt = null;
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
-  setTrainBanner("done", "Session complete!", `${stats.correct} correct · ${countOf(stats.mistakes, "mistake")} · best run ${stats.best}`);
+  setTrainBanner("done", "Session complete", `${stats.correct} correct · ${countOf(stats.mistakes, "mistake")} · best run ${stats.best}`);
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "Session complete";
   syncTrainSessionControls();
@@ -1731,6 +1731,14 @@ function setSmartPanelsHidden() {
   if (queue) queue.hidden = true;
   const summary = document.getElementById("train-summary");
   if (summary) summary.hidden = true;
+  // The previous session's cells, deltas and New session button do not belong
+  // to the queue that is starting.
+  const summaryStats = document.getElementById("train-summary-stats");
+  if (summaryStats) summaryStats.innerHTML = "";
+  const summaryDelta = document.getElementById("train-summary-delta");
+  if (summaryDelta) summaryDelta.innerHTML = "";
+  const summaryFoot = document.getElementById("train-summary-foot");
+  if (summaryFoot) summaryFoot.textContent = "";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
 }
@@ -2297,7 +2305,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     lastMove: playedUci,
   });
   const praise =
-    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned!" : hinted ? "Correct, with a hint" : "Correct!";
+    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned" : hinted ? "Correct, with a hint" : "Correct";
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);
@@ -2398,13 +2406,29 @@ function rememberSmartSession(progress = {}) {
   trainSessionMemo?.saveSmartSession(currentOwnerId(), smart, appState.trainStats, progress);
 }
 
+// The finished session's report, on screen from the moment the last card is
+// answered: the card panel goes, the results appear with what the session did.
+// The flush and the server summary only fill in health numbers afterwards.
+function showSmartSummary(smart, stats) {
+  document.getElementById("train-progress-panel").hidden = true;
+  const bar = document.getElementById("train-queue");
+  if (bar) bar.hidden = true;
+  const delta = document.getElementById("train-summary-delta");
+  if (delta) delta.innerHTML = "";
+  const foot = document.getElementById("train-summary-foot");
+  if (foot) foot.textContent = "";
+  void renderSmartSummaryStats(smart, stats);
+  const panel = document.getElementById("train-summary");
+  if (panel) panel.hidden = false;
+  syncTrainSessionControls();
+}
+
 async function finishSmartSession() {
   const smart = appState.smart;
   if (!smart) return;
   const stats = appState.trainStats || {};
   smart.prompt = null;
   trainSessionMemo?.clearSessionMemo(currentOwnerId(), smart.sessionId, smart.generation);
-  syncTrainSessionControls();
   clearBlitzTimer();
   setBlitzBarVisible(false);
   boards.train.setEngineArrow(null);
@@ -2412,11 +2436,8 @@ async function finishSmartSession() {
   document.getElementById("train-progress-fill").style.width = "100%";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
-  setTrainBanner(
-    "done",
-    smart.blitz ? "Blitz session complete!" : "Session complete!",
-    smartSessionOutcomeText(smart, stats),
-  );
+  setTrainBanner("done", smart.blitz ? "Blitz session complete" : "Session complete", smartSessionOutcomeText(smart, stats));
+  showSmartSummary(smart, stats);
   // End on the last card's final position (its last answer, plus the reply when the
   // line has one) instead of wherever the board happened to be mid-line.
   const lastCard = smart.queue[smart.queue.length - 1];
@@ -2430,7 +2451,8 @@ async function finishSmartSession() {
       lastMove: finalReply ? finalReply.uci : lastTarget.uci,
     });
   }
-  document.getElementById("train-board-label").textContent = finalFen ? "Final position of the last card" : "";
+  // The phone's thumb bar gives the label one narrow track: a line that fits.
+  document.getElementById("train-board-label").textContent = finalFen ? "Final position" : "";
   invalidateTrainSessionPreview();
   celebrate();
   // End-of-session report: what this session changed, and what lands tomorrow.
