@@ -84,3 +84,15 @@ describe("scout report type", () => {
     expect(css).not.toMatch(/font-size: 11px/);
   });
 });
+
+describe("scout accent budget", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("keeps the accent for actions and the open row's bar, not for status chips", () => {
+    // Nine accent marks on one screen; the recommendation strip, the "main
+    // line" chip and the engine note read as calls to action when they are data.
+    expect(css).not.toMatch(/\.c-main \{[^}]*--accent/);
+    expect(css).not.toMatch(/\.scout-color-rec \{[^}]*--accent-soft/);
+    expect(css).toMatch(/\.line-row\.is-expanded \{[^}]*inset 3px 0 0 var\(--accent\)/);
+  });
+});
