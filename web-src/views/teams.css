@@ -248,6 +248,10 @@
   .team-role-select,
   .teams .tabs button { min-height: 44px; }
   .teams .card-head { flex-wrap: wrap; }
+  /* The spacer breaks the head in two: the name and the role on the first
+     line, the actions together on the second, all packed to the left. */
+  .team-detail .card-head { justify-content: flex-start; }
+  .team-detail .card-head .spacer { flex-basis: 100%; height: 0; }
   .mem-row { flex-wrap: wrap; }
   .team-member-tail { margin-left: auto; }
 }

@@ -228,7 +228,7 @@ export function createDashboardView({
       return;
     }
     card.innerHTML =
-      html`<header class="card-head"><h2>Get started</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide Get started" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
+      html`<header class="card-head"><h2>Next steps</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide next steps" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
         .map((step, i) => {
           const mark = step.done
             ? html`<span class="step-n is-done" aria-hidden="true"></span>`
@@ -815,7 +815,7 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
     card.innerHTML =
-      html`<header class="card-head"><h2>Get started</h2></header>${steps
+      html`<header class="card-head"><h2>Next steps</h2></header>${steps
         .map(
           ([title, detail, action, label], i) =>
             html`<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,

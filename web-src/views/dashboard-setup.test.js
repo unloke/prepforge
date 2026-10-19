@@ -116,7 +116,7 @@ describe("dashboard setup checklist", () => {
     expect(String(container.innerHTML)).toContain('class="empty-state big"');
     expect(String(container.innerHTML)).not.toContain("step-n");
     expect(steps.hidden).toBe(false);
-    expect(String(steps.innerHTML)).toContain("<h2>Get started</h2>");
+    expect(String(steps.innerHTML)).toContain("<h2>Next steps</h2>");
     expect(String(steps.innerHTML)).toContain("0 of 3 done");
     for (const id of ["repertoire", "lichess", "train"]) {
       expect(String(steps.innerHTML)).toContain(`data-setup-step="${id}"`);
@@ -413,7 +413,7 @@ describe("dashboard setup checklist", () => {
     expect(String(container.innerHTML)).toContain('data-lib-action="signin"');
     expect(todayCard.hidden).toBe(true);
     expect(steps.hidden).toBe(false);
-    expect(String(steps.innerHTML)).toContain("<h2>Get started</h2>");
+    expect(String(steps.innerHTML)).toContain("<h2>Next steps</h2>");
     // One Sign in on the page: the empty state has it, the checklist doesn't repeat it.
     expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(2);
     expect(String(steps.innerHTML)).not.toContain('data-lib-action="signin"');
