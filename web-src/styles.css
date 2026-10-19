@@ -3066,6 +3066,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-height: var(--study-h);
   overflow: hidden;
 }
+/* The panel ends where its content does. Stretched to the board's height it
+   was a white sheet with 400px of empty ground under the last row in every
+   state, and the eye read that ground as content that failed to load. Long
+   setup content (Practice game's pickers) still caps at the viewport and
+   scrolls inside. */
+@media (min-width: 861px) {
+  #view-train .train-sidebar { height: auto; align-self: start; }
+}
 #view-train .board-area { position: relative; }
 .panel-scroll {
   flex: 1 1 auto;
