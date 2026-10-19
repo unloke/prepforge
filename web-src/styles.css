@@ -3078,6 +3078,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overscroll-behavior: contain;
 }
 #view-train .panel-head { padding: 8px 12px; }
+/* The mode tabs are the panel's first row, not a separate band: the banner's
+   tone already steps the surface below them. */
+#view-train .train-sidebar > .panel-head { border-bottom: 0; }
 /* The panel's cards are not boxes: the content sits on the panel and the
    fills inside it (chips, the up-next field, the health rows) carry the
    structure. */
@@ -3317,7 +3320,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    edges, gaps between the groups wider than inside them. */
 .train-brief { display: flex; flex-direction: column; gap: 12px; }
 .train-brief-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.train-brief-count { font-size: 34px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* The queue size is a value the player reads, not a page headline: at display
+   size it made the coach banner above it look like a kicker. */
+.train-brief-count { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
 .train-brief-reps { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: var(--fs); }
 .train-brief-rep { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
