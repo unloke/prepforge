@@ -44,6 +44,19 @@
   border-bottom: 0;
 }
 
+/* The last move's tint. The shared sheet paints it as a gradient over the
+   square's own fill, which paints the square button with a gradient; a flat
+   mix of the tint into the square's colour says the same thing in one
+   colour. The board's own mark vocabulary (the legal ring, the arrow
+   colour) is shared chrome and stays as it is. */
+#view-analyze .square.last-move {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--square-light) 82%, var(--last-move));
+}
+#view-analyze .square.dark.last-move {
+  background-color: color-mix(in srgb, var(--square-dark) 82%, var(--last-move));
+}
+
 /* Captions on this page are read, not decoration: the drawer titles, the
    history rows and the coach's own link all carry meaning, so they read at
    the body size rather than at the app's 12px chrome size. */
