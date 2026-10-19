@@ -1129,13 +1129,19 @@ async function runAnalysis(options = {}) {
       if (current) {
         appState.analysisSourcePgn = null;
         hideAnalysisHandoff();
+        // The coach must not go on reading a game that was stopped.
+        setCoachProse("The analysis stopped.", "warn", "error");
       }
       notices.cancelJob(error.message || "Analysis stopped");
     } else if (isAuthError(error)) {
       if (current) accountService().handleAuthRequired("Sign in to run a full-game review. It is saved to your library.");
       notices.failJob("Sign in required");
     } else {
-      if (current) setStatusError(error.message);
+      if (current) {
+        setStatusError(error.message);
+        // The coach must not go on reading a game that could not be read.
+        setCoachProse(`The analysis failed: ${error.message}`, "danger", "error");
+      }
       notices.failJob(error.message);
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
