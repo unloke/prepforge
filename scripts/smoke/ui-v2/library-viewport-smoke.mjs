@@ -182,6 +182,21 @@ async function runViewport(vp) {
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
+  // The Today strip is one band: the queue leads, the week's history has its
+  // own cell at the right. Stacked as four lines, the queue was second.
+  const queueFirst = await page.evaluate(() => {
+    const body = document.querySelector("#dashboard-today .today-body");
+    if (!body) return false;
+    const kids = [...body.children];
+    return kids.length > 0 && kids[0].classList.contains("today-queue");
+  });
+  check(queueFirst, "the queue must be the first line of the Today body");
+  const countsInAside = await page.evaluate(() => {
+    const aside = document.querySelector("#dashboard-today .today-aside");
+    return !!aside && !!aside.querySelector(".today-counts");
+  });
+  check(countsInAside, "the lifetime counts must sit in the Today aside");
+
   // Phone: the page head's + is New repertoire, so Import PGN needs its own
   // route. It used to live only in the hidden header actions: a phone could
   // not import a PGN at all.

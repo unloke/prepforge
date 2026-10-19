@@ -405,11 +405,13 @@ export function createDashboardView({
       <span class="today-unit">day streak${best}</span>
     </div>
     <div class="today-body">
-      ${warningHtml || html`<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
+      ${warningHtml || html`<div class="today-note">${note}</div>`}
+    </div>
+    <div class="today-aside">
+      ${recapHtml}
       <div class="today-counts" data-testid="dashboard-counts"
            title="Saved analyses, repertoires and training sessions">${countsHtml}</div>
-      ${recapHtml}
     </div>
     ${firstRun
       ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`

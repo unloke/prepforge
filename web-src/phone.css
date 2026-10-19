@@ -113,6 +113,9 @@
   #view-dashboard .today-note,
   #view-dashboard .today-recap,
   #view-dashboard .today-counts { display: none; }
+  /* The aside is only the counts and the recap: with both hidden it would
+     leave an empty grid cell. */
+  #view-dashboard .today-aside { display: none; }
   #view-dashboard .today-body { grid-area: queue; gap: 2px; min-width: 0; }
   #view-dashboard .today-warning { font-size: 12px; }
   /* A failed read is one card: the strip's three-column layout would clip it

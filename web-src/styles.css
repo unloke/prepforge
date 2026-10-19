@@ -1493,9 +1493,11 @@ h2 {
 /* Today strip */
 #view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
 #view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
+/* The strip is one band: what is waiting on the left, the week's history and
+   the action on the right. Stacked as four lines in one narrow column, the
+   queue was the second line and the card kept a hole the width of the window. */
 .today {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: 18px;
 }
@@ -1520,16 +1522,27 @@ h2 {
   line-height: 1.2;
 }
 .today-unit small { display: block; color: var(--label); font-size: var(--fs-s); }
+/* The strip is one band: what is waiting on the left, the week's history and
+   the action on the right. Stacked as four lines in one narrow column, the
+   queue was the second line and the card kept a hole the width of the window. */
 .today-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 .today-note,
 .today-recap { color: var(--muted); font-size: var(--fs-s); }
-.today-queue { font-size: 13px; }
-.today-queue b { font-size: 14px; }
+.today-queue { color: var(--text); font-size: 16px; }
+.today-queue b { font-size: inherit; }
+.today-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+}
 .today-recap .up { color: var(--good-text); }
 .today-recap .down { color: var(--danger); }
 /* Lifetime counts (games · repertoires · sessions): one quiet line beside the
@@ -1889,7 +1902,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* ≤ 1279px: lower-value columns drop, the preview narrows */
 @media (max-width: 1279px) {
   .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr) 290px; }
-  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
 }
 /* ≤ 1020px: single column. The 1279px rule above uses
    `.lib-grid:not(:has(> .steps[hidden]))` (specificity 0,2,0), so the plain
