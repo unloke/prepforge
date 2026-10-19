@@ -286,7 +286,7 @@ async function runViewport(vp) {
   const chips = await page.locator("#build-branchbar .fork-chip").count();
   check(chips === 2, `fork bar should have 2 chips, got ${chips}`);
   const count = await page.locator("#build-branchbar .count").textContent().catch(() => "");
-  check(count === "2", `fork count should be 2, got "${count}"`);
+  check(count === "2 options", `fork count should read "2 options", got "${count}"`);
   const bf5Chip = page.locator('#build-branchbar .fork-chip', { hasText: "Bf5" });
   const share = await bf5Chip.locator("small").textContent().catch(() => "");
   check(share === "48%", `Bf5 chip should show the real 48% practical share, got "${share}"`);
