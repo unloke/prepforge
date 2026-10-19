@@ -100,6 +100,24 @@ describe("create dialogs hold a pending state while the request runs", () => {
     expect(h.overlay.children).not.toContain(h.overlay);
   });
 
+  it("a second Enter while the request runs does not send it twice", async () => {
+    // Two quick Enters on Create sent two POSTs: the keydown handler sits on
+    // document, so the second Enter lands before the dialog is gone and the
+    // button's disabled state does not stop a keyboard submit.
+    const h = modalHarness();
+    let release;
+    const done = new Promise((resolve) => { release = resolve; });
+    const onSubmit = vi.fn(async (_values, close) => { await done; close(_values); });
+    const show = h.showInputModal({ title: "New repertoire", fields: [{ name: "name" }], onSubmit });
+    await flush();
+    h.okBtn.fire("click");
+    h.okBtn.fire("click");
+    await flush();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    release();
+    await expect(show).resolves.toMatchObject({ name: "Najdorf" });
+  });
+
   it("a failed submit re-enables the form instead of closing it", async () => {
     const h = modalHarness();
     const show = h.showInputModal({
@@ -300,6 +318,32 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
     expect(h.views).toEqual(["build"]);
   });
 
+  it("reuses the open create dialog instead of opening a second one", async () => {
+    // The Library offers New repertoire in the page head and the list header;
+    // a second click while the dialog is open must not stack another dialog
+    // (two Enters then sent two creates).
+    let opens = 0;
+    let close;
+    const h = repHarness(async () => ({ repertoire_id: "rep-1", selected_node_id: "root-1", revision: 1, nodes: [] }));
+    const prompt = compileFunctionRange("async function createRepertoirePrompt(", {
+      requireSignIn: () => true,
+      showInputModal: () => { opens += 1; return new Promise((resolve) => { close = resolve; }); },
+      repertoireColorField: () => ({ name: "color", type: "select", options: ["white", "black"] }),
+    });
+    const first = prompt({});
+    const second = prompt({});
+    expect(opens).toBe(1);
+    close(null);
+    // Both entries resolve to the one dialog's answer.
+    await expect(second).resolves.toBeNull();
+    close(null);
+    await expect(first).resolves.toBeNull();
+    // Once it has closed, the next New repertoire opens a fresh dialog.
+    prompt({});
+    expect(opens).toBe(2);
+    close(null);
+  });
+
   it("creates without leaving the current view when not opening it (Scout)", async () => {
     const payload = { repertoire_id: "rep-2", selected_node_id: "root-2", revision: 1, nodes: [] };
     const h = repHarness(async () => payload);
@@ -319,7 +363,10 @@ describe("createRepertoirePrompt opens the new repertoire optimistically", () =>
 // createRepertoirePrompt shares its file with the two helpers the optimistic open
 // needs, so compile the whole run together.
 function compileFunctionRange(marker, deps) {
-  const start = source.indexOf(marker);
+  let start = source.indexOf(marker);
+  expect(start).toBeGreaterThan(-1);
+  // The one-dialog latch sits just above the function.
+  start = source.lastIndexOf("let createRepertoireDialog", start);
   expect(start).toBeGreaterThan(-1);
   const rollback = source.indexOf("function rollbackOptimisticRepertoire(", start);
   expect(rollback).toBeGreaterThan(start);

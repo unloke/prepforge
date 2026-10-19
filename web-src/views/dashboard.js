@@ -189,7 +189,6 @@ export function createDashboardView({
         title: "Build your first repertoire",
         // No button here: while this step is open the library's empty state
         // already offers New repertoire / Import PGN right beside it.
-        detail: "New repertoire or Import PGN, in your library.",
         done: repertoires > 0,
       },
       {
@@ -204,7 +203,8 @@ export function createDashboardView({
         // Counted from started sessions (there is no "finished" flag), so the
         // step promises only what it measures.
         title: "Start a training session",
-        detail: repertoires > 0 ? "" : "Unlocks once you have a repertoire.",
+        // A finished step reads "Done", so it can neither show a disabled Train
+        // nor a reason it is locked; the disabled CTA explains the lock.
         done: ((payload && payload.training_sessions) || 0) > 0,
         action: "train",
         label: "Train",
@@ -338,6 +338,9 @@ export function createDashboardView({
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
     const queueText = todayQueueText(due, soon, newMoves, weak);
+    // Nothing stored in the account: the primary action is the first
+    // repertoire, not Train, which can only answer "no active repertoire".
+    const firstRun = ownRepertoireCount() === 0 && !(Number(payload.training_sessions) > 0);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
@@ -386,9 +389,17 @@ export function createDashboardView({
            title="Saved analyses, repertoires and training sessions">${countsHtml}</div>
       ${recapHtml}
     </div>
-    <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>
+    ${firstRun
+      ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
+      : html`<button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
   `;
     card.hidden = false;
+    if (firstRun) {
+      // The strip is re-rendered on every load, so it binds its own action;
+      // a Train listener looked up by id would not exist.
+      card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
+      return;
+    }
     const trainNow = () =>
       goToSmartTraining(
         due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
@@ -712,6 +723,8 @@ export function createDashboardView({
     // The Today strip's "new moves to learn" depends on this listing.
     const today = document.getElementById("dashboard-today");
     if (lastTodayPayload && today && !today.hidden) renderDashboardToday(lastTodayPayload);
+    // A first-run strip (no dashboard read yet) still learns it has none.
+    else refreshFirstRunAction();
     return true;
   }
 
@@ -765,6 +778,16 @@ export function createDashboardView({
         "Open Analyze",
       ],
     ]);
+  }
+
+  // A listing refresh can land before the first dashboard read; a first-run
+  // strip only follows the count once it is known.
+  function refreshFirstRunAction() {
+    const card = document.getElementById("dashboard-today");
+    if (!card || card.hidden) return;
+    const train = card.querySelector('[data-testid="dashboard-train-now"]');
+    if (!train || !ownRepertoireCount()) return;
+    if (lastTodayPayload) renderDashboardToday(lastTodayPayload);
   }
 
   // "Get started" checklist; buttons are delegated through data-lib-action.
