@@ -1,21 +1,51 @@
 {
   "package": "stockfish",
-  "packageVersion": "19.0.0",
-  "engineVersion": "19",
-  "variant": "lite-threaded",
-  "id": "sf19@19.0.0+18727c9a/nn-61e7af4bb97d",
-  "net": "nn-61e7af4bb97d",
-  "dir": "76ff1a9b",
-  "files": {
-    "script": {
-      "bundled": "76ff1a9b/stockfish-lite.js",
-      "source": "stockfish-19-lite.js",
-      "sha256": "83c0d55a84eaf05d0aff888e4dec278b60da1fe37f25854807a7237b4619fbfd"
+  "engines": {
+    "big": {
+      "packageVersion": "19.0.0",
+      "engineVersion": "19",
+      "nets": [
+        "nn-1a298aa575a0"
+      ],
+      "id": "sf19@19.0.0+e0ef9003/nn-1a298aa575a0",
+      "dir": "d34a014f",
+      "initialHeapPages": 2048,
+      "maxHeapPages": 6144,
+      "files": {
+        "script": {
+          "bundled": "d34a014f/stockfish.js",
+          "source": "stockfish-19.js",
+          "sha256": "7852135555ec43b59c4c8aa6577a940e578eabb067b709d6a276752f1e771cf1"
+        },
+        "wasm": {
+          "bundled": "d34a014f/stockfish.wasm",
+          "source": "stockfish-19.wasm",
+          "sha256": "e0ef90031a310479e5b0c3692a9839118ed785535c306252e68ed3300a45b02d"
+        }
+      }
     },
-    "wasm": {
-      "bundled": "76ff1a9b/stockfish-lite.wasm",
-      "source": "stockfish-19-lite.wasm",
-      "sha256": "18727c9ade11a8ca04391ab5a298232bc6fffebe2002e7cfffac82e7ad453447"
+    "lite": {
+      "packageVersion": "19.0.0",
+      "engineVersion": "19",
+      "nets": [
+        "nn-61e7af4bb97d"
+      ],
+      "id": "sf19@19.0.0+18727c9a/nn-61e7af4bb97d",
+      "dir": "93b0a270",
+      "initialHeapPages": 2048,
+      "maxHeapPages": 4096,
+      "files": {
+        "script": {
+          "bundled": "93b0a270/stockfish.js",
+          "source": "stockfish-19-lite.js",
+          "sha256": "eaf5bb3ee7e9870cf51a248612610ee12e9366eee8e7db1d10ebe92e835248e8"
+        },
+        "wasm": {
+          "bundled": "93b0a270/stockfish.wasm",
+          "source": "stockfish-19-lite.wasm",
+          "sha256": "18727c9ade11a8ca04391ab5a298232bc6fffebe2002e7cfffac82e7ad453447"
+        }
+      }
     }
   }
 }

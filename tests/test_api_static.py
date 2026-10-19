@@ -154,3 +154,25 @@ def test_engine_build_folder_served_immutable():
     # The manifest and unhashed folders revalidate.
     assert static_mod._cache_control(folder / "stockfish.manifest.json") == "no-cache"
     assert static_mod._cache_control(folder / "ort" / "ort.min.js") == "no-cache"
+
+
+
+def test_gzip_skips_engine_binaries():
+    from fastapi import FastAPI
+    from fastapi.responses import Response
+    from fastapi.testclient import TestClient
+
+    from prepforge_chess.api.main import _TextGZipMiddleware
+
+    app = FastAPI()
+    app.add_middleware(_TextGZipMiddleware, minimum_size=10)
+
+    @app.get("/{name}")
+    def asset(name: str):
+        return Response(b"x" * 4096, media_type="application/octet-stream")
+
+    client = TestClient(app)
+    headers = {"Accept-Encoding": "gzip"}
+    assert "content-encoding" not in client.get("/stockfish.wasm", headers=headers).headers
+    assert "content-encoding" not in client.get("/model.onnx", headers=headers).headers
+    assert client.get("/index.js", headers=headers).headers["content-encoding"] == "gzip"

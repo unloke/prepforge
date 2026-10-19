@@ -334,3 +334,37 @@
   .acct-row { flex-wrap: wrap; }
   .acct-danger { flex-direction: column; align-items: flex-start; }
 }
+
+/* Device probe: a track under the Detect row; the fill eases between steps and a soft
+   sheen keeps it alive through the long big-net download. */
+.profile-progress {
+  position: relative;
+  height: 6px;
+  margin: 2px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.profile-progress[hidden] { display: none; }
+.profile-progress-fill {
+  position: relative;
+  width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-line), var(--accent));
+  transition: width 700ms var(--ease-out);
+}
+.profile-progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  transform: translateX(-100%);
+  animation: profile-sheen 1.6s ease-in-out infinite;
+}
+@keyframes profile-sheen { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .profile-progress-fill { transition: none; }
+  .profile-progress-fill::after { animation: none; }
+}

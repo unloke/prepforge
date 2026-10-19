@@ -44,7 +44,7 @@ where = ["src"]
 # explicitly or the wheel silently drops it:
 #   static/assets/*       hashed JS/CSS bundles (else index.html ships without its app)
 #   static/engine/*       stockfish.manifest.json
-#   static/engine/*/*     the Stockfish build in its content-hashed folder, and the
+#   static/engine/*/*     both Stockfish builds in their content-hashed folders, and the
 #                          vendored onnxruntime-web runtime in ort/ (.asyncify.{mjs,wasm})
 #   static/maia3/maia3.manifest.json  ONLY the manifest. Listed by EXACT filename,
 #                          not a `static/maia3/*` glob: the 137 MB ONNX weights are

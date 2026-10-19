@@ -1,5 +1,4 @@
 import { expect, it, vi } from "vitest";
-import { analyzeTiered } from "./engine/tiered-analysis.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -87,7 +86,9 @@ it("switching accounts during classify-save releases the analysis job without re
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true,
     engineLifecycleMark: vi.fn(), renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
     analysisStore: async () => ({ analyzeGame: async () => new Map([["fen", { score_cp: 0 }]]) }),
-    analyzeTiered,
+    ensureEngineProfile: async () => {}, effectiveStockfishDepth: () => 12,
+    createEngineAnalysisRun: () => ({ profile: () => ({ net: "big" }), done: vi.fn() }),
+    engineIdentity: () => "sf-test",
     ensureAnalyzeView: async () => ({ liveEvalChart: () => () => {} }),
     engineModule: { analyzeGamePositions: async () => new Map([["fen", { score_cp: 0 }]]) },
     postJson: vi.fn(async (path) => {
@@ -101,8 +102,7 @@ it("switching accounts during classify-save releases the analysis job without re
   };
   const start = source.indexOf("async function runAnalysis(");
   const runCode = source.slice(start, source.indexOf("function renderImportPicker(", start))
-    .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)")
-    .replace('await import("../engine/tiered-analysis.js")', "({ analyzeTiered })");
+    .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)");
   attachFinish(deps);
   const run = new Function(...Object.keys(deps), `${runCode}\nreturn runAnalysis;`)(...Object.values(deps));
   await run();

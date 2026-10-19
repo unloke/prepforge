@@ -42,6 +42,17 @@ from prepforge_chess.api.static import register_static
 from prepforge_chess.storage.repositories.repertoires import RepertoireQuotaExceeded, RevisionConflict
 
 
+class _TextGZipMiddleware(GZipMiddleware):
+    """GZip that leaves engine/model binaries alone: compressing the 99 MB Stockfish
+    wasm on every request took 11.8 s (0.2 s plain) and serialized parallel engine loads."""
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"].endswith((".wasm", ".onnx")):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     # Startup: nothing to warm (the engine builds lazily on first request).
@@ -96,9 +107,8 @@ def create_app() -> FastAPI:
     # GZip is added first (innermost) so it compresses the route/static response
     # body before the outer header middlewares wrap it. Render's free tier has no
     # CDN, so on-the-fly compression here cuts the first-load text payload
-    # (index JS ~280 KB, CSS ~61 KB) by ~70%. Binary engine assets (.wasm) are
-    # already compact and the ONNX weights are CDN-hosted, so they rarely hit this.
-    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    # (index JS ~280 KB, CSS ~61 KB) by ~70%. Engine/model binaries are skipped.
+    app.add_middleware(_TextGZipMiddleware, minimum_size=1024)
     # Authenticated responses re-arm the cookie's browser lifetime. The server
     # still enforces idle expiry from last_seen_at, so this cannot extend a
     # session the user has abandoned.

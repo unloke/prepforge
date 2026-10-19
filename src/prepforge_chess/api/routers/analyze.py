@@ -276,9 +276,6 @@ class ClassifySavePayload(BaseModel):
     # The browser engine's identity and search settings (ENGINE_ID in stockfish-provider.js).
     engine: str = Field(min_length=1, max_length=120)
     depth: int | None = None
-    # Two-tier analysis: every position searched to this depth, the moves a grade could
-    # hinge on to ``depth``. None for a single-depth run.
-    screen_depth: int | None = None
     positions: list[dict[str, Any]] | None = Field(default=None, max_length=MAX_ANALYSIS_POSITIONS)
     maia_assessments: list[dict[str, Any]] | None = Field(
         default=None, max_length=MAX_ANALYSIS_POSITIONS
@@ -371,11 +368,6 @@ def analyze_classify_save(
             depth=resolved_depth,
             brilliant_analyzer=brilliant_analyzer,
             maia_rating=owner_maia_rating(repo, owner),
-            screen_depth=(
-                max(1, min(int(body.screen_depth), resolved_depth))
-                if body.screen_depth is not None
-                else None
-            ),
         )
     except MissingEvaluationError as exc:
         # Incomplete client payload (a position was never evaluated).

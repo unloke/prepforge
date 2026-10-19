@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 
-import { createStockfishWasmProvider } from "./stockfish-provider.js";
+import { createStockfishWasmProvider, engineIdentity, engineScriptUrl, STOCKFISH } from "./stockfish-provider.js";
+import { setEngineProfile, resetEngineProfile, reportEngineFailure } from "./engine-profile.js";
 import { createComputeBudget } from "./compute-budget.js";
+
+vi.mock("./engine-profile.js", async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, reserveEngineMemory: vi.fn(() => ({})),
+    ensureEngineProfile: vi.fn(async () => {}), reportEngineFailure: vi.fn(actual.reportEngineFailure) };
+});
 
 const FEN_A = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const FEN_B = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -47,7 +54,83 @@ function makeProvider() {
 // the `stop` it posts settle before we assert on them.
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+describe("per-net provider identity", () => {
+  it.each(["big", "lite"])("loads %s with its own URL and snapshot identity", async net => {
+    const worker = new FakeWorker();
+    const factory = vi.fn(() => worker);
+    const provider = createStockfishWasmProvider({ net, createWorker: factory });
+    await provider.open({ fen: FEN_A });
+    expect(factory).toHaveBeenCalledWith(`/static/engine/${STOCKFISH[net].dir}/stockfish.js`);
+    expect(provider.snapshot().engine).toBe(`${STOCKFISH[net].id} t1 h16`);
+    expect(engineScriptUrl(net)).toContain(STOCKFISH[net].dir);
+    expect(engineIdentity("big")).not.toBe(engineIdentity("lite"));
+    await provider.close();
+  });
+  it("terminates an active worker and rejects its waiters on a profile change", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A });
+    const waiting = provider.waitForSearchComplete({ targetDepth: 16, timeoutMs: 1000 });
+    setEngineProfile({ net: "big", workers: 2 });
+    await expect(waiting).rejects.toThrow(/closed/);
+    expect(fake.terminated).toBe(true);
+    resetEngineProfile();
+  });
+});
+
 describe("provider compute allocation lifecycle", () => {
+  it("reserves before creating a worker and posts the same Memory before UCI without a transfer list", async () => {
+    const memory = {};
+    const worker = new FakeWorker();
+    const post = vi.spyOn(worker, "postMessage");
+    const events = [];
+    const reserveMemory = vi.fn(net => { events.push("reserve"); expect(net).toBe("big"); return memory; });
+    const provider = createStockfishWasmProvider({ net: "big", reserveMemory,
+      createWorker: () => { events.push("worker"); return worker; } });
+    await provider.prepare();
+    expect(events).toEqual(["reserve", "worker"]);
+    expect(post.mock.calls[0]).toEqual([{ wasmMemory: memory }]);
+    expect(worker.posted[1]).toBe("uci");
+    await provider.close();
+  });
+
+  it("injects a probe reservation without allocating a second heap", async () => {
+    const memory = {}, worker = new FakeWorker(), reserveMemory = vi.fn();
+    const provider = createStockfishWasmProvider({ wasmMemory: memory, reserveMemory, createWorker: () => worker });
+    await provider.prepare();
+    expect(reserveMemory).not.toHaveBeenCalled();
+    expect(worker.posted[0].wasmMemory).toBe(memory);
+    await provider.close();
+  });
+
+  it("surfaces reservation failure without creating a worker and releases the compute slot", async () => {
+    const budget = createComputeBudget({ limit: 1, backgroundLimit: 1 });
+    const createWorker = vi.fn();
+    const provider = createStockfishWasmProvider({ createWorker, computeBudget: budget,
+      reserveMemory: () => { throw new RangeError("address space gone"); } });
+    await expect(provider.prepare()).rejects.toThrow(/could not start: address space gone/);
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(budget.snapshot().used).toBe(0);
+    await provider.close();
+  });
+
+  it("reports a live worker failure even after its startup search completed, then rebuilds", async () => {
+    const workers = [];
+    vi.stubGlobal("Worker", class extends FakeWorker { constructor() { super(); workers.push(this); } });
+    reportEngineFailure.mockClear();
+    const provider = createStockfishWasmProvider({ computeBudget: null });
+    try {
+      await provider.open({ fen: FEN_A });
+      workers[0].emit("info depth 18 score cp 20 pv e2e4");
+      workers[0].emit("bestmove e2e4");
+      workers[0].emit("Aborted(OOM)");
+      expect(reportEngineFailure).toHaveBeenCalledTimes(1);
+      expect(workers[0].terminated).toBe(true);
+      await provider.open({ fen: FEN_B });
+      expect(workers).toHaveLength(2);
+      expect(provider.snapshot()).toMatchObject({ fen: FEN_B, error: null });
+    } finally { await provider.close(); vi.unstubAllGlobals(); }
+  });
+
   it("closing a queued provider settles its open without creating a worker", async () => {
     const budget = createComputeBudget({ limit: 1, backgroundLimit: 1 });
     const release = await budget.acquire();
@@ -112,24 +195,6 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(snap.current_depth).toBe(20);
     expect(snap.pvs[0].score_cp).toBe(35);
     expect(snap.pvs[0].pv_uci).toEqual(["e2e4", "e7e5"]);
-  });
-
-  it("keeps the exact line-1 result of each depth in side-to-move POV, and clears it per search", async () => {
-    const { provider, fake } = makeProvider();
-    await provider.open({ fen: FEN_B, multipv: 2 });
-    fake.emit("info depth 1 seldepth 2 multipv 1 score cp 20 nodes 30 pv e7e5");
-    fake.emit("info depth 1 seldepth 2 multipv 2 score cp 10 nodes 30 pv d7d5");
-    fake.emit("info depth 2 seldepth 4 multipv 1 score cp 50 lowerbound nodes 70 pv c7c5");
-    fake.emit("info depth 2 seldepth 5 multipv 1 score mate 3 nodes 90 pv d7d5");
-    const snap = provider.snapshot();
-    expect(snap.pvs[0].mate_in).toBe(-3);
-    expect(snap.iterations).toEqual([
-      { depth: 1, cp: 20, mate: null, best: "e7e5", nodes: 30, seldepth: 2 },
-      { depth: 2, cp: null, mate: 3, best: "d7d5", nodes: 90, seldepth: 5 },
-    ]);
-    fake.emit("bestmove d7d5");
-    await provider.update({ fen: FEN_A, multipv: 1 });
-    expect(provider.snapshot().iterations).toEqual([]);
   });
 
   it("restricts the root moves with searchmoves when given candidates", async () => {

@@ -34,6 +34,7 @@ function harness({ reviewed = true } = {}) {
   const render = vi.fn();
   const store = fakeStore();
   const deps = {
+    ENGINE_ID: "sf-test",
     window: globalThis, effectiveStockfishDepth: () => 16, analysisStore: async () => store,
     setEngineBestArrow: vi.fn(), setAnalysisBetterArrow: vi.fn(), savedBetterMove: () => null,
     offerLiveBetterArrow: vi.fn(), activeViewName: () => view, isBrowserEngineAvailable: () => true,

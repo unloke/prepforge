@@ -1,3 +1,4 @@
+import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile } from "../engine/engine-profile.js";
 import { html } from "../html.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
@@ -118,8 +119,44 @@ export function createSettingsView({
         }
       }
     }
-    void renderStockfishVersion();
     renderMaia3Status();
+  }
+
+  let detecting = false;
+  let probe = null;
+  const PROBE_LABEL = { loading: "Loading engine…", speed: "Measuring speed…" };
+  const probeLabel = (p) => p?.stage === "workers" ? `Trying ${p.workers} workers…` : PROBE_LABEL[p?.stage] || "Detecting…";
+  function renderEngineProfile() {
+    const profile = engineProfile();
+    const paint = (id, key, value) => document.getElementById(id)?.querySelectorAll(".seg-btn").forEach((btn) => {
+      const active = btn.dataset[key] === String(value);
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", String(active));
+    });
+    paint("settings-net-seg", "net", profile.net);
+    paint("settings-workers-seg", "workers", profile.workers);
+    const detectBtn = document.getElementById("settings-detect");
+    if (detectBtn) detectBtn.disabled = detecting;
+    const status = document.getElementById("settings-profile-status");
+    if (status) {
+      const m = engineMeasurements();
+      const speed = m?.nodesPerSecond ? ` · ${Math.round(m.nodesPerSecond / 1000)}k nodes/s` : "";
+      status.textContent = detecting ? probeLabel(probe)
+        : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
+        : profile.source === "user" ? "Set by you"
+        : profile.source === "detected" ? `Detected for this device${speed}`
+        : "Not detected yet";
+      // A detected profile that stopped on an error is the memory limit, not a failure.
+      status.title = m?.error && profile.source === "detected" ? `Stopped at: ${m.error}` : "";
+    }
+    const bar = document.getElementById("settings-profile-progress");
+    if (bar) {
+      bar.hidden = !detecting;
+      // Never start at 0: the first load can take a while and an empty track reads as stuck.
+      const share = probe ? probe.done / probe.total : 0;
+      bar.firstElementChild.style.width = `${Math.round(100 * Math.max(0.04, share))}%`;
+    }
+    void renderStockfishVersion();
   }
 
   async function renderStockfishVersion() {
@@ -128,11 +165,12 @@ export function createSettingsView({
     try {
       const response = await fetch("/static/engine/stockfish.manifest.json");
       if (!response.ok) throw new Error(`manifest ${response.status}`);
-      const manifest = await response.json();
-      if (!manifest.packageVersion || manifest.variant !== "lite-threaded") {
+      const net = engineProfile().net;
+      const manifest = (await response.json()).engines[net];
+      if (!manifest.packageVersion || !manifest.id) {
         throw new Error("invalid manifest");
       }
-      versionEl.textContent = `Stockfish ${manifest.packageVersion} lite (WASM)`;
+      versionEl.textContent = `Stockfish ${manifest.packageVersion} ${net === "big" ? "full" : "lite"} (WASM)`;
     } catch {
       versionEl.textContent = "Stockfish version unavailable";
     }
@@ -143,6 +181,7 @@ export function createSettingsView({
   function renderSettings(payload) {
     void payload;
     renderBrowserEngineStatus();
+    renderEngineProfile();
     renderStrengthControls();
     renderThemeControl();
     let connections = Promise.resolve();
@@ -546,6 +585,24 @@ export function createSettingsView({
         renderThemeControl();
       });
     }
+
+    document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setEngineProfile({ net: btn.dataset.net, workers: engineProfile().workers }));
+    });
+    document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setEngineProfile({ net: engineProfile().net, workers: Number(btn.dataset.workers) }));
+    });
+    document.getElementById("settings-detect")?.addEventListener("click", async () => {
+      detecting = true;
+      renderEngineProfile();
+      try {
+        await detectEngineProfile({ onProgress: (p) => { probe = p; renderEngineProfile(); } });
+      } catch { /* stopped */ }
+      detecting = false;
+      probe = null;
+      renderEngineProfile();
+    });
+    subscribeEngineProfile(() => renderEngineProfile());
 
     toggleInfoPop("engine-info", "engine-info-pop");
     toggleInfoPop("maia-info", "maia-info-pop");

@@ -6,7 +6,8 @@
 #
 # The built SPA (Vite output) is committed under src/prepforge_chess/web/static, so
 # COPY src ships it — no Node build stage is required in the image. Rebuild assets
-# with `npm run build` before building this image if web-src/ changed.
+# with `npm run build` before building this image if web-src/ changed. The Stockfish
+# wasm files are the exception (the big net is 99 MB): fetched from npm below.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -25,6 +26,10 @@ RUN mkdir -p src/prepforge_chess \
     && python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir ".[server]"
 
+# --- Stockfish wasm (keyed on the engine manifest, so deploys reuse this layer) ---
+COPY scripts/fetch_stockfish_wasm.py src/prepforge_chess/web/static/engine/stockfish.manifest.json /tmp/engine/
+RUN python /tmp/engine/fetch_stockfish_wasm.py /tmp/engine/stockfish.manifest.json /tmp/engine/out
+
 # --- Application layer (rebuilt only when src/ or migrations change) -----------
 COPY alembic.ini ./
 COPY migrations ./migrations
@@ -32,7 +37,8 @@ COPY src ./src
 # Reinstall ONLY the package (deps already satisfied above) so the real modules
 # and committed static assets replace the stub. --force-reinstall is required
 # because the version is unchanged, so pip would otherwise treat it as installed.
-RUN python -m pip install --no-cache-dir --no-deps --force-reinstall ".[server]"
+RUN cp -r /tmp/engine/out/. src/prepforge_chess/web/static/engine/ \
+    && python -m pip install --no-cache-dir --no-deps --force-reinstall ".[server]"
 
 EXPOSE 8000
 

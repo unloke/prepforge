@@ -207,7 +207,6 @@ def classify_precomputed_game(
     brilliant_config: Optional[BrilliantConfig] = None,
     maia_available: Optional[bool] = None,
     maia_rating: Optional[int] = None,
-    screen_depth: Optional[int] = None,
 ) -> AnalysisResult:
     """Apply client evals, classify each move exactly once, build the result.
 
@@ -305,7 +304,6 @@ def classify_precomputed_game(
         quality=build_analysis_quality(
             game,
             target_depth=depth,
-            screen_depth=screen_depth,
             engine_name=engine_name,
             maia_available=(
                 brilliant_analyzer is not None if maia_available is None else maia_available
