@@ -2243,8 +2243,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   );
 }
 
-.square.last-move {
-  background-image: linear-gradient(var(--last-move), var(--last-move));
+/* The last move is a wash laid over the square's own colour by a pseudo
+   layer, not a background, so the square keeps a flat fill. */
+.square.last-move::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--last-move);
+  pointer-events: none;
 }
 
 /* An analysed move tints both of its squares with its grade colour (the badge's
@@ -2256,12 +2262,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .chessboard[data-move-class="blunder"] .square.last-move { --last-move: var(--mark-blunder); }
 .chessboard[data-move-class="missed_win"] .square.last-move,
 .chessboard[data-move-class="missed_tactic"] .square.last-move { --last-move: var(--mark-missed); }
-
-.square.highlighted.last-move {
-  background-image:
-    radial-gradient(circle, transparent 56%, var(--arrow-user) 57.5%, var(--arrow-user) 66%, transparent 67.5%),
-    linear-gradient(var(--last-move), var(--last-move));
-}
 
 .piece {
   width: 86%;
@@ -2793,6 +2793,25 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .build-empty { flex: 1; justify-content: center; }
 #build-sidebar:has(#build-empty:not([hidden])) .panel-body > :is(.tree-meta, .forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
 
+/* Repertoire reads at 13px, and tells its sections apart by tone rather than
+   by rules. The panel is where the work happens — move tokens, breadcrumbs,
+   Explorer rows and their numbers — and the shared 11/12px steps made the
+   whole ledger squint; the 1px separators between five stacked bands made
+   every band the same weight. */
+#view-build {
+  --fs-xs: 13px;
+  --fs-s: 13px;
+}
+#view-build :is(.mtree-num, .mtree-collapse, .build-sync),
+#view-build .engine-banner :is(.engine-banner-why, .engine-banner-action) {
+  font-size: var(--fs-s);
+}
+/* The shared .panel-head and .engine-banner keep their rule for Analyze and
+   Train; in this panel the head and the line sheet carry their own ground. */
+#view-build .panel-head { border-bottom: 0; }
+/* The banner's tint is its edge; in this panel it needs no rule under it. */
+#view-build .engine-banner { border: 0; border-radius: 0; }
+
 .tree-meta {
   display: flex;
   flex-wrap: wrap;
@@ -2800,7 +2819,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 12px;
   min-width: 0;
   padding-right: 12px;
-  border-bottom: 1px solid var(--line);
+  background: var(--surface-3);
 }
 .crumbs {
   flex: 1;
@@ -2850,8 +2869,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .forkbar {
   padding: 8px 12px;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel-soft);
+  background: var(--surface-3);
 }
 .fork-head {
   display: flex;
@@ -2889,7 +2907,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
      panel keeps its card shape and the page never scrolls. */
   flex: 1 1 auto;
   min-height: 90px;
-  padding: 12px 12px;
+  padding: 8px 12px 12px;
+  background: var(--surface-3);
   overflow: auto;
   overscroll-behavior: contain;
   font-size: 13px;
@@ -2911,14 +2930,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   min-height: clamp(210px, 40%, 330px);
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--line);
 }
 .dock-tabs {
   display: flex;
   gap: 2px;
   padding: 0 8px;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel-soft);
 }
 .dock-tabs button {
   display: inline-flex;
