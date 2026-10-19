@@ -124,10 +124,25 @@
   #view-dashboard .today .btn.lg { min-height: 40px; height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
-  #view-dashboard .lib-list .card-head { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }
+  #view-dashboard .lib-list .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }
   #view-dashboard .lib-list .card-head h2,
-  #view-dashboard .lib-actions,
   #view-dashboard .lib-cols { display: none; }
+  /* Import PGN needs its own place on a phone: the page head's + is New
+     repertoire, so with the header actions hidden a phone could not add a PGN
+     at all. It sits beside the search field; New repertoire keeps the +. */
+  #view-dashboard .lib-list .seg { grid-column: 1 / -1; }
+  #view-dashboard .lib-list .search-field { grid-column: 1; }
+  #view-dashboard .lib-actions { grid-column: 2; display: flex; gap: 8px; }
+  #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
+  #view-dashboard .lib-actions #dashboard-import-pgn {
+    flex: none;
+    height: 40px;
+    padding: 0 12px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+    font-weight: 600;
+  }
   #view-dashboard .lib-list .seg {
     display: flex;
     gap: 8px;

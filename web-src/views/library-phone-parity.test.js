@@ -1,0 +1,44 @@
+// Library phone parity: what the desktop Library shows must be reachable on a
+// phone too.
+//
+// The phone layout hides the Library's header actions, so "Import PGN" had no
+// route on a phone at all: the page head's + is New repertoire, and the import
+// button lived only in the hidden header. These rules pin the phone layout so a
+// later density pass cannot hide the import action again.
+import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const root = dirname(fileURLToPath(import.meta.url));
+const css = readFileSync(join(root, "..", "phone.css"), "utf8");
+
+// The rule body for a selector, starting at its first occurrence.
+function rule(selector) {
+  const start = css.indexOf(selector);
+  expect(start, selector).toBeGreaterThan(-1);
+  const open = css.indexOf("{", start);
+  return css.slice(open, css.indexOf("}", open));
+}
+
+it("Import PGN stays reachable on a phone", () => {
+  // The actions row is shown, not hidden.
+  const actions = rule("#view-dashboard .lib-actions {");
+  expect(actions).not.toMatch(/display:\s*none/);
+  expect(actions).toMatch(/display:\s*flex/);
+
+  // New repertoire keeps the page head's +; import is the action in this row.
+  const newRep = rule("#view-dashboard .lib-actions #dashboard-new-rep");
+  expect(newRep).toMatch(/display:\s*none/);
+
+  // A 40px target, like the rest of the phone controls.
+  const importBtn = rule("#view-dashboard .lib-actions #dashboard-import-pgn");
+  expect(importBtn).toMatch(/height:\s*40px/);
+});
+
+it("the phone Library header is a grid: chips on top, search and import below", () => {
+  const head = rule("#view-dashboard .lib-list .card-head {");
+  expect(head).toMatch(/display:\s*grid/);
+  expect(rule("#view-dashboard .lib-list .seg {")).toMatch(/grid-column:\s*1 \/ -1/);
+  expect(rule("#view-dashboard .lib-list .search-field {")).toMatch(/grid-column:\s*1/);
+});

@@ -182,6 +182,14 @@ async function runViewport(vp) {
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
+  // Phone: the page head's + is New repertoire, so Import PGN needs its own
+  // route. It used to live only in the hidden header actions: a phone could
+  // not import a PGN at all.
+  if (vp.width <= 760) {
+    check(await page.locator("#dashboard-import-pgn").isVisible(), "Import PGN must be reachable on a phone");
+    check(!(await page.locator("#dashboard-new-rep").isVisible()), "New repertoire keeps the page head + on a phone");
+  }
+
   // No preview pane: the table takes the full width and a row click opens.
   check((await page.locator("#lib-preview").count()) === 0, "the library should not render a preview pane");
   // The list must actually fill its column. A two-column track leaking into the
