@@ -208,6 +208,16 @@ describe("replay focus internals", () => {
     expect(html).not.toContain("<h2>opp_one vs me_user</h2>");
   });
 
+  it("renders the moveline as move-pair rows with the departure called out", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html.match(/class="move-pair/g)).toHaveLength(2);
+    expect(html).toContain('data-move="2"');
+    expect(html).toMatch(/<div class="move-pair is-departure t-bad" data-move="2">/);
+    expect(html).toMatch(/<span class="ply dep t-bad" data-ply="4">d5<\/span>/);
+    expect(html).toContain('<span class="dep-note t-bad">You left prep</span>');
+  });
+
   it("draws expected (good) vs played (bad) arrows from the payload UCIs", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);

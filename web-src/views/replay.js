@@ -244,28 +244,36 @@ export function createReplayView({
     return index >= 0 && index < history.length ? history[index] : "";
   }
 
+  function replayPlyClass(ply, game, tone) {
+    const classes = [];
+    if (ply <= (Number(game.matched_plies) || 0)) classes.push("inprep");
+    // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty).
+    if (ply === Number(game.departure_ply)) classes.push("dep", `t-${tone}`);
+    if (ply === game.reentry_ply) classes.push("inprep");
+    return classes.join(" ");
+  }
+
   function renderReplayMoveLine(game) {
     const history = game.move_san_history || [];
     if (!history.length) return html`<span class="muted">No moves recorded.</span>`;
-    const departPly = game.departure_ply;
-    const matched = Number(game.matched_plies) || 0;
-    const tone = REPLAY_KINDS[replayGameKind(game)].tone;
-    return html`${history
-      .map((san, index) => {
-        const ply = index + 1;
-        const moveNumber = Math.ceil(ply / 2);
-        const isWhite = ply % 2 === 1;
-        let num = "";
-        if (isWhite) num = html`<span class="mn">${moveNumber}.</span>`;
-        else if (ply === 1 || ply === matched + 1) num = html`<span class="mn">${moveNumber}…</span>`;
-        const classes = [];
-        if (ply <= matched) classes.push("inprep");
-        // Departure tone mirrors its outcome (✗ left prep, ⚡ novelty).
-        if (ply === departPly) classes.push("dep", `t-${tone}`);
-        if (ply === game.reentry_ply) classes.push("inprep");
-        return html`${index ? " " : ""}<span class="mvw">${num}<span class="${classes.join(" ")}">${san}</span></span>`;
-      })
-      }`;
+    const departurePly = Number(game.departure_ply) || 0;
+    const kind = REPLAY_KINDS[replayGameKind(game)];
+    const tone = kind.tone;
+    const rows = [];
+    for (let index = 0; index < history.length; index += 2) {
+      const whitePly = index + 1;
+      const blackPly = index + 2;
+      const moveNumber = Math.ceil(whitePly / 2);
+      const isDeparture = departurePly === whitePly || departurePly === blackPly;
+      const rowClass = ["move-pair"];
+      if (isDeparture) rowClass.push("is-departure", `t-${tone}`);
+      const whiteClass = replayPlyClass(whitePly, game, tone);
+      const blackSan = history[index + 1];
+      rows.push(
+        html`<div class="${rowClass.join(" ")}" data-move="${moveNumber}"><span class="move-no">${moveNumber}.</span><span class="ply ${whiteClass}" data-ply="${whitePly}">${history[index]}</span>${blackSan === undefined ? html`<span class="ply is-empty" aria-hidden="true"></span>` : html`<span class="ply ${replayPlyClass(blackPly, game, tone)}" data-ply="${blackPly}">${blackSan}</span>`}${isDeparture ? html`<span class="dep-note t-${tone}">${kind.badge}</span>` : ""}</div>`,
+      );
+    }
+    return html`${rows}`;
   }
 
   function renderReplayDetail(game) {
