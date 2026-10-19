@@ -1852,7 +1852,7 @@ async function startSmartTraining(options = {}) {
     setTrainBanner(
       "runin",
       fresh ? "Building a new queue…" : "Building your queue…",
-      "Building the queue on the server…",
+      "Choosing the cards…",
     );
     const targets = options.targetNodeIds || [];
     payload = await postJson("/api/train/smart/start", {

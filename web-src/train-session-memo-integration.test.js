@@ -74,10 +74,14 @@ describe("Smart memo integration at Start", () => {
     const h = harness();
     await h.start();
     const subtitles = h.deps.setTrainBanner.mock.calls.map((call) => call[2]);
+    // No subtitle restates the title: the server step is "Choosing the cards…",
+    // not "Building the queue on the server…" under "Building your queue…".
+    const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
+    for (let i = 0; i < titles.length; i += 1) expect(subtitles[i]).not.toBe(titles[i]);
     expect(subtitles).toEqual(expect.arrayContaining([
       "Saving repertoire edits…",
       "Syncing your last session…",
-      "Building the queue on the server…",
+      "Choosing the cards…",
       "Loading session tools…",
       "Opening your first card…",
     ]));
