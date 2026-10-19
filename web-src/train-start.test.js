@@ -1,7 +1,7 @@
 // The Train panel's Start button: when it must be dead, and why.
 import { describe, expect, it } from "vitest";
 
-import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "./train-start.js";
+import { isNothingToTrainError, rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "./train-start.js";
 
 describe("trainStartDisabled", () => {
   it("keeps a guest's Line rehearsal Start clickable so the click reaches the sign-in gate", () => {
@@ -55,5 +55,24 @@ describe("rehearsalStartBlockReason (line rehearsal)", () => {
   it("stays silent when health was never computed, and with no pick", () => {
     expect(rehearsalStartBlockReason({ health: null })).toBe("");
     expect(rehearsalStartBlockReason(null)).toBe("");
+  });
+});
+
+describe("isNothingToTrainError", () => {
+  it("recognizes every server message that means the start had no cards", () => {
+    for (const message of [
+      "no active repertoires to train",
+      "repertoire has no trainable moves yet",
+      "repertoires have no trainable moves yet",
+      "repertoire has no trainable lines yet",
+    ]) {
+      expect(isNothingToTrainError(Object.assign(new Error(message), { status: 400 }))).toBe(true);
+    }
+  });
+
+  it("leaves real failures and non-400s on the generic path", () => {
+    expect(isNothingToTrainError(Object.assign(new Error("database is down"), { status: 500 }))).toBe(false);
+    expect(isNothingToTrainError(Object.assign(new Error("bad request"), { status: 400 }))).toBe(false);
+    expect(isNothingToTrainError(null)).toBe(false);
   });
 });
