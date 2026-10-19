@@ -15,8 +15,9 @@
   gap: 8px;
   margin: 0;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
 }
+/* The head carries no rule of its own: the first row under it brings one
+   (border-top), and two lines in the same place read as a thick rule. */
 .teams .card-head h2 {
   min-width: 0;
   overflow: hidden;

@@ -37,4 +37,14 @@ describe("Teams is a work surface", () => {
     expect(card).toBeTruthy();
     expect(card[0]).not.toMatch(/display:\s*(flex|grid)/);
   });
+
+  it("leaves the line under a head to the row beneath it", () => {
+    // The head's own rule landed on the first row's rule, drawing two lines
+    // in the same place.
+    const head = view.match(/\.teams \.card-head \{[^}]*\}/);
+    expect(head).toBeTruthy();
+    expect(head[0]).not.toMatch(/border-bottom/);
+    // The row under it brings the line.
+    expect(view).toMatch(/\.team-row \{[^}]*border-top:\s*1px solid var\(--line\)/);
+  });
 });
