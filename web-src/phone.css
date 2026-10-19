@@ -791,6 +791,8 @@
     box-shadow: none;
     font-size: 14px;
   }
+  /* The card's head is above the card's body, not the same size as it. */
+  #view-train .train-sidebar .tcard > h3 { font-size: 15px; }
   /* A result card replaces the session card in its room between the tab row
      and the banner: as tall as its content, scrolling inside only when that
      room is shorter. With the live board gone, a result is read, not played on. */

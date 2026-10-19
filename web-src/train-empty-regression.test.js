@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
-import { isNothingToTrainError } from "./train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart } from "./train-start.js";
 
 const source = appSource();
 
@@ -12,7 +12,7 @@ function startWith(message, status = 400) {
     appState: { trainMode: "smart" }, currentOwnerId: () => "owner",
     setStatus: vi.fn(), setStatusError: vi.fn(), setTrainBanner: vi.fn(),
     hardFlushBuild: async () => {}, flushTrainSync: async () => true,
-    loadTrainResume: async () => ({}), isAuthError: () => false, isNothingToTrainError,
+    loadTrainResume: async () => ({}), isAuthError: () => false, isNothingToTrainError, queueRepertoireForStart,
     postJson: async () => { throw Object.assign(new Error(message), { status }); },
   };
   const run = new Function(...Object.keys(deps), `let smartStartSeq = 0; ${code}\nreturn startSmartTraining;`)(...Object.values(deps));
