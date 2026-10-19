@@ -5,6 +5,7 @@ import {
   PALETTE_VIEWS,
   buildPaletteItems,
   filterPaletteItems,
+  paletteScrollTop,
   renderPaletteItems,
   scorePaletteItem,
 } from "./command-palette.js";
@@ -112,5 +113,28 @@ describe("command palette filter", () => {
     expect(String(rendered)).toContain('id="palette-option-1"');
     expect(String(rendered)).toContain('aria-selected="true"');
     expect(String(rendered).match(/aria-selected="true"/g)).toHaveLength(1);
+  });
+});
+
+describe("paletteScrollTop", () => {
+  // A 396px-tall result box starting at y=124 (the measured 390x660 phone
+  // geometry): row 12 sits at 526-557, past the box bottom at 520.
+  const box = { boxTop: 124, boxHeight: 396 };
+
+  it("scrolls a row below the box back into view by exactly the overflow", () => {
+    expect(paletteScrollTop({ ...box, itemTop: 526, itemHeight: 31, scrollTop: 0 })).toBe(37);
+  });
+
+  it("scrolls a row above the box back into view", () => {
+    expect(paletteScrollTop({ ...box, itemTop: 100, itemHeight: 31, scrollTop: 80 })).toBe(56);
+  });
+
+  it("leaves a visible row and a missing box alone", () => {
+    expect(paletteScrollTop({ ...box, itemTop: 200, itemHeight: 31, scrollTop: 0 })).toBe(0);
+    expect(paletteScrollTop({ boxTop: NaN, boxHeight: NaN, itemTop: NaN, itemHeight: NaN, scrollTop: 5 })).toBe(5);
+  });
+
+  it("never returns a negative scroll offset", () => {
+    expect(paletteScrollTop({ ...box, itemTop: 10, itemHeight: 31, scrollTop: 0 })).toBe(0);
   });
 });

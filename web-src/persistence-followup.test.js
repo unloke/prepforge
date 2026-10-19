@@ -68,7 +68,7 @@ it('History follows cursors, deduplicates games and retains scroll',async()=>{
 it('switching Teams removes old action handlers even when the new detail fails',async()=>{
   const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]});return elements.get(id);};
   el('team-detail-delete').onclick=vi.fn();const response=deferred();
-  const open=compile('async function openTeamDetail(',{appState:{},currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,teamsView:null,memberRowsSkeleton,sharedRepRowsSkeleton},'let teamDetailSeq=0;');
+  const open=compile('async function openTeamDetail(',{appState:{},currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,teamsView:null,memberRowsSkeleton,sharedRepRowsSkeleton,formatDay:()=> '',renderTeamInviteFooter:()=>{}},'let teamDetailSeq=0;');
   const pending=open('B');expect(el('team-detail-delete').onclick).toBeNull();expect(el('team-detail-delete').hidden).toBe(true);
   response.reject(Error('offline'));await pending;expect(el('team-detail-delete').onclick).toBeNull();
 });

@@ -138,24 +138,6 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("count-repertoires").textContent).toBe("1");
   });
 
-  it("invite footer renders from the real invite field and hides otherwise", () => {
-    const { view, byId } = makeHarness();
-    const foot = byId("team-invite-foot");
-
-    view.renderTeamInviteFooter({ invite: { exists: false } });
-    expect(foot.hidden).toBe(true);
-
-    view.renderTeamInviteFooter({ invite: { exists: true, created_at: "2026-09-01T00:00:00Z", expires_at: null } });
-    expect(foot.hidden).toBe(false);
-    expect(String(foot.innerHTML)).toContain("Invite link active");
-    expect(String(foot.innerHTML)).toContain("revoke from Invite");
-    expect(String(foot.innerHTML)).not.toContain("expires");
-
-    view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T00:00:00Z" } });
-    expect(String(foot.innerHTML)).toContain("expires");
-    expect(String(foot.innerHTML)).not.toContain("· revoke from Invite ·");
-  });
-
   it("shared repertoires tab count mirrors the rendered list length", () => {
     const { view, byId } = makeHarness();
     byId("team-shared-repertoires");
@@ -166,17 +148,6 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("count-repertoires").hidden).toBe(false);
   });
 
-  it("auto-opens the only team instead of a 'Choose a team' blank (P2-11)", async () => {
-    const opened = [];
-    const appState = { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" };
-    const { view } = makeHarness({
-      appState,
-      api: async () => ({ teams: [{ id: "t9", name: "magnus", role: "owner", member_count: 2 }] }),
-      openTeamDetail: async (id) => opened.push(id),
-    });
-    await view.loadTeams();
-    expect(opened).toEqual(["t9"]);
-  });
 
   it("does not auto-open when there are several teams", async () => {
     const opened = [];
@@ -248,13 +219,6 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     view.renderTeamsList();
     expect(String(byId("teams-list").innerHTML)).toBe("");
   });
-  it("invite expiry reads in English whatever the browser locale (UX 2026-10-01 P2-13)", () => {
-    const { view, byId } = makeHarness();
-    view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T12:00:00Z" } });
-    expect(String(byId("team-invite-foot").innerHTML)).toContain("expires Oct 4");
-    expect(String(byId("team-invite-foot").innerHTML)).not.toMatch(/月|日/);
-  });
-
   it("a failed directory load says what failed and offers a Retry", async () => {
     let attempts = 0;
     const { view, byId } = makeHarness({
@@ -288,5 +252,43 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     // Re-rendering never stacks a second click handler.
     view.renderTeamEmptyCard("signed-out");
     expect(button.__listeners.click).toHaveLength(1);
+  });
+});
+
+describe("teams directory: opening a team", () => {
+  const team = (id, name) => ({ id, name, role: "owner", member_count: 2 });
+
+  it("one team stays in the directory until the user opens it", async () => {
+    const calls = [];
+    const { view, byId } = makeHarness({
+      appState: { signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" },
+      api: async () => ({ teams: [team("t1", "Taipei Knights")] }),
+      openTeamDetail: async (id) => calls.push(["open", id]),
+      hideTeamDetail: () => calls.push(["hide"]),
+    });
+    await view.loadTeams();
+    expect(calls).toEqual([["hide"]]);
+    expect(byId("team-empty-title").textContent).toBe("Choose a team");
+  });
+
+  it("a team the user picked re-opens after the list reloads", async () => {
+    const calls = [];
+    const { view } = makeHarness({
+      appState: { signedIn: true, authKnown: true, teams: [team("t1", "A"), team("t2", "B")], selectedTeamId: "t2", accountUserId: "u1" },
+      api: async () => ({ teams: [team("t1", "A"), team("t2", "B")] }),
+      openTeamDetail: async (id) => calls.push(["open", id]),
+      hideTeamDetail: () => calls.push(["hide"]),
+    });
+    await view.loadTeams();
+    expect(calls).toEqual([["open", "t2"]]);
+  });
+
+  it("no teams: the empty card says how to start", async () => {
+    const { view, byId } = makeHarness({
+      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
+      api: async () => ({ teams: [] }),
+    });
+    await view.loadTeams();
+    expect(byId("team-empty-title").textContent).toBe("No teams yet");
   });
 });

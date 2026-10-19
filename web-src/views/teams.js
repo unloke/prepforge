@@ -7,7 +7,6 @@ import { html } from "../html.js";
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
-import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
 
 export function createTeamsView({
@@ -111,16 +110,16 @@ export function createTeamsView({
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
       renderTeamsList();
-      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
-      // Re-open an expanded team after a reload so a member add/remove stays in view.
-      if (appState.selectedTeamId && appState.teams.some((tm) => tm.id === appState.selectedTeamId)) {
+      // Only a team the user picked opens on its own (a reload, or a member
+      // add/remove). A single-team directory used to auto-expand, which skipped
+      // the list and hid the empty card under "Choose a team / Select a team
+      // from the list" — the card now explains how to get a second team.
+      if (appState.selectedTeamId && appState.teams.some((team) => team.id === appState.selectedTeamId)) {
         openTeamDetail(appState.selectedTeamId);
-      } else if (appState.teams.length === 1) {
-        // Only one team: open it rather than leaving a big "Choose a team" blank.
-        openTeamDetail(appState.teams[0].id);
       } else {
         hideTeamDetail();
       }
+      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
     } catch (error) {
       if (!isCurrent()) return;
       // A failure says what went wrong and how to retry, like the Library's.
@@ -143,7 +142,7 @@ export function createTeamsView({
     },
     choose: {
       title: "Choose a team",
-      body: "Select a team from the list.",
+      body: "Open a team from the directory to see its members and shared repertoires.",
     },
   };
   function renderTeamEmptyCard(kind) {
@@ -164,20 +163,6 @@ export function createTeamsView({
     }
   }
 
-
-  async function openInviteDialog(teamId) {
-    const ui = createInviteDialogUi({ activateModal });
-    await runInviteDialog(teamId, {
-      api,
-      postJson,
-      origin: window.location.origin,
-      copyText: (text) => navigator.clipboard.writeText(text),
-      confirm: showConfirmModal,
-      setStatus,
-      setStatusError,
-      ui,
-    });
-  }
 
   function renderTeamsList() {
     const list = document.getElementById("teams-list");
@@ -300,25 +285,6 @@ export function createTeamsView({
     });
   }
 
-  // Prototype invite footer: one muted line naming the team's live invite link.
-  // Data comes from the real detail payload (managers only); anything else hides
-  // the line rather than implying a link exists.
-  function renderTeamInviteFooter(detail) {
-    const foot = document.getElementById("team-invite-foot");
-    if (!foot) return;
-    const invite = detail && detail.invite;
-    if (!invite || !invite.exists) {
-      foot.hidden = true;
-      foot.innerHTML = "";
-      return;
-    }
-    const expiresDay = formatDay(invite.expires_at);
-    const when = expiresDay ? ` · expires ${expiresDay}` : "";
-    foot.innerHTML =
-      html`Invite link active${when} · revoke from Invite`;
-    foot.hidden = false;
-  }
-
   return {
     invalidateRequests: () => { loadSeq++; },
     loadTeams,
@@ -326,9 +292,7 @@ export function createTeamsView({
     renderTeamSharedRepertoires,
     selectTeamPane,
     renderTeamTabCounts,
-    renderTeamInviteFooter,
     bindTeamTabs,
     renderTeamEmptyCard,
-    openInviteDialog,
   };
 }

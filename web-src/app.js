@@ -95,6 +95,7 @@ import { fetchLichessProfile } from "./lichess-profile.js";
 import {
   buildPaletteItems,
   filterPaletteItems,
+  paletteScrollTop,
   renderPaletteItems,
 } from "./command-palette.js";
 import { createAccountController } from "./controllers/account.js";
@@ -117,6 +118,7 @@ import {
   sameFetchSources,
 } from "./views/shared/source-composer.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
+import { createInviteDialogUi, formatDay, runInviteDialog } from "./views/team-invite.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 let _coachReady = null;
 function loadTrainResume() {
@@ -1231,6 +1233,18 @@ function paintPalette() {
   if (input) {
     if (active) input.setAttribute("aria-activedescendant", active.id);
     else input.removeAttribute("aria-activedescendant");
+  }
+  // Arrow keys move the highlight; the list must follow it.
+  if (active) {
+    const boxRect = box.getBoundingClientRect();
+    const itemRect = active.getBoundingClientRect();
+    box.scrollTop = paletteScrollTop({
+      boxTop: boxRect.top,
+      boxHeight: boxRect.height,
+      itemTop: itemRect.top,
+      itemHeight: itemRect.height,
+      scrollTop: box.scrollTop,
+    });
   }
 }
 
@@ -2900,6 +2914,23 @@ function renderTeamsList() {
   void ensureTeamsView().then((view) => view.renderTeamsList()).catch(() => {});
 }
 
+// The invite line under the team tabs: what the team has NOW (no status means
+// no line — never an implied link). Fed by openTeamDetail, and by teamInvite
+// after the dialog, whose final status is the truth for that card.
+function renderTeamInviteFooter(status) {
+  const foot = document.getElementById("team-invite-foot");
+  if (!foot) return;
+  if (!status || !status.exists) {
+    foot.hidden = true;
+    foot.innerHTML = "";
+    return;
+  }
+  const expiresDay = formatDay(status.expires_at);
+  const when = expiresDay ? ` · expires ${expiresDay}` : "";
+  foot.innerHTML = html`Invite link active${when} · revoke from Invite`;
+  foot.hidden = false;
+}
+
 function hideTeamDetail() {
   appState.selectedTeamId = null;
   const card = document.getElementById("team-detail-card");
@@ -2926,7 +2957,7 @@ async function openTeamDetail(teamId) {
   const shares = document.getElementById("team-shared-repertoires");
   if (shares) shares.innerHTML = sharedRepRowsSkeleton(2);
   teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
-  teamsView?.renderTeamInviteFooter(null);
+  renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
@@ -2980,7 +3011,7 @@ async function openTeamDetail(teamId) {
   // manager-only invite footer, both before the member rows render.
   if (teamsView) {
     teamsView.renderTeamTabCounts({ members: members.length });
-    teamsView.renderTeamInviteFooter(detail);
+    renderTeamInviteFooter(detail.invite);
   }
   membersEl.innerHTML = html`${members
     .map((m) => {
@@ -3226,12 +3257,30 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
 // never rotates it; minting a new code is an explicit, confirmed action inside
 // the dialog (views/team-invite.js).
 async function teamInvite(teamId) {
+  // The dialog stays open across actions. Its own openTeamDetail re-read is a
+  // snapshot from opening time and paints AFTER the dialog closes, so the line
+  // is repainted from the dialog's last known status after that read, not before.
+  let status = null;
+  const ui = createInviteDialogUi({
+    activateModal,
+    onInviteStatus: (next) => { status = next; renderTeamInviteFooter(next); },
+  });
   try {
-    await (await ensureTeamsView()).openInviteDialog(teamId);
+    status = await runInviteDialog(teamId, {
+      api,
+      postJson,
+      origin: window.location.origin,
+      copyText: (text) => navigator.clipboard.writeText(text),
+      confirm: showConfirmModal,
+      setStatus,
+      setStatusError,
+      ui,
+    });
   } catch (error) {
     setStatusError(error.message);
   }
   await openTeamDetail(teamId);
+  renderTeamInviteFooter(status);
 }
 
 // In-team "add a repertoire": share one of the caller's OWN repertoires with this
