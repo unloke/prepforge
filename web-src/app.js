@@ -1554,9 +1554,8 @@ function analyzeHeaderTags(pgnText) {
 }
 
 function syncAnalyzeHead() {
-  const title = document.getElementById("analysis-game-title");
   const meta = document.getElementById("analysis-game-meta");
-  if (!title || !meta) return;
+  if (!meta) return;
   const analysis = appState.analysis;
   // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
   // the source box must not title an empty board "PrepForge vs Demo".
@@ -1566,16 +1565,12 @@ function syncAnalyzeHead() {
   const white = known(tags.White) || known(analysis?.white);
   const black = known(tags.Black) || known(analysis?.black);
   const plies = analysis?.moves?.length || 0;
-  title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
+  const playersText = white || black ? `${white || "?"} vs ${black || "?"}` : "";
   const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
     .filter(Boolean);
-  // The tag line rides under the board beside the move, not in the panel head:
-  // the head is one row of title and actions.
-  meta.textContent = bits.length
-    ? bits.join(" · ")
-    : plies
-      ? `${plies} half-move${plies === 1 ? "" : "s"}`
-      : "";
+  meta.textContent = [playersText, bits.length ? bits.join(" · ") : plies ? `${plies} half-move${plies === 1 ? "" : "s"}` : ""]
+    .filter(Boolean)
+    .join(" · ");
   meta.title = meta.textContent;
 }
 
