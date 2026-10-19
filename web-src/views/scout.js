@@ -505,7 +505,7 @@ export function createScoutView(deps) {
         {
           usernames: scoutState.usernames,
           colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(scoutState.games),
+            colorRecommendation(scoutModule.analyzedGames(scoutState.games)),
             { username: scoutState.username },
           ),
         },

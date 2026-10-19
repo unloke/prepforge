@@ -72,7 +72,7 @@ export function createCoverageController({
     return html`<div class="coverage-summary" aria-live="polite"><div><b>${pct(result.coveredMass)} prepared</b><span>${status}</span></div>
       <div class="coverage-mass" role="img" aria-label="${pct(result.coveredMass)} prepared, ${pct(result.gapMass)} missing, ${pct(result.unknownMass)} unchecked">
         <i class="is-covered" style="width:${result.coveredMass * 100}%"></i><i class="is-gap" style="width:${result.gapMass * 100}%"></i><i class="is-unknown" style="width:${result.unknownMass * 100}%"></i></div>
-      <div class="coverage-totals"><span>${pct(result.gapMass)} missing</span><span>${pct(result.unknownMass)} unchecked${result.status === "partial" ? " · partial" : ""}</span></div></div>`;
+      <div class="coverage-totals"><span>${pct(result.gapMass)} missing</span><span>${pct(result.unknownMass)} unchecked</span></div></div>`;
   }
   function gapRows(readOnly) {
     let markup = readOnly ? "" : html`<div class="coverage-complete-bar"><label class="coverage-selall"><input type="checkbox" id="coverage-selectall" />Select all</label><button type="button" class="btn primary" id="coverage-complete" data-testid="coverage-complete" disabled>Preview replies</button></div>`;
@@ -182,7 +182,7 @@ export function createCoverageController({
         } });
       if (active !== run || run.key !== key()) { job.cancelJob("Scan discarded"); return; }
       result = next;
-      job.completeJob({ title: "Coverage scanned", message: `${pct(next.coveredMass)} prepared${next.status === "partial" ? " · partial" : ""}` });
+      job.completeJob({ title: "Coverage scanned", message: `${pct(next.coveredMass)} prepared` });
     } catch (error) {
       if (active !== run) return;
       if (error.name === "AbortError") job.cancelJob("Scan stopped");
