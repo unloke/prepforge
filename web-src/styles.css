@@ -1828,7 +1828,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
 .empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
-.empty-state.is-error .es-mark { color: var(--danger); font-weight: 700; }
 
 /* Side dot (repertoire colour) */
 .color-dot {
@@ -2811,6 +2810,23 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 #view-build .panel-head { border-bottom: 0; }
 /* The banner's tint is its edge; in this panel it needs no rule under it. */
 #view-build .engine-banner { border: 0; border-radius: 0; }
+#view-build .engine-banner p { max-width: 62ch; }
+
+/* Motion in the panel, on the same rules as the rest of the app: the fork bar
+   and the Explorer rows arrive after a move or a fetch, so they enter with a
+   short rise and stagger; the selected move's fill eases. Transform and
+   opacity only, and the global reduced-motion block turns all of it off. */
+#build-branchbar:not([hidden]) { animation: fork-enter var(--dur) var(--ease-out) both; }
+@keyframes fork-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+#explorer-rows .explorer-row,
+#coverage-gaps .coverage-gap {
+  animation: row-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 40ms);
+}
+#build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+#build-branchbar .fork-chip:active { transform: scale(0.97); }
 
 .tree-meta {
   display: flex;
