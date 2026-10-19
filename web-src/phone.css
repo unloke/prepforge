@@ -787,7 +787,7 @@
   #view-train #train-blitz-toggle::after {
     content: "";
     position: absolute;
-    inset: -11px -8px;
+    inset: -12px -8px;
   }
   /* The mode name is a text link inside the card head; the head itself becomes
      the 44px row, so changing mode is not a 17px-tall target. */

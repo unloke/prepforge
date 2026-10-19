@@ -39,4 +39,7 @@ it("every Train control is a thumb-sized target on a phone", () => {
   const hit = css.match(/#view-train #train-blitz-toggle::after \{[^}]*\}/);
   expect(hit, "blitz switch tap area").not.toBeNull();
   expect(hit[0]).toMatch(/inset: -\d+px -\d+px/);
+  // 20px tall + 11px each side reached 42, two short of a thumb. Measured by
+  // hit-testing the switch's centre at 390px.
+  expect(hit[0]).toMatch(/inset: -12px/);
 });
