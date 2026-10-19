@@ -26,10 +26,10 @@
   min-height: 0;
   display: grid;
   /* The detail column is as wide as the board inside it, and the board yields
-     to the window height so a 1280×800 laptop still ends the detail inside
+     to the window height so a 1366×768 laptop still ends the detail inside
      the card instead of scrolling the move list out of view. One measure for
      both, so the board, the sentences and the move rows share both edges. */
-  --focus-w: clamp(260px, calc(100dvh - 400px), 520px);
+  --focus-w: clamp(260px, calc(100dvh - 412px), 520px);
   grid-template-columns: minmax(0, 1fr) minmax(380px, calc(var(--focus-w) + 24px));
   gap: 12px;
 }
