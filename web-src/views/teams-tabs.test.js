@@ -138,24 +138,6 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("count-repertoires").textContent).toBe("1");
   });
 
-  it("invite footer renders from the real invite field and hides otherwise", () => {
-    const { view, byId } = makeHarness();
-    const foot = byId("team-invite-foot");
-
-    view.renderTeamInviteFooter({ invite: { exists: false } });
-    expect(foot.hidden).toBe(true);
-
-    view.renderTeamInviteFooter({ invite: { exists: true, created_at: "2026-09-01T00:00:00Z", expires_at: null } });
-    expect(foot.hidden).toBe(false);
-    expect(String(foot.innerHTML)).toContain("Invite link active");
-    expect(String(foot.innerHTML)).toContain("revoke from Invite");
-    expect(String(foot.innerHTML)).not.toContain("expires");
-
-    view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T00:00:00Z" } });
-    expect(String(foot.innerHTML)).toContain("expires");
-    expect(String(foot.innerHTML)).not.toContain("· revoke from Invite ·");
-  });
-
   it("shared repertoires tab count mirrors the rendered list length", () => {
     const { view, byId } = makeHarness();
     byId("team-shared-repertoires");
@@ -237,13 +219,6 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     view.renderTeamsList();
     expect(String(byId("teams-list").innerHTML)).toBe("");
   });
-  it("invite expiry reads in English whatever the browser locale (UX 2026-10-01 P2-13)", () => {
-    const { view, byId } = makeHarness();
-    view.renderTeamInviteFooter({ invite: { exists: true, expires_at: "2030-10-04T12:00:00Z" } });
-    expect(String(byId("team-invite-foot").innerHTML)).toContain("expires Oct 4");
-    expect(String(byId("team-invite-foot").innerHTML)).not.toMatch(/月|日/);
-  });
-
   it("a failed directory load says what failed and offers a Retry", async () => {
     let attempts = 0;
     const { view, byId } = makeHarness({

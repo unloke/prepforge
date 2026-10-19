@@ -7,7 +7,6 @@ import { html } from "../html.js";
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
-import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
 
 export function createTeamsView({
@@ -165,20 +164,6 @@ export function createTeamsView({
   }
 
 
-  async function openInviteDialog(teamId) {
-    const ui = createInviteDialogUi({ activateModal });
-    await runInviteDialog(teamId, {
-      api,
-      postJson,
-      origin: window.location.origin,
-      copyText: (text) => navigator.clipboard.writeText(text),
-      confirm: showConfirmModal,
-      setStatus,
-      setStatusError,
-      ui,
-    });
-  }
-
   function renderTeamsList() {
     const list = document.getElementById("teams-list");
     if (!list) return;
@@ -300,25 +285,6 @@ export function createTeamsView({
     });
   }
 
-  // Prototype invite footer: one muted line naming the team's live invite link.
-  // Data comes from the real detail payload (managers only); anything else hides
-  // the line rather than implying a link exists.
-  function renderTeamInviteFooter(detail) {
-    const foot = document.getElementById("team-invite-foot");
-    if (!foot) return;
-    const invite = detail && detail.invite;
-    if (!invite || !invite.exists) {
-      foot.hidden = true;
-      foot.innerHTML = "";
-      return;
-    }
-    const expiresDay = formatDay(invite.expires_at);
-    const when = expiresDay ? ` · expires ${expiresDay}` : "";
-    foot.innerHTML =
-      html`Invite link active${when} · revoke from Invite`;
-    foot.hidden = false;
-  }
-
   return {
     invalidateRequests: () => { loadSeq++; },
     loadTeams,
@@ -326,9 +292,7 @@ export function createTeamsView({
     renderTeamSharedRepertoires,
     selectTeamPane,
     renderTeamTabCounts,
-    renderTeamInviteFooter,
     bindTeamTabs,
     renderTeamEmptyCard,
-    openInviteDialog,
   };
 }
