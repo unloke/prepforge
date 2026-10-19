@@ -1307,3 +1307,50 @@ def test_compare_many_identities_returns_newest_n_across_accounts(monkeypatch):
     assert stamps == sorted(stamps, reverse=True)
     assert [src for _, src in pairs].count("alpha") == 8
     assert [src for _, src in pairs].count("beta") == 2
+
+
+def test_compare_expected_move_is_playable_at_the_departure(client, monkeypatch):
+    """The Games review derives the position from ``departure_ply - 1`` plies of
+    move_san_history and draws expected_move_uci there. The shared node's own
+    incoming move used to be sent instead, which is illegal on that position (a
+    move that cannot be played has no target square, so the arrow was NaN)."""
+    import chess
+
+    _register(client, "expected@example.com")
+    _link(client)
+    _mock_fetch(monkeypatch, games=[FetchedGame(
+        pgn="""[Event "Rated Blitz game"]
+[Site "https://lichess.org/expmove01"]
+[White "TestUser"]
+[Black "Opponent"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 1-0
+""",
+        white="TestUser", black="Opponent", result="1-0", lichess_id="expmove01",
+        event="Rated Blitz game", finished_at="2026-06-08T00:00:00Z",
+    )])
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "Italian", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    rep_id, parent = created["repertoire_id"], created["selected_node_id"]
+    for uci in ["e2e4", "g1f3", "f1c4"]:
+        moved = client.post(
+            "/api/build/add-move",
+            json={"repertoire_id": rep_id, "parent_node_id": parent, "move_uci": uci},
+            headers=csrf_headers(client),
+        )
+        assert moved.status_code == 200, moved.text
+        parent = moved.json()["selected_node_id"]
+
+    game = client.get("/api/lichess/compare").json()["games"][0]
+    assert game["departure_reason"] == "opponent_unprepared_branch"
+    assert game["departure_ply"] == 2
+    decision = chess.Board()
+    for san in game["move_san_history"][: game["departure_ply"] - 1]:
+        decision.push_san(san)
+    assert chess.Move.from_uci(game["expected_move_uci"]) in decision.legal_moves
+    # The old pick (the shared node's incoming e2e4) cannot be played there.
+    assert chess.Move.from_uci("e2e4") not in decision.legal_moves
