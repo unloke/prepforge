@@ -166,7 +166,9 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     await view.loadTeams();
     expect(opened).toEqual([]);
     expect(hidden).toHaveLength(1);
-    expect(byId("team-empty-title").textContent).toBe("Choose a team");
+    // The card names the state and the one step that changes it.
+    expect(byId("team-empty-title").textContent).toBe("No team selected");
+    expect(byId("team-empty-body").textContent).toBe("Choose a team from the directory.");
   });
 
   it("signed out: the empty card says how to start", async () => {
@@ -268,7 +270,8 @@ describe("teams directory: opening a team", () => {
     });
     await view.loadTeams();
     expect(calls).toEqual([["hide"]]);
-    expect(byId("team-empty-title").textContent).toBe("Choose a team");
+    expect(byId("team-empty-title").textContent).toBe("No team selected");
+    expect(byId("team-empty-body").textContent).toBe("Choose a team from the directory.");
   });
 
   it("a team the user picked re-opens after the list reloads", async () => {

@@ -182,6 +182,41 @@ async function runViewport(vp) {
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
+  // The Today strip is one band: the queue leads, the week's history has its
+  // own cell at the right. Stacked as four lines, the queue was second.
+  const queueFirst = await page.evaluate(() => {
+    const body = document.querySelector("#dashboard-today .today-body");
+    if (!body) return false;
+    const kids = [...body.children];
+    return kids.length > 0 && kids[0].classList.contains("today-queue");
+  });
+  check(queueFirst, "the queue must be the first line of the Today body");
+  const countsInAside = await page.evaluate(() => {
+    const aside = document.querySelector("#dashboard-today .today-aside");
+    return !!aside && !!aside.querySelector(".today-counts");
+  });
+  check(countsInAside, "the lifetime counts must sit in the Today aside");
+
+  // Phone: the page head's + is New repertoire, so Import PGN needs its own
+  // route. It used to live only in the hidden header actions: a phone could
+  // not import a PGN at all.
+  if (vp.width <= 760) {
+    check(await page.locator("#dashboard-import-pgn").isVisible(), "Import PGN must be reachable on a phone");
+    check(!(await page.locator("#dashboard-new-rep").isVisible()), "New repertoire keeps the page head + on a phone");
+    // The mastery figure is the row's trailing value on a phone: the desktop
+    // has a Mastery column header, a phone has none, so the number is named.
+    const phoneMastery = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"] .lib-cell-mastery');
+    check(await phoneMastery.isVisible(), "the mastery figure must be visible on a phone");
+    const phoneMasteryText = (await phoneMastery.textContent()) || "";
+    check(/50%/.test(phoneMasteryText) && /mastered/.test(phoneMasteryText),
+      `the phone mastery figure should read "50% mastered", got "${phoneMasteryText}"`);
+    // The phone checklist hides the finished steps, so a step number would
+    // point at a list the phone never drew.
+    const phoneStepBadge = page.locator("#dashboard-steps .step:not(.is-done) .step-n");
+    check((await phoneStepBadge.count()) === 0 || !(await phoneStepBadge.first().isVisible()),
+      "the phone checklist must not show a step number");
+  }
+
   // No preview pane: the table takes the full width and a row click opens.
   check((await page.locator("#lib-preview").count()) === 0, "the library should not render a preview pane");
   // The list must actually fill its column. A two-column track leaking into the
@@ -192,6 +227,24 @@ async function runViewport(vp) {
   if (vp.width <= 1020) {
     const listWidth = await page.locator("#dashboard-repertoires").evaluate((el) => el.getBoundingClientRect().width);
     check(listWidth >= vp.width - 60, `library list should fill the single column, got ${Math.round(listWidth)}px at ${vp.width}px`);
+  }
+
+  // The Library is a work surface: on a desktop the table card fills the
+  // screen instead of floating as a short card over empty ground, and the
+  // setup checklist beside it keeps its own height.
+  if (vp.width >= 1021) {
+    const listBox = await page.locator("#view-dashboard .lib-list").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, height: r.height };
+    });
+    const stepsBox = await page.locator("#dashboard-steps").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { height: r.height };
+    });
+    check(vp.height - listBox.bottom <= 40,
+      `the Library table should reach the bottom of the work surface, ${Math.round(vp.height - listBox.bottom)}px short`);
+    check(stepsBox.height < listBox.height,
+      `the setup checklist should keep its own height beside the table, got ${Math.round(stepsBox.height)}px vs ${Math.round(listBox.height)}px`);
   }
 
   // Mastery bar carries the health pct.

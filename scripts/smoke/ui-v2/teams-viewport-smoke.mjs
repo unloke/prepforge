@@ -284,13 +284,24 @@ async function runViewport(vp) {
     await page.waitForTimeout(300);
   }
 
-  // With no teams the page still reads as one row of equal cards: the
-  // directory must not repeat the middle card's "No teams yet".
-  if (vp.width >= 1280) {
-    const cards = await page.evaluate(() => [...document.querySelectorAll("#view-teams .teams > .card:not([hidden])")]
-      .map((el) => ({ h: Math.round(el.getBoundingClientRect().height), text: el.innerText })));
-    check(cards.length >= 2, "desktop Teams should show its cards");
-    check(new Set(cards.map((c) => c.h)).size === 1, `Teams columns should share one height, got ${JSON.stringify(cards.map((c) => c.h))}`);
+  // Teams is a work surface: with no team picked the middle card fills the
+  // height of the view, and the directory and the incoming shares are short
+  // lists that keep their own height at the top of their columns.
+  if (vp.width >= 1021) {
+    const boxes = await page.evaluate(() => {
+      const h = (sel) => Math.round(document.querySelector(sel)?.getBoundingClientRect().height || 0);
+      const view = document.querySelector("#view-teams");
+      const grid = document.querySelector("#view-teams .teams");
+      return {
+        middle: h("#view-teams .teams > .team-empty"),
+        dir: h("#view-teams .teams > .card.dir"),
+        incoming: h("#view-teams .teams > .card.incoming"),
+        gap: Math.round(view.getBoundingClientRect().bottom - grid.getBoundingClientRect().bottom),
+      };
+    });
+    check(boxes.gap <= 40, `the Teams work surface should reach the bottom of the view, ${boxes.gap}px short`);
+    check(boxes.middle > boxes.dir && boxes.middle > boxes.incoming,
+      `the middle card should fill the surface, got ${JSON.stringify(boxes)}`);
   }
 
   // Overflow + console errors.

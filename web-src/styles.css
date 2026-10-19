@@ -1452,8 +1452,21 @@ h2 {
    (an empty directory) used to leave the row ragged. */
 .teams > .card { align-self: stretch; }
 
+/* Teams is a work surface: the open team's panel takes the height of the
+   view, the way the Library table does, and the two short lists beside it
+   keep their own height at the top. Before this, every card was sized by its
+   content, so the page showed three short strips over half a screen of
+   empty ground. */
+@media (min-width: 1021px) {
+  .teams { min-height: 100%; grid-template-rows: minmax(0, 1fr); }
+  .teams > .card.dir,
+  .teams > .card.incoming { align-self: start; }
+  .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
+  .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
+}
+
 @media (max-width: 1279px) {
-  .teams { grid-template-columns: 250px minmax(0, 1fr); }
+  .teams { grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .incoming { grid-column: 2; }
 }
 @media (max-width: 1020px) {
@@ -1469,7 +1482,6 @@ h2 {
   flex-wrap: wrap;
   margin: 0;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
 }
 .lib .card-head h2 {
   display: flex;
@@ -1493,9 +1505,11 @@ h2 {
 /* Today strip */
 #view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
 #view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
+/* The strip is one band: what is waiting on the left, the week's history and
+   the action on the right. Stacked as four lines in one narrow column, the
+   queue was the second line and the card kept a hole the width of the window. */
 .today {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: 18px;
 }
@@ -1520,16 +1534,27 @@ h2 {
   line-height: 1.2;
 }
 .today-unit small { display: block; color: var(--label); font-size: var(--fs-s); }
+/* The strip is one band: what is waiting on the left, the week's history and
+   the action on the right. Stacked as four lines in one narrow column, the
+   queue was the second line and the card kept a hole the width of the window. */
 .today-body {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 .today-note,
 .today-recap { color: var(--muted); font-size: var(--fs-s); }
-.today-queue { font-size: 13px; }
-.today-queue b { font-size: 14px; }
+.today-queue { color: var(--text); font-size: 16px; }
+.today-queue b { font-size: inherit; }
+.today-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+}
 .today-recap .up { color: var(--good-text); }
 .today-recap .down { color: var(--danger); }
 /* Lifetime counts (games · repertoires · sessions): one quiet line beside the
@@ -1660,8 +1685,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 .lib-row:hover { background: var(--panel-soft); }
+/* A table row cannot scale on press, so the press reads as a step deeper
+   into the surface. */
+.lib-row:active { background: var(--surface-3); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
 
 /* ---- One list-entry primitive -----------------------------------------
@@ -1722,13 +1751,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
   white-space: nowrap;
 }
+/* A shared tag is a tag, not a micro-label: it sits at the size of the other
+   chips instead of a 10px tracked cap, and says "shared" in lower case. */
 .lib-chip.is-shared {
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 .lib-cell-mastery,
 .lib-cell-queue {
@@ -1740,6 +1768,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
 .lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
+/* The word names the number; the desktop column header already does, so the
+   phone row is the only place that needs it. */
+#view-dashboard .lib-mastery-word { display: none; }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
    missing one) and enough height to compare rows at a glance. */
 .lib-mbar {
@@ -1849,13 +1880,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   align-items: center;
   padding: 12px;
 }
+/* The mark column is a checklist, not an index: a finished step ticks, an
+   open one is an empty ring. */
 .step-n {
   display: grid;
   place-items: center;
   width: 22px;
   height: 22px;
+  border: 1.5px solid var(--muted);
   border-radius: 50%;
-  background: var(--surface-3);
+  background: var(--panel);
   color: var(--muted);
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -1870,7 +1904,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .setup-bar i { display: block; height: 100%; background: var(--good); transition: width var(--dur-slow) var(--ease-out); }
-.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); }
+.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-color: transparent; }
 .step-n.is-done::before {
   content: "";
   width: 9px;
@@ -1885,7 +1919,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* ≤ 1279px: lower-value columns drop, the preview narrows */
 @media (max-width: 1279px) {
   .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr) 290px; }
-  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
 }
 /* ≤ 1020px: single column. The 1279px rule above uses
    `.lib-grid:not(:has(> .steps[hidden]))` (specificity 0,2,0), so the plain
@@ -1897,20 +1930,28 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .lib-list,
   .steps { grid-column: auto; grid-row: auto; }
 }
-/* Empty library (signed out / first run) on desktop: instead of a strip of
-   cards in the top third, the cards take the screen's height (capped) — the
-   empty state centres in its card and the Get started steps grow. */
+/* A list page is a work surface: the table takes the height it is given
+   instead of floating as a short card over empty ground. The setup checklist
+   stays at the top of its column — it is a short list, not a surface.
+   The empty library (signed out / first run) does the same, capped: the empty
+   state centres in its card and the Get started steps grow. */
 @media (min-width: 1021px) {
   .lib { min-height: 100%; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) {
-    flex: 1 1 auto;
-    max-height: 620px;
-    align-items: stretch;
-  }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .lib-list { display: flex; flex-direction: column; }
-  .lib-list.is-empty:not(.is-error) > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  .lib-grid { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+  /* The checklist is a short list, not a surface: with a table beside it, it
+     keeps its own height at the top of the column instead of stretching into
+     an empty card. (On an empty library there is no table, so it grows.) */
+  .lib-grid > .steps { align-self: start; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { align-self: stretch; }
+  /* The error card and the empty card are the only thing in this card, so both
+     stand in the middle of it. The error used to float at the top of the card
+     with the whole surface empty under it. */
+  .lib-grid:has(> .lib-list.is-empty) > .lib-list { display: flex; flex-direction: column; }
+  .lib-list.is-empty > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 1 1 auto; max-height: 140px; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
+  /* The checklist is a list: its rows sit next to each other. Letting them
+     grow to fill the card spread three steps over half a screen of white. */
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 0 0 auto; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
