@@ -229,6 +229,24 @@ async function runViewport(vp) {
     check(listWidth >= vp.width - 60, `library list should fill the single column, got ${Math.round(listWidth)}px at ${vp.width}px`);
   }
 
+  // The Library is a work surface: on a desktop the table card fills the
+  // screen instead of floating as a short card over empty ground, and the
+  // setup checklist beside it keeps its own height.
+  if (vp.width >= 1021) {
+    const listBox = await page.locator("#view-dashboard .lib-list").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, height: r.height };
+    });
+    const stepsBox = await page.locator("#dashboard-steps").evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { height: r.height };
+    });
+    check(vp.height - listBox.bottom <= 40,
+      `the Library table should reach the bottom of the work surface, ${Math.round(vp.height - listBox.bottom)}px short`);
+    check(stepsBox.height < listBox.height,
+      `the setup checklist should keep its own height beside the table, got ${Math.round(stepsBox.height)}px vs ${Math.round(listBox.height)}px`);
+  }
+
   // Mastery bar carries the health pct.
   const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i.is-mastered").getAttribute("style");
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);

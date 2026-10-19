@@ -1913,15 +1913,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .lib-list,
   .steps { grid-column: auto; grid-row: auto; }
 }
-/* Empty library (signed out / first run) on desktop: instead of a strip of
-   cards in the top third, the cards take the screen's height (capped) — the
-   empty state centres in its card and the Get started steps grow. */
+/* A list page is a work surface: the table takes the height it is given
+   instead of floating as a short card over empty ground. The setup checklist
+   stays at the top of its column — it is a short list, not a surface.
+   The empty library (signed out / first run) does the same, capped: the empty
+   state centres in its card and the Get started steps grow. */
 @media (min-width: 1021px) {
   .lib { min-height: 100%; }
+  .lib-grid { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+  /* The checklist is a short list, not a surface: with a table beside it, it
+     keeps its own height at the top of the column instead of stretching into
+     an empty card. (On an empty library there is no table, so it grows.) */
+  .lib-grid > .steps { align-self: start; }
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { align-self: stretch; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) {
-    flex: 1 1 auto;
     max-height: 620px;
-    align-items: stretch;
   }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .lib-list { display: flex; flex-direction: column; }
   .lib-list.is-empty:not(.is-error) > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
