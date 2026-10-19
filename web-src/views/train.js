@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { staggerRows } from "../list-enter.js";
 import { countOf, nounOf } from "../plural.js";
 import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
 // Train tab rendering (lazy-loaded from app.js).
@@ -217,6 +218,8 @@ export function createTrainView({
             html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</div>`
           );
         })}`;
+    // The rows arrive one by one, with the app's shared stagger.
+    staggerRows(host);
   }
 
   // Card kind chip beside the counter (smart queue only; rehearsal has none).

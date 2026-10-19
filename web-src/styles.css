@@ -3256,6 +3256,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   cursor: pointer;
 }
 .train-line-path bdi { direction: ltr; unicode-bidi: isolate; }
+/* It is a button: it says so under the pointer and to the keyboard. */
+.train-line-path:hover { color: var(--text); }
+.train-line-path:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
 .card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs); }
 .card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
@@ -3324,6 +3327,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
 /* A card with no line of its own says so in words, not in the move face. */
 .un-line.is-plain { font-family: inherit; }
+
+/* The result card arrives when the session ends: one rise, once. */
+#train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
+@keyframes trainCardEnter {
+  from { opacity: 0; transform: translateY(10px); }
+}
 
 /* Session summary. A .tcard like the rest; the stat cells are its fills. */
 /* The stat cells fill the row they are in: a session with a skip AND a day
