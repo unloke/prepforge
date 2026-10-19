@@ -1,6 +1,6 @@
 ﻿import { describe, expect, it } from "vitest";
 
-import { sessionPreviewText } from "./views/train.js";
+import { sessionPreviewText, summaryStatCells } from "./views/train.js";
 
 describe("sessionPreviewText", () => {
   it("counts in singular and plural, like every other count", () => {
@@ -16,5 +16,18 @@ describe("sessionPreviewText", () => {
   it("says an empty queue has nothing to train", () => {
     expect(sessionPreviewText({ cards: 0 })).toBe("No moves to train yet");
     expect(sessionPreviewText(null)).toBe("");
+  });
+});
+
+describe("summaryStatCells", () => {
+  it("labels a one-card session in the singular", () => {
+    expect(summaryStatCells({ cardsDone: 1 }, { correct: 1, mistakes: 0, best: 1 }))
+      .toEqual([[1, "card"], ["100%", "first try"], [1, "best in a row"]]);
+  });
+
+  it("adds skipped cards only when something was skipped", () => {
+    expect(summaryStatCells({ cardsDone: 4 }, { correct: 3, mistakes: 1, best: 2, skipped: 2 }))
+      .toEqual([[4, "cards"], ["75%", "first try"], [2, "best in a row"], [2, "skipped"]]);
+    expect(summaryStatCells({ cardsDone: 0 }, {}).length).toBe(3);
   });
 });
