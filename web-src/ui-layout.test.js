@@ -301,6 +301,14 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
   });
 
+  it("captions the board with the position, not the repertoire", () => {
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    // The panel head already names the repertoire and its side; the board
+    // caption under it repeats only the move you are standing on.
+    expect(session).toMatch(/node\.depth === 0\s*\?\s*"Start"/);
+    expect(session).not.toMatch(/\$\{appState\.build\.name\} · \$\{appState\.build\.color\}/);
+  });
+
   it("sets the Build ledger's small type at the panel's own floor", () => {
     // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
     // still hardcodes 9-12px is the one squinting line. The Explorer share, the

@@ -233,9 +233,12 @@ async function selectBuildNode(nodeId) {
     lastMove: node.uci,
   });
   boards.build.setAnnotations(node.arrows || [], node.circles || []);
+  // The board caption is the position, not the repertoire: the panel head above
+  // already names the repertoire and its side, and repeating it here spent the
+  // caption on the one thing on screen the reader already knows.
   const label =
     node.depth === 0
-      ? `${appState.build.name} · ${appState.build.color}`
+      ? "Start"
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
