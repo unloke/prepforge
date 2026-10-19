@@ -41,5 +41,5 @@ export async function replayToAnalyze(game, deps) {
     const ply = (handoff?.ply ?? Number(game.departure_ply)) || 1;
     await showAnalysisPly(Math.max(0, ply - 1));
   }
-  if (isCurrent()) setStatus(`Loaded ${game.white || "?"} vs ${game.black || "?"} — press Analyze`);
+  if (isCurrent()) setStatus(`Loaded ${game.white || "?"} vs ${game.black || "?"}. Press Analyze.`);
 }

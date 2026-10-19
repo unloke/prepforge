@@ -5636,7 +5636,7 @@ function resetGamesResults() {
   const results = document.getElementById("replay-results");
   if (results) {
     results.innerHTML =
-      html`<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
+      html`<div class="empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
   }
   paintGamesSource();
   const hint = document.getElementById("games-idle-hint");

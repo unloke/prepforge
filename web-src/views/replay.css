@@ -17,7 +17,7 @@
   justify-content: flex-start;
   margin: 0;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
+  background: var(--panel-soft);
 }
 .ledger .card-head h2 { font-size: 13.5px; }
 .ledger-table { flex: 1; overflow: auto; }
@@ -30,7 +30,6 @@
   width: 100%;
   padding: 7px 12px;
   border: 0;
-  border-bottom: 1px solid var(--line);
   background: none;
   color: var(--text);
   font: inherit;
@@ -40,6 +39,7 @@
 }
 /* Games ledger column header — the shared `.col-head` treatment (styles.css)
    plus this row's sticky positioning. */
+.ledger-table[data-ui] .lr { border-bottom: 1px solid var(--line); }
 .lr.head {
   position: sticky;
   top: 0;
@@ -48,7 +48,7 @@
   cursor: default;
 }
 .lr:not(.head):hover { background: var(--panel-soft); }
-.lr.is-open { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.ledger-table[data-ui] .lr.is-open { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .lr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .players { display: flex; flex-direction: column; min-width: 0; }
 .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -76,10 +76,8 @@
    not having loaded being the only unknown here. */
 .skeleton-board {
   aspect-ratio: 1;
-  border: 1px solid var(--line);
   border-radius: 6px;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
-  background-size: 200% 100%;
+  background: var(--surface-3);
   animation: skeleton-pulse 1.2s var(--ease-out) infinite;
 }
 .kind-badge {
@@ -92,7 +90,7 @@
   white-space: nowrap;
 }
 .kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
-.kind-badge.t-bad { background: var(--danger-soft); color: var(--danger); }
+.kind-badge.t-bad { background: var(--danger-soft); color: var(--danger-strong); }
 .kind-badge.t-warn { background: var(--warn-soft); color: var(--warn-text); }
 .kind-badge.t-none { background: var(--none-soft); color: var(--none); }
 
@@ -104,7 +102,12 @@
 .focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .focus-info h2 { font-size: 15px; word-break: break-word; }
-.reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--muted); font-size: var(--fs-s); }
+.focus-line { display: flex; align-items: center; gap: 8px; margin: 0; }
+.focus-result { font-weight: 700; font-variant-numeric: tabular-nums; }
+.focus-result.r-win { color: var(--good-text); }
+.focus-result.r-loss { color: var(--danger-strong); }
+.focus-result.r-draw { color: var(--muted); }
+.reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--text); font-size: var(--fs-s); }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
 .moveline { display: grid; gap: 2px; font: 12px/1.5 var(--mono); }
@@ -122,10 +125,10 @@
 .ply.dep { padding: 0 3px; color: var(--accent-ink); font-weight: 700; }
 .ply.dep.t-bad { background: var(--danger); }
 .ply.dep.t-warn { background: var(--warn); }
-.move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
-.move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
-.move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
-.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-xs)/1.4 var(--font); }
+.moveline[data-ui] .move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
+.moveline[data-ui] .move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
+.moveline[data-ui] .move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
+.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-s)/1.4 var(--font); }
 @media (prefers-reduced-motion: no-preference) {
   .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
   @keyframes departure-mark {
@@ -135,7 +138,12 @@
 } 
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.replay-arrows path { opacity: 0.8; filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22)); }
+.replay-arrows path {
+  opacity: 0.92;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.4;
+  paint-order: stroke fill;
+}
 .replay-arrows .t-good { fill: var(--good); }
 .replay-arrows .t-bad { fill: var(--danger); }
 

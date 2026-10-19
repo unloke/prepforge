@@ -232,7 +232,7 @@
   }
   #view-replay .toolbar > .src > .src-label { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
   #view-replay .toolbar > .src > .src-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-  #view-replay .toolbar > .src > .btn { min-height: 36px; height: 36px; padding: 0 6px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
+  #view-replay .toolbar > .src > .btn { min-height: 40px; height: 40px; padding: 0 6px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
   #view-replay .toolbar > .inline-field {
     display: flex;
     align-items: center;

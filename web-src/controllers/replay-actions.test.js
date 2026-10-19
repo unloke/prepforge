@@ -76,5 +76,5 @@ it("names the button the user actually presses, and stays one line", async () =>
   } finally {
     vi.unstubAllGlobals();
   }
-  expect(setStatus).toHaveBeenCalledWith("Loaded W0a vs Anonymous — press Analyze");
+  expect(setStatus).toHaveBeenCalledWith("Loaded W0a vs Anonymous. Press Analyze.");
 });

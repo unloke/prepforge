@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { html as safeHtml } from "./html.js";
 import { createReplayView } from "./views/replay.js";
 
