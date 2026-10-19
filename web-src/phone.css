@@ -757,7 +757,6 @@
      stay dense like a score sheet, but their rows get a gap so neighbours do
      not fuse. */
   #view-build .fork-chip { min-height: 40px; padding: 0 14px; }
-  #view-build .fork-chip .mtree-num,
   #view-build .fork-chip small { font-size: 12px; }
   #view-build .mtree-crumb { min-height: 32px; padding: 0 6px; }
   #view-build .mtree-collapse { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }

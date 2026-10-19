@@ -6165,6 +6165,8 @@ function ensureCoverageView() {
         getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode, getBoard: () => boards.build,
         previewReplies: previewCoverageReplies, getJob: () => notices,
         onError: (error) => setStatusError(error.message),
+        // The inspector sizes to its content, so every repaint is a new height.
+        onPaint: () => buildSession?.fitBuildDock(),
       });
       return coverageView;
     }).catch((error) => { coverageViewReady = null; throw error; });

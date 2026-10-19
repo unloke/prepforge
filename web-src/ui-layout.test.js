@@ -293,12 +293,31 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    // The inspector takes the height the tree does not need, so a short
-    // repertoire leaves no dead space above it and the Explorer rows are not
-    // boxed into their own scrollbar; a fixed 40% share did both.
+    // The inspector is sized to its own contents by fitBuildDock(), so a short
+    // repertoire leaves no dead space above it and a long Explorer is not boxed
+    // into its own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
-    expect(ruleBody(".dock")).toMatch(/height:\s*clamp\(210px,\s*40%,\s*330px\)/);
+    expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
     expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
+  });
+
+  it("sizes the dock to its rows, and a dragged height survives a repaint", () => {
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    // The fit sums the visible drawers (their scroll heights), the body's own
+    // padding and the tab strip: the body's own height is the flex remainder and
+    // reports the pinned ceiling instead of what the rows need.
+    const fit = session.slice(session.indexOf("function fitBuildDock()"), session.indexOf("function applyBuildDockHeight("));
+    expect(fit).toContain('dock.querySelector(".dock-body")');
+    expect(fit).toContain("scrollHeight");
+    expect(fit).toContain("paddingTop");
+    // Every Explorer render (and unfolding) refits; coverage repaints refit too.
+    expect(session).toMatch(/requestAnimationFrame\(\(\) => fitBuildDock\(\)\)/);
+    expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
+    expect(app).toContain("onPaint: () => buildSession?.fitBuildDock()");
+    // A height the user dragged is not overwritten by the next repaint.
+    expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
+    expect(session).toMatch(/if \(dock\.dataset\.dockPinned\) return;/);
+    expect(session).toMatch(/applyBuildDockHeight\(drag\.want, \{ pinned: true \}\)/);
   });
 
   it("composes Analyze as one panel: game head, coach card, results, drawers", () => {

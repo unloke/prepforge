@@ -2862,7 +2862,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .mtree-crumb:hover { background: var(--surface-3); }
 .mtree-crumb.is-current { color: var(--text); font-weight: 650; }
 .crumbs .mtree-num { padding: 0; margin: 0; font-size: inherit; }
-.crumb-sep { color: var(--label); font-size: 10px; padding: 0 1px; }
+/* The separator is a mark between crumbs, not a caption: it sits at the
+   trail's own size, and at 10px it pulled the eye below the moves it joins. */
+.crumb-sep { color: var(--label); font-size: var(--fs-s); padding: 0 1px; }
 .crumb-empty { color: var(--label); padding: 2px 4px; }
 .build-comment {
   flex: 1 0 100%;
@@ -2909,7 +2911,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-weight: 650;
   cursor: pointer;
 }
-.fork-chip .mtree-num { padding: 0; margin: 0; font-size: 11px; font-weight: 500; }
+/* The move number is read, not decorated: it takes the chip's own size, as
+   the breadcrumb's numbers take the trail's. */
+.fork-chip .mtree-num { padding: 0; margin: 0; font-size: inherit; font-weight: 500; }
 .fork-chip.is-main { font-weight: 750; }
 .fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
 .fork-chip:hover { border-color: var(--accent); }
@@ -2934,16 +2938,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .dock {
   position: relative;
-  /* A starting size only: the tree is the workspace and gets what it needs
-     (see .tree-wrap), the inspector takes the rest. A fixed 40%-of-panel dock
-     left a two-line tree above ~340px of empty height and pushed five Explorer
-     rows into their own scrollbar. The drag handle writes basis + min-height
-     inline; 0 (a flex item's own min-height) lets the tree scroll inside its
-     share instead of overflowing the panel. */
+  /* Sized to its contents by fitBuildDock() — the Explorer rows, the coverage
+     gaps, the tools row — and capped so the move tree keeps its minimum. A
+     dragged height replaces that inline. Left to "the rest" (a 40%-of-panel
+     floor over three Explorer rows) the surplus showed up as a hole under the
+     rows, and the tree that needed it was squeezed above. */
   flex: 0 1 auto;
-  /* The starting size doubles as the floor: a two-row tree must not collapse
-     the Explorer to a tab strip. A dragged height replaces it inline. */
-  min-height: clamp(210px, 40%, 330px);
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -3978,10 +3979,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--text);
 }
 
+/* The mark that says this move is already in the repertoire. It is a dot, not
+   a caption, but at 9px it read as a speck next to the move. */
 .explorer-inrep {
   color: var(--accent-text);
   margin-left: 4px;
-  font-size: 9px;
+  font-size: 11px;
   vertical-align: 2px;
 }
 
@@ -4001,12 +4004,16 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--explorer-track);
 }
 
+/* The share printed inside each segment is the row's actual reading, and at
+   10px it was the smallest type on the page. Segments are a third of a 326px
+   bar at desktop and a fifth of a 178px one on a phone, so 11px still fits
+   three digits. */
 .explorer-bar span {
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 

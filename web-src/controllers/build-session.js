@@ -51,7 +51,7 @@ export function createBuildSession(deps) {
   initBuildDockLayout();
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
-    closeNodeContextMenu, createRepertoirePrompt, generateFromCurrentNode, hydrateBuild,
+    closeNodeContextMenu, createRepertoirePrompt, fitBuildDock, generateFromCurrentNode, hydrateBuild,
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
     paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
@@ -252,7 +252,9 @@ let explorerSeq = 0;
 // layout convenience, so it lives in localStorage, never in synced prefs.
 const BUILD_DOCK_HEIGHT_KEY = "pf.buildDock.height";
 const BUILD_DOCK_FOLDED_KEY = "pf.buildDock.folded";
-const BUILD_DOCK_MIN = 150; // tabs + tools row + a couple of Explorer rows
+// Tabs + tools row + a couple of Explorer rows. Below this the dock is a tab
+// strip and the fold is the honest state, so it is the drag floor.
+const BUILD_DOCK_MIN = 150;
 const BUILD_DOCK_TREE_MIN = 90; // matches .tree-wrap min-height
 
 function readDockStore(key) {
@@ -285,9 +287,44 @@ function buildDockMaxHeight() {
   return Math.max(BUILD_DOCK_MIN, panel.clientHeight - others - BUILD_DOCK_TREE_MIN);
 }
 
-function applyBuildDockHeight(px) {
+// The dock's natural height: its own contents, capped by the tree's minimum.
+// The panel is a stack of head, trail, next move, line, inspector; when the
+// inspector is left to "the rest" (a 278px floor over 113px of Explorer rows)
+// the leftover shows up as a hole in one of the two panes. Sizing the dock to
+// its content gives every spare pixel to the tree, which is the workspace.
+function fitBuildDock() {
+  const dock = document.getElementById("build-inspector");
+  if (!dock) return;
+  // A height the user dragged is theirs: a repaint must not undo it.
+  if (dock.dataset.dockPinned) return;
+  const max = buildDockMaxHeight();
+  const was = dock.style.minHeight;
+  const basis = dock.style.flexBasis;
+  // Measure at the ceiling so a long Explorer is not reported as a short one.
+  dock.style.minHeight = `${max}px`;
+  dock.style.flexBasis = `${max}px`;
+  // A drawer is a block, so it never shrinks below its own content. The body's
+  // own height says nothing (it is the flex remainder), so its padding is added
+  // back to the drawers; the tab strip above it is what the dock adds.
+  const body = dock.querySelector(".dock-body");
+  const style = body && getComputedStyle(body);
+  const wanted = body
+    ? [...body.children].filter((c) => !c.hidden).reduce((sum, c) => sum + c.scrollHeight, 0)
+      + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+      + (dock.offsetHeight - body.offsetHeight)
+    : dock.scrollHeight;
+  dock.style.minHeight = was;
+  dock.style.flexBasis = basis;
+  applyBuildDockHeight(Math.min(max, Math.max(BUILD_DOCK_MIN, wanted)));
+}
+
+// `pinned` is a height the user asked for: the dock keeps it while the window
+// changes. Without it the dock follows its content, and a taller Explorer on a
+// wider position grows it again (the rows are what the height is for).
+function applyBuildDockHeight(px, { pinned = false } = {}) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
+  dock.dataset.dockPinned = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
   // Basis and floor together: the dock neither grows past what the tree does
   // not need nor gets squashed under a long one (rule: .dock min-height 0).
@@ -312,6 +349,7 @@ function setBuildDockFolded(folded, { remember = true } = {}) {
   if (was === folded) return;
   // Folding parks the Explorer fetch and the row-eval worker; unfolding catches up.
   if (!folded && buildDockTab === "explorer") refreshExplorerPanel();
+  if (!folded) fitBuildDock();
   void explorerEvalEngine.sync();
 }
 
@@ -321,7 +359,7 @@ function initBuildDockLayout() {
   const fold = document.getElementById("build-dock-fold");
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
-  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored);
+  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
@@ -346,7 +384,7 @@ function initBuildDockLayout() {
           return;
         }
         if (buildDockFolded()) setBuildDockFolded(false);
-        drag.height = applyBuildDockHeight(drag.want);
+        drag.height = applyBuildDockHeight(drag.want, { pinned: true });
       });
     }
   };
@@ -380,6 +418,9 @@ function initBuildDockLayout() {
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   });
+  // The panel's height ceiling depends on the window, so a resize refits an
+  // unpinned dock (a pinned one keeps the height the user chose).
+  window.addEventListener("resize", () => fitBuildDock());
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
   resizer.addEventListener("keydown", (event) => {
     // Up/Down are the fork picker's keys elsewhere in Build; on the focused
@@ -400,7 +441,7 @@ function initBuildDockLayout() {
       if (delta > 0) setBuildDockFolded(false);
       return;
     }
-    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta);
+    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta, { pinned: true });
     if (height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, height);
   });
 }
@@ -662,6 +703,11 @@ function renderExplorerRows(stats, fen) {
   });
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
+  // The row count is the dock's height: a position with more replies gets a
+  // taller inspector instead of an inner scrollbar inside a fixed one. The rows
+  // paint on the next frame (their animation sets the height), so the fit is
+  // read after that paint rather than against the empty host.
+  requestAnimationFrame(() => fitBuildDock());
 }
 
 // Explorer bars are always full width: the W/D/B split is what a row is read
