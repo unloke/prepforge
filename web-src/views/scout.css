@@ -32,16 +32,16 @@
 
 .scout-error {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--danger-soft);
   color: var(--text);
-  font-size: 13px;
 }
-.scout-error > span { flex: 1 1 220px; }
+.scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-size: 15px; font-weight: 700; }
+.scout-error-body { flex: 1 1 220px; max-width: 70ch; margin: 0; font-size: 14px; line-height: 1.45; }
 
 .scout-btn {
   font-size: 12px;

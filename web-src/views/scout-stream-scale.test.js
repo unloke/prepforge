@@ -128,3 +128,14 @@ describe("scout streaming skeleton", () => {
     expect(css.slice(at, at + 400)).toContain("scout-skeleton-pulse");
   });
 });
+
+describe("scout error state", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("gives the error a title and one plain sentence, not a 182-character strip", () => {
+    // The strip was one pink line with no heading: it read as a page banner,
+    // and its sentence ran the full width of the window.
+    expect(css).toMatch(/\.scout-error-title \{[^}]*font-size: 15px/);
+    expect(css).toMatch(/\.scout-error-body \{[^}]*max-width: 70ch/);
+  });
+});
