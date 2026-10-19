@@ -278,7 +278,9 @@
 .when { color: var(--muted); overflow-wrap: anywhere; }
 .when b { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
 .then b { color: var(--good-text); }
-.then.needs { color: var(--danger-strong); font-weight: 650; }
+/* Every row in the list is a gap, so red on all seven said nothing. The arrow
+   and the words carry the state; red stays for the "weak spot" badge. */
+.then.needs { color: var(--muted); font-weight: 600; }
 .lr-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .cat {
   padding: 1px 5px;

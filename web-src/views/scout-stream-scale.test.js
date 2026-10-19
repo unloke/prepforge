@@ -198,3 +198,16 @@ describe("scout colour recommendation", () => {
     expect(rule).toContain("align-self: flex-start;");
   });
 });
+
+describe("scout gap state", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("does not paint every row red for the same reason", () => {
+    // All seven rows said "no answer in your prep" in danger red; the colour
+    // repeated what the arrow and the words already said. Red stays on the
+    // "weak spot" badge, which is not on every row.
+    const rule = css.match(/\.then\.needs \{[^}]*\}/)[0];
+    expect(rule).toContain("var(--muted)");
+    expect(rule).not.toContain("danger");
+  });
+});
