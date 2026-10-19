@@ -10,7 +10,7 @@
    it keeps column alignment — with tabular figures in the text face, the same
    way Lichess sets a move list (the mono face read as code, not chess). */
 #view-replay { --fs-s: 13px; --fs-xs: 13px; }
-#view-replay :is(.lr, .players small, .acct, .kind-badge, .reasons, .dep-note,
+#view-replay :is(.lr, .players small, .acct, .kind-badge, .dep-note,
   .sum-chip, .queued, .src-label, .inline-field, .lr.head, .card-head h2, .faint) {
   font-size: 13px;
 }
@@ -174,13 +174,18 @@
 .focus-board { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; }
 .focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
-.focus-info h2 { font-size: 15px; word-break: break-word; }
+/* The detail is the one part of the page that is prose, not a table: it gets
+   the reading step (15px) while the ledger stays at the dense 13px. */
+.focus-info h2 { font-size: 16px; word-break: break-word; }
 .focus-line { display: flex; align-items: center; gap: 8px; margin: 0; }
 .focus-result { font-weight: 700; font-variant-numeric: tabular-nums; }
 .focus-result.r-win { color: var(--good-text); }
 .focus-result.r-loss { color: var(--danger-strong); }
 .focus-result.r-draw { color: var(--muted); }
-.reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--text); font-size: var(--fs-s); }
+/* The reasons are the only running prose on the page and the only thing a
+   player reads word by word, so they take the reading step (15px); the two
+   sentences tell what left prep and how to fix it. */
+#view-replay .reasons { display: flex; flex-direction: column; gap: 6px; max-width: 68ch; margin: 0; padding-left: 16px; color: var(--text); font-size: 15px; line-height: 1.5; }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
 .moveline { display: grid; gap: 2px; font: 13px/1.55 var(--font); font-variant-numeric: tabular-nums; }
