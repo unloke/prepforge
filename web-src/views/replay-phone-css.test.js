@@ -13,6 +13,11 @@ it("the Games outcome chips are a real touch target on a phone", () => {
   expect(phone).toMatch(/\.games-panel \.sum-chip \{[^}]*height: 40px/);
 });
 
+it("keeps the Games ledger before the selected detail on a phone", () => {
+  expect(phone).toMatch(/\.triage \{ display: flex; flex-direction: column; \}/);
+  expect(phone).not.toContain("column-reverse");
+});
+
 it("the phone stylesheet keeps the compact row geometry", () => {
   // Belt and braces: the chip bump must not have replaced the row rules.
   expect(phone).toMatch(/\.lr \{[\s\S]*?grid-template-columns: 1fr auto/);

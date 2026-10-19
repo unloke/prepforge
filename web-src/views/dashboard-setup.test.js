@@ -162,6 +162,15 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).toBe("");
   });
 
+  it("counts saved analyses, not Lichess games", async () => {
+    mockDashboard({ games: 3 });
+    await view.loadDashboard();
+    const counts = String(todayCard.innerHTML);
+    expect(counts).toContain("<b>3</b> analyses");
+    expect(counts).not.toContain("<b>3</b> games");
+    expect(counts).toContain('title="Saved analyses, repertoires and training sessions"');
+  });
+
   it("follows the repertoire listing, not the earlier dashboard read", async () => {
     // The dashboard was read before the first import; the listing refresh
     // after it already has the new repertoire.
@@ -286,10 +295,10 @@ describe("dashboard setup checklist", () => {
     ]);
     await view.loadDashboard();
     const counts = String(todayCard.innerHTML);
-    expect(counts).toContain("<b>1</b> game");
+    expect(counts).toContain("<b>1</b> analysis");
     expect(counts).toContain("<b>1</b> repertoire");
     expect(counts).toContain("<b>1</b> session");
-    expect(counts).not.toContain("<b>1</b> games");
+    expect(counts).not.toContain("<b>1</b> analyses");
     expect(counts).not.toContain("<b>1</b> repertoires");
     expect(counts).not.toContain("<b>1</b> sessions");
   });

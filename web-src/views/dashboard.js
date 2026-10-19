@@ -363,10 +363,10 @@ export function createDashboardView({
     // pressing Train, and "Due review" already carries the queue number the
     // strip leads with — so one chip holds them and the Due shortcut stays
     // inline, where the action is.
-    const metric = (value, one) => html`<b>${value}</b> ${nounOf(value, one)}`;
+    const metric = (value, one, many) => html`<b>${value}</b> ${nounOf(value, one, many)}`;
     const repCount = ownRepertoireCount();
     const countsHtml = [
-      metric(payload.games || 0, "game"),
+      metric(payload.games || 0, "analysis", "analyses"),
       // Until the listing lands, fall back to the dashboard read; after it,
       // the listing is authoritative so the count tracks the table.
       metric(repCount ?? (payload.repertoires || 0), "repertoire"),
@@ -383,7 +383,7 @@ export function createDashboardView({
       ${warningHtml || html`<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
       <div class="today-counts" data-testid="dashboard-counts"
-           title="Everything stored in this account">${countsHtml}</div>
+           title="Saved analyses, repertoires and training sessions">${countsHtml}</div>
       ${recapHtml}
     </div>
     <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>

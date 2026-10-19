@@ -200,6 +200,15 @@ async function runViewport(vp) {
   check(!!geom && geom.below, "focus description should sit below the board");
   check(!!geom && geom.wide, "focus board should use most of the card's width");
 
+  if (vp.width <= 760) {
+    const ledgerFirst = await page.evaluate(() => {
+      const ledger = document.querySelector("#replay-results .ledger").getBoundingClientRect();
+      const focus = document.querySelector("#replay-results .focus").getBoundingClientRect();
+      return ledger.top < focus.top;
+    });
+    check(ledgerFirst, "phone: the ledger should come before the selected detail");
+  }
+
   await shot("triage");
 
   // Add reply acts on the row it sits in: the opponent's departure move is

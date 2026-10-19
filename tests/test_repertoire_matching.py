@@ -339,6 +339,37 @@ def test_hydrated_root_move_synthetic_fields_contract():
     assert b.fen_after == after_c5
 
 
+def test_expected_move_is_a_choice_at_the_shared_position():
+    """The review draws expected_move_uci from the position before
+    ``departure_ply`` (the shared node), and that position only offers the
+    shared node's children. The old pick echoed the shared node's own incoming
+    move, which cannot be played there (it produced a NaN arrow in the UI)."""
+    import chess
+
+    rep, moves = _legal_rep_and_moves(
+        ["e2e4", "c7c6", "g1f3", "d7d5"], ["e2e4", "c7c6", "g1f3", "d7d5", "e4d5"]
+    )
+    shared = rep.root_node.children[0].children[0].children[0]
+    board = chess.Board(shared.fen)
+    board.push(chess.Move.from_uci("e7e6"))
+    shared.children.append(OpeningNode(
+        id="legal-alt", repertoire_id="legal", fen=board.fen(), side_to_move=Color.WHITE,
+        move=MoveRecord(
+            uci="e7e6", san="e6", fen_before=shared.fen, fen_after=board.fen(),
+            move_number=3, ply=5, side_to_move=Color.BLACK, source=MoveSource.HUMAN_GAME,
+        ),
+        parent_id=shared.id,
+    ))
+    result = match_game_to_repertoire(moves, rep, Color.WHITE)
+    assert result.departure_reason == "user_left_preparation"
+    assert result.departure_ply == 5
+    assert result.expected_move_uci == "e7e6"
+    assert result.expected_node_id == "legal-alt"
+    decision = chess.Board(shared.fen)
+    assert chess.Move.from_uci(result.expected_move_uci) in decision.legal_moves
+    assert chess.Move.from_uci("d7d5") not in decision.legal_moves
+
+
 def test_custom_root_waits_for_the_game_to_reach_it():
     """A moveless root on the position after 1.e4: the game's 1.e4 is not a
     departure, matching starts from the root position."""
