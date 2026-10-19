@@ -33,7 +33,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 140px;
+  height: 118px;
   padding: 10px 12px;
   background: var(--panel-soft);
   border: 1px solid var(--line);
@@ -66,16 +66,18 @@
   display: none;
 }
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
-   never depends on colour alone (the words say it too). */
+   never depends on colour alone (the words say it too). The paragraph takes
+   the room the card has, so the rule runs the height of the card instead of
+   the height of the note. */
 .coach-prose {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;
   padding: 2px 0 2px 11px;
   border-left: 3px solid var(--line);
-  font-size: 13.5px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--text);
   transition: border-color var(--dur-fast) var(--ease-out);

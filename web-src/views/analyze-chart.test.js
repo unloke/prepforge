@@ -219,6 +219,15 @@ describe("evaluation win meter", () => {
   });
 });
 
+describe("coach note", () => {
+  it("sets the note at reading size and gives it the card's height", () => {
+    // The note is running text: 15px, and it takes the room the card has, so
+    // the quiet rule runs the height of the card and not the height of the note.
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*flex: 1 1 auto/);
+  });
+});
+
 describe("eval chart theme colours", () => {
   it("renders no hardcoded colours — every hue comes from CSS classes", () => {
     const { chart, view } = setup();
