@@ -151,7 +151,7 @@
 }
 /* ≤760: focus card first, two-line rows, no column header. */
 @media (max-width: 760px) {
-  .triage { display: flex; flex-direction: column-reverse; }
+  .triage { display: flex; flex-direction: column; }
   .lr.head { display: none; }
   .lr {
     grid-template-columns: 1fr auto;
