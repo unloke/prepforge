@@ -254,6 +254,9 @@
   #view-settings .settings-nav { display: none; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }
+  /* A long section title plus its info and action buttons (Maia3: "Download",
+     "Reset cache") overflowed 320px; the buttons wrap under the title instead. */
+  #view-settings .set h2 { flex-wrap: wrap; gap: 4px 2px; }
   #view-settings .set h2 {
     min-height: 44px;
     margin: 0;
@@ -276,10 +279,12 @@
   #view-settings .set > :last-child,
   #view-settings .set > :last-child > :last-child { border-bottom: 0; }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
+  /* Settings is a thumb target: its row buttons keep the quiet ghost look but
+     take a 40px box (they were 36px, and "Edit" only 34x36). */
   #view-settings .set :is(.btn, .btn.sm):not(.primary) {
-    min-height: 36px;
-    height: 36px;
-    padding: 0 4px;
+    min-height: 40px;
+    height: 40px;
+    padding: 0 8px;
     border: 0;
     background: none;
     box-shadow: none;
@@ -288,7 +293,8 @@
     font-weight: 600;
   }
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
-  #view-settings .set .seg-btn { min-height: 32px; height: 32px; }
+  /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
+  #view-settings .set .seg-btn { min-height: 40px; height: 40px; padding: 0 12px; }
   #view-settings .status-pill { font-size: 12px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }

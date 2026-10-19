@@ -175,6 +175,18 @@ async function runViewport(vp) {
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
 
+  // Phone: every Settings control is a thumb target. Switches were 38x26 and
+  // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.
+  if (vp.width <= 760) {
+    const small = await page.evaluate(() => [...document.querySelectorAll('#view-settings .pf-switch, #view-settings .pf-info, #view-settings .set .seg-btn, #view-settings .set .btn')]
+      .map((el) => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height, what: el.id || el.className }; })
+      // A control may be narrow (a 38px switch track, a "1" worker chip): the
+      // touch target is its height, which must reach 40px.
+      .filter((r) => r.w > 0 && r.h > 0 && r.h < 40)
+      .map((r) => `${r.what} ${Math.round(r.w)}x${Math.round(r.h)}`));
+    check(small.length === 0, `Settings controls need a 40px touch target, got ${small.join(", ")}`);
+  }
+
   // Engine Refresh re-checks the browser engine beside it, not only /api/settings.
   await page.evaluate(() => {
     Object.defineProperty(self, "crossOriginIsolated", { value: false, configurable: true });

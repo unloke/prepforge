@@ -208,7 +208,27 @@
   .set .seg-btn,
   .conn-menu-btn,
   .settings-nav-link { min-height: 44px; }
-  .set .pf-switch { min-height: 26px; }
+  /* Touch targets: the 38x26 switch and the 24px ⓘ are thumb targets on a
+     phone. The switch keeps its parts and grows its hit box to 40px (the track
+     is drawn by ::after, the knob stays centered); the ⓘ gets a 40px box with
+     the glyph unchanged. */
+  /* background/border are cleared on ::after only: the base rule sets the
+     transparent state there too. */
+  .set .pf-switch { height: 40px; background: none; border-color: transparent; }
+  .set .pf-switch::after {
+    content: "";
+    position: absolute;
+    inset: 9px 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--panel-soft);
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .set .pf-switch.is-on { background: none; }
+  .set .pf-switch:hover::after { background: var(--surface-3); }
+  .set .pf-switch.is-on::after { background: var(--accent); border-color: var(--accent); }
+  .set .pf-switch .pf-knob { top: 10px; }
+  .set .pf-info { min-width: 40px; min-height: 40px; }
   .set-row { flex-wrap: wrap; }
 }
 
@@ -305,7 +325,15 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.conn-user { color: var(--text); text-decoration: none; }
+/* The linked username is a link into Lichess: it reads as text but takes a
+   thumb-sized box on a phone. */
+.conn-user {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+@media (max-width: 760px) { .conn-user { min-height: 40px; } }
 .conn-user:hover { text-decoration: underline; }
 .acct-danger-zone { margin-top: 14px; }
 .acct-danger-zone > summary {
