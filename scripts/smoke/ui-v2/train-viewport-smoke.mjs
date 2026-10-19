@@ -114,8 +114,8 @@ async function runViewport(vp) {
     ).catch(() => {});
     const emptySetup = await emptyPage.evaluate(() => ({
       banner: document.getElementById("train-banner-title")?.textContent?.trim(),
-      preview: document.getElementById("train-session-preview")?.textContent?.trim(),
-      previewHidden: document.getElementById("train-session-preview")?.hidden,
+      preview: document.getElementById("train-brief")?.textContent?.trim(),
+      previewHidden: document.getElementById("train-brief")?.hidden,
     }));
     check(emptySetup.banner === "No moves to train yet", "empty queue banner should be the one heading, got " + JSON.stringify(emptySetup.banner));
     check(emptySetup.previewHidden === true, "empty queue preview should be hidden, got " + JSON.stringify(emptySetup.preview));
@@ -125,14 +125,14 @@ async function runViewport(vp) {
 
   await openTrain(page);
   await page.waitForFunction(
-    () => !document.getElementById("train-session-preview")?.hidden,
+    () => !document.getElementById("train-brief")?.hidden,
     null,
     { timeout: 2000 },
   ).catch(() => {});
   const setupPreview = await page.evaluate(() => ({
     banner: document.getElementById("train-banner-title")?.textContent?.trim(),
-    preview: document.getElementById("train-session-preview")?.textContent?.trim(),
-    previewHidden: document.getElementById("train-session-preview")?.hidden,
+    preview: document.getElementById("train-brief")?.textContent?.trim(),
+    previewHidden: document.getElementById("train-brief")?.hidden,
   }));
   check(setupPreview.banner === "Ready to train", "queue banner should be Ready to train, got " + JSON.stringify(setupPreview.banner));
   check(setupPreview.previewHidden === false && /cards?/.test(setupPreview.preview || ""), "queue preview should name the cards, got " + JSON.stringify(setupPreview.preview));

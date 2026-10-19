@@ -13,17 +13,19 @@ export function summaryStatCells(smart = {}, stats = {}) {
   return cells;
 }
 
-// The queue a plain Start serves, in the same terms as the in-session chips:
-// "11 cards · 1 weak · 4 new · 6 polish", or what is left of a resumable one.
-export function sessionPreviewText(next) {
-  if (!next) return "";
-  const cards = Number(next.cards) || 0;
-  if (!cards) return "No moves to train yet";
-  const parts = ["weak", "due", "new", "polish"]
-    .filter((kind) => Number(next[kind]) > 0)
-    .map((kind) => `${next[kind]} ${kind}`);
-  const total = `${cards} ${nounOf(cards, "card")}${next.resumed ? " left" : ""}`;
-  return [total, ...parts].join(" · ");
+// The setup briefing: how big the queue Start will serve is, what it is made
+// of, and (when it mixes several repertoires) which ones it draws from. The
+// size is the one number a player checks before starting, so it leads.
+export function sessionBrief(next) {
+  const cards = Number(next?.cards) || 0;
+  if (!cards) return null;
+  return {
+    cards,
+    label: `${nounOf(cards, "card")}${next.resumed ? " left" : " to train"}`,
+    kinds: ["weak", "due", "new", "polish"]
+      .map((kind) => [kind, Number(next[kind]) || 0])
+      .filter(([, count]) => count > 0),
+  };
 }
 
 // The last plies of a numbered line ("1.e4 c6 2.d4 d5" → "2.d4 d5"): which

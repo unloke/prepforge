@@ -340,7 +340,7 @@ function syncTrainPickerVisibility() {
 // so the many syncTrainPickerVisibility() calls don't each refetch. The raw
 // counts ride along, because they are also what tells Start whether a queue
 // exists at all.
-const trainPreviewCache = { at: 0, text: "", nextSession: null, loading: null };
+const trainPreviewCache = { at: 0, brief: null, nextSession: null, loading: null };
 function invalidateTrainSessionPreview() {
   trainPreviewCache.at = 0;
   trainPreviewCache.nextSession = null;
@@ -348,25 +348,38 @@ function invalidateTrainSessionPreview() {
 
 
 async function refreshTrainSessionPreview() {
-  const el = document.getElementById("train-session-preview");
-  if (!el) return;
+  const host = document.getElementById("train-brief");
+  if (!host) return;
   const smartIdle = (appState.trainMode || "smart") === "smart" && !(appState.smart && appState.smart.prompt);
   if (!smartIdle || !appState.signedIn) {
-    el.hidden = true;
+    host.hidden = true;
     return;
   }
 
   const paint = () => {
     // One setup heading only: an empty queue says so in the banner instead of
     // stacking the same message above a start button.
-    const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
-    const text = empty ? "" : trainPreviewCache.text;
-    el.textContent = text;
-    el.hidden = !text;
+    const brief = trainPreviewCache.brief;
+    host.hidden = !brief;
     const banner = document.getElementById("train-banner");
     if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
-      setTrainBanner("idle", empty ? "No moves to train yet" : "Ready to train", "");
+      setTrainBanner("idle", brief ? "Ready to train" : "No moves to train yet", "");
     }
+    if (!brief) return;
+    document.getElementById("train-brief-count").textContent = String(brief.cards);
+    document.getElementById("train-brief-label").textContent = brief.label;
+    document.getElementById("train-brief-kinds").innerHTML =
+      html`${brief.kinds.map(([kind, count]) => html`<span class="kchip k-${kind}">${count} ${kind}</span>`)}`;
+    const reps = (appState.repertoireList || []).filter(
+      (rep) => rep.is_active !== false
+        && !appState.pendingRepDeletes.has(String(rep.id))
+        && !(rep.health && Number(rep.health.trainable) === 0),
+    );
+    document.getElementById("train-brief-reps").innerHTML =
+      html`${reps.map(
+        (rep) =>
+          html`<span class="train-brief-rep"><span class="color-dot ${rep.color === "black" ? "black" : "white"}"></span>${rep.name}</span>`,
+      )}`;
   };
   if (Date.now() - trainPreviewCache.at < 30000) {
     paint();
@@ -379,13 +392,13 @@ async function refreshTrainSessionPreview() {
         api(`/api/train/smart/summary?mixed=true&preview=true&local_date=${encodeURIComponent(localDateString())}`),
       ]);
       trainPreviewCache.nextSession = payload && payload.next_session;
-      trainPreviewCache.text = mod.sessionPreviewText(trainPreviewCache.nextSession);
+      trainPreviewCache.brief = mod.sessionBrief(trainPreviewCache.nextSession);
       trainPreviewCache.at = Date.now();
     })().catch(() => {
       // No answer, so no opinion: Start stays live and Start itself reports
       // why the queue could not be built.
       trainPreviewCache.nextSession = null;
-      trainPreviewCache.text = "";
+      trainPreviewCache.brief = null;
     }).finally(() => {
       trainPreviewCache.loading = null;
     });
@@ -1967,7 +1980,7 @@ async function startSmartTraining(options = {}) {
     if (scheduled && ["pending", "prepared"].includes(handoff.status)) transitionHandoff(handoff.key, "queued");
   }
   setBlitzBarVisible(appState.smart.blitz);
-  const preview = document.getElementById("train-session-preview");
+  const preview = document.getElementById("train-brief");
   if (preview) preview.hidden = true;
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");

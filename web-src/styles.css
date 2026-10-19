@@ -3312,7 +3312,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 
-.train-session-preview { margin: 0; font-size: var(--fs); font-weight: 600; color: var(--label); }
+/* The setup briefing: the queue's size is the one number the screen is about,
+   then its make-up, then the repertoires it draws from — three shared left
+   edges, gaps between the groups wider than inside them. */
+.train-brief { display: flex; flex-direction: column; gap: 12px; }
+.train-brief-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.train-brief-count { font-size: 34px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
+.train-brief-reps { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: var(--fs); }
+.train-brief-rep { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 
 /* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
 .stats { display: flex; flex-wrap: wrap; gap: 6px; }
