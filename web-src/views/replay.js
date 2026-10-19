@@ -402,7 +402,7 @@ export function createReplayView({
       `${error.username}: ${error.message}`).join(" · ");
     const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors}</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
-      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No recent games found</h3></div>`;
+      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No recent games found</h3><p>Nothing came back from the selected sources. Try a larger sample.</p></div>`;
       return;
     }
     const filter = getReplayFilter();
@@ -415,7 +415,7 @@ export function createReplayView({
       const showAll = filter
         ? html`<div class="row"><button type="button" class="btn" data-show-all>Show all</button></div>`
         : "";
-      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No games in this bucket</h3>${showAll}</div>`;
+      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No games in this bucket</h3><p>Nothing in this sample ${REPLAY_KINDS[filter]?.label || "matched"}.</p>${showAll}</div>`;
       container.querySelector?.("[data-show-all]")?.addEventListener?.("click", () => onToggleFilter(filter));
       return;
     }

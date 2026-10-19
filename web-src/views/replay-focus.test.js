@@ -416,3 +416,37 @@ it("keeps partial-source failures visible with results and empty results", () =>
   expect(String(elements["replay-results"].innerHTML)).not.toContain('role="alert"');
   delete globalThis.document;
 });
+
+describe("replay empty states", () => {
+  let elements;
+  beforeEach(() => { elements = makeElements(); });
+  afterEach(() => { globalThis.document = undefined; });
+
+  it("tells the user what to do when a source returned no games", () => {
+    makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("No recent games found");
+    expect(markup).toContain("Try a larger sample.");
+  });
+
+  it("names the empty bucket and keeps the way back", () => {
+    // The filter comes from the app; drive it through a view whose getter says
+    // "left-prep" while the sample holds only a user-error game.
+    makeView(elements); // installs the DOM stubs
+    const filtered = createReplayView({
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => "left-prep",
+      isGameOpen: () => false,
+      onToggleFilter: () => {},
+      onToggleGame: () => {},
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+    });
+    filtered.renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("No games in this bucket");
+    expect(markup).toContain("Nothing in this sample opponent left prep.");
+    expect(markup).toContain("Show all");
+  });
+});
