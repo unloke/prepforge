@@ -5002,6 +5002,7 @@ async function deleteBuildNodeLocal(nodeId) {
   } else {
     renderBuilderTree();
   }
+  syncViewHeads();
   // The delete doesn't queue for the server until the undo window closes; until
   // then it lives in buildUndoDeletes so a reconcile re-hydrate re-prunes it.
   appState.buildUndoDeletes.add(nodeId);
@@ -5053,6 +5054,7 @@ async function deleteBuildNodeLocal(nodeId) {
       } else {
         renderBuilderTree();
       }
+      syncViewHeads();
       if (parkedAdds.length) {
         setBuildSync("dirty");
         scheduleBuildFlush();
