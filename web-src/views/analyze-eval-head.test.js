@@ -23,7 +23,8 @@ function setup() {
   const head = el();
   const ids = {
     "analysis-chart-caption": el({ parentElement: head }),
-    "analysis-eval-card": el(),
+    "analysis-eval-card": Object.assign(el({ hidden: false }), { hidden: false }),
+    "analysis-eval-graph": el({ hidden: true }),
     "engine-head-eval": el(),
     "engine-eval-bar-white": el({ style: { transform: "" } }),
     "eval-chart-live": el(),
@@ -157,5 +158,22 @@ describe("live whole-game progress chart", () => {
       await new Promise((r) => setTimeout(r, 30));
       expect(ids["analysis-eval-live"].dataset.phase).toBe(graphPhase);
     }
+  });
+});
+
+describe("Evaluation card visibility", () => {
+  it("hides the whole card while it has no number, no graph and no engine", () => {
+    // An empty card is an empty grey block in the panel: nothing to evaluate yet.
+    const { view, ids } = setup();
+    view.updateEvalChartCursor();
+    expect(ids["analysis-eval-card"].hidden).toBe(true);
+  });
+
+  it("shows the card once the analysed game has an evaluation", () => {
+    const { view, ids, appState } = setup();
+    appState.evalChartPoints = [{ ply: 1, score_cp: 120 }];
+    appState.analysisPly = 1;
+    view.updateEvalChartCursor();
+    expect(ids["analysis-eval-card"].hidden).toBe(false);
   });
 });

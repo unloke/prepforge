@@ -4544,9 +4544,10 @@ function syncEngineChrome() {
   syncAnalysisEvalCard();
 }
 
-// The Evaluation card shows when there is a game graph or the engine is on;
-// the graph itself only once an analysis has plotted points (a loaded but not
-// yet analyzed game has nothing to draw, so no empty grey box).
+// The Evaluation card shows when there is a game graph, a number to read or the
+// engine is on; the graph itself only once an analysis has plotted points (a
+// loaded but not yet analyzed game has nothing to draw, so no empty grey box).
+// With nothing loaded the card is empty, so it is not drawn at all.
 function syncAnalysisEvalCard() {
   const card = document.getElementById("analysis-eval-card");
   const graph = document.getElementById("analysis-eval-graph");
@@ -4554,7 +4555,10 @@ function syncAnalysisEvalCard() {
   const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
   const hasGraph = !!results && !results.hidden && points.length > 0;
   if (graph) graph.hidden = !hasGraph;
-  card?.classList.toggle("is-engine", engineWantedIn("analyze"));
+  const isEngine = engineWantedIn("analyze");
+  card?.classList.toggle("is-engine", isEngine);
+  const hasNumber = !!(document.getElementById("analysis-chart-caption")?.textContent || "").trim();
+  if (card) card.hidden = !hasGraph && !isEngine && !hasNumber;
 }
 
 // ---- Explorer row evals ------------------------------------------------------
