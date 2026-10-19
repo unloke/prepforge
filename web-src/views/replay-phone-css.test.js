@@ -40,3 +40,10 @@ it("marks the open row with a bar and a fill, not a resting shadow", () => {
   expect(css).toMatch(/\.lr\.is-open \{[^}]*border-left: 3px solid var\(--accent\)/);
   expect(css).not.toMatch(/\.lr\.is-open \{[^}]*box-shadow/);
 });
+
+it("keeps the ledger result column in the row's ink", () => {
+  // A win/loss/draw tint on every row made the score the loudest thing in a
+  // table whose job is to show what left preparation.
+  expect(css).not.toMatch(/\.res\.r-(win|loss|draw)/);
+  expect(css).toMatch(/\.res \{[^}]*font-variant-numeric: tabular-nums/);
+});

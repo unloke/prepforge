@@ -92,10 +92,11 @@
 /* Result and Departure are numbers and move numbers: right-aligned with
    tabular figures, and the header above them is right-aligned the same way. */
 .res { font-weight: 700; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+/* A ledger, not a win/loss chart: the result column keeps the row's ink and
+   the outcome is carried by the Preparation badge. Green/red on every row put
+   six accent-coloured numbers on a ten-row sample and made the eye land on the
+   score instead of on what left prep. */
 .lr-date { white-space: nowrap; }
-.res.r-win { color: var(--good-text); }
-.res.r-loss { color: var(--danger); }
-.res.r-draw { color: var(--muted); }
 .lr.head > :nth-child(3),
 .lr.head > :nth-child(5) { text-align: right; }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
