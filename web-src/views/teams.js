@@ -129,8 +129,10 @@ export function createTeamsView({
     if (isCurrent()) loadSharedRepertoires();
   }
 
-  // The placeholder card beside the directory explains what to do next for the
-  // current state (signed out / no teams yet / pick one) instead of a bare blank.
+  // The placeholder card beside the directory says what to do next for the
+  // current state (signed out / no teams yet / none picked) instead of a bare
+  // blank. It names the state and the one step that changes it; it does not
+  // describe what a team holds.
   const EMPTY_CARD_COPY = {
     "signed-out": {
       title: "Teams",
@@ -138,11 +140,11 @@ export function createTeamsView({
     },
     "no-teams": {
       title: "No teams yet",
-      body: "Create a team, then invite people with a link, or add PrepForge users by their Lichess username.",
+      body: "Create a team, then invite people with a link.",
     },
     choose: {
-      title: "Choose a team",
-      body: "Open a team to see its members and shared repertoires.",
+      title: "No team selected",
+      body: "Choose a team from the directory.",
     },
   };
   function renderTeamEmptyCard(kind) {

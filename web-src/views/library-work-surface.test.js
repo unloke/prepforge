@@ -22,8 +22,10 @@ function rule(selector) {
   return css.slice(open, css.indexOf("}", open));
 }
 
-// The desktop block that turns the Library into a work surface.
-const desktop = css.slice(css.indexOf("@media (min-width: 1021px) {"));
+// The desktop block that turns the Library into a work surface. The sheet has
+// one desktop media query per view, so take the one that holds the grid rule.
+const gridRule = css.indexOf(".lib-grid { flex: 1 1 auto");
+const desktop = css.slice(css.lastIndexOf("@media (min-width: 1021px) {", gridRule));
 
 it("the Library grid takes the height it is given", () => {
   const grid = desktop.slice(desktop.indexOf(".lib-grid {"), desktop.indexOf(".lib-grid {") + 200);

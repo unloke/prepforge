@@ -1452,8 +1452,21 @@ h2 {
    (an empty directory) used to leave the row ragged. */
 .teams > .card { align-self: stretch; }
 
+/* Teams is a work surface: the open team's panel takes the height of the
+   view, the way the Library table does, and the two short lists beside it
+   keep their own height at the top. Before this, every card was sized by its
+   content, so the page showed three short strips over half a screen of
+   empty ground. */
+@media (min-width: 1021px) {
+  .teams { min-height: 100%; grid-template-rows: minmax(0, 1fr); }
+  .teams > .card.dir,
+  .teams > .card.incoming { align-self: start; }
+  .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
+  .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
+}
+
 @media (max-width: 1279px) {
-  .teams { grid-template-columns: 250px minmax(0, 1fr); }
+  .teams { grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
   .incoming { grid-column: 2; }
 }
 @media (max-width: 1020px) {

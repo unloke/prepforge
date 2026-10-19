@@ -211,12 +211,15 @@
 
 /* ---- Empty + incoming --------------------------------------------------- */
 
+/* The empty state is a work surface with nothing in it yet, so its one line
+   sits in the middle of the card the way the Library's empty table does. */
 .teams .team-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 48px 24px;
+  padding: 24px;
   text-align: center;
 }
 .team-empty h3 { margin: 0; }
