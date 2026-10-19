@@ -2443,7 +2443,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs);
   font-weight: 650;
   list-style: none;
   user-select: none;
@@ -2500,21 +2500,23 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--fs);
 }
 .train-repertoire-option .rep-option-color {
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs);
   white-space: nowrap;
 }
 .train-repertoire-select-all {
   padding-bottom: 7px;
   border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs);
   font-weight: 700;
 }
 .train-repertoire-empty {
   margin: 6px 4px 4px;
-  font-size: 12px;
+  font-size: var(--fs);
   line-height: 1.35;
 }
 /* Confetti */
@@ -3045,8 +3047,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overscroll-behavior: contain;
 }
 #view-train .panel-head { padding: 8px 12px; }
+/* Nothing in this panel that is meant to be read sits under the body size. */
+#view-train .tcard p,
+#view-train .note { font-size: var(--fs); }
+#view-train .btn.sm { font-size: var(--fs); }
 #view-train .seg { display: flex; width: 100%; }
-#view-train .seg-btn { flex: 1; min-width: 0; }
+#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); }
 
 .blitz-bar {
   position: absolute;
@@ -3125,7 +3131,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   color: var(--muted);
-  font-size: var(--fs-s);
+  font-size: var(--fs);
 }
 .train-coach-sub:empty { display: none; }
 /* The sub line is clamped to two lines; a tap on the banner shows the rest
@@ -3166,7 +3172,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .tcard .field,
 .train-play-setup { display: flex; flex-direction: column; gap: 10px; }
 .tcard .field { gap: 4px; }
-.train-picker-label { color: var(--label); font-size: var(--fs-s); font-weight: 550; }
+.train-picker-label { color: var(--label); font-size: var(--fs); font-weight: 550; }
 /* The card's own head, in the Games ledger-head terms: title, then a hairline
    separating it from the controls below. */
 .tcard > h3 {
@@ -3187,7 +3193,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: inherit;
   font: inherit;
 }
-.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs-s); font-weight: 600; user-select: none; }
+.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
 .train-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-start-row .btn { flex: 1; min-width: 0; }
 /* The setup's primary action: one size taller than the Games toolbar buttons,
@@ -3206,7 +3212,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
   font-size: var(--fs-s);
 }
-.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs-s); }
+.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
 .train-play-chip {
   align-self: flex-start;
   margin: 0;
@@ -3214,14 +3220,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 10px;
   background: var(--warn-soft);
   color: var(--warn-text);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 650;
 }
 
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
-.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
+.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs); cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
 .train-mode-name:hover, .train-mode-name:focus-visible { color: var(--text); text-decoration-color: currentColor; }
 /* Choosing a mode is setup: once a session runs, or its result shows, the tabs
    leave with the setup card (the card head names the mode). */
@@ -3245,7 +3251,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .train-line-path bdi { direction: ltr; unicode-bidi: isolate; }
 .train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
-.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs-xs); }
+.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs); }
 .card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
 .card-dots i.done { background: var(--good); }
 .card-dots i.cur { background: var(--accent); }
@@ -3266,7 +3272,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 
-.train-session-preview { margin: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
+.train-session-preview { margin: 0; font-size: var(--fs); font-weight: 600; color: var(--label); }
 
 /* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
 .stats { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3285,18 +3291,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .stat b { font-size: var(--fs); line-height: 1.2; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
-.stat span { color: var(--label); font-size: var(--fs-xs); }
+.stat span { color: var(--label); font-size: var(--fs); }
 .stat.pop { animation: streakPop var(--dur) var(--ease-emphasis); }
 .stat.milestone { border-color: var(--good); background: var(--good-soft); }
 .stat.milestone b { color: var(--good-text); }
 .stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
 .stat.at-risk span::after { content: " · at risk"; color: var(--danger); }
-.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); }
+.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs); }
 .pips { display: flex; flex-wrap: wrap; gap: 3px; min-height: 9px; }
 .pips i { width: 9px; height: 9px; border-radius: 2px; }
 .pips i.ok { background: var(--good); }
 .pips i.no { background: var(--danger); }
-.trail-empty { color: var(--label); font-size: var(--fs-xs); }
+.trail-empty { color: var(--label); font-size: var(--fs); }
 
 .upnext { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
 .un-row {
@@ -3306,11 +3312,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
   padding: 5px 0;
   border-bottom: 1px solid var(--line);
-  font-size: var(--fs-s);
+  font-size: var(--fs);
 }
 .un-row .kchip { justify-self: start; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.un-line { color: var(--label); font: var(--fs-xs) var(--mono); white-space: nowrap; }
+.un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
 
 /* Session summary. A .tcard like the rest; the stat cells are its fills. */
 /* The stat cells fill the row they are in: a session with a skip AND a day
@@ -3319,7 +3325,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
 .sum-cells b { font-size: 18px; }
-.sum-cells span { color: var(--label); font-size: var(--fs-xs); }
+.sum-cells span { color: var(--label); font-size: var(--fs); }
 .delta { display: flex; flex-direction: column; }
 .tsum-row {
   display: grid;
@@ -3327,7 +3333,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
   padding: 5px 4px;
   border-bottom: 1px solid var(--line);
-  font-size: var(--fs-s);
+  font-size: var(--fs);
 }
 .tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
 .tsum-row .num { text-align: right; }
