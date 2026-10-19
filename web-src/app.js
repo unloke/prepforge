@@ -95,6 +95,7 @@ import { fetchLichessProfile } from "./lichess-profile.js";
 import {
   buildPaletteItems,
   filterPaletteItems,
+  paletteScrollTop,
   renderPaletteItems,
 } from "./command-palette.js";
 import { createAccountController } from "./controllers/account.js";
@@ -1231,6 +1232,18 @@ function paintPalette() {
   if (input) {
     if (active) input.setAttribute("aria-activedescendant", active.id);
     else input.removeAttribute("aria-activedescendant");
+  }
+  // Arrow keys move the highlight; the list must follow it.
+  if (active) {
+    const boxRect = box.getBoundingClientRect();
+    const itemRect = active.getBoundingClientRect();
+    box.scrollTop = paletteScrollTop({
+      boxTop: boxRect.top,
+      boxHeight: boxRect.height,
+      itemTop: itemRect.top,
+      itemHeight: itemRect.height,
+      scrollTop: box.scrollTop,
+    });
   }
 }
 
