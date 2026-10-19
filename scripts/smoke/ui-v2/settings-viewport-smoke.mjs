@@ -142,6 +142,28 @@ async function runViewport(vp) {
   check(themeAttr === "dark", `clicking Dark should apply the dark theme, got "${themeAttr}"`);
   const darkPressed = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').getAttribute("aria-pressed");
   check(darkPressed === "true", "Dark seg button should be pressed after the click");
+  // The pick is persisted where the rail toggle keeps it, and it survives a load.
+  const storedTheme = await page.evaluate(() => JSON.parse(localStorage.getItem("prepforge.prefs") || "{}").theme);
+  check(storedTheme === "dark", `Settings → Appearance must store the theme, got "${storedTheme}"`);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1200);
+  const reloadedTheme = await page.evaluate(() => document.documentElement.dataset.theme);
+  check(reloadedTheme === "dark", `the stored theme should apply after a reload, got "${reloadedTheme}"`);
+  await page.evaluate(() => [...document.querySelectorAll(".tab[data-view=\"settings\"]")].pop()?.click());
+  await page.waitForTimeout(600);
+  const reloadedPressed = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').getAttribute("aria-pressed");
+  check(reloadedPressed === "true", "the Appearance control should show the stored pick after a reload");
+  // The rail toggle and the card are one value: the toggle flips it, the card follows.
+  const toggle = page.locator('[data-testid="theme-toggle"]');
+  if (await toggle.isVisible()) await toggle.click();
+  else await page.evaluate(() => document.getElementById("theme-toggle").click());
+  await page.waitForTimeout(400);
+  const afterToggle = await page.evaluate(() => ({
+    stored: JSON.parse(localStorage.getItem("prepforge.prefs") || "{}").theme,
+    light: document.querySelector('#settings-theme-seg .seg-btn[data-theme-value="light"]').getAttribute("aria-pressed"),
+  }));
+  check(afterToggle.stored === "light" && afterToggle.light === "true",
+    `the rail toggle must move the Appearance control with it, got ${JSON.stringify(afterToggle)}`);
   // Back to system so later viewports start clean (localStorage persists).
   await page.locator('#settings-theme-seg .seg-btn[data-theme-value="system"]').click();
 

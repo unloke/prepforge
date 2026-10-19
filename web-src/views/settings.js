@@ -89,6 +89,13 @@ export function createSettingsView({
     if (ratingOut) ratingOut.textContent = auto ? String(effective) : ratingEl.value;
   }
 
+  // The one way this card changes the color theme; the app's pref writer then
+  // repaints this control, so both stay on one value.
+  function pickTheme(value) {
+    setPref("theme", value);
+    renderThemeControl();
+  }
+
   function renderThemeControl() {
     const themeEl = document.getElementById("settings-theme");
     const current = String(pref("theme") || "system");
@@ -572,18 +579,14 @@ export function createSettingsView({
     const themeSeg = document.getElementById("settings-theme-seg");
     if (themeSeg) {
       themeSeg.querySelectorAll(".seg-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          setPref("theme", btn.dataset.themeValue);
-          renderThemeControl();
-        });
+        btn.addEventListener("click", () => pickTheme(btn.dataset.themeValue));
       });
     }
+    // The hidden select is a second door to the same pref: apply it through the
+    // control's own pick (see pickTheme).
     const themeEl = document.getElementById("settings-theme");
     if (themeEl) {
-      themeEl.addEventListener("change", () => {
-        setPref("theme", themeEl.value);
-        renderThemeControl();
-      });
+      themeEl.addEventListener("change", () => pickTheme(themeEl.value));
     }
 
     document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {

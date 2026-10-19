@@ -49,7 +49,7 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove, localSanLine, isStartFen } from "./chess-local.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme, readStoredPrefs, readStoredTheme, storeTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createBoardController } from "./board/board-controller.js";
@@ -262,12 +262,11 @@ const PREF_LABELS = {
   bestArrow: "Engine best-move arrow",
 };
 
-function loadPrefs() {
-  try {
-    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") };
-  } catch (_) {
-    return { ...DEFAULT_PREFS };
-  }
+// The stored blob is merged over the defaults, and the theme is normalized in
+// place: a hand-written or unknown theme must not survive as `undefined` and
+// then fail to match the Settings control it is painted next to.
+function loadPrefs(storage = globalThis.localStorage) {
+  return { ...DEFAULT_PREFS, ...readStoredPrefs(storage), theme: readStoredTheme(storage) };
 }
 
 function pref(name) {
@@ -286,10 +285,15 @@ function maiaAnalysisEnabled() {
 
 function setPref(name, value) {
   appState.prefs[name] = value;
-  try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(appState.prefs));
-  } catch (_) {
-    // ignore storage errors
+  if (name === "theme") {
+    // One writer for the persisted theme, shared with the rail toggle.
+    appState.prefs.theme = storeTheme(value, localStorage);
+  } else {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(appState.prefs));
+    } catch (_) {
+      // ignore storage errors
+    }
   }
   applyPref(name);
 }
@@ -298,6 +302,9 @@ function applyPref(name) {
   if (name === "theme") {
     applyTheme(pref("theme"));
     syncThemeToggle();
+    // Settings owns the full System / Light / Dark control; it must show the
+    // rail toggle's pick, whichever control made it.
+    settingsView?.renderThemeControl?.();
   }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
@@ -7023,6 +7030,8 @@ async function init() {
   if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
   initAccountController();
+  // First paint reads the stored theme; it never writes, so opening the app
+  // does not fabricate a pref blob.
   applyPref("theme");
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
