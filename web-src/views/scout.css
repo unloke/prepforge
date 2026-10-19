@@ -89,6 +89,8 @@
   font-weight: 600;
 }
 .scout-color-rec-muted { background: var(--panel-soft); color: var(--muted); font-weight: 500; }
+/* No clear edge: the two colour scores are live data, and the "why" sits in the title. */
+.scout-colour-split { color: var(--text); font-variant-numeric: tabular-nums; cursor: help; }
 
 /* Engine / Maia enrichment progress: a quiet status line, not a card. */
 .scout-engine-progress {

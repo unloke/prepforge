@@ -4,7 +4,7 @@ import { html } from "../html.js";
 
 import "./scout.css";
 import { createEnrichPipeline } from "../enrich-pipeline.js";
-import { countOf } from "../plural.js";
+import { countOf, nounOf } from "../plural.js";
 
 import {
   applyScoutColorTabs,
@@ -90,6 +90,11 @@ export function scoutRenderForceEvery(gameCount) {
   if (n < 300) return 50;
   if (n < 600) return 100;
   return 200;
+}
+
+/** The plan-row enter fade is for a settled re-rank, never for the live stream. */
+export function planRowEntranceEnabled(sessionState) {
+  return sessionState !== "running";
 }
 
 /** Debounce delay for batched rerenders — longer waits as history grows. */
@@ -240,6 +245,10 @@ export function createScoutView(deps) {
     const fetched = scoutState?.games?.length || 0;
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(fetched);
+    // "1 games fetched" — the noun is markup beside the number, so it has to
+    // agree with the count too.
+    const noun = document.getElementById("scout-live-noun");
+    if (noun) noun.textContent = nounOf(fetched, "game");
     updateStreamPhase();
   }
 
@@ -461,6 +470,11 @@ export function createScoutView(deps) {
   // not shown before fade in, one after another; rows that stay do not move or flash.
   function markEnteringPlanRows(root, before) {
     if (!before.size) return;
+    // Mid-stream every batch rebuilds the plan: staggering a new row in holds it
+    // at opacity 0 (animation-fill-mode: both) for up to ~385ms, so its ~60px
+    // row shows as a blank gap between rows until loading ends. The enter fade
+    // is for a settled re-rank after enrichment, so skip it while streaming.
+    if (!planRowEntranceEnabled(scoutSession?.state)) return;
     let n = 0;
     for (const row of root.querySelectorAll(".scout-weakness-row")) {
       if (before.has(`${row.dataset.color}|${row.dataset.lineKey}`)) continue;

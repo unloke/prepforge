@@ -15,12 +15,6 @@ const COLOR_EVEN = [
   "{name} scores similarly with either colour, so neither side is a clear edge for you{qualifier}.",
 ];
 
-// With the actual numbers: a 49% vs 44% split over hundreds of games is within
-// normal variation, and saying so beats "take White".
-const COLOR_EVEN_NUMBERS = [
-  "No clear colour edge: {name} scores {w}% with White and {b}% with Black — a gap that size is normal variation{qualifier}.",
-];
-
 const COLOR_INSUFFICIENT = [
   "Too few games to compare colours ({name}: {wN} with White, {bN} with Black).",
 ];
@@ -319,9 +313,15 @@ export function buildScoutSectionSummary(
   const headline = buildActionableHeadline(prepTargets, stats, username);
   bullets.push(headline);
 
+  // The section's "Expect" read chip quotes the same expectationText, so a
+  // headline that already opens with it must not repeat the sentence.
   const expect = expectationText(stats.firstChoices);
-  if (expect && !headline.startsWith("Expect ")) {
+  if (expect && !headline.startsWith(`Expect ${expect}`)) {
     bullets.push(stats.oppColor === "black" ? `As Black they answer ${expect}.` : `Expect ${expect}.`);
+  } else if (expect) {
+    // The sentence is still true, so it belongs in the Expect chip's tooltip
+    // (summary.notes) instead of being dropped.
+    notes.push(stats.oppColor === "black" ? `As Black they answer ${expect}.` : `Expect ${expect}.`);
   }
 
   const branches = stats.openingBranches;
@@ -467,16 +467,13 @@ export function buildColorRecommendationBanner(rec, { username = "" } = {}) {
     return html`<div class="scout-color-rec scout-color-rec-muted">${text}</div>`;
   }
   if (!rec.pick) {
+    // The scores are the live fact; why they add up to "no clear edge" is the
+    // chip's tooltip, not a sentence under the header.
+    if (rec.whiteScore != null && rec.blackScore != null) {
+      return html`<div class="scout-color-rec scout-color-rec-muted"><span class="scout-colour-split" title="No clear colour edge: the gap is within normal variation for this many games">${name} ${rec.whiteScore}% as White · ${rec.blackScore}% as Black</span></div>`;
+    }
     const qual = qualifier(rec.confidence);
-    const text =
-      rec.whiteScore != null && rec.blackScore != null
-        ? choose({ san: "even-n" }, "scout-color-even-n", COLOR_EVEN_NUMBERS, {
-            name,
-            w: rec.whiteScore,
-            b: rec.blackScore,
-            qualifier: qual,
-          })
-        : choose({ san: "even" }, "scout-color-even", COLOR_EVEN, { name, qualifier: qual });
+    const text = choose({ san: "even" }, "scout-color-even", COLOR_EVEN, { name, qualifier: qual });
     return html`<div class="scout-color-rec scout-color-rec-muted">${text}</div>`;
   }
   const qual = qualifier(rec.confidence);
