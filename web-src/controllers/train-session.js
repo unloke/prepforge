@@ -340,10 +340,12 @@ function syncTrainPickerVisibility() {
 // so the many syncTrainPickerVisibility() calls don't each refetch. The raw
 // counts ride along, because they are also what tells Start whether a queue
 // exists at all.
-const trainPreviewCache = { at: 0, brief: null, nextSession: null, loading: null };
+const trainPreviewCache = { at: 0, brief: null, sources: [], nextSession: null, loading: null };
 function invalidateTrainSessionPreview() {
   trainPreviewCache.at = 0;
   trainPreviewCache.nextSession = null;
+  trainPreviewCache.brief = null;
+  trainPreviewCache.sources = [];
 }
 
 
@@ -381,15 +383,12 @@ async function refreshTrainSessionPreview() {
     document.getElementById("train-brief-label").textContent = brief.label;
     document.getElementById("train-brief-kinds").innerHTML =
       html`${brief.kinds.map(([kind, count]) => html`<span class="kchip k-${kind}">${count} ${kind}</span>`)}`;
-    const reps = (appState.repertoireList || []).filter(
-      (rep) => rep.is_active !== false
-        && !appState.pendingRepDeletes.has(String(rep.id))
-        && !(rep.health && Number(rep.health.trainable) === 0),
-    );
+    // What the queue is drawn from, and how far each repertoire has come: the
+    // setup screen's own numbers, not a caption about the page.
     document.getElementById("train-brief-reps").innerHTML =
-      html`${reps.map(
+      html`${trainPreviewCache.sources.map(
         (rep) =>
-          html`<span class="train-brief-rep"><span class="color-dot ${rep.color === "black" ? "black" : "white"}"></span>${rep.name}</span>`,
+          html`<div class="train-source"><span class="color-dot ${rep.black ? "black" : "white"}"></span><span class="train-source-name">${rep.name}</span><span class="train-source-meter" title="${rep.pct}% mastered: ${rep.mastered} of ${rep.trainable} moves"><i style="width:${rep.pct}%"></i></span><span class="train-source-count">${rep.pct}% mastered · ${rep.trainable} to train</span></div>`,
       )}`;
   };
   if (Date.now() - trainPreviewCache.at < 30000) {
@@ -404,12 +403,14 @@ async function refreshTrainSessionPreview() {
       ]);
       trainPreviewCache.nextSession = payload && payload.next_session;
       trainPreviewCache.brief = mod.sessionBrief(trainPreviewCache.nextSession);
+      trainPreviewCache.sources = mod.queueSources(appState.repertoireList || [], appState.pendingRepDeletes);
       trainPreviewCache.at = Date.now();
     })().catch(() => {
       // No answer, so no opinion: Start stays live and Start itself reports
       // why the queue could not be built.
       trainPreviewCache.nextSession = null;
       trainPreviewCache.brief = null;
+      trainPreviewCache.sources = [];
     }).finally(() => {
       trainPreviewCache.loading = null;
     });

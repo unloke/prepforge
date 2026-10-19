@@ -2,7 +2,7 @@
 // number the screen leads with), what it is made of, polish included.
 import { describe, expect, it } from "vitest";
 
-import { sessionBrief, summaryStatCells } from "./train.js";
+import { sessionBrief, queueSources, summaryStatCells } from "./train.js";
 
 describe("sessionBrief", () => {
   it("leads with the size and counts every card kind, polish included", () => {
@@ -27,6 +27,34 @@ describe("sessionBrief", () => {
   });
 });
 
+describe("queueSources", () => {
+  const rep = (id, name, health, color = "white", extra = {}) => ({ id, name, color, is_active: true, health, ...extra });
+
+  it("lists the repertoires the queue draws from, with their mastery", () => {
+    expect(queueSources([
+      rep("r1", "Caro-Kann: Advance", { trainable: 10, mastered: 3, mastery_pct: 30 }, "black"),
+      rep("r2", "London System", { trainable: 8, mastered: 5, mastery_pct: 62 }),
+    ])).toEqual([
+      { name: "Caro-Kann: Advance", black: true, trainable: 10, mastered: 3, pct: 30 },
+      { name: "London System", black: false, trainable: 8, mastered: 5, pct: 62 },
+    ]);
+  });
+
+  it("leaves out what contributes no cards: empty, inactive or being deleted", () => {
+    expect(queueSources([
+      rep("r1", "Empty", { trainable: 0, mastered: 0, mastery_pct: 0 }),
+      rep("r2", "Inactive", { trainable: 4, mastered: 0, mastery_pct: 0 }, "white", { is_active: false }),
+      rep("r3", "Deleting", { trainable: 4, mastered: 0, mastery_pct: 0 }),
+      rep("r4", "Live", { trainable: 4, mastered: 2, mastery_pct: 50 }),
+    ], new Set(["r3"])).map((r) => r.name)).toEqual(["Live"]);
+  });
+
+  it("survives a repertoire whose health never arrived", () => {
+    expect(queueSources([rep("r1", "Fresh", null)])).toEqual([
+      { name: "Fresh", black: false, trainable: 0, mastered: 0, pct: 0 },
+    ]);
+  });
+});
 describe("summaryStatCells", () => {
   it("labels a one-card session in the singular", () => {
     expect(summaryStatCells({ cardsDone: 1 }, { correct: 1, mistakes: 0, best: 1 }))

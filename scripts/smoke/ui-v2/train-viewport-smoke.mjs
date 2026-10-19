@@ -116,9 +116,15 @@ async function runViewport(vp) {
       banner: document.getElementById("train-banner-title")?.textContent?.trim(),
       preview: document.getElementById("train-brief")?.textContent?.trim(),
       previewHidden: document.getElementById("train-brief")?.hidden,
+      startHidden: document.getElementById("train-srs-start")?.hidden,
+      fixHidden: document.getElementById("train-empty")?.hidden,
+      fix: document.getElementById("train-empty-build")?.textContent?.trim(),
     }));
     check(emptySetup.banner === "No moves to train yet", "empty queue banner should be the one heading, got " + JSON.stringify(emptySetup.banner));
     check(emptySetup.previewHidden === true, "empty queue preview should be hidden, got " + JSON.stringify(emptySetup.preview));
+    // Nothing to train: a dead Start is not the answer; the way to fix it is.
+    check(emptySetup.startHidden === true, "empty queue should hide Start, got " + JSON.stringify(emptySetup.startHidden));
+    check(emptySetup.fixHidden === false && emptySetup.fix === "Open Repertoire", "empty queue should offer the fix, got " + JSON.stringify(emptySetup.fix));
   } finally {
     await emptyPage.close();
   }

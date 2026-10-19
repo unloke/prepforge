@@ -800,6 +800,11 @@
     padding: 0 6px;
   }
   #view-train #train-fresh { min-height: 44px; }
+  /* A phone row has no room for a name, a meter and a count side by side: the
+     name keeps the line, the meter and its number sit under it. */
+  #view-train .train-source { grid-template-columns: auto minmax(0, 1fr); row-gap: 4px; }
+  #view-train .train-source-meter { grid-column: 2; width: 100%; }
+  #view-train .train-source-count { grid-column: 2; }
   #view-train .train-sidebar .tcard {
     margin: 0;
     padding: 14px;

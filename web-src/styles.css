@@ -3326,8 +3326,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    size it made the coach banner above it look like a kicker. */
 .train-brief-count { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
-.train-brief-reps { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: var(--fs); }
-.train-brief-rep { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.train-brief-reps { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: var(--fs); }
+.train-source { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px auto; align-items: center; gap: 10px; }
+.train-source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+/* Mastery is the one progress signal a player has before starting: a small
+   track on the recess, read against the number beside it. */
+.train-source-meter { display: block; width: 72px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.train-source-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.train-source-count { color: var(--label); white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Nothing to train: the dead Start is replaced by the fix, not by a caption. */
 .train-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 

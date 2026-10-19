@@ -28,6 +28,25 @@ export function sessionBrief(next) {
   };
 }
 
+// Where the queue draws from: one row per repertoire the Start would drill,
+// with the mastery it has reached and how much is left. An empty repertoire
+// contributes no cards, so it is not a source.
+export function queueSources(reps = [], pendingDeletes = new Set()) {
+  return reps
+    .filter(
+      (rep) => rep.is_active !== false
+        && !pendingDeletes.has(String(rep.id))
+        && !(rep.health && Number(rep.health.trainable) === 0),
+    )
+    .map((rep) => ({
+      name: rep.name,
+      black: rep.color === "black",
+      trainable: Number(rep.health?.trainable) || 0,
+      mastered: Number(rep.health?.mastered) || 0,
+      pct: Math.max(0, Math.min(100, Math.round(Number(rep.health?.mastery_pct) || 0))),
+    }));
+}
+
 // The last plies of a numbered line ("1.e4 c6 2.d4 d5" → "2.d4 d5"): which
 // position a card asks about, without its answer.
 export function lineTail(line, plies = 2) {
