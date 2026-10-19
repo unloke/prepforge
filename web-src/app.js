@@ -6866,6 +6866,13 @@ function bindEvents() {
       if (inBuild) buildGoForward();
       else void analysisTreeNav("next").catch(() => {});
     }
+    if (event.key === "Home" || event.key === "End") {
+      // Home/End: the ends of the line. A held key repeats keydown, so one
+      // hold steps the whole game instead of one move per press.
+      event.preventDefault();
+      if (inBuild) event.key === "Home" ? buildGoRoot() : buildGoToEnd();
+      else void analysisTreeNav(event.key === "Home" ? "start" : "end").catch(() => {});
+    }
     // Up/Down (and j/k) move the fork pick — which prepared continuation → will
     // play next. The on-screen fork bar and the board arrows mirror the pick.
     // With no fork at the current position they do nothing (← → step the line).
