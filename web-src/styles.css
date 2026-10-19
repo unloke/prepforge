@@ -132,13 +132,16 @@
   --eval-side-black: #25282d;
 
   /* -- Type ---------------------------------------------------------------
-     13px base / 12px small / 11px extra-small. Tabular figures are set once
+     13px base / 13px small / 11px extra-small. Tabular figures are set once
      on <body> below so every number that changes or lines up already reads as
-     a column. The mono stack is for SAN, lines and code. */
+     a column. The mono stack is for SAN, lines and code.
+     --fs-s used to be 12px: below the legible floor, so every small label in
+     the app read smaller than the text around it. It keeps its name because
+     the view sheets still address it, but it no longer means "smaller". */
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace;
   --fs: 13px;
-  --fs-s: 12px;
+  --fs-s: 13px;
   --fs-xs: 11px;
 
   /* -- Radii, elevation, control sizes ------------------------------------ */
@@ -896,18 +899,16 @@ h2 {
 
 /* One tag style for account kinds (Primary, External) everywhere: Settings,
    the source picker and the Games/Scout chips. Lives here, not in the lazy
-   settings.css, so it is styled before Settings has ever been opened. */
+   settings.css, so it is styled before Settings has ever been opened.
+   A quiet filled chip in sentence case: the kind is a word, not a label. */
 .conn-primary,
 .src-kind {
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  background: var(--panel);
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: var(--surface-3);
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .src-row.is-external .src-chip-x {

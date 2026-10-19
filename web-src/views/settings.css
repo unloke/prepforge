@@ -106,14 +106,14 @@
 .set .note:empty,
 .set .note[hidden],
 .set .faint:empty { display: none; }
-.settings-error { font-family: var(--mono); word-break: break-word; }
+.settings-error { word-break: break-word; }
 
 .status-pill {
   padding: 1px 8px;
   border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 700;
 }
 .status-pill.ok { background: var(--good-soft); color: var(--good-text); }
@@ -295,10 +295,10 @@
 .acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
 .acct-tag {
   padding: 1px 8px;
-  border: 1px solid var(--line);
   border-radius: 10px;
+  background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 650;
 }
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
@@ -335,14 +335,12 @@
   padding: 4px 0 2px;
 }
 .conn-site {
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px 7px;
+  border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--fs);
+  font-weight: 600;
 }
 /* The linked username is a link into Lichess: it reads as text but takes a
    thumb-sized box on a phone. */
