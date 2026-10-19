@@ -44,7 +44,18 @@ describe("Teams is a work surface", () => {
     const head = view.match(/\.teams \.card-head \{[^}]*\}/);
     expect(head).toBeTruthy();
     expect(head[0]).not.toMatch(/border-bottom/);
-    // The row under it brings the line.
-    expect(view).toMatch(/\.team-row \{[^}]*border-top:\s*1px solid var\(--line\)/);
+    // The row under it brings the line, as a table rule inside the marked
+    // list (the way the replay ledger and the scout lines keep theirs).
+    expect(view).toMatch(/#teams-list\[data-ui\] \.team-row \{ border-top:\s*1px solid var\(--line\); \}/);
+  });
+
+  it("keeps a rule only where an interface fragment owns it", () => {
+    // The tab strip and the invite footer carried lines of their own; each
+    // carries a fill instead, and the active tab's underline is the only rule
+    // left in the strip.
+    expect(view.match(/\.teams \.tabs \{[^}]*\}/)[0]).not.toMatch(/border-bottom/);
+    expect(view.match(/\.team-invite-foot \{[^}]*\}/)[0]).not.toMatch(/border-top/);
+    // The member rows keep theirs, inside the marked list.
+    expect(view).toMatch(/#team-members\[data-ui\] > \.mem-row,\s*\n\s*#team-shared-repertoires\[data-ui\] > \.mem-row \{ border-top:\s*1px solid var\(--line\); \}/);
   });
 });

@@ -47,10 +47,12 @@
   justify-content: space-between;
   gap: 8px;
   padding: 9px 12px;
-  border-top: 1px solid var(--line);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
+/* The directory is one interface fragment, so the line between its rows is a
+   table rule (the way the replay ledger and the scout lines keep theirs). */
+#teams-list[data-ui] .team-row { border-top: 1px solid var(--line); }
 .team-row:hover { background: var(--panel-soft); }
 /* The same press as the Library rows: a row cannot scale, so it steps deeper
    into the surface. */
@@ -110,7 +112,8 @@
   display: flex;
   gap: 2px;
   padding: 0 8px;
-  border-bottom: 1px solid var(--line);
+  /* The strip carries its own fill, so it does not need a line under it. The
+     active tab's accent underline is the only rule in the strip. */
   background: var(--panel-soft);
 }
 .teams .tabs button {
@@ -153,8 +156,11 @@
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-top: 1px solid var(--line);
 }
+/* The member list and the shared list are interface fragments, so the line
+   between their rows is a table rule. */
+#team-members[data-ui] > .mem-row,
+#team-shared-repertoires[data-ui] > .mem-row { border-top: 1px solid var(--line); }
 .mem-id {
   display: flex;
   flex: 1;
@@ -170,7 +176,7 @@
   align-items: center;
   gap: 8px;
 }
-.team-role-select {
+select.team-role-select {
   height: 26px;
   padding: 0 6px;
   border: 1px solid var(--line-strong);
@@ -187,7 +193,6 @@
 .team-remove {
   border-color: transparent;
   background: transparent;
-  box-shadow: none;
   color: var(--muted);
 }
 .teams .card-head .btn.icon:hover { background: var(--surface-3); color: var(--text); }
@@ -222,10 +227,11 @@
 #team-members > .mem-row:nth-child(3) { animation-delay: 120ms; }
 #team-members > .mem-row:nth-child(n + 4) { animation-delay: 180ms; }
 
-/* Invite footer — one muted line under the panel. */
+/* Invite footer — one muted line under the panel. It carries its own fill, so
+   it does not need a line above it either. */
 .team-invite-foot {
   padding: 10px 12px;
-  border-top: 1px solid var(--line);
+  background: var(--panel-soft);
   font-size: var(--fs-s);
 }
 .team-invite-foot[hidden] { display: none; }
