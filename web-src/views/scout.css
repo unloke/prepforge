@@ -503,6 +503,11 @@
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
 @media (max-width: 760px) {
   .scout-color-tab { min-height: 44px; }
+  /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
+     are the only way to switch sample size or start the prep. */
+  .speed,
+  .scout-panel .btn.sm { min-height: 40px; }
+  .speed { padding: 0 11px; border-radius: 20px; }
   .scout-intel-charts { grid-template-columns: 1fr; }
   .first-moves { grid-template-columns: 1fr; }
   .line-row { grid-template-columns: 1fr auto; min-height: 44px; }

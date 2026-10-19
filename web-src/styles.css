@@ -805,6 +805,18 @@ h2 {
   outline-offset: 1px;
 }
 
+/* Phone: the 20px chip × sat between the toolbar's 44px controls and was the
+   only way to drop a source. Give it a 40px target that still looks 24px. */
+@media (max-width: 760px) {
+  .src-chip-x {
+    width: 40px;
+    height: 40px;
+    margin: -8px -10px -8px -2px;
+    font-size: 17px;
+  }
+  .src-chip { height: auto; min-height: 40px; padding-left: 11px; font-size: var(--fs-s); }
+}
+
 .src-composer-overlay {
   position: fixed;
   inset: 0;
