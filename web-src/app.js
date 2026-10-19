@@ -5,6 +5,7 @@ import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
 import { createNotices } from "./notices.js";
+import { resetViewScroll } from "./view-scroll.js";
 import { watchMaiaInit } from "./maia-init-notice.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
@@ -1510,6 +1511,7 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   // replay view: an error from one must not follow them to the other.
   if (appState.replaySection && appState.replaySection !== next) notices.clearStatusOnNavigate();
   appState.replaySection = next;
+  resetViewScroll();
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
     const active = panel.dataset.replayPanel === next;
     panel.hidden = !active;
@@ -1669,6 +1671,7 @@ function switchView(name, { fromUrl = false } = {}) {
     moreBtn.setAttribute("aria-current", active ? "page" : "false");
   }
   syncPageTitle();
+  resetViewScroll();
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
