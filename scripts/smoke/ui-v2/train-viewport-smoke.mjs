@@ -129,9 +129,11 @@ async function runViewport(vp) {
   await page.waitForTimeout(300);
   const startState = () => page.evaluate(() => {
     const b = document.getElementById("start-train");
-    return { disabled: b.disabled, title: b.title };
+    const cs = getComputedStyle(b);
+    return { disabled: b.disabled, title: b.title, opacity: cs.opacity, cursor: cs.cursor, background: cs.backgroundColor };
   });
-  check((await startState()).disabled === false, "rehearsal Start should be live for a repertoire with moves");
+  const liveStart = await startState();
+  check(liveStart.disabled === false, "rehearsal Start should be live for a repertoire with moves");
   await page.evaluate(() => {
     const sel = document.getElementById("train-repertoire-select");
     sel.value = "rep-empty";
@@ -141,6 +143,8 @@ async function runViewport(vp) {
   const emptyStart = await startState();
   check(emptyStart.disabled === true, "rehearsal Start should be dead when the repertoire has no moves");
   check(/No moves to train/.test(emptyStart.title), `rehearsal Start should say why, got "${emptyStart.title}"`);
+  check(emptyStart.cursor === "not-allowed" && Number(emptyStart.opacity) < 1, "disabled Start should read as disabled");
+  check(emptyStart.background !== liveStart.background, "disabled Start should not keep the enabled primary fill");
   await page.evaluate(() => {
     const sel = document.getElementById("train-repertoire-select");
     sel.value = "rep-1";
