@@ -258,6 +258,40 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).not.toContain("Learn new moves");
   });
 
+  it("first run: the Today primary action is New repertoire, not a Train that cannot start (round 2, symptom 2)", async () => {
+    mockDashboard({ repertoires: 0, training_sessions: 0 });
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain("Queue is clear");
+    expect(today).toContain('data-lib-action="new"');
+    expect(today).not.toContain("dashboard-train-now");
+  });
+
+  it("keeps Train once the account has stored something (a repertoire or a session)", async () => {
+    mockDashboard({ repertoires: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: false, health: { untrained: 0, due: 0 } },
+    ]);
+    await view.loadDashboard();
+    expect(String(todayCard.innerHTML)).toContain("dashboard-train-now");
+  });
+
+  it("turns the first-run action into Train when a created repertoire reaches an early listing", async () => {
+    // The listing refresh can land before /api/dashboard; the strip must not
+    // keep offering New repertoire after the first one exists.
+    api.mockImplementation(async (url) => (String(url).startsWith("/api/dashboard")
+      ? dashboardPayload({ repertoires: 1 })
+      : { repertoires: [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }] }));
+    let release;
+    const dashboardRead = new Promise((resolve) => { release = resolve; });
+    api.mockImplementationOnce(() => dashboardRead);
+    const load = view.loadDashboard();
+    await vi.waitFor(() => expect(String(todayCard.innerHTML)).toBe(""));
+    release(dashboardPayload({ repertoires: 1 }));
+    await load;
+    expect(String(todayCard.innerHTML)).toContain("dashboard-train-now");
+    expect(String(todayCard.innerHTML)).not.toContain('data-lib-action="new"');
+  });
+
   it("Today strip only says the queue is clear when nothing is due or new", async () => {
     mockDashboard({ repertoires: 1 }, [
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 0, due: 0 } },
