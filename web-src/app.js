@@ -5585,13 +5585,11 @@ async function runLichessCompare() {
   } catch (error) {
     if (isCurrent()) {
       // The fetch painted skeleton rows; a failure must not leave the ledger
-      // pulsing forever. Drop back to the pre-check prompt; the notification
-      // carries the one error message.
-      resetGamesResults();
-      // A routine status line is shown on a 700ms delay; clear it (and its
-      // pending timer) so "Fetching games..." cannot appear under the error.
+      // pulsing forever. The panel carries the one error message and the way
+      // to retry; a notification on top of it would say the same thing twice.
+      resetGamesResults({ keepPanel: true });
       setStatus("");
-      setStatusError(error.message);
+      await renderReplayFailure(error.message);
     }
   } finally {
     if (appState.replayCheckToken === token) button.disabled = false;
@@ -5641,7 +5639,7 @@ function clearGamesResults() {
 // The visual/state half of clearing, without the check-token bump: a FAILED
 // Check must drop its skeleton too, but its own response is still the current
 // one, so the finally still has to re-enable the button.
-function resetGamesResults() {
+function resetGamesResults({ keepPanel = false } = {}) {
   appState.replayResults = null;
   appState.replayFilter = null;
   appState.replayOpen = new Set();
@@ -5652,9 +5650,11 @@ function resetGamesResults() {
     summary.innerHTML = "";
   }
   const results = document.getElementById("replay-results");
-  if (results) {
+  if (results && !keepPanel) {
+    // Same shape index.html ships: the ledger's columns with the idle message
+    // in the table body, so the page never collapses to a floating sentence.
     results.innerHTML =
-      html`<div class="empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
+      html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div>`;
   }
   paintGamesSource();
   const hint = document.getElementById("games-idle-hint");
@@ -5969,6 +5969,7 @@ async function ensureReplayView() {
         rememberHandoff(gameHandoff(game, focus, "review-in-analyze"));
         return replayToAnalyze(game);
       },
+      onRetry: () => void runLichessCompare(),
     });
   }
   return replayView;
@@ -5983,6 +5984,11 @@ async function renderLedgerSkeleton(host) {
   if (!host) return;
   const view = await ensureReplayView();
   host.innerHTML = view.renderLedgerSkeleton();
+}
+
+async function renderReplayFailure(message) {
+  const view = await ensureReplayView();
+  view.renderReplayError(message);
 }
 
 // F-06: the Games→Train/Analyze handoff record — source game, the decision

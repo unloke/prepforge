@@ -160,6 +160,19 @@ describe("replay focus internals", () => {
     elements = makeElements();
   });
 
+  it("stages the ledger entrance once per result, not on every row click", () => {
+    const view = makeView(elements);
+    const payload = { games: [userErrorGame], misses_recorded: 0 };
+    view.renderReplayResults(payload);
+    expect(String(elements["replay-results"].innerHTML)).toContain("ledger-table list-enter");
+    // A row click re-renders the SAME payload: the stagger must not replay.
+    view.renderReplayResults(payload);
+    expect(String(elements["replay-results"].innerHTML)).not.toContain("list-enter");
+    // A new Check result animates again.
+    view.renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-results"].innerHTML)).toContain("ledger-table list-enter");
+  });
+
   it("counts games and queued moves with real plurals", () => {
     const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
     makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
@@ -415,4 +428,91 @@ it("keeps partial-source failures visible with results and empty results", () =>
   view.renderReplayResults({ games: [] });
   expect(String(elements["replay-results"].innerHTML)).not.toContain('role="alert"');
   delete globalThis.document;
+});
+
+describe("replay empty states", () => {
+  let elements;
+  beforeEach(() => { elements = makeElements(); });
+  afterEach(() => { globalThis.document = undefined; });
+
+  it("tells the user what to do when a source returned no games", () => {
+    makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("No recent games found");
+    expect(markup).toContain("Try a larger sample.");
+  });
+
+  it("keeps the ledger columns when there is nothing to list", () => {
+    // An empty Games page was two lines of text on the page ground, with no
+    // sign of the table they belonged to. Every empty state now sits in the
+    // ledger body, under the same column headers as the rows.
+    makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Games to review");
+    expect(markup).toContain("lr head col-head");
+    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).not.toContain("empty-state big");
+  });
+
+  it("names the empty bucket and keeps the way back", () => {
+    // The filter comes from the app; drive it through a view whose getter says
+    // "left-prep" while the sample holds only a user-error game.
+    makeView(elements); // installs the DOM stubs
+    const filtered = createReplayView({
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => "left-prep",
+      isGameOpen: () => false,
+      onToggleFilter: () => {},
+      onToggleGame: () => {},
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+    });
+    filtered.renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("No games in this bucket");
+    expect(markup).toContain("Nothing in this sample opponent left prep.");
+    expect(markup).toContain("Show all");
+  });
+});
+
+describe("replay failure state", () => {
+  let elements;
+  beforeEach(() => { elements = makeElements(); });
+  afterEach(() => { globalThis.document = undefined; });
+
+  it("says what failed and offers the same action again", () => {
+    makeView(elements);
+    const retries = [];
+    const view = createReplayView({
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => null,
+      isGameOpen: () => false,
+      onToggleFilter: () => {},
+      onToggleGame: () => {},
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+      onRetry: () => retries.push(true),
+    });
+    view.renderReplayError("Lichess is unreachable");
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Could not check your games");
+    expect(markup).toContain("Lichess is unreachable");
+    expect(markup).toContain("Try again");
+    // A failure is not the idle prompt: nothing may read "No games checked yet".
+    expect(markup).not.toContain("No games checked yet");
+    expect(elements["replay-summary"].hidden).toBe(true);
+    void retries;
+  });
+
+  it("puts the failure where the rows would be", () => {
+    // The error is an answer to a Check, so it keeps the ledger the Check was
+    // about instead of replacing the page with a floating card.
+    makeView(elements).renderReplayError("Lichess is unreachable");
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Games to review");
+    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).toContain('role="alert"');
+  });
 });
