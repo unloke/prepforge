@@ -235,6 +235,13 @@
   #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
   /* A shared repertoire is read-only; its name line already says so. */
   #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
+  /* An untrained repertoire has no figure, only a note, and the note is wide
+     enough to cut the name down to three letters when it shares the name's
+     line. It takes the row's own line under the name instead. */
+  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-opt {
+    grid-template-areas: "rep rep" "mastery mastery" "queue queue";
+  }
+  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { padding-left: 38px; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 40px; height: 40px; }
 
