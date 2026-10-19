@@ -937,7 +937,7 @@
   }
   #analysis-eval-card .ev-title { color: var(--muted); }
   #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
-  #analysis-eval-card .ev-meter { flex: none; width: 86px; }
+  #analysis-eval-card .ev-meter { flex: none; width: 64px; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
@@ -946,8 +946,10 @@
     color: var(--muted);
     font-size: 13px;
     font-weight: 600;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    /* Two lines beat a clipped word: the row names the position in full. */
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
