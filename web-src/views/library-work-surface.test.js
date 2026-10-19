@@ -39,3 +39,11 @@ it("the setup checklist keeps its own height beside the table", () => {
   // On an empty library there is no table, so the checklist may grow.
   expect(rule(".lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps {")).toMatch(/align-self:\s*stretch/);
 });
+
+it("the checklist's rows stay a list on an empty library", () => {
+  // The rows used to grow to fill the card, which spread three steps over
+  // half a screen of white with a metre of nothing between them.
+  const step = rule(".lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step {");
+  expect(step).toMatch(/flex:\s*0 0 auto/);
+  expect(step).not.toMatch(/max-height/);
+});

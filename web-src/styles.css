@@ -1944,13 +1944,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
      an empty card. (On an empty library there is no table, so it grows.) */
   .lib-grid > .steps { align-self: start; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { align-self: stretch; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) {
-    max-height: 620px;
-  }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .lib-list { display: flex; flex-direction: column; }
   .lib-list.is-empty:not(.is-error) > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 1 1 auto; max-height: 140px; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
+  /* The checklist is a list: its rows sit next to each other. Letting them
+     grow to fill the card spread three steps over half a screen of white. */
+  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 0 0 auto; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
