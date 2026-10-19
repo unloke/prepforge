@@ -160,6 +160,18 @@ describe("replay focus internals", () => {
     elements = makeElements();
   });
 
+  it("counts games and queued moves with real plurals", () => {
+    const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
+    makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
+    const summary = String(elements["replay-summary"].innerHTML);
+    expect(summary).toContain("2 you left prep");
+    expect(summary).toContain("+2 moves queued for training");
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-summary"].innerHTML)).toContain("+1 move queued for training");
+    // The ledger header counts games, not a bare number.
+    expect(String(elements["replay-results"].innerHTML)).toContain("1 game \u00b7");
+  });
+
   it("counts outcomes and queued moves with real plurals", () => {
     const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
     makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
