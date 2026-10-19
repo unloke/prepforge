@@ -4881,15 +4881,23 @@ function renderSyncChip(el, state, scope = "repertoire") {
 }
 
 function renderBuildSync() {
-  const el = document.getElementById("build-sync");
-  if (!el) return;
-  // Nothing to show without an editable repertoire (read-only shared view = no
-  // local edits ever happen).
-  if (!appState.build || isBuildReadOnly()) {
-    el.hidden = true;
-    return;
+  // Two hosts, one state: the board bar's chip on desktop, and the same chip in
+  // the inspector tools row on phones, where the board bar sits at the screen's
+  // bottom out of reach of an edit made above. Only one is ever visible.
+  let shown = false;
+  for (const id of ["build-sync", "build-sync-head"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    // Nothing to show without an editable repertoire (read-only shared view =
+    // no local edits ever happen).
+    if (!appState.build || isBuildReadOnly()) {
+      el.hidden = true;
+      continue;
+    }
+    renderSyncChip(el, appState.buildSyncState);
+    shown = true;
   }
-  renderSyncChip(el, appState.buildSyncState);
+  return shown;
 }
 
 let trainModule = null;

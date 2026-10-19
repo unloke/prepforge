@@ -259,7 +259,12 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    expect(ruleBody(".dock")).toMatch(/flex:\s*0 0 clamp\(210px,\s*40%,\s*330px\)/);
+    // The inspector takes the height the tree does not need, so a short
+    // repertoire leaves no dead space above it and the Explorer rows are not
+    // boxed into their own scrollbar; a fixed 40% share did both.
+    expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
+    expect(ruleBody(".dock")).toMatch(/height:\s*clamp\(210px,\s*40%,\s*330px\)/);
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 0 auto/);
   });
 
   it("composes Analyze as one panel: game head, coach card, results, drawers", () => {

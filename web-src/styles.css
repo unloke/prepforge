@@ -2832,7 +2832,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 
 .tree-wrap {
-  flex: 1 1 auto;
+  /* Sized by its moves, which the inspector gives way to (the dock does not
+     grow): a short tree leaves the leftover height to the Explorer instead of
+     sitting empty above it. */
+  flex: 1 0 auto;
   min-height: 90px;
   padding: 12px 12px;
   overflow: auto;
@@ -2844,17 +2847,18 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .dock {
   position: relative;
-  flex: 0 0 clamp(210px, 40%, 330px);
-  /* The drag handle writes a px `flex-basis` inline; `flex` sets all three
-     sub-properties, so without `grow`/`shrink` declared separately here the
-     inline basis is dropped on the next style recalc and the snap-back makes
-     the drag look dead. Keeping the shorthand for the initial size and then
-     overriding the basis keeps the inline value. */
-  flex-grow: 0;
-  flex-shrink: 0;
+  /* A starting size only: the tree is the workspace and gets what it needs
+     (see .tree-wrap), the inspector takes the rest. A fixed 40%-of-panel dock
+     left a two-line tree above ~340px of empty height and pushed five Explorer
+     rows into their own scrollbar. The drag handle writes basis + min-height
+     inline; 0 (a flex item's own min-height) lets the tree scroll inside its
+     share instead of overflowing the panel. */
+  flex: 0 1 auto;
+  /* The starting size doubles as the floor: a two-row tree must not collapse
+     the Explorer to a tab strip. A dragged height replaces it inline. */
+  min-height: clamp(210px, 40%, 330px);
   display: flex;
   flex-direction: column;
-  min-height: 0;
   border-top: 1px solid var(--line);
 }
 .dock-tabs {

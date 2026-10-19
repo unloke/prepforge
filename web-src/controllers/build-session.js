@@ -289,7 +289,10 @@ function applyBuildDockHeight(px) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
+  // Basis and floor together: the dock neither grows past what the tree does
+  // not need nor gets squashed under a long one (rule: .dock min-height 0).
   dock.style.flexBasis = `${clamped}px`;
+  dock.style.minHeight = `${clamped}px`;
   return clamped;
 }
 
@@ -318,7 +321,7 @@ function initBuildDockLayout() {
   const fold = document.getElementById("build-dock-fold");
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
-  if (Number.isFinite(stored) && stored > 0) dock.style.flexBasis = `${Math.round(stored)}px`;
+  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored);
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());

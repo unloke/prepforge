@@ -506,39 +506,10 @@
   :is(#run-analysis, #build-generate-node):active { filter: brightness(0.92); }
   :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--faint); }
   .study:has(.pv-exit:not([hidden])) :is(#run-analysis, #build-generate-node) { display: none; }
-  .study .board-bar .build-sync {
-    position: absolute;
-    top: 9px;
-    left: 82px;
-    z-index: 1;
-    width: 9px;
-    height: 9px;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 2px solid var(--panel);
-    border-radius: 50%;
-    font-size: 0;
-    background: currentColor;
-  }
-  .study .board-bar .build-sync::before { content: none; }
-  .study .board-bar .build-sync.is-saved { display: none; }
-  /* Saving is a passing dot; a stuck save (offline, sign-in, conflict) says so
-     in words, above the bar. */
-  .study .board-bar .build-sync.is-error {
-    top: auto;
-    bottom: calc(100% + 8px);
-    left: 10px;
-    width: auto;
-    height: auto;
-    padding: 4px 10px;
-    border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
-    border-radius: 999px;
-    font-size: 12px;
-    background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
-    color: var(--warn-text);
-  }
-
+  /* The save chip is the inspector head's (see #build-sync-head below): the
+     board bar's copy would sit at the screen's bottom, far from the tree the
+     edit happened in. */
+  .study .board-bar .build-sync { display: none !important; }
   /* The tab bar waits under the thumb bar; Menu raises it. */
   body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
@@ -696,6 +667,9 @@
   #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-tree-meta, #build-branchbar, #builder-tree),
   #build-inspector .dock-tabs { display: none !important; }
   #build-inspector .dock-tools { padding-top: 12px; }
+  /* Saving state beside the tools that trigger it (the board bar's chip is
+     hidden here). */
+  #build-inspector .build-sync { flex: none; font-size: 12px; }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
