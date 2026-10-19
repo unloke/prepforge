@@ -187,3 +187,14 @@ describe("scout line detail card", () => {
     expect(rule).toContain("max-height: 100%;");
   });
 });
+
+describe("scout colour recommendation", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("hugs its sentence instead of stretching across the profile card", () => {
+    // A 256px sentence sat in a 575px grey strip: the box said "banner", the
+    // content said "one line of figures".
+    const rule = css.match(/\.scout-color-rec \{[^}]*\}/)[0];
+    expect(rule).toContain("align-self: flex-start;");
+  });
+});

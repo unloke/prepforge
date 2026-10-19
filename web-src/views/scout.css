@@ -86,6 +86,7 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: baseline;
+  align-self: flex-start;
   max-width: 74ch;
   padding: 7px 10px;
   border-radius: 6px;
