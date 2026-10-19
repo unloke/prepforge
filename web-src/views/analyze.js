@@ -423,8 +423,10 @@ export function createAnalyzeView({
     chip.parentElement?.classList.toggle("has-eval", !!text);
     const fill = document.querySelector("#analysis-eval-meter > i");
     if (fill) {
-      const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 50;
-      fill.style.transform = `scaleX(${(share / 100).toFixed(4)})`;
+      // No number means no evaluation: the track stays empty. A half-width
+      // fill with no figure beside it reads as a real 50/50 score.
+      const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
+      fill.style.transform = `scaleX(${share.toFixed(4)})`;
     }
     // An empty Evaluation card is an empty grey block: hide it until it has a
     // number, a game graph or the live engine to show.
