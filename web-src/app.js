@@ -1550,7 +1550,11 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
     panel.hidden = !active;
     panel.setAttribute("aria-hidden", String(!active));
   });
-  document.querySelectorAll(".tab[data-replay-section]").forEach((button) => {
+  // The rail's Games/Scout entries are per-section; the phone bar's Review
+  // tab names the whole Review destination, so switchView's data-review-tab
+  // branch owns it. Without the skip this per-section loop would switch the
+  // Review tab off on Scout and leave the bottom bar with nothing lit.
+  document.querySelectorAll(".tab[data-replay-section]:not([data-review-tab])").forEach((button) => {
     const active = button.dataset.replaySection === next;
     button.classList.toggle("is-active", active && appState.currentView === "replay");
     button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
