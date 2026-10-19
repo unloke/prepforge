@@ -247,6 +247,13 @@ export function createDashboardView({
     if (lastSetupPayload) renderSteps(lastSetupPayload);
   }
 
+  // The listing is the live source for the repertoire count: create, import,
+  // delete and set-active all refresh it, and none of them re-read
+  // /api/dashboard. Same rows the Library table shows (pending deletes gone).
+  function ownRepertoireCount() {
+    return repListLoaded ? repListCache.own.length : null;
+  }
+
   // Never-trained moves across the caller's active repertoires, from the
   // listing's per-repertoire health. null until the listing has loaded.
   function newMovesToLearn() {
@@ -344,9 +351,12 @@ export function createDashboardView({
     // strip leads with — so one chip holds them and the Due shortcut stays
     // inline, where the action is.
     const metric = (label, value) => html`<b>${value}</b> ${label}`;
+    const repCount = ownRepertoireCount();
     const countsHtml = [
       metric("games", payload.games || 0),
-      metric("repertoires", payload.repertoires || 0),
+      // Until the listing lands, fall back to the dashboard read; after it,
+      // the listing is authoritative so the count tracks the table.
+      metric("repertoires", repCount ?? (payload.repertoires || 0)),
       metric("sessions", payload.training_sessions || 0),
     ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
     card.innerHTML = html`
