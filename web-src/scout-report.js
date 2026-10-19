@@ -195,11 +195,13 @@ export function openScoutLine(lineEl, line, rowKind, ctx) {
   lineEl.classList.add("is-expanded");
   lineEl.setAttribute("aria-expanded", "true");
   if (sideEl) {
-    if (sideEl.dataset.lineKey !== key || sideEl.dataset.color !== color) {
-      sideEl.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
-      sideEl.dataset.lineKey = key;
-      sideEl.dataset.color = color;
-    }
+    // Always repaint from the line we were handed: while games stream in the
+    // same row is rebuilt with fresh counts, so skipping the paint when the
+    // key/colour matched left the detail on an old snapshot ("4 games" row,
+    // "seen in 3 games" detail).
+    sideEl.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
+    sideEl.dataset.lineKey = key;
+    sideEl.dataset.color = color;
     sideEl.hidden = false;
   }
   const ecoCached = ctx.ecoCache?.get(key);
