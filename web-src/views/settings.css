@@ -55,14 +55,16 @@
 }
 .set .spacer { flex: 1; }
 .set .pf-info-pop { margin: 0 0 6px; }
+/* Rows are separated by space, not by a rule: a settings card is a list of
+   label/value pairs, and the label column plus the value edge already say
+   where one row ends. */
 .set-row,
 .set .pf-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
 }
 .set-row > span:first-child,
 .set .pf-row-text {
@@ -147,7 +149,6 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 0;
-  border-top: 1px solid var(--line);
 }
 .conn-name {
   display: flex;
@@ -259,8 +260,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 0 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 6px 0 4px;
 }
 .acct-avatar {
   flex: none;
@@ -317,7 +317,7 @@
 .acct-row > .btn { flex: none; white-space: nowrap; }
 .acct-block { margin-top: 14px; }
 .acct-block:empty { display: none; }
-#settings-account-data { padding-top: 10px; border-top: 1px solid var(--line); }
+#settings-account-data { padding-top: 4px; }
 .acct-block-head {
   display: flex;
   align-items: center;
