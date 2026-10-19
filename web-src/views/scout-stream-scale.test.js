@@ -223,3 +223,15 @@ describe("scout stacked detail", () => {
     expect(fn).toContain('"(max-width: 1020px)"');
   });
 });
+
+describe("scout report reading type", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("sets the summary sentence and the chart labels above the row meta", () => {
+    // The sentence that explains the section and the labels on the chart bars
+    // were set at the same size as the row meta; they are the reading layer.
+    expect(css).toMatch(/\.headline \{[^}]*font-size: 16px/);
+    expect(css).toMatch(/\.scout-bar-label \{[^}]*font-size: 14px/);
+    expect(css).toMatch(/\.scout-chart-title \{[^}]*font-size: 14px/);
+  });
+});

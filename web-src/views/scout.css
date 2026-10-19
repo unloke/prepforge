@@ -186,7 +186,7 @@
 .scout-coverage-fill.bad { background: var(--danger); }
 
 .intel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--panel-soft); }
-.headline { margin: 0; max-width: 62ch; font-size: 15px; font-weight: 650; line-height: 1.35; }
+.headline { margin: 0; max-width: 62ch; font-size: 16px; font-weight: 650; line-height: 1.4; }
 .scout-repertoire-reads { display: flex; flex-wrap: wrap; gap: 6px; }
 .scout-read-chip {
   display: inline-flex;
@@ -388,14 +388,14 @@
   gap: 6px;
   font-size: var(--fs-xs);
 }
-.scout-bar-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.scout-bar-label { color: var(--muted); font-size: 14px; font-weight: 600; }
 .scout-bar-track { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .scout-bar-fill { display: block; height: 100%; background: var(--accent-strong); opacity: 0.85; }
 /* Bar tone = what the value means for YOU (good news green, bad news red),
    so a low opponent score and a high opponent error rate read the same way. */
 .scout-bar-row.is-good .scout-bar-fill { background: var(--good); }
 .scout-bar-row.is-bad .scout-bar-fill { background: var(--danger); }
-.scout-bar-val { text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.scout-bar-val { text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .scout-bar-row.has-n { grid-template-columns: 44px minmax(0, 1fr) 44px 26px; }
 .scout-bar-n { color: var(--label); font-size: 12px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
 .scout-bar-track { position: relative; overflow: visible; }
@@ -408,7 +408,7 @@
   border-left: 1.5px dashed var(--text);
   opacity: 0.6;
 }
-.scout-chart-title { margin: 4px 0 2px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.scout-chart-title { margin: 4px 0 2px; color: var(--muted); font-size: 14px; font-weight: 600; }
 /* Mini chart with labelled axes: y range on the left, x span underneath. */
 .scout-axis-chart {
   display: grid;
