@@ -3,6 +3,22 @@
    grow the main stylesheet budget. Ledger card + focus card side by side;
    the ledger scrolls, the focus card stays in view. */
 
+/* Type floor: nothing a player has to read in the ledger or the detail sits
+   below 13px. The badges, the date/account line and the reason list were
+   11–12px, a caption size for triage text. The move list is real notation, so
+   it keeps column alignment — with tabular figures in the text face, the same
+   way Lichess sets a move list (the mono face read as code, not chess). */
+#view-replay :is(.lr, .players small, .acct, .kind-badge, .reasons, .dep-note,
+  .sum-chip, .queued, .src-label, .inline-field, .lr.head, .card-head h2, .faint) {
+  font-size: 13px;
+}
+#view-replay .kind-badge { padding: 1px 6px; }
+#view-replay .queued { color: var(--muted); }
+/* "No repertoire" is a real outcome, not a disabled control: the shared
+   `--none` grey lands at 3.5:1 on its own tint. */
+#view-replay .kind-badge.t-none { color: var(--muted); }
+#view-replay .sum-chip.t-none { color: var(--muted); }
+
 .triage {
   flex: 1 1 auto;
   min-height: 0;
@@ -110,7 +126,7 @@
 .reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--text); font-size: var(--fs-s); }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
-.moveline { display: grid; gap: 2px; font: 12px/1.5 var(--mono); }
+.moveline { display: grid; gap: 2px; font: 13px/1.55 var(--font); font-variant-numeric: tabular-nums; }
 .move-pair {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
@@ -128,7 +144,7 @@
 .moveline[data-ui] .move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
 .moveline[data-ui] .move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
 .moveline[data-ui] .move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
-.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-s)/1.4 var(--font); }
+.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font-weight: 650; }
 @media (prefers-reduced-motion: no-preference) {
   .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
   @keyframes departure-mark {
