@@ -432,8 +432,14 @@ describe("workspace chrome layout", () => {
       expect(view).toContain(`id="set-${id}"`);
     }
     expect(view).toContain('id="piece-style-picker"');
-    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*860px\)/);
+    // The card column takes the window's width. A fixed 860px column left a
+    // third of a wide screen empty beside the cards.
+    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*1fr\)/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.settings\s*\{[^}]*minmax\(0,\s*1fr\)/);
+    // A wide window gets two card columns, so the six cards fit on one screen
+    // instead of running 1.6 screens down a single column.
+    expect(css).toMatch(/@media\s*\(min-width:\s*1200px\)[\s\S]*?\.settings-content\s*\{[^}]*column-count:\s*2/);
+    expect(css).toMatch(/\.settings-content\s*>\s*\.set\s*\{[^}]*break-inside:\s*avoid/);
     // The desktop page names itself: the phone header is hidden on wide
     // screens, so without this the Settings view has no heading at all.
     expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*block/);

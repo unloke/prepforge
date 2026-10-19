@@ -972,7 +972,7 @@ h2 {
 }
 .settings {
   display: grid;
-  grid-template-columns: 180px minmax(0, 860px);
+  grid-template-columns: 180px minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -988,6 +988,21 @@ h2 {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+}
+/* Six cards in one column ran 1.6 screens on a wide window and left a third
+   of the page empty. Two columns fit the page on one screen; the cards keep
+   their reading order down the first column and into the second, the way a
+   printed page reads. */
+@media (min-width: 1200px) {
+  .settings-content {
+    display: block;
+    column-count: 2;
+    column-gap: 12px;
+  }
+  .settings-content > .set {
+    break-inside: avoid;
+    margin-bottom: 12px;
+  }
 }
 @media (max-width: 1020px) {
   .settings { grid-template-columns: minmax(0, 1fr); }
