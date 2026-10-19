@@ -644,7 +644,7 @@ function paintMaiaCoachLine(model) {
       .map((p) => {
         const notes = [p.played ? "played" : "", p.best ? "engine's choice" : ""].filter(Boolean).join(", ");
         return (
-          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" style="--p:${Math.min(100, Math.max(0, p.pct))}%" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
+          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
         );
       })}`;
   paintPhaseChip(model.phase, model.title);

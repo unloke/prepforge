@@ -125,9 +125,7 @@
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 26%, transparent) var(--p), transparent var(--p)),
-    var(--surface-3);
+  background: var(--surface-3);
   color: var(--text);
   font: inherit;
   font-size: var(--fs-xs);
@@ -137,11 +135,19 @@
 .hp:hover { border-color: var(--line-strong); }
 .hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .hp-pct { color: var(--muted); }
-.hp.is-played { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.hp.is-best b::before { content: "✓ "; color: var(--good-text); }
+.hp.is-played { border-color: var(--accent); }
+/* The engine's own choice wears a disc, not a tick: a shape that needs no
+   character to read. */
+.hp.is-best::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--good-text);
+}
 .coach-bookline {
   padding-top: 8px;
-  border-top: 1px dashed var(--line);
 }
 .coach-maia[hidden],
 .coach-bookline[hidden] {
@@ -310,9 +316,9 @@
 }
 /* No number yet: a dimmed empty track. */
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
-/* Search depth as a word plus quiet figures and a hairline of progress. */
+/* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
+   search has come without a progress bar under it. */
 #analysis-engine-slot .engine-head-depth {
-  --p: 0;
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
@@ -332,8 +338,6 @@
   content: attr(data-d);
   font-size: 11px;
   font-weight: 650;
-  background: linear-gradient(var(--accent), var(--accent)) 0 100% / calc(var(--p) * 100%) 2px no-repeat,
-    linear-gradient(var(--line), var(--line)) 0 100% / 100% 2px;
 }
 #analysis-engine-slot .engine-head-depth:not([data-d])::after { content: ""; }
 /* Lines: a word before the stepper, so the count has a name. Only in the
@@ -378,9 +382,11 @@
 .ev-engine:hover { color: var(--text); }
 .ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ev-engine.is-active { border-color: var(--accent); color: var(--text); }
+/* The active engine says so with a bigger disc, not with a ring around it. */
 .ev-engine.is-active::before {
   background: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  width: 8px;
+  height: 8px;
 }
 /* Engine lines: one 22px row each, eval as muted figures, the move list cut
    at the edge (a click unfolds it). */
@@ -597,7 +603,8 @@
 }
 .moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-current { box-shadow: none; }
+/* The move list keeps the shared tree's own tiles: the selected move is filled
+   and raised there too, so Analyze reads like the rest of the app. */
 .moves-grid .mtree-line.is-main > .mtree-var {
   grid-column: 1 / -1;
   margin: 2px 8px;
@@ -723,7 +730,6 @@
 .drawer {
   flex: none;
   padding-top: 8px;
-  border-top: 1px solid var(--line);
 }
 .drawer summary {
   display: flex;
@@ -759,6 +765,7 @@
 .analysis-history {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 .history-item {
   display: flex;
@@ -767,7 +774,6 @@
   gap: 8px;
   padding: 6px 4px;
   border: 0;
-  border-bottom: 1px solid var(--line);
   cursor: pointer;
 }
 .history-item .hi-open {
@@ -799,9 +805,6 @@
 }
 .history-item .hi-delete:hover {
   color: var(--danger);
-}
-.history-item:last-child {
-  border-bottom: 0;
 }
 .history-item:hover {
   background: var(--panel-soft);
@@ -857,7 +860,8 @@
   #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: under the engine, in the height the screen has left. */
+  /* Coach: under the engine, in the height the screen has left. It is a band of
+     its own tone, so it needs no rule above it. */
   #analysis-explain {
     order: 3;
     flex: 1 1 0;
@@ -867,10 +871,8 @@
     margin: 0;
     padding: 8px 14px 10px;
     border: 0;
-    border-top: 1px solid var(--line);
     border-radius: 0;
-    background: var(--bg);
-    box-shadow: none;
+    background: var(--panel-soft);
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -989,7 +991,6 @@
     border: 0;
     border-radius: 12px;
     background: var(--surface-3);
-    box-shadow: none;
   }
   #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
   #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
