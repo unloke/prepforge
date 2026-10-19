@@ -7,6 +7,23 @@ import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { treeToMovetext } from "../analyze-pgn.js";
 
+// The board, the move list, the eval display and the engine's controls are
+// real interface: they keep their own lines, sizes and borders. The marker is
+// set here, when the module loads with the view, because the markup belongs
+// to the shell — and the empty view is on screen before anything is analysed.
+const INTERFACE_ROOTS = [
+  "#view-analyze .board-stack",
+  "#analysis-moves",
+  "#analysis-eval-meter",
+  "#eval-chart-tooltip",
+  "#analysis-engine-slot",
+  "#explain-engine-toggle",
+];
+INTERFACE_ROOTS.forEach((selector) => {
+  const el = document.querySelector(selector);
+  if (el) el.setAttribute("data-ui", "");
+});
+
 export function createAnalyzeView({
   appState,
   START_FEN,
@@ -17,22 +34,6 @@ export function createAnalyzeView({
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
     createMoveTreeRenderer();
-
-  // The board, the move list, the eval display and the engine's controls are
-  // real interface: they keep their own lines, sizes and borders. The marker
-  // is set from here because the markup belongs to the shell.
-  const INTERFACE_ROOTS = [
-    "#view-analyze .board-stack",
-    "#analysis-moves",
-    "#analysis-eval-meter",
-    "#eval-chart-tooltip",
-    "#analysis-engine-slot",
-    "#explain-engine-toggle",
-  ];
-  INTERFACE_ROOTS.forEach((selector) => {
-    const el = document.querySelector(selector);
-    if (el) el.setAttribute("data-ui", "");
-  });
 
   // Chart colours come from CSS theme tokens (styles.css, .eval-chart rules), so
   // the graph follows light/dark like the rest of the app — no hardcoded hex in
