@@ -2,7 +2,8 @@ import { Chess } from "chess.js";
 import { ANALYSIS_MAX_NODES, createEngineProvider } from "./stockfish-provider.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
 import { stockfishBudget } from "./compute-budget.js";
-import { engineProfile, ensureEngineProfile, subscribeEngineProfile, createEngineAnalysisRun } from "./engine-profile.js";
+import { loadEngineModule, EngineAssetError } from "./engine-assets.js";
+import { usableEngineProfile, createEngineAnalysisRun } from "./engine-profile.js";
 
 // Whole-game analysis in the browser (Phase 2). Drives the browser Stockfish
 // provider over every position of a game, each to a target depth, and returns
@@ -19,7 +20,7 @@ import { engineProfile, ensureEngineProfile, subscribeEngineProfile, createEngin
 
 // Hard ceiling per position so a stuck search can't hang the whole run.
 const PER_POSITION_TIMEOUT_MS = 30000;
-// Engine startup: a cold big-net load took 17-22 s on an iPhone.
+// Instantiation and handshake only; assets finish before this deadline starts.
 const STARTUP_TIMEOUT_MS = 60000;
 // Node budget per position (see ANALYSIS_MAX_NODES), applied with the depth limit.
 const DEFAULT_MAX_NODES = ANALYSIS_MAX_NODES;
@@ -30,10 +31,10 @@ const MAX_CONCURRENCY = 3;
 // right after the main pass (the Maia trap and gap reads): they pick these up instead of
 // paying that again. Only the real browser engine is pooled; an idle one closes on its own.
 const POOL_IDLE_MS = 8000;
-const idleEngines = []; // { provider, maxNodes, timer }
+const idleEngines = []; // { provider, net, maxNodes, timer }
 
-function takeIdleEngine(maxNodes) {
-  const k = idleEngines.findIndex((e) => e.maxNodes === maxNodes);
+function takeIdleEngine(maxNodes, net) {
+  const k = idleEngines.findIndex((e) => e.maxNodes === maxNodes && e.net === net);
   if (k < 0) return null;
   const [entry] = idleEngines.splice(k, 1);
   clearTimeout(entry.timer);
@@ -41,9 +42,9 @@ function takeIdleEngine(maxNodes) {
   return entry.provider;
 }
 
-function parkIdleEngine(provider, maxNodes) {
+function parkIdleEngine(provider, maxNodes, net) {
   if (idleEngines.length >= MAX_CONCURRENCY) return false;
-  const entry = { provider, maxNodes, timer: null, unregisterIdle: null };
+  const entry = { provider, maxNodes, net, timer: null, unregisterIdle: null };
   const reclaim = () => {
     const k = idleEngines.indexOf(entry);
     if (k < 0) return;
@@ -61,11 +62,8 @@ function parkIdleEngine(provider, maxNodes) {
 
 export function resolveConcurrency(requested) {
   return Number.isFinite(requested) && requested >= 1
-    ? Math.min(MAX_CONCURRENCY, Math.floor(requested)) : engineProfile().workers;
+    ? Math.min(MAX_CONCURRENCY, Math.floor(requested)) : usableEngineProfile().workers;
 }
-subscribeEngineProfile(() => {
-  for (const entry of [...idleEngines]) entry.reclaim();
-});
 
 class AnalysisCancelled extends Error {
   constructor(message = "Analysis stopped") {
@@ -154,7 +152,7 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
   return evalFromSnapshot(fen, snapshot);
 }
 
-const isEngineFailure = error => !error.cancelled && (error instanceof RangeError ||
+const isEngineFailure = error => !(error instanceof EngineAssetError) && !error.cancelled && (error instanceof RangeError ||
   /\bOOM\b|out of memory|abort|could not start|timed out starting|startup timed out|worker.*(?:failed|crash|load)/i.test(error.message));
 
 /**
@@ -184,11 +182,16 @@ const isEngineFailure = error => !error.cancelled && (error instanceof RangeErro
  */
 export async function analyzeGamePositions(options) {
   const pooled = !options.createProvider || options.createProvider === createEngineProvider;
-  if (pooled) await ensureEngineProfile();
   const run = options.engineRun || (pooled ? createEngineAnalysisRun() : null);
   const completed = new Map();
   try {
     for (;;) {
+      // Both startup deadlines and the whole-run crash marker begin after assets.
+      if (pooled) {
+        const assetNet = run.profile().net;
+        await loadEngineModule(assetNet);
+        if (options.shouldCancel?.()) throw new AnalysisCancelled();
+      }
       const attempt = run?.start();
       try {
         return await analyzePositionsPass({ ...options, attempt,
@@ -274,10 +277,8 @@ async function analyzePositionsPass({
 
   const externalCancel = () =>
     typeof shouldCancel === "function" ? shouldCancel() : false;
-  let profileChanged = false;
-  const unsubscribe = pooled ? subscribeEngineProfile(() => { profileChanged = true; }) : () => {};
   const endBatch = pooled ? stockfishBudget.beginBatch() : () => {};
-  const cancelled = () => aborted || profileChanged || externalCancel();
+  const cancelled = () => aborted || externalCancel();
 
   function takeNextFen() {
     if (cancelled() || nextUnique >= pending.length) return null;
@@ -307,7 +308,7 @@ async function analyzePositionsPass({
       } finally { clearInterval(timer); }
     }
     try {
-      const warm = pooled ? takeIdleEngine(maxNodes) : null;
+      const warm = pooled ? takeIdleEngine(maxNodes, attempt?.net) : null;
       // The run owns the guard and fallback. A per-worker startup failure must not
       // change the profile while sibling workers are still settling.
       provider = warm || createProvider({ maxDepth: targetDepth, maxNodes, batch: true,
@@ -344,7 +345,7 @@ async function analyzePositionsPass({
     } finally {
       // A worker that finished its share cleanly stays warm for the next batch; one that
       // failed or was stopped mid-search is torn down.
-      if (provider && !(pooled && clean && opened && parkIdleEngine(provider, maxNodes))) {
+      if (provider && !(pooled && clean && opened && parkIdleEngine(provider, maxNodes, attempt?.net))) {
         try {
           await provider.close();
         } catch (_) {
@@ -362,7 +363,6 @@ async function analyzePositionsPass({
     pending.length ? Array.from({ length: workerCount }, () => workerLoop()) : [],
   );
 
-  unsubscribe();
   endBatch();
   // A sibling may report cancellation first in pool order. Preserve the engine
   // failure that stopped the queue so the caller can step down and retry it.
@@ -383,7 +383,7 @@ async function analyzePositionsPass({
   }
   // External cancellation makes workers exit their loop cleanly (no throw), so
   // re-check here to preserve the original "cancel → throw" contract.
-  if (profileChanged || externalCancel()) {
+  if (externalCancel()) {
     const partialResults = new Map();
     for (const fen of uniqueFens) {
       if (evalByFen.has(fen)) partialResults.set(fen, evalByFen.get(fen));

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createComputeBudget } from "./compute-budget.js";
 
 describe("app-wide Stockfish allocation", () => {
@@ -17,16 +17,49 @@ describe("app-wide Stockfish allocation", () => {
     (await live)();
     expect(budget.snapshot().used).toBe(0);
   });
-  it("suspends allocations for detection and follows the new device limit", async () => {
-    const budget = createComputeBudget();
-    const resume = budget.suspend();
-    let started = false;
-    const pending = budget.acquire().then(release => { started = true; return release; });
+  it("yields the idle probe immediately to foreground allocation without reclaiming foreground engines", async () => {
+    let idle;
+    const budget = createComputeBudget({ scheduleIdle: fn => { idle = fn; return 1; } });
+    const onDemand = vi.fn();
+    const probing = budget.acquireProbe({ onDemand });
+    idle();
+    const endProbe = await probing;
     budget.configure(1);
-    expect(started).toBe(false);
-    resume();
-    (await pending)();
+    const reclaim = vi.fn();
+    const release = await budget.acquire({ interactive: true, reclaim });
+    expect(onDemand).toHaveBeenCalledTimes(1);
+    expect(reclaim).not.toHaveBeenCalled();
+    release(); endProbe();
     expect(budget.snapshot()).toMatchObject({ used: 0, limit: 1, backgroundLimit: 1 });
+  });
+
+  it("waits across all batches and Maia gaps for a session boundary, then an idle window", async () => {
+    let idle;
+    const budget = createComputeBudget({ scheduleIdle: fn => { idle = fn; return 1; } });
+    const endSession = budget.beginSession();
+    const probing = budget.acquireProbe({ onDemand: vi.fn() });
+    const endBatch = budget.beginBatch();
+    const release = await budget.acquire({ batch: true });
+    release(); endBatch();
+    expect(idle).toBeUndefined();
+    const endFollowup = budget.beginBatch(); endFollowup();
+    expect(idle).toBeUndefined();
+    endSession();
+    idle();
+    (await probing)();
+  });
+
+  it("never reclaims a busy worker for detection, and reclaims only its idle registration", async () => {
+    let idle;
+    const budget = createComputeBudget({ scheduleIdle: fn => { idle = fn; return 1; } });
+    const reclaim = vi.fn();
+    const release = await budget.acquire({ reclaim });
+    const probing = budget.acquireProbe({ onDemand: vi.fn() });
+    expect(reclaim).not.toHaveBeenCalled();
+    expect(idle).toBeUndefined();
+    budget.registerIdle(release);
+    idle();
+    (await probing)();
   });
   it("reserves interactive capacity across unrelated background consumers", async () => {
     const budget = createComputeBudget();

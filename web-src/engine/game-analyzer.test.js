@@ -267,7 +267,8 @@ describe("analyzeGamePositions (worker pool)", () => {
 
 function managedRun(profile = { net: "big", workers: 2 }) {
   const data = new Map();
-  const manager = createEngineProfileManager({ storage: () => ({ getItem: k => data.get(k) ?? null,
+  const manager = createEngineProfileManager({ assetState: () => ({ phase: "ready" }), beginSession: () => () => {},
+    subscribeAsset: () => () => {}, storage: () => ({ getItem: k => data.get(k) ?? null,
     setItem: (k, v) => data.set(k, v), removeItem: k => data.delete(k) }) });
   manager.setEngineProfile(profile);
   return { manager, data, engineRun: manager.createEngineAnalysisRun() };
@@ -293,8 +294,8 @@ describe("analysis crash guard and single retry", () => {
   });
 
   it.each([new Error("OOM"), new Error("Aborted(memory access)"), new RangeError("no address space"),
-    new Error("Browser engine could not start: load failed")])("retries %s once and preserves completed positions across a net change", async failure => {
-    const f = managedRun({ net: "big", workers: 1 });
+    new Error("Browser engine could not start: load failed")])("retries %s once on the same net and preserves completed positions", async failure => {
+    const f = managedRun({ net: "big", workers: 2 });
     const searched = [], nets = [], cache = new Map();
     // This is the store's profile-change behaviour: its engine-derived cache is cleared.
     f.manager.subscribeEngineProfile(() => cache.clear());
@@ -305,12 +306,12 @@ describe("analysis crash guard and single retry", () => {
       const open = provider.open, update = provider.update;
       provider.open = async o => {
         searched.push(o.fen);
-        if (opts.net === "big" && o.fen === NON_TERMINAL[1]) throw failure;
+        if (f.engineRun.profile().workers === 2 && o.fen === NON_TERMINAL[1]) throw failure;
         return open(o);
       };
       provider.update = async o => {
         searched.push(o.fen);
-        if (opts.net === "big" && o.fen === NON_TERMINAL[1]) throw failure;
+        if (f.engineRun.profile().workers === 2 && o.fen === NON_TERMINAL[1]) throw failure;
         return update(o);
       };
       return provider;
@@ -318,13 +319,35 @@ describe("analysis crash guard and single retry", () => {
     const result = await analyzeGamePositions({ positions: NON_TERMINAL.slice(0, 3), depth: 12, concurrency: 1,
       engineRun: f.engineRun, createProvider: factory, reuse: fen => cache.get(fen),
       onResult: (fen, ev) => cache.set(fen, ev) });
-    expect(nets).toEqual(["big", "lite"]);
+    expect(nets).toEqual(["big", "big"]);
     expect(searched).toEqual([NON_TERMINAL[0], NON_TERMINAL[1], NON_TERMINAL[1], NON_TERMINAL[2]]);
     expect([...result.keys()]).toEqual(NON_TERMINAL.slice(0, 3));
     expect(cache.size).toBe(3);
-    expect(f.manager.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
+    expect(f.manager.engineProfile()).toMatchObject({ net: "big", workers: 1 });
     f.engineRun.done();
     expect(f.data.has(CRASH_KEY)).toBe(false);
+  });
+
+  it("records lite for the next session instead of mixing nets after big 1 fails", async () => {
+    const f = managedRun({ net: "big", workers: 1 });
+    const createProvider = vi.fn(() => ({ open: async () => { throw new Error("OOM"); }, close: async () => {} }));
+    await expect(analyzeGamePositions({ positions: [START_FEN], depth: 12, engineRun: f.engineRun,
+      createProvider })).rejects.toThrow("OOM");
+    expect(createProvider).toHaveBeenCalledTimes(1);
+    expect(f.engineRun.profile().net).toBe("big");
+    f.engineRun.done();
+    expect(f.manager.usableEngineProfile()).toMatchObject({ net: "lite", workers: 1 });
+  });
+
+  it("keeps the main pass and follow-up batches on their starting net after a profile change", async () => {
+    const f = managedRun({ net: "lite", workers: 1 });
+    const factory = vi.fn(makeFakeProviderFactory({ order: NON_TERMINAL }));
+    await analyzeGamePositions({ positions: [START_FEN], depth: 19, engineRun: f.engineRun, createProvider: factory,
+      onResult: () => f.manager.setEngineProfile({ net: "big", workers: 3 }) });
+    await analyzeGamePositions({ positions: [NON_TERMINAL[1]], depth: 19, engineRun: f.engineRun, createProvider: factory });
+    expect(factory.mock.calls.map(([o]) => [o.net, o.maxDepth])).toEqual([["lite", 19], ["lite", 19]]);
+    f.engineRun.done();
+    expect(f.manager.usableEngineProfile()).toMatchObject({ net: "big", workers: 3 });
   });
 
   it("surfaces the second failure, with no third attempt", async () => {

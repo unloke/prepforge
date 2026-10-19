@@ -1,13 +1,30 @@
-import { engineProfile, subscribeEngineProfile } from "./engine-profile.js";
-
 // Worker-lifetime budget shared by every browser Stockfish consumer.
-export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
+export function createComputeBudget({ limit = 4, backgroundLimit = 3,
+  scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn) : setTimeout(fn, 100),
+  cancelIdle = id => globalThis.cancelIdleCallback ? cancelIdleCallback(id) : clearTimeout(id),
+} = {}) {
   let used = 0, background = 0;
   const queue = [];
   const idle = new Set();
   const allocations = new Set();
   let batches = 0;
-  let paused = 0;
+  let sessions = 0, probe = null, idleTask = null;
+  const probes = [];
+  function demand() { probe?.onDemand?.(); }
+  function drainProbe() {
+    if (!probes.length || probe || sessions || batches || queue.length) return;
+    // Only warm, unused workers may be reclaimed for a probe.
+    for (const reclaim of [...idle]) { idle.delete(reclaim); reclaim(); }
+    if (used || idleTask !== null) return;
+    idleTask = scheduleIdle(() => {
+      idleTask = null;
+      if (used || sessions || batches || queue.length || probe || !probes.length) return;
+      const entry = probes.shift();
+      entry.cleanup();
+      probe = entry;
+      entry.resolve(() => { if (probe === entry) { probe = null; drainProbe(); } });
+    });
+  }
   function reclaimIdle() {
     if (!queue.length) return;
     const reclaim = idle.values().next().value;
@@ -17,11 +34,10 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
     }
   }
   function drain() {
-    if (paused) return;
     queue.sort((a, b) => Number(b.interactive) - Number(a.interactive));
     while (used < limit) {
       const i = queue.findIndex((entry) => (!batches || entry.batch) && (entry.interactive || background < backgroundLimit));
-      if (i < 0) { reclaimIdle(); return; }
+      if (i < 0) { reclaimIdle(); drainProbe(); return; }
       const entry = queue.splice(i, 1)[0];
       entry.cleanup();
       used++;
@@ -38,15 +54,18 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
       });
     }
     reclaimIdle();
+    drainProbe();
   }
   function acquire({ interactive = false, signal, batch = false, reclaim } = {}) {
     if (signal?.aborted) return Promise.reject(new DOMException("Engine allocation stopped", "AbortError"));
+    demand();
     return new Promise((resolve, reject) => {
       const abort = () => {
         const i = queue.indexOf(entry);
         if (i >= 0) queue.splice(i, 1);
         entry.cleanup();
         reject(new DOMException("Engine allocation stopped", "AbortError"));
+        drainProbe();
       };
       const entry = { interactive, batch, reclaim, resolve, cleanup: () => signal?.removeEventListener("abort", abort) };
       signal?.addEventListener("abort", abort, { once: true });
@@ -57,19 +76,37 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
   function registerIdle(reclaim) {
     idle.add(reclaim);
     reclaimIdle();
+    drainProbe();
     return () => idle.delete(reclaim);
   }
   return {
     acquire, registerIdle,
     configure(workers) { limit = backgroundLimit = workers; drain(); },
-    suspend() {
-      paused++;
-      for (const entry of [...allocations]) entry.reclaim?.();
-      for (const reclaim of [...idle]) reclaim();
-      return () => { paused--; drain(); };
+    beginSession() {
+      sessions++;
+      demand();
+      let ended = false;
+      return () => { if (!ended) { ended = true; sessions--; drainProbe(); } };
+    },
+    acquireProbe({ signal, onDemand } = {}) {
+      if (signal?.aborted) return Promise.reject(new DOMException("Detection stopped", "AbortError"));
+      return new Promise((resolve, reject) => {
+        const abort = () => {
+          const i = probes.indexOf(entry);
+          if (i >= 0) probes.splice(i, 1);
+          entry.cleanup();
+          if (!probes.length && idleTask !== null) { cancelIdle(idleTask); idleTask = null; }
+          reject(new DOMException("Detection stopped", "AbortError"));
+        };
+        const entry = { resolve, onDemand, cleanup: () => signal?.removeEventListener("abort", abort) };
+        signal?.addEventListener("abort", abort, { once: true });
+        probes.push(entry);
+        drainProbe();
+      });
     },
     beginBatch() {
       batches++;
+      demand();
       for (const entry of [...allocations]) if (!entry.batch) entry.reclaim?.();
       for (const reclaim of [...idle]) reclaim();
       let ended = false;
@@ -79,5 +116,4 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
   };
 }
 
-export const stockfishBudget = createComputeBudget({ limit: engineProfile().workers, backgroundLimit: engineProfile().workers });
-subscribeEngineProfile(p => stockfishBudget.configure(p.workers));
+export const stockfishBudget = createComputeBudget({ limit: 1, backgroundLimit: 1 });

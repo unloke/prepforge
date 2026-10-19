@@ -37,17 +37,21 @@ export function capSharedHeap(script, net) {
   return script.replace(UPSTREAM_MEMORY, `maximum:${MAX_HEAP_PAGES[net]},shared:!0`);
 }
 
-// Browser workers wait for the caller's reservation before instantiating WASM.
-// The existing c.wasmMemory branch also passes that same heap to pthread workers.
+// Browser workers receive a compiled module and a separately reserved heap.
+// Keep the upstream pthread path, including its module forwarding, intact.
 export function injectSharedHeap(script) {
   const anchors = [
+    ['function i(t){var r,a;function o(e,s){return fetch(e).then(function(e){var a,o,t,n,r,i=Date.now();if(e.ok)return a=l,o=0,t=e.body.getReader(),n=new ReadableStream({start:function(r){!function n(){t.read().then(function(e){var t=e.done,e=e.value;t?(s(i,a,a),r.close()):(o+=e.byteLength,s(i,o,a),r.enqueue(e),n())}).catch(function e(t){r.error(t),e(t)})}()}}),r=new Headers(e.headers),new Response(n,{status:e.status,statusText:e.statusText,headers:r});throw new Error("HTTP "+e.status+": "+e.statusText)})}function i(){return function(e,t,n){c&&(t=m(t,n,e),a=t,r=r||setTimeout(function(){r=null,c.postMessage(a),1<=a.percent&&(c.close(),c=null)},4))}}',
+      'function i(t){'],
     ['f={locateFile:function(e){return-1<e.indexOf(".wasm")?-1<e.indexOf(".wasm.map")?u+".map":t||u:',
-      'f={wasmMemory:f.wasmMemory,locateFile:function(e){return-1<e.indexOf(".wasm")?-1<e.indexOf(".wasm.map")?u+".map":t||u:'],
+      'f={wasmModule:f.wasmModule,wasmMemory:f.wasmMemory,locateFile:function(e){return-1<e.indexOf(".wasm")?-1<e.indexOf(".wasm.map")?u+".map":t||u:'],
     ['i(),onmessage=onmessage||function(e){if(',
-      'onmessage=onmessage||function(e){if(e.data.wasmMemory){f.wasmMemory=e.data.wasmMemory;i();return}if('],
+      'onmessage=onmessage||function(e){if(e.data.wasmModule&&e.data.wasmMemory){f.wasmModule=e.data.wasmModule;f.wasmMemory=e.data.wasmMemory;i();return}if('],
+    ['instantiateWasm:function(t,n){var e=i();return o(u,e).then(function(e){return WebAssembly.instantiateStreaming(e,t)}).then(function(e){return n(e.instance,e.module),e.instance.exports}).catch(function(e){throw console.error("WASM streaming failed:",e),e})}',
+      'instantiateWasm:function(t,n){var e=new WebAssembly.Instance(f.wasmModule,t);return n(e,f.wasmModule),e.exports}'],
   ];
   for (const [anchor, replacement] of anchors) {
-    if (script.split(anchor).length !== 2) fail("worker memory initialization changed upstream");
+    if (script.split(anchor).length !== 2) fail(`worker initialization anchor changed upstream: ${anchor}`);
     script = script.replace(anchor, replacement);
   }
   return script;
@@ -105,6 +109,7 @@ export function stockfishBuild(net) {
     nets,
     initialHeapPages,
     maxHeapPages: MAX_HEAP_PAGES[net],
+    bytes: wasm.byteLength,
     id: `sf${buildVersion}@${packageJson.version}+${sha256(wasm).slice(0, 8)}/${nets.join("+")}`,
     // Both files sit in a folder named by their joint hash: the wasm is cached as immutable,
     // and Emscripten's pthread workers find it next to the script's own URL.
@@ -113,11 +118,12 @@ export function stockfishBuild(net) {
   };
 }
 
-// What the app is built against: the engine's folder and identity (vite define).
+// Embed the same exact WASM byte count as the manifest; no runtime manifest fetch
+// or Content-Length header is needed for download progress.
 export function stockfishIdentity() {
   return Object.fromEntries(["big", "lite"].map(net => {
-    const { packageVersion, id, dir, initialHeapPages, maxHeapPages } = stockfishBuild(net);
-    return [net, { packageVersion, id, dir, initialHeapPages, maxHeapPages }];
+    const { packageVersion, id, dir, initialHeapPages, maxHeapPages, bytes } = stockfishBuild(net);
+    return [net, { packageVersion, id, dir, initialHeapPages, maxHeapPages, bytes }];
   }));
 }
 
@@ -143,8 +149,8 @@ export function syncStockfish() {
       chmodSync(destination, 0o644);
       files[kind] = { bundled, source, sha256: sha256(data) };
     }
-    const { packageVersion, engineVersion, nets, id, dir, initialHeapPages, maxHeapPages } = build;
-    engines[net] = { packageVersion, engineVersion, nets, id, dir, initialHeapPages, maxHeapPages, files };
+    const { packageVersion, engineVersion, nets, id, dir, initialHeapPages, maxHeapPages, bytes } = build;
+    engines[net] = { packageVersion, engineVersion, nets, id, dir, initialHeapPages, maxHeapPages, bytes, files };
     console.log(`[sync-stockfish] bundled ${net}: ${id} in engine/${dir}/`);
   }
   const manifest = { package: "stockfish", engines };

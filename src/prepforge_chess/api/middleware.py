@@ -98,6 +98,14 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         self._exempt_paths = frozenset(exempt_paths or ())
 
     async def dispatch(self, request: Request, call_next):
+        # Immutable assets must be shareable by HTTP/CDN caches, including on a
+        # fresh browser's first request. Bootstrap CSRF on app/API pages instead.
+        if request.url.path.startswith("/static/"):
+            response: Response = await call_next(request)
+            if "set-cookie" in response.headers:
+                del response.headers["set-cookie"]
+            return response
+
         cookie_token = request.cookies.get(CSRF_COOKIE)
         # Mint a token up front when none exists, so a bootstrap endpoint
         # (/api/csrf) can return it via request.state in the same round-trip.

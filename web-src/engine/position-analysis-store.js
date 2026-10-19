@@ -1,5 +1,5 @@
 import { ENGINE_ID } from "./stockfish-provider.js";
-import { subscribeEngineProfile } from "./engine-profile.js";
+import { subscribeUsableEngineProfile } from "./engine-profile.js";
 import { stockfishBudget } from "./compute-budget.js";
 import { createEngineProvider, ANALYSIS_MAX_NODES } from "./stockfish-provider.js";
 import { analyzeGamePositions, isTerminalPosition } from "./game-analyzer.js";
@@ -471,7 +471,7 @@ export function createPositionAnalysisStore({
       maiaQueue.clear();
     },
   };
-  if (createProvider === createEngineProvider) subscribeEngineProfile(() => {
+  if (createProvider === createEngineProvider) subscribeUsableEngineProfile(() => {
     // Keep leases attached while replacing all engine-derived state. In particular,
     // first-use detection must not orphan the board request that triggered it.
     for (const lane of lanes) {
@@ -485,6 +485,10 @@ export function createPositionAnalysisStore({
       lane.provider = null;
     }
     for (const entry of entries.values()) {
+      if (entry.refs > 0) entry.want = {
+        depth: Math.max(entry.want?.depth || 0, entry.live?.maxDepth || 0, entry.game?.target || 0),
+        multipv: Math.max(entry.want?.multipv || 1, entry.live?.multipv || 1),
+      };
       entry.live = entry.game = entry.search = null;
       entry.error = null;
       entry.failures = 0;

@@ -68,6 +68,8 @@ try {
     const manifest = await fetch("/static/engine/stockfish.manifest.json").then((r) => r.json());
     const runs = [];
     for (const [net, build] of Object.entries(manifest.engines)) {
+    // The glue no longer fetches its wasm: the page compiles it once and hands it over.
+    const wasmModule = await WebAssembly.compileStreaming(fetch(`/static/engine/${build.files.wasm.bundled}`));
     const lines = await new Promise((resolve, reject) => {
       const output = [];
       const worker = new Worker(`/static/engine/${build.files.script.bundled}`);
@@ -95,7 +97,7 @@ try {
           resolve(output);
         }
       };
-      worker.postMessage({ wasmMemory: new WebAssembly.Memory({
+      worker.postMessage({ wasmModule, wasmMemory: new WebAssembly.Memory({
         initial: build.initialHeapPages, maximum: build.maxHeapPages, shared: true,
       }) });
       worker.postMessage("uci");
