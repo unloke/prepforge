@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { nounOf } from "../plural.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
@@ -350,14 +351,14 @@ export function createDashboardView({
     // pressing Train, and "Due review" already carries the queue number the
     // strip leads with — so one chip holds them and the Due shortcut stays
     // inline, where the action is.
-    const metric = (label, value) => html`<b>${value}</b> ${label}`;
+    const metric = (value, one) => html`<b>${value}</b> ${nounOf(value, one)}`;
     const repCount = ownRepertoireCount();
     const countsHtml = [
-      metric("games", payload.games || 0),
+      metric(payload.games || 0, "game"),
       // Until the listing lands, fall back to the dashboard read; after it,
       // the listing is authoritative so the count tracks the table.
-      metric("repertoires", repCount ?? (payload.repertoires || 0)),
-      metric("sessions", payload.training_sessions || 0),
+      metric(repCount ?? (payload.repertoires || 0), "repertoire"),
+      metric(payload.training_sessions || 0, "session"),
     ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
     card.innerHTML = html`
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"

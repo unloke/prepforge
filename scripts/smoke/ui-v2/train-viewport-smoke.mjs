@@ -33,6 +33,9 @@ const api = (path) => {
       { id: "rep-empty", name: "Just started", color: "black", is_active: true, health: { trainable: 0, mastered: 0, weak: 0, due: 0, learning: 0, untrained: 0, mastery_pct: 0 } },
     ], shared: [] };
   }
+  if (path.startsWith("/api/train/smart/summary")) {
+    return { next_session: { cards: 4, weak: 1, due: 1, new: 1, polish: 1, resumed: 0 } };
+  }
   if (path.startsWith("/api/dashboard")) return { games: 0, repertoires: 2, training_sessions: 0, open_mistakes: 0, due_reviews: 5, due_soon: 1, streak: { current: 3, best: 9, trained_today: false }, recap: {}, recommendations: [] };
   if (path.startsWith("/api/lichess")) return { accounts: [] };
   return {};
@@ -74,24 +77,65 @@ async function runViewport(vp) {
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
-  await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1000);
-  if (vp.width > 760) {
-    // The rail is a 60px icon rail that expands on hover (overlay). Mousemove,
-    // pause for the 60ms+transition, then click while the label is still up.
-    await page.mouse.move(30, 300);
-    await page.waitForTimeout(400);
-    // Onto the Train row itself, wherever the rail's density puts it.
-    const row = await page.locator('[data-testid="nav-train"]').boundingBox();
-    await page.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
-    await page.waitForTimeout(120);
-    await page.mouse.down();
-    await page.mouse.up();
-  } else {
-    // Mobile: bottom tab bar.
-    await page.evaluate(() => document.querySelector('[data-testid="bottom-train"]').click());
+  async function openTrain(target) {
+    await target.goto(base, { waitUntil: "domcontentloaded" });
+    await target.waitForTimeout(1000);
+    if (vp.width > 760) {
+      // The rail is a 60px icon rail that expands on hover (overlay). Mousemove,
+      // pause for the 60ms+transition, then click while the label is still up.
+      await target.mouse.move(30, 300);
+      await target.waitForTimeout(400);
+      // Onto the Train row itself, wherever the rail's density puts it.
+      const row = await target.locator('[data-testid="nav-train"]').boundingBox();
+      await target.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
+      await target.waitForTimeout(120);
+      await target.mouse.down();
+      await target.mouse.up();
+    } else {
+      // Mobile: bottom tab bar.
+      await target.evaluate(() => document.querySelector('[data-testid="bottom-train"]').click());
+    }
+    await target.waitForTimeout(800);
   }
-  await page.waitForTimeout(800);
+
+  // Empty queue: one setup heading. The preview must not repeat it underneath.
+  const emptyPage = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  try {
+    await emptyPage.route("**/api/train/smart/summary**", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ next_session: { cards: 0, weak: 0, due: 0, new: 0, polish: 0, resumed: 0 } }),
+    }));
+    await openTrain(emptyPage);
+    await emptyPage.waitForFunction(
+      () => document.getElementById("train-banner-title")?.textContent === "No moves to train yet",
+      null,
+      { timeout: 2000 },
+    ).catch(() => {});
+    const emptySetup = await emptyPage.evaluate(() => ({
+      banner: document.getElementById("train-banner-title")?.textContent?.trim(),
+      preview: document.getElementById("train-session-preview")?.textContent?.trim(),
+      previewHidden: document.getElementById("train-session-preview")?.hidden,
+    }));
+    check(emptySetup.banner === "No moves to train yet", "empty queue banner should be the one heading, got " + JSON.stringify(emptySetup.banner));
+    check(emptySetup.previewHidden === true, "empty queue preview should be hidden, got " + JSON.stringify(emptySetup.preview));
+  } finally {
+    await emptyPage.close();
+  }
+
+  await openTrain(page);
+  await page.waitForFunction(
+    () => !document.getElementById("train-session-preview")?.hidden,
+    null,
+    { timeout: 2000 },
+  ).catch(() => {});
+  const setupPreview = await page.evaluate(() => ({
+    banner: document.getElementById("train-banner-title")?.textContent?.trim(),
+    preview: document.getElementById("train-session-preview")?.textContent?.trim(),
+    previewHidden: document.getElementById("train-session-preview")?.hidden,
+  }));
+  check(setupPreview.banner === "Ready to train", "queue banner should be Ready to train, got " + JSON.stringify(setupPreview.banner));
+  check(setupPreview.previewHidden === false && /cards?/.test(setupPreview.preview || ""), "queue preview should name the cards, got " + JSON.stringify(setupPreview.preview));
 
   // Setup: mode tabs render with Smart queue active.
   const tabs = await page.locator("#train-modes .train-mode").count();
@@ -129,9 +173,11 @@ async function runViewport(vp) {
   await page.waitForTimeout(300);
   const startState = () => page.evaluate(() => {
     const b = document.getElementById("start-train");
-    return { disabled: b.disabled, title: b.title };
+    const cs = getComputedStyle(b);
+    return { disabled: b.disabled, title: b.title, opacity: cs.opacity, cursor: cs.cursor, background: cs.backgroundColor };
   });
-  check((await startState()).disabled === false, "rehearsal Start should be live for a repertoire with moves");
+  const liveStart = await startState();
+  check(liveStart.disabled === false, "rehearsal Start should be live for a repertoire with moves");
   await page.evaluate(() => {
     const sel = document.getElementById("train-repertoire-select");
     sel.value = "rep-empty";
@@ -141,6 +187,8 @@ async function runViewport(vp) {
   const emptyStart = await startState();
   check(emptyStart.disabled === true, "rehearsal Start should be dead when the repertoire has no moves");
   check(/No moves to train/.test(emptyStart.title), `rehearsal Start should say why, got "${emptyStart.title}"`);
+  check(emptyStart.cursor === "not-allowed" && Number(emptyStart.opacity) < 1, "disabled Start should read as disabled");
+  check(emptyStart.background !== liveStart.background, "disabled Start should not keep the enabled primary fill");
   await page.evaluate(() => {
     const sel = document.getElementById("train-repertoire-select");
     sel.value = "rep-1";

@@ -1329,24 +1329,15 @@ h2 {
   width: 100%;
 }
 
+/* Disabled and engine-unavailable actions read inert: the muted fill lands
+   after the variants, so a disabled .btn.primary cannot keep its accent fill. */
 .btn:disabled,
 .btn.is-coming-soon {
   opacity: 0.55;
   cursor: not-allowed;
-}
-
-/* Compute actions whose engine is unavailable in this browser: clearly inert
-   rather than looking like a live button that errors on click. Covers the
-   primary `.btn` (Analyze, Build — Generate moves) and icon buttons. */
-.btn.is-coming-soon {
   background: var(--surface-3);
   border-color: var(--line-strong);
   color: var(--label);
-}
-
-.btn.is-coming-soon:hover {
-  background: var(--surface-3);
-  border-color: var(--line-strong);
 }
 
 /* Reachable but inert: the control still handles the click (that is the point

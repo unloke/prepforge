@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { isNothingToTrainError, rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -352,12 +352,20 @@ async function refreshTrainSessionPreview() {
     el.hidden = true;
     return;
   }
-  const paint = (text) => {
+  const paint = () => {
+    // One setup heading only: an empty queue says so in the banner instead of
+    // stacking the same message above a start button.
+    const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
+    const text = empty ? "" : trainPreviewCache.text;
     el.textContent = text;
     el.hidden = !text;
+    const banner = document.getElementById("train-banner");
+    if (banner && banner.dataset.state === "idle" && !trainSessionLive()) {
+      setTrainBanner("idle", empty ? "No moves to train yet" : "Ready to train", "");
+    }
   };
   if (Date.now() - trainPreviewCache.at < 30000) {
-    paint(trainPreviewCache.text);
+    paint();
     return;
   }
   if (!trainPreviewCache.loading) {
@@ -379,7 +387,7 @@ async function refreshTrainSessionPreview() {
     });
   }
   await trainPreviewCache.loading;
-  paint(trainPreviewCache.text);
+  paint();
   // The payload just decided whether Start is live: repaint it now rather than
   // leaving a dead/enabled button until the next unrelated sync.
   paintTrainStartDisabled();
@@ -598,7 +606,14 @@ async function startTraining(mode, options = {}) {
     );
     syncWorkspaceUrl();
   } catch (error) {
-    if (isCurrent()) setStatusError(error.message);
+    if (!isCurrent()) return;
+    if (isNothingToTrainError(error)) {
+      // The picked repertoire has no moves to walk; Start's disabled reason
+      // already says so. A raw 400 toast would repeat it as a fault.
+      setTrainBanner("idle", "No moves to train yet", "");
+      return;
+    }
+    setStatusError(error.message);
   }
 }
 
@@ -1855,9 +1870,10 @@ async function startSmartTraining(options = {}) {
       accountService().handleAuthRequired("Sign in to start training");
       return;
     }
-    if (error.status === 400 && /no active repertoires to train/i.test(error.message)) {
-      setStatus("Nothing to train yet");
-      setTrainBanner("done", "Nothing to train yet", "Create or activate a repertoire in Library.");
+    if (isNothingToTrainError(error)) {
+      // Nothing to train is not a fault: Start is already dead with the reason
+      // (and the preview names it), so do not stack a failure notice on it.
+      setTrainBanner("idle", "No moves to train yet", "");
       return;
     }
     setStatusError(error.message);

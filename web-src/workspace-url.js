@@ -119,7 +119,7 @@ const REPERTOIRE_VIEW_SET = new Set(REPERTOIRE_VIEWS);
 // The one repertoire Train's queue is drilling. A smart queue over all active
 // repertoires (mixed) drills none, and a repertoire merely opened in Build is
 // not what Train is set to — so neither may name one in the URL.
-function trainQueueRepertoireId(state) {
+export function trainQueueRepertoireId(state) {
   if (state.smart) return state.smart.mixed ? null : state.smart.repertoireId || null;
   return (state.training && state.training.repertoire_id) || null;
 }

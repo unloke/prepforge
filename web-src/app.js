@@ -75,6 +75,7 @@ import {
   activateWorkspaceTab,
   parseWorkspaceLocation,
   serializeWorkspaceLocation,
+  trainQueueRepertoireId,
   workspaceLocationFromState,
 } from "./workspace-url.js";
 import {
@@ -1470,6 +1471,21 @@ async function restoreWorkspaceLocation() {
     // The URL's repertoire is the queue's. A Train link that names one (the
     // one the Library/Repertoire Train action leaves behind) drills that
     // repertoire; no ?rep= means the mixed queue over all active ones.
+    await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
+  }
+}
+
+// In-page route changes (back/forward and location.hash) take the same path as
+// boot restore: switch the view, then rebuild Train's queue for the URL's
+// repertoire. Without this, ?rep= only took effect on a full reload. Coming
+// back to the repertoire the queue already drills keeps the live session.
+async function handleWorkspacePopstate() {
+  const loc = parseWorkspaceLocation(window.location.href);
+  if (loc.view === "replay" && loc.replaySection) {
+    appState.replaySection = loc.replaySection;
+  }
+  switchView(loc.view, { fromUrl: true });
+  if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
 }
@@ -5407,7 +5423,7 @@ async function runLichessCompare() {
           : payload.username;
     setStatus(
       queued > 0
-        ? `Fetched ${payload.count} games · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
+        ? `Fetched ${countOf(payload.count, "game")} · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
         : `Fetched ${countOf(payload.count, "game")} for ${sourceLabel}`
     );
   } catch (error) {
@@ -6718,11 +6734,7 @@ function bindEvents() {
   }
   bindCommandPalette();
   window.addEventListener("popstate", () => {
-    const loc = parseWorkspaceLocation(window.location.href);
-    if (loc.view === "replay" && loc.replaySection) {
-      appState.replaySection = loc.replaySection;
-    }
-    switchView(loc.view, { fromUrl: true });
+    void handleWorkspacePopstate();
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const blitzToggle = document.getElementById("train-blitz-toggle");
