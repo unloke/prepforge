@@ -164,6 +164,10 @@ export function createScoutView(deps) {
   let scoutState = null;
   let scoutSession = null;
   let scoutSourceNames = null;
+  // One async action at a time: a double-click on "Add to prep" (or a repeated
+  // "Add all gaps") used to open two identical dialogs. The side card and the
+  // colour card stay mounted while a dialog is up, so both clicks land.
+  let actionBusy = false;
   const scoutBoundEventTargets = new WeakSet();
   // Memo for maiaCandidateLines, keyed by trie identity (fresh per report rebuild).
   const maiaCandidateCache = new WeakMap();
@@ -1283,6 +1287,16 @@ export function createScoutView(deps) {
   }
 
   async function scoutPickRepertoire(oppColor, { ownColor = false } = {}) {
+    if (actionBusy) return null;
+    actionBusy = true;
+    try {
+      return await pickRepertoire(oppColor, ownColor);
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function pickRepertoire(oppColor, ownColor) {
     const myColor = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
     let reps = [];
     try {
@@ -1400,6 +1414,16 @@ export function createScoutView(deps) {
   }
 
   async function scoutPrepareAll(lines, oppColor) {
+    if (actionBusy) return;
+    actionBusy = true;
+    try {
+      await runPrepareAll(lines, oppColor);
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function runPrepareAll(lines, oppColor) {
     const unique = [];
     const seen = new Set();
     for (const line of lines) {
@@ -1418,6 +1442,10 @@ export function createScoutView(deps) {
     }
     const repId = await scoutPickRepertoire(oppColor);
     if (!repId) return;
+    if (notices.isBusy()) {
+      setStatus("Another job is running");
+      return;
+    }
 
     const ctrl = new AbortController();
     notices.startJob({
@@ -2234,6 +2262,7 @@ export function createScoutView(deps) {
     runScout,
     handleScoutAction,
     bindControls,
+    __testHandleAddToPrep: scoutAddToPrep,
     onShow: syncVisibleState,
     // Sources changed under a finished or running report (app.js).
     discardReport: resetScout,

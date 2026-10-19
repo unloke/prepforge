@@ -130,6 +130,66 @@ describe("scout view initialization reentrancy", () => {
     expect(streamGames).toHaveBeenCalledTimes(1);
   });
 
+  it("opens one target-repertoire dialog when Add to prep is clicked twice", async () => {
+    // A double-click reaches the handler twice (the side card and the colour
+    // card stay mounted), and two identical "Add line to prep" dialogs used to
+    // stack up. The second click must be ignored while the first is open.
+    let resolveModal;
+    let opened = 0;
+    const showInputModal = vi.fn((options) => {
+      opened += 1;
+      return new Promise((resolve) => {
+        resolveModal = () => resolve({ repertoire: "rep-1" });
+      });
+    });
+    view = createScoutView({
+      setStatus,
+      switchView: vi.fn(),
+      api: async (url) =>
+        url === "/api/repertoires"
+          ? { repertoires: [] }
+          : { repertoires: [{ id: "rep-1", name: "Caro-Kann", color: "black", is_active: true }] },
+      showInputModal,
+      createRepertoirePrompt: vi.fn(),
+      editRepertoire: vi.fn(),
+      boardAfterMove: vi.fn(),
+      buildProvisionalNode: vi.fn(),
+      hardFlushBuild: vi.fn(),
+      selectBuildNode: vi.fn(),
+      resolveBuildId: vi.fn(),
+      setBuildSync: vi.fn(),
+      notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
+      parseFenBoard: vi.fn(() => ({})),
+      pieceSvg: vi.fn(() => ""),
+      getBuildState: vi.fn(),
+      getBuildNodeById: vi.fn(),
+      queueBuildAdd: vi.fn(),
+      scoutPickedUsernames: () => pickedUsernames,
+    });
+
+    const addLine = {
+      ucis: ["e2e4"],
+      sans: ["e4"],
+      rowKind: "line",
+      color: "white",
+      idx: 0,
+      section: {
+        gradedLines: [{ ucis: ["e2e4"], sans: ["e4"] }],
+        prepTargets: [],
+        weaknessTargets: [],
+      },
+    };
+    const handler = view.__testHandleAddToPrep;
+    expect(typeof handler).toBe("function");
+    const first = handler(addLine, "white");
+    const second = handler(addLine, "white");
+    await vi.waitFor(() => expect(opened).toBe(1));
+    resolveModal();
+    await Promise.all([first, second]);
+    expect(opened).toBe(1);
+    expect(showInputModal.mock.calls.filter((c) => c[0]?.title === "Add line to prep")).toHaveLength(1);
+  });
+
   it("allows Start immediately after Reset without reusing the prior session", async () => {
     await view.runScout();
     expect(streamGames).toHaveBeenCalledTimes(1);
