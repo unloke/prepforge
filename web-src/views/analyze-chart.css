@@ -1012,6 +1012,9 @@
   #analysis-eval-card .ev-title { color: var(--muted); }
   #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
   #analysis-eval-card .ev-meter { flex: none; width: 64px; }
+  /* An empty meter is 64px of nothing. The phone gives that width to the
+     position's name instead, so the row reads on one line. */
+  #analysis-eval-card .ev-head:not(.has-eval) .ev-meter { display: none; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
