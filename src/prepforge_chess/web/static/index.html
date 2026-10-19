@@ -120,9 +120,9 @@
                   <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
                 </span>
               </header>
-              <div class="lib-cols" id="lib-cols" aria-hidden="true"><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
+              <div class="lib-cols" id="lib-cols" aria-hidden="true" data-ui><span>Repertoire</span><span>Mastery</span><span>Queue</span><span></span></div>
               <div id="library-refresh-status" role="alert" hidden></div>
-              <div id="dashboard-repertoires" class="lib-rep-list list-enter" role="status" aria-label="Loading your library"></div>
+              <div id="dashboard-repertoires" class="lib-rep-list list-enter" role="status" aria-label="Loading your library" data-ui></div>
               <input type="file" id="dashboard-import-input" accept=".pgn,.json,application/x-chess-pgn,application/json" hidden />
             </section>
             <section class="steps card" id="dashboard-steps" aria-label="Next steps" hidden></section>
@@ -609,7 +609,7 @@
               <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
               <input id="teams-search" type="search" aria-label="Search your teams" placeholder="Search your teams" autocomplete="off" />
             </label>
-            <div id="teams-list" class="list-enter" data-testid="teams-list"></div>
+            <div id="teams-list" class="list-enter" data-testid="teams-list" data-ui></div>
           </section>
 
           <section class="card team-detail" id="team-detail-card" data-testid="team-detail-card" hidden>
@@ -631,14 +631,14 @@
                 <span class="spacer"></span>
                 <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
-              <div id="team-members" data-testid="team-members"></div>
+              <div id="team-members" data-testid="team-members" data-ui></div>
             </section>
             <section id="team-panel-repertoires" data-team-panel="repertoires" role="tabpanel" aria-labelledby="team-tab-repertoires" hidden>
               <div class="sub-head">
                 <span class="spacer"></span>
                 <button class="btn sm" id="team-share-rep" data-testid="team-share-rep" hidden>Share a repertoire</button>
               </div>
-              <div id="team-shared-repertoires" data-testid="team-shared-repertoires"></div>
+              <div id="team-shared-repertoires" data-testid="team-shared-repertoires" data-ui></div>
             </section>
             <footer class="team-invite-foot faint" id="team-invite-foot" hidden></footer>
           </section>
@@ -651,7 +651,7 @@
 
           <section class="card incoming">
             <header class="card-head"><h2 id="teams-shared-title">Incoming shares</h2></header>
-            <div id="teams-shared" class="list-enter" data-testid="teams-shared"></div>
+            <div id="teams-shared" class="list-enter" data-testid="teams-shared" data-ui></div>
           </section>
         </div>
       </section>
