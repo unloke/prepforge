@@ -2141,7 +2141,12 @@ export function createScoutView(deps) {
   // Self can change when accounts are linked/unlinked in Settings, without a
   // source-composer write. This also invalidates an initialization in flight.
   function syncSources() {
-    if (scoutSourceNames && !sameFetchSources(scoutSourceNames, scoutPickedUsernames())) resetScout();
+    // Sources can change while this panel is hidden (a composer opened from
+    // elsewhere), where the unmount cleanup does not run: clear here instead.
+    if (scoutSourceNames && !sameFetchSources(scoutSourceNames, scoutPickedUsernames())) {
+      resetScout();
+      if (!scoutPickedUsernames().length) setStatus("");
+    }
   }
 
   async function startScout() {
