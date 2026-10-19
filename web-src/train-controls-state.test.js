@@ -3,7 +3,7 @@
 // the way the other train-session regression tests run the real functions.
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
-import { trainStartBlockReason, trainStartDisabled } from "./train-start.js";
+import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "./train-start.js";
 
 const source = appSource();
 function body(marker) {
@@ -18,6 +18,7 @@ const PREVIEW = body("const trainPreviewCache = {")
   .replace("nextSession: null", "nextSession /* bound by the harness */");
 const ACTIVE = body("function activeTrainRepertoires()");
 const PAINT = body("function paintTrainStartDisabled()").replace(/trainPreviewCache/g, "previewCache");
+const SELECTED = body("function selectedTrainRepertoire()");
 const LIVE = body("function trainSessionLive()");
 const CONTROLS = body("function syncTrainSessionControls()");
 
@@ -39,11 +40,11 @@ function runTrainControls(appState) {
     trainStartBlockReason,
   };
   const build = new Function(
-    "trainStartBlockReason", "trainStartDisabled", "selectedTrainRepertoireId", "appState", "document",
-    "syncViewHeads", "blitzEnabled", "nextSession",
-    `${PREVIEW}\n${ACTIVE}\n${PAINT}\n${LIVE}\n${CONTROLS}\npreviewCache.nextSession = nextSession;\nreturn { syncTrainSessionControls, paintTrainStartDisabled };`,
+    "trainStartBlockReason", "rehearsalStartBlockReason", "trainStartDisabled", "selectedTrainRepertoireId",
+    "appState", "document", "syncViewHeads", "blitzEnabled", "nextSession",
+    `${PREVIEW}\n${ACTIVE}\n${SELECTED}\n${PAINT}\n${LIVE}\n${CONTROLS}\npreviewCache.nextSession = nextSession;\nreturn { syncTrainSessionControls, paintTrainStartDisabled };`,
   );
-  const controls = build(trainStartBlockReason, trainStartDisabled, () => appState.selectedRepertoireId ?? null, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
+  const controls = build(trainStartBlockReason, rehearsalStartBlockReason, trainStartDisabled, () => appState.selectedRepertoireId ?? null, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
   controls.syncTrainSessionControls();
   controls.paintTrainStartDisabled();
   return { lucky, start, modeTabs };
@@ -154,5 +155,20 @@ describe("paintTrainStartDisabled", () => {
     expect(state({ ...base, trainMode: "all_lines" }).disabled).toBe(true); // waits on the picker
     expect(state({ ...base, trainMode: "play" }).disabled).toBe(false);
     expect(state({ ...base, signedIn: false }).disabled).toBe(false);
+  });
+
+  it("disables Line rehearsal's Start when the picked repertoire has no moves to walk", () => {
+    const base = {
+      trainMode: "all_lines",
+      signedIn: true,
+      pendingRepDeletes: new Set(),
+      selectedRepertoireId: "r1",
+    };
+    const empty = state({ ...base, repertoireList: [{ id: "r1", is_active: true, health: { trainable: 0 } }] });
+    expect(empty.disabled).toBe(true);
+    expect(empty.title).toBe("No moves to train. Add lines in Repertoire.");
+    const ready = state({ ...base, repertoireList: [{ id: "r1", is_active: true, health: { trainable: 6 } }] });
+    expect(ready.disabled).toBe(false);
+    expect(ready.title).toBe("");
   });
 });

@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -393,11 +393,20 @@ function paintTrainStartDisabled() {
   const mode = appState.trainMode || "smart";
   const blocked = mode === "smart" && appState.signedIn
     ? trainStartBlockReason(trainPreviewCache.nextSession, { hasActiveRepertoire: !!activeTrainRepertoires().length })
-    : "";
+    : mode === "all_lines" && appState.signedIn
+      ? rehearsalStartBlockReason(selectedTrainRepertoire())
+      : "";
   startBtn.disabled = !!blocked || trainStartDisabled({
     mode, signedIn: appState.signedIn, hasRepertoire: !!selectedTrainRepertoireId(),
   });
   startBtn.title = blocked;
+}
+
+// The listing row behind the picker's selection: its health counts the moves
+// line rehearsal walks.
+function selectedTrainRepertoire() {
+  const id = selectedTrainRepertoireId();
+  return (appState.repertoireList || []).find((rep) => String(rep.id) === String(id)) || null;
 }
 
 function trainSessionLive() {

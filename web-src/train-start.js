@@ -21,3 +21,14 @@ export function trainStartBlockReason(nextSession, { hasActiveRepertoire }) {
     ? "Nothing due. Add lines in Repertoire."
     : "No active repertoire. Create one in Library.";
 }
+
+// Why line rehearsal's Start cannot open a session right now, "" when it can.
+// Rehearsal walks the selected repertoire's own moves, and the listing's health
+// counts exactly those (live, not the cached blob), so zero means no line to
+// walk. A repertoire whose health was never computed answers nothing: Start
+// stays live and the click itself reports.
+export function rehearsalStartBlockReason(repertoire) {
+  if (!repertoire || !repertoire.health) return "";
+  if (Number(repertoire.health.trainable) > 0) return "";
+  return "No moves to train. Add lines in Repertoire.";
+}

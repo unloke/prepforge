@@ -6776,6 +6776,8 @@ function bindEvents() {
     trainSelect.addEventListener("change", () => {
       const value = trainSelect.value;
       appState.trainingRepertoireId = value && value !== "__demo__" ? value : null;
+      // The new pick may have nothing to rehearse: Start follows the pick.
+      syncTrainPickerVisibility();
     });
   }
 
