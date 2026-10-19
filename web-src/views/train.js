@@ -283,7 +283,7 @@ export function createTrainView({
     if (day && day.current > 0) {
       document.getElementById("train-summary-stats").insertAdjacentHTML(
         "beforeend",
-        `<div><b>\u{1F525}${day.current}</b><span>day streak</span></div>`,
+        html`<div><b>\u{1F525}${day.current}</b><span>day streak</span></div>`,
       );
     }
     const deltaEl = document.getElementById("train-summary-delta");
