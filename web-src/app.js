@@ -4924,6 +4924,9 @@ async function renderTrainSync() {
   const el = document.getElementById("train-sync");
   if (!el) return;
   const sync = appState.trainSync;
+  // Nothing to say without a session or pending work, and nothing to say while
+  // the debounce simply waits: "Saving progress soon" sat there for seconds at
+  // a time between answers.
   if (!appState.smart && !sync.pending.length && !sync.dirty) {
     el.hidden = true;
     return;

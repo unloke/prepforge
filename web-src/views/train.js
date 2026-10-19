@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { nounOf } from "../plural.js";
+import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
 // Train tab rendering (lazy-loaded from app.js).
 
 // The result screen's stat cells: [value, label]. Counts read "1 card" / "3 cards".
@@ -58,7 +59,10 @@ export function createTrainView({
   function renderTrainSync() {
     const el = document.getElementById("train-sync");
     if (!el) return;
+    const quiet = !TRAINING_SYNC_TEXT.includes(appState.trainSyncState);
     renderSyncChip(el, appState.trainSyncState, "training");
+    el.hidden = quiet;
+    if (quiet) el.textContent = "";
   }
 
   function renderTrainStats() {
