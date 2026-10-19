@@ -5545,7 +5545,9 @@ async function runLichessCompare() {
     if (!isCurrent()) return;
     payload.requested_sources = usernames.length;
     appState.replayResults = payload;
-    appState.replayFilter = null;
+    // The filter is a view preference, not a position in the old list: a new
+    // check keeps it (and the return state restored after a reload). The
+    // selected game is gone with the old list, so its index is dropped.
     appState.replayOpen = new Set();
     await renderReplayResults(payload, isCurrent);
     if (!isCurrent()) return;
@@ -5915,8 +5917,13 @@ async function ensureReplayView() {
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {
         appState.replayFilter = appState.replayFilter === kind ? null : kind;
-        appState.replayOpen.clear();
-        saveReturnState("replay", { filter: appState.replayFilter, openIndex: null });
+        // The selection survives the filter: the ledger falls back to the
+        // first visible row while the open game is filtered out, so clearing
+        // the filter again brings the user's own game back.
+        saveReturnState("replay", {
+          filter: appState.replayFilter,
+          openIndex: [...appState.replayOpen][0] ?? null,
+        });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {

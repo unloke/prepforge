@@ -402,7 +402,13 @@ export function createReplayView({
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
     if (!rows.length) {
-      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark">♙</div><h3>No games in this bucket</h3></div>`;
+      // A filter with no games must not be a dead end: the chip that set it is
+      // not drawn (its count is zero), so the card carries the way back.
+      const showAll = filter
+        ? html`<div class="row"><button type="button" class="btn" data-show-all>Show all</button></div>`
+        : "";
+      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games in this bucket</h3>${showAll}</div>`;
+      container.querySelector?.("[data-show-all]")?.addEventListener?.("click", () => onToggleFilter(filter));
       return;
     }
     const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
