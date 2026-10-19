@@ -16,7 +16,7 @@ function deferred() {
 }
 function harness() {
   const prompt = {
-    kind: "due", fen_before: "position", expected_uci: "e2e4", expected_san: "e4",
+    kind: "new", fen_before: "position", expected_uci: "e2e4", expected_san: "e4",
     expected_node_id: "node", hint: { strategy: "Take space", piece: "Move the pawn" },
     target: { fen_after: "after", san: "e4" }, legal_moves: ["e2e4", "d2d4"],
   };
@@ -44,6 +44,7 @@ describe("Smart coach response ownership", () => {
     const document = globalThis.document;
     globalThis.document = h.deps.document;
     const pending = prefetchTrainCoach(h.prompt, h.deps);
+    expect(pending).toBeInstanceOf(Promise);
     h.appState.trainHintLevel = 2;
     h.banner.title = "Hint 2 · Piece";
     h.banner.sub = "Move the pawn";
@@ -70,5 +71,26 @@ describe("Smart coach response ownership", () => {
     expect(h.banner.dataset.state).toBe(state);
     expect(h.banner.sub).toBe("Current feedback");
     expect(h.deps.rememberSmartSession).toHaveBeenCalledWith({ attempt: 2 });
+  });
+
+  it("does not ask the model about a due review card the player is still solving", () => {
+    const h = harness();
+    h.prompt.kind = "due";
+    expect(prefetchTrainCoach(h.prompt, h.deps)).toBeUndefined();
+  });
+
+  it("puts the phase tip under a rebuilt New move banner", async () => {
+    const h = harness();
+    const document = globalThis.document;
+    globalThis.document = h.deps.document;
+    const pending = prefetchTrainCoach(h.prompt, h.deps);
+    // The teach banner renders after the coach was asked for; when the answer
+    // lands its line must replace the generic one.
+    h.banner.title = "New move: e4";
+    h.banner.dataset.state = "teach";
+    h.coach.resolve({ promptTip: "Claims space" });
+    await pending;
+    globalThis.document = document;
+    expect(h.banner.sub).toBe("Watch the arrow, then play the move.");
   });
 });

@@ -3098,6 +3098,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-s);
 }
 .train-coach-sub:empty { display: none; }
+/* The sub line is clamped to two lines; a tap on the banner shows the rest
+   (the full text is also in its title). */
+#train-banner .train-coach-sub.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+#train-banner:has(.train-coach-sub:not(:empty)) { cursor: pointer; }
 #train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
 #train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
 #train-banner[data-state="reveal"] .train-coach-title,
@@ -3119,7 +3123,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    focus cards from: a bordered, panel-filled block whose quiet inner rows and
    chips sit on --panel-soft, so three levels of hierarchy (panel → card → fill)
    instead of one undifferentiated white sheet. */
-.tcard {
+.tcard:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -5389,7 +5393,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress card rows keep their size as the session advances: the pip row is
    as tall as its "No moves yet" placeholder, and Up next reserves its three
    rows, so the buttons below never creep upward card by card. */
+/* A hint is asked for while looking at the board, but the hint itself is in the
+   coach strip above it and the stats card renders below it; on a phone that row
+   sits past the fold the moment the board is tapped. So hold the hint line at the
+   top of the scroller until the answer is played: the words stay next to the
+   position they describe. */
+#view-train .train-hint-line {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -4px -4px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: var(--fs-s);
+  font-weight: 600;
+  line-height: 1.35;
+}
 #train-progress-panel .pips { min-height: 1.4em; align-content: center; }
+/* The setup card's controls stay out of the layout while it is hidden. */
+#view-train .train-play-setup[hidden] { display: none; }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
 
 @media (max-width: 1279px) {

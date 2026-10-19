@@ -360,7 +360,7 @@ async function refreshTrainSessionPreview() {
     el.textContent = text;
     el.hidden = !text;
     const banner = document.getElementById("train-banner");
-    if (banner && banner.dataset.state === "idle" && !trainSessionLive()) {
+    if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
       setTrainBanner("idle", empty ? "No moves to train yet" : "Ready to train", "");
     }
   };
@@ -417,16 +417,14 @@ function selectedTrainRepertoire() {
   return (appState.repertoireList || []).find((rep) => String(rep.id) === String(id)) || null;
 }
 
-function trainSessionLive() {
-  if (appState.trainMode === "play") return !!(appState.play && appState.play.active);
-  if (appState.smart && appState.smart.prompt) return true;
-  if (appState.training && appState.training.prompt) return true;
-  return false;
-}
-
 function syncTrainSessionControls() {
-  const live = trainSessionLive();
+  // "Live" is about the current mode's own session. A Practice game that is
+  // open must not keep Hint/Skip lit for the smart queue's next session (and the
+  // reverse), or the first card of a queue starts with dead buttons.
   const play = (appState.trainMode || "smart") === "play";
+  const live = play
+    ? !!(appState.play && appState.play.active)
+    : !!(appState.smart?.prompt || appState.training?.prompt);
   const sidebar = document.querySelector("#view-train .train-sidebar");
   const summaryVisible = !document.getElementById("train-summary")?.hidden;
   if (sidebar) sidebar.dataset.sessionState = !play && summaryVisible ? "summary" : !play && live ? "active" : "setup";
@@ -2031,6 +2029,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
   smart.prompt = prompt;
   smart.attempt = attempt;
   appState.trainHintLevel = 0;
+  setTrainHintLine("");
   await renderSmartProgress(prompt);
   const board = boards.train;
   board.setEngineArrow(null);
@@ -2357,6 +2356,16 @@ async function skipSmartCard() {
   }
 }
 
+// The hint the player asked for, held in the stats card next to the board (the
+// coach strip above the board is out of sight on a phone). Cleared with the card.
+function setTrainHintLine(text) {
+  const el = document.getElementById("train-hint-line");
+  if (!el) return;
+  el.hidden = !text;
+  el.textContent = text || "";
+  if (text) el.scrollIntoView({ block: "nearest" });
+}
+
 // Progressive hint, fully local — the prompt already carries the idea, the
 // piece, and the answer (it's the player's own repertoire, not a quiz).
 function smartHint() {
@@ -2379,6 +2388,7 @@ function smartHint() {
     setTrainBanner("move", "Hint 3 · Answer", `Play ${prompt.expected_san}`);
     boards.train.setEngineArrow(prompt.expected_uci);
   }
+  setTrainHintLine(`Hint ${level} · ${level === 1 ? prompt.hint.strategy || "Follow your preparation" : level === 2 ? prompt.hint.piece || "Find the move" : `Play ${prompt.expected_san}`}`);
 }
 
 let trainSessionMemo = null;

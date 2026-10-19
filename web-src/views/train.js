@@ -1,5 +1,15 @@
 import { html } from "../html.js";
+import { nounOf } from "../plural.js";
 // Train tab rendering (lazy-loaded from app.js).
+
+// The result screen's stat cells: [value, label]. Counts read "1 card" / "3 cards".
+export function summaryStatCells(smart = {}, stats = {}) {
+  const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
+  const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
+  const cells = [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [acc, "first try"], [stats.best || 0, "best in a row"]];
+  if (stats.skipped) cells.push([stats.skipped, "skipped"]);
+  return cells;
+}
 
 // The queue a plain Start serves, in the same terms as the in-session chips:
 // "11 cards · 1 weak · 4 new · 6 polish", or what is left of a resumable one.
@@ -10,7 +20,7 @@ export function sessionPreviewText(next) {
   const parts = ["weak", "due", "new", "polish"]
     .filter((kind) => Number(next[kind]) > 0)
     .map((kind) => `${next[kind]} ${kind}`);
-  const total = `${cards} card${cards === 1 ? "" : "s"}${next.resumed ? " left" : ""}`;
+  const total = `${cards} ${nounOf(cards, "card")}${next.resumed ? " left" : ""}`;
   return [total, ...parts].join(" · ");
 }
 
@@ -35,6 +45,11 @@ export function createTrainView({
   updateTrainTurnBadge,
   onStreakRendered,
 }) {
+  // The coach sub line is clamped to two lines; a tap on the banner shows the
+  // rest. The full text also sits in the element title for hover.
+  document.getElementById("train-banner")?.addEventListener("click", () => {
+    document.getElementById("train-banner-sub")?.classList.toggle("expanded");
+  });
   document.getElementById("train-line-path")?.addEventListener("click", (event) => {
     const el = event.currentTarget;
     el.setAttribute("aria-expanded", String(el.getAttribute("aria-expanded") !== "true"));
@@ -238,14 +253,7 @@ export function createTrainView({
     if (!panel) return;
     const queue = document.getElementById("train-queue");
     if (queue) queue.hidden = true;
-    const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
-    const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
-    const statCells = [
-      [smart.cardsDone, "cards"],
-      [acc, "first try"],
-      [stats.best || 0, "best in a row"],
-    ];
-    if (stats.skipped) statCells.push([stats.skipped, "skipped"]);
+    const statCells = summaryStatCells(smart, stats);
     const day = dayStreak;
     if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
     document.getElementById("train-summary-stats").innerHTML = html`${statCells
