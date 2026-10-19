@@ -3516,7 +3516,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
-.scout-side { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
+/* The detail card ends with its content: a line's detail runs 448-536px tall,
+   and stretching the card to the 808px grid row left a 284px white hole under
+   it. It still caps at the row and scrolls if a detail runs longer. */
+.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
 .scout-panel:not(:has(.scout-section)) .scout-side { display: none; }
@@ -3525,6 +3528,26 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-stream p { margin: 0; }
 .scout-stream-detail { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1em; }
 .scout-panel.is-streaming .scout-stream { display: flex; }
+/* Mid-stream the page used to be one spinner over blank ground. The skeleton
+   holds the shape the report lands in, so nothing jumps when it arrives. */
+.scout-skeleton { display: none; flex-direction: column; gap: 10px; }
+.scout-panel.is-streaming .scout-skeleton { display: flex; }
+.scout-panel.is-streaming:not(:has(#scout-results:empty)) .scout-skeleton { display: none; }
+.scout-skeleton .sk-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-card); background: var(--panel); }
+.scout-skeleton .sk-profile { gap: 8px; }
+.scout-skeleton .sk-tabs { display: flex; gap: 10px; padding: 0 4px; }
+.scout-skeleton .sk { display: block; height: 12px; border-radius: 6px; background: var(--line); }
+.scout-skeleton .sk-name { width: 140px; height: 16px; }
+.scout-skeleton .sk-sub { width: 96px; height: 11px; }
+.scout-skeleton .sk-tab { width: 104px; height: 14px; }
+.scout-skeleton .sk-line { width: 70%; height: 15px; margin-bottom: 6px; }
+.scout-skeleton .sk-row { height: 40px; border-radius: 8px; background: var(--surface-3); }
+@media (prefers-reduced-motion: no-preference) {
+  .scout-skeleton .sk { animation: scout-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+  .scout-skeleton .sk-row:nth-child(3) { animation-delay: 0.1s; }
+  .scout-skeleton .sk-row:nth-child(4) { animation-delay: 0.2s; }
+}
+@keyframes scout-skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 .scout-panel .scout-empty { display: none; }
 .scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
 /* "0 games fetched" before any scout has run is noise next to the empty card. */

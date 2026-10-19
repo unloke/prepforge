@@ -116,10 +116,12 @@ export function scoutPathGuardEnabled(search = typeof location === "undefined" ?
   return new URLSearchParams(search).get("scoutPathGuard") !== "0";
 }
 
-function scoutErrorHtml(message, action = null) {
-  return html`<div class="scout-error" role="alert"><span>${message}</span>${action
-    ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`
-    : ""}</div>`;
+function scoutErrorHtml(title, message, action = null) {
+  return html`<div class="scout-error" role="alert">
+    <p class="scout-error-title">${title}</p>
+    <p class="scout-error-body">${message}</p>
+    ${action ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>` : ""}
+  </div>`;
 }
 
 // Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
@@ -221,10 +223,11 @@ export function createScoutView(deps) {
     delete side.dataset.color;
   }
 
-  // Phone layout stacks the detail after the plan: bring it into view on select.
+  // Below 1020px the detail stacks under the plan; bring it into view on select.
+  // At 768-1020 it sat ~1,400px down and opening a row showed nothing.
   function revealScoutDetail() {
     const side = getSideEl();
-    if (!side || side.hidden || !window.matchMedia?.("(max-width: 760px)").matches) return;
+    if (!side || side.hidden || !window.matchMedia?.("(max-width: 1020px)").matches) return;
     side.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }
 
@@ -1929,9 +1932,9 @@ export function createScoutView(deps) {
     if (!failed.length) return null;
     if (failed.length === 1) {
       const [username, status] = failed[0];
-      return `Couldn't load ${username}. ${status.error || "Try again."}`;
+      return status.error ? `${username}: ${status.error}` : `${username} could not be read. Try again.`;
     }
-    return `Couldn't load ${failed.length} sources. Retry the failed ones.`;
+    return `${failed.length} sources could not be read. Retry the ones that failed.`;
   }
 
   function showScoutEmptyState(session, message) {
@@ -1940,7 +1943,7 @@ export function createScoutView(deps) {
     const failedUsers = Object.entries(session.sourceStatus || {})
       .filter(([, status]) => status.status === "failed")
       .map(([username]) => username);
-    if (results) results.innerHTML = scoutErrorHtml(message, failedUsers.length > 0);
+    if (results) results.innerHTML = scoutErrorHtml(failedUsers.length ? "Couldn't scout this player" : "No games to scout", message, failedUsers.length > 0);
     results?.querySelector?.("#scout-retry-failed")?.addEventListener("click", () => {
       if (!failedUsers.length) return;
       results.classList.add("is-streaming");
@@ -2224,7 +2227,7 @@ export function createScoutView(deps) {
       const message = scoutFetchErrorMessage(error) || error.message || "Scout failed";
       scoutState = null;
       scoutSession = null;
-      if (results) results.innerHTML = scoutErrorHtml(message);
+      if (results) results.innerHTML = scoutErrorHtml("Scout stopped", message);
       if (profile) profile.hidden = true;
     } finally {
       initGuard.finish(initToken);

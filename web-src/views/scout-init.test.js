@@ -239,7 +239,10 @@ describe("scout view initialization reentrancy", () => {
     streamGames.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await view.runScout();
     const results = elements.get("scout-results");
-    expect(String(results.innerHTML)).toContain("Couldn&#39;t load rival");
+    // One title, then the source's own sentence: "Couldn't load rival.
+    // Failed to fetch." stacked two apologies in front of the same fact.
+    expect(String(results.innerHTML)).toContain("Couldn&#39;t scout this player");
+    expect(String(results.innerHTML)).toContain("rival: Could not reach Lichess");
     expect(String(results.innerHTML)).toContain("Retry failed sources");
     expect(String(results.innerHTML)).not.toContain("No games found");
   });
@@ -263,7 +266,7 @@ describe("scout view initialization reentrancy", () => {
     });
     await view.runScout();
     const results = elements.get("scout-results");
-    expect(String(results.innerHTML)).toContain("Couldn&#39;t load failed");
+    expect(String(results.innerHTML)).toContain("failed: Could not reach Lichess");
     expect(String(results.innerHTML)).toContain("Retry failed sources");
   });
 
