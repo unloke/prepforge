@@ -291,11 +291,13 @@
   box-sizing: border-box;
 }
 
-/* First keyboard entry point: hidden off-screen until focused. */
+/* First keyboard entry point: parked above the viewport until it is focused.
+   Fixed, so it belongs to the viewport and not to the page flow, and parked
+   with a transform, so bringing it in never moves the layout under it. */
 .skip-link {
-  position: absolute;
+  position: fixed;
   left: 12px;
-  top: -48px;
+  top: 8px;
   z-index: var(--z-skip);
   padding: 8px 14px;
   border: 1px solid var(--accent-strong);
@@ -304,13 +306,21 @@
   color: var(--accent-text);
   font-weight: 700;
   text-decoration: none;
-  transition: top var(--dur-fast) var(--ease-out);
+  transform: translateY(calc(-100% - 12px));
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 
 .skip-link:focus-visible {
-  top: 8px;
+  transform: translateY(0);
   outline: 2px solid var(--accent);
   outline-offset: -3px;
+}
+
+/* On desktop the link must clear the icon rail, or it lands on the brand mark. */
+@media (min-width: 761px) {
+  .skip-link {
+    left: 72px;
+  }
 }
 
 html,

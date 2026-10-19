@@ -38,10 +38,13 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".skip-link");
     expect(css).toContain(".skip-link:focus-visible");
     const link = ruleBody(".skip-link");
-    expect(link).toMatch(/position:\s*absolute/);
-    expect(link).toMatch(/top:\s*-48px/);
+    // Fixed, not absolute: the link is parked above the viewport, so it must
+    // not be part of the page flow, and it must not read as a label sitting
+    // above the page's first heading.
+    expect(link).toMatch(/position:\s*fixed/);
+    expect(link).toMatch(/transform:\s*translateY\(/);
     const focused = css.match(/\.skip-link:focus-visible\s*\{([^}]+)\}/)?.[1] || "";
-    expect(focused).toMatch(/top:\s*8px/);
+    expect(focused).toMatch(/transform:\s*translateY\(0\)/);
   });
 
   it("draws the brand mark as the app's own knight, not as a text glyph", () => {
