@@ -18,7 +18,7 @@ const at = (pattern) => {
 
 it("the panel's own labels, counters and rows are at the body size", () => {
   for (const pattern of [
-    /\.train-session-preview \{[^}]*font-size: var\(--fs\)/,
+    /\.train-brief-label \{[^}]*font-size: var\(--fs\)/,
     /\.train-picker-label \{[^}]*font-size: var\(--fs\)/,
     /\.train-blitz-row \{[^}]*font-size: var\(--fs\)/,
     /\.train-coach-sub \{[^}]*font-size: var\(--fs\)/,
@@ -32,11 +32,12 @@ it("the panel's own labels, counters and rows are at the body size", () => {
     /\.tsum-row \{[^}]*font-size: var\(--fs\)/,
     /#view-train \.tcard p,\n#view-train \.note \{ font-size: var\(--fs\); \}/,
     /#view-train \.seg-btn \{[^}]*font-size: var\(--fs\)/,
+    /#view-train \.kchip \{[^}]*font-size: var\(--fs\)/,
   ]) at(pattern);
 });
 
 it("no small-size token is left in the panel's own labels", () => {
-  for (const selector of [".train-session-preview", ".train-picker-label", ".stat span", ".trail", ".un-row", ".sum-cells span", ".tsum-row"]) {
+  for (const selector of [".train-brief-label", ".train-picker-label", ".stat span", ".trail", ".un-row", ".sum-cells span", ".tsum-row"]) {
     const rule = css.match(new RegExp(`\\${selector} \\{[^}]*\\}`));
     expect(rule, selector).not.toBeNull();
     expect(rule[0], selector).not.toMatch(/var\(--fs-xs\)|var\(--fs-s\)|font-size: 1[12]px/);

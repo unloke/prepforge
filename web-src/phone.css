@@ -779,9 +779,32 @@
     background: var(--bg);
   }
   #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
-  #view-train #train-modes .seg-btn { flex: 1 1 0; min-width: 0; min-height: 32px; height: 32px; padding: 0 4px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  #view-train #train-modes .seg-btn { flex: 1 1 0; min-width: 0; min-height: 44px; height: 44px; padding: 0 4px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
   #view-train #train-modes .seg-btn.is-active { background: var(--line-strong); color: var(--text); }
-  #view-train .seg-btn { min-height: 34px; height: 34px; font-size: 14px; }
+  #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
+  /* A 38x22 switch is the right size to look at and the wrong size to hit. The
+     tap area grows to the 44px a thumb needs without moving the switch. */
+  #view-train #train-blitz-toggle::after {
+    content: "";
+    position: absolute;
+    inset: -12px -8px;
+  }
+  /* The mode name is a text link inside the card head; the head itself becomes
+     the 44px row, so changing mode is not a 17px-tall target. */
+  #view-train .prog-head { min-height: 44px; }
+  #view-train #train-mode-name {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin: 0 -6px;
+    padding: 0 6px;
+  }
+  #view-train #train-fresh { min-height: 44px; }
+  /* A phone row has no room for a name, a meter and a count side by side: the
+     name keeps the line, the meter and its number sit under it. */
+  #view-train .train-source { grid-template-columns: auto minmax(0, 1fr); row-gap: 4px; }
+  #view-train .train-source-meter { grid-column: 2; width: 100%; }
+  #view-train .train-source-count { grid-column: 2; }
   #view-train .train-sidebar .tcard {
     margin: 0;
     padding: 14px;

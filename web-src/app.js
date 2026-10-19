@@ -6875,6 +6875,7 @@ function bindEvents() {
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
+  document.getElementById("train-empty-build").addEventListener("click", () => switchView("build"));
   document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
   const startPlay = document.getElementById("start-play");
   if (startPlay) {

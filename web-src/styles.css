@@ -3066,6 +3066,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-height: var(--study-h);
   overflow: hidden;
 }
+/* The panel ends where its content does. Stretched to the board's height it
+   was a white sheet with 400px of empty ground under the last row in every
+   state, and the eye read that ground as content that failed to load. Long
+   setup content (Practice game's pickers) still caps at the viewport and
+   scrolls inside. */
+@media (min-width: 861px) {
+  #view-train .train-sidebar { height: auto; align-self: start; }
+}
 #view-train .board-area { position: relative; }
 .panel-scroll {
   flex: 1 1 auto;
@@ -3078,6 +3086,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overscroll-behavior: contain;
 }
 #view-train .panel-head { padding: 8px 12px; }
+/* The mode tabs are the panel's first row, not a separate band: the banner's
+   tone already steps the surface below them. */
+#view-train .train-sidebar > .panel-head { border-bottom: 0; }
 /* The panel's cards are not boxes: the content sits on the panel and the
    fills inside it (chips, the up-next field, the health rows) carry the
    structure. */
@@ -3090,7 +3101,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .note { font-size: var(--fs); }
 #view-train .btn.sm { font-size: var(--fs); }
 #view-train .seg { display: flex; width: 100%; }
-#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); }
+#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+/* The mode tabs answer a press like every other control on the page. */
+#view-train .seg-btn:active:not(:disabled) { transform: scale(0.97); }
 
 .blitz-bar {
   position: absolute;
@@ -3312,7 +3325,28 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 
-.train-session-preview { margin: 0; font-size: var(--fs); font-weight: 600; color: var(--label); }
+/* The setup briefing: the queue's size is the one number the screen is about,
+   then its make-up, then the repertoires it draws from — three shared left
+   edges, gaps between the groups wider than inside them. */
+.train-brief { display: flex; flex-direction: column; gap: 12px; }
+.train-brief-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+/* The queue size is a value the player reads, not a page headline: at display
+   size it made the coach banner above it look like a kicker. */
+.train-brief-count { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
+.train-brief-reps { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: var(--fs); }
+/* Name, then the same three columns on every row: the meters line up with each
+   other and with the numbers, so two repertoires read as one small table
+   instead of two rows placed by their own text lengths. */
+.train-source { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px 176px; align-items: center; gap: 10px; }
+.train-source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+/* Mastery is the one progress signal a player has before starting: a small
+   track on the recess, read against the number beside it. */
+.train-source-meter { display: block; width: 72px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.train-source-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.train-source-count { color: var(--label); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Nothing to train: the dead Start is replaced by the fix, not by a caption. */
+.train-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 
 /* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
 .stats { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3347,20 +3381,29 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .un-row {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 2px 0;
   font-size: var(--fs);
 }
+/* The kind leads the row; the repertoire and its line follow it as one run of
+   text, so a short repertoire name does not open a hole in a fixed column. */
 .un-row .kchip { justify-self: start; }
+.un-what { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
 /* A card with no line of its own says so in words, not in the move face. */
 .un-line.is-plain { font-family: inherit; }
+/* The queue's kind chips are read at a glance mid-session, so they sit at the
+   panel's body size rather than the app's smallest step. */
+#view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
 
 /* The result card arrives when the session ends: one rise, once. */
 #train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
+/* The session card arrives the same way when Start opens it, and only then:
+   the panel stays mounted as the queue advances, so cards never re-rise. */
+#train-progress-panel:not([hidden]) { animation: trainCardEnter var(--dur) var(--ease-out) both; }
 @keyframes trainCardEnter {
   from { opacity: 0; transform: translateY(10px); }
 }

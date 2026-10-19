@@ -13,17 +13,38 @@ export function summaryStatCells(smart = {}, stats = {}) {
   return cells;
 }
 
-// The queue a plain Start serves, in the same terms as the in-session chips:
-// "11 cards · 1 weak · 4 new · 6 polish", or what is left of a resumable one.
-export function sessionPreviewText(next) {
-  if (!next) return "";
-  const cards = Number(next.cards) || 0;
-  if (!cards) return "No moves to train yet";
-  const parts = ["weak", "due", "new", "polish"]
-    .filter((kind) => Number(next[kind]) > 0)
-    .map((kind) => `${next[kind]} ${kind}`);
-  const total = `${cards} ${nounOf(cards, "card")}${next.resumed ? " left" : ""}`;
-  return [total, ...parts].join(" · ");
+// The setup briefing: how big the queue Start will serve is, what it is made
+// of, and (when it mixes several repertoires) which ones it draws from. The
+// size is the one number a player checks before starting, so it leads.
+export function sessionBrief(next) {
+  const cards = Number(next?.cards) || 0;
+  if (!cards) return null;
+  return {
+    cards,
+    label: `${nounOf(cards, "card")}${next.resumed ? " left" : " to train"}`,
+    kinds: ["weak", "due", "new", "polish"]
+      .map((kind) => [kind, Number(next[kind]) || 0])
+      .filter(([, count]) => count > 0),
+  };
+}
+
+// Where the queue draws from: one row per repertoire the Start would drill,
+// with the mastery it has reached and how much is left. An empty repertoire
+// contributes no cards, so it is not a source.
+export function queueSources(reps = [], pendingDeletes = new Set()) {
+  return reps
+    .filter(
+      (rep) => rep.is_active !== false
+        && !pendingDeletes.has(String(rep.id))
+        && !(rep.health && Number(rep.health.trainable) === 0),
+    )
+    .map((rep) => ({
+      name: rep.name,
+      black: rep.color === "black",
+      trainable: Number(rep.health?.trainable) || 0,
+      mastered: Number(rep.health?.mastered) || 0,
+      pct: Math.max(0, Math.min(100, Math.round(Number(rep.health?.mastery_pct) || 0))),
+    }));
 }
 
 // The last plies of a numbered line ("1.e4 c6 2.d4 d5" → "2.d4 d5"): which
@@ -209,13 +230,15 @@ export function createTrainView({
           // a recall test.
           // The card for a line's very first move asks about the starting
           // position: its path is empty, so name it instead of leaving the row
-          // blank next to the rows that do carry a line.
+          // blank next to the rows that do carry a line. "Start" was the
+          // button's word sitting in a row that has no button; this says which
+          // position the card is about.
           const line = lineTail(card.targets?.[0]?.line);
           const tail = line
             ? html`<span class="un-line">${line}</span>`
-            : html`<span class="un-line is-plain">Start</span>`;
+            : html`<span class="un-line is-plain">First move</span>`;
           return (
-            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</div>`
+            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-what"><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</span></div>`
           );
         })}`;
     // The rows arrive one by one, with the app's shared stagger.
@@ -296,6 +319,7 @@ export function createTrainView({
     const footEl = document.getElementById("train-summary-foot");
     const before = smart.healthBefore;
     if (before && after && after.health) {
+      deltaEl.hidden = false;
       deltaEl.innerHTML = html`${[
         ["mastered", "Mastered", "mastered", 1],
         ["learning", "Learning", "learning", 0],
@@ -317,6 +341,9 @@ export function createTrainView({
           ? `${countOf(after.due_tomorrow, "review")} due tomorrow`
           : "Nothing due tomorrow. The queue is clear.";
     } else {
+      // Without a before/after pair there is nothing to compare: an empty
+      // tinted strip reads as a chart that failed to load.
+      deltaEl.hidden = true;
       deltaEl.innerHTML = "";
       footEl.textContent = "";
     }

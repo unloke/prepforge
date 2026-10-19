@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, startNotice, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -340,19 +340,23 @@ function syncTrainPickerVisibility() {
 // so the many syncTrainPickerVisibility() calls don't each refetch. The raw
 // counts ride along, because they are also what tells Start whether a queue
 // exists at all.
-const trainPreviewCache = { at: 0, text: "", nextSession: null, loading: null };
+const trainPreviewCache = { at: 0, brief: null, sources: [], nextSession: null, loading: null };
 function invalidateTrainSessionPreview() {
   trainPreviewCache.at = 0;
   trainPreviewCache.nextSession = null;
+  trainPreviewCache.brief = null;
+  trainPreviewCache.sources = [];
 }
 
 
 async function refreshTrainSessionPreview() {
-  const el = document.getElementById("train-session-preview");
-  if (!el) return;
+  const host = document.getElementById("train-brief");
+  if (!host) return;
   const smartIdle = (appState.trainMode || "smart") === "smart" && !(appState.smart && appState.smart.prompt);
   if (!smartIdle || !appState.signedIn) {
-    el.hidden = true;
+    host.hidden = true;
+    const emptyBlock = document.getElementById("train-empty");
+    if (emptyBlock) emptyBlock.hidden = true;
     return;
   }
 
@@ -360,13 +364,32 @@ async function refreshTrainSessionPreview() {
     // One setup heading only: an empty queue says so in the banner instead of
     // stacking the same message above a start button.
     const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
-    const text = empty ? "" : trainPreviewCache.text;
-    el.textContent = text;
-    el.hidden = !text;
+    const brief = trainPreviewCache.brief;
+    host.hidden = !brief;
     const banner = document.getElementById("train-banner");
     if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
-      setTrainBanner("idle", empty ? "No moves to train yet" : "Ready to train", "");
+      setTrainBanner("idle", brief ? "Ready to train" : empty ? "No moves to train yet" : "Ready to train", "");
     }
+    // Nothing to serve: the dead Start leaves with the briefing and the fix
+    // takes its place, so the panel never shows a button that cannot work.
+    const startRow = document.getElementById("train-srs-start");
+    const blitzRow = document.getElementById("train-blitz-row");
+    const emptyBlock = document.getElementById("train-empty");
+    if (startRow) startRow.hidden = empty;
+    if (blitzRow) blitzRow.hidden = empty || (appState.trainMode || "smart") !== "smart";
+    if (emptyBlock) emptyBlock.hidden = !empty;
+    if (!brief) return;
+    document.getElementById("train-brief-count").textContent = String(brief.cards);
+    document.getElementById("train-brief-label").textContent = brief.label;
+    document.getElementById("train-brief-kinds").innerHTML =
+      html`${brief.kinds.map(([kind, count]) => html`<span class="kchip k-${kind}">${count} ${kind}</span>`)}`;
+    // What the queue is drawn from, and how far each repertoire has come: the
+    // setup screen's own numbers, not a caption about the page.
+    document.getElementById("train-brief-reps").innerHTML =
+      html`${trainPreviewCache.sources.map(
+        (rep) =>
+          html`<div class="train-source"><span class="color-dot ${rep.black ? "black" : "white"}"></span><span class="train-source-name">${rep.name}</span><span class="train-source-meter" title="${rep.pct}% mastered: ${rep.mastered} of ${rep.trainable} moves"><i style="width:${rep.pct}%"></i></span><span class="train-source-count">${rep.pct}% mastered · ${rep.trainable} to train</span></div>`,
+      )}`;
   };
   if (Date.now() - trainPreviewCache.at < 30000) {
     paint();
@@ -379,13 +402,15 @@ async function refreshTrainSessionPreview() {
         api(`/api/train/smart/summary?mixed=true&preview=true&local_date=${encodeURIComponent(localDateString())}`),
       ]);
       trainPreviewCache.nextSession = payload && payload.next_session;
-      trainPreviewCache.text = mod.sessionPreviewText(trainPreviewCache.nextSession);
+      trainPreviewCache.brief = mod.sessionBrief(trainPreviewCache.nextSession);
+      trainPreviewCache.sources = mod.queueSources(appState.repertoireList || [], appState.pendingRepDeletes);
       trainPreviewCache.at = Date.now();
     })().catch(() => {
       // No answer, so no opinion: Start stays live and Start itself reports
       // why the queue could not be built.
       trainPreviewCache.nextSession = null;
-      trainPreviewCache.text = "";
+      trainPreviewCache.brief = null;
+      trainPreviewCache.sources = [];
     }).finally(() => {
       trainPreviewCache.loading = null;
     });
@@ -1920,8 +1945,9 @@ async function startSmartTraining(options = {}) {
   // requeue, skip); only graded attempts + the position sync back, batched.
   const queue = mapped.queue;
   if (!queue.length) {
-    setStatus("Nothing to train yet");
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Repertoire, then train.");
+    // The setup screen already carries this state: the banner names it and the
+    // Open Repertoire action is the fix. A toast on top repeats the banner.
+    setTrainBanner("idle", "No moves to train yet", "");
     return;
   }
   setTrainBanner(
@@ -1967,7 +1993,7 @@ async function startSmartTraining(options = {}) {
     if (scheduled && ["pending", "prepared"].includes(handoff.status)) transitionHandoff(handoff.key, "queued");
   }
   setBlitzBarVisible(appState.smart.blitz);
-  const preview = document.getElementById("train-session-preview");
+  const preview = document.getElementById("train-brief");
   if (preview) preview.hidden = true;
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
@@ -1987,11 +2013,12 @@ async function startSmartTraining(options = {}) {
       return renderSmartQueueStrip();
     })
     .catch(() => {});
-  setStatus(
-    mapped.resumed
-      ? `Resumed queue: card ${smart.cardIndex + 1} / ${smart.queue.length}`
-      : `Queue ready: ${countOf(smart.queue.length, "card")}`,
-  );
+  // The card head already reads "Card 2 / 5" and the setup brief already named
+  // the queue's size, so a toast repeating either is a second copy of a number
+  // that is on screen. A resume says the one thing the head cannot: that this
+  // is the queue from last time rather than a new one.
+  const startMsg = startNotice(mapped.resumed);
+  if (startMsg) setStatus(startMsg);
   syncWorkspaceUrl();
   const resumedAttempt = appState.smart.attempt;
   const prompt = smartLocalPrompt(appState.smart);

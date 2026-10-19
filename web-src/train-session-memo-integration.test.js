@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { queueRepertoireForStart } from "./train-start.js";
+import { queueRepertoireForStart, startNotice } from "./train-start.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
@@ -39,7 +39,7 @@ function harness(overrides = {}) {
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
     invalidateTrainSessionPreview: () => {},
-    queueRepertoireForStart,
+    queueRepertoireForStart, startNotice,
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},

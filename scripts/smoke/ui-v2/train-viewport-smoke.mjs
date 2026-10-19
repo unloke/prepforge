@@ -114,25 +114,31 @@ async function runViewport(vp) {
     ).catch(() => {});
     const emptySetup = await emptyPage.evaluate(() => ({
       banner: document.getElementById("train-banner-title")?.textContent?.trim(),
-      preview: document.getElementById("train-session-preview")?.textContent?.trim(),
-      previewHidden: document.getElementById("train-session-preview")?.hidden,
+      preview: document.getElementById("train-brief")?.textContent?.trim(),
+      previewHidden: document.getElementById("train-brief")?.hidden,
+      startHidden: document.getElementById("train-srs-start")?.hidden,
+      fixHidden: document.getElementById("train-empty")?.hidden,
+      fix: document.getElementById("train-empty-build")?.textContent?.trim(),
     }));
     check(emptySetup.banner === "No moves to train yet", "empty queue banner should be the one heading, got " + JSON.stringify(emptySetup.banner));
     check(emptySetup.previewHidden === true, "empty queue preview should be hidden, got " + JSON.stringify(emptySetup.preview));
+    // Nothing to train: a dead Start is not the answer; the way to fix it is.
+    check(emptySetup.startHidden === true, "empty queue should hide Start, got " + JSON.stringify(emptySetup.startHidden));
+    check(emptySetup.fixHidden === false && emptySetup.fix === "Open Repertoire", "empty queue should offer the fix, got " + JSON.stringify(emptySetup.fix));
   } finally {
     await emptyPage.close();
   }
 
   await openTrain(page);
   await page.waitForFunction(
-    () => !document.getElementById("train-session-preview")?.hidden,
+    () => !document.getElementById("train-brief")?.hidden,
     null,
     { timeout: 2000 },
   ).catch(() => {});
   const setupPreview = await page.evaluate(() => ({
     banner: document.getElementById("train-banner-title")?.textContent?.trim(),
-    preview: document.getElementById("train-session-preview")?.textContent?.trim(),
-    previewHidden: document.getElementById("train-session-preview")?.hidden,
+    preview: document.getElementById("train-brief")?.textContent?.trim(),
+    previewHidden: document.getElementById("train-brief")?.hidden,
   }));
   check(setupPreview.banner === "Ready to train", "queue banner should be Ready to train, got " + JSON.stringify(setupPreview.banner));
   check(setupPreview.previewHidden === false && /cards?/.test(setupPreview.preview || ""), "queue preview should name the cards, got " + JSON.stringify(setupPreview.preview));
@@ -238,6 +244,12 @@ async function runViewport(vp) {
   await page.waitForTimeout(1500);
 
   await shot("active");
+
+  // Starting a queue must not toast a number the panel already shows: the card
+  // head reads "Card 1 / 4" and the setup brief named the queue's size.
+  const startToasts = await page.locator(".notices .notice").allTextContents();
+  check(!startToasts.some((t) => /Queue ready|Resumed queue/.test(t)),
+    `starting a queue should not toast its size, got ${JSON.stringify(startToasts)}`);
 
   // Result screen: the finished session is a report, so the mode tabs are gone
   // with the setup card — "New session" is the way back to them. Reach it by
