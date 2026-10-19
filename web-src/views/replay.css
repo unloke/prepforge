@@ -47,6 +47,18 @@
 .ledger .card-head h2 { font-size: 13.5px; }
 .ledger .card-head .faint { color: var(--muted); }
 .ledger-table { flex: 1; overflow: auto; }
+/* A Check result arrives row by row instead of as one block: the shared
+   `.list-enter` stagger, slowed to 60ms here because the ledger is the whole
+   point of the page. The re-render a row click causes does not re-arm it. */
+#view-replay .ledger-table.list-enter > * {
+  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
+}
+/* The detail card's contents are replaced by a row click; a short fade says
+   "this is the other game" without the travel a page switch uses. */
+#view-replay .focus { animation: focus-swap var(--dur-fast) var(--ease-out) both; }
+@keyframes focus-swap {
+  from { opacity: 0; }
+}
 
 .lr {
   display: grid;
@@ -62,6 +74,7 @@
   font-size: var(--fs-s);
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 /* Games ledger column header — the shared `.col-head` treatment (styles.css)
    plus this row's sticky positioning. */
@@ -74,10 +87,12 @@
   cursor: default;
 }
 .lr:not(.head):hover { background: var(--panel-soft); }
-/* The open row is a filled row with a 3px accent bar: the inset shadow read as
-   a line under the row rather than a state, and shadows on resting elements
-   are noise here. The bar is drawn as a border so it cannot be mistaken for a
-   divider. */
+/* Press: the row darkens one step under the finger. No scale — the deck of
+   rows would jump. */
+.lr:not(.head):active { background: var(--surface-3); }
+/* The open row is a filled row with a 3px accent bar: the old inset edge read
+   as a line under the row rather than a state. The bar is drawn as a border so
+   it cannot be mistaken for a divider. */
 .ledger-table[data-ui] .lr.is-open {
   background: var(--accent-soft);
   border-left: 3px solid var(--accent);

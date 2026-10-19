@@ -160,6 +160,19 @@ describe("replay focus internals", () => {
     elements = makeElements();
   });
 
+  it("stages the ledger entrance once per result, not on every row click", () => {
+    const view = makeView(elements);
+    const payload = { games: [userErrorGame], misses_recorded: 0 };
+    view.renderReplayResults(payload);
+    expect(String(elements["replay-results"].innerHTML)).toContain("ledger-table list-enter");
+    // A row click re-renders the SAME payload: the stagger must not replay.
+    view.renderReplayResults(payload);
+    expect(String(elements["replay-results"].innerHTML)).not.toContain("list-enter");
+    // A new Check result animates again.
+    view.renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-results"].innerHTML)).toContain("ledger-table list-enter");
+  });
+
   it("counts games and queued moves with real plurals", () => {
     const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
     makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });

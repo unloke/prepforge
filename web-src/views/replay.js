@@ -3,6 +3,7 @@ import { html } from "../html.js";
 
 import { Chess } from "chess.js";
 import { buildArrowPath } from "../board-arrows.js";
+import { staggerRows } from "../list-enter.js";
 import { nounOf } from "../plural.js";
 import "./replay.css";
 
@@ -209,6 +210,9 @@ export function createReplayView({
   const renderers = boardRenderers && boardRenderers.parseFenBoard && boardRenderers.pieceSvg ? boardRenderers : null;
   // Index of the row the user just clicked; the next render reveals its detail.
   let pendingRevealIndex = null;
+  // The last payload painted. A row click re-renders the same payload, so the
+  // entrance runs once per Check result and never on selection.
+  let lastPayload = null;
   function renderReplaySummary(payload) {
     const el = document.getElementById("replay-summary");
     if (!el) return;
@@ -450,8 +454,11 @@ export function createReplayView({
     // the keyboard focus on the clicked row, then reveal the detail card.
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
+    const entered = payload !== lastPayload;
+    lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    if (entered) staggerRows(container.querySelector?.(".ledger-table"));
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);
