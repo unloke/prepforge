@@ -1423,6 +1423,11 @@ h2 {
   gap: 12px;
   max-width: 1640px;
 }
+#view-dashboard,
+#view-teams {
+  --fs-xs: 13px;
+  --fs-s: 13px;
+}
 
 /* Teams — Opus prototype composition. Directory | team detail | incoming shares;
    card chrome, rows and the responsive collapse live in views/teams.css. */
@@ -1590,7 +1595,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cols,
 .lr.head {
   color: var(--label);
-  font-size: var(--fs-xs);
+  font-size: 13px;
   font-weight: 600;
 }
 /* Table: column header + one grid row per repertoire */
