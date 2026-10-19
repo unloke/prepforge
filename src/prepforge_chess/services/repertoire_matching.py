@@ -47,10 +47,7 @@ def _departure_result(
 
     The departure is attributed to whoever MOVED that move (perspective), and
     ``departure_ply`` is the move's own game ply, so the review points at the
-    exact point the game stepped out of preparation. ``expected`` must be a
-    child of the SHARED node (the position the game left from): the review draws
-    that move as an arrow from the position before ``departure_ply``, so it has
-    to be the move playable there, which is one of the shared node's children.
+    exact point the game stepped out of preparation.
     """
     reason = (
         "user_left_preparation"
@@ -113,8 +110,9 @@ def _match_game_path(
     for move in pending:
         child = _find_child(node, move.uci)
         if child is None:
+            expected = _pick_expected_child(node)
             return _departure_result(
-                repertoire, node, _pick_expected_child(node), move, matched_plies, user_color
+                repertoire, node, expected, move, matched_plies, user_color
             )
         node = child
         matched_plies += 1

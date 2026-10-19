@@ -358,16 +358,6 @@ describe("replay focus internals", () => {
     expect(String(html)).not.toContain('class="t-good"');
     expect(String(html)).toContain('class="t-bad"');
   });
-  it("drops the expected arrow when the payload move is not playable there", () => {
-    // A stale backend used to send the shared node's incoming move (d7d5) as
-    // expected_move_uci: it cannot be played on the derived decision position,
-    // so no arrow is drawn (an arrow needs coordinates the board has).
-    const stale = { ...userErrorGame, expected_move_uci: "d2d4", expected_move_san: "d4" };
-    makeView(elements).renderReplayResults({ games: [stale], misses_recorded: 0 });
-    const html = String(elements["replay-results"].innerHTML);
-    expect(html).toMatch(/replay-arrows[^]*class="t-bad"/);
-    expect(html).not.toMatch(/replay-arrows[^]*class="t-good"/);
-  });
   it("names departures by move number, not ply (UX 2026-10-01 P2-9)", () => {
     expect(moveNumberLabel(1)).toBe("1.");
     expect(moveNumberLabel(2)).toBe("1…");

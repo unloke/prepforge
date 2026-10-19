@@ -71,27 +71,24 @@ function replayFocusPosition(game) {
     return null;
   }
   const fen = chess.fen();
-  // The expected/played moves are drawn from this position, so both must be
-  // legal here: a stale payload move is dropped (no arrow) rather than mapped
-  // to coordinates the board does not have.
-  const playable = (uci) => {
-    if (!uci) return null;
+  let expectedUci = game.expected_move_uci || null;
+  if (expectedUci) {
+    // Validate the payload move on the derived position; a stale/illegal
+    // expected move simply drops the arrow, it never fakes one.
     try {
-      const probe = new Chess(fen);
-      probe.move({
-        from: uci.slice(0, 2),
-        to: uci.slice(2, 4),
-        promotion: uci.length > 4 ? uci.slice(4) : undefined,
+      chess.move({
+        from: expectedUci.slice(0, 2),
+        to: expectedUci.slice(2, 4),
+        promotion: expectedUci.length > 4 ? expectedUci.slice(4) : undefined,
       });
-      return uci;
     } catch {
-      return null;
+      expectedUci = null;
     }
-  };
+  }
   return {
     fen,
-    expectedUci: playable(game.expected_move_uci),
-    playedUci: playable(game.departure_move_uci),
+    expectedUci,
+    playedUci: game.departure_move_uci || null,
     orientation: game.user_color === "black" ? "black" : "white",
   };
 }
