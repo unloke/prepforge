@@ -115,6 +115,11 @@ describe("Coverage panel state", () => {
     h.controller.paint();
     expect(h.gaps.innerHTML).toContain("coverage-empty");
     expect(h.gaps.innerHTML).not.toContain("<button");
+    // An action-sized instruction, not a paragraph about what coverage is:
+    // the latter was standing explanation (AGENTS.md) and the ⓘ already
+    // carries the detail.
+    const text = h.gaps.innerHTML.replace(/<[^>]+>/g, "").trim();
+    expect(text).toBe("Press Scan to check this line.");
   });
 
   it("hides the empty state once a scan has run", async () => {

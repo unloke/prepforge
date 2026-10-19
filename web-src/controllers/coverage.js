@@ -169,7 +169,9 @@ export function createCoverageController({
         body = html`${body}<div class="coverage-live" role="status">${result.unknownMass > 0 ? "No gaps in checked positions" : "No gaps"}</div>`;
       } else body = html`${body}${gapRows(c.readOnly)}`;
     } else {
-      body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Scan to find the moves your opponents play that this repertoire misses.</p>`;
+      // The empty state names the action, not the feature: what a scan is for
+      // lives in the ⓘ beside it.
+      body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Press Scan to check this line.</p>`;
     }
     el.innerHTML = body;
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];
