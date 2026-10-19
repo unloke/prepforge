@@ -5464,6 +5464,30 @@ function writeGamesSelection(selection) {
   writeSourceStore(GAMES_SOURCE_KEY, selection);
 }
 
+// The ledger belongs to the sources the last Check fetched from. Changing the
+// sources replaces it with the pre-check prompt, otherwise the header keeps
+// naming accounts the user just removed ("2 shown · old_account").
+function clearGamesResults() {
+  appState.replayResults = null;
+  appState.replayFilter = null;
+  appState.replayOpen = new Set();
+  appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
+  saveReturnState("replay", { filter: null, openIndex: null });
+  const summary = document.getElementById("replay-summary");
+  if (summary) {
+    summary.hidden = true;
+    summary.innerHTML = "";
+  }
+  const results = document.getElementById("replay-results");
+  if (results) {
+    results.innerHTML =
+      html`<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
+  }
+  paintGamesSource();
+  const hint = document.getElementById("games-idle-hint");
+  if (hint) hint.textContent = gamesIdleHint();
+}
+
 
 function gamesSourceAccountIds() {
   const sel = gamesSourceSelection();
@@ -5485,7 +5509,7 @@ function openGamesComposer(anchor) {
     externalPlaceholder: "Add Lichess username…",
     onChange: (sel) => {
       writeGamesSelection(sel);
-      paintGamesSource();
+      clearGamesResults();
     },
     onClose: () => paintGamesSource(),
   });
@@ -5536,19 +5560,20 @@ function paintGamesSource() {
       html`<span class="src-empty">No sources — open Add and pick one</span>`;
     return;
   }
-  // The idle card names the next step for where the user actually is. While the
-  // session is unread it says nothing: a guest/signed-in distinction is a guess.
-  // It only shows before a check — a rendered result replaces the whole host.
   const hint = document.getElementById("games-idle-hint");
-  if (hint) {
-    hint.textContent = !appState.authKnown
-      ? ""
-      : !appState.signedIn
-        ? "Sign in to check your games against your repertoires."
-        : lichessAccounts().length || selection.external.length
-          ? "Pick a sample size, then run a check."
-          : "Connect a Lichess account, then run a check.";
-  }
+  if (hint) hint.textContent = gamesIdleHint();
+}
+
+// The idle card names the next step for where the user actually is. While the
+// session is unread it says nothing: a guest/signed-in distinction is a guess.
+// It only shows before a check — a rendered result replaces the whole host.
+function gamesIdleHint() {
+  const selection = gamesSourceSelection();
+  if (!appState.authKnown) return "";
+  if (!appState.signedIn) return "Sign in to check your games against your repertoires.";
+  return lichessAccounts().length || selection.external.length
+    ? "Pick a sample size, then run a check."
+    : "Connect a Lichess account, then run a check.";
 }
 
 function bindGamesSource() {
@@ -5575,7 +5600,7 @@ function bindGamesSource() {
         accountIds: sel.accountIds,
         external: sel.external.filter((n) => n !== removeExt.dataset.gamesUnpickExternal),
       });
-      paintGamesSource();
+      clearGamesResults();
       return;
     }
     const remove = event.target.closest("[data-games-unpick]");
@@ -5589,7 +5614,7 @@ function bindGamesSource() {
     } else {
       writeGamesSelection({ linkedMode: "subset", accountIds: rest, external: sel.external });
     }
-    paintGamesSource();
+    clearGamesResults();
   });
   paintGamesSource();
 }

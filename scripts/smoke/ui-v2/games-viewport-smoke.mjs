@@ -149,7 +149,7 @@ async function runViewport(vp) {
   check(/1 stayed in prep/.test(summaryText || ""), `summary should count 1 stayed in prep, got "${summaryText}"`);
   check(/1 you left prep/.test(summaryText || ""), `summary should count 1 you left prep`);
   check(/1 opponent left prep/.test(summaryText || ""), `summary should count 1 opponent departure`);
-  check(/\+1 queued for training/.test(summaryText || ""), `summary should show the real queued count`);
+  check(/\+1 move queued for training/.test(summaryText || ""), `summary should show the real queued count`);
 
   // Ledger: 3 rows; focused row (first, user-error) is open.
   const rows = await page.locator("#replay-results .lr[data-index]").count();

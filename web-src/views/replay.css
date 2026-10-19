@@ -114,8 +114,7 @@
 .moveline .dep { padding: 0 3px; border-radius: 3px; color: var(--accent-ink); font-weight: 700; }
 .moveline .dep.t-bad { background: var(--danger); }
 .moveline .dep.t-warn { background: var(--warn); }
-/* Same tokens as `.moveline .inprep` above, so the key matches the moves it explains. */
-
+/* 
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows path { opacity: 0.8; filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22)); }
