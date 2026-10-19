@@ -368,8 +368,8 @@
   gap: 12px;
   margin-top: 8px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
   border-radius: var(--radius);
+  background: var(--danger-soft);
 }
 .acct-danger p { margin: 0; }
 .acct-danger .btn { white-space: nowrap; flex: none; }
