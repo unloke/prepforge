@@ -300,6 +300,7 @@ export function createTrainView({
     const footEl = document.getElementById("train-summary-foot");
     const before = smart.healthBefore;
     if (before && after && after.health) {
+      deltaEl.hidden = false;
       deltaEl.innerHTML = html`${[
         ["mastered", "Mastered", "mastered", 1],
         ["learning", "Learning", "learning", 0],
@@ -321,6 +322,9 @@ export function createTrainView({
           ? `${countOf(after.due_tomorrow, "review")} due tomorrow`
           : "Nothing due tomorrow. The queue is clear.";
     } else {
+      // Without a before/after pair there is nothing to compare: an empty
+      // tinted strip reads as a chart that failed to load.
+      deltaEl.hidden = true;
       deltaEl.innerHTML = "";
       footEl.textContent = "";
     }
