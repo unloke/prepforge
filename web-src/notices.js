@@ -75,11 +75,16 @@ class Notice {
     // would otherwise float over the very result it is producing.
     const dock = this.job && opts.dock && opts.dock.isConnected ? opts.dock : null;
     this.dock = dock;
+    if (dock) {
+      // A dock hosts one card and is not part of the stack: the report that
+      // replaces a failed job's card would otherwise be evicted for the failed
+      // card, and `active` would point at a card the user can't see.
+      if (dock._notice) dock._notice.dismiss(true);
+      dock._notice = this;
+    }
     this._build(opts);
     if (dock) {
       this.el.classList.add("is-docked");
-      if (dock._notice) dock._notice.dismiss(true);
-      dock._notice = this;
       dock.appendChild(this.el);
     } else {
       stack._add(this);
@@ -326,6 +331,9 @@ class Notice {
     this._clearProgressFlush();
     this._dropStop();
     this._paint(title, message);
+    // A docked card lives next to the panel it reports on; a finish still ends
+    // the job, so it leaves the dock instead of sitting there as "Job failed".
+    if (this.dock) this.dismiss(true);
   }
 
   complete({ title, message, onClick } = {}) {
@@ -477,10 +485,12 @@ class Notices {
 
   failJob(message) {
     this.active?.fail(message);
+    this.active = null;
   }
 
   cancelJob(message) {
     this.active?.cancelled(message);
+    this.active = null;
   }
 
   lockJob(message) {

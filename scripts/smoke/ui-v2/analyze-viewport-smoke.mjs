@@ -359,7 +359,10 @@ async function runViewport(vp) {
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
       order: num.right <= white.left + 1 && white.right <= black.left + 1,
-      panelHead: !!document.querySelector("#analyze-sidebar > .panel-head #analysis-game-title"),
+      // The panel head is actions only: the game's players name the board caption
+      // under the board (phones show that caption in the thumb bar). This PGN
+      // has no player tags, so the caption names the game by its half-move count.
+      panelHead: /\d+ half-moves?/.test(document.querySelector("#analysis-game-meta").textContent),
       glyphs: document.querySelectorAll("#analysis-moves .mtree-glyph").length,
       noEvalBar: !document.getElementById("analysis-evalbar"),
       panelNextToBoard: window.innerWidth > 860 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
@@ -368,7 +371,7 @@ async function runViewport(vp) {
   // Phones hide the move grid; the eval chart steps through the game instead.
   if (vp.width > 760) check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
   await checkPanelHead("results");
-  check(layout.panelHead, "the panel head should carry the game title");
+  check(layout.panelHead, "the board caption should carry the game's players");
   check(layout.glyphs >= 1, "classified moves should carry a glyph");
   check(layout.noEvalBar, "the Analyze board should not carry a side eval bar");
   check(layout.panelNextToBoard, "the panel should sit beside (or, stacked, below) the board");
@@ -458,7 +461,7 @@ async function runViewport(vp) {
   await openGamesSheet(page);
   await page.locator('.history-item[data-game-id="g2"] .hi-open').focus();
   await page.keyboard.press("Enter");
-  await page.waitForFunction(() => /opp_two/.test(document.getElementById("analysis-game-title").textContent));
+  await page.waitForFunction(() => /opp_two/.test(document.getElementById("analysis-game-meta").textContent));
   check(await page.locator("#analysis-board [data-square]").first().getAttribute("data-square") === "h1", "a recalled Self-as-Black game should face Black");
   const recalledPgn = await page.locator("#pgn-input").inputValue();
   check(recalledPgn.includes('[Black "me_user"]') && recalledPgn.includes('[Result "1-0"]'), "recalled PGN should retain its game metadata");

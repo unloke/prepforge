@@ -261,12 +261,14 @@ describe("workspace chrome layout", () => {
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
     expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
-    expect(view).toContain('id="analysis-game-title"');
+    // The head is actions only: no title of its own (it repeated the board caption).
+    expect(view).not.toContain('id="analysis-game-title"');
     expect(view).toContain('class="board-label" id="analysis-board-label"');
     // It sits in the board bar under the board, not in the panel head: the
     // head's own block is just the one title line plus the actions.
     const headRow = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
     expect(headRow).not.toContain("analysis-game-meta");
+    expect(headRow).not.toContain("analysis-game-title");
     const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
     expect(boardBar).toContain('class="board-sub" id="analysis-game-meta"');
     expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
