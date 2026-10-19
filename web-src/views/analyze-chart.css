@@ -822,7 +822,9 @@
    when shown, the handoff (52px), each with the 14px gap. Below that the
    panel scrolls instead. */
 @media (min-width: 861px) {
-  .analyze-main:has(> #analysis-results:not([hidden])) { min-height: 100%; }
+  /* The grade bars and the handoff sit after the results stack, so the stack
+     gives up the room they need: it takes what is left, they stay on screen. */
+  .analyze-main:has(> #analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
   #analysis-results:not([hidden]) { flex: 1 1 0; min-height: 172px; }
   #analysis-results:not([hidden]):has(> .analysis-handoff:not([hidden])) { min-height: 238px; }
   #analysis-results > :not(.moves-grid) { flex: none; }
