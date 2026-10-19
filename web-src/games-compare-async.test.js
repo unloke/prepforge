@@ -63,3 +63,11 @@ it("lets the latest Check own results and its busy state", async () => {
   expect(h.appState.replayResults.count).toBe(2);
   expect(h.button.disabled).toBe(false);
 });
+
+it("uses the singular when a compare returns one game", async () => {
+  const h = harness();
+  const pending = h.run();
+  h.requests[0]({ games: [], count: 1, misses_recorded: 1, username: "self" });
+  await pending;
+  expect(h.deps.setStatus).toHaveBeenCalledWith("Fetched 1 game · 1 forgotten move added to training");
+});

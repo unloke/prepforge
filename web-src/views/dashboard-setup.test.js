@@ -280,6 +280,20 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).toContain("<b>0</b> repertoires");
   });
 
+  it("uses singular labels when a lifetime count is one", async () => {
+    mockDashboard({ games: 1, training_sessions: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    const counts = String(todayCard.innerHTML);
+    expect(counts).toContain("<b>1</b> game");
+    expect(counts).toContain("<b>1</b> repertoire");
+    expect(counts).toContain("<b>1</b> session");
+    expect(counts).not.toContain("<b>1</b> games");
+    expect(counts).not.toContain("<b>1</b> repertoires");
+    expect(counts).not.toContain("<b>1</b> sessions");
+  });
+
   it("renders the signed-out Library as the onboarding card without any API call", () => {
     view.renderSignedOut();
     expect(api).not.toHaveBeenCalled();

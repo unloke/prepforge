@@ -151,7 +151,7 @@ describe("Coverage scan progress", () => {
     // Once the provider answers, the step becomes the position count.
     release();
     await started;
-    expect(h.job.updateJob.mock.calls.some(([u]) => u.phase === "scan" && u.message === "1 positions")).toBe(true);
+    expect(h.job.updateJob.mock.calls.some(([u]) => u.phase === "scan" && u.message === "1 position")).toBe(true);
   });
 
   it("keeps the job card indeterminate while no position has been read", async () => {
