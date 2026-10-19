@@ -97,9 +97,10 @@
 .kind-badge.t-none { background: var(--none-soft); color: var(--none); }
 
 .focus { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: auto; }
-.focus-top { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 14px; }
-.focus-top.no-board { grid-template-columns: minmax(0, 1fr); }
-.focus-board { position: relative; width: 100%; aspect-ratio: 1; }
+/* Board above, detail text below, at every width: the board takes the card's
+   full width instead of sharing it with the text. */
+.focus-top { display: flex; flex-direction: column; gap: 12px; }
+.focus-board { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; }
 .focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .focus-info h2 { font-size: 15px; word-break: break-word; }
@@ -121,13 +122,11 @@
 .replay-arrows .t-good { fill: var(--good); }
 .replay-arrows .t-bad { fill: var(--danger); }
 
-/* ≤1279: the Opening column drops, the focus board sits above its text. */
+/* ≤1279: the Opening column drops. */
 @media (max-width: 1279px) {
   .triage { grid-template-columns: minmax(0, 1fr) 380px; }
   .lr { grid-template-columns: 118px minmax(140px, 1fr) 40px 56px; }
   .lr > :nth-child(4) { display: none; }
-  .focus-top { grid-template-columns: 1fr; }
-  .focus-board { max-width: 300px; }
 }
 /* ≤1020: narrow laptop / split screen. Ledger and detail stay side by side
    (a row click must visibly change the detail beside it); the detail narrows. */
@@ -154,6 +153,5 @@
   .lr > :nth-child(2) { grid-area: players; }
   .lr > :nth-child(3) { grid-area: res; text-align: right; }
   .lr > :nth-child(5) { grid-area: dep; }
-  .focus-board { max-width: none; }
   .actions .btn { min-height: 44px; }
 }
