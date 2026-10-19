@@ -2843,6 +2843,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
 
 .dock {
+  position: relative;
   flex: 0 0 clamp(210px, 40%, 330px);
   /* The drag handle writes a px `flex-basis` inline; `flex` sets all three
      sub-properties, so without `grow`/`shrink` declared separately here the
@@ -3815,6 +3816,36 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .explorer-rows.is-stale .explorer-row:hover {
   background: transparent;
+}
+
+/* The rows stay (dimmed) so the panel does not collapse, but a moving bar on
+   the dock says the list belongs to the previous position until the fetch
+   lands. Inset from the tab strip so it reads as the panel loading. */
+.dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--accent);
+  transform: scaleX(0.15);
+  transform-origin: 0 50%;
+  animation: dock-loading 1.1s var(--ease-out) infinite;
+}
+@keyframes dock-loading {
+  0% { opacity: 0.35; transform: translateX(0) scaleX(0.15); }
+  50% { opacity: 1; }
+  100% { opacity: 0.35; transform: translateX(566%) scaleX(0.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
+    animation: none;
+    opacity: 0.6;
+    transform: scaleX(1);
+  }
 }
 
 .explorer-san {

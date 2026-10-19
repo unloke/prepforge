@@ -174,6 +174,14 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(
       /transition:\s*opacity\s+var\(--dur[^)]*\)\s+var\(--[^)]*\)\s+\d+ms/,
     );
+    // Stale rows alone were easy to read as the current position's: a moving
+    // bar on the dock says the list is still the previous position's.
+    expect(css).toMatch(
+      /\.dock[^{]*:has\(#explorer-drawer:not\(\[hidden\]\) #explorer-rows\.is-stale\)::after/,
+    );
+    expect(css).toContain("@keyframes dock-loading");
+    const reduced = css.slice(css.indexOf("@keyframes dock-loading"));
+    expect(reduced.slice(0, 600)).toMatch(/prefers-reduced-motion[\s\S]{0,200}animation:\s*none/);
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
