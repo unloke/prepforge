@@ -3119,7 +3119,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    focus cards from: a bordered, panel-filled block whose quiet inner rows and
    chips sit on --panel-soft, so three levels of hierarchy (panel → card → fill)
    instead of one undifferentiated white sheet. */
-.tcard {
+.tcard:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -5390,6 +5390,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    as tall as its "No moves yet" placeholder, and Up next reserves its three
    rows, so the buttons below never creep upward card by card. */
 #train-progress-panel .pips { min-height: 1.4em; align-content: center; }
+/* The setup card's controls stay out of the layout while it is hidden. */
+#view-train .train-play-setup[hidden] { display: none; }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
 
 @media (max-width: 1279px) {
