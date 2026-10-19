@@ -66,3 +66,21 @@ describe("scout game-plan rows at narrow widths", () => {
     expect(block).toContain(".line-row .lr-flags { display: none; }");
   });
 });
+
+describe("scout report type", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("keeps monospace for nothing on the report: notation is set in the text face", () => {
+    // The inspector flags any JetBrains Mono outside <code>: the report set SAN,
+    // bar labels and chart axes in it. Figures now use tabular numbers instead.
+    expect(css).not.toMatch(/var\(--mono\)/);
+    expect(css).toMatch(/\.line-title \{[^}]*font-variant-numeric: tabular-nums/);
+    expect(css).toMatch(/\.scout-bar-val \{[^}]*font-variant-numeric: tabular-nums/);
+  });
+
+  it("raises the report one step above the app's small sizes", () => {
+    // 12px meta and 11px labels read as captions; nothing read is under 13px.
+    expect(css).toContain(".scout-panel { --fs-s: 13px; --fs-xs: 12px; }");
+    expect(css).not.toMatch(/font-size: 11px/);
+  });
+});

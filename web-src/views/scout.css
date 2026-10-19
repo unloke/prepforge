@@ -5,6 +5,11 @@
    Layout: [profile card · colour tabs · colour card (intel + game plan) · chart
    cards] scrolls in the main column while the line-detail card stays in view. */
 
+/* The report is notation and figures people read, not glance at, so Scout runs
+   one step above the app's small sizes: 13px for meta and labels, 15px for the
+   running sentence, 14px for a line's figures. Two steps do the work. */
+.scout-panel { --fs-s: 13px; --fs-xs: 12px; }
+
 .scout-panel.is-streaming .scout-live-count {
   color: var(--accent-strong);
 }
@@ -56,7 +61,7 @@
 .prof-id { display: flex; flex-direction: column; }
 .prof-name { font-weight: 700; font-size: 15px; color: var(--accent-text); text-decoration: none; }
 .prof-name:hover { text-decoration: underline; }
-.scout-profile-games { font-size: var(--fs-xs); }
+.scout-profile-games { font-size: 13px; color: var(--muted); }
 .speed-chips { display: flex; gap: 4px; flex-wrap: wrap; }
 .speed {
   height: 26px;
@@ -121,7 +126,7 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.scout-color-tab small { font-weight: 500; }
+.scout-color-tab small { font-weight: 500; font-variant-numeric: tabular-nums; }
 .scout-color-tab:hover { color: var(--text); }
 .scout-color-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .scout-color-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -153,7 +158,7 @@
   padding: 0 4px;
   border: 1px solid var(--line);
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
@@ -172,19 +177,19 @@
 .scout-coverage-fill.bad { background: var(--danger); }
 
 .intel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--panel-soft); }
-.headline { margin: 0; max-width: 62ch; font-size: 14px; font-weight: 650; }
+.headline { margin: 0; max-width: 62ch; font-size: 15px; font-weight: 650; line-height: 1.35; }
 .scout-repertoire-reads { display: flex; flex-wrap: wrap; gap: 6px; }
 .scout-read-chip {
   display: inline-flex;
   flex-direction: column;
-  padding: 3px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
   background: var(--panel);
-  font-size: var(--fs-s);
+  font-size: 14px;
   font-weight: 650;
-  line-height: 1.25;
+  line-height: 1.3;
 }
-.scout-read-chip small { color: var(--label); font-size: 11px; font-weight: 500; }
+.scout-read-chip small { color: var(--muted); font-size: 13px; font-weight: 500; }
 
 .plan { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
 .plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
@@ -206,7 +211,7 @@
 }
 /* The score header sits over a right-aligned column. */
 .scout-lines-head > :nth-child(3) { text-align: right; }
-.fm .sc small { margin-right: 3px; color: var(--label); font-size: 11px; font-weight: 500; }
+.fm .sc small { margin-right: 3px; color: var(--label); font-size: 12px; font-weight: 500; }
 .scout-section-who { font-size: var(--fs-s); font-weight: 700; }
 .fm {
   display: grid;
@@ -257,7 +262,7 @@
 .scout-line-moves,
 .scout-prep-framing { display: flex; flex-direction: column; min-width: 0; }
 .when { color: var(--muted); overflow-wrap: anywhere; }
-.when b { color: var(--text); font: 600 12px var(--mono); }
+.when b { color: var(--text); font-weight: 650; font-variant-numeric: tabular-nums; }
 .then b { color: var(--good-text); }
 .then.needs { color: var(--danger-strong); font-weight: 650; }
 .lr-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
@@ -286,7 +291,7 @@
    edge, so the eye compares percentages down the column instead of hunting for
    where each one starts. */
 .scout-score-cell { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.25; }
-.scout-score-pct { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.scout-score-pct { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .scout-n { color: var(--label); font-size: var(--fs-s); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .scout-gap { color: var(--danger-strong); font-size: var(--fs-s); white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* The ×N sample count is a number too: it sits right beside the moves, but it
@@ -344,9 +349,9 @@
 .scout-refutation-card-board { width: 96px; height: 96px; margin-top: 6px; }
 .scout-refutation-panel { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .scout-refutation-hit { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-soft); }
-.scout-refutation-line { font: 600 12px var(--mono); }
+.scout-refutation-line { font-weight: 600; font-variant-numeric: tabular-nums; }
 .scout-refutation-reply { margin-top: 2px; font-size: var(--fs-s); }
-.scout-refutation-uci { font: 12px var(--mono); }
+.scout-refutation-uci { font: inherit; font-variant-numeric: tabular-nums; }
 .scout-refutation-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .scout-refutation-stat { color: var(--muted); font-size: var(--fs-s); }
 .scout-refutation-gaps { font-size: var(--fs-s); }
@@ -365,16 +370,16 @@
   gap: 6px;
   font-size: var(--fs-xs);
 }
-.scout-bar-label { color: var(--muted); font: 600 12px var(--mono); }
+.scout-bar-label { color: var(--muted); font-size: 13px; font-weight: 600; }
 .scout-bar-track { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .scout-bar-fill { display: block; height: 100%; background: var(--accent-strong); opacity: 0.85; }
 /* Bar tone = what the value means for YOU (good news green, bad news red),
    so a low opponent score and a high opponent error rate read the same way. */
 .scout-bar-row.is-good .scout-bar-fill { background: var(--good); }
 .scout-bar-row.is-bad .scout-bar-fill { background: var(--danger); }
-.scout-bar-val { text-align: right; font: 600 12px var(--mono); }
+.scout-bar-val { text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .scout-bar-row.has-n { grid-template-columns: 44px minmax(0, 1fr) 44px 26px; }
-.scout-bar-n { color: var(--label); font: 500 12px var(--mono); text-align: right; }
+.scout-bar-n { color: var(--label); font-size: 12px; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
 .scout-bar-track { position: relative; overflow: visible; }
 .scout-bar-fill { border-radius: 3px; }
 .scout-bar-ref {
@@ -385,7 +390,7 @@
   border-left: 1.5px dashed var(--text);
   opacity: 0.6;
 }
-.scout-chart-title { margin: 4px 0 2px; color: var(--label); font-size: 13px; font-weight: 600; }
+.scout-chart-title { margin: 4px 0 2px; color: var(--muted); font-size: 13px; font-weight: 600; }
 /* Mini chart with labelled axes: y range on the left, x span underneath. */
 .scout-axis-chart {
   display: grid;
@@ -400,7 +405,9 @@
   justify-content: space-between;
   align-items: flex-end;
   color: var(--label);
-  font: 500 11px var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .scout-axis-plot {
@@ -419,7 +426,7 @@
   justify-content: space-between;
   padding-top: 2px;
   color: var(--label);
-  font-size: 11px;
+  font-size: 12px;
 }
 .scout-columns { display: flex; align-items: flex-end; gap: 2px; width: 100%; height: 100%; padding: 0 2px; }
 .scout-columns i { flex: 1; min-width: 0; border-radius: 2px 2px 0 0; background: var(--muted); opacity: 0.8; }
@@ -428,7 +435,7 @@
 .scout-sparkline polyline { vector-effect: non-scaling-stroke; }
 
 /* ---- Line-detail card (side) ---- */
-.line-title { margin: 0; font: 600 13px var(--mono); overflow-wrap: anywhere; }
+.line-title { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .scout-side .scout-miniboard-wrap { width: 100%; max-width: 320px; height: auto; aspect-ratio: 1; align-self: center; }
 .scout-side .scout-miniboard { width: 100%; height: auto; aspect-ratio: 1; }
 .scout-line-status { font-size: var(--fs-s); font-weight: 650; }
@@ -437,7 +444,7 @@
 .scout-line-status.bad { color: var(--danger); }
 .scout-side .note { margin: 0; }
 .scout-line-reason,
-.scout-line-reply { border: 0; max-width: 60ch; color: var(--text); font-size: 13px; }
+.scout-line-reply { border: 0; max-width: 60ch; color: var(--text); font-size: 15px; line-height: 1.45; }
 .scout-side .note.good { border-color: transparent; background: var(--good-soft); color: var(--good-text); }
 .scout-side .note.warn { border-color: transparent; background: var(--warn-soft); color: var(--warn-text); }
 .scout-side .note.eng { border-color: transparent; background: var(--accent-soft); color: var(--accent-text); }
@@ -451,7 +458,7 @@
   gap: 6px;
   font-size: var(--fs-s);
 }
-.sv span { font: 12px var(--mono); overflow-wrap: anywhere; }
+.sv span { font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .sv i { display: block; height: 5px; border-radius: 3px; background: var(--accent); }
 .sv b { text-align: right; }
 .sv.muted { opacity: 0.5; }
