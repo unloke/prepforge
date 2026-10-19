@@ -533,9 +533,8 @@
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
     height: 64px;
     padding-bottom: 0;
-    border: 1px solid var(--line);
     border-radius: 16px 16px 0 0;
-    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
     transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
     visibility: hidden;
     transition: transform var(--dur) var(--ease-out), visibility 0s linear var(--dur);
