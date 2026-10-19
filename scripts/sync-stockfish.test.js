@@ -15,8 +15,8 @@ describe("Stockfish package synchronization", () => {
     expect(build.dir).toMatch(/^[a-f0-9]{8}$/);
     expect(build.id).toContain(build.nets.join("+"));
     expect(build.files.script.data).toContain(`maximum:${MAX_HEAP_PAGES[net]},shared:!0`);
-    expect(build.files.script.data).toContain('f={wasmMemory:f.wasmMemory,locateFile:');
-    expect(build.files.script.data).toContain('if(e.data.wasmMemory){f.wasmMemory=e.data.wasmMemory;i();return}');
+    expect(build.files.script.data).toContain('f={wasmModule:f.wasmModule,wasmMemory:f.wasmMemory,locateFile:');
+    expect(build.files.script.data).toContain('f.wasmModule=e.data.wasmModule;f.wasmMemory=e.data.wasmMemory;i();return');
     expect(build.files.script.data).not.toContain('i(),onmessage=onmessage||');
     expect(stockfishIdentity()[net]).toMatchObject({
       packageVersion: manifest.engines[net].packageVersion,
@@ -31,6 +31,8 @@ describe("Stockfish package synchronization", () => {
       const b = manifest.engines[net];
       expect(b.files.script.bundled).toBe(`${b.dir}/stockfish.js`);
       expect(b.files.wasm.bundled).toBe(`${b.dir}/stockfish.wasm`);
+      expect(b.bytes).toBe(readFileSync(join(root, "web-src/public/engine", b.files.wasm.bundled)).byteLength);
+      expect(stockfishIdentity()[net].bytes).toBe(b.bytes);
       expect(b.id).toBe(`sf${b.engineVersion}@${b.packageVersion}+${b.files.wasm.sha256.slice(0, 8)}/${b.nets.join("+")}`);
       expect(readFileSync(join(root, "web-src/public/engine", b.files.script.bundled), "utf8"))
         .toContain(`maximum:${MAX_HEAP_PAGES[net]},shared:!0`);
@@ -43,6 +45,9 @@ describe("Stockfish package synchronization", () => {
     expect(() => injectSharedHeap("changed")).toThrow(/changed upstream/);
     const upstream = readFileSync(join(root, "node_modules/stockfish/bin", manifest.engines.big.files.script.source), "utf8");
     expect(() => injectSharedHeap(upstream.replace('i(),onmessage=', 'changed(),onmessage='))).toThrow(/changed upstream/);
+    expect(() => injectSharedHeap(upstream.replace('f={locateFile:', 'f={changedLocateFile:'))).toThrow(/changed upstream/);
+    expect(() => injectSharedHeap(upstream.replace('instantiateWasm:function(t,n){var e=i();', 'changedInstantiate:function(t,n){var e=i();'))).toThrow(/changed upstream/);
+    expect(() => injectSharedHeap(upstream.replace('function o(e,s){return fetch(e)', 'function o(e,s){return changedFetch(e)'))).toThrow(/changed upstream/);
     expect(() => injectSharedHeap(upstream + upstream)).toThrow(/changed upstream/);
   });
 
@@ -55,10 +60,15 @@ describe("Stockfish package synchronization", () => {
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const glue = script.slice(0, start) + 'function d(){return globalThis.fakeFactory}' + script.slice(end);
-    const memory = { buffer: {} }, commands = vi.fn();
+    const memory = { buffer: {} }, wasmModule = {}, commands = vi.fn();
+    const instances = [];
+    const Instance = vi.fn(function(module, imports) {
+      this.exports = {};
+      instances.push({ module, imports, instance: this });
+    });
     function context(hash) {
       const ctx = { onmessage: null, location: { hash, origin: "https://test.invalid", pathname: "/stockfish.js" },
-        postMessage: vi.fn(), console, fakeFactory: vi.fn(module => {
+        postMessage: vi.fn(), console, WebAssembly: { Instance }, fetch: vi.fn(() => { throw new Error("worker fetched WASM"); }), fakeFactory: vi.fn(module => {
           module.ccall = commands; module._isReady = () => true; module._pthread_self = () => 0;
           return Promise.resolve(module);
         }) };
@@ -68,24 +78,38 @@ describe("Stockfish package synchronization", () => {
     }
     const browser = context("");
     expect(browser.fakeFactory).not.toHaveBeenCalled(); // no allocation before the reservation arrives
-    browser.onmessage({ data: { wasmMemory: memory } });
+    browser.onmessage({ data: { wasmModule, wasmMemory: memory } });
     browser.onmessage({ data: "uci" });
     await Promise.resolve();
     expect(browser.fakeFactory).toHaveBeenCalledTimes(1);
     expect(browser.fakeFactory.mock.calls[0][0].wasmMemory).toBe(memory);
+    const config = browser.fakeFactory.mock.calls[0][0];
+    expect(config.wasmModule).toBe(wasmModule);
+    expect(config.locateFile("pthread.js")).toBe("https://test.invalid/stockfish.js#https://test.invalid/stockfish.wasm,worker");
+    const imports = { a: { memory } }, receiveInstance = vi.fn();
+    expect(config.instantiateWasm(imports, receiveInstance)).toBe(instances[0].instance.exports);
+    expect(Instance).toHaveBeenLastCalledWith(wasmModule, imports);
+    // The second argument becomes Emscripten's J, which E.Ha sends to pthreads.
+    expect(receiveInstance).toHaveBeenCalledWith(instances[0].instance, wasmModule);
+    expect(script).toContain("wasmMemory:g,wasmModule:J");
+    expect(browser.fetch).not.toHaveBeenCalled();
     expect(commands).toHaveBeenCalledWith("command", null, ["string"], ["uci"], { async: false });
 
     const pthread = context("#stockfish.wasm,worker");
     expect(pthread.fakeFactory).not.toHaveBeenCalled();
     expect(pthread.onmessage).not.toBe(pthread._origOnmessage); // the final pthread wrapper wins
-    const wasmModule = {};
-    pthread.onmessage({ data: { cmd: "load", wasmMemory: memory, wasmModule } });
+    pthread.onmessage({ data: { cmd: "load", wasmMemory: memory, wasmModule: receiveInstance.mock.calls[0][1] } });
     await Promise.resolve();
     expect(pthread.fakeFactory).toHaveBeenCalledTimes(1);
     expect(pthread.fakeFactory.mock.calls[0][0]).toMatchObject({
       wasmMemory: memory, buffer: memory.buffer, wasmModule, ENVIRONMENT_IS_PTHREAD: true,
     });
     expect(pthread.fakeFactory.mock.calls[0][0].locateFile).toBeUndefined(); // browser i() did not run
+    const receiveThread = vi.fn();
+    pthread.fakeFactory.mock.calls[0][0].instantiateWasm(imports, receiveThread);
+    expect(Instance).toHaveBeenLastCalledWith(wasmModule, imports);
+    expect(receiveThread).toHaveBeenCalledWith(instances[1].instance);
+    expect(pthread.fetch).not.toHaveBeenCalled();
     pthread._origOnmessage = vi.fn(pthread._origOnmessage);
     pthread.onmessage({ data: { cmd: "processThreadQueue" } });
     expect(pthread._origOnmessage).toHaveBeenCalledTimes(1);

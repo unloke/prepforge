@@ -1,14 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 
 import { createStockfishWasmProvider, engineIdentity, engineScriptUrl, STOCKFISH } from "./stockfish-provider.js";
-import { setEngineProfile, resetEngineProfile, reportEngineFailure } from "./engine-profile.js";
+import { setEngineProfile, resetEngineProfile, reportEngineFailure, guardEngineStartup,
+  createEngineProfileManager, usableEngineProfile } from "./engine-profile.js";
+import { EngineAssetError } from "./engine-assets.js";
 import { createComputeBudget } from "./compute-budget.js";
 
 vi.mock("./engine-profile.js", async importOriginal => {
   const actual = await importOriginal();
   return { ...actual, reserveEngineMemory: vi.fn(() => ({})),
-    ensureEngineProfile: vi.fn(async () => {}), reportEngineFailure: vi.fn(actual.reportEngineFailure) };
+    usableEngineProfile: vi.fn(actual.usableEngineProfile),
+    guardEngineStartup: vi.fn(actual.guardEngineStartup),
+    engineStarted: vi.fn(), reportEngineFailure: vi.fn(actual.reportEngineFailure) };
 });
+vi.mock("./engine-assets.js", async importOriginal => ({ ...await importOriginal(),
+  loadEngineModule: vi.fn(async () => ({})),
+}));
 
 const FEN_A = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const FEN_B = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -55,6 +62,23 @@ function makeProvider() {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe("per-net provider identity", () => {
+  it("starts lite at the user's depth while the recommended full asset is not ready", async () => {
+    const data = new Map();
+    const manager = createEngineProfileManager({ storage: () => ({ getItem: k => data.get(k) ?? null,
+      setItem: (k, v) => data.set(k, v) }), assetState: () => ({ phase: "download" }) });
+    manager.setEngineProfile({ net: "big", workers: 3 });
+    expect(manager.engineProfile()).toMatchObject({ net: "big", workers: 3 });
+    const originalUsable = usableEngineProfile.getMockImplementation();
+    usableEngineProfile.mockImplementation(manager.usableEngineProfile);
+    const worker = new FakeWorker(), loadModule = vi.fn(async () => ({}));
+    const provider = createStockfishWasmProvider({ maxDepth: 23, loadModule, createWorker: () => worker });
+    try {
+      await provider.open({ fen: FEN_A });
+      expect(loadModule).toHaveBeenCalledWith("lite");
+      expect(provider.snapshot().engine).toBe(engineIdentity("lite"));
+      expect(worker.posted).toContain("go depth 23");
+    } finally { await provider.close(); usableEngineProfile.mockImplementation(originalUsable); }
+  });
   it.each(["big", "lite"])("loads %s with its own URL and snapshot identity", async net => {
     const worker = new FakeWorker();
     const factory = vi.fn(() => worker);
@@ -66,39 +90,102 @@ describe("per-net provider identity", () => {
     expect(engineIdentity("big")).not.toBe(engineIdentity("lite"));
     await provider.close();
   });
-  it("terminates an active worker and rejects its waiters on a profile change", async () => {
+  it("keeps an active worker and its identity across a profile change", async () => {
     const { provider, fake } = makeProvider();
     await provider.open({ fen: FEN_A });
     const waiting = provider.waitForSearchComplete({ targetDepth: 16, timeoutMs: 1000 });
+    const identity = provider.snapshot().engine;
     setEngineProfile({ net: "big", workers: 2 });
-    await expect(waiting).rejects.toThrow(/closed/);
-    expect(fake.terminated).toBe(true);
+    fake.emit("info depth 16 score cp 20 pv e2e4");
+    await waiting;
+    expect(provider.snapshot().engine).toBe(identity);
+    expect(fake.terminated).toBe(false);
+    await provider.close();
     resetEngineProfile();
   });
 });
 
 describe("provider compute allocation lifecycle", () => {
   it("reserves before creating a worker and posts the same Memory before UCI without a transfer list", async () => {
-    const memory = {};
+    const memory = {}, wasmModule = {};
     const worker = new FakeWorker();
     const post = vi.spyOn(worker, "postMessage");
     const events = [];
     const reserveMemory = vi.fn(net => { events.push("reserve"); expect(net).toBe("big"); return memory; });
-    const provider = createStockfishWasmProvider({ net: "big", reserveMemory,
+    const loadModule = vi.fn(async () => { events.push("module"); return wasmModule; });
+    const provider = createStockfishWasmProvider({ net: "big", reserveMemory, loadModule,
       createWorker: () => { events.push("worker"); return worker; } });
     await provider.prepare();
-    expect(events).toEqual(["reserve", "worker"]);
-    expect(post.mock.calls[0]).toEqual([{ wasmMemory: memory }]);
+    expect(events).toEqual(["module", "reserve", "worker"]);
+    expect(post.mock.calls[0]).toEqual([{ wasmModule, wasmMemory: memory }]);
     expect(worker.posted[1]).toBe("uci");
     await provider.close();
   });
 
   it("injects a probe reservation without allocating a second heap", async () => {
-    const memory = {}, worker = new FakeWorker(), reserveMemory = vi.fn();
-    const provider = createStockfishWasmProvider({ wasmMemory: memory, reserveMemory, createWorker: () => worker });
+    const memory = {}, wasmModule = {}, worker = new FakeWorker(), reserveMemory = vi.fn(), loadModule = vi.fn();
+    const provider = createStockfishWasmProvider({ wasmModule, wasmMemory: memory, loadModule, reserveMemory, createWorker: () => worker });
     await provider.prepare();
     expect(reserveMemory).not.toHaveBeenCalled();
+    expect(loadModule).not.toHaveBeenCalled();
+    expect(worker.posted[0].wasmModule).toBe(wasmModule);
     expect(worker.posted[0].wasmMemory).toBe(memory);
+    await provider.close();
+  });
+
+  it("waits beyond the startup deadline for assets with no heap, crash guard or timer", async () => {
+    vi.useFakeTimers();
+    const create = vi.fn();
+    vi.stubGlobal("Worker", class extends FakeWorker { constructor() { super(); create(); } });
+    guardEngineStartup.mockClear();
+    let resolveModule;
+    const pendingModule = new Promise(resolve => { resolveModule = resolve; });
+    const reserveMemory = vi.fn(() => ({}));
+    const provider = createStockfishWasmProvider({ computeBudget: null, reserveMemory, loadModule: () => pendingModule });
+    try {
+      const ready = provider.prepare();
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(create).not.toHaveBeenCalled();
+      expect(reserveMemory).not.toHaveBeenCalled();
+      expect(guardEngineStartup).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      resolveModule({});
+      await ready;
+      expect(reserveMemory).toHaveBeenCalledTimes(1);
+      expect(guardEngineStartup).toHaveBeenCalledTimes(1);
+    } finally { await provider.close(); vi.unstubAllGlobals(); vi.useRealTimers(); }
+  });
+
+  it.each([new Error("download aborted"), new RangeError("compile out of memory")])(
+    "does not step down the profile for asset failure: %s", async cause => {
+      vi.stubGlobal("Worker", vi.fn());
+      guardEngineStartup.mockClear(); reportEngineFailure.mockClear();
+      const reserveMemory = vi.fn();
+      const provider = createStockfishWasmProvider({ computeBudget: null, reserveMemory,
+        loadModule: async () => { throw cause; } });
+      try {
+        await expect(provider.prepare()).rejects.toBeInstanceOf(EngineAssetError);
+        expect(reserveMemory).not.toHaveBeenCalled();
+        expect(guardEngineStartup).not.toHaveBeenCalled();
+        expect(reportEngineFailure).not.toHaveBeenCalled();
+        expect(provider.snapshot().error).toContain(cause.message);
+      } finally { await provider.close(); vi.unstubAllGlobals(); }
+    });
+
+  it("does not resurrect a closed provider when its shared module becomes ready", async () => {
+    let resolveModule;
+    const module = new Promise(resolve => { resolveModule = resolve; });
+    const createWorker = vi.fn(() => new FakeWorker()), reserveMemory = vi.fn(() => ({}));
+    const provider = createStockfishWasmProvider({ createWorker, reserveMemory, loadModule: () => module });
+    const pending = provider.prepare().catch(error => error);
+    await tick();
+    await provider.close();
+    resolveModule({});
+    expect((await pending).message).toMatch(/closed/);
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(reserveMemory).not.toHaveBeenCalled();
+    await provider.prepare();
+    expect(createWorker).toHaveBeenCalledTimes(1);
     await provider.close();
   });
 

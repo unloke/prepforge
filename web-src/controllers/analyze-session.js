@@ -14,7 +14,7 @@ import { localBoardAfterMove, localGameOver } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
-import { ensureEngineProfile, createEngineAnalysisRun } from "../engine/engine-profile.js";
+import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
@@ -852,6 +852,8 @@ async function runAnalysis(options = {}) {
         cancelled = true;
       },
     });
+    await readyIfCached();
+    engineRun = createEngineAnalysisRun();
 
     // Start the shared Maia init (worker spawn + weight fetch + ORT session) NOW,
     // in parallel with the Stockfish pass below — but only when this run can
@@ -907,10 +909,6 @@ async function runAnalysis(options = {}) {
           })
           .catch(() => null)
       : null;
-    // First run on this device: the probe picks the engine; show it in the job.
-    await ensureEngineProfile({ onProgress: ({ done, total }) => job({ current: done, total, phase: "engine-setup",
-      message: `Setting up the engine for this device · ${Math.round((100 * done) / total)}%` }) });
-    engineRun = createEngineAnalysisRun();
     const evals = await timed("stockfish", () => store.analyzeGame({
       engineRun,
       positions,
@@ -992,7 +990,7 @@ async function runAnalysis(options = {}) {
     // during it must prevent persistence. classify-save is the write — don't post past a Stop.
     if (engineRun.error) throw engineRun.error;
     const runEngineId = engineIdentity(engineRun.profile().net);
-    if (cancelled || runEngineId !== ENGINE_ID) {
+    if (cancelled) {
       const err = new Error("Analysis stopped");
       err.cancelled = true;
       throw err;

@@ -1,4 +1,6 @@
 // Device-local engine choice. Depth remains a synced account setting.
+import { loadEngineModule, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
+import { stockfishBudget } from "./compute-budget.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
 export const CRASH_KEY = "prepforge.engine-starting";
 export const PROBE_NODES = 200000;
@@ -38,8 +40,12 @@ export function createEngineProfileManager({
   device = () => globalThis.navigator || {},
   now = () => performance.now(),
   probeId = PROBE_ID,
-  probeBudget = async () => (await import("./compute-budget.js")).stockfishBudget.suspend(),
+  probeBudget = opts => stockfishBudget.acquireProbe(opts),
+  beginSession = () => stockfishBudget.beginSession(),
   reserveMemory = reserveEngineMemory,
+  loadModule = loadEngineModule,
+  assetState = engineAssetState,
+  subscribeAsset = subscribeEngineAsset,
   page = globalThis.document,
   lifecycle = globalThis.window,
   createEngine = async opts => (await import("./stockfish-provider.js")).createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }),
@@ -47,6 +53,51 @@ export function createEngineProfileManager({
   let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null;
   let probing = null, revision = 0;
   const listeners = new Set();
+  const usableListeners = new Set(), setupListeners = new Set();
+  let activeRuns = 0, heldUsable = null, publishPending = null, started = false, watching = false;
+  let lastUsable = null;
+  let setup = { phase: "idle", fraction: 0, loaded: 0, total: 0, stage: null, done: 0, probeTotal: 0, label: "" };
+  function setupState(changes) {
+    setup = { ...setup, ...changes };
+    for (const fn of [...setupListeners]) { try { fn({ ...setup }); } catch { /* consumer error */ } }
+  }
+  function usable() {
+    if (heldUsable) return { ...heldUsable };
+    const p = current();
+    return (p.source === "user" || detected) && assetState(p.net).phase === "ready" ? p : { ...FALLBACK };
+  }
+  function emitUsable() {
+    if (activeRuns) return;
+    const p = usable();
+    const key = `${p.net}:${p.workers}`;
+    if (key === lastUsable) return;
+    lastUsable = key;
+    for (const fn of [...usableListeners]) { try { fn(p); } catch { /* consumer error */ } }
+  }
+  function watchAssets() {
+    if (watching) return;
+    watching = true;
+    for (const net of ["lite", "big"]) subscribeAsset(net, a => {
+      if (["download", "compile", "error"].includes(a.phase)) {
+        setupState({ phase: a.phase, loaded: a.loaded, total: a.total,
+          fraction: a.total ? Math.min(1, a.loaded / a.total) : 0,
+          label: a.phase === "download" ? `Downloading ${net === "big" ? "full" : "lite"} engine…`
+            : a.phase === "compile" ? "Compiling engine…" : a.error.message });
+      } else if (a.phase === "ready" && !probing) {
+        setupState({ phase: "ready", fraction: 1, loaded: a.loaded, total: a.total, label: "Engine ready" });
+      }
+      emitUsable();
+    });
+  }
+  function publishDetection(candidate, epoch) {
+    const publish = () => {
+      detected = candidate;
+      if (epoch === revision) change(detected);
+      else persist();
+    };
+    if (activeRuns) publishPending = publish;
+    else publish();
+  }
   const pending = new Map();
   let pageHidden = false;
   function syncCrashMark() {
@@ -72,6 +123,7 @@ export function createEngineProfileManager({
   }
   function emit() {
     for (const fn of [...listeners]) { try { fn({ ...profile }); } catch { /* consumer error */ } }
+    emitUsable();
   }
   function load() {
     if (loaded) return;
@@ -132,41 +184,76 @@ export function createEngineProfileManager({
     return { done, fail() { done(); return failure(attempt); } };
   }
   function createAnalysisRun() {
-    let mark, attempt, retried = false, error = null;
+    // The session owns this choice through the main pass and every Maia follow-up.
+    let mark, attempt = usable(), retried = false, error = null, ended = false;
+    heldUsable ||= attempt;
+    activeRuns++;
+    const endSession = beginSession();
     return {
       start() {
-        if (!mark) { attempt = current(); mark = guard(attempt); }
+        if (error) throw error;
+        if (!mark) mark = guard(attempt);
         return { ...attempt };
       },
       retry(failed) {
+        if (!mark) { error ||= failed; return false; }
         const next = mark.fail();
         mark = null;
         const previous = stepDownProfile(attempt);
-        if (retried || next.source !== "fallback" || next.net !== previous.net || next.workers !== previous.workers ||
+        if (retried || next.net !== attempt.net || next.source !== "fallback" || next.net !== previous.net || next.workers !== previous.workers ||
             (next.net === attempt.net && next.workers === attempt.workers)) {
           error = failed;
           return false;
         }
         retried = true;
+        attempt = next;
         return true;
       },
       profile: () => ({ ...attempt }),
       get error() { return error; },
-      done() { mark?.done(); mark = null; },
+      done() {
+        mark?.done(); mark = null;
+        if (ended) return;
+        ended = true;
+        activeRuns--;
+        if (!activeRuns) { heldUsable = null; const publish = publishPending; publishPending = null; publish?.(); emitUsable(); }
+        endSession();
+      },
     };
   }
-  // Every caller of a running probe sees its progress, including one that joins late.
-  const watchers = new Set();
-  let lastProgress = null;
-  async function detect({ signal, onProgress } = {}) {
+  async function detect({ signal } = {}) {
     load();
-    if (onProgress) {
-      watchers.add(onProgress);
-      if (probing && lastProgress) onProgress(lastProgress);
-    }
-    if (probing) return probing.finally(() => watchers.delete(onProgress));
+    watchAssets();
+    if (probing) return probing;
     if (broken) return { ...current(), measurements };
     const epoch = revision;
+    probing = Promise.resolve().then(async () => {
+      try {
+        if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError");
+        // Asset preparation never occupies the idle compute window or a heap.
+        const modules = await Promise.all([loadModule("lite"), loadModule("big")]);
+        for (;;) {
+          const controller = new AbortController();
+          const abort = () => controller.abort();
+          signal?.addEventListener("abort", abort, { once: true });
+          if (signal?.aborted) controller.abort();
+          let yielded = false;
+          try {
+            return await probeOnce(controller.signal, () => { yielded = true; controller.abort(); },
+              { lite: modules[0], big: modules[1] }, epoch);
+          } catch (error) {
+            if (!yielded || signal?.aborted) throw error;
+            setupState({ phase: "waiting", label: "Waiting for engine…" });
+          } finally { signal?.removeEventListener("abort", abort); }
+        }
+      } catch (error) {
+        setupState({ phase: error.name === "AbortError" ? "idle" : "error", label: error.name === "AbortError" ? "" : error.message });
+        throw error;
+      } finally { probing = null; }
+    });
+    return probing;
+  }
+  async function probeOnce(signal, onDemand, modules, epoch) {
     const abort = () => { if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError"); };
     abort();
     // Steps: lite 1, then big 1..max; each is a load and two timed rounds.
@@ -174,107 +261,142 @@ export function createEngineProfileManager({
     let done = 0;
     const progress = (stage, step = 0, workers = null) => {
       done = stage === "complete" || stage === "fallback" ? units : Math.max(done, step);
-      lastProgress = { stage, done, total: units, workers };
-      for (const fn of [...watchers]) { try { fn(lastProgress); } catch { /* consumer error */ } }
+      setupState({ phase: stage === "complete" || stage === "fallback" ? "ready" : "probe",
+        stage, done, probeTotal: units, fraction: done / units,
+        label: stage === "workers" ? `Trying ${workers} workers…` : stage === "loading" ? "Loading engine…"
+          : stage === "speed" ? "Measuring speed…" : "Engine ready" });
     };
-    probing = (async () => {
-      const engines = [];
-      let resume;
-      let mark;
-      let candidate = { ...FALLBACK };
-      const hardware = device();
-      measurements = { scaling: { lite: [], big: [] }, hardwareConcurrency: hardware.hardwareConcurrency ?? null,
-        deviceMemory: hardware.deviceMemory ?? null };
-      // Every engine searches the same node budget at once; throughput = total nodes / wall time.
-      async function round() {
-        const start = now();
-        const done = await Promise.all(engines.map(async engine => {
-          // A fresh hash for every engine, every round: a warm table would favour the old workers.
-          await engine.open({ fen: FEN, depth: 60, multipv: 1, newGame: true });
-          return engine.waitForSearchComplete({ targetDepth: 60, timeoutMs: 15000, cancelled: () => signal?.aborted, acceptShallowOnTimeout: false });
-        }));
-        const nodes = done.reduce((sum, s) => sum + (s.nodes || 0), 0);
-        if (!(nodes > 0)) throw new Error("Device probe returned no nodes");
-        return { nodes, ms: Math.max(1, now() - start) };
-      }
-      const close = () => Promise.all(engines.splice(0).map(e => e.close()));
-      signal?.addEventListener("abort", close, { once: true });
-      try {
+    const engines = [];
+    let resume;
+    let mark;
+    let candidate = { ...FALLBACK };
+    const hardware = device();
+    measurements = { scaling: { lite: [], big: [] }, hardwareConcurrency: hardware.hardwareConcurrency ?? null,
+      deviceMemory: hardware.deviceMemory ?? null };
+    // Every engine searches the same node budget at once; throughput = total nodes / wall time.
+    async function round() {
+      const start = now();
+      const done = await Promise.all(engines.map(async engine => {
+        // A fresh hash for every engine, every round: a warm table would favour the old workers.
+        await engine.open({ fen: FEN, depth: 60, multipv: 1, newGame: true });
+        return engine.waitForSearchComplete({ targetDepth: 60, timeoutMs: 15000, cancelled: () => signal?.aborted, acceptShallowOnTimeout: false });
+      }));
+      const nodes = done.reduce((sum, s) => sum + (s.nodes || 0), 0);
+      if (!(nodes > 0)) throw new Error("Device probe returned no nodes");
+      return { nodes, ms: Math.max(1, now() - start) };
+    }
+    const close = () => Promise.all(engines.splice(0).map(e => e.close()));
+    signal?.addEventListener("abort", close, { once: true });
+    try {
+      abort();
+      setupState({ phase: "waiting", fraction: 0, label: "Waiting for the engine…" });
+      resume = await probeBudget({ signal, onDemand });
+      abort();
+      let step = 0;
+      for (const net of ["lite", "big"]) {
+        await close(); // Never hold both nets, even during big's reservation.
         abort();
-        resume = await probeBudget();
-        abort();
-        let step = 0;
-        for (const net of ["lite", "big"]) {
-          await close(); // Never hold both nets, even during big's reservation.
-          const scaling = measurements.scaling[net];
-          for (let n = 1; n <= (net === "lite" ? 1 : maxWorkers(hardware)); n++) {
-            abort();
-            const attempt = { net, workers: n, source: "detected" };
-            mark = guard(attempt);
-            const stage = net === "lite" ? "loading" : n === 1 ? "speed" : "workers";
-            progress(stage, step, n);
-            const loadingAt = now();
-            // Keep the existing workers alive while reserving the next heap, then
-            // inject it: dropping a reservation would depend on GC before allocation.
-            let wasmMemory = reserveMemory(net);
-            const engine = await createEngine({ net, wasmMemory, maxDepth: 60, maxNodes: PROBE_NODES });
-            wasmMemory = null;
-            engines.push(engine);
-            abort();
-            await engine.prepare();
-            const loadMs = now() - loadingAt;
-            abort();
-            // Faster of two rounds: a fresh module's first search runs on baseline code while
-            // the optimizing tier compiles (big 1 read 289k nodes/s, then 370-418k), and one
-            // round alone swung big 3 between 817k and 1103k.
-            progress(stage, step + 1, n);
-            const first = await round();
-            abort();
-            progress(stage, step + 2, n);
-            const second = await round();
-            step += 3;
-            const r = first.nodes / first.ms > second.nodes / second.ms ? first : second;
-            abort();
-            mark.done();
-            scaling.push(r.nodes * 1000 / r.ms);
-            if (n > 1 && scaling[n - 1] - scaling[n - 2] < MIN_GAIN * scaling[0]) break;
-            candidate = attempt;
-            Object.assign(measurements, { nodes: r.nodes, searchMs: r.ms, loadMs, nodesPerSecond: scaling[n - 1] });
-          }
+        const wasmModule = modules[net];
+        const scaling = measurements.scaling[net];
+        for (let n = 1; n <= (net === "lite" ? 1 : maxWorkers(hardware)); n++) {
+          abort();
+          const attempt = { net, workers: n, source: "detected" };
+          mark = guard(attempt);
+          const stage = net === "lite" ? "loading" : n === 1 ? "speed" : "workers";
+          progress(stage, step, n);
+          const loadingAt = now();
+          // Keep the existing workers alive while reserving the next heap, then
+          // inject it: dropping a reservation would depend on GC before allocation.
+          let wasmMemory = reserveMemory(net);
+          const engine = await createEngine({ net, wasmModule, wasmMemory, maxDepth: 60, maxNodes: PROBE_NODES });
+          wasmMemory = null;
+          engines.push(engine);
+          abort();
+          await engine.prepare();
+          const loadMs = now() - loadingAt;
+          abort();
+          // Faster of two rounds: a fresh module's first search runs on baseline code while
+          // the optimizing tier compiles (big 1 read 289k nodes/s, then 370-418k), and one
+          // round alone swung big 3 between 817k and 1103k.
+          progress(stage, step + 1, n);
+          const first = await round();
+          abort();
+          progress(stage, step + 2, n);
+          const second = await round();
+          step += 3;
+          const r = first.nodes / first.ms > second.nodes / second.ms ? first : second;
+          abort();
+          mark.done();
+          mark = null;
+          scaling.push(r.nodes * 1000 / r.ms);
+          if (n > 1 && scaling[n - 1] - scaling[n - 2] < MIN_GAIN * scaling[0]) break;
+          candidate = attempt;
+          Object.assign(measurements, { nodes: r.nodes, searchMs: r.ms, loadMs, nodesPerSecond: scaling[n - 1] });
         }
-        abort();
-        detected = candidate;
-        if (epoch === revision) change(detected);
-        else persist();
-        progress("complete");
-        return { ...current(), measurements: { ...measurements } };
-      } catch (error) {
-        mark?.done();
-        if (signal?.aborted || error.name === "AbortError") throw new DOMException("Detection stopped", "AbortError");
-        detected = candidate;
-        measurements = { ...measurements, error: error.message };
-        if (epoch === revision) change(detected);
-        else persist();
-        progress("fallback");
-        return { ...current(), measurements: { ...measurements } };
-      } finally {
-        await close();
-        resume?.();
-        signal?.removeEventListener("abort", close);
-        watchers.delete(onProgress);
-        lastProgress = null;
-        probing = null;
       }
-    })();
-    return probing;
+      abort();
+      await close();
+      abort();
+      publishDetection(candidate, epoch);
+      progress("complete");
+      return { ...current(), measurements: { ...measurements } };
+    } catch (error) {
+      mark?.done();
+      if (signal?.aborted || error.name === "AbortError") throw new DOMException("Detection stopped", "AbortError");
+      if (error instanceof EngineAssetError) throw error;
+      measurements = { ...measurements, error: error.message };
+      await close();
+      abort();
+      publishDetection(candidate, epoch);
+      progress("fallback");
+      return { ...current(), measurements: { ...measurements } };
+    } finally {
+      await close();
+      resume?.();
+      signal?.removeEventListener("abort", close);
+    }
+  }
+  function prepareFull() {
+    watchAssets();
+    return loadModule("big");
+  }
+  // A return visit has the chosen net's bytes in Cache Storage: compiling them takes about a
+  // second, so a run waits for that instead of starting on lite. A download is never waited for.
+  async function readyIfCached() {
+    load();
+    const p = current();
+    if (p.net !== "big" || !(p.source === "user" || detected) || device().connection?.saveData) return;
+    const ready = prepareFull();
+    let off = null;
+    const phase = await Promise.race([
+      new Promise(resolve => { off = subscribeAsset("big", a => { if (a.phase !== "idle") resolve(a.phase); }); }),
+      ready.then(() => "ready", () => "error"),
+    ]);
+    off?.();
+    if (phase === "compile" || phase === "ready") await ready.catch(() => {});
+    else ready.catch(() => {});
   }
   return {
     engineProfile: current,
+    usableEngineProfile: usable,
+    engineSetupState: () => ({ ...setup }),
+    subscribeEngineSetup(fn) { watchAssets(); setupListeners.add(fn); fn({ ...setup }); return () => setupListeners.delete(fn); },
+    subscribeUsableEngineProfile(fn) { watchAssets(); lastUsable ??= `${usable().net}:${usable().workers}`; usableListeners.add(fn); return () => usableListeners.delete(fn); },
+    prepareFullEngine: prepareFull,
+    readyIfCached,
+    engineStarted() {
+      if (started) return;
+      started = true;
+      load();
+      if (device().connection?.saveData || broken || (detected?.net === "lite" && profile.source !== "user")) return;
+      void prepareFull().then(() => {
+        if (!detected && profile.source !== "user") return detect();
+      }).catch(() => {});
+    },
     engineMeasurements() { load(); return measurements ? { ...measurements } : null; },
     setEngineProfile(p) { load(); if (!valid(p)) throw new RangeError("Choose big/lite and 1–3 workers"); return change({ net: p.net, workers: p.workers, source: "user" }); },
     resetEngineProfile() { load(); return change(detected || { ...FALLBACK }); },
     detectEngineProfile: detect,
-    ensureEngineProfile(opts) { load(); return profile.source === "fallback" && !detected && !broken ? detect(opts) : Promise.resolve(current()); },
     subscribeEngineProfile(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     guardEngineStartup: guard,
     reportEngineFailure: failure,
@@ -284,4 +406,8 @@ export function createEngineProfileManager({
 
 const manager = createEngineProfileManager();
 export const { engineProfile, engineMeasurements, setEngineProfile, resetEngineProfile, detectEngineProfile,
-  ensureEngineProfile, subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;
+  usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
+  readyIfCached,
+  subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;
+stockfishBudget.configure(usableEngineProfile().workers);
+subscribeUsableEngineProfile(p => stockfishBudget.configure(p.workers));

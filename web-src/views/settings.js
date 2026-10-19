@@ -1,4 +1,5 @@
-import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile } from "../engine/engine-profile.js";
+import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
+  engineSetupState, subscribeEngineSetup, prepareFullEngine } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
 // Settings tab rendering (lazy-loaded from app.js).
@@ -29,6 +30,8 @@ export function createSettingsView({
   refreshAuthStatus,
 }) {
   let eventsBound = false;
+  const unsubscribers = [];
+  let stockfishManifest = null;
   const accountSection = createAccountSection({
     appState,
     api,
@@ -130,12 +133,10 @@ export function createSettingsView({
     renderMaia3Status();
   }
 
-  let detecting = false;
-  let probe = null;
-  const PROBE_LABEL = { loading: "Loading engine…", speed: "Measuring speed…" };
-  const probeLabel = (p) => p?.stage === "workers" ? `Trying ${p.workers} workers…` : PROBE_LABEL[p?.stage] || "Detecting…";
   function renderEngineProfile() {
     const profile = engineProfile();
+    const setup = engineSetupState();
+    const busy = ["download", "compile", "waiting", "probe"].includes(setup.phase);
     const paint = (id, key, value) => document.getElementById(id)?.querySelectorAll(".seg-btn").forEach((btn) => {
       const active = btn.dataset[key] === String(value);
       btn.classList.toggle("is-active", active);
@@ -144,12 +145,14 @@ export function createSettingsView({
     paint("settings-net-seg", "net", profile.net);
     paint("settings-workers-seg", "workers", profile.workers);
     const detectBtn = document.getElementById("settings-detect");
-    if (detectBtn) detectBtn.disabled = detecting;
+    if (detectBtn) detectBtn.disabled = busy;
     const status = document.getElementById("settings-profile-status");
     if (status) {
       const m = engineMeasurements();
       const speed = m?.nodesPerSecond ? ` · ${Math.round(m.nodesPerSecond / 1000)}k nodes/s` : "";
-      status.textContent = detecting ? probeLabel(probe)
+      const bytes = setup.phase === "download" && setup.total
+        ? ` ${Math.round(setup.loaded / 1048576)} / ${Math.round(setup.total / 1048576)} MB` : "";
+      status.textContent = busy || setup.phase === "error" ? `${setup.label}${bytes}`
         : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
         : profile.source === "user" ? "Set by you"
         : profile.source === "detected" ? `Detected for this device${speed}`
@@ -159,22 +162,25 @@ export function createSettingsView({
     }
     const bar = document.getElementById("settings-profile-progress");
     if (bar) {
-      bar.hidden = !detecting;
-      // Never start at 0: the first load can take a while and an empty track reads as stuck.
-      const share = probe ? probe.done / probe.total : 0;
-      bar.firstElementChild.style.width = `${Math.round(100 * Math.max(0.04, share))}%`;
+      bar.hidden = !busy;
+      // One bar for the whole setup: getting the net fills the first half, measuring the second,
+      // so it never runs backwards between them. A small floor keeps a fresh start visible.
+      const share = setup.phase === "download" || setup.phase === "compile" ? setup.fraction / 2
+        : setup.phase === "probe" ? 0.5 + setup.fraction / 2 : 0.5;
+      bar.firstElementChild.style.width = `${Math.round(100 * Math.max(0.03, share))}%`;
     }
-    void renderStockfishVersion();
   }
 
   async function renderStockfishVersion() {
     const versionEl = document.getElementById("settings-stockfish-version");
     if (!versionEl) return;
     try {
-      const response = await fetch("/static/engine/stockfish.manifest.json");
-      if (!response.ok) throw new Error(`manifest ${response.status}`);
+      stockfishManifest ||= fetch("/static/engine/stockfish.manifest.json").then(async response => {
+        if (!response.ok) throw new Error(`manifest ${response.status}`);
+        return response.json();
+      });
       const net = engineProfile().net;
-      const manifest = (await response.json()).engines[net];
+      const manifest = (await stockfishManifest).engines[net];
       if (!manifest.packageVersion || !manifest.id) {
         throw new Error("invalid manifest");
       }
@@ -192,6 +198,7 @@ export function createSettingsView({
   async function refreshEngineCard() {
     renderBrowserEngineStatus();
     renderEngineProfile();
+    stockfishManifest = null;
     await Promise.allSettled([loadSettings(), renderStockfishVersion()]);
   }
 
@@ -201,6 +208,7 @@ export function createSettingsView({
     void payload;
     renderBrowserEngineStatus();
     renderEngineProfile();
+    void renderStockfishVersion();
     renderStrengthControls();
     renderThemeControl();
     let connections = Promise.resolve();
@@ -602,22 +610,19 @@ export function createSettingsView({
     }
 
     document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
-      btn.addEventListener("click", () => setEngineProfile({ net: btn.dataset.net, workers: engineProfile().workers }));
+      btn.addEventListener("click", () => {
+        setEngineProfile({ net: btn.dataset.net, workers: engineProfile().workers });
+        if (btn.dataset.net === "big") void prepareFullEngine().catch(() => {});
+      });
     });
     document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
       btn.addEventListener("click", () => setEngineProfile({ net: engineProfile().net, workers: Number(btn.dataset.workers) }));
     });
-    document.getElementById("settings-detect")?.addEventListener("click", async () => {
-      detecting = true;
-      renderEngineProfile();
-      try {
-        await detectEngineProfile({ onProgress: (p) => { probe = p; renderEngineProfile(); } });
-      } catch { /* stopped */ }
-      detecting = false;
-      probe = null;
-      renderEngineProfile();
+    document.getElementById("settings-detect")?.addEventListener("click", () => {
+      void detectEngineProfile().catch(() => {});
     });
-    subscribeEngineProfile(() => renderEngineProfile());
+    unsubscribers.push(subscribeEngineProfile(() => { renderEngineProfile(); void renderStockfishVersion(); }),
+      subscribeEngineSetup(renderEngineProfile));
 
     toggleInfoPop("engine-info", "engine-info-pop");
     toggleInfoPop("maia-info", "maia-info-pop");
@@ -727,6 +732,7 @@ export function createSettingsView({
 
   return {
     bind,
+    dispose() { for (const unsubscribe of unsubscribers.splice(0)) unsubscribe(); },
     renderSettings,
     refreshEngineCard,
     renderBrowserEngineStatus,

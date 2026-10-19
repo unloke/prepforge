@@ -8,6 +8,8 @@ asset base must be injectable.
 """
 from __future__ import annotations
 
+import pytest
+
 from prepforge_chess.api import static as static_mod
 
 
@@ -47,6 +49,52 @@ def test_hashed_asset_served_immutable_with_corp(client):
 def test_missing_asset_is_404(client):
     resp = client.get("/static/assets/does-not-exist.js")
     assert resp.status_code == 404
+
+
+@pytest.mark.parametrize("has_cookie", [False, True])
+def test_static_responses_never_set_cookies(client, tmp_path, monkeypatch, has_cookie):
+    monkeypatch.setattr(static_mod, "STATIC_DIR", tmp_path)
+    engine = tmp_path / "engine" / "1234abcd"
+    engine.mkdir(parents=True)
+    (engine / "stockfish.wasm").write_bytes(b"\x00asm\x01\x00\x00\x00")
+    (engine / "stockfish.js").write_text("// worker", encoding="utf-8")
+    (tmp_path / "index.html").write_text("<head></head>", encoding="utf-8")
+    if has_cookie:
+        client.get("/api/csrf")
+    else:
+        client.cookies.clear()
+    for path in ("engine/1234abcd/stockfish.wasm", "engine/1234abcd/stockfish.js", "index.html", "missing.js"):
+        response = client.get(f"/static/{path}")
+        assert response.status_code == (404 if path == "missing.js" else 200)
+        assert response.headers.get_list("set-cookie") == []
+        if path.endswith((".wasm", "stockfish.js")):
+            assert response.headers["cache-control"] == "public, max-age=31536000, immutable"
+            assert response.headers["cross-origin-embedder-policy"] == "require-corp"
+    if not has_cookie:
+        assert "pf_csrf" not in client.cookies
+        assert client.get("/").headers.get_list("set-cookie")
+        client.cookies.clear()
+        assert client.get("/api/csrf").headers.get_list("set-cookie")
+
+
+def test_static_middleware_removes_all_set_cookie_headers():
+    from fastapi import FastAPI
+    from fastapi.responses import Response
+    from fastapi.testclient import TestClient
+
+    from prepforge_chess.api.middleware import CSRFMiddleware
+
+    app = FastAPI()
+    app.add_middleware(CSRFMiddleware)
+
+    @app.get("/static/asset.js")
+    def asset():
+        response = Response("// asset")
+        response.set_cookie("one", "1")
+        response.set_cookie("two", "2")
+        return response
+
+    assert TestClient(app).get("/static/asset.js").headers.get_list("set-cookie") == []
 
 
 def test_traversal_outside_static_is_rejected():
