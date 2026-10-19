@@ -52,7 +52,6 @@
   .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings) .card {
     border: 0;
     border-radius: var(--phone-radius);
-    box-shadow: none;
   }
   .page-head {
     display: flex;
@@ -163,11 +162,10 @@
     border: 0;
     border-radius: 10px;
     background: var(--surface-3);
-    box-shadow: none;
   }
-  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
   .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--faint); }
-  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
   #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -293,7 +291,6 @@
     padding: 0 8px;
     border: 0;
     background: none;
-    box-shadow: none;
     color: var(--accent-strong);
     font-size: 15px;
     font-weight: 600;
@@ -558,7 +555,7 @@
     padding: 6px var(--phone-gutter) calc(20px + env(safe-area-inset-bottom));
     border-radius: 18px 18px 0 0;
     background: var(--panel);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a bottom sheet is a real overlay */
     overflow-y: auto;
     overscroll-behavior: contain;
     animation: phone-sheet-up var(--dur) var(--ease-out);
@@ -626,13 +623,13 @@
     font-size: 16px;
     text-align: left;
   }
-  .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); }
+  .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   .sheet-row svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--accent-strong); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .sheet-row:active { background: var(--line); }
 
   /* ---- Repertoire ------------------------------------------------------
-     Header (back, name, size, ⋯) over the board; under it the Explorer —
-     the next moves, yours dotted, a tap adds one — then the line tree. */
+     Header (back, name, size, ⋯) over the board; under it the Explorer with
+     the next moves, yours dotted, a tap adds one, then the line tree. */
   #view-build { --phone-reserve: max(244px, 40dvh); }
   /* Header (back, name, size, ⋯) over the board. It is the board's top
      neighbour here (the board bar is the thumb bar below), and it is flow
@@ -684,8 +681,8 @@
   #build-rep-header #build-menu { grid-column: 3; grid-row: 1 / 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
-  /* Under the board one pane at a time — the line tree, Explorer or Coverage
-     — so stepping through the tree scrolls the tree and nothing else. */
+  /* Under the board one pane at a time (the line tree, Explorer or Coverage)
+     so stepping through the tree scrolls the tree and nothing else. */
   #build-panes {
     position: sticky;
     top: -10px;
@@ -828,7 +825,7 @@
     padding: 6px 0;
     border: 0;
     border-radius: 16px;
-    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
   .context-menu button {
@@ -840,7 +837,7 @@
   /* Groups split by a rule instead of a caption, so Delete stays in view. */
   .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
   .context-menu .context-section { display: none; }
-  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); }
+  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
   .sheet-scrim { background: rgba(0, 0, 0, 0.45); }
@@ -862,7 +859,7 @@
     font-size: 16px;
     font-weight: 500;
   }
-  .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); }
+  .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   .sheet-item .ic { width: 22px; height: 22px; color: var(--accent-strong); }
   .sheet-item:active { background: var(--surface-3); }
 

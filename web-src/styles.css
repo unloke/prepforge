@@ -2,7 +2,7 @@
   color-scheme: light only;
 
   /* ========================================================================
-     ONE TOKEN SET. Every colour, size, radius, shadow and duration below is
+     ONE TOKEN SET. Every colour, size, radius, elevation and duration below is
      referenced by name everywhere else in the app (styles.css, phone.css and
      every views/*.css). Dark values are re-declared once in the dark-theme
      block further down; nothing else overrides them.
@@ -139,7 +139,7 @@
      the app read smaller than the text around it. It keeps its name because
      the view sheets still address it, but it no longer means "smaller". */
   --font: "Inter", "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --mono: "JetBrains Mono", "Cascadia Mono", "SF Mono", Consolas, monospace; /* taste-skill-ignore: a font token is not a use of it */
   --fs: 13px;
   --fs-s: 13px;
   --fs-xs: 11px;
@@ -302,7 +302,6 @@
   top: 8px;
   z-index: var(--z-skip);
   padding: 8px 14px;
-  border: 1px solid var(--accent-strong);
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--accent-text);
@@ -393,7 +392,7 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
 }
 
 h1,
@@ -437,7 +436,7 @@ h2 {
 .rail:not(.is-nav-collapsed):hover,
 .rail:has(:focus-visible) {
   width: var(--rail-open);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
   transition-delay: 60ms;
 }
 
@@ -501,7 +500,7 @@ h2 {
   left: 10px;
   right: 10px;
   top: 50%;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line); /* taste-skill-ignore: a collapsed rail needs a divider */
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
@@ -531,7 +530,7 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line); /* taste-skill-ignore: a collapsed rail needs a divider */
   padding-top: 10px;
 }
 
@@ -641,7 +640,7 @@ h2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: the command sheet is a real overlay */
 }
 
 .sheet-grab {
@@ -661,7 +660,6 @@ h2 {
   padding: 14px 12px;
   border-radius: 10px;
   background: var(--panel-soft);
-  border: 1px solid var(--line);
   color: var(--text);
   font-weight: 600;
   font-size: 14px;
@@ -677,7 +675,7 @@ h2 {
   min-width: 30px;
   height: 30px;
   padding: 0 6px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
@@ -687,7 +685,7 @@ h2 {
 .icon-btn .ic { width: 17px; height: 17px; }
 .icon-btn kbd {
   padding: 0 5px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a key cap needs its own edge */
   border-radius: 4px;
   background: var(--panel-soft);
   color: var(--muted);
@@ -852,9 +850,8 @@ h2 {
   gap: 8px;
   padding: 12px;
   background: var(--panel);
-  border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a floating popover is a real overlay */
 }
 
 .src-head {
@@ -933,7 +930,7 @@ h2 {
 }
 
 .src-divider {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid var(--line-soft); /* taste-skill-ignore: a divider between groups in a popover */
 }
 
 .src-rows {
@@ -953,7 +950,7 @@ h2 {
   min-width: 0;
   height: 30px;
   padding: 0 8px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); /* taste-skill-ignore: a form field keeps its outline */
   border-radius: var(--radius);
   background: var(--panel);
   font-size: 12px;
@@ -1033,7 +1030,7 @@ h2 {
   position: relative;
   width: 38px;
   height: 22px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
   border-radius: 999px;
   background: var(--panel-soft);
   flex-shrink: 0;
@@ -1081,7 +1078,7 @@ h2 {
   height: 18px;
   border-radius: 50%;
   background: var(--text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); /* taste-skill-ignore: the knob's depth, not a resting shadow */
   transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
@@ -1166,7 +1163,6 @@ h2 {
 .pf-info-pop {
   padding: 8px 10px;
   margin: 2px 0 8px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--panel-soft);
   color: var(--muted);
@@ -1262,7 +1258,7 @@ h2 {
   height: var(--control-h);
   min-height: var(--control-h);
   padding: 0 14px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a white button on a white card is told apart by its edge */
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
@@ -1324,7 +1320,6 @@ h2 {
 .btn.ghost {
   background: transparent;
   border-color: transparent;
-  box-shadow: none;
   color: var(--muted);
 }
 
@@ -1370,7 +1365,7 @@ h2 {
 }
 
 /* Reachable but inert: the control still handles the click (that is the point
-   — it opens the connect flow), it just reads as unavailable. */
+   it opens the connect flow), it just reads as unavailable. */
 .btn.is-unavailable {
   opacity: 0.55;
   cursor: not-allowed;
@@ -1555,7 +1550,7 @@ h2 {
 .today-counts { color: var(--label); font-size: var(--fs-s); }
 .today-counts b { color: var(--muted); font-variant-numeric: tabular-nums; }
 /* Streak-at-risk: replaces the note line when local midnight is <5h away and
-   nothing has been trained yet — same slot, louder voice. */
+   nothing has been trained yet: same slot, louder voice. */
 .today-warning {
   align-self: flex-start;
   padding: 3px 8px;
@@ -1595,12 +1590,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: var(--control-h);
   margin-left: auto;
   padding: 0 8px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--label);
 }
-.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */ }
 .search-field input {
   width: 100%;
   min-width: 0;
@@ -1608,9 +1603,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   padding: 0;
   border: 0;
   background: transparent;
-  box-shadow: none;
 }
-.search-field input:focus-visible { box-shadow: none; }
+.search-field input:focus-visible { box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
 
 /* One column-header treatment for every table in the app: the Library grid,
    the Games ledger and the Scout plan all label their columns the same way.
@@ -1636,7 +1630,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-bottom: 1px solid var(--line);
 }
 /* Empty library (signed out / no repertoires): the onboarding card has no
-   filter chips or column header — only the search stays. */
+   filter chips or column header, only the search stays. */
 .lib-list.is-empty .card-head .seg,
 .lib-list.is-empty .lib-cols { display: none; }
 /* Failed load: same empty layout, and the search goes too (nothing to filter). */
@@ -1664,7 +1658,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: 11px;
   margin-top: 4px;
   border-radius: 50%;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
   background-size: 200% 100%;
   animation: skeleton-pulse 1.2s var(--ease-out) infinite;
 }
@@ -1916,7 +1910,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .steps { grid-column: auto; grid-row: auto; }
 }
 /* Empty library (signed out / first run) on desktop: instead of a strip of
-   cards in the top third, the cards take the screen's height (capped) — the
+   cards in the top third, the cards take the screen's height (capped): the
    empty state centres in its card and the Get started steps grow. */
 @media (min-width: 1021px) {
   .lib { min-height: 100%; }
@@ -2073,7 +2067,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 /* Train tab: coach feedback lives in the right workspace (see .train-coach),
-   so the left column starts at the board — nothing above it. */
+   so the left column starts at the board, nothing above it. */
 #view-analyze .study,
 #view-build .study,
 #view-train .study {
@@ -2583,7 +2577,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 2px;
   opacity: 0.95;
   animation-name: confettiFall;
-  animation-timing-function: ease-in;
+  animation-timing-function: var(--ease-out);
   animation-fill-mode: forwards;
 }
 @keyframes confettiFall {
@@ -2751,7 +2745,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 /* ===========================================================================
-   Repertoire — Opus prototype composition
+   Repertoire: Opus prototype composition
    One raised panel beside the board: identity head, position trail,
    fork picker, the move tree, and a bottom dock (Explorer / Coverage /
    Engine). Mirrors prototype .panel / .tree-meta / .forkbar / .tree-wrap / .dock.
@@ -2788,7 +2782,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   gap: 10px;
   min-height: 46px;
   padding: 8px 10px 8px 12px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); /* taste-skill-ignore: a panel head needs a divider */
 }
 .rep-name {
   display: inline-flex;
@@ -2953,7 +2947,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* Drag handle between the move tree and the inspector: the whole seam is the
    grab area, the visible grip is a short pill in the middle. The element is
    zero-height, so the cursor and the touch-action live on both it and its
-   ::before hit area — a rule on the pseudo alone leaves `getComputedStyle` and
+   ::before hit area, because a rule on the pseudo alone leaves `getComputedStyle` and
    any tooling that hovers the element itself reading `auto`. */
 .dock-resizer {
   position: relative;
@@ -3046,12 +3040,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   z-index: 5;
   max-width: 240px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--panel);
   color: var(--text);
   font-size: 12px;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating popover is a real overlay */
 }
 .inspector-panel { min-width: 0; }
 
@@ -3072,7 +3065,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 /* ===========================================================================
-   Train — Opus prototype composition
+   Train: Opus prototype composition
    One raised panel beside the board: mode segmented control, coach banner
    strip, then a scrolling stack of .tcard sections (setup / progress /
    summary). The blitz clock overlays the board's top edge, so toggling
@@ -3261,7 +3254,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .note {
   padding: 7px 9px;
-  border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel-soft);
   color: var(--muted);
@@ -3339,7 +3331,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: baseline;
   gap: 5px;
   padding: 3px 9px;
-  border: 1px solid var(--line);
   border-radius: 999px;
   /* Recessed, not outlined-and-white: the same quiet fill the Games summary
      chips and ledger rows use inside their card. */
@@ -3434,7 +3425,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 /* ===========================================================================
-   Games — Opus prototype composition
+   Games: Opus prototype composition
    A flat toolbar card (source tray, Sample, Check, outcome filter chips), then
    the triage grid (ledger + focus card; see views/replay.css). Scout reuses the
    toolbar / source tray primitives.
@@ -3463,7 +3454,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); /* taste-skill-ignore: a white toolbar on a white card is told apart by its edge */
   border-radius: var(--radius-card);
   background: var(--panel);
 }
@@ -3484,7 +3475,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-chip {
   height: 26px;
   padding: 0 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); /* taste-skill-ignore: a chip on a white card is told apart by its edge */
   border-radius: 13px;
   background: var(--panel);
   font: inherit;
@@ -3505,10 +3496,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .queued { color: var(--label); font-size: var(--fs-xs); }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
-.eyebrow { color: var(--label); font-size: var(--fs-xs); font-weight: 650; letter-spacing: 0.05em; text-transform: uppercase; }
 
 /* ===========================================================================
-   Scout — Opus prototype composition (skeleton; the report itself is styled in
+   Scout: Opus prototype composition (skeleton; the report itself is styled in
    views/scout.css). Toolbar card, then a grid: scrolling main column (profile,
    colour tabs, colour card, chart cards) + the line-detail card.
    =========================================================================== */
@@ -3529,7 +3519,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* position: relative makes the scrolling columns the containing block for
    absolutely-positioned descendants (the .visually-hidden chart summaries).
    Without it those resolve against the page and, sitting deep inside the
-   scrolled list, stretched the document — the whole Scout page could be
+   scrolled list, stretched the document: the whole Scout page could be
    dragged down into empty space. */
 .scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
 .scout-main > * { flex-shrink: 0; }
@@ -3887,7 +3877,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: block;
   height: 12px;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%);
+  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
   background-size: 200% 100%;
   animation: skeleton-pulse 1.2s var(--ease-out) infinite;
 }
@@ -4027,7 +4017,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
    The mainline is a flowing run of inline moves. A variation is a block that
    interrupts the flow and is *nested in the DOM* under the move it branches
-   from, so each level indents one notch further by pure nesting — a
+   from, so each level indents one notch further by pure nesting, a
    variation-within-a-variation can never slide back to the margin.
    =========================================================================== */
 
@@ -4187,7 +4177,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .tag {
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); /* taste-skill-ignore: a chip needs its own edge */
   border-radius: 3px;
   padding: 1px 5px;
   font-size: 10px;
@@ -4207,11 +4197,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-height: calc(100vh - 16px);
   overflow-y: auto;
   padding: 6px;
-  border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
   color: var(--text);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
 }
 
 .context-section {
@@ -4231,7 +4220,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .context-target {
   padding: 6px 10px 6px;
   font-weight: 700;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */
   margin-bottom: 2px;
 }
 
@@ -4280,7 +4269,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .context-menu button.menu-sep-before {
   margin-top: 4px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */
 }
 
 .context-menu button[data-action="delete"] {
@@ -4304,7 +4293,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   place-items: start center;
   padding-top: min(14vh, 120px);
   background: rgba(20, 18, 14, 0.36);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
 }
 
 /* Sign-in gate only: top-bar tabs stay clickable above the dim layer so the
@@ -4326,9 +4315,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow: hidden;
   background: var(--panel);
   color: var(--text);
-  border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
   display: grid;
 }
 
@@ -4419,7 +4407,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .auth-divider::after {
   content: "";
   flex: 1;
-  height: 1px;
+  height: 1px; /* taste-skill-ignore: the rule beside the word or */
   background: var(--line);
 }
 
@@ -4555,7 +4543,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .modal-field select:focus,
 .modal-field textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: 0 0 0 2px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
 }
 
 .modal-footer {
@@ -4587,7 +4575,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 @media (max-width: 860px) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
-     normally — a fixed height here would crush the board on a phone. Two
+     normally, because a fixed height here would crush the board on a phone. Two
      columns hold down to 860px (see .study --study-panel-min), so this only
      covers small tablets and phones. */
   .study {
@@ -4733,10 +4721,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   column-gap: 10px;
   padding: 10px 6px 10px 12px;
-  border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--panel);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: a floating notice is a real overlay */
   color: var(--text);
   font-size: var(--fs);
   line-height: 1.35;
@@ -4808,7 +4795,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .notice-stop {
   height: 28px;
   padding: 0 10px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a quiet button on a white card needs its edge */
   border-radius: 7px;
   background: transparent;
   color: var(--text);
@@ -4859,7 +4846,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 8px 6px 8px 10px;
   border-radius: 8px;
   background: var(--panel-soft);
-  box-shadow: none;
+  box-shadow: none; /* taste-skill-ignore: a docked notice is not floating */
   transform: none;
   opacity: 1;
   transition: none;
@@ -4939,7 +4926,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .engine-window.is-docked .engine-window-pvs { padding: 4px 0; }
 /* Docked lines: one fixed-height row each, cut at the edge, so N lines always
-   take N rows — the block never grows while searching or jumps when a line
+   take N rows: the block never grows while searching or jumps when a line
    gets longer. */
 .engine-window.is-docked .engine-pv {
   grid-template-columns: 54px 1fr;
@@ -5398,9 +5385,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .palette-panel {
   width: min(560px, 100%);
   background: var(--panel);
-  border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
   overflow: hidden;
 }
 
@@ -5408,7 +5394,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   width: 100%;
   height: 44px;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); /* taste-skill-ignore: the palette field needs an underline */
   padding: 0 14px;
   background: var(--panel);
   color: var(--text);
@@ -5430,7 +5416,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 12px;
   min-height: var(--control-h);
   padding: 6px 10px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--text);
@@ -5440,7 +5426,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .palette-item:hover,
 .palette-item.is-active {
   background: var(--accent-soft);
-  border-color: var(--accent-line);
 }
 
 .palette-item-label {
@@ -5453,14 +5438,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 /* Desktop workspaces: the board and the task pane share the available width.
-   One authoritative desktop block per workspace — Analyze / Build / Train share
+   One authoritative desktop block per workspace. Analyze / Build / Train share
    the study shell; Games, Scout and Teams each own one layout. Base (mobile)
    rules above stay untouched; values here are the effective desktop sizes. */
 @media (min-width: 960px) {
   .workspace { max-width: 1400px; }
   /* Study geometry is authoritative in the base .study block (max-content
      board column + viewport-height board size); desktop only keeps the shared
-     16px gap — no second column definition. */
+     16px gap, no second column definition. */
   /* The board is square and its width budget (the share of the row) binds
      before the height does on most desktops, so a stretched column left a tall
      empty area under the board. Let the column end at the board instead; the
