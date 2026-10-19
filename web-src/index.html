@@ -287,7 +287,7 @@
               <button class="btn icon phone-back" type="button" data-mirror='.nav-item[data-view="dashboard"]' aria-label="Library" title="Library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
               <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
               <span class="rep-stats faint" id="build-rep-stats" hidden></span>
-              <button class="btn icon sm primary" id="build-generate-node" data-testid="build-generate-node" aria-label="Generate moves" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
+              <button class="btn primary" id="build-generate-node" data-testid="build-generate-node" aria-label="Generate moves" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
               <button class="row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
             <div class="panel-body">
@@ -307,9 +307,8 @@
               </div>
             </div>
             <div class="build-empty empty-state big" id="build-empty">
-              <div class="es-mark" aria-hidden="true">♜</div>
               <h3>Start a repertoire</h3>
-              <p>Open one from the Library, or play a move on the board to start a new line.</p>
+              <p>Open one from the Library, or play a move.</p>
               <div class="row">
                 <button class="btn primary" id="build-empty-create" type="button">New repertoire</button>
                 <button class="btn" id="build-empty-import" type="button">Import PGN</button>
@@ -320,7 +319,7 @@
             <div class="forkbar" id="build-branchbar" data-testid="build-branchbar" hidden></div>
             <div class="inline-undo" id="build-undo" data-testid="build-undo" role="status" aria-live="polite" hidden></div>
             <div class="job-dock" id="build-job-dock" data-testid="build-job-dock"></div>
-            <div class="tree-wrap" id="builder-tree" data-testid="builder-tree"></div>
+            <div class="tree-wrap" id="builder-tree" data-testid="builder-tree" data-ui></div>
             <div class="dock-resizer" id="build-dock-resizer" data-testid="build-dock-resizer" role="separator" aria-orientation="horizontal" aria-controls="build-inspector" aria-label="Resize the inspector (drag, or ↑/↓; double-click to fold)" tabindex="0"></div>
             <section class="dock" id="build-inspector" aria-label="Inspector">
               <div class="dock-tabs" role="tablist" aria-label="Inspector">
@@ -356,7 +355,7 @@
                 </div>
                 <div class="inspector-panel" id="explorer-drawer" data-testid="explorer-drawer" role="tabpanel" aria-labelledby="build-tool-explorer">
                   <div class="engine-slot" id="explorer-engine-slot"></div>
-                  <div class="explorer-rows" id="explorer-rows"></div>
+                  <div class="explorer-rows" id="explorer-rows" data-ui></div>
                 </div>
                 <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
                   <div class="job-dock" id="coverage-job-dock" data-testid="coverage-job-dock"></div>

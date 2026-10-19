@@ -8,6 +8,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = appSource();
+const coverageController = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
@@ -199,6 +200,22 @@ describe("workspace chrome layout", () => {
     // board bar.
     expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
     expect(phone).toMatch(/#build-inspector \.build-sync \{/);
+    // Desktop is the reverse: the board bar's chip is the only one. Both were
+    // visible at 1440 (board bar + inspector tools), printing one state twice.
+    expect(css).toMatch(/@media \(min-width: 761px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
+  });
+
+  it("gives the phone Repertoire's next-move chips and trail a real thumb target", () => {
+    // Measured at 390: chips 27px, crumbs 21px, the collapse toggle 13px. The
+    // chip is the action the thumb reaches for on this screen, and the trail
+    // is the only way back along the line.
+    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 40px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 32px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 32px;[^}]*min-height: 32px;/);
+    // One line naming the action, not a paragraph about coverage: that was
+    // standing explanation (AGENTS.md) and the ⓘ already carries the detail.
+    expect(coverageController).toContain("Press Scan to check this line.");
+    expect(coverageController).not.toContain("Scan to find the moves your opponents play");
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
@@ -276,12 +293,56 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    // The inspector takes the height the tree does not need, so a short
-    // repertoire leaves no dead space above it and the Explorer rows are not
-    // boxed into their own scrollbar; a fixed 40% share did both.
+    // The one sentence that explains the panel reads at the panel's size.
+    expect(ruleBody(".inspector-info-pop")).toMatch(/font-size:\s*var\(--fs-s\)/);
+    // The inspector is sized to its own contents by fitBuildDock(), so a short
+    // repertoire leaves no dead space above it and a long Explorer is not boxed
+    // into its own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
-    expect(ruleBody(".dock")).toMatch(/height:\s*clamp\(210px,\s*40%,\s*330px\)/);
+    expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
     expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
+  });
+
+  it("captions the board with the position, not the repertoire", () => {
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    // The panel head already names the repertoire and its side; the board
+    // caption under it repeats only the move you are standing on.
+    expect(session).toMatch(/node\.depth === 0\s*\?\s*"Start"/);
+    expect(session).not.toMatch(/\$\{appState\.build\.name\} · \$\{appState\.build\.color\}/);
+  });
+
+  it("sets the Build ledger's small type at the panel's own floor", () => {
+    // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
+    // still hardcodes 9-12px is the one squinting line. The Explorer share, the
+    // in-repertoire dot, the crumb separator and the fork chip's number all read
+    // at that floor now; on a phone the header stats, save chip and fork share
+    // take the same token instead of a 12px literal.
+    expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*11px/);
+    expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
+    expect(ruleBody(".crumb-sep")).toMatch(/font-size:\s*var\(--fs-s\)/);
+    expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
+    expect(phoneCss).toMatch(/#build-rep-header \.rep-stats \{[^}]*font-size:\s*var\(--fs-s\)/);
+    expect(phoneCss).toMatch(/#build-inspector \.build-sync \{[^}]*font-size:\s*var\(--fs-s\)/);
+    expect(phoneCss).toMatch(/#view-build \.fork-chip small \{[^}]*font-size:\s*var\(--fs-s\)/);
+  });
+
+  it("sizes the dock to its rows, and a dragged height survives a repaint", () => {
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    // The fit sums the visible drawers (their scroll heights), the body's own
+    // padding and the tab strip: the body's own height is the flex remainder and
+    // reports the pinned ceiling instead of what the rows need.
+    const fit = session.slice(session.indexOf("function fitBuildDock()"), session.indexOf("function applyBuildDockHeight("));
+    expect(fit).toContain('dock.querySelector(".dock-body")');
+    expect(fit).toContain("scrollHeight");
+    expect(fit).toContain("paddingTop");
+    // Every Explorer render (and unfolding) refits; coverage repaints refit too.
+    expect(session).toMatch(/requestAnimationFrame\(\(\) => fitBuildDock\(\)\)/);
+    expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
+    expect(app).toContain("onPaint: () => buildSession?.fitBuildDock()");
+    // A height the user dragged is not overwritten by the next repaint.
+    expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
+    expect(session).toMatch(/if \(dock\.dataset\.dockPinned\) return;/);
+    expect(session).toMatch(/applyBuildDockHeight\(drag\.want, \{ pinned: true \}\)/);
   });
 
   it("composes Analyze as one panel: game head, coach card, results, drawers", () => {
@@ -307,16 +368,26 @@ describe("workspace chrome layout", () => {
     // survive .panel-head's rule that hides icons in word buttons.
     expect(view).toContain('class="btn icon sm" id="fetch-my-game"');
     expect(css).toContain(".panel-head .btn:not(.icon) > .bi");
-    // Build's row keeps the same shape: an icon action beside the repertoire
-    // name, with the ⋯ menu carrying the rest.
+    // Build's head names its primary action in words; the counts move to a
+    // second line so the repertoire name keeps its ending.
     const build = html.slice(html.indexOf('id="view-build"'));
     const buildHead = build.slice(build.indexOf('id="build-rep-header"'), build.indexOf("<div class=\"panel-body\""));
-    expect(buildHead).toContain('class="btn icon sm primary" id="build-generate-node"');
+    expect(buildHead).toContain('class="btn primary" id="build-generate-node"');
+    expect(buildHead).toMatch(/id="build-generate-node"[^>]*><svg[^>]*>.*?<span class="bl">Generate<\/span>/);
     expect(buildHead).toContain('id="build-menu"');
-    // The row is one line of title, meta and actions; the size summary stays
-    // the only meta, with no second description row.
     expect(buildHead).toContain('id="build-rep-name"');
     expect(buildHead).toContain('id="build-rep-stats"');
+    // The head wraps: the name and action on the first line, the counts filling
+    // their own line, so neither has to be shortened on a narrow sidebar.
+    const buildHeadRules = css.slice(css.indexOf("#build-rep-header .rep-stats {"));
+    expect(buildHeadRules).toMatch(/#build-rep-header \{ flex-wrap: wrap/);
+    expect(buildHeadRules).toMatch(/#build-rep-header \.rep-stats \{ flex: 1 1 100%; order: 3/);
+    expect(buildHeadRules).toMatch(/#build-rep-header \.rep-name \{ flex: 1 1 auto/);
+    // The empty panel's one sentence is running text: it reads at prose size in
+    // the full ink, not at the dense 13px the move ledger uses.
+    const buildEmpty = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-tree-meta"'));
+    expect(buildEmpty).toContain("Open one from the Library, or play a move.");
+    expect(css).toMatch(/#view-build \.empty-state\.big p \{ color: var\(--text\); font-size: 16px; \}/);
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
     expect(view).toContain('class="moves-grid" id="analysis-moves"');

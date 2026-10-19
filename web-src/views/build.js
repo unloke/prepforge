@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { countOf } from "../plural.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 export function createBuildView({
@@ -132,7 +133,9 @@ export function createBuildView({
         ]
           .filter(Boolean)
           .join(" ");
-        const mainMark = n.is_mainline ? html`<i title="Mainline">★</i>` : "";
+        // Mainline is a weight, as it is in the tree — not a glyph. The star
+        // that used to sit here was an emoji and borrowed the "due" mastery
+        // colour, so the chip read as a training prompt it was not.
         // Practical share: the server's real Maia probability for this move
         // (human-likeness at the repertoire's rating). Manual/imported moves have
         // none — show nothing rather than a made-up number.
@@ -140,15 +143,16 @@ export function createBuildView({
           typeof n.maia_probability === "number" && n.maia_probability > 0
             ? html`<small>${Math.round(n.maia_probability * 100)}%</small>`
             : "";
+        const title = n.is_mainline ? `Play ${n.san} — main line` : `Play ${n.san}`;
         return (
-          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="Play ${n.san}"><span class="mtree-num">${num}</span>${n.san}${mainMark}${share}</button>`
+          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="${title}"><span class="mtree-num">${num}</span>${n.san}${share}</button>`
         );
       });
     bar.hidden = false;
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${ctx.options.length}</span></div><div class="fork-chips">${chips}</div>`;
+      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span></div><div class="fork-chips">${chips}</div>`;
     bar.querySelectorAll(".fork-chip[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});
