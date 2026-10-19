@@ -984,8 +984,11 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
     ],
-    // The dialog keeps its pending state until the server answers: the create
-    // used to leave the modal dead on the screen and the click to look ignored.
+    // The optimistic empty repertoire is already on screen, so the form has
+    // done its job the moment Enter lands: dismiss it and let the board/tree
+    // carry the wait. The promise still resolves when the server answers, so a
+    // first Build move can play onto the real repertoire.
+    dismissOnSubmit: true,
     onSubmit: async (result, close) => {
       const name = (result.name || "").trim() || "New repertoire";
       const color = normalizeRepertoireColor(result.color);
@@ -1002,6 +1005,7 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
         await refreshDashboardRepertoires();
       } catch (error) {
         if (optimistic) rollbackOptimisticRepertoire(optimistic);
+        close(null);
         setStatusError(error.message);
       }
     },

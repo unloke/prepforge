@@ -3497,7 +3497,7 @@ async function shareRepertoireWithTeam(repertoireId) {
 // (values, close) lets a caller run its request while the dialog holds the
 // pending state: it calls `close(values)` on success, or returns/throws to leave
 // the form open for another try.
-function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true }) {
+function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true, dismissOnSubmit = false }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
@@ -3590,6 +3590,15 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
       cleanup();
       resolve(values);
     };
+    // A caller that opens its own optimistic view dismisses the form on submit:
+    // the promise still resolves when the caller closes it with the request's
+    // outcome, but the overlay is gone immediately.
+    let dismissed = false;
+    const dismiss = () => {
+      if (dismissed) return;
+      dismissed = true;
+      cleanup();
+    };
     const collect = () => {
       const values = {};
       overlay.querySelectorAll("[data-field]").forEach((el) => {
@@ -3625,9 +3634,10 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
         settled = true;
         fn(result);
       };
+      if (dismissOnSubmit) dismiss();
       Promise.resolve()
         .then(() => onSubmit(values, finish(close)))
-        .catch(() => {})
+        .catch(() => { if (dismissOnSubmit && !closed) close(null); })
         .then(idle);
     };
     const onKey = (event) => {
