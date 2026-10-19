@@ -38,6 +38,7 @@ function harness() {
   const common = {
     appState, boards: { build: board }, document: { getElementById }, localBoardInfo,
     takeBuildPreview: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(), syncViewHeads: vi.fn(),
+    paintGenerateVisibility: vi.fn(),
     switchView: (name) => { appState.currentView = name; },
   };
   const loading = compile("function setBuildLoading(", common);

@@ -9,6 +9,7 @@ export function createBuildView({
   selectBuildNode,
   openNodeContextMenu,
   buildBranchContext,
+  isReadOnly = () => false,
   onTreeRendered = () => {},
 }) {
   function buildPath(nodeId) {
@@ -48,12 +49,16 @@ export function createBuildView({
     return make(rootNode);
   }
 
-  // The Generate button stays out of the head until it applies: it offers *your*
-  // reply, so a position where your side already has a prepared move in the tree
-  // would only re-search a line you have. Everywhere else — and for the first
-  // move of a line — it is one hover/focus of the current move row away, and the
-  // ⋯ menu's "Move …" entry reaches it at any position.
+  // ONE rule decides the head's Generate button, and only this function reads it:
+  // it applies when a writable repertoire is loaded, its current position is
+  // settled, and no move of your own already answers it there. A repertoire
+  // that owns the reply (or a read-only share, or a tree still loading) has
+  // nothing for the button to do, so it stays out of the head. The ⋯ menu's
+  // "Move …" entry reaches Generate at any position, so hiding it here never
+  // removes the capability.
   function generateAppliesHere() {
+    if (isReadOnly()) return false;
+    if (appState.buildLoading) return false;
     if (!appState.build || !appState.buildCurrentNodeId) return false;
     const own = appState.build.color === "black" ? "black" : "white";
     return !appState.build.nodes.some(
@@ -61,6 +66,9 @@ export function createBuildView({
     );
   }
 
+  // The attribute alone carries visibility — no CSS state may override it (the
+  // head row used to force the button back with a :hover/:focus rule, which
+  // made it appear exactly where it did not apply).
   function paintGenerateVisibility() {
     const btn = document.getElementById("build-generate-node");
     if (!btn) return;
@@ -172,6 +180,10 @@ export function createBuildView({
   }
 
   function renderBuilderTree() {
+    // The rule above reads the tree, so every re-render — including the ones
+    // that bail before the tree renderer runs — repaints the head. Otherwise the
+    // no-repertoire and root-only branches leave the previous visibility.
+    paintGenerateVisibility();
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {

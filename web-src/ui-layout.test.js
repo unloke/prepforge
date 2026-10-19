@@ -281,7 +281,7 @@ describe("workspace chrome layout", () => {
     // boxed into their own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".dock")).toMatch(/height:\s*clamp\(210px,\s*40%,\s*330px\)/);
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 0 auto/);
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
   });
 
   it("composes Analyze as one panel: game head, coach card, results, drawers", () => {

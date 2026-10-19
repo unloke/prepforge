@@ -3840,6 +3840,10 @@ function setBuildLoading(on, { restore = true } = {}) {
   if (boards.build) {
     boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
   }
+  // The skeleton replaces the tree but the rule's subject is still the previous
+  // repertoire: repaint so the head drops the button the old tree made true
+  // (nothing here is settled yet, so it cannot apply).
+  paintGenerateVisibility();
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = true;
@@ -4413,6 +4417,7 @@ async function ensureBuildView() {
       selectBuildNode,
       openNodeContextMenu,
       buildBranchContext,
+      isReadOnly: isBuildReadOnly,
       onTreeRendered: syncViewHeads,
     });
   }
@@ -4429,6 +4434,14 @@ function renderBuildRepHeader() {
   if (empty) empty.hidden = !!appState.build;
   if (buildView) return buildView.renderBuildRepHeader();
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
+}
+
+// Generate's head button has exactly one rule, and it lives in the build view
+// (it reads the tree). Every path that changes what that rule reads must
+// repaint it, so app.js reaches the same paint the header uses.
+function paintGenerateVisibility() {
+  if (buildView) return buildView.paintGenerateVisibility();
+  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
 }
 
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
@@ -4794,6 +4807,7 @@ function renderBuilderTreeEmptyState() {
     html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
+  paintGenerateVisibility();
   syncViewHeads();
 }
 
