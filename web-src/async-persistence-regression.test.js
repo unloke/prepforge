@@ -144,7 +144,7 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
   const code = scoutSource.replace(/^  /gm, "");
   const notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
-  const run = compile("async function scoutPrepareAll(", {
+  const run = compile("async function runPrepareAll(", {
     scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices,
     scoutPickRepertoire: async () => "r", scoutWriteLineToRep: write,
   }, "", code);
