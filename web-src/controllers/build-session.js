@@ -1585,53 +1585,36 @@ function openNodeContextMenu(event, nodeId) {
   const node = appState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
-  const sections = [
-    {
-      title: "Position",
-      items: [
-        ["generate", "Generate from here"],
-      ],
-    },
-    {
-      title: "Branch",
-      items: [
-        ["set_mainline", node.is_mainline ? "Mainline (active)" : "Set as mainline"],
-        ["mark_prepared", node.is_prepared ? "Unmark prepared" : "Mark prepared"],
-        ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
-      ],
-    },
-    {
-      title: "Annotate",
-      items: [
-        ["add_comment", "Comment..."],
-        ["add_tag", "Tag..."],
-      ],
-    },
-    {
-      title: "Copy / Export",
-      items: [
-        ["copy_fen", "Copy FEN"],
-        ["copy_line_pgn", "Copy line PGN"],
-        ["export_branch_pgn", "Export branch PGN"],
-      ],
-    },
-    {
-      title: "Danger",
-      items: [["delete", "Delete this move"]],
-    },
+  const groups = [
+    [["generate", "Generate from here"]],
+    [
+      ["set_mainline", node.is_mainline ? "Mainline (active)" : "Set as mainline"],
+      ["mark_prepared", node.is_prepared ? "Unmark prepared" : "Mark prepared"],
+      ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
+    ],
+    [
+      ["add_comment", "Comment..."],
+      ["add_tag", "Tag..."],
+    ],
+    [
+      ["copy_fen", "Copy FEN"],
+      ["copy_line_pgn", "Copy line PGN"],
+      ["export_branch_pgn", "Export branch PGN"],
+    ],
+    [["delete", "Delete this move"]],
   ];
   const safeId = nodeId;
+  // Groups are told apart by a gap and a seam, not by five 10px uppercase
+  // captions: the items say what they do, and a caption over a one-item group
+  // ("Position", "Danger") is a second label for the same thing.
   menu.innerHTML =
-    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${sections
-    .map(
-      (section) =>
-        html`<div class="context-section">${section.title}</div>${section.items
-          .map(
-            ([action, label]) =>
-              html`<button type="button" data-action="${action}" data-node-id="${safeId}">${label}</button>`
-          )
-          }`
-    )}`;
+    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${groups
+    .map((items, groupIndex) =>
+      items.map(([action, label], i) =>
+        html`<button type="button" data-action="${action}" data-node-id="${safeId}"${groupIndex > 0 && i === 0 ? html` class="menu-sep-before"` : ""}>${label}</button>`
+      )
+    )
+    }`;
   menu.hidden = false;
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();

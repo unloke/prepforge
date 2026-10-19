@@ -273,4 +273,15 @@ describe("Next-move count names itself (2026-10-19 critique)", () => {
     expect(view).toMatch(/<b>Next move<\/b><span class="count">\$\{countOf\(ctx\.options\.length, "option"\)\}/);
     expect(view).toContain('import { countOf } from "../plural.js";');
   });
+
+  it("groups the node menu by seams, not by uppercase captions", () => {
+    // Five 10px uppercase captions, two of them over a single item, labelled
+    // what the item already said.
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    expect(session).not.toMatch(/class="context-section">\$\{section\.title\}/);
+    const menu = session.slice(session.indexOf("function openNodeContextMenu("));
+    const markup = menu.slice(menu.indexOf("menu.innerHTML"), menu.indexOf("menu.hidden = false"));
+    expect(markup).toMatch(/class="menu-sep-before"/);
+    expect(markup).not.toMatch(/context-section|Position|Danger/);
+  });
 });
