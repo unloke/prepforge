@@ -3,7 +3,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { scoutRenderDebounceMs, scoutRenderForceEvery } from "./scout.js";
+import { planRowEntranceEnabled, scoutRenderDebounceMs, scoutRenderForceEvery } from "./scout.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +19,14 @@ describe("scout streaming render cadence", () => {
     expect(scoutRenderDebounceMs(100)).toBe(400);
     expect(scoutRenderDebounceMs(300)).toBe(800);
     expect(scoutRenderDebounceMs(700)).toBe(1200);
+  });
+
+  it("does not hold new plan rows invisible while games stream", () => {
+    // A streaming rebuild must paint rows immediately; the staggered enter fade
+    // (opacity 0 for up to ~385ms, animation-fill-mode: both) left blank gaps.
+    expect(planRowEntranceEnabled("running")).toBe(false);
+    expect(planRowEntranceEnabled("idle")).toBe(true);
+    expect(planRowEntranceEnabled(undefined)).toBe(true);
   });
 });
 
