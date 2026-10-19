@@ -96,3 +96,15 @@ describe("scout accent budget", () => {
     expect(css).toMatch(/\.line-row\.is-expanded \{[^}]*inset 3px 0 0 var\(--accent\)/);
   });
 });
+
+describe("scout group spacing", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("separates the colour card's groups more than the rows inside them", () => {
+    // Head, readout band and plan sat 0-10px apart — one continuous slab.
+    const plan = css.match(/\.plan \{[^}]*\}/)[0];
+    expect(plan).toContain("gap: 10px");
+    expect(plan).toContain("padding: 16px 14px 14px");
+    expect(css).toMatch(/\.intel \{[^}]*padding: 12px 14px/);
+  });
+});

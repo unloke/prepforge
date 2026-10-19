@@ -149,7 +149,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 12px 14px 10px;
 }
 .cs-head .spacer { flex: 1; }
 .wdl-compact { display: inline-flex; align-items: baseline; gap: 5px; }
@@ -176,7 +176,7 @@
 .scout-coverage-fill.warn { background: var(--warn); }
 .scout-coverage-fill.bad { background: var(--danger); }
 
-.intel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: var(--panel-soft); }
+.intel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--panel-soft); }
 .headline { margin: 0; max-width: 62ch; font-size: 15px; font-weight: 650; line-height: 1.35; }
 .scout-repertoire-reads { display: flex; flex-wrap: wrap; gap: 6px; }
 .scout-read-chip {
@@ -191,7 +191,9 @@
 }
 .scout-read-chip small { color: var(--muted); font-size: 13px; font-weight: 500; }
 
-.plan { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+/* Group boundaries get more air than the rows inside them: head, then the
+   readout band, then the plan. */
+.plan { display: flex; flex-direction: column; gap: 10px; padding: 16px 14px 14px; }
 .plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
 .scout-col-label { font-size: 13px; font-weight: 700; }
 .scout-col-label small { color: var(--label); font-weight: 500; }
@@ -208,6 +210,7 @@
   grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
   gap: 10px;
   padding: 0 10px;
+  margin-top: 4px;
 }
 /* The score header sits over a right-aligned column. */
 .scout-lines-head > :nth-child(3) { text-align: right; }
