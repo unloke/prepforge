@@ -284,6 +284,15 @@ async function runViewport(vp) {
     await page.waitForTimeout(300);
   }
 
+  // With no teams the page still reads as one row of equal cards: the
+  // directory must not repeat the middle card's "No teams yet".
+  if (vp.width >= 1280) {
+    const cards = await page.evaluate(() => [...document.querySelectorAll("#view-teams .teams > .card:not([hidden])")]
+      .map((el) => ({ h: Math.round(el.getBoundingClientRect().height), text: el.innerText })));
+    check(cards.length >= 2, "desktop Teams should show its cards");
+    check(new Set(cards.map((c) => c.h)).size === 1, `Teams columns should share one height, got ${JSON.stringify(cards.map((c) => c.h))}`);
+  }
+
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);

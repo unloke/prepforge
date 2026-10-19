@@ -191,8 +191,10 @@ export function createTeamsView({
       list.innerHTML = "";
       return;
     }
+    // No teams: the card beside the directory already says "No teams yet" and how
+    // to start one, so the directory is just empty.
     if (!appState.teams.length) {
-      list.innerHTML = html`<div class="empty-state">No teams yet.</div>`;
+      list.innerHTML = "";
       return;
     }
     const query = (search?.value || "").trim().toLocaleLowerCase();

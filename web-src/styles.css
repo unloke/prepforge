@@ -1436,6 +1436,10 @@ h2 {
   gap: 12px;
   align-items: start;
 }
+/* Directory, detail and incoming shares share one row height: a short card
+   (an empty directory) used to leave the row ragged. */
+.teams > .card { align-self: stretch; }
+
 @media (max-width: 1279px) {
   .teams { grid-template-columns: 250px minmax(0, 1fr); }
   .incoming { grid-column: 2; }

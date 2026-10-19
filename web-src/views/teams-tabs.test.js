@@ -290,5 +290,20 @@ describe("teams directory: opening a team", () => {
     });
     await view.loadTeams();
     expect(byId("team-empty-title").textContent).toBe("No teams yet");
+    // One empty state, not two: the card says it, the directory stays empty.
+    expect(String(byId("teams-list").innerHTML)).toBe("");
+    view.renderTeamsList();
+    expect(String(byId("teams-list").innerHTML)).toBe("");
+  });
+
+  it("a search with no hit is still named in the directory", async () => {
+    const { view, byId } = makeHarness({
+      appState: { signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" },
+      api: async () => ({ teams: [team("t1", "Taipei Knights")] }),
+    });
+    await view.loadTeams();
+    byId("teams-search").value = "zzz";
+    view.renderTeamsList();
+    expect(String(byId("teams-list").innerHTML)).toContain("No teams match your search");
   });
 });
