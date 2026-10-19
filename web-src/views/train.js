@@ -202,7 +202,10 @@ export function createTrainView({
           const dot = card.color === "black" ? "black" : "white";
           // Name the position, never the answer: every card can come back as
           // a recall test.
-          const tail = lineTail(card.targets?.[0]?.line);
+          // The card for a line's very first move asks about the starting
+          // position: its path is empty, so name it instead of leaving the row
+          // blank next to the rows that do carry a line.
+          const tail = lineTail(card.targets?.[0]?.line) || "Start";
           return (
             html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${tail}</span></div>`
           );
