@@ -360,7 +360,7 @@ async function refreshTrainSessionPreview() {
     el.textContent = text;
     el.hidden = !text;
     const banner = document.getElementById("train-banner");
-    if (banner && banner.dataset.state === "idle" && !trainSessionLive()) {
+    if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
       setTrainBanner("idle", empty ? "No moves to train yet" : "Ready to train", "");
     }
   };
