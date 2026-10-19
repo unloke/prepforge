@@ -108,3 +108,23 @@ describe("scout group spacing", () => {
     expect(css).toMatch(/\.intel \{[^}]*padding: 12px 14px/);
   });
 });
+
+describe("scout streaming skeleton", () => {
+  const css = readFileSync(resolve(here, "../styles.css"), "utf8");
+  const html = readFileSync(resolve(here, "../index.html"), "utf8");
+
+  it("holds the report's shape while games stream, and only then", () => {
+    // Mid-fetch the page was one spinner over blank ground; the report then
+    // landed into empty space. The skeleton marks the cards that will arrive.
+    expect(html).toContain('class="scout-skeleton" aria-hidden="true"');
+    expect(css).toMatch(/\.scout-skeleton \{ display: none;/);
+    expect(css).toContain(".scout-panel.is-streaming .scout-skeleton { display: flex; }");
+    expect(css).toContain(".scout-panel.is-streaming:not(:has(#scout-results:empty)) .scout-skeleton { display: none; }");
+  });
+
+  it("stops pulsing under prefers-reduced-motion", () => {
+    const at = css.indexOf("@media (prefers-reduced-motion: no-preference)");
+    expect(at).toBeGreaterThan(-1);
+    expect(css.slice(at, at + 400)).toContain("scout-skeleton-pulse");
+  });
+});

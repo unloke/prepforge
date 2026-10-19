@@ -7,7 +7,7 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-C9DWpdFp.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-DyfPcsHS.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/rolldown-runtime-DK3Fl9T5.js">
     <link rel="modulepreload" crossorigin href="/static/assets/html-A1qdFlh3.js">
     <link rel="modulepreload" crossorigin href="/static/assets/shared-constants-BulHn_HJ.js">
@@ -15,7 +15,7 @@
     <link rel="modulepreload" crossorigin href="/static/assets/sync-queue-DFoqVkyv.js">
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
     <link rel="modulepreload" crossorigin href="/static/assets/material-DPbFImjt.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DE2F82LF.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-Brq2g3zv.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -587,6 +587,15 @@
             <div class="scout-grid">
               <div class="scout-main">
                 <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b id="scout-stream-phase">Loading your repertoire…</b><p id="scout-stream-detail" class="scout-stream-detail"></p></div></div>
+                <div class="scout-skeleton" aria-hidden="true">
+                  <div class="sk-card sk-profile"><span class="sk sk-name"></span><span class="sk sk-sub"></span></div>
+                  <div class="sk-tabs"><span class="sk sk-tab"></span><span class="sk sk-tab"></span></div>
+                  <div class="sk-card sk-rows">
+                    <span class="sk sk-line"></span>
+                    <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
+                    <span class="sk sk-row"></span><span class="sk sk-row"></span><span class="sk sk-row"></span>
+                  </div>
+                </div>
                 <div class="scout-empty empty-state big"><h3>Scout an opponent</h3><p id="scout-empty-hint">Add a Lichess username as a source, then Start.</p></div>
                 <div id="scout-profile" class="scout-profile profile card" hidden></div>
                 <div id="scout-results" class="scout-results"></div>
