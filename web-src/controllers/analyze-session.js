@@ -18,6 +18,7 @@ import { ensureEngineProfile, createEngineAnalysisRun } from "../engine/engine-p
 import { describeMove } from "../explain.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
+import { clearReturnState, saveReturnState } from "../handoff-context.js";
 
 let accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
   boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
@@ -1379,6 +1380,19 @@ function updateEvalChartCursor() {
   void ensureAnalyzeView().then((view) => view.updateEvalChartCursor()).catch(() => {});
 }
 
+// The loaded game and the ply the board shows are one session: a reload that
+// keeps only one of them (the PGN box's browser-restored text, say) leaves the
+// move list and the board disagreeing. Save both, keyed like Games' return state.
+function persistAnalysisSession() {
+  const moves = appState.analysis ? appState.analysis.moves || [] : [];
+  const pgn = document.getElementById("pgn-input")?.value || "";
+  if (!moves.length || !pgn.trim()) {
+    clearReturnState("analyze");
+    return;
+  }
+  saveReturnState("analyze", { pgn, ply: Math.max(0, Number(appState.analysisPly) || 0) });
+}
+
 async function showAnalysisPly(ply) {
   const analysis = appState.analysis;
   const seq = analysisRecallSeq;
@@ -1405,6 +1419,7 @@ async function showAnalysisPly(ply) {
     ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
     : "Initial position";
   highlightCurrentMove();
+  persistAnalysisSession();
   syncViewHeads();
   refreshAnalysisExplain({
     fen,

@@ -6,6 +6,7 @@ import { appSource } from "./test-app-source.js";
 const source = appSource();
 const restore = source.slice(source.indexOf("async function restoreWorkspaceLocation()"), source.indexOf("\nfunction setReplaySection("));
 const popstate = source.slice(source.indexOf("async function handleWorkspacePopstate()"), source.indexOf("\nfunction setReplaySection("));
+const analyzeRestore = source.slice(source.indexOf("async function restoreAnalyzeSession("), source.indexOf("\n// In-page route changes"));
 
 function runtime(extra = {}) {
   const context = {
@@ -16,7 +17,7 @@ function runtime(extra = {}) {
     switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), startTraining: vi.fn(),
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
-  runInNewContext(`${restore}\nglobalThis.run = restoreWorkspaceLocation;`, context);
+  runInNewContext(`${restore}\n${analyzeRestore}\nglobalThis.run = restoreWorkspaceLocation;`, context);
   return context;
 }
 
@@ -116,4 +117,37 @@ it("keeps replay section restoration on popstate", async () => {
   expect(ctx.appState.replaySection).toBe("scout");
   expect(ctx.switchView).toHaveBeenCalledWith("replay", { fromUrl: true });
   expect(ctx.startTraining).not.toHaveBeenCalled();
+});
+
+// ---- Analyze: the loaded game survives a reload -------------------------------
+
+it("puts the reloaded game's board back on the move the session saved", async () => {
+  // The PGN box alone can come back from the browser's form restore; the game it
+  // holds is only really loaded when loadPgnIntoAnalyze runs and the saved ply lands.
+  const ctx = runtime({
+    loadReturnState: () => ({ pgn: "1. e4 e5 2. Nf3", ply: 3 }),
+    loadPgnIntoAnalyze: vi.fn(async () => true),
+  });
+  ctx.document = { getElementById: () => ({ value: "" }) };
+  await ctx.run();
+  expect(ctx.loadPgnIntoAnalyze).toHaveBeenCalledWith("1. e4 e5 2. Nf3", { goToEnd: false, quiet: true });
+  expect(ctx.showAnalysisPly).toHaveBeenCalledWith(3);
+});
+
+it("lets the URL's ply win over the saved ply for an Analyze link", async () => {
+  const ctx = runtime({
+    window: { location: { href: "http://local/#/analyze?ply=2" } },
+    loadReturnState: () => ({ pgn: "1. e4 e5 2. Nf3", ply: 3 }),
+    loadPgnIntoAnalyze: vi.fn(async () => true),
+  });
+  ctx.document = { getElementById: () => ({ value: "" }) };
+  await ctx.run();
+  expect(ctx.showAnalysisPly).toHaveBeenCalledWith(2);
+});
+
+it("shows nothing extra when no game was loaded", async () => {
+  const ctx = runtime({ loadReturnState: () => null, loadPgnIntoAnalyze: vi.fn() });
+  await ctx.run();
+  expect(ctx.loadPgnIntoAnalyze).not.toHaveBeenCalled();
+  expect(ctx.showAnalysisPly).not.toHaveBeenCalled();
 });
