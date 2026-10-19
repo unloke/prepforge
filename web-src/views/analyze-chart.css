@@ -634,12 +634,12 @@
   grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  font-size: var(--fs-s);
+  font-size: var(--fs);
 }
 .cbar-track {
   display: flex;
   gap: 1px;
-  height: 16px;
+  height: 20px;
   overflow: hidden;
   border-radius: 3px;
 }
@@ -648,13 +648,15 @@
      squeezed to an unlabelled sliver and the grade never rests on colour. */
   flex-basis: 0;
   min-width: max-content;
-  padding: 0 4px;
+  padding: 0 5px;
   white-space: nowrap;
   border: 0;
+  /* The grade colours are dark in the light theme and light in the dark one,
+     so the ink on them flips with the theme (--accent-ink). */
   color: var(--accent-ink);
-  font-size: 10px;
+  font-size: var(--fs);
   font-weight: 700;
-  line-height: 16px;
+  line-height: 20px;
   text-align: center;
   cursor: pointer;
   transition: filter var(--dur-fast) var(--ease-out);
@@ -662,18 +664,23 @@
 .cbar-seg:hover {
   filter: brightness(1.08);
 }
+.cbar-seg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .cbar-seg-n {
   pointer-events: none;
 }
 .cbar-empty {
   color: var(--label);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
 }
 .seg-brilliant { background: var(--brilliant); }
 .seg-great { background: var(--great); }
-.seg-good { background: var(--good); }
-.seg-inaccuracy { background: var(--inaccuracy); }
-.seg-mistake { background: var(--warn); }
+.seg-good { background: var(--good-text); }
+/* The amber is light in both themes, so it takes dark ink. */
+.seg-inaccuracy { background: var(--inaccuracy); color: #1b1c1e; }
+.seg-mistake { background: var(--warn-text); }
 .seg-blunder { background: var(--danger); }
 .seg-missed { background: var(--missed); }
 

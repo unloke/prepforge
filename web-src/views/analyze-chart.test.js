@@ -219,6 +219,17 @@ describe("evaluation win meter", () => {
   });
 });
 
+describe("class bars", () => {
+  it("keeps every count legible on its grade colour", () => {
+    // The grade colours are dark in the light theme and light in the dark one,
+    // so the ink on them flips with the theme. The amber is light in both, so
+    // it takes dark ink of its own.
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*color: var\(--accent-ink\)/);
+    expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
+  });
+});
+
 describe("coach note", () => {
   it("sets the note at reading size and gives it the card's height", () => {
     // The note is running text: 15px, and it takes the room the card has, so
