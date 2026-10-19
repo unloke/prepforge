@@ -28,14 +28,24 @@
 }
 .ledger,
 .focus { min-height: 0; padding: 0; }
+/* Surfaces by tone: the cards are one step off the page ground with no
+   outline. The outline plus the ground's own tint made two nested rectangles
+   that read as a frame around the table rather than a surface. */
+#view-replay :is(.ledger, .focus) { border: 0; background: var(--panel); }
+#view-replay .focus { background: var(--panel-soft); }
 .ledger { display: flex; flex-direction: column; overflow: hidden; }
+/* The ledger header: title and count on one baseline, with the count reading
+   as the title's continuation ("Games to review 4 games · me_user") instead of
+   an 11px note pinned to the far end of a 740px card. */
 .ledger .card-head {
   justify-content: flex-start;
+  gap: 8px;
   margin: 0;
   padding: 10px 12px;
   background: var(--panel-soft);
 }
 .ledger .card-head h2 { font-size: 13.5px; }
+.ledger .card-head .faint { color: var(--muted); }
 .ledger-table { flex: 1; overflow: auto; }
 
 .lr {
@@ -64,7 +74,15 @@
   cursor: default;
 }
 .lr:not(.head):hover { background: var(--panel-soft); }
-.ledger-table[data-ui] .lr.is-open { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+/* The open row is a filled row with a 3px accent bar: the inset shadow read as
+   a line under the row rather than a state, and shadows on resting elements
+   are noise here. The bar is drawn as a border so it cannot be mistaken for a
+   divider. */
+.ledger-table[data-ui] .lr.is-open {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+}
 .lr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .players { display: flex; flex-direction: column; min-width: 0; }
 .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

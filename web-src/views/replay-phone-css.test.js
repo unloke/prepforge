@@ -35,3 +35,8 @@ it("draws the outcome grey at a readable contrast", () => {
   expect(css).toMatch(/\.kind-badge\.t-none \{ color: var\(--muted\)/);
   expect(css).toMatch(/\.sum-chip\.t-none \{ color: var\(--muted\)/);
 });
+
+it("marks the open row with a bar and a fill, not a resting shadow", () => {
+  expect(css).toMatch(/\.lr\.is-open \{[^}]*border-left: 3px solid var\(--accent\)/);
+  expect(css).not.toMatch(/\.lr\.is-open \{[^}]*box-shadow/);
+});
