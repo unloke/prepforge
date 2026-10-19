@@ -35,6 +35,11 @@ export function createTrainView({
   updateTrainTurnBadge,
   onStreakRendered,
 }) {
+  // The coach sub line is clamped to two lines; a tap on the banner shows the
+  // rest. The full text also sits in the element title for hover.
+  document.getElementById("train-banner")?.addEventListener("click", () => {
+    document.getElementById("train-banner-sub")?.classList.toggle("expanded");
+  });
   document.getElementById("train-line-path")?.addEventListener("click", (event) => {
     const el = event.currentTarget;
     el.setAttribute("aria-expanded", String(el.getAttribute("aria-expanded") !== "true"));

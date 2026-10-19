@@ -19,7 +19,6 @@ const PREVIEW = body("const trainPreviewCache = {")
 const ACTIVE = body("function activeTrainRepertoires()");
 const PAINT = body("function paintTrainStartDisabled()").replace(/trainPreviewCache/g, "previewCache");
 const SELECTED = body("function selectedTrainRepertoire()");
-const LIVE = body("function trainSessionLive()");
 const CONTROLS = body("function syncTrainSessionControls()");
 
 function runTrainControls(appState) {
@@ -30,8 +29,17 @@ function runTrainControls(appState) {
     const tab = { disabled: false, title: mode === "play" ? "Play a game" : "", dataset: { mode } };
     return tab;
   });
+  // Hint/Skip: the board bar's pair, disabled exactly when no session of the
+  // current mode is live.
+  const hint = { disabled: false, title: "" };
+  const skip = { disabled: false, title: "" };
   const doc = {
-    getElementById: (id) => (id === "feeling-lucky" ? lucky : id === "start-train" ? start : id === "train-summary" ? summary : null),
+    getElementById: (id) => (id === "feeling-lucky" ? lucky
+      : id === "start-train" ? start
+      : id === "train-summary" ? summary
+      : id === "train-hint" ? hint
+      : id === "train-skip" ? skip
+      : null),
     querySelector: () => null,
     querySelectorAll: (sel) => (sel === "#train-modes .train-mode" ? modeTabs : []),
   };
@@ -42,12 +50,12 @@ function runTrainControls(appState) {
   const build = new Function(
     "trainStartBlockReason", "rehearsalStartBlockReason", "trainStartDisabled", "selectedTrainRepertoireId",
     "appState", "document", "syncViewHeads", "blitzEnabled", "nextSession",
-    `${PREVIEW}\n${ACTIVE}\n${SELECTED}\n${PAINT}\n${LIVE}\n${CONTROLS}\npreviewCache.nextSession = nextSession;\nreturn { syncTrainSessionControls, paintTrainStartDisabled };`,
+    `${PREVIEW}\n${ACTIVE}\n${SELECTED}\n${PAINT}\n${CONTROLS}\npreviewCache.nextSession = nextSession;\nreturn { syncTrainSessionControls, paintTrainStartDisabled };`,
   );
   const controls = build(trainStartBlockReason, rehearsalStartBlockReason, trainStartDisabled, () => appState.selectedRepertoireId ?? null, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
   controls.syncTrainSessionControls();
   controls.paintTrainStartDisabled();
-  return { lucky, start, modeTabs };
+  return { lucky, start, modeTabs, hint, skip };
 }
 
 describe("syncTrainSessionControls", () => {
@@ -102,6 +110,38 @@ describe("syncTrainSessionControls", () => {
     });
     expect(modeTabs.every((t) => !t.disabled)).toBe(true);
     expect(modeTabs[2].title).toBe("Play a game");
+  });
+});
+
+describe("Hint / Skip live state", () => {
+  const base = { signedIn: true, repertoireList: [], pendingRepDeletes: new Set() };
+
+  it("goes live for the smart queue's first card even with an open practice game", () => {
+    // The play session used to count as "live" for every mode, so the queue's
+    // first card started with Hint and Skip disabled.
+    const { hint, skip } = runTrainControls({
+      ...base,
+      trainMode: "smart",
+      play: { active: true, history: [{ uci: "e2e4" }] },
+      smart: { prompt: { card_index: 0 }, queue: [], cardIndex: 0, cardKinds: {} },
+      training: null,
+      nextSession: { cards: 4, resumed: 0 },
+    });
+    expect(hint.disabled).toBe(false);
+    expect(skip.disabled).toBe(false);
+  });
+
+  it("stays dead before a smart session starts, whatever the play state", () => {
+    const { hint, skip } = runTrainControls({
+      ...base,
+      trainMode: "smart",
+      play: { active: true, history: [] },
+      smart: null,
+      training: null,
+      nextSession: { cards: 4, resumed: 0 },
+    });
+    expect(hint.disabled).toBe(true);
+    expect(skip.disabled).toBe(true);
   });
 });
 
