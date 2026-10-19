@@ -709,6 +709,26 @@
               </div>
               <div class="set-row"><span>Mode</span><b>Browser only</b></div>
               <div class="set-row"><span>Engine</span><b id="settings-stockfish-version">checking…</b></div>
+              <div class="pf-row">
+                <span class="pf-row-text"><span class="pf-row-label" id="settings-net-label">Net</span></span>
+                <div class="seg" role="group" aria-labelledby="settings-net-label" id="settings-net-seg">
+                  <button type="button" class="seg-btn" data-net="big" title="Stronger. 99 MB download, about 450 MB of memory per worker">Full</button>
+                  <button type="button" class="seg-btn" data-net="lite" title="7 MB download, little memory">Lite</button>
+                </div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-row-text"><span class="pf-row-label" id="settings-workers-label">Workers</span></span>
+                <div class="seg" role="group" aria-labelledby="settings-workers-label" id="settings-workers-seg" title="Engines searching in parallel. More is faster and uses more memory">
+                  <button type="button" class="seg-btn" data-workers="1">1</button>
+                  <button type="button" class="seg-btn" data-workers="2">2</button>
+                  <button type="button" class="seg-btn" data-workers="3">3</button>
+                </div>
+              </div>
+              <div class="set-row">
+                <span class="faint small" id="settings-profile-status" data-testid="settings-profile-status"></span>
+                <button type="button" class="btn sm" id="settings-detect" data-testid="settings-detect" title="Measure this device and pick the net and workers">Detect</button>
+              </div>
+              <div class="profile-progress" id="settings-profile-progress" hidden><div class="profile-progress-fill"></div></div>
               <div class="set-row"><span>Browser Stockfish</span><span class="status-pill" id="settings-browser-engine-status">checking…</span></div>
               <p class="note warn" id="settings-stockfish-status"></p>
             </section>

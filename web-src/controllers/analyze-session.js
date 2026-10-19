@@ -13,7 +13,8 @@ import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
-import { isBrowserEngineAvailable, ENGINE_ID } from "../engine/stockfish-provider.js";
+import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
+import { ensureEngineProfile, createEngineAnalysisRun } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
@@ -107,7 +108,7 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
 function savedPositionEvalRead(fen, depth) {
   const positionEvals = appState.analysis && appState.analysis.position_evals;
   const ev = positionEvals && positionEvals[fen];
-  if (!ev) return null;
+  if (!ev || appState.analysis.engine !== ENGINE_ID) return null;
   const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
   const firstUci = ev.best_move_uci || pvUci[0] || null;
   if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
@@ -161,7 +162,8 @@ class PositionCoach {
   // Follow the Settings depth, dropping the now-stale eval cache when it changes.
   _ensureEngine() {
     const depth = effectiveStockfishDepth();
-    if (this.engineDepth === depth) return;
+    if (this.engineDepth === depth && this.engineId === ENGINE_ID) return;
+    this.engineId = ENGINE_ID;
     this.engineDepth = depth;
     this.evalCache.clear();
   }
@@ -780,6 +782,7 @@ async function runAnalysis(options = {}) {
   // these (declared out here so the catch block can reach them).
   let inMemoryCheckpoint = null;
   let completedCheckpoint = null;
+  let engineRun = null;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
     let prep;
@@ -882,7 +885,7 @@ async function runAnalysis(options = {}) {
               depth: prep.depth,
               rating: effectiveMaiaRating(),
               provider: getSharedMaia3Provider(),
-              analyzeFn: (o) => store.analyzeGame(o),
+              analyzeFn: (o) => store.analyzeGame({ ...o, engineRun }),
               shouldCancel,
               onPhase: ({ phase: sub, detail }) => {
                 timings[`maia_${sub}`] = detail || 1;
@@ -897,32 +900,23 @@ async function runAnalysis(options = {}) {
           })
           .catch(() => null)
       : null;
-    // Two tiers (engine/tiered-analysis.js): every position at a screen depth, then the full
-    // depth only where a grade could hinge on it. The Maia pass streams the reads that will
-    // be saved.
-    const tiered = await import("../engine/tiered-analysis.js");
-    const { evals, screenDepth } = await timed("stockfish", () =>
-      tiered.analyzeTiered({
-        analyze: (o) => store.analyzeGame(o),
-        positions,
-        moves: prep.moves,
-        depth: prep.depth,
-        onResult: (fen, ev) => live(fen, ev),
-        onFinal: (fen, ev) => {
-          if (assessor) assessor.push(fen, ev);
-          else if (wantsMaia) pendingEvals.push([fen, ev]);
-        },
-        onProgress: (done, total, stage) => {
-          job({
-            current: done,
-            total,
-            phase: "stockfish",
-            message: stage === "screen" ? `Stockfish ${done}/${total} positions` : `Stockfish depth ${prep.depth} · ${done}/${total}`,
-          });
-        },
-        shouldCancel,
-      })
-    );
+    // First run on this device: the probe picks the engine; show it in the job.
+    await ensureEngineProfile({ onProgress: ({ done, total }) => job({ current: done, total, phase: "engine-setup",
+      message: `Setting up the engine for this device · ${Math.round((100 * done) / total)}%` }) });
+    engineRun = createEngineAnalysisRun();
+    const evals = await timed("stockfish", () => store.analyzeGame({
+      engineRun,
+      positions,
+      depth: prep.depth,
+      onResult: (fen, ev) => {
+        live(fen, ev);
+        if (assessor) assessor.push(fen, ev);
+        else if (wantsMaia) pendingEvals.push([fen, ev]);
+      },
+      onProgress: (done, total) => job({ current: done, total, phase: "stockfish",
+        message: `Stockfish depth ${prep.depth} · ${done}/${total}` }),
+      shouldCancel,
+    }));
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
     if (wantsMaia && maiaReady && typeof maiaReady.then === "function") {
       live.phase?.("maia-load");
@@ -989,7 +983,9 @@ async function runAnalysis(options = {}) {
 
     // Final cancellation checkpoint: even if eval/Maia work completed, a Stop that arrived
     // during it must prevent persistence. classify-save is the write — don't post past a Stop.
-    if (cancelled) {
+    if (engineRun.error) throw engineRun.error;
+    const runEngineId = engineIdentity(engineRun.profile().net);
+    if (cancelled || runEngineId !== ENGINE_ID) {
       const err = new Error("Analysis stopped");
       err.cancelled = true;
       throw err;
@@ -1016,9 +1012,8 @@ async function runAnalysis(options = {}) {
       requestId: crypto.randomUUID(),
       savedAt: Date.now(),
       ownerId: analysisOwnerId,
-      engine: ENGINE_ID,
+      engine: runEngineId,
       depth: prep.depth,
-      screenDepth,
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
@@ -1028,7 +1023,7 @@ async function runAnalysis(options = {}) {
     const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
-      engine: ENGINE_ID,
+      engine: runEngineId,
       depth: prep.depth,
     });
     if (!checkpointStored) inMemoryCheckpoint = { ...checkpoint, inMemoryOnly: true };
@@ -1038,9 +1033,8 @@ async function runAnalysis(options = {}) {
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
         request_id: checkpoint.requestId,
-        engine: ENGINE_ID,
+        engine: runEngineId,
         depth: prep.depth,
-        screen_depth: screenDepth,
         positions: positions.map((fen) => {
           const ev = evals.get(fen) || {};
           return {
@@ -1150,6 +1144,7 @@ async function runAnalysis(options = {}) {
       showAnalysisRetrySave(checkpoint, error.message);
     }
   } finally {
+    engineRun?.done();
     runButton.disabled = false;
   }
 }
@@ -1243,7 +1238,6 @@ async function retryAnalyzeSave() {
       request_id: checkpoint.requestId,
       engine: checkpoint.engine,
       depth: checkpoint.depth,
-      screen_depth: checkpoint.screenDepth ?? null,
       positions: (checkpoint.positions || []).map((fen) => {
         const ev = evals.get(fen) || {};
         return {

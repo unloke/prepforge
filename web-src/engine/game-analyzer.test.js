@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { createEngineProfileManager, CRASH_KEY } from "./engine-profile.js";
 
 import {
   isTerminalPosition,
@@ -98,11 +99,11 @@ function makeFakeProviderFactory({ order, delays = {}, onCreate, opensThrow } = 
 
 describe("analysis worker budget", () => {
   it("caps explicit requests as well as automatic requests", () => {
-    expect(resolveConcurrency(64)).toBe(4);
+    expect(resolveConcurrency(64)).toBe(3);
     expect(resolveConcurrency(1)).toBe(1);
     expect(resolveConcurrency(2.5)).toBe(2);
     expect(resolveConcurrency(Infinity)).toBeGreaterThanOrEqual(1);
-    expect(resolveConcurrency(Infinity)).toBeLessThanOrEqual(4);
+    expect(resolveConcurrency(Infinity)).toBeLessThanOrEqual(3);
   });
 });
 
@@ -204,14 +205,14 @@ describe("analyzeGamePositions (worker pool)", () => {
     } finally { vi.useRealTimers(); }
   });
 
-  it("bounds allocation and handshake waits by the per-position deadline", async () => {
+  it("bounds allocation and handshake waits by the startup deadline", async () => {
     vi.useFakeTimers();
     try {
       const close = vi.fn(async () => {});
       const result = analyzeGamePositions({ positions: [START_FEN], depth: 12, concurrency: 1,
         createProvider: () => ({ open: () => new Promise(() => {}), close }),
       }).catch((error) => error);
-      await vi.advanceTimersByTimeAsync(30000);
+      await vi.advanceTimersByTimeAsync(60000);
       expect((await result).message).toMatch(/startup timed out/);
       expect(close).toHaveBeenCalled();
     } finally { vi.useRealTimers(); }
@@ -261,5 +262,145 @@ describe("analyzeGamePositions (worker pool)", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+function managedRun(profile = { net: "big", workers: 2 }) {
+  const data = new Map();
+  const manager = createEngineProfileManager({ storage: () => ({ getItem: k => data.get(k) ?? null,
+    setItem: (k, v) => data.set(k, v), removeItem: k => data.delete(k) }) });
+  manager.setEngineProfile(profile);
+  return { manager, data, engineRun: manager.createEngineAnalysisRun() };
+}
+
+describe("analysis crash guard and single retry", () => {
+  it("holds one guard across every position and follow-up batch until the owner ends the run", async () => {
+    const f = managedRun();
+    const factory = vi.fn(makeFakeProviderFactory({ order: NON_TERMINAL }));
+    const marks = [];
+    const onResult = vi.fn(() => marks.push(JSON.parse(f.data.get(CRASH_KEY))));
+    await analyzeGamePositions({ positions: NON_TERMINAL, depth: 12, createProvider: factory,
+      engineRun: f.engineRun, onResult });
+    expect(onResult).toHaveBeenCalledTimes(NON_TERMINAL.length);
+    expect(marks).toEqual(NON_TERMINAL.map(() => expect.objectContaining({ net: "big", workers: 2 })));
+    expect(f.data.has(CRASH_KEY)).toBe(true);
+    await analyzeGamePositions({ positions: NON_TERMINAL.slice(0, 1), depth: 14, createProvider: factory,
+      engineRun: f.engineRun });
+    expect(f.data.has(CRASH_KEY)).toBe(true);
+    expect(factory.mock.calls.every(([o]) => o.profileManaged === false && o.net === "big")).toBe(true);
+    f.engineRun.done();
+    expect(f.data.has(CRASH_KEY)).toBe(false);
+  });
+
+  it.each([new Error("OOM"), new Error("Aborted(memory access)"), new RangeError("no address space"),
+    new Error("Browser engine could not start: load failed")])("retries %s once and preserves completed positions across a net change", async failure => {
+    const f = managedRun({ net: "big", workers: 1 });
+    const searched = [], nets = [], cache = new Map();
+    // This is the store's profile-change behaviour: its engine-derived cache is cleared.
+    f.manager.subscribeEngineProfile(() => cache.clear());
+    const good = makeFakeProviderFactory({ order: NON_TERMINAL });
+    const factory = opts => {
+      nets.push(opts.net);
+      const provider = good();
+      const open = provider.open, update = provider.update;
+      provider.open = async o => {
+        searched.push(o.fen);
+        if (opts.net === "big" && o.fen === NON_TERMINAL[1]) throw failure;
+        return open(o);
+      };
+      provider.update = async o => {
+        searched.push(o.fen);
+        if (opts.net === "big" && o.fen === NON_TERMINAL[1]) throw failure;
+        return update(o);
+      };
+      return provider;
+    };
+    const result = await analyzeGamePositions({ positions: NON_TERMINAL.slice(0, 3), depth: 12, concurrency: 1,
+      engineRun: f.engineRun, createProvider: factory, reuse: fen => cache.get(fen),
+      onResult: (fen, ev) => cache.set(fen, ev) });
+    expect(nets).toEqual(["big", "lite"]);
+    expect(searched).toEqual([NON_TERMINAL[0], NON_TERMINAL[1], NON_TERMINAL[1], NON_TERMINAL[2]]);
+    expect([...result.keys()]).toEqual(NON_TERMINAL.slice(0, 3));
+    expect(cache.size).toBe(3);
+    expect(f.manager.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
+    f.engineRun.done();
+    expect(f.data.has(CRASH_KEY)).toBe(false);
+  });
+
+  it("surfaces the second failure, with no third attempt", async () => {
+    const f = managedRun({ net: "big", workers: 3 });
+    const failure = new Error("Aborted(OOM)");
+    const close = vi.fn(async () => {});
+    const createProvider = vi.fn(() => ({ open: async () => { throw failure; }, close }));
+    await expect(analyzeGamePositions({ positions: [START_FEN], depth: 12, concurrency: 1,
+      engineRun: f.engineRun, createProvider })).rejects.toBe(failure);
+    expect(createProvider).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalledTimes(2);
+    expect(f.engineRun.error).toBe(failure);
+    expect(f.manager.engineProfile()).toMatchObject({ net: "big", workers: 1 });
+    f.engineRun.done();
+    expect(f.data.has(CRASH_KEY)).toBe(false);
+  });
+
+  it("does not grant a fresh retry to a later batch of the same analysis", async () => {
+    const f = managedRun({ net: "big", workers: 3 });
+    const good = makeFakeProviderFactory({ order: NON_TERMINAL });
+    let created = 0;
+    const createProvider = vi.fn(() => ++created === 2 ? good() : {
+      open: async () => { throw new Error("OOM"); }, close: async () => {},
+    });
+    await analyzeGamePositions({ positions: [START_FEN], depth: 12, concurrency: 1, engineRun: f.engineRun, createProvider });
+    await expect(analyzeGamePositions({ positions: [START_FEN], depth: 14, concurrency: 1,
+      engineRun: f.engineRun, createProvider })).rejects.toThrow("OOM");
+    expect(createProvider).toHaveBeenCalledTimes(3);
+    f.engineRun.done();
+  });
+
+  it("preserves the OOM from a later worker when the first worker reports cancellation", async () => {
+    vi.useFakeTimers();
+    const f = managedRun();
+    try {
+      let created = 0;
+      const good = makeFakeProviderFactory({ order: NON_TERMINAL });
+      const factory = vi.fn(() => {
+        const index = created++;
+        if (index > 1) return good();
+        return { open: () => index === 0 ? new Promise(() => {}) : Promise.reject(new Error("OOM")), close: async () => {} };
+      });
+      const result = analyzeGamePositions({ positions: NON_TERMINAL.slice(0, 2), depth: 12,
+        engineRun: f.engineRun, createProvider: factory });
+      await vi.advanceTimersByTimeAsync(100);
+      expect((await result).size).toBe(2);
+      expect(factory).toHaveBeenCalledTimes(3); // two workers, then one after step-down
+      expect(f.manager.engineProfile()).toMatchObject({ net: "big", workers: 1 });
+    } finally { f.engineRun.done(); vi.useRealTimers(); }
+  });
+
+  it("retries a startup timeout once and closes both failed providers", async () => {
+    vi.useFakeTimers();
+    const f = managedRun();
+    try {
+      const close = vi.fn(async () => {});
+      const createProvider = vi.fn(() => ({ open: () => new Promise(() => {}), close }));
+      const result = analyzeGamePositions({ positions: [START_FEN], depth: 12,
+        engineRun: f.engineRun, createProvider }).catch(error => error);
+      await vi.advanceTimersByTimeAsync(120000);
+      expect((await result).message).toMatch(/startup timed out/);
+      expect(createProvider).toHaveBeenCalledTimes(2);
+      expect(close).toHaveBeenCalled();
+    } finally { f.engineRun.done(); vi.useRealTimers(); }
+    expect(f.data.has(CRASH_KEY)).toBe(false);
+  });
+
+  it.each(["cancel", "ordinary error", "lite baseline"])("does not retry %s", async kind => {
+    const f = managedRun(kind === "lite baseline" ? { net: "lite", workers: 1 } : undefined);
+    const failure = new Error(kind === "ordinary error" ? "bad position" : "OOM");
+    const createProvider = vi.fn(() => ({ open: async () => { throw failure; }, close: async () => {} }));
+    const result = analyzeGamePositions({ positions: [START_FEN], depth: 12, engineRun: f.engineRun,
+      createProvider, shouldCancel: () => kind === "cancel" });
+    await expect(result).rejects.toBeInstanceOf(kind === "cancel" ? AnalysisCancelled : Error);
+    expect(createProvider).toHaveBeenCalledTimes(1);
+    f.engineRun.done();
+    expect(f.data.has(CRASH_KEY)).toBe(false);
   });
 });

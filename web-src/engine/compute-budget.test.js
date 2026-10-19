@@ -2,6 +2,32 @@ import { describe, expect, it } from "vitest";
 import { createComputeBudget } from "./compute-budget.js";
 
 describe("app-wide Stockfish allocation", () => {
+  it("pauses live engines during a game batch without an extra memory slot", async () => {
+    const budget = createComputeBudget({ limit: 2, backgroundLimit: 2 });
+    const releaseLive = await budget.acquire({ interactive: true, reclaim: () => releaseLive() });
+    const end = budget.beginBatch();
+    expect(budget.snapshot().used).toBe(0);
+    const a = await budget.acquire({ batch: true });
+    const b = await budget.acquire({ batch: true });
+    let resumed = false;
+    const live = budget.acquire({ interactive: true }).then(release => { resumed = true; return release; });
+    a(); b();
+    expect(resumed).toBe(false);
+    end();
+    (await live)();
+    expect(budget.snapshot().used).toBe(0);
+  });
+  it("suspends allocations for detection and follows the new device limit", async () => {
+    const budget = createComputeBudget();
+    const resume = budget.suspend();
+    let started = false;
+    const pending = budget.acquire().then(release => { started = true; return release; });
+    budget.configure(1);
+    expect(started).toBe(false);
+    resume();
+    (await pending)();
+    expect(budget.snapshot()).toMatchObject({ used: 0, limit: 1, backgroundLimit: 1 });
+  });
   it("reserves interactive capacity across unrelated background consumers", async () => {
     const budget = createComputeBudget();
     const releases = await Promise.all([budget.acquire(), budget.acquire(), budget.acquire()]);

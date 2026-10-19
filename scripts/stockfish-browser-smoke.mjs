@@ -66,9 +66,11 @@ try {
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "domcontentloaded" });
   const result = await page.evaluate(async () => {
     const manifest = await fetch("/static/engine/stockfish.manifest.json").then((r) => r.json());
+    const runs = [];
+    for (const [net, build] of Object.entries(manifest.engines)) {
     const lines = await new Promise((resolve, reject) => {
       const output = [];
-      const worker = new Worker(`/static/engine/${manifest.dir}/stockfish-lite.js`);
+      const worker = new Worker(`/static/engine/${build.files.script.bundled}`);
       const timer = setTimeout(() => {
         worker.terminate();
         reject(new Error(`UCI timeout; output: ${output.join(" | ")}`));
@@ -93,24 +95,32 @@ try {
           resolve(output);
         }
       };
+      worker.postMessage({ wasmMemory: new WebAssembly.Memory({
+        initial: build.initialHeapPages, maximum: build.maxHeapPages, shared: true,
+      }) });
       worker.postMessage("uci");
     });
-    return { isolated: self.crossOriginIsolated, manifest, lines };
+    runs.push({ net, lines });
+    }
+    return { isolated: self.crossOriginIsolated, manifest, runs };
   });
   assert(result.isolated, "page is not cross-origin isolated");
+  for (const { net, lines } of result.runs) {
+  const build = result.manifest.engines[net];
   assert(
-    result.manifest.packageVersion === installedPackage.version,
+    build.packageVersion === installedPackage.version,
     "manifest does not match the installed Stockfish package",
   );
   assert(
-    result.lines.some((line) =>
-      line.startsWith(`id name Stockfish ${result.manifest.engineVersion}`),
+    lines.some((line) =>
+      line.startsWith(`id name Stockfish ${build.engineVersion}`),
     ),
     "UCI identity does not match the bundled manifest",
   );
-  assert(result.lines.includes("uciok"), "UCI handshake did not complete");
-  assert(result.lines.includes("readyok"), "isready handshake did not complete");
-  assert(result.lines.some((line) => line.startsWith("bestmove ")), "depth-one search returned no bestmove");
+  assert(lines.includes("uciok"), "UCI handshake did not complete");
+  assert(lines.includes("readyok"), "isready handshake did not complete");
+  assert(lines.some((line) => line.startsWith("bestmove ")), "depth-one search returned no bestmove");
+  }
   const more = page.locator("#more-nav > summary");
   if (await more.count()) {
     try {
@@ -138,7 +148,7 @@ try {
     );
   }
   console.log(
-    `[stockfish-browser-smoke] Stockfish ${result.manifest.packageVersion} UCI and Settings metadata passed`,
+    `[stockfish-browser-smoke] Stockfish ${result.manifest.engines.big.packageVersion} UCI and Settings metadata passed`,
   );
 } catch (error) {
   console.error(`[stockfish-browser-smoke] FAIL: ${error.message}`);

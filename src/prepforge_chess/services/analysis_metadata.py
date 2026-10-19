@@ -24,17 +24,13 @@ def build_analysis_quality(
     engine_name: str,
     maia_available: bool,
     maia_rating: Optional[int],
-    screen_depth: Optional[int] = None,
 ) -> Dict[str, Any]:
     """A-05: search/model quality of this run, so the report can say what was
     actually analysed instead of implying uniform full-depth coverage.
 
     "depth" per move is the ACTUAL search depth the browser reached (0 =
     terminal); anything below the requested target is "shallow" and counted.
-
-    A two-tier run (``screen_depth``) searches every position to the screen
-    depth and only the ones a grade could hinge on to the target, by design:
-    there "shallow" means below the screen depth."""
+"""
     # One depth per position: a move's "after" is the next move's "before",
     # so counting per move would count most positions twice.
     depth_by_fen: Dict[str, int] = {}
@@ -45,8 +41,6 @@ def build_analysis_quality(
                 depth_by_fen.setdefault(fen, int(evaluation.depth))
     actual_depths: List[int] = list(depth_by_fen.values())
     floor = target_depth
-    if screen_depth is not None and target_depth is not None:
-        floor = min(screen_depth, target_depth)
     shallow = sum(1 for d in actual_depths if floor is not None and 0 < d < floor)
     terminal = sum(1 for d in actual_depths if d == 0)
     search = "full" if actual_depths and shallow == 0 else (
@@ -59,7 +53,6 @@ def build_analysis_quality(
         issues.append("no-maia")
     return {
         "target_depth": target_depth,
-        "screen_depth": screen_depth,
         "actual_depth_min": min(actual_depths) if actual_depths else None,
         "actual_depth_max": max(actual_depths) if actual_depths else None,
         "actual_depth_avg": (

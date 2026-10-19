@@ -2,8 +2,7 @@
 // cache per game, and aggregate recurring mistake patterns by trie path.
 
 import { Chess } from "chess.js";
-import { createEngineProvider, ANALYSIS_MAX_NODES } from "./engine/stockfish-provider.js";
-import stockfishManifest from "../src/prepforge_chess/web/static/engine/stockfish.manifest.json";
+import { createEngineProvider, ANALYSIS_MAX_NODES, ENGINE_ID } from "./engine/stockfish-provider.js";
 import { analyzeGamePositions, isTerminalPosition } from "./engine/game-analyzer.js";
 import { classifyMove, evaluationToWin } from "./explain.js";
 import { confidence } from "./scout-stats.js";
@@ -24,8 +23,7 @@ const CACHE_PREFIX = "prepforge.scout.engine.v5";
 
 export function scoutCacheProvenance(game, oppColor) {
   return JSON.stringify({
-    engine: stockfishManifest.files.wasm.sha256,
-    script: stockfishManifest.files.script.sha256,
+    engine: ENGINE_ID,
     classifier: "shared-win-mate-v1",
     maxNodes: ANALYSIS_MAX_NODES,
     opponent: oppColor,

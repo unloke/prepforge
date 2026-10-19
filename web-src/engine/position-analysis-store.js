@@ -1,3 +1,6 @@
+import { ENGINE_ID } from "./stockfish-provider.js";
+import { subscribeEngineProfile } from "./engine-profile.js";
+import { stockfishBudget } from "./compute-budget.js";
 import { createEngineProvider, ANALYSIS_MAX_NODES } from "./stockfish-provider.js";
 import { analyzeGamePositions, isTerminalPosition } from "./game-analyzer.js";
 
@@ -133,15 +136,22 @@ export function createPositionAnalysisStore({
   }
 
   function armIdle(lane) {
+    lane.unregisterIdle?.();
+    lane.unregisterIdle = null;
     clearTimeout(lane.idleTimer);
     lane.idleTimer = null;
     if (!lane.provider || idleCloseMs <= 0) return;
-    lane.idleTimer = setTimeout(() => {
+    const reclaim = () => {
       if (lane.entry || !lane.provider) return;
+      clearTimeout(lane.idleTimer);
+      lane.unregisterIdle?.();
+      lane.unregisterIdle = null;
       const provider = lane.provider;
       lane.provider = null;
       Promise.resolve(provider.close()).catch(() => {});
-    }, idleCloseMs);
+    };
+    lane.idleTimer = setTimeout(reclaim, idleCloseMs);
+    if (createProvider === createEngineProvider) lane.unregisterIdle = stockfishBudget.registerIdle(reclaim);
   }
 
   // Keep the deeper of an interrupted search and an earlier read.
@@ -216,6 +226,8 @@ export function createPositionAnalysisStore({
       return;
     }
     const epoch = generation;
+    lane.unregisterIdle?.();
+    lane.unregisterIdle = null;
     clearTimeout(lane.idleTimer);
     lane.idleTimer = null;
     if (lane.entry && lane.entry !== entry) keepPartial(lane.entry);
@@ -293,7 +305,7 @@ export function createPositionAnalysisStore({
     if (entry.error && !lanes.some((l) => l.entry === entry)) entry.failures = Math.min(entry.failures, 1);
     // A saved analysis already holds this position's eval: seed the game channel.
     const saved = !entry.game && savedEval ? savedEval(fen) : null;
-    if (saved && (saved.score_cp != null || saved.mate_in != null)) publishGame(fen, { ...saved, pv: saved.pv || [] }, saved.depth || 0);
+    if (saved && (createProvider !== createEngineProvider || saved.engine === ENGINE_ID) && (saved.score_cp != null || saved.mate_in != null)) publishGame(fen, { ...saved, pv: saved.pv || [] }, saved.depth || 0);
     want(entry, depth, multipv);
     let released = false;
     return {
@@ -396,7 +408,7 @@ export function createPositionAnalysisStore({
     return read;
   }
 
-  return {
+  const store = {
     acquire,
     publishGame,
     reusableGameEval,
@@ -405,7 +417,7 @@ export function createPositionAnalysisStore({
     // already answer at this depth are reused, and every finished eval is published.
     // multipv > 1 (the brilliant check's best-other-move read) runs on the same
     // dedicated pool but neither reuses nor publishes: the game channel is single-line.
-    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, maxNodes: cap = maxNodes }) {
+    analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes }) {
       const single = multipv <= 1;
       return analyzeFn({
         positions,
@@ -415,6 +427,7 @@ export function createPositionAnalysisStore({
         concurrency,
         onProgress,
         shouldCancel,
+        engineRun,
         reuse: single ? (fen) => reusableGameEval(fen, depth) : null,
         onResult: (fen, ev) => {
           if (single) publishGame(fen, ev, depth);
@@ -440,6 +453,8 @@ export function createPositionAnalysisStore({
     clear() {
       generation += 1;
       for (const lane of lanes) {
+        lane.unregisterIdle?.();
+        lane.unregisterIdle = null;
         stopTimer(lane);
         clearTimeout(lane.idleTimer);
         lane.entry = null;
@@ -456,4 +471,26 @@ export function createPositionAnalysisStore({
       maiaQueue.clear();
     },
   };
+  if (createProvider === createEngineProvider) subscribeEngineProfile(() => {
+    // Keep leases attached while replacing all engine-derived state. In particular,
+    // first-use detection must not orphan the board request that triggered it.
+    for (const lane of lanes) {
+      stopTimer(lane);
+      clearTimeout(lane.idleTimer);
+      lane.unregisterIdle?.();
+      lane.unregisterIdle = null;
+      lane.startedFor = null;
+      lane.entry = null;
+      if (lane.provider) void lane.provider.close();
+      lane.provider = null;
+    }
+    for (const entry of entries.values()) {
+      entry.live = entry.game = entry.search = null;
+      entry.error = null;
+      entry.failures = 0;
+      emit(entry);
+    }
+    schedule();
+  });
+  return store;
 }

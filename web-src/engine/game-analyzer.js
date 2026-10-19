@@ -2,6 +2,7 @@ import { Chess } from "chess.js";
 import { ANALYSIS_MAX_NODES, createEngineProvider } from "./stockfish-provider.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
 import { stockfishBudget } from "./compute-budget.js";
+import { engineProfile, ensureEngineProfile, subscribeEngineProfile, createEngineAnalysisRun } from "./engine-profile.js";
 
 // Whole-game analysis in the browser (Phase 2). Drives the browser Stockfish
 // provider over every position of a game, each to a target depth, and returns
@@ -18,12 +19,11 @@ import { stockfishBudget } from "./compute-budget.js";
 
 // Hard ceiling per position so a stuck search can't hang the whole run.
 const PER_POSITION_TIMEOUT_MS = 30000;
+// Engine startup: a cold big-net load took 17-22 s on an iPhone.
+const STARTUP_TIMEOUT_MS = 60000;
 // Node budget per position (see ANALYSIS_MAX_NODES), applied with the depth limit.
 const DEFAULT_MAX_NODES = ANALYSIS_MAX_NODES;
-// Upper bound on concurrent Stockfish providers. Each provider is a threaded-lite engine
-// instance that reserves its own 128 MB shared WASM heap plus a pthread worker, and the
-// Maia pass and the live board engine run beside it, so the pool stays small.
-const MAX_CONCURRENCY = 4;
+const MAX_CONCURRENCY = 3;
 
 // Warm browser engines a finished pass leaves behind for the next one. Starting a Stockfish
 // worker (WASM + network load) costs ~250 ms, and a game analysis runs a few small batches
@@ -52,21 +52,20 @@ function parkIdleEngine(provider, maxNodes) {
     entry.unregisterIdle?.();
     Promise.resolve(provider.close()).catch(() => {});
   };
+  entry.reclaim = reclaim;
   entry.timer = setTimeout(reclaim, POOL_IDLE_MS);
   idleEngines.push(entry);
   entry.unregisterIdle = stockfishBudget.registerIdle(reclaim);
   return true;
 }
 
-// Pick a worker count when the caller didn't pin one: half the logical cores (leaving room
-// for the UI, Maia and the live engine), clamped to [1, MAX_CONCURRENCY]. Exported so the
-// heuristic itself is unit-testable without spinning up real engines.
 export function resolveConcurrency(requested) {
-  if (Number.isFinite(requested) && requested >= 1) return Math.min(MAX_CONCURRENCY, Math.floor(requested));
-  const hw =
-    (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
-  return Math.max(1, Math.min(MAX_CONCURRENCY, Math.floor(hw / 2)));
+  return Number.isFinite(requested) && requested >= 1
+    ? Math.min(MAX_CONCURRENCY, Math.floor(requested)) : engineProfile().workers;
 }
+subscribeEngineProfile(() => {
+  for (const entry of [...idleEngines]) entry.reclaim();
+});
 
 class AnalysisCancelled extends Error {
   constructor(message = "Analysis stopped") {
@@ -126,7 +125,6 @@ function evalFromSnapshot(fen, snapshot) {
     pv_san: top.pv_san ? top.pv_san.slice() : [],
     depth: (snapshot && snapshot.current_depth) || top.depth || 0,
     nodes: (snapshot && snapshot.nodes) ?? null,
-    iterations: snapshot.iterations,
     // The second line of a MultiPV >= 2 search (the best OTHER move), when there is one.
     second: lineAt(snapshot, 1),
     third: lineAt(snapshot, 2),
@@ -156,6 +154,9 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
   return evalFromSnapshot(fen, snapshot);
 }
 
+const isEngineFailure = error => !error.cancelled && (error instanceof RangeError ||
+  /\bOOM\b|out of memory|abort|could not start|timed out starting|startup timed out|worker.*(?:failed|crash|load)/i.test(error.message));
+
 /**
  * Analyze every FEN in `positions` to `depth`, returning a Map<fen, evalResult>.
  *
@@ -178,9 +179,33 @@ async function waitForEval(provider, fen, targetDepth, cancelled) {
  *   createProvider?: (opts: { maxDepth: number, maxNodes: number }) => object,
  *   reuse?: (fen: string) => object | null,
  *   onResult?: (fen: string, evalResult: object) => void,
+ *   engineRun?: object, // Shared guard/retry budget owned by the analysis session.
  * }} opts
  */
-export async function analyzeGamePositions({
+export async function analyzeGamePositions(options) {
+  const pooled = !options.createProvider || options.createProvider === createEngineProvider;
+  if (pooled) await ensureEngineProfile();
+  const run = options.engineRun || (pooled ? createEngineAnalysisRun() : null);
+  const completed = new Map();
+  try {
+    for (;;) {
+      const attempt = run?.start();
+      try {
+        return await analyzePositionsPass({ ...options, attempt,
+          reuse: fen => completed.get(fen) || options.reuse?.(fen),
+          onResult: (fen, ev) => { completed.set(fen, ev); options.onResult?.(fen, ev); },
+        });
+      } catch (error) {
+        // A clean cancel or per-position search timeout is not an allocation crash.
+        if (!isEngineFailure(error) || options.shouldCancel?.() || !run?.retry(error)) throw error;
+      }
+    }
+  } finally {
+    if (!options.engineRun) run?.done();
+  }
+}
+
+async function analyzePositionsPass({
   positions,
   depth,
   multipv = 1,
@@ -196,7 +221,9 @@ export async function analyzeGamePositions({
   // Called once per distinct FEN as soon as its eval is known (reused or searched), so
   // a consumer can show results while the rest of the game is still running.
   onResult = null,
+  attempt = null,
 }) {
+  const pooled = createProvider === createEngineProvider;
   const targetDepth = Math.max(1, Math.min(Number(depth) || 16, 60));
   const total = positions.length;
   if (!total) return new Map();
@@ -247,7 +274,10 @@ export async function analyzeGamePositions({
 
   const externalCancel = () =>
     typeof shouldCancel === "function" ? shouldCancel() : false;
-  const cancelled = () => aborted || externalCancel();
+  let profileChanged = false;
+  const unsubscribe = pooled ? subscribeEngineProfile(() => { profileChanged = true; }) : () => {};
+  const endBatch = pooled ? stockfishBudget.beginBatch() : () => {};
+  const cancelled = () => aborted || profileChanged || externalCancel();
 
   function takeNextFen() {
     if (cancelled() || nextUnique >= pending.length) return null;
@@ -258,9 +288,7 @@ export async function analyzeGamePositions({
 
   async function workerLoop() {
     const pooled = createProvider === createEngineProvider;
-    const warm = pooled ? takeIdleEngine(maxNodes) : null;
-    const provider = warm || createProvider({ maxDepth: targetDepth, maxNodes });
-    let opened = !!warm;
+    let provider, opened = false;
     let clean = false;
     // Allocation/handshake waits happen before search polling. Keep cancellation
     // and the deadline active there too, so queued jobs cannot hang indefinitely.
@@ -271,7 +299,7 @@ export async function analyzeGamePositions({
           const started = Date.now();
           timer = setInterval(() => {
             const stopped = cancelled();
-            if (!stopped && Date.now() - started < PER_POSITION_TIMEOUT_MS) return;
+            if (!stopped && Date.now() - started < STARTUP_TIMEOUT_MS) return;
             reject(stopped ? new AnalysisCancelled() : new Error("Browser engine startup timed out"));
             Promise.resolve(provider.close()).catch(() => {});
           }, 100);
@@ -279,6 +307,12 @@ export async function analyzeGamePositions({
       } finally { clearInterval(timer); }
     }
     try {
+      const warm = pooled ? takeIdleEngine(maxNodes) : null;
+      // The run owns the guard and fallback. A per-worker startup failure must not
+      // change the profile while sibling workers are still settling.
+      provider = warm || createProvider({ maxDepth: targetDepth, maxNodes, batch: true,
+        profileManaged: false, net: attempt?.net });
+      opened = !!warm;
       while (!cancelled()) {
         const fen = takeNextFen();
         if (fen == null) break;
@@ -310,7 +344,7 @@ export async function analyzeGamePositions({
     } finally {
       // A worker that finished its share cleanly stays warm for the next batch; one that
       // failed or was stopped mid-search is torn down.
-      if (!(pooled && clean && opened && parkIdleEngine(provider, maxNodes))) {
+      if (provider && !(pooled && clean && opened && parkIdleEngine(provider, maxNodes))) {
         try {
           await provider.close();
         } catch (_) {
@@ -322,13 +356,18 @@ export async function analyzeGamePositions({
 
   const workerCount = Math.max(
     1,
-    Math.min(resolveConcurrency(concurrency), pending.length),
+    Math.min(resolveConcurrency(concurrency ?? attempt?.workers), attempt?.workers ?? MAX_CONCURRENCY, pending.length),
   );
   const settled = await Promise.allSettled(
     pending.length ? Array.from({ length: workerCount }, () => workerLoop()) : [],
   );
 
-  const rejection = settled.find((s) => s.status === "rejected");
+  unsubscribe();
+  endBatch();
+  // A sibling may report cancellation first in pool order. Preserve the engine
+  // failure that stopped the queue so the caller can step down and retry it.
+  const rejection = settled.find(s => s.status === "rejected" && isEngineFailure(s.reason)) ||
+    settled.find((s) => s.status === "rejected");
   if (rejection) {
     const err = rejection.reason;
     // Budget-expiry cancellation (AnalysisCancelled from workers) should include partial
@@ -344,7 +383,7 @@ export async function analyzeGamePositions({
   }
   // External cancellation makes workers exit their loop cleanly (no throw), so
   // re-check here to preserve the original "cancel → throw" contract.
-  if (externalCancel()) {
+  if (profileChanged || externalCancel()) {
     const partialResults = new Map();
     for (const fen of uniqueFens) {
       if (evalByFen.has(fen)) partialResults.set(fen, evalByFen.get(fen));

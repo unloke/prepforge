@@ -1,9 +1,13 @@
+import { engineProfile, subscribeEngineProfile } from "./engine-profile.js";
+
 // Worker-lifetime budget shared by every browser Stockfish consumer.
-// Reserve one slot for the live board; queued interactive work goes first.
 export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
   let used = 0, background = 0;
   const queue = [];
   const idle = new Set();
+  const allocations = new Set();
+  let batches = 0;
+  let paused = 0;
   function reclaimIdle() {
     if (!queue.length) return;
     const reclaim = idle.values().next().value;
@@ -13,18 +17,21 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
     }
   }
   function drain() {
+    if (paused) return;
     queue.sort((a, b) => Number(b.interactive) - Number(a.interactive));
     while (used < limit) {
-      const i = queue.findIndex((entry) => entry.interactive || background < backgroundLimit);
+      const i = queue.findIndex((entry) => (!batches || entry.batch) && (entry.interactive || background < backgroundLimit));
       if (i < 0) { reclaimIdle(); return; }
       const entry = queue.splice(i, 1)[0];
       entry.cleanup();
       used++;
       if (!entry.interactive) background++;
+      allocations.add(entry);
       let released = false;
       entry.resolve(() => {
         if (released) return;
         released = true;
+        allocations.delete(entry);
         used--;
         if (!entry.interactive) background--;
         drain();
@@ -32,7 +39,7 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
     }
     reclaimIdle();
   }
-  function acquire({ interactive = false, signal } = {}) {
+  function acquire({ interactive = false, signal, batch = false, reclaim } = {}) {
     if (signal?.aborted) return Promise.reject(new DOMException("Engine allocation stopped", "AbortError"));
     return new Promise((resolve, reject) => {
       const abort = () => {
@@ -41,7 +48,7 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
         entry.cleanup();
         reject(new DOMException("Engine allocation stopped", "AbortError"));
       };
-      const entry = { interactive, resolve, cleanup: () => signal?.removeEventListener("abort", abort) };
+      const entry = { interactive, batch, reclaim, resolve, cleanup: () => signal?.removeEventListener("abort", abort) };
       signal?.addEventListener("abort", abort, { once: true });
       queue.push(entry);
       drain();
@@ -52,7 +59,25 @@ export function createComputeBudget({ limit = 4, backgroundLimit = 3 } = {}) {
     reclaimIdle();
     return () => idle.delete(reclaim);
   }
-  return { acquire, registerIdle, snapshot: () => ({ used, background, queued: queue.length, limit, backgroundLimit }) };
+  return {
+    acquire, registerIdle,
+    configure(workers) { limit = backgroundLimit = workers; drain(); },
+    suspend() {
+      paused++;
+      for (const entry of [...allocations]) entry.reclaim?.();
+      for (const reclaim of [...idle]) reclaim();
+      return () => { paused--; drain(); };
+    },
+    beginBatch() {
+      batches++;
+      for (const entry of [...allocations]) if (!entry.batch) entry.reclaim?.();
+      for (const reclaim of [...idle]) reclaim();
+      let ended = false;
+      return () => { if (!ended) { ended = true; batches--; drain(); } };
+    },
+    snapshot: () => ({ used, background, queued: queue.length, limit, backgroundLimit }),
+  };
 }
 
-export const stockfishBudget = createComputeBudget();
+export const stockfishBudget = createComputeBudget({ limit: engineProfile().workers, backgroundLimit: engineProfile().workers });
+subscribeEngineProfile(p => stockfishBudget.configure(p.workers));
