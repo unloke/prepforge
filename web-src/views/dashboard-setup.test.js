@@ -314,6 +314,44 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).not.toContain('data-lib-action="new"');
   });
 
+  it("the Today strip counts an unopened repertoire's moves as unknown, not zero", async () => {
+    // The coverage badge is written the first time a repertoire is opened or
+    // trained. Until then the listing knows nothing about it, so the strip
+    // must not claim a clear queue beside a row that says "no moves trained
+    // yet" - the queue holds that repertoire's whole tree.
+    mockDashboard({ repertoires: 1, due_reviews: 0, due_soon: 0 }, [
+      { id: "rep-1", name: "imported", color: "black", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain("1 repertoire not opened yet");
+    expect(today).not.toContain("Queue is clear");
+    // There is a repertoire to train, so Train stays the action.
+    expect(today).toContain("dashboard-train-now");
+  });
+
+  it("an unopened repertoire does not hide the moves of the other ones", async () => {
+    mockDashboard({ repertoires: 2, due_reviews: 0, due_soon: 0 }, [
+      { id: "rep-1", name: "known", color: "white", is_active: true, health: { untrained: 7, due: 0, weak: 0 } },
+      { id: "rep-2", name: "imported", color: "black", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain("1 repertoire not opened yet");
+    expect(today).toContain("7 new moves to learn");
+    expect(today).not.toContain("Queue is clear");
+  });
+
+  it("a disabled repertoire is not counted as an unopened one", async () => {
+    mockDashboard({ repertoires: 1, due_reviews: 0, due_soon: 0 }, [
+      { id: "rep-1", name: "off", color: "white", is_active: false, health: null },
+    ]);
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).not.toContain("not opened yet");
+    expect(today).toContain("Queue is clear");
+  });
+
   it("Today strip only says the queue is clear when nothing is due or new", async () => {
     mockDashboard({ repertoires: 1 }, [
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 0, due: 0 } },

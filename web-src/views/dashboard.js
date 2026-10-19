@@ -276,20 +276,30 @@ export function createDashboardView({
     }, 0);
   }
 
+  // Active repertoires the listing knows nothing about yet: the coverage badge
+  // is written the first time a repertoire is opened or trained, so until then
+  // its new and weak moves are unknown, not zero. The strip must not report a
+  // clear queue while a repertoire's size is still unknown.
+  function unopenedRepertoireCount() {
+    if (!repListLoaded) return 0;
+    return repListCache.own.filter((item) => item.is_active !== false && !item.health).length;
+  }
+
   // Queue line for the Today strip. "Queue is clear" next to a "41 new" row
   // read as a contradiction (UX walkthrough P1-4): reviews and never-trained
   // moves are reported separately.
-  function todayQueueText(due, soon, newMoves, weak = 0) {
+  function todayQueueText(due, soon, newMoves, weak = 0, unopened = 0) {
     const bits = [];
     if (due > 0) bits.push(html`<b>${due} due now</b>`);
     else if (weak > 0) bits.push(html`<b>${weak} weak spot${weak === 1 ? "" : "s"} to review</b>`);
+    else if (unopened > 0) bits.push(html`<b>${unopened} repertoire${unopened === 1 ? "" : "s"} not opened yet</b>`);
     else bits.push("Reviews clear");
     if (newMoves > 0) {
       const label = `${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`;
       bits.push(due > 0 || weak > 0 ? label : html`<b>${label}</b>`);
     }
     if (soon > 0) bits.push(`${soon} coming up in 24h`);
-    if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0) return "Queue is clear";
+    if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0 && unopened === 0) return "Queue is clear";
     return html`${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}`;
   }
 
@@ -337,6 +347,7 @@ export function createDashboardView({
     const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
+    const unopened = unopenedRepertoireCount();
     // Nothing stored in the account: the primary action is the first
     // repertoire, not Train, which can only answer "no active repertoire".
     // A past training session does not change that — the account can have
@@ -344,7 +355,9 @@ export function createDashboardView({
     const firstRun = ownRepertoireCount() === 0;
     // "Queue is clear" is a claim about a queue. With no repertoire there is
     // no queue at all, so the line says what is missing instead.
-    const queueText = firstRun ? "No repertoire to train yet" : todayQueueText(due, soon, newMoves, weak);
+    const queueText = firstRun
+      ? "No repertoire to train yet"
+      : todayQueueText(due, soon, newMoves, weak, unopened);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
