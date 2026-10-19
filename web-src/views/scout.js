@@ -4,7 +4,7 @@ import { html } from "../html.js";
 
 import "./scout.css";
 import { createEnrichPipeline } from "../enrich-pipeline.js";
-import { countOf } from "../plural.js";
+import { countOf, nounOf } from "../plural.js";
 
 import {
   applyScoutColorTabs,
@@ -245,6 +245,10 @@ export function createScoutView(deps) {
     const fetched = scoutState?.games?.length || 0;
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(fetched);
+    // "1 games fetched" — the noun is markup beside the number, so it has to
+    // agree with the count too.
+    const noun = document.getElementById("scout-live-noun");
+    if (noun) noun.textContent = nounOf(fetched, "game");
     updateStreamPhase();
   }
 

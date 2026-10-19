@@ -30,6 +30,18 @@ describe("scout streaming render cadence", () => {
   });
 });
 
+describe("scout toolbar counter", () => {
+  const html = readFileSync(resolve(here, "../index.html"), "utf8");
+  const view = readFileSync(resolve(here, "./scout.js"), "utf8");
+
+  it("agrees the fetched noun with the count", () => {
+    // "1 games fetched" was left by the round-1 lane: the noun sat in the
+    // markup as a constant while the number changed.
+    expect(html).toMatch(/id="scout-live-count"[^>]*>0<\/span> <span id="scout-live-noun">games<\/span> fetched/);
+    expect(view).toMatch(/nounOf\(fetched, "game"\)/);
+  });
+});
+
 describe("scout game-plan rows at narrow widths", () => {
   const css = readFileSync(resolve(here, "./scout.css"), "utf8");
 
