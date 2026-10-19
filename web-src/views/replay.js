@@ -349,7 +349,7 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top${boardHtml ? "" : " no-board"}">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${meta.badge}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${game.white || "?"} vs ${game.black || "?"}</h2><i class="kind-badge t-${meta.tone}">${meta.badge}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
     );
   }
 

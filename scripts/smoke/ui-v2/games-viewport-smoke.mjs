@@ -175,6 +175,18 @@ async function runViewport(vp) {
   const focusText = await page.locator("#replay-results .focus").textContent().catch(() => "");
   check(/expected/.test(focusText || "") && /e6/.test(focusText || "") && /d5/.test(focusText || ""), "focus detail should name the expected and actual moves");
   check((await page.locator("#replay-results .focus .legend").count()) === 0, "focus should not show a standing arrow legend");
+  // The description sits under the board, and the board uses the card's width.
+  const geom = await page.evaluate(() => {
+    const rect = (sel) => document.querySelector(sel)?.getBoundingClientRect();
+    const focus = rect("#replay-results .focus");
+    const boardEl = rect("#replay-results .focus-board");
+    const info = rect("#replay-results .focus-info");
+    return focus && boardEl && info
+      ? { below: info.top >= boardEl.bottom - 1, wide: boardEl.width >= (focus.width - 26) * 0.8 }
+      : null;
+  });
+  check(!!geom && geom.below, "focus description should sit below the board");
+  check(!!geom && geom.wide, "focus board should use most of the card's width");
 
   await shot("triage");
 
