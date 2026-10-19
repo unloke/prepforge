@@ -295,6 +295,18 @@ export function createDashboardView({
 
   let lastTodayPayload = null;
 
+  // A failed statistics read owns the strip's slot: the message once, with the
+  // retry that fixes it. Re-entering the Library (boot starts two reads) must
+  // not wipe this card, so it is only replaced by success or another failure.
+  function renderTodayError(message) {
+    const card = document.getElementById("dashboard-today");
+    if (!card) return;
+    card.hidden = false;
+    card.innerHTML = html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`;
+    card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
+    lastTodayPayload = null;
+  }
+
   function renderDashboardToday(payload) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
@@ -604,10 +616,14 @@ export function createDashboardView({
       return;
     }
     if (!shown.length) {
-      // Non-empty list narrowed to nothing by the filter/search.
+      // Non-empty list narrowed to nothing by the filter/search. On phones the
+      // filter chips are hidden in this state, so the card carries the way back.
+      const q = libraryQuery.trim();
       setListboxRole(container, false);
-      container.innerHTML =
-        html`<div class="empty-state">No repertoires match this filter.</div>`;
+      container.innerHTML = html`<div class="empty-state lib-no-match" data-testid="library-no-match">
+        <p>No repertoires match ${q ? "this search" : "this filter"}.</p>
+        <button type="button" class="btn sm" data-lib-action="clear-filter">Clear filter</button>
+      </div>`;
       selectedRepId = null;
       return;
     }
@@ -655,6 +671,14 @@ export function createDashboardView({
   function setLibraryQuery(query) {
     libraryQuery = String(query ?? "");
     renderRepertoireList();
+  }
+
+  // The query lives in the input element, so clearing it clears both.
+  function clearLibraryFilter() {
+    libraryQuery = "";
+    const search = document.getElementById("lib-filter-search");
+    if (search) search.value = "";
+    setLibraryFilter("all");
   }
 
   // Fetches and renders the listing; throws on failure so each caller picks
@@ -770,12 +794,10 @@ export function createDashboardView({
         renderSteps(payload);
       } catch (error) {
         if (!isCurrent()) return;
-        const today = document.getElementById("dashboard-today");
-        if (today) {
-          today.hidden = false;
-          today.innerHTML = html`<div role="alert">${error.message} <button class="btn sm">Retry</button></div>`;
-          today.querySelector("button")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
-        }
+        // The strip shows the failure and its retry; the caller adds the status
+        // line for the view, so the message is named in both places at most once
+        // each (the old raw markup rendered it twice in the strip itself).
+        renderTodayError(error.message);
         throw error;
       }
     })();
@@ -852,6 +874,8 @@ export function createDashboardView({
       else if (action === "signin") {
         if (openSignIn) openSignIn();
         else requireSignIn("Sign in (or create an account) to start your library");
+      } else if (action === "clear-filter") {
+        clearLibraryFilter();
       } else if (action === "retry") {
         loadDashboard().catch((error) => setStatusError(error.message));
       } else if (action === "retry-list") {
