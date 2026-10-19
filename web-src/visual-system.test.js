@@ -188,7 +188,8 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('aria-controls="palette-results"');
     expect(html).toContain('aria-label="Notifications"');
     expect(app).toContain("function activateModal");
-    expect(app).toContain("child.inert = true");
+    // A dialog that is not a direct body child must not inert its ancestor.
+    expect(app).toContain("if (!child.contains(overlay)) child.inert = true;");
     expect(app).toContain('event.key !== "Tab"');
   });
 

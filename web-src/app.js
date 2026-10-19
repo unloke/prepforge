@@ -1131,7 +1131,8 @@ function activateModal(overlay, { initialFocus = null, additionalRoots = [] } = 
   const background = [...document.body.children].filter(
     (child) => child !== overlay && !additionalRoots.includes(child) && !child.inert,
   );
-  for (const child of background) child.inert = true;
+  // Only a real sibling gets inert: an ancestor would take this dialog with it.
+  for (const child of background) if (!child.contains(overlay)) child.inert = true;
 
   const dialog = overlay.matches('[role="dialog"]')
     ? overlay
@@ -1173,7 +1174,7 @@ function activateModal(overlay, { initialFocus = null, additionalRoots = [] } = 
     if (cleaned) return;
     cleaned = true;
     keyTarget.removeEventListener("keydown", onKeyDown);
-    for (const child of background) child.inert = false;
+    for (const child of background) if (!child.contains(overlay)) child.inert = false;
     overlay.remove = nativeRemove;
     if (restoreFocus && previouslyFocused?.isConnected) previouslyFocused.focus();
   };
@@ -3599,13 +3600,17 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
     };
     // Submitting hands the dialog a promise the caller keeps pending while its
     // request is in flight. Callers that don't (plain data entry) close on
-    // submit, exactly as before.
+    // submit, exactly as before. One request per dialog: Enter (or a double
+    // click) while onSubmit is still running must not start a second one.
+    let submitting = false;
     const submit = () => {
+      if (submitting) return;
       const values = collect();
       if (typeof onSubmit !== "function") {
         close(values);
         return;
       }
+      submitting = true;
       const okBtn = overlay.querySelector('[data-action="ok"]');
       const controls = [...overlay.querySelectorAll(".modal-footer .btn, [data-field]")];
       okBtn.classList.add("is-loading");
@@ -3616,6 +3621,7 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
       // Silence/`controls` capture lets a failed submit re-enable the form
       // unless the caller closed the dialog (success) or submitted again.
       const idle = () => {
+        submitting = false;
         if (settled) return;
         okBtn.classList.remove("is-loading");
         for (const el of controls) el.disabled = false;

@@ -975,9 +975,15 @@ async function onBuildBoardMove(moveUci) {
   scheduleBuildFlush();
 }
 
+// One create dialog at a time. The Library offers New repertoire in the page
+// head and the list header, so re-entering while the first dialog is still open
+// would ask twice and, on Enter, send two creates.
+let createRepertoireDialog = null;
+
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
-  const created = await showInputModal({
+  if (createRepertoireDialog) return createRepertoireDialog;
+  createRepertoireDialog = showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
     fields: [
@@ -1006,7 +1012,11 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
       }
     },
   });
-  return created || null;
+  try {
+    return (await createRepertoireDialog) || null;
+  } finally {
+    createRepertoireDialog = null;
+  }
 }
 
 // A local-only placeholder for a repertoire the server has not confirmed yet.
