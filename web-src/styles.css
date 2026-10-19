@@ -957,8 +957,8 @@ h2 {
 }
 .settings {
   display: grid;
-  grid-template-columns: 180px minmax(0, 760px);
-  gap: 20px;
+  grid-template-columns: 180px minmax(0, 860px);
+  gap: 24px;
   align-items: start;
 }
 .settings-nav {

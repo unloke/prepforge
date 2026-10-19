@@ -7,6 +7,22 @@
 
 /* ---- Section nav ------------------------------------------------------- */
 
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own: the title spans the grid above the index and the cards. */
+@media (min-width: 761px) {
+  #view-settings .page-head {
+    display: block;
+    grid-column: 1 / -1;
+    margin: 0 0 2px;
+  }
+  #view-settings .page-head h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
 .settings-nav { top: 12px; }
 .settings-nav-link {
   padding: 6px 10px;

@@ -416,8 +416,11 @@ describe("workspace chrome layout", () => {
       expect(view).toContain(`id="set-${id}"`);
     }
     expect(view).toContain('id="piece-style-picker"');
-    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*760px\)/);
+    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*860px\)/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.settings\s*\{[^}]*minmax\(0,\s*1fr\)/);
+    // The desktop page names itself: the phone header is hidden on wide
+    // screens, so without this the Settings view has no heading at all.
+    expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*block/);
     expect(settingsCss).toContain(".set-row");
     expect(settingsCss).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.
