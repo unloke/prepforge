@@ -226,7 +226,7 @@ describe("Smart memo integration at Start", () => {
     expect(h.appState.smart).toBeNull();
     await vi.waitFor(() => expect(h.deps.refreshRepertoireHead).toHaveBeenCalled());
     expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
-    expect(h.deps.refreshTrainSessionPreview).toHaveBeenCalled();
+    expect(h.deps.paintTrainStartDisabled).toHaveBeenCalled();
     // The report is on screen before the flush and the summary fetch answer.
     expect(h.deps.renderSmartSummaryStats).toHaveBeenCalled();
     expect(h.deps.renderSmartSummaryStats.mock.calls[0][0].sessionId).toBe("session");
