@@ -29,9 +29,9 @@ describe("workspace URL codec", () => {
   });
 
   it("round-trips view + repertoire + ply", () => {
-    const loc = { view: "analyze", replaySection: null, repertoireId: "rep-42", ply: 12 };
+    const loc = { view: "build", replaySection: null, repertoireId: "rep-42", ply: 12 };
     const hash = formatWorkspaceHash(loc);
-    expect(hash).toBe("#/analyze?rep=rep-42&ply=12");
+    expect(hash).toBe("#/build?rep=rep-42&ply=12");
     expect(parseWorkspaceHash(hash)).toEqual(loc);
   });
 
@@ -106,13 +106,16 @@ describe("workspace URL codec", () => {
   });
 
   it("reads view, repertoire, and analyze ply from app state", () => {
+    // Analyze names only the ply it shows: its coach reads every active
+    // repertoire, so a rep= there would just be Build's leftover.
     expect(
       workspaceLocationFromState({
         currentView: "analyze",
         analysisPly: 7,
         build: { repertoire_id: "r9" },
+        trainingRepertoireId: "r2",
       }),
-    ).toEqual({ view: "analyze", replaySection: null, repertoireId: "r9", ply: 7 });
+    ).toEqual({ view: "analyze", replaySection: null, repertoireId: null, ply: 7 });
     expect(
       workspaceLocationFromState({
         currentView: "build",
@@ -120,6 +123,19 @@ describe("workspace URL codec", () => {
         trainingRepertoireId: "r2",
       }),
     ).toEqual({ view: "build", replaySection: null, repertoireId: "r2", ply: null });
+  });
+
+  it("keeps Build's open repertoire out of an Analyze link", () => {
+    // Opening a game from Games lands on Analyze; the URL used to carry the
+    // repertoire Build last had open, though no repertoire is involved.
+    expect(
+      workspaceLocationFromState({
+        currentView: "analyze",
+        analysisPly: 3,
+        build: { repertoire_id: "rep-77" },
+      }),
+    ).toEqual({ view: "analyze", replaySection: null, repertoireId: null, ply: 3 });
+    expect(formatWorkspaceHash({ view: "analyze", ply: 3 })).toBe("#/analyze?ply=3");
   });
 
   it("names the repertoire Train's queue drills, never the one Build has open", () => {

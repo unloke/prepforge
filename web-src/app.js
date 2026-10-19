@@ -1457,7 +1457,9 @@ async function restoreWorkspaceLocation() {
       appState.replayOpen = new Set([replayReturn.openIndex]);
     }
   }
-  if (loc.repertoireId && appState.signedIn) {
+  // Only Build's link names the repertoire its editor shows; Train's names the
+  // queue's, which startTraining below loads for itself.
+  if (loc.view === "build" && loc.repertoireId && appState.signedIn) {
     try {
       const payload = await api(
         `/api/build/load?repertoire_id=${encodeURIComponent(loc.repertoireId)}`,
