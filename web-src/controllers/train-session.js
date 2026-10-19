@@ -353,18 +353,29 @@ async function refreshTrainSessionPreview() {
   const smartIdle = (appState.trainMode || "smart") === "smart" && !(appState.smart && appState.smart.prompt);
   if (!smartIdle || !appState.signedIn) {
     host.hidden = true;
+    const emptyBlock = document.getElementById("train-empty");
+    if (emptyBlock) emptyBlock.hidden = true;
     return;
   }
 
   const paint = () => {
     // One setup heading only: an empty queue says so in the banner instead of
     // stacking the same message above a start button.
+    const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
     const brief = trainPreviewCache.brief;
     host.hidden = !brief;
     const banner = document.getElementById("train-banner");
     if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
-      setTrainBanner("idle", brief ? "Ready to train" : "No moves to train yet", "");
+      setTrainBanner("idle", brief ? "Ready to train" : empty ? "No moves to train yet" : "Ready to train", "");
     }
+    // Nothing to serve: the dead Start leaves with the briefing and the fix
+    // takes its place, so the panel never shows a button that cannot work.
+    const startRow = document.getElementById("train-srs-start");
+    const blitzRow = document.getElementById("train-blitz-row");
+    const emptyBlock = document.getElementById("train-empty");
+    if (startRow) startRow.hidden = empty;
+    if (blitzRow) blitzRow.hidden = empty || (appState.trainMode || "smart") !== "smart";
+    if (emptyBlock) emptyBlock.hidden = !empty;
     if (!brief) return;
     document.getElementById("train-brief-count").textContent = String(brief.cards);
     document.getElementById("train-brief-label").textContent = brief.label;
@@ -1933,8 +1944,9 @@ async function startSmartTraining(options = {}) {
   // requeue, skip); only graded attempts + the position sync back, batched.
   const queue = mapped.queue;
   if (!queue.length) {
-    setStatus("Nothing to train yet");
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Repertoire, then train.");
+    // The setup screen already carries this state: the banner names it and the
+    // Open Repertoire action is the fix. A toast on top repeats the banner.
+    setTrainBanner("idle", "No moves to train yet", "");
     return;
   }
   setTrainBanner(

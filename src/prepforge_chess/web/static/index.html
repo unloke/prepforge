@@ -7,7 +7,7 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-CdmC3PLa.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-BxTk9Zoh.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/rolldown-runtime-DK3Fl9T5.js">
     <link rel="modulepreload" crossorigin href="/static/assets/html-A1qdFlh3.js">
     <link rel="modulepreload" crossorigin href="/static/assets/shared-constants-BulHn_HJ.js">
@@ -15,7 +15,7 @@
     <link rel="modulepreload" crossorigin href="/static/assets/sync-queue-DFoqVkyv.js">
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
     <link rel="modulepreload" crossorigin href="/static/assets/material-DPbFImjt.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-DE2F82LF.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-DHYAPqbI.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -420,7 +420,17 @@
             </section>
             <div class="panel-scroll">
               <section class="tcard train-setup">
-                <p class="train-session-preview" id="train-session-preview" data-testid="train-session-preview" hidden></p>
+                <div class="train-brief" id="train-brief" hidden>
+                  <div class="train-brief-head">
+                    <b class="train-brief-count" id="train-brief-count">0</b>
+                    <span class="train-brief-label" id="train-brief-label">cards to train</span>
+                  </div>
+                  <div class="chips" id="train-brief-kinds"></div>
+                  <div class="train-brief-reps" id="train-brief-reps"></div>
+                </div>
+                <div class="train-empty" id="train-empty" hidden>
+                  <button class="btn primary" id="train-empty-build" type="button">Open Repertoire</button>
+                </div>
                 <div class="field" id="train-srs-picker">
                   <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
                   <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
