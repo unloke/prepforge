@@ -23,6 +23,21 @@
   border-bottom: 0;
 }
 
+/* One filled action on the panel: once the report is on it, the accent belongs
+   to the handoff below, and running the analysis again is a quiet text action.
+   The phone's own bar keeps its filled button. */
+@media (min-width: 861px) {
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #run-analysis {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+  }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #run-analysis:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+}
+
 /* The board bar's rule is the last line on the phone; the board's own frame
    and the evaluation row's tone already say where the board ends. */
 #view-analyze .board-bar {
