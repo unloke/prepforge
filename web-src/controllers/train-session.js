@@ -469,7 +469,7 @@ function syncTrainSessionControls() {
   }
   if (blitzRow) {
     blitzRow.title = appState.smart
-      ? "Blitz is locked for this session — applies on next Start"
+      ? "Blitz is locked for this session: applies on next Start"
       : "10s per move · a timeout counts as a miss";
   }
   const takeback = document.getElementById("play-takeback");
@@ -487,7 +487,7 @@ function syncTrainSessionControls() {
     const liveGame = play && !!(appState.play && appState.play.active);
     lucky.disabled = liveGame;
     lucky.title = liveGame
-      ? "Finish, resign or take back first — Lucky starts another position"
+      ? "Finish, resign or take back first. Lucky starts another position."
       : "Jump to a key position instead of move 1";
   }
 }
@@ -1050,15 +1050,15 @@ async function startPlaySession({
   }
   const why =
     reason === "miss"
-      ? "Engine miss — your move"
+      ? "Engine miss: your move"
       : reason === "departure"
-        ? "You left prep here — your move"
+        ? "You left prep here: your move"
         : reason === "fork"
-          ? "A real fork — more than one human reply"
+          ? "A real fork: more than one human reply"
               : reason === "db-critical"
-                ? `Master game, critical ${phase || "moment"} — your move`
+                ? `Master game, critical ${phase || "moment"}: your move`
               : reason === "titled-game"
-                  ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"} — your move`
+                  ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"}: your move`
               : "";
   const luckyMeta =
     reason === "titled-game" && luckyGameId
@@ -1360,7 +1360,7 @@ async function takebackPlaySession() {
     lastMove: undone.lastMove,
     banner: yourMove ? "Your move" : "Opponent thinking…",
     sub: yourMove
-      ? "Takeback — play again"
+      ? "Takeback: play again"
       : playThinkingSub(play),
     label: playBookLabel(play),
     state: yourMove ? "move" : "runin",
@@ -1801,7 +1801,7 @@ export function smartSessionOutcomeText(smart = {}, stats = {}) {
   const scored = correct + missed;
   const recall = scored
     ? `First-try recall: ${correct} of ${scored} review move${scored === 1 ? "" : "s"}.`
-    : "New moves learned — no review moves scored yet.";
+    : "New moves learned. No review moves scored yet.";
   const details = [];
   if (missed) details.push(`${missed} missed first try`);
   if (smart.retriesFixed) details.push(`${smart.retriesFixed} fixed on retry`);
@@ -1843,7 +1843,7 @@ async function startSmartTraining(options = {}) {
   const trainSynced = await flushTrainSync().catch(() => false);
   if (!isCurrent()) return;
   if (!trainSynced) {
-    setStatus("Couldn't sync your last session — check your connection and try again.");
+    setStatus("Couldn't sync your last session. Check your connection and try again.");
     setTrainBanner("done", "Couldn't sync your last session", "Try Start again in a moment.");
     return;
   }
