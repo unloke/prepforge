@@ -254,7 +254,7 @@
    nothing below it moves. */
 .res-stack.is-visible > .res-block {
   animation: res-block-enter var(--dur) var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 @keyframes res-block-enter {
   from {
@@ -913,6 +913,38 @@
   #analysis-results .moves-grid { flex: 1 1 0; min-height: 120px; max-height: none; }
 }
 
+/* ---- Motion ------------------------------------------------------------
+   This page is a tool: it moves to answer a touch, and once when a run
+   lands. Feedback is under the hand, the entrances are the results
+   arriving, and nothing that updates every second moves at all. */
+
+.ev-engine,
+.ev-report,
+.coach-bookaction,
+.history-item,
+.history-item .hi-open,
+.history-item .hi-delete {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* Press: the control gives a little under the finger. */
+.ev-engine:active,
+.ev-report:active,
+.coach-bookaction:active,
+.history-item .hi-open:active,
+.history-item .hi-delete:active {
+  transform: scale(0.97);
+}
+
+/* The live engine repaints the win share many times a second: a transition
+   would smear it into a blur. It jumps instead. */
+#analysis-eval-card.is-engine .ev-meter > i {
+  transition: none;
+}
+
 /* ---- Phone ------------------------------------------------------------
    Shell, thumb bar and sheets in phone.css. One screen, no page scroll, and
    nothing above the board changes height between moves: the game graph and
@@ -1028,6 +1060,7 @@
     overflow-wrap: anywhere;
   }
   #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
+  #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
     display: inline-flex;
     flex: none;
