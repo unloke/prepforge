@@ -820,7 +820,7 @@ export function createAnalyzeView({
       dot.setAttribute("cx", String(c.x));
       dot.setAttribute("cy", String(c.y));
       dot.setAttribute("data-ply", String(c.ply));
-      dot.dataset.baseR = "4.5";
+      dot.dataset.baseR = "2.8";
       dot.style.cursor = "pointer";
       dot.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -850,7 +850,7 @@ export function createAnalyzeView({
     ring.setAttribute("cx", "-10");
     ring.setAttribute("cy", "-10");
     ring.setAttribute("visibility", "hidden");
-    ring.dataset.baseR = "6.5";
+    ring.dataset.baseR = "4.5";
     chart.appendChild(ring);
 
     updateEvalChartCursor();

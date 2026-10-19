@@ -462,18 +462,23 @@
   display: block;
   width: 100%;
   height: 64px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
   /* The plies run edge to edge: the first/last ply's ring and markers overhang
-     the side borders instead of being clipped. */
+     the field instead of being clipped. */
   overflow: visible;
-  /* Mid-grey field in both themes, so the light (White) and dark (Black)
-     areas each stand out from it instead of melting into the page. */
-  background: color-mix(in srgb, var(--muted) 45%, var(--panel-soft));
+  border-radius: 6px;
+  /* The field is its own fill: a mid tone with the two side tones standing
+     clear of it, so White's area and Black's area each read at a glance.
+     The mix is of the theme's own piece colours, so it follows the theme. */
+  --eval-field: color-mix(in srgb, var(--eval-side-white) 45%, var(--eval-side-black));
+  background: var(--eval-field);
+}
+:root[data-theme="dark"] .eval-chart {
+  /* A darker field in the dark theme: the white area stays the bright one. */
+  --eval-field: color-mix(in srgb, var(--eval-side-white) 30%, var(--eval-side-black));
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
-.eval-chart .eval-area-white { fill: #f4f3ef; stroke: none; }
-.eval-chart .eval-area-black { fill: #25282d; stroke: none; }
+.eval-chart .eval-area-white { fill: var(--eval-side-white); stroke: none; }
+.eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
 .eval-chart .eval-line {
   fill: none;
   stroke: var(--accent-strong);
@@ -481,8 +486,8 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.eval-chart .eval-cliff { stroke-width: 2.5; stroke-linecap: round; stroke: currentColor; }
-.eval-chart .eval-dot { fill: currentColor; stroke: var(--panel); stroke-width: 1.5; }
+.eval-chart .eval-cliff { stroke-width: 1.5; stroke-linecap: round; stroke: currentColor; }
+.eval-chart .eval-dot { fill: currentColor; stroke: none; }
 .eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
 .eval-chart .eval-cursor-dot {
   fill: none;

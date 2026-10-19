@@ -244,6 +244,14 @@ describe("eval chart theme colours", () => {
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--danger:/);
   });
 
+  it("fills White's and Black's areas from the theme's own piece colours", () => {
+    // Hardcoded hexes made the dark theme draw a glaring white band; the
+    // tokens carry a dark-theme value for each side.
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-side-white\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-black\s*\{[^}]*fill: var\(--eval-side-black\)/);
+    expect(ALL_STYLES).not.toMatch(/\.eval-area-(white|black)\s*\{[^}]*fill: #/);
+  });
+
   it("keeps the main-line stroke width constant when the SVG stretches", () => {
     const { chart, view } = setup();
     view.renderEvalChart(POINTS);
