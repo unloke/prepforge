@@ -372,8 +372,10 @@
   background: var(--eval-side-white);
   transition: transform var(--dur-slow) var(--ease-out);
 }
-/* No number yet: a dimmed empty track. */
-.ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
+/* No number, no win share: an empty track the width of the card reads as a
+   bar that is stuck. The row keeps its label and its action; the middle stays
+   open until there is a number to fill the track with. */
+.ev-head:not(.has-eval) .ev-meter { display: none; }
 /* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
    search has come without a progress bar under it. */
 #analysis-engine-slot .engine-head-depth {
@@ -1012,9 +1014,6 @@
   #analysis-eval-card .ev-title { color: var(--muted); }
   #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
   #analysis-eval-card .ev-meter { flex: none; width: 64px; }
-  /* An empty meter is 64px of nothing. The phone gives that width to the
-     position's name instead, so the row reads on one line. */
-  #analysis-eval-card .ev-head:not(.has-eval) .ev-meter { display: none; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
