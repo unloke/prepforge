@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { countOf } from "../plural.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 export function createBuildView({
@@ -151,7 +152,7 @@ export function createBuildView({
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${ctx.options.length}</span></div><div class="fork-chips">${chips}</div>`;
+      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span></div><div class="fork-chips">${chips}</div>`;
     bar.querySelectorAll(".fork-chip[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});

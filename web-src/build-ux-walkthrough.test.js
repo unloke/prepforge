@@ -265,3 +265,12 @@ describe("Selected tree move keeps contrast (P3-10)", () => {
     expect(css).toMatch(/\.mtree-move\.is-current\.is-opp,[\s\S]{0,80}\{\s*color: var\(--accent-ink\)/);
   });
 });
+
+describe("Next-move count names itself (2026-10-19 critique)", () => {
+  it("reads \"2 options\", not a bare number after the label", () => {
+    // A lone count beside "Next move" read as "the next move is 2".
+    const view = readFileSync(join(root, "views", "build.js"), "utf8");
+    expect(view).toMatch(/<b>Next move<\/b><span class="count">\$\{countOf\(ctx\.options\.length, "option"\)\}/);
+    expect(view).toContain('import { countOf } from "../plural.js";');
+  });
+});
