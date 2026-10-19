@@ -172,3 +172,15 @@ describe("scout phone composition", () => {
     expect(phone).toContain(".prof-row .btn { min-height: 44px; }");
   });
 });
+
+describe("scout line detail card", () => {
+  const css = readFileSync(resolve(here, "../styles.css"), "utf8");
+
+  it("ends with its content instead of stretching to the grid row", () => {
+    // A line's detail runs 448-536px; stretched to the 808px row it left a
+    // 284px white hole under the actions.
+    const rule = css.match(/\.scout-side \{[^}]*\}/)[0];
+    expect(rule).toContain("align-self: start;");
+    expect(rule).toContain("max-height: 100%;");
+  });
+});

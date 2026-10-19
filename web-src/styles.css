@@ -3516,7 +3516,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
-.scout-side { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
+/* The detail card ends with its content: a line's detail runs 448-536px tall,
+   and stretching the card to the 808px grid row left a 284px white hole under
+   it. It still caps at the row and scrolls if a detail runs longer. */
+.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
 .scout-panel:not(:has(.scout-section)) .scout-side { display: none; }
