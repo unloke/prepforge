@@ -1495,8 +1495,6 @@ h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-right: 18px;
-  border-right: 1px solid var(--line);
   white-space: nowrap;
 }
 /* A live streak says so with the figure's colour; at 0 it stays in ink. */
@@ -1673,8 +1671,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
+  position: relative;
   background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
+}
+.lib-row.is-selected::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
 }
 .lib-row.is-disabled .name { color: var(--label); }
 /* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
@@ -1740,7 +1746,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   transition: width var(--dur-slow) var(--ease-out);
 }
 .lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
-.lib-mbar i.is-mastered { background: var(--k-mastered); box-shadow: 1px 0 0 var(--surface-3); }
+.lib-mbar i.is-mastered { background: var(--k-mastered); }
 .lib-mastery-none {
   width: auto;
   padding: 1px 6px;
@@ -1767,7 +1773,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 50%;
   background: currentColor;
 }
-.kchip.k-weak { color: var(--danger); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
+.kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {

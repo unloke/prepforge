@@ -58,8 +58,16 @@
 .mem-row.is-skeleton { cursor: default; }
 .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .team-row.is-selected {
+  position: relative;
   background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
+}
+.team-row.is-selected::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
 }
 .tr-text {
   display: flex;
