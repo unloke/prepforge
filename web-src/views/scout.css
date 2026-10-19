@@ -462,7 +462,7 @@
 .scout-line-status.bad { color: var(--danger); }
 .scout-side .note { margin: 0; }
 .scout-line-reason,
-.scout-line-reply { border: 0; max-width: 60ch; color: var(--text); font-size: 15px; line-height: 1.45; }
+.scout-line-reply { border: 0; max-width: 60ch; color: var(--text); font-size: 16px; line-height: 1.45; }
 .scout-side .note.good { border-color: transparent; background: var(--good-soft); color: var(--good-text); }
 .scout-side .note.warn { border-color: transparent; background: var(--warn-soft); color: var(--warn-text); }
 .scout-side .note.eng { border-color: transparent; background: var(--surface-3); color: var(--text); }

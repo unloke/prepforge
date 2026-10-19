@@ -235,3 +235,13 @@ describe("scout report reading type", () => {
     expect(css).toMatch(/\.scout-chart-title \{[^}]*font-size: 14px/);
   });
 });
+
+describe("scout running text", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("sets the line detail's running sentences at body size", () => {
+    // The reason and the reply note are the sentences you read in the detail
+    // card; the inspector counted them as the page's body text at 15px.
+    expect(css).toMatch(/\.scout-line-reason,\n\.scout-line-reply \{[^}]*font-size: 16px/);
+  });
+});
