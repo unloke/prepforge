@@ -142,6 +142,28 @@ async function runViewport(vp) {
   check(themeAttr === "dark", `clicking Dark should apply the dark theme, got "${themeAttr}"`);
   const darkPressed = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').getAttribute("aria-pressed");
   check(darkPressed === "true", "Dark seg button should be pressed after the click");
+  // The pick is persisted where the rail toggle keeps it, and it survives a load.
+  const storedTheme = await page.evaluate(() => JSON.parse(localStorage.getItem("prepforge.prefs") || "{}").theme);
+  check(storedTheme === "dark", `Settings → Appearance must store the theme, got "${storedTheme}"`);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1200);
+  const reloadedTheme = await page.evaluate(() => document.documentElement.dataset.theme);
+  check(reloadedTheme === "dark", `the stored theme should apply after a reload, got "${reloadedTheme}"`);
+  await page.evaluate(() => [...document.querySelectorAll(".tab[data-view=\"settings\"]")].pop()?.click());
+  await page.waitForTimeout(600);
+  const reloadedPressed = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="dark"]').getAttribute("aria-pressed");
+  check(reloadedPressed === "true", "the Appearance control should show the stored pick after a reload");
+  // The rail toggle and the card are one value: the toggle flips it, the card follows.
+  const toggle = page.locator('[data-testid="theme-toggle"]');
+  if (await toggle.isVisible()) await toggle.click();
+  else await page.evaluate(() => document.getElementById("theme-toggle").click());
+  await page.waitForTimeout(400);
+  const afterToggle = await page.evaluate(() => ({
+    stored: JSON.parse(localStorage.getItem("prepforge.prefs") || "{}").theme,
+    light: document.querySelector('#settings-theme-seg .seg-btn[data-theme-value="light"]').getAttribute("aria-pressed"),
+  }));
+  check(afterToggle.stored === "light" && afterToggle.light === "true",
+    `the rail toggle must move the Appearance control with it, got ${JSON.stringify(afterToggle)}`);
   // Back to system so later viewports start clean (localStorage persists).
   await page.locator('#settings-theme-seg .seg-btn[data-theme-value="system"]').click();
 
@@ -152,6 +174,33 @@ async function runViewport(vp) {
   check(/Stockfish .+ lite \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
+
+  // Phone: every Settings control is a thumb target. Switches were 38x26 and
+  // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.
+  if (vp.width <= 760) {
+    const small = await page.evaluate(() => [...document.querySelectorAll('#view-settings .pf-switch, #view-settings .pf-info, #view-settings .set .seg-btn, #view-settings .set .btn')]
+      .map((el) => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height, what: el.id || el.className }; })
+      // A control may be narrow (a 38px switch track, a "1" worker chip): the
+      // touch target is its height, which must reach 40px.
+      .filter((r) => r.w > 0 && r.h > 0 && r.h < 40)
+      .map((r) => `${r.what} ${Math.round(r.w)}x${Math.round(r.h)}`));
+    check(small.length === 0, `Settings controls need a 40px touch target, got ${small.join(", ")}`);
+  }
+
+  // Engine Refresh re-checks the browser engine beside it, not only /api/settings.
+  await page.evaluate(() => {
+    Object.defineProperty(self, "crossOriginIsolated", { value: false, configurable: true });
+    document.getElementById("settings-browser-engine-status").textContent = "checking…";
+  });
+  await page.locator("#settings-refresh").click();
+  await page.waitForTimeout(900);
+  const refreshedStatus = await page.locator("#settings-browser-engine-status").textContent();
+  check(refreshedStatus === "unavailable", `Refresh should re-check browser Stockfish, got "${refreshedStatus}"`);
+  await page.evaluate(() => { Object.defineProperty(self, "crossOriginIsolated", { value: true, configurable: true }); });
+  await page.locator("#settings-refresh").click();
+  await page.waitForTimeout(900);
+  const backAvailable = await page.locator("#settings-browser-engine-status").textContent();
+  check(backAvailable === "available", `Refresh should see the engine available again, got "${backAvailable}"`);
 
   // Maia3 card: a REAL state line (manifest is served, so state is on-demand/cache/off — never a canned "Ready").
   const maiaModel = await page.locator("#settings-maia-model").textContent().catch(() => "");

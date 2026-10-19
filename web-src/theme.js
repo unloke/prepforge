@@ -1,5 +1,35 @@
 export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 
+// The persisted color theme, kept in the shared prefs blob. Writing the blob
+// rewrites every other pref as well, so a first paint reads it without writing
+// (a never-written blob is the defaults, not an edit), while a user choice
+// stores the pick. Read-modify-write keeps the prefs that outlive a reset.
+export const PREFS_KEY = "prepforge.prefs";
+
+export function readStoredTheme(storage = globalThis.localStorage) {
+  return normalizeTheme(readStoredPrefs(storage).theme);
+}
+
+export function readStoredPrefs(storage = globalThis.localStorage) {
+  try {
+    return JSON.parse(storage?.getItem(PREFS_KEY) || "{}") || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+// The stored blob is read, not the in-memory prefs, so one pref write keeps
+// every other pref that outlives a reset.
+export function storeTheme(value, storage = globalThis.localStorage) {
+  const theme = normalizeTheme(value);
+  try {
+    storage.setItem(PREFS_KEY, JSON.stringify({ ...readStoredPrefs(storage), theme }));
+  } catch (_) {
+    /* storage unavailable: the theme still applies for this session */
+  }
+  return theme;
+}
+
 export function normalizeTheme(value) {
   return THEME_MODES.includes(value) ? value : "system";
 }

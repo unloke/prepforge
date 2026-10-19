@@ -1,4 +1,5 @@
 import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile } from "../engine/engine-profile.js";
+import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
@@ -89,6 +90,13 @@ export function createSettingsView({
     if (ratingOut) ratingOut.textContent = auto ? String(effective) : ratingEl.value;
   }
 
+  // The one way this card changes the color theme; the app's pref writer then
+  // repaints this control, so both stay on one value.
+  function pickTheme(value) {
+    setPref("theme", value);
+    renderThemeControl();
+  }
+
   function renderThemeControl() {
     const themeEl = document.getElementById("settings-theme");
     const current = String(pref("theme") || "system");
@@ -106,7 +114,7 @@ export function createSettingsView({
     const browserStatusEl = document.getElementById("settings-browser-engine-status");
     const note = document.getElementById("settings-stockfish-status");
     if (browserStatusEl) {
-      if (self.crossOriginIsolated) {
+      if (isBrowserEngineAvailable()) {
         browserStatusEl.textContent = "available";
         browserStatusEl.className = "status-pill ok";
         if (note) note.textContent = "";
@@ -174,6 +182,17 @@ export function createSettingsView({
     } catch {
       versionEl.textContent = "Stockfish version unavailable";
     }
+  }
+
+  // Refresh re-checks BOTH halves of this card: the server's saved settings
+  // (loadSettings) and the browser engine the rows above report — availability,
+  // the engine this device's profile loads, and its net/worker choice. It used
+  // to reload /api/settings only, leaving a stale "checking…"/"unavailable"
+  // browser row next to a fresh server read.
+  async function refreshEngineCard() {
+    renderBrowserEngineStatus();
+    renderEngineProfile();
+    await Promise.allSettled([loadSettings(), renderStockfishVersion()]);
   }
 
   // Resolves once the async Connections list has rendered too, so callers
@@ -572,18 +591,14 @@ export function createSettingsView({
     const themeSeg = document.getElementById("settings-theme-seg");
     if (themeSeg) {
       themeSeg.querySelectorAll(".seg-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          setPref("theme", btn.dataset.themeValue);
-          renderThemeControl();
-        });
+        btn.addEventListener("click", () => pickTheme(btn.dataset.themeValue));
       });
     }
+    // The hidden select is a second door to the same pref: apply it through the
+    // control's own pick (see pickTheme).
     const themeEl = document.getElementById("settings-theme");
     if (themeEl) {
-      themeEl.addEventListener("change", () => {
-        setPref("theme", themeEl.value);
-        renderThemeControl();
-      });
+      themeEl.addEventListener("change", () => pickTheme(themeEl.value));
     }
 
     document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
@@ -620,7 +635,7 @@ export function createSettingsView({
     });
 
     const refreshBtn = document.getElementById("settings-refresh");
-    if (refreshBtn) refreshBtn.addEventListener("click", () => loadSettings().catch(() => {}));
+    if (refreshBtn) refreshBtn.addEventListener("click", () => refreshEngineCard().catch(() => {}));
 
     const maiaRetryBtn = document.getElementById("settings-maia-retry");
     if (maiaRetryBtn) maiaRetryBtn.addEventListener("click", () => retryMaia3().catch(() => {}));
@@ -713,6 +728,7 @@ export function createSettingsView({
   return {
     bind,
     renderSettings,
+    refreshEngineCard,
     renderBrowserEngineStatus,
     renderMaia3Status,
     renderStrengthControls,

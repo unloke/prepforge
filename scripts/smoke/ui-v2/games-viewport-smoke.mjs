@@ -272,6 +272,24 @@ async function runViewport(vp) {
   const filtered = await page.locator("#replay-results .lr[data-index]").count();
   check(filtered === 1, `user-error filter should leave 1 row, got ${filtered}`);
 
+  // A page change starts at the top: a page left mid-scroll used to hand its
+  // offset to the next one (Settings is shorter than Games, so the browser
+  // clamped instead of resetting and the next header sat off-screen).
+  if (vp.width <= 760) {
+    await page.evaluate(() => window.scrollTo(0, 600));
+    const scrolled = await page.evaluate(() => window.scrollY);
+    if (scrolled > 0) {
+      await page.evaluate(() => document.querySelector('[data-view="settings"]').click());
+      await page.waitForTimeout(350);
+      await page.evaluate(() => document.querySelector('[data-testid="bottom-review"]').click());
+      await page.waitForTimeout(500);
+      const after = await page.evaluate(() => window.scrollY);
+      check(after === 0, `switching views should start at the page top, got scrollY=${after}`);
+      await page.evaluate(() => document.getElementById("lichess-compare-btn").click());
+      await page.waitForTimeout(900);
+    }
+  }
+
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
