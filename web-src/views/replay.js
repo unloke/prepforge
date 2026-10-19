@@ -200,6 +200,7 @@ export function createReplayView({
   onTrainMiss,
   onBuildReply,
   onAnalyze,
+  onRetry,
   onError = (error) => console.error(error),
 }) {
   // The focus board renders through app.js's FEN/piece-SVG helpers so it keeps
@@ -395,6 +396,21 @@ export function createReplayView({
     return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
   }
 
+  // The Check failed: the ledger could not be filled, so the page says what
+  // failed and offers the same action again. It used to fall back to the idle
+  // "No games checked yet" card, which reads as if nothing had been tried.
+  function renderReplayError(message) {
+    const container = document.getElementById("replay-results");
+    if (!container) return;
+    const summary = document.getElementById("replay-summary");
+    if (summary) {
+      summary.hidden = true;
+      summary.innerHTML = "";
+    }
+    container.innerHTML = html`<div class="empty-state big is-error" role="alert" data-testid="replay-error"><h3>Could not check your games</h3><p>${String(message || "Lichess did not respond.")}</p><div class="row"><button type="button" class="btn primary" data-retry-check>Try again</button></div></div>`;
+    container.querySelector?.("[data-retry-check]")?.addEventListener?.("click", () => onRetry());
+  }
+
   function renderReplayResults(payload) {
     const container = document.getElementById("replay-results");
     renderReplaySummary(payload);
@@ -465,6 +481,7 @@ export function createReplayView({
 
   return {
     renderReplayResults,
+    renderReplayError,
     renderLedgerSkeleton: replayLedgerSkeleton,
   };
 }

@@ -80,8 +80,11 @@ it("a failed Check clears the delayed progress status before showing the error",
   const body = source.slice(start, end);
   const catchBlock = body.slice(body.indexOf("} catch (error) {"));
   // "Fetching games from Lichess" is a routine status, shown on a 700ms timer;
-  // it must be cleared or it appears beneath the error a moment later.
-  expect(catchBlock).toContain("resetGamesResults();");
+  // it must be cleared or it appears beneath the error a moment later. The
+  // panel keeps its own error card (keepPanel), so the idle prompt cannot
+  // replace the failure the user just hit.
+  expect(catchBlock).toContain("resetGamesResults({ keepPanel: true });");
+  expect(catchBlock).toContain("renderReplayFailure(");
   expect(catchBlock.indexOf('setStatus("")')).toBeGreaterThan(-1);
   expect(catchBlock.indexOf('setStatus("")')).toBeLessThan(catchBlock.indexOf("setStatusError"));
 });

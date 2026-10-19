@@ -450,3 +450,34 @@ describe("replay empty states", () => {
     expect(markup).toContain("Show all");
   });
 });
+
+describe("replay failure state", () => {
+  let elements;
+  beforeEach(() => { elements = makeElements(); });
+  afterEach(() => { globalThis.document = undefined; });
+
+  it("says what failed and offers the same action again", () => {
+    makeView(elements);
+    const retries = [];
+    const view = createReplayView({
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => null,
+      isGameOpen: () => false,
+      onToggleFilter: () => {},
+      onToggleGame: () => {},
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+      onRetry: () => retries.push(true),
+    });
+    view.renderReplayError("Lichess is unreachable");
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Could not check your games");
+    expect(markup).toContain("Lichess is unreachable");
+    expect(markup).toContain("Try again");
+    // A failure is not the idle prompt: nothing may read "No games checked yet".
+    expect(markup).not.toContain("No games checked yet");
+    expect(elements["replay-summary"].hidden).toBe(true);
+    void retries;
+  });
+});

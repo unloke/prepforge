@@ -5585,13 +5585,12 @@ async function runLichessCompare() {
   } catch (error) {
     if (isCurrent()) {
       // The fetch painted skeleton rows; a failure must not leave the ledger
-      // pulsing forever. Drop back to the pre-check prompt; the notification
-      // carries the one error message.
-      resetGamesResults();
-      // A routine status line is shown on a 700ms delay; clear it (and its
-      // pending timer) so "Fetching games..." cannot appear under the error.
+      // pulsing forever. The panel says what failed and offers Check again;
+      // the notification carries the same one-line error.
+      resetGamesResults({ keepPanel: true });
       setStatus("");
-      setStatusError(error.message);
+      await renderReplayFailure(error.message);
+      if (isCurrent()) setStatusError(error.message);
     }
   } finally {
     if (appState.replayCheckToken === token) button.disabled = false;
@@ -5641,7 +5640,7 @@ function clearGamesResults() {
 // The visual/state half of clearing, without the check-token bump: a FAILED
 // Check must drop its skeleton too, but its own response is still the current
 // one, so the finally still has to re-enable the button.
-function resetGamesResults() {
+function resetGamesResults({ keepPanel = false } = {}) {
   appState.replayResults = null;
   appState.replayFilter = null;
   appState.replayOpen = new Set();
@@ -5652,7 +5651,7 @@ function resetGamesResults() {
     summary.innerHTML = "";
   }
   const results = document.getElementById("replay-results");
-  if (results) {
+  if (results && !keepPanel) {
     results.innerHTML =
       html`<div class="empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
   }
@@ -5969,6 +5968,7 @@ async function ensureReplayView() {
         rememberHandoff(gameHandoff(game, focus, "review-in-analyze"));
         return replayToAnalyze(game);
       },
+      onRetry: () => void runLichessCompare(),
     });
   }
   return replayView;
@@ -5983,6 +5983,11 @@ async function renderLedgerSkeleton(host) {
   if (!host) return;
   const view = await ensureReplayView();
   host.innerHTML = view.renderLedgerSkeleton();
+}
+
+async function renderReplayFailure(message) {
+  const view = await ensureReplayView();
+  view.renderReplayError(message);
 }
 
 // F-06: the Games→Train/Analyze handoff record — source game, the decision
