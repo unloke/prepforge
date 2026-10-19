@@ -897,9 +897,12 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
 
 // Games in the rendered report. The live fetch total lives in the toolbar
 // counter ("N games fetched"); the report label only changes when the report does.
-export function scoutAnalyzedLabel(analyzed) {
+// The report drops early resignations (see isEarlyResignCollapse) and any speed
+// outside the active filter, so the label names that gap when there is one.
+export function scoutAnalyzedLabel(analyzed, skipped = 0) {
   const a = Number(analyzed) || 0;
-  return `${a} game${a === 1 ? "" : "s"} analyzed`;
+  const s = Number(skipped) || 0;
+  return `${a} game${a === 1 ? "" : "s"} analyzed${s ? `, ${s} skipped` : ""}`;
 }
 
 export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "", usernames = [] } = {}) {
@@ -910,6 +913,12 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
       (s) =>
         html`<button type="button" class="scout-speed-chip speed${activeSpeed === s ? " is-on" : ""}" data-speed="${s}" aria-pressed="${activeSpeed === s}">${s.charAt(0).toUpperCase() + s.slice(1)} <small class="scout-speed-n">${profile.speedCounts[s]}</small></button>`,
     );
+  // The chips count the whole analysed history (so the other speeds stay reachable),
+  // while the analysed total and the colour tabs follow the active filter. "Skipped"
+  // is every fetched game the report leaves out: other speeds, plus the early
+  // resignations dropped from the analysis entirely.
+  const analyzed = activeSpeed === "all" ? profile.total : (profile.speedCounts[activeSpeed] || 0);
+  const skipped = profile.total - analyzed + (profile.skipped || 0);
   return html`
     <div class="prof-row">
       <div class="prof-id scout-profile-main">
@@ -917,7 +926,7 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
           // "self (2 accounts)" is a label, not a Lichess user: no profile link.
           ? html`<span class="prof-name" title="${usernames.join(", ")}">${username}</span>`
           : html`<a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>`}
-        <span class="scout-profile-games faint">${scoutAnalyzedLabel(profile.total)}</span>
+        <span class="scout-profile-games faint">${scoutAnalyzedLabel(analyzed, skipped)}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
         <button type="button" class="scout-speed-chip speed${activeSpeed === "all" ? " is-on" : ""}" data-speed="all" aria-pressed="${activeSpeed === "all"}">All</button>
@@ -1212,15 +1221,14 @@ function scoutWeaknessRowHtml(target, i, oppColor, baseline, opts = {}) {
 
 // How many of their games your repertoires follow move for move through the
 // first PREPARED_PLIES plies (or the whole game, if shorter). Best repertoire
-// per game.
+// per game. Counts the analysed set, like every other number in the section.
 export function scoutGameCoverage(games, oppColor, myLookups, scoutModule, { speedFilter = "all" } = {}) {
   const depth = scoutModule.PREPARED_PLIES || 8;
   if (typeof scoutModule.lineCoverage !== "function") return { games: 0, followed: 0 };
   let total = 0;
   let followed = 0;
-  for (const game of games || []) {
-    if (game.color !== oppColor || !game.ucis?.length) continue;
-    if (speedFilter !== "all" && game.speed !== speedFilter) continue;
+  for (const game of scoutModule.analyzedGames(games, oppColor, { speedFilter })) {
+    if (!game.ucis?.length) continue;
     total += 1;
     const need = Math.min(depth, game.ucis.length);
     const path = game.ucis.slice(0, need);
@@ -1367,6 +1375,9 @@ export function buildScoutSectionReport(
     // The total the section itself states, so the colour tab can quote the same
     // number instead of the raw per-colour total.
     gameCount: trie.gameCount,
+    // The section's own W/D/L, so anything quoting a colour (share text) reads the
+    // same set as the header instead of the all-speed profile stats.
+    colorWdl,
     // The selector's input, kept so the flagged path guard can run on exactly these lines.
     gamePlanSource,
     gradedLines: graded,
@@ -1478,12 +1489,13 @@ export function mergeEnginePatternsIntoSections(sections, engineByColor, { speed
 }
 
 export function buildScoutShareText({ username, profile, sections, activeSpeed }) {
-  const lines = [`# Scout: ${username}`, "", `${countOf(profile.total, "game")} · filter: ${activeSpeed}`, ""];
+  const analyzed = Object.values(sections || {}).reduce((n, s) => n + (s?.gameCount || 0), 0);
+  const lines = [`# Scout: ${username}`, "", `${countOf(analyzed, "game")} · filter: ${activeSpeed}`, ""];
   for (const color of ["white", "black"]) {
     const section = sections[color];
     if (!section) continue;
     const heading = color === "white" ? "With White" : "With Black";
-    const stats = profile.colorStats?.[color];
+    const stats = section.colorWdl;
     lines.push(`## ${heading}`);
     if (stats) {
       lines.push(`Overall: ${stats.scorePct}% (W${stats.w}/D${stats.d}/L${stats.l}, n=${stats.games})`);

@@ -344,6 +344,10 @@ describe("workspace chrome layout", () => {
     // Repertoire: one pane at a time under the board.
     expect(html).toContain('id="build-panes"');
     expect(phoneCss).toMatch(/\.phone-sheet \{ display: contents; \}/);
+    // The pill is absolute in the bar's free middle, so the arrows take the
+    // last two tracks explicitly; auto-placement would put Prev under the pill.
+    expect(phoneCss).toMatch(/:is\(#analysis-prev, #build-parent, #train-hint\) \{ order: 5; grid-column: -3 \/ -2; \}/);
+    expect(phoneCss).toMatch(/:is\(#analysis-next, #build-next, #train-skip\) \{ order: 6; grid-column: -2 \/ -1; \}/);
     expect(app).toContain("function wirePhoneSheets()");
   });
 

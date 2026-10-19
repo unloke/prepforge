@@ -263,6 +263,23 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).toMatch(/data-testid="dashboard-train-now">Train</);
   });
 
+  it("counts repertoires from the listing, so create and delete reach the Today counts", async () => {
+    const rep = (id) => ({ id, name: id, color: "white", is_active: true, health: null });
+    mockDashboard({ repertoires: 2 }, [rep("rep-1"), rep("rep-2")]);
+    await view.loadDashboard();
+    expect(String(todayCard.innerHTML)).toContain("<b>2</b> repertoires");
+
+    // Create / import / delete end in a listing refresh and never re-read
+    // /api/dashboard, so the count has to come from that listing.
+    api.mockResolvedValue({ repertoires: [rep("rep-1"), rep("rep-2"), rep("rep-3")] });
+    await view.loadDashboardRepertoires();
+    expect(String(todayCard.innerHTML)).toContain("<b>3</b> repertoires");
+
+    api.mockResolvedValue({ repertoires: [] });
+    await view.loadDashboardRepertoires();
+    expect(String(todayCard.innerHTML)).toContain("<b>0</b> repertoires");
+  });
+
   it("renders the signed-out Library as the onboarding card without any API call", () => {
     view.renderSignedOut();
     expect(api).not.toHaveBeenCalled();

@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -393,11 +393,20 @@ function paintTrainStartDisabled() {
   const mode = appState.trainMode || "smart";
   const blocked = mode === "smart" && appState.signedIn
     ? trainStartBlockReason(trainPreviewCache.nextSession, { hasActiveRepertoire: !!activeTrainRepertoires().length })
-    : "";
+    : mode === "all_lines" && appState.signedIn
+      ? rehearsalStartBlockReason(selectedTrainRepertoire())
+      : "";
   startBtn.disabled = !!blocked || trainStartDisabled({
     mode, signedIn: appState.signedIn, hasRepertoire: !!selectedTrainRepertoireId(),
   });
   startBtn.title = blocked;
+}
+
+// The listing row behind the picker's selection: its health counts the moves
+// line rehearsal walks.
+function selectedTrainRepertoire() {
+  const id = selectedTrainRepertoireId();
+  return (appState.repertoireList || []).find((rep) => String(rep.id) === String(id)) || null;
 }
 
 function trainSessionLive() {
@@ -539,7 +548,9 @@ async function startTraining(mode, options = {}) {
   clearBlitzTimer();
   setBlitzBarVisible(false);
   setSmartPanelsHidden();
-  const repertoireId = selectedTrainRepertoireId();
+  // A caller that names the repertoire (a deep link, a repertoire's own Train
+  // action) is the source of truth; otherwise Start follows the picker.
+  const repertoireId = options.repertoireId || selectedTrainRepertoireId();
   appState.trainingRepertoireId = repertoireId;
   // No unauthenticated demo in the SaaS model: training is always against one of the
   // user's own repertoires. Without one, prompt them to build first instead of
@@ -1854,7 +1865,10 @@ async function startSmartTraining(options = {}) {
     return;
   }
   if (!isCurrent()) return;
-  appState.trainingRepertoireId = payload.repertoire_id;
+  // The URL names the repertoire the queue drills; a mixed queue drills all of
+  // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
+  // into a Train link that is not about that repertoire.
+  appState.trainingRepertoireId = payload.mixed ? null : payload.repertoire_id;
   setTrainBanner(
     "runin",
     fresh ? "Building a new queue…" : "Building your queue…",

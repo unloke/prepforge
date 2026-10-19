@@ -123,10 +123,20 @@ async function runViewport(vp) {
       const phone = await page.evaluate(() => {
         const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
         const pill = document.getElementById("run-analysis").getBoundingClientRect();
+        // The pill floats in the bar's free middle; nothing may paint over a
+        // control, or the covered one can't be tapped.
+        const covered = ["analysis-prev", "analysis-next", "analysis-flip", "run-analysis"]
+          .filter((id) => {
+            const el = document.getElementById(id);
+            const r = el.getBoundingClientRect();
+            const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+            return !top || !(top === el || el.contains(top));
+          });
         return { inBar: pill.width > 0 && pill.top >= bar.top - 1 && pill.bottom <= bar.bottom + 1 && pill.left >= bar.left && pill.right <= bar.right,
-          lastGame: !!document.querySelector('#analyze-open [data-mirror="#fetch-my-game"]'), pill: pill.toJSON() };
+          lastGame: !!document.querySelector('#analyze-open [data-mirror="#fetch-my-game"]'), covered, pill: pill.toJSON() };
       });
-      check(phone.inBar && phone.lastGame, `${state}: Analyze must sit in the thumb bar and Last game in the sheet: ${JSON.stringify(phone)}`);
+      check(phone.inBar && phone.lastGame && phone.covered.length === 0,
+        `${state}: Analyze must sit in the thumb bar with every control tappable and Last game in the sheet: ${JSON.stringify(phone)}`);
       return phone.pill;
     }
     const layout = await page.evaluate(() => {

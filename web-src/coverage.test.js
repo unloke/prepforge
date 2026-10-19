@@ -56,7 +56,7 @@ describe("first-gap coverage", () => {
     expect(result.coverage).toBe(0.75);
     expect(result.gapMass).toBe(0.25);
     expect(result.gaps[0]).toMatchObject({ moveSan: "e6", kind: "missing_branch", pathSans: ["e4"] });
-    expect(result.status).toBe("complete");
+    expect(result.status).toBeUndefined();
     mass(result);
   });
   it("detects a stored opponent move without an own reply", async () => {
@@ -143,7 +143,6 @@ describe("first-gap coverage", () => {
       const result = await scan(nodes, { maxDepth: 5, ...opts });
       expect(result.coverage).toBe(0);
       expect(result.unknownMass).toBe(0.75);
-      expect(result.status).toBe("partial");
       mass(result);
     }
   });

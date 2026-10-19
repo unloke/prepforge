@@ -17,6 +17,7 @@ import {
   legalScoutLineSans,
   refutationA11ySummary,
   renderScoutProfile,
+  scoutAnalyzedLabel,
   restoreScoutExpanded,
   scoutLineDetailHtml,
   scoutRouteReasonText,
@@ -1364,5 +1365,66 @@ describe("scout engine panel move numbering", () => {
     );
     expect(String(html)).toContain("42 cp");
     expect(String(html)).not.toContain("first slip");
+  });
+});
+
+// The tab, the section heading and the section's W/D/L used to count different
+// sets: the trie drops early-resign collapses (and honours the speed filter) while
+// the W/D/L counted every game of that colour, so "201 games" sat above a W/D/L
+// summing to 203. Every count now reads analyzedGames().
+describe("scout counts all read the analysed set", () => {
+  const withClock = (game, clockSeconds) =>
+    scoutGameRecord({
+      ...game,
+      totalPly: game.ucis.length,
+      timeControl: { baseSeconds: 300, incrementSeconds: 0 },
+      clockAfterPly: game.ucis.map(() => clockSeconds),
+      status: "resign",
+    });
+  // Two ordinary wins, plus a short loss resigned with most of the clock left.
+  const games = [
+    ...Array.from({ length: 2 }, (_, i) =>
+      withClock(
+        { color: "white", score: 1, sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], speed: "blitz", datestamp: 4000 - i, gameId: `win-${i}` },
+        5,
+      ),
+    ),
+    withClock(
+      { color: "white", score: 0, sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], speed: "blitz", datestamp: 2000, gameId: "collapse" },
+      280,
+    ),
+  ];
+
+  it("drops the early-resign collapse from the W/D/L, the trie and the profile", () => {
+    expect(scoutModule.analyzedGames(games, "white")).toHaveLength(2);
+    expect(scoutModule.opponentColorStats(games, "white").games).toBe(2);
+    expect(scoutModule.opponentProfile(games).total).toBe(2);
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      { games, profile: scoutModule.opponentProfile(games) },
+      "white",
+      [],
+      { speedFilter: "all" },
+    );
+    expect(sectionData.gameCount).toBe(2);
+    expect(sectionData.colorWdl.games).toBe(sectionData.gameCount);
+    expect(sectionData.colorWdl.w + sectionData.colorWdl.d + sectionData.colorWdl.l).toBe(2);
+  });
+
+  it("keeps the collapse when it is a real game (clock run down)", () => {
+    const realLoss = withClock(
+      { color: "white", score: 0, sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], speed: "blitz", datestamp: 1000, gameId: "real" },
+      5,
+    );
+    expect(scoutModule.analyzedGames([...games, realLoss], "white")).toHaveLength(3);
+  });
+
+  it("labels every fetched game the report leaves out", () => {
+    const profile = { total: 30, skipped: 2, speedCounts: { blitz: 12 } };
+    expect(scoutAnalyzedLabel(30)).toBe("30 games analyzed");
+    expect(String(renderScoutProfile(profile, "rival", "all"))).toContain("30 games analyzed, 2 skipped");
+    expect(String(renderScoutProfile(profile, "rival", "blitz"))).toContain("12 games analyzed, 20 skipped");
+    // The chips still count the whole history, so the other speeds stay reachable.
+    expect(String(renderScoutProfile(profile, "rival", "blitz"))).toContain('data-speed="blitz"');
   });
 });

@@ -1,7 +1,7 @@
 // The Train panel's Start button: when it must be dead, and why.
 import { describe, expect, it } from "vitest";
 
-import { trainStartBlockReason, trainStartDisabled } from "./train-start.js";
+import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "./train-start.js";
 
 describe("trainStartDisabled", () => {
   it("keeps a guest's Line rehearsal Start clickable so the click reaches the sign-in gate", () => {
@@ -40,5 +40,20 @@ describe("trainStartBlockReason (smart queue)", () => {
   it("stays silent when the preview never arrived (offline, cache cleared)", () => {
     expect(trainStartBlockReason(null, { hasActiveRepertoire: false })).toBe("");
     expect(trainStartBlockReason(undefined, { hasActiveRepertoire: true })).toBe("");
+  });
+});
+
+describe("rehearsalStartBlockReason (line rehearsal)", () => {
+  it("names the missing lines when the picked repertoire has no moves to walk", () => {
+    expect(rehearsalStartBlockReason({ health: { trainable: 0 } })).toBe("No moves to train. Add lines in Repertoire.");
+  });
+
+  it("stays silent once the repertoire has a trainable move", () => {
+    expect(rehearsalStartBlockReason({ health: { trainable: 1 } })).toBe("");
+  });
+
+  it("stays silent when health was never computed, and with no pick", () => {
+    expect(rehearsalStartBlockReason({ health: null })).toBe("");
+    expect(rehearsalStartBlockReason(null)).toBe("");
   });
 });

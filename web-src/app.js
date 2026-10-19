@@ -1467,7 +1467,10 @@ async function restoreWorkspaceLocation() {
     await showAnalysisPly(loc.ply);
   }
   if (loc.view === "train" && appState.signedIn) {
-    await startTraining(appState.trainMode, { fresh: false });
+    // The URL's repertoire is the queue's. A Train link that names one (the
+    // one the Library/Repertoire Train action leaves behind) drills that
+    // repertoire; no ?rep= means the mixed queue over all active ones.
+    await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
 }
 
@@ -6776,6 +6779,8 @@ function bindEvents() {
     trainSelect.addEventListener("change", () => {
       const value = trainSelect.value;
       appState.trainingRepertoireId = value && value !== "__demo__" ? value : null;
+      // The new pick may have nothing to rehearse: Start follows the pick.
+      syncTrainPickerVisibility();
     });
   }
 

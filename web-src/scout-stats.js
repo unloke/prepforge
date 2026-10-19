@@ -1,7 +1,7 @@
 // Scout v2 — pure PGN-derived statistics (no engine, no explorer).
 // Games are newest-first from Lichess export; chronological helpers reverse for trends.
 
-import { SLIP_MIN_GAMES, scoutLineText, wilsonScorePct } from "./scout.js";
+import { SLIP_MIN_GAMES, analyzedGames, scoutLineText, wilsonScorePct } from "./scout.js";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -850,7 +850,7 @@ export function repertoireFreshness(
 }
 
 export function lineLastSeen(games, pathUcis, { color = null, speedFilter = "all" } = {}) {
-  const filtered = filterGames(games, { color, speedFilter });
+  const filtered = analyzedGames(games, color, { speedFilter });
   let newest = 0;
   let count = 0;
   for (const game of filtered) {
@@ -1015,17 +1015,19 @@ export function personaTags(games, color, { speedFilter = "all" } = {}) {
 }
 
 export function buildScoutStats(games, { color, speedFilter = "all" } = {}) {
+  // Same analysed set as the section header and the colour tab.
+  const analyzed = analyzedGames(games, color, { speedFilter });
   return {
     oppColor: color,
-    scoreByFamily: scoreByFamily(games, color, { speedFilter }),
-    activitySeries: activitySeries(games, { color, speedFilter }),
-    predictability: predictability(games, color, { speedFilter }),
-    petLineConcentration: petLineConcentration(games, color, { speedFilter }),
-    repertoireBreadth: repertoireBreadth(games, color, { speedFilter }),
-    repertoireFreshness: repertoireFreshness(games, color, { speedFilter }),
-    repertoireChangeTrend: repertoireChangeTrend(games, color, { speedFilter }),
-    personaTags: personaTags(games, color, { speedFilter }),
-    firstChoices: firstChoices(games, color, { speedFilter }),
-    openingBranches: openingBranches(games, color, { speedFilter }),
+    scoreByFamily: scoreByFamily(analyzed, color, { speedFilter }),
+    activitySeries: activitySeries(analyzed, { color, speedFilter }),
+    predictability: predictability(analyzed, color, { speedFilter }),
+    petLineConcentration: petLineConcentration(analyzed, color, { speedFilter }),
+    repertoireBreadth: repertoireBreadth(analyzed, color, { speedFilter }),
+    repertoireFreshness: repertoireFreshness(analyzed, color, { speedFilter }),
+    repertoireChangeTrend: repertoireChangeTrend(analyzed, color, { speedFilter }),
+    personaTags: personaTags(analyzed, color, { speedFilter }),
+    firstChoices: firstChoices(analyzed, color, { speedFilter }),
+    openingBranches: openingBranches(analyzed, color, { speedFilter }),
   };
 }

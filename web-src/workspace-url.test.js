@@ -122,6 +122,30 @@ describe("workspace URL codec", () => {
     ).toEqual({ view: "build", replaySection: null, repertoireId: "r2", ply: null });
   });
 
+  it("names the repertoire Train's queue drills, never the one Build has open", () => {
+    // Build's open repertoire is not what Train is set to; writing it here made a
+    // plain Train link claim a repertoire the queue was not training.
+    expect(
+      workspaceLocationFromState({ currentView: "train", build: { repertoire_id: "r9" } }),
+    ).toEqual({ view: "train", replaySection: null, repertoireId: null, ply: null });
+    // A mixed queue drills every active repertoire, so it names none.
+    expect(
+      workspaceLocationFromState({
+        currentView: "train",
+        build: { repertoire_id: "r9" },
+        smart: { mixed: true, repertoireId: "r9" },
+      }).repertoireId,
+    ).toBeNull();
+    expect(
+      workspaceLocationFromState({ currentView: "train", smart: { mixed: false, repertoireId: "r2" } })
+        .repertoireId,
+    ).toBe("r2");
+    expect(
+      workspaceLocationFromState({ currentView: "train", training: { repertoire_id: "r3" } })
+        .repertoireId,
+    ).toBe("r3");
+  });
+
   it("does not leak ?rep= into views that don't use a repertoire", () => {
     for (const currentView of ["dashboard", "teams", "settings", "replay"]) {
       const loc = workspaceLocationFromState({ currentView, build: { repertoire_id: "r9" } });

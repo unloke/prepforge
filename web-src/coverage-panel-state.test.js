@@ -164,6 +164,14 @@ describe("Coverage scan progress", () => {
     expect(init.message).toBe("Starting Maia engine");
   });
 
+  it("reports the prepared share without a status suffix", async () => {
+    const h = harness();
+    await h.controller.scan();
+    expect(h.gaps.innerHTML).toContain("prepared");
+    expect(h.gaps.innerHTML).not.toContain("partial");
+    expect(h.job.completeJob.mock.calls[0][0].message).toBe("0.0% prepared");
+  });
+
   it("stops reporting init steps once the scan has finished", async () => {
     const subscribers = [];
     const provider = {

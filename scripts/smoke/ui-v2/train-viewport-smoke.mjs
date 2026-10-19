@@ -30,6 +30,7 @@ const api = (path) => {
     return { repertoires: [
       { id: "rep-1", name: "Caro-Kann: Advance", color: "black", is_active: true, health: { trainable: 10, mastered: 3, weak: 2, due: 4, learning: 1, untrained: 0, mastery_pct: 30 } },
       { id: "rep-2", name: "London System", color: "white", is_active: true, health: { trainable: 8, mastered: 5, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 62 } },
+      { id: "rep-empty", name: "Just started", color: "black", is_active: true, health: { trainable: 0, mastered: 0, weak: 0, due: 0, learning: 0, untrained: 0, mastery_pct: 0 } },
     ], shared: [] };
   }
   if (path.startsWith("/api/dashboard")) return { games: 0, repertoires: 2, training_sessions: 0, open_mistakes: 0, due_reviews: 5, due_soon: 1, streak: { current: 3, best: 9, trained_today: false }, recap: {}, recommendations: [] };
@@ -120,7 +121,35 @@ async function runViewport(vp) {
   // picker is hidden by design (the queue mixes all repertoires); assert the data
   // landed by reading the select's options regardless of visibility.
   const repOptions = await page.locator("#train-repertoire-select option").count();
-  check(repOptions === 2, `repertoire picker should have 2 options loaded, got ${repOptions}`);
+  check(repOptions === 3, `repertoire picker should have 3 options loaded, got ${repOptions}`);
+
+  // Line rehearsal's Start must follow the pick: dead on a repertoire with no
+  // moves to walk, live again on one with moves.
+  await page.evaluate(() => document.querySelector('#train-modes .train-mode[data-mode="all_lines"]').click());
+  await page.waitForTimeout(300);
+  const startState = () => page.evaluate(() => {
+    const b = document.getElementById("start-train");
+    return { disabled: b.disabled, title: b.title };
+  });
+  check((await startState()).disabled === false, "rehearsal Start should be live for a repertoire with moves");
+  await page.evaluate(() => {
+    const sel = document.getElementById("train-repertoire-select");
+    sel.value = "rep-empty";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(300);
+  const emptyStart = await startState();
+  check(emptyStart.disabled === true, "rehearsal Start should be dead when the repertoire has no moves");
+  check(/No moves to train/.test(emptyStart.title), `rehearsal Start should say why, got "${emptyStart.title}"`);
+  await page.evaluate(() => {
+    const sel = document.getElementById("train-repertoire-select");
+    sel.value = "rep-1";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(300);
+  check((await startState()).disabled === false, "rehearsal Start should come back with a trainable repertoire");
+  await page.evaluate(() => document.querySelector('#train-modes .train-mode[data-mode="smart"]').click());
+  await page.waitForTimeout(300);
 
   // Mode switch to Practice game works (and back). The rail overlay collapses on
   // mouse-out, so use the keyboard path users have: focus the tab, press Enter.
