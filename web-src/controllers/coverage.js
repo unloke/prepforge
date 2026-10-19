@@ -4,6 +4,13 @@ import { coverageTreeKey, runCoverageScan } from "../coverage.js";
 import { localBoardAfterMove } from "../chess-local.js";
 import { maiaInitMessage } from "../maia-init-notice.js";
 
+// A share that rounds to nothing but is not nothing reads "<0.1%": a real
+// 0.05% remainder printed as "0.0%" made the summary look like it did not add up.
+function formatMass(value) {
+  if (value > 0 && value < 0.05) return "<0.1%";
+  return `${value.toFixed(1)}%`;
+}
+
 // Scope, horizon and Scan live in the inspector header row (like Explorer's
 // database switch; app.js wires them); the panel body only shows the scan
 // state and its gaps. The controls are the source of truth for scope/horizon.
@@ -21,7 +28,7 @@ export function createCoverageController({
   const maxDepth = () => Number(document.getElementById("coverage-depth")?.value) || 16;
   const host = () => document.getElementById("coverage-gaps");
   // A rare but real gap reads "<0.1%", never a misleading "0.0%".
-  const pct = (n) => (n > 0 && n < 0.0005 ? "<0.1%" : `${(n * 100).toFixed(1)}%`);
+  const pct = (n) => formatMass(n * 100);
 
   function previewGap(gap) {
     const board = getBoard();
@@ -68,12 +75,55 @@ export function createCoverageController({
     paint();
     sync();
   }
+  // The summary is ONE breakdown of the same mass, and its figures are printed
+  // to a tenth: whatever a share's own rounding leaves over goes to the next
+  // one, so the printed prepared + missing + unchecked is never over 100%.
+  // A share that rounds to nothing is not printed as "0.0%" (with a 1.2% gap
+  // the page read "0.0% prepared / 100.0% missing / <0.1% unchecked"): the
+  // least significant remainder reads "<0.1%", and a figure that is exactly
+  // zero says so without a tenth.
+  function shares() {
+    const tenths = (mass) => Math.round(mass * 1000);
+    const hasUnknown = result.unknownMass > 0;
+    const preparedTenths = tenths(result.coveredMass);
+    // Unchecked keeps at least a tenth of the scale when there is any of it,
+    // and missing takes what the other two leave (never more than its own
+    // rounded share). With prepared at 0.0% the remainder goes to a share that
+    // is actually printed as a number: "<0.1% covered / 99.9% missing /
+    // <0.1% unchecked" left the reader adding up the wrong pair.
+    const uncheckedTenths = hasUnknown ? Math.max(1, tenths(result.unknownMass)) : 0;
+    const missingTenths = hasUnknown
+      ? Math.min(tenths(result.gapMass), Math.max(0, 1000 - preparedTenths - uncheckedTenths))
+      : tenths(result.gapMass);
+    const figure = (value) => (value > 0 && value < 1 ? "<0.1%" : `${value.toFixed(1)}%`);
+    return {
+      prepared: figure(preparedTenths / 10),
+      missing: figure(missingTenths / 10),
+      unchecked: hasUnknown ? figure(uncheckedTenths / 10) : "",
+      aria: hasUnknown
+        ? `${figure(preparedTenths / 10)} prepared, ${figure(missingTenths / 10)} missing, ${figure(uncheckedTenths / 10)} unchecked`
+        : `${figure(preparedTenths / 10)} prepared, ${figure(missingTenths / 10)} missing`,
+    };
+  }
+  // What the gaps are, in the same words the rows use: the number on the tab
+  // is their total.
+  function gapKinds() {
+    const missingReply = result.gaps.filter((g) => g.kind === "missing_reply").length;
+    const missingBranch = result.gaps.length - missingReply;
+    const parts = [];
+    if (missingReply) parts.push(countOf(missingReply, "missing reply", "missing replies"));
+    if (missingBranch) parts.push(countOf(missingBranch, "missing branch", "missing branches"));
+    if (result.omittedGapCount) parts.push(`${result.omittedGapCount} not listed`);
+    return parts.join(" · ");
+  }
   function summary() {
     const status = result.scannedNodes ? countOf(result.scannedNodes, "position") : "No opponent positions";
-    return html`<div class="coverage-summary" aria-live="polite"><div><b>${pct(result.coveredMass)} prepared</b><span>${status}</span></div>
-      <div class="coverage-mass" role="img" aria-label="${pct(result.coveredMass)} prepared, ${pct(result.gapMass)} missing, ${pct(result.unknownMass)} unchecked">
-        <i class="is-covered" style="width:${result.coveredMass * 100}%"></i><i class="is-gap" style="width:${result.gapMass * 100}%"></i><i class="is-unknown" style="width:${result.unknownMass * 100}%"></i></div>
-      <div class="coverage-totals"><span>${pct(result.gapMass)} missing</span><span>${pct(result.unknownMass)} unchecked</span></div></div>`;
+    const s = shares();
+    const unchecked = s.unchecked ? html`<span>${s.unchecked} unchecked</span>` : "";
+    return html`<div class="coverage-summary" aria-live="polite"><div><b>${s.prepared} prepared</b><span>${status}</span></div>
+      <div class="coverage-mass" role="img" aria-label="${s.aria}"><i class="is-covered" style="width:${result.coveredMass * 100}%"></i><i class="is-gap" style="width:${result.gapMass * 100}%"></i><i class="is-unknown" style="width:${result.unknownMass * 100}%"></i></div>
+      <div class="coverage-totals"><span>${s.missing} missing</span>${unchecked}</div>
+      ${result.totalGapCount ? html`<div class="coverage-kinds">${gapKinds()}</div>` : ""}</div>`;
   }
   function gapRows(readOnly) {
     let markup = readOnly ? "" : html`<div class="coverage-complete-bar"><label class="coverage-selall"><input type="checkbox" id="coverage-selectall" />Select all</label><button type="button" class="btn primary" id="coverage-complete" data-testid="coverage-complete" disabled>Preview replies</button></div>`;
@@ -84,7 +134,6 @@ export function createCoverageController({
       return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}">${check}
         <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${path}</span><span class="coverage-gap-line"><b class="coverage-gap-move">${gap.moveSan}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
     })}`;
-    if (result.omittedGapCount) markup = html`${markup}<div class="coverage-live">${result.omittedGapCount} more gaps</div>`;
     return markup;
   }
   // Before the first position the only thing to report is the Maia cold init
@@ -98,7 +147,17 @@ export function createCoverageController({
     const el = host();
     if (!el) return;
     const badge = document.getElementById("build-coverage-count");
-    if (badge) { badge.hidden = !result || stale || !result.totalGapCount; badge.textContent = String(result?.totalGapCount || 0); }
+    if (badge) {
+      // The tab's count is what is left to prepare: the gaps the last scan
+      // found, which the one line above them spells out ("2 missing replies ·
+      // 1 missing branch") so a bare number never stands alone.
+      const n = result && !stale ? result.totalGapCount || 0 : 0;
+      badge.hidden = !n;
+      badge.textContent = String(n);
+      const text = n ? `${countOf(n, "gap")} from the last scan` : "";
+      badge.title = text;
+      badge.setAttribute("aria-label", text);
+    }
     const c = getContext();
     let body = "";
     if (!c.build) body = "";

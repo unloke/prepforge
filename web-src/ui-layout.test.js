@@ -174,6 +174,31 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(
       /transition:\s*opacity\s+var\(--dur[^)]*\)\s+var\(--[^)]*\)\s+\d+ms/,
     );
+    // Stale rows alone were easy to read as the current position's: a moving
+    // bar on the dock says the list is still the previous position's.
+    expect(css).toMatch(
+      /\.dock[^{]*:has\(#explorer-drawer:not\(\[hidden\]\) #explorer-rows\.is-stale\)::after/,
+    );
+    expect(css).toContain("@keyframes dock-loading");
+    const reduced = css.slice(css.indexOf("@keyframes dock-loading"));
+    expect(reduced.slice(0, 600)).toMatch(/prefers-reduced-motion[\s\S]{0,200}animation:\s*none/);
+  });
+
+  it("lines the phone Repertoire header up and gives the board its top gap", () => {
+    const phone = phoneCss;
+    const header = phone.slice(phone.indexOf("  #build-rep-header {"));
+    const rule = header.slice(0, header.indexOf("\n  }"));
+    // Flow layout with centered lines: a grid centered the 44px back button
+    // across both rows while the title sat on the first one, ~9px apart.
+    expect(rule).not.toMatch(/display:\s*grid/);
+    expect(rule).toMatch(/display:\s*flex/);
+    expect(rule).toMatch(/align-content:\s*center/);
+    // The header is the board's top neighbour on a phone: it owns the gap.
+    expect(rule).toMatch(/margin:\s*0 0 12px/);
+    // The save chip lives beside the inspector tools here, not in the far-off
+    // board bar.
+    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
+    expect(phone).toMatch(/#build-inspector \.build-sync \{/);
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
@@ -251,7 +276,12 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    expect(ruleBody(".dock")).toMatch(/flex:\s*0 0 clamp\(210px,\s*40%,\s*330px\)/);
+    // The inspector takes the height the tree does not need, so a short
+    // repertoire leaves no dead space above it and the Explorer rows are not
+    // boxed into their own scrollbar; a fixed 40% share did both.
+    expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
+    expect(ruleBody(".dock")).toMatch(/height:\s*clamp\(210px,\s*40%,\s*330px\)/);
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 0 auto/);
   });
 
   it("composes Analyze as one panel: game head, coach card, results, drawers", () => {

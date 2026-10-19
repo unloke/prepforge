@@ -118,6 +118,26 @@ describe("create dialogs hold a pending state while the request runs", () => {
     await expect(show).resolves.toMatchObject({ name: "Najdorf" });
   });
 
+  it("dismisses the overlay at once when the caller opens its own view", async () => {
+    const h = modalHarness();
+    let release;
+    const request = new Promise((resolve) => { release = resolve; });
+    const show = h.showInputModal({
+      title: "New repertoire",
+      okLabel: "Create",
+      dismissOnSubmit: true,
+      fields: [{ name: "name" }],
+      onSubmit: async (_values, close) => { await request; close({ created: true }); },
+    });
+    await flush();
+    h.okBtn.fire("click");
+    // The optimistic Build view is already visible: the form must not stay on
+    // top of it while the request runs.
+    expect(h.overlay.parent.children).not.toContain(h.overlay);
+    release();
+    await expect(show).resolves.toEqual({ created: true });
+  });
+
   it("a failed submit re-enables the form instead of closing it", async () => {
     const h = modalHarness();
     const show = h.showInputModal({
@@ -236,6 +256,16 @@ describe("New team behaves like New repertoire", () => {
 });
 
 describe("createRepertoirePrompt opens the new repertoire optimistically", () => {
+  it("dismisses the create form on submit and always settles the promise", () => {
+    const slice = source.slice(
+      source.indexOf("async function createRepertoirePrompt("),
+      source.indexOf("// A local-only placeholder"),
+    );
+    expect(slice).toMatch(/dismissOnSubmit: true/);
+    expect(slice).toMatch(/close\(payload\)/);
+    expect(slice).toMatch(/close\(null\)/);
+  });
+
   function repHarness(create) {
     const appState = {
       build: null, buildNodeById: new Map(), buildCurrentNodeId: null,
