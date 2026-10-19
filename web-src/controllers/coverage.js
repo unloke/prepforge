@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { countOf } from "../plural.js";
 import { coverageTreeKey, runCoverageScan } from "../coverage.js";
 import { localBoardAfterMove } from "../chess-local.js";
 import { maiaInitMessage } from "../maia-init-notice.js";
@@ -68,7 +69,7 @@ export function createCoverageController({
     sync();
   }
   function summary() {
-    const status = result.scannedNodes ? `${result.scannedNodes} positions` : "No opponent positions";
+    const status = result.scannedNodes ? countOf(result.scannedNodes, "position") : "No opponent positions";
     return html`<div class="coverage-summary" aria-live="polite"><div><b>${pct(result.coveredMass)} prepared</b><span>${status}</span></div>
       <div class="coverage-mass" role="img" aria-label="${pct(result.coveredMass)} prepared, ${pct(result.gapMass)} missing, ${pct(result.unknownMass)} unchecked">
         <i class="is-covered" style="width:${result.coveredMass * 100}%"></i><i class="is-gap" style="width:${result.gapMass * 100}%"></i><i class="is-unknown" style="width:${result.unknownMass * 100}%"></i></div>
@@ -91,7 +92,7 @@ export function createCoverageController({
   // panel at "0 positions" with no explanation.
   function liveText() {
     if (!active) return "";
-    return active.init ? maiaInitMessage(active.init) : `Scanning · ${active.scanned} positions`;
+    return active.init ? maiaInitMessage(active.init) : `Scanning · ${countOf(active.scanned, "position")}`;
   }
   function paint() {
     const el = host();
@@ -177,7 +178,7 @@ export function createCoverageController({
           if (active !== run) return;
           run.scanned = scanned;
           run.init = null;
-          job.updateJob({ phase: "scan", current: scanned, total: 0, message: `${scanned} positions` });
+          job.updateJob({ phase: "scan", current: scanned, total: 0, message: countOf(scanned, "position") });
           paint();
         } });
       if (active !== run || run.key !== key()) { job.cancelJob("Scan discarded"); return; }

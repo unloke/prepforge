@@ -5407,7 +5407,7 @@ async function runLichessCompare() {
           : payload.username;
     setStatus(
       queued > 0
-        ? `Fetched ${payload.count} games · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
+        ? `Fetched ${countOf(payload.count, "game")} · ${queued} forgotten move${queued === 1 ? "" : "s"} added to training`
         : `Fetched ${countOf(payload.count, "game")} for ${sourceLabel}`
     );
   } catch (error) {
