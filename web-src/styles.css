@@ -3357,17 +3357,23 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .un-row {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 2px 0;
   font-size: var(--fs);
 }
+/* The kind leads the row; the repertoire and its line follow it as one run of
+   text, so a short repertoire name does not open a hole in a fixed column. */
 .un-row .kchip { justify-self: start; }
+.un-what { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
 /* A card with no line of its own says so in words, not in the move face. */
 .un-line.is-plain { font-family: inherit; }
+/* The queue's kind chips are read at a glance mid-session, so they sit at the
+   panel's body size rather than the app's smallest step. */
+#view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
 
 /* The result card arrives when the session ends: one rise, once. */
 #train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }

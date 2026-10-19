@@ -211,13 +211,15 @@ export function createTrainView({
           // a recall test.
           // The card for a line's very first move asks about the starting
           // position: its path is empty, so name it instead of leaving the row
-          // blank next to the rows that do carry a line.
+          // blank next to the rows that do carry a line. "Start" was the
+          // button's word sitting in a row that has no button; this says which
+          // position the card is about.
           const line = lineTail(card.targets?.[0]?.line);
           const tail = line
             ? html`<span class="un-line">${line}</span>`
-            : html`<span class="un-line is-plain">Start</span>`;
+            : html`<span class="un-line is-plain">First move</span>`;
           return (
-            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</div>`
+            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-what"><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</span></div>`
           );
         })}`;
     // The rows arrive one by one, with the app's shared stagger.

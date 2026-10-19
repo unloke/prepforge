@@ -32,6 +32,7 @@ it("the panel's own labels, counters and rows are at the body size", () => {
     /\.tsum-row \{[^}]*font-size: var\(--fs\)/,
     /#view-train \.tcard p,\n#view-train \.note \{ font-size: var\(--fs\); \}/,
     /#view-train \.seg-btn \{[^}]*font-size: var\(--fs\)/,
+    /#view-train \.kchip \{[^}]*font-size: var\(--fs\)/,
   ]) at(pattern);
 });
 
