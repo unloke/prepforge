@@ -74,9 +74,11 @@
   font-size: var(--fs-s);
   font-weight: 600;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .speed small { color: var(--label); font-weight: 500; }
 .speed:hover { border-color: var(--line-strong); }
+.speed:active { transform: scale(0.96); }
 .speed.is-on { background: var(--text); border-color: var(--text); color: var(--panel); }
 .speed.is-on small { color: inherit; opacity: 0.7; }
 .speed:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -125,9 +127,11 @@
   font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .scout-color-tab small { font-weight: 500; font-variant-numeric: tabular-nums; }
-.scout-color-tab:hover { color: var(--text); }
+.scout-color-tab:hover { color: var(--text); background: var(--surface-3); }
+.scout-color-tab:active { transform: scale(0.98); }
 .scout-color-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .scout-color-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .scout-color-dot {
@@ -225,9 +229,11 @@
   border-radius: 6px;
   background: var(--panel);
   font-size: var(--fs-s);
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .fm[data-first-uci] { cursor: pointer; }
 .fm[data-first-uci]:hover { background: var(--surface-3); }
+.fm[data-first-uci]:active { transform: scale(0.99); }
 .fm:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fm .share { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .fm .share i { display: block; height: 100%; background: var(--label); }
@@ -335,8 +341,10 @@
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .scout-add-icon:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.scout-add-icon:active { transform: scale(0.94); }
 .scout-add-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .scout-ranked-note { margin: 0; font-size: var(--fs-s); }
 .scout-refutation-card {
@@ -531,6 +539,8 @@
   .scout-side .actions .btn { min-height: 44px; }
   .prof-row .btn { min-height: 44px; }
   .scout-source-warnings .btn { margin-left: 0; min-height: 44px; width: 100%; }
+  /* A first-move row is the drilldown: a thumb needs the whole row, not 27px. */
+  .fm { min-height: 44px; }
 }
 .cov[hidden] { display: none; }
 

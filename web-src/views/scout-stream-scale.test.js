@@ -139,3 +139,15 @@ describe("scout error state", () => {
     expect(css).toMatch(/\.scout-error-body \{[^}]*max-width: 70ch/);
   });
 });
+
+describe("scout phone controls", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+
+  it("gives a first-move row a thumb-sized target and every control press feedback", () => {
+    const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+    expect(phone).toMatch(/\.fm \{ min-height: 44px; \}/);
+    expect(css).toMatch(/\.fm\[data-first-uci\]:active \{ transform: scale/);
+    expect(css).toMatch(/\.scout-add-icon:active \{ transform: scale/);
+    expect(css).toMatch(/\.scout-color-tab:active \{ transform: scale/);
+  });
+});
