@@ -439,11 +439,11 @@ export function gradeByMaia(features, maia) {
 // Upgrade a feature vector to Brilliant in place once the Maia check confirms it.
 export function markBrilliant(features, maia) {
   features.maia = maia || null;
-  features.classification = { code: "brilliant", label: "Brilliant", glyph: "!!", tone: "brilliant" };
+  features.classification = { code: "brilliant", label: "Brilliant", tone: "brilliant" };
   return features;
 }
 
-export const GREAT_CLASSIFICATION = Object.freeze({ code: "great", label: "Great move", glyph: "!", tone: "good" });
+export const GREAT_CLASSIFICATION = Object.freeze({ code: "great", label: "Great move", tone: "good" });
 
 export function markGreat(features, maia) {
   features.maia = maia || features.maia || null;
@@ -459,22 +459,22 @@ export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, fo
   // must come first: a forced move is "best" by default (it's the only line the engine has)
   // and would otherwise be mislabelled "Great move / the only move you found".
   if (forced) {
-    return { code: "forced", label: "Forced", glyph: "□", tone: "info" };
+    return { code: "forced", label: "Forced", tone: "info" };
   }
   // An only move alone is not Great: like the server, Great needs the Maia read (a hard or
   // critical find, see gradeByMaia) and the shared sanity gates, so an obvious recapture
   // that happens to be the only move stays Best.
   if (isBest || winDelta <= EXCELLENT_MAX_LOSS) {
-    return { code: "best", label: "Best move", glyph: "✓", tone: "good" };
+    return { code: "best", label: "Best move", tone: "good" };
   }
-  if (winDelta <= GOOD_MAX_LOSS) return { code: "good", label: "Good move", glyph: "✓", tone: "good" };
+  if (winDelta <= GOOD_MAX_LOSS) return { code: "good", label: "Good move", tone: "good" };
   // Error tiers mirror Lichess's judgment cutoffs so the Coach flags real errors as
   // firmly as the tool users compare against, and so this and the server classifier
   // (services/classification.py, on the 0..1 scale) agree on the same move. Lichess
   // judges on winningChances (range -1..1) at {inaccuracy .1, mistake .2, blunder .3};
   // win% = 50 + 50·winningChances, so those are win% losses of 5 / 10 / 15. (Mistake was
   // ≤20 and blunder >20 here — laxer than Lichess, so ~15-pt slips read as mere mistakes.)
-  if (winDelta <= INACCURACY_MAX_LOSS) return { code: "inaccuracy", label: "Inaccuracy", glyph: "?!", tone: "warn" };
-  if (winDelta <= MISTAKE_MAX_LOSS) return { code: "mistake", label: "Mistake", glyph: "?", tone: "warn" };
-  return { code: "blunder", label: "Blunder", glyph: "??", tone: "danger" };
+  if (winDelta <= INACCURACY_MAX_LOSS) return { code: "inaccuracy", label: "Inaccuracy", tone: "warn" };
+  if (winDelta <= MISTAKE_MAX_LOSS) return { code: "mistake", label: "Mistake", tone: "warn" };
+  return { code: "blunder", label: "Blunder", tone: "danger" };
 }

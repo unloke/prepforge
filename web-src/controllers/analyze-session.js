@@ -295,7 +295,7 @@ class PositionCoach {
       // off its shallower live read.
       if (saved && saved.classification === "great") c.markGreat(features);
       else if (saved && features.classification?.code === "great") {
-        features.classification = { code: "best", label: "Best move", glyph: "✓", tone: "good" };
+        features.classification = { code: "best", label: "Best move", tone: "good" };
       }
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       if (!opponentRead) offerLiveBetterArrow(features, saved, fen);
