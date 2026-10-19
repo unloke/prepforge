@@ -211,10 +211,27 @@
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
   #view-dashboard .lib-row .name { font-size: 17px; font-weight: 600; }
   #view-dashboard .lib-row .rep-sub { font-size: 13px; }
-  #view-dashboard .lib-row .lib-cell-mastery { display: none; }
-  /* Queue chips get their own line under the name (indented past the dot) so
-     they never squeeze the name to zero width. */
-  #view-dashboard .lib-row .lib-cell-queue { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
+  /* The desktop row carries a mastery figure in its own column; the phone row
+     dropped it, so a phone could not tell a trained repertoire from an
+     untrained one. On a phone the figure is the row's trailing value, on the
+     name's line, and the queue chips keep their own line under the name. */
+  #view-dashboard .lib-row .lib-opt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "rep mastery" "queue queue";
+    align-items: start;
+    gap: 6px 10px;
+    min-width: 0;
+  }
+  #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; }
+  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; display: flex; align-items: baseline; }
+  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
+  #view-dashboard .lib-row .lib-mbar { display: none; }
+  #view-dashboard .lib-row .lib-mastery { width: auto; gap: 4px; }
+  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: left; font-size: 13px; font-weight: 600; }
+  #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
+  /* A shared repertoire is read-only; its name line already says so. */
+  #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 40px; height: 40px; }
 

@@ -1740,6 +1740,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
 .lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
+/* The word names the number; the desktop column header already does, so the
+   phone row is the only place that needs it. */
+#view-dashboard .lib-mastery-word { display: none; }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
    missing one) and enough height to compare rows at a glance. */
 .lib-mbar {

@@ -42,3 +42,15 @@ it("the phone Library header is a grid: chips on top, search and import below", 
   expect(rule("#view-dashboard .lib-list .seg {")).toMatch(/grid-column:\s*1 \/ -1/);
   expect(rule("#view-dashboard .lib-list .search-field {")).toMatch(/grid-column:\s*1/);
 });
+
+it("the phone repertoire row keeps the mastery figure", () => {
+  // The mastery cell used to be display:none on a phone, so a phone row said
+  // nothing about progress even though the desktop row carries a percentage.
+  const cell = rule("#view-dashboard .lib-row .lib-cell-mastery {");
+  expect(cell).not.toMatch(/display:\s*none/);
+  expect(cell).toMatch(/display:\s*flex/);
+  // The percentage itself is kept, the bar is not (no room for it).
+  expect(rule("#view-dashboard .lib-row .lib-mbar {")).toMatch(/display:\s*none/);
+  // The word names the number: the phone has no column header to do it.
+  expect(rule("#view-dashboard .lib-row .lib-mastery-word {")).toMatch(/display:\s*inline/);
+});

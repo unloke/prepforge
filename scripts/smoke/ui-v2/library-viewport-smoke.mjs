@@ -188,6 +188,13 @@ async function runViewport(vp) {
   if (vp.width <= 760) {
     check(await page.locator("#dashboard-import-pgn").isVisible(), "Import PGN must be reachable on a phone");
     check(!(await page.locator("#dashboard-new-rep").isVisible()), "New repertoire keeps the page head + on a phone");
+    // The mastery figure is the row's trailing value on a phone: the desktop
+    // has a Mastery column header, a phone has none, so the number is named.
+    const phoneMastery = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"] .lib-cell-mastery');
+    check(await phoneMastery.isVisible(), "the mastery figure must be visible on a phone");
+    const phoneMasteryText = (await phoneMastery.textContent()) || "";
+    check(/50%/.test(phoneMasteryText) && /mastered/.test(phoneMasteryText),
+      `the phone mastery figure should read "50% mastered", got "${phoneMasteryText}"`);
   }
 
   // No preview pane: the table takes the full width and a row click opens.

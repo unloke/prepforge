@@ -502,7 +502,7 @@ export function createDashboardView({
           const startedPct = total ? Math.max(pct, Math.round((started / total) * 100)) : pct;
           const label = `${count("mastered")} mastered · ${started - count("mastered")} learning · ${count("untrained")} new`;
           mastery =
-            html`<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained"><i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b></span>`;
+            html`<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained"><i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b><span class="lib-mastery-word">mastered</span></span>`;
         }
         const queue = [];
         if (health && health.weak) {
