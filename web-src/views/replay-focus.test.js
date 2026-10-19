@@ -442,6 +442,18 @@ describe("replay empty states", () => {
     expect(markup).toContain("Try a larger sample.");
   });
 
+  it("keeps the ledger columns when there is nothing to list", () => {
+    // An empty Games page was two lines of text on the page ground, with no
+    // sign of the table they belonged to. Every empty state now sits in the
+    // ledger body, under the same column headers as the rows.
+    makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Games to review");
+    expect(markup).toContain("lr head col-head");
+    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).not.toContain("empty-state big");
+  });
+
   it("names the empty bucket and keeps the way back", () => {
     // The filter comes from the app; drive it through a view whose getter says
     // "left-prep" while the sample holds only a user-error game.
@@ -492,5 +504,15 @@ describe("replay failure state", () => {
     expect(markup).not.toContain("No games checked yet");
     expect(elements["replay-summary"].hidden).toBe(true);
     void retries;
+  });
+
+  it("puts the failure where the rows would be", () => {
+    // The error is an answer to a Check, so it keeps the ledger the Check was
+    // about instead of replacing the page with a floating card.
+    makeView(elements).renderReplayError("Lichess is unreachable");
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Games to review");
+    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).toContain('role="alert"');
   });
 });

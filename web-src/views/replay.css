@@ -13,8 +13,7 @@
   font-size: 13px;
 }
 #view-replay .kind-badge { padding: 1px 6px; }
-#view-replay .queued { color: var(--muted); }
-/* "No repertoire" is a real outcome, not a disabled control: the shared
+#view-replay .queued { color: var(--muted); }/* "No repertoire" is a real outcome, not a disabled control: the shared
    `--none` grey lands at 3.5:1 on its own tint. */
 #view-replay .kind-badge.t-none { color: var(--muted); }
 #view-replay .sum-chip.t-none { color: var(--muted); }
@@ -47,6 +46,27 @@
 .ledger .card-head h2 { font-size: 13.5px; }
 .ledger .card-head .faint { color: var(--muted); }
 .ledger-table { flex: 1; overflow: auto; }
+/* Empty, idle and error states live inside the ledger so the page keeps its
+   shape before the first Check: the columns are already there, the message
+   sits where the rows will be. The card sizes to its content — a table with
+   no rows should not paint 800px of white under the message. */
+#view-replay .ledger:has(.ledger-empty) { align-self: start; }
+#view-replay .ledger:has(.ledger-empty) .ledger-table { overflow: visible; }
+#view-replay .ledger-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+#view-replay .ledger-empty h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
+#view-replay .ledger-empty p { max-width: 460px; margin: 0; text-wrap: pretty; }
+#view-replay .ledger-empty .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+#view-replay .ledger-error { display: contents; }
 /* A Check result arrives row by row instead of as one block: the shared
    `.list-enter` stagger, slowed to 60ms here because the ledger is the whole
    point of the page. The re-render a row click causes does not re-arm it. */
@@ -230,6 +250,9 @@
   .lr > :nth-child(3) { grid-area: res; text-align: right; }
   .lr > :nth-child(5) { grid-area: dep; }
   .actions .btn { min-height: 44px; }
+  /* The triage is a flex column here, so the empty card's start alignment
+     would shrink it to the message's width. */
+  #view-replay .ledger:has(.ledger-empty) { align-self: stretch; }
   /* The outcome filters are the only way to narrow the ledger on a phone;
      the shared 26px chip is below a reliable touch target. */
   .games-panel .sum-chip { height: 40px; padding: 0 14px; border-radius: 20px; }
