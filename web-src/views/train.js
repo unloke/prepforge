@@ -64,21 +64,26 @@ export function createTrainView({
   function renderTrainStats() {
     const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0, history: [], lastStreak: 0 };
     const streakEl = document.getElementById("train-stat-streak");
-    const flame = "";
-    streakEl.innerHTML = html`${s.streak}${flame}`;
+    // Write only the number: assigning a SafeHtml object to innerHTML stores
+    // "[object Object]", and the "1" -> "[object Object]" change on every repaint
+    // re-triggered the streak pop (classList.remove/add + offsetWidth reads) on
+    // every answer, which starved the later stats lines. They never repainted.
+    streakEl.textContent = String(s.streak);
     const chip = streakEl.closest(".stat");
     if (chip) {
       chip.classList.toggle(
         "at-risk",
         !!(appState.trainReview && appState.trainReview.savedStreak > 0 && s.streak === 0)
       );
-      if (s.streak > (s.lastStreak || 0)) {
-        chip.classList.remove("pop");
-        void chip.offsetWidth;
-        chip.classList.add("pop");
-        if (s.streak > 0 && s.streak % 5 === 0) chip.classList.add("milestone");
-        else chip.classList.remove("milestone");
-      }
+    }
+    // The pop fires only when the streak grows, from a number that is actually
+    // on screen (a SafeHtml object here stringified to "[object Object]").
+    const grew = !!chip && typeof s.lastStreak === "number" && s.streak > s.lastStreak;
+    if (grew) {
+      chip.classList.remove("pop");
+      void chip.offsetWidth;
+      chip.classList.add("pop");
+      chip.classList.toggle("milestone", s.streak > 0 && s.streak % 5 === 0);
     }
     onStreakRendered(s.streak);
     document.getElementById("train-stat-correct").textContent = s.correct;
@@ -89,6 +94,7 @@ export function createTrainView({
       ? `${Math.round((s.correct / total) * 100)}% first try`
       : "";
     const trail = document.getElementById("train-line-trail");
+    if (!trail) return;
     if (!s.history.length) {
       trail.innerHTML = html`<span class="trail-empty">No moves yet</span>`;
     } else {
