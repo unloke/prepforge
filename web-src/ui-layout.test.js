@@ -8,6 +8,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = appSource();
+const coverageController = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
 const replayCss = readFileSync(join(root, "views", "replay.css"), "utf8");
@@ -202,6 +203,19 @@ describe("workspace chrome layout", () => {
     // Desktop is the reverse: the board bar's chip is the only one. Both were
     // visible at 1440 (board bar + inspector tools), printing one state twice.
     expect(css).toMatch(/@media \(min-width: 761px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
+  });
+
+  it("gives the phone Repertoire's next-move chips and trail a real thumb target", () => {
+    // Measured at 390: chips 27px, crumbs 21px, the collapse toggle 13px. The
+    // chip is the action the thumb reaches for on this screen, and the trail
+    // is the only way back along the line.
+    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 40px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 32px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 32px;[^}]*min-height: 32px;/);
+    // One line naming the action, not a paragraph about coverage: that was
+    // standing explanation (AGENTS.md) and the ⓘ already carries the detail.
+    expect(coverageController).toContain("Press Scan to check this line.");
+    expect(coverageController).not.toContain("Scan to find the moves your opponents play");
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
