@@ -32,6 +32,24 @@ it("keeps a user's navigation during boot and resumes training on that page", as
   expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false });
 });
 
+it("starts Train with the repertoire the URL names", async () => {
+  const ctx = runtime({
+    window: { location: { href: "http://local/#/train?rep=r2" } },
+    appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
+  });
+  await ctx.run();
+  expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: "r2" });
+});
+
+it("starts Train mixed when the URL names no repertoire", async () => {
+  const ctx = runtime({
+    window: { location: { href: "http://local/#/train" } },
+    appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
+  });
+  await ctx.run();
+  expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null });
+});
+
 it("does not navigate after a newer navigation supersedes a pending load", async () => {
   const ctx = runtime({ window: { location: { href: "http://local/#/build?rep=r" } } });
   ctx.api.mockImplementation(async () => { ctx.workspaceNavigationSeq++; return {}; });

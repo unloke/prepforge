@@ -82,6 +82,21 @@ describe("Smart memo integration at Start", () => {
       "Opening your first card…",
     ]));
   });
+  it("posts the repertoire Start was given, and keeps it as the Train link's repertoire", async () => {
+    const h = harness({ mixed: false, repertoire_id: "r2" });
+    await h.start({ repertoireId: "r2" });
+    expect(h.deps.postJson).toHaveBeenCalledWith("/api/train/smart/start", {
+      mixed: false, fresh: false, repertoire_id: "r2",
+    });
+    expect(h.appState.trainingRepertoireId).toBe("r2");
+  });
+  it("a mixed queue drills every active repertoire, so the Train link names none", async () => {
+    const h = harness({ mixed: true, repertoire_id: "r1" });
+    h.appState.trainingRepertoireId = "r1"; // left by a previous single-repertoire start
+    await h.start();
+    expect(h.deps.postJson).toHaveBeenCalledWith("/api/train/smart/start", { mixed: true, fresh: false });
+    expect(h.appState.trainingRepertoireId).toBeNull();
+  });
   it.each([{ resumed: false, card_index: 0 }, { resumed: true, fresh: true }])
   ("never restores for a non-resumed/fresh start ($resumed/$fresh)", async ({ fresh, ...payload }) => {
     const h = harness(payload);
