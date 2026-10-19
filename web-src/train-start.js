@@ -40,6 +40,14 @@ export function isNothingToTrainError(error) {
   return error?.status === 400 && /no (active repertoires|trainable (moves|lines))/i.test(error.message || "");
 }
 
+// What an accepted Start says in the notice stack, "" when it says nothing.
+// The setup brief already named the queue's size and the card head already
+// reads "Card 2 / 5", so a fresh start repeats nothing; a resume says the one
+// thing neither of those shows.
+export function startNotice(resumed) {
+  return resumed ? "Picked up your last queue where you left off" : "";
+}
+
 // The repertoire a new queue is built for. "New session" means another queue
 // like this one: a queue drilled for one repertoire (a Train link, the
 // repertoire's own Train action) must not silently widen to every active

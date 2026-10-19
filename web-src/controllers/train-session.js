@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, startNotice, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -2013,11 +2013,12 @@ async function startSmartTraining(options = {}) {
       return renderSmartQueueStrip();
     })
     .catch(() => {});
-  setStatus(
-    mapped.resumed
-      ? `Resumed queue: card ${smart.cardIndex + 1} / ${smart.queue.length}`
-      : `Queue ready: ${countOf(smart.queue.length, "card")}`,
-  );
+  // The card head already reads "Card 2 / 5" and the setup brief already named
+  // the queue's size, so a toast repeating either is a second copy of a number
+  // that is on screen. A resume says the one thing the head cannot: that this
+  // is the queue from last time rather than a new one.
+  const startMsg = startNotice(mapped.resumed);
+  if (startMsg) setStatus(startMsg);
   syncWorkspaceUrl();
   const resumedAttempt = appState.smart.attempt;
   const prompt = smartLocalPrompt(appState.smart);

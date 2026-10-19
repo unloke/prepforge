@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
-import { isNothingToTrainError, queueRepertoireForStart } from "./train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart, startNotice } from "./train-start.js";
 
 const source = appSource();
 
@@ -66,4 +66,20 @@ it("a start that builds an empty queue leaves the banner as the only signal", as
   expect(deps.setStatus).not.toHaveBeenCalled();
   expect(deps.setStatusError).not.toHaveBeenCalled();
   expect(deps.setTrainBanner).toHaveBeenLastCalledWith("idle", "No moves to train yet", "");
+});
+// The card head reads "Card 2 / 5" and the setup brief named the queue's size,
+// so a started queue raised a toast saying one of those a second time. The
+// accepted start must consult startNotice instead of formatting a count.
+it("an accepted start asks startNotice rather than printing the count", () => {
+  const code = startSmartTrainingSource();
+  expect(code).toMatch(/const startMsg = startNotice\(mapped\.resumed\);/);
+  expect(code).toMatch(/if \(startMsg\) setStatus\(startMsg\);/);
+  expect(code).not.toMatch(/Queue ready/);
+  expect(code).not.toMatch(/Resumed queue: card/);
+});
+
+it("startNotice keeps the notice for a resume and drops it for a fresh queue", () => {
+  expect(startNotice(false)).toBe("");
+  expect(startNotice(undefined)).toBe("");
+  expect(startNotice(true)).toBe("Picked up your last queue where you left off");
 });

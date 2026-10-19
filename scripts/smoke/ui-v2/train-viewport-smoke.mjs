@@ -245,6 +245,12 @@ async function runViewport(vp) {
 
   await shot("active");
 
+  // Starting a queue must not toast a number the panel already shows: the card
+  // head reads "Card 1 / 4" and the setup brief named the queue's size.
+  const startToasts = await page.locator(".notices .notice").allTextContents();
+  check(!startToasts.some((t) => /Queue ready|Resumed queue/.test(t)),
+    `starting a queue should not toast its size, got ${JSON.stringify(startToasts)}`);
+
   // Result screen: the finished session is a report, so the mode tabs are gone
   // with the setup card — "New session" is the way back to them. Reach it by
   // playing the whole 4-card fixture queue, one card at a time.
