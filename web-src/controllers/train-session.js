@@ -2419,7 +2419,12 @@ function showSmartSummary(smart, stats) {
   if (foot) foot.textContent = "";
   void renderSmartSummaryStats(smart, stats);
   const panel = document.getElementById("train-summary");
-  if (panel) panel.hidden = false;
+  if (panel) {
+    panel.hidden = false;
+    // Read from the card's top: on a phone the results replace the session card
+    // in the same scroller, and the last card left it scrolled out of view.
+    panel.scrollIntoView({ block: "start" });
+  }
   syncTrainSessionControls();
 }
 

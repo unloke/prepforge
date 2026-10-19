@@ -15,8 +15,14 @@ it("a live session or a result card reads from the top, above the mode tabs", ()
   expect(tabs[0]).toMatch(/order: 5/);
 });
 
-it("the result screen scrolls instead of clipping the card", () => {
-  const rule = phone.match(/#view-train \.train-sidebar\[data-session-state="summary"\] > \.panel-scroll \{[^}]*\}/);
-  expect(rule).not.toBeNull();
-  expect(rule[0]).toMatch(/overflow-y: auto/);
+it("the result card takes the room the session card had", () => {
+  const panel = phone.match(/#view-train \.train-sidebar\[data-session-state="summary"\] > \.panel-scroll \{[^}]*\}/);
+  expect(panel).not.toBeNull();
+  expect(panel[0]).toMatch(/flex: 1 1 0/);
+  expect(panel[0]).toMatch(/min-height: 0/);
+  const card = phone.match(/#view-train \.train-sidebar\[data-session-state="summary"\] #train-summary \{[^}]*\}/);
+  expect(card).not.toBeNull();
+  expect(card[0]).toMatch(/overflow-y: auto/);
+  // The finished position is not a live board: it does not hold the strip.
+  expect(phone).toMatch(/\.study:has\(\[data-session-state="summary"\]\) \.board-stack \{ display: none/);
 });

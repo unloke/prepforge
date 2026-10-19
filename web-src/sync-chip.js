@@ -14,6 +14,7 @@ const SYNC_CHIP_VARIANTS = {
 // 2026-10-01 P2-7). The debounce between answers is the usual state, so it
 // says nothing: the chip only speaks while a save is on the wire or waiting.
 const TRAINING_TEXT = {
+  saved: "✓ Progress saved",
   dirty: "",
   syncing: "↻ Saving progress…",
   blocked: "⚠ Waiting for sign-in — progress kept",

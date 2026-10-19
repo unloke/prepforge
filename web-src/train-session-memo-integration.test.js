@@ -41,7 +41,7 @@ function harness(overrides = {}) {
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},
-    document: { getElementById: () => ({ hidden: false }) },
+    document: { getElementById: () => ({ hidden: false, scrollIntoView() {} }) },
     renderSmartQueueStrip: async () => {}, renderTrainStats: async () => {}, setTrainSyncState: vi.fn(),
     loadPhaseCoach: () => phase.promise, syncWorkspaceUrl: vi.fn(),
     smartLocalPrompt: (smart) => smart.cardIndex < smart.queue.length
@@ -204,7 +204,7 @@ describe("Smart memo integration at Start", () => {
   it("the finished session speaks without exclamation marks", async () => {
     const h = harness();
     const setAttribute = vi.fn();
-    const node = { style: {}, innerHTML: "", textContent: "", setAttribute, hidden: false, className: "", appendChild() {}, remove() {} };
+    const node = { style: {}, innerHTML: "", textContent: "", setAttribute, hidden: false, className: "", appendChild() {}, remove() {}, scrollIntoView() {} };
     const el = () => node;
     const fakeDoc = { getElementById: el, createElement: () => node };
     h.deps.celebrate = compile("function celebrate(", { ...h.deps, document: fakeDoc, window: { setTimeout: () => {} } });
@@ -233,7 +233,7 @@ describe("Smart memo integration at Start", () => {
     await h.start();
     saveSessionMemo("bob", "session", memo);
     const finish = compile("async function finishSmartSession(", {
-      ...h.deps, document: { getElementById: () => ({ style: {}, innerHTML: "" }) },
+      ...h.deps, document: { getElementById: () => ({ style: {}, innerHTML: "", scrollIntoView() {} }) },
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
       syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(),
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
