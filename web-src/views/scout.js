@@ -374,7 +374,10 @@ export function createScoutView(deps) {
       resetBtn.hidden = state === "idle" || state === "running";
     }
     if (colorSel) {
-      colorSel.disabled = state !== "idle";
+      // The scope is read once, when the run starts. While a scout is
+      // initialising or streaming, the select must not take a change the
+      // run would then ignore.
+      colorSel.disabled = initGuard.isInitializing || state !== "idle";
     }
     if (card) {
       // The card shows the live stream card from the moment Start is pressed:
