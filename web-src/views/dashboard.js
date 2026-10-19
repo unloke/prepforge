@@ -229,10 +229,11 @@ export function createDashboardView({
     }
     card.innerHTML =
       html`<header class="card-head"><h2>Next steps</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide next steps" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
-        .map((step, i) => {
-          const mark = step.done
-            ? html`<span class="step-n is-done" aria-hidden="true"></span>`
-            : html`<span class="step-n" aria-hidden="true">${i + 1}</span>`;
+        .map((step) => {
+          // The mark column is a checklist: a finished step ticks, an open one
+          // is an empty ring. A step number beside two ticks read as two
+          // different lists, and a phone shows no number at all.
+          const mark = html`<span class="step-n${step.done ? " is-done" : ""}" aria-hidden="true"></span>`;
           const cta = step.done
             ? html`<span class="step-done">Done</span>`
             : step.locked
@@ -818,8 +819,8 @@ export function createDashboardView({
     card.innerHTML =
       html`<header class="card-head"><h2>Next steps</h2></header>${steps
         .map(
-          ([title, detail, action, label], i) =>
-            html`<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,
+          ([title, detail, action, label]) =>
+            html`<div class="step"><span class="step-n" aria-hidden="true"></span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,
         )}`;
     card.hidden = false;
   }
