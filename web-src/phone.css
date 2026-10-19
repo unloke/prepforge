@@ -18,6 +18,12 @@
 .phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
 .phone-sheet { display: contents; }
 
+/* The More sheet belongs to the phone layout: a bar that is gone must not leave
+   it as a full-width bottom sheet over the desktop board. */
+@media (min-width: 761px) {
+  .sheet-scrim:not([hidden]) { display: none; }
+}
+
 @media (max-width: 760px) {
   :root {
     --phone-bar-h: 56px;

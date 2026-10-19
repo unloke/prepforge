@@ -271,6 +271,19 @@ async function runViewport(vp) {
   await page.waitForTimeout(300);
   check(await page.locator("#team-detail-card[hidden]").count() === 1, "closing the detail hides the card");
 
+  // The phone More sheet belongs to the bar: widening must not leave it open
+  // as a full-width bottom sheet over the desktop board.
+  if (vp.width <= 760) {
+    await page.evaluate(() => document.querySelector('[data-testid="bottom-more"]').click());
+    await page.waitForTimeout(300);
+    check(await page.locator("#more-sheet").isVisible(), "More should open the sheet on a phone");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(400);
+    check(await page.locator("#more-sheet").isHidden(), "widening to desktop must close the More sheet");
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await page.waitForTimeout(300);
+  }
+
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);

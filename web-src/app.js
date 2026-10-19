@@ -6,6 +6,7 @@ import "./styles.css";
 import "./phone.css";
 import { createNotices } from "./notices.js";
 import { resetViewScroll } from "./view-scroll.js";
+import { closeSheetOffPhone } from "./phone-layout.js";
 import { watchMaiaInit } from "./maia-init-notice.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
@@ -6354,6 +6355,9 @@ function wireMobileNav() {
     if (sheet.hidden) openSheet();
     else closeSheet();
   });
+  // The sheet belongs to the phone layout: a bar that is gone must not leave it
+  // as a full-width bottom sheet over the desktop board.
+  closeSheetOffPhone(() => closeSheet({ restoreFocus: false }));
   sheet.addEventListener("click", (event) => {
     if (event.target === sheet) closeSheet();
   });
