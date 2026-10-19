@@ -626,7 +626,10 @@
 }
 .moves-grid .mtree-line.is-main {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
+  /* The two sides of a move belong to each other: sized to their content they
+     sit next to one another, the way a score sheet prints them. */
+  grid-template-columns: 32px max-content max-content;
+  column-gap: 18px;
 }
 .moves-grid .mtree-line.is-main > .mtree-num {
   grid-column: 1;
@@ -640,7 +643,9 @@
 .moves-grid .mtree-line.is-main > .mtree-move {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* The grade belongs to the move beside it: pushed to the far end of the
+     column it sat 190px away, closer to the next move than to its own. */
+  justify-content: flex-start;
   gap: 6px;
   margin: 0;
   padding: 3px 8px;

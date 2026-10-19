@@ -348,7 +348,9 @@ describe("workspace chrome layout", () => {
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(rule(".coach-card")).toMatch(/height:\s*118px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
+    // The score sheet is sized to its content so the two sides of a move sit
+    // next to each other, the way a score sheet prints them.
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
     // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
