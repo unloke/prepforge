@@ -1,5 +1,5 @@
 ﻿import { expect, it, vi } from "vitest";
-import { buildReply } from "./replay-actions.js";
+import { buildReply, replayToAnalyze } from "./replay-actions.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -49,4 +49,32 @@ it("Add reply does not add a move after the view changed or into a read-only tre
   const readOnly = harness({ isBuildReadOnly: () => true });
   await buildReply(game, readOnly.deps);
   expect(readOnly.deps.onBuildBoardMove).not.toHaveBeenCalled();
+});
+
+// ---- Games → Analyze notice ---------------------------------------------------
+
+it("names the button the user actually presses, and stays one line", async () => {
+  // The Analyze panel's button reads "Analyze"; "press Analyze game" named no
+  // control and wrapped onto two lines in the phone notice.
+  const setStatus = vi.fn();
+  const deps = {
+    switchView: vi.fn(),
+    orientAnalysisForSelf: vi.fn(),
+    loadPgnIntoAnalyze: vi.fn(async () => true),
+    showAnalysisPly: vi.fn(async () => {}),
+    takeHandoff: () => null,
+    setStatus,
+    isCurrent: () => true,
+    document: { getElementById: () => ({ value: "", open: false }) },
+  };
+  vi.stubGlobal("document", deps.document);
+  try {
+    await replayToAnalyze(
+      { move_san_history: ["e4", "e5", "Nf3"], white: "W0a", black: "Anonymous", result: "1-0" },
+      deps,
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
+  expect(setStatus).toHaveBeenCalledWith("Loaded W0a vs Anonymous — press Analyze");
 });

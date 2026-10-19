@@ -5333,7 +5333,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   /* Study geometry is authoritative in the base .study block (max-content
      board column + viewport-height board size); desktop only keeps the shared
      16px gap — no second column definition. */
-  .study .board-area { justify-self: start; }
+  /* The board is square and its width budget (the share of the row) binds
+     before the height does on most desktops, so a stretched column left a tall
+     empty area under the board. Let the column end at the board instead; the
+     panel keeps the full height. */
+  .study .board-area { justify-self: start; align-self: start; }
 }
 
 /* ===========================================================================

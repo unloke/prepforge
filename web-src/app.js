@@ -1457,7 +1457,9 @@ async function restoreWorkspaceLocation() {
       appState.replayOpen = new Set([replayReturn.openIndex]);
     }
   }
-  if (loc.repertoireId && appState.signedIn) {
+  // Only Build's link names the repertoire its editor shows; Train's names the
+  // queue's, which startTraining below loads for itself.
+  if (loc.view === "build" && loc.repertoireId && appState.signedIn) {
     try {
       const payload = await api(
         `/api/build/load?repertoire_id=${encodeURIComponent(loc.repertoireId)}`,
@@ -1478,15 +1480,33 @@ async function restoreWorkspaceLocation() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
-  if (loc.view === "analyze" && loc.ply && appState.analysis) {
-    await showAnalysisPly(loc.ply);
-  }
+  if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply);
   if (loc.view === "train" && appState.signedIn) {
     // The URL's repertoire is the queue's. A Train link that names one (the
     // one the Library/Repertoire Train action leaves behind) drills that
     // repertoire; no ?rep= means the mixed queue over all active ones.
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
+}
+
+// Analyze keeps the loaded game in a session slot (controllers/analyze-session.js
+// persistAnalysisSession), so a reload puts the move list and the board back
+// together instead of a PGN box whose game the board never loaded. The URL's
+// ?ply= wins when it names a move: a shared/returned link is about that ply.
+async function restoreAnalyzeSession(urlPly) {
+  if (appState.analysis) {
+    if (urlPly) await showAnalysisPly(urlPly);
+    return;
+  }
+  const saved = loadReturnState("analyze");
+  const pgn = typeof saved?.pgn === "string" ? saved.pgn : "";
+  if (!pgn.trim()) return;
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = pgn;
+  const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
+  if (!loaded) return;
+  const ply = urlPly || saved?.ply;
+  if (ply) await showAnalysisPly(ply);
 }
 
 // In-page route changes (back/forward and location.hash) take the same path as
@@ -1499,6 +1519,10 @@ async function handleWorkspacePopstate() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
+  // Back/forward to an Analyze ply puts the board on that move, the same way boot does.
+  if (loc.view === "analyze" && loc.ply && loc.ply !== appState.analysisPly) {
+    await showAnalysisPly(loc.ply);
+  }
   if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
@@ -4520,9 +4544,10 @@ function syncEngineChrome() {
   syncAnalysisEvalCard();
 }
 
-// The Evaluation card shows when there is a game graph or the engine is on;
-// the graph itself only once an analysis has plotted points (a loaded but not
-// yet analyzed game has nothing to draw, so no empty grey box).
+// The Evaluation card shows when there is a game graph, a number to read or the
+// engine is on; the graph itself only once an analysis has plotted points (a
+// loaded but not yet analyzed game has nothing to draw, so no empty grey box).
+// With nothing loaded the card is empty, so it is not drawn at all.
 function syncAnalysisEvalCard() {
   const card = document.getElementById("analysis-eval-card");
   const graph = document.getElementById("analysis-eval-graph");
@@ -4530,7 +4555,10 @@ function syncAnalysisEvalCard() {
   const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
   const hasGraph = !!results && !results.hidden && points.length > 0;
   if (graph) graph.hidden = !hasGraph;
-  card?.classList.toggle("is-engine", engineWantedIn("analyze"));
+  const isEngine = engineWantedIn("analyze");
+  card?.classList.toggle("is-engine", isEngine);
+  const hasNumber = !!(document.getElementById("analysis-chart-caption")?.textContent || "").trim();
+  if (card) card.hidden = !hasGraph && !isEngine && !hasNumber;
 }
 
 // ---- Explorer row evals ------------------------------------------------------

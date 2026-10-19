@@ -305,7 +305,10 @@
   background: var(--eval-side-white);
   transition: transform var(--dur-slow) var(--ease-out);
 }
+/* No number yet: an empty track, not a mid-width fill that reads as a real
+   evaluation. */
 .ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
+.ev-head:not(.has-eval) .ev-meter > i { transform: scaleX(0); }
 /* Search depth as a word plus quiet figures and a hairline of progress. */
 #analysis-engine-slot .engine-head-depth {
   --p: 0;
