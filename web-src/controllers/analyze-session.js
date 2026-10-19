@@ -766,7 +766,7 @@ async function runAnalysis(options = {}) {
   // classifies + stores the browser's evals (/api/analyze/prepare and
   // classify-save are owner-scoped). Live engine + coach on the board work
   // signed out.
-  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game", {
+  if (!requireSignIn("Sign in to run a full-game review. It is saved to your library.", "analyze-game", {
     pgn, mode: importMode, selectIndex,
   })) return;
   const seq = invalidateAnalysisSource();
@@ -1132,7 +1132,7 @@ async function runAnalysis(options = {}) {
       }
       notices.cancelJob(error.message || "Analysis stopped");
     } else if (isAuthError(error)) {
-      if (current) accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
+      if (current) accountService().handleAuthRequired("Sign in to run a full-game review. It is saved to your library.");
       notices.failJob("Sign in required");
     } else {
       if (current) setStatusError(error.message);
@@ -1166,7 +1166,7 @@ function renderImportPicker(summary, mode) {
   }
   const games = summary.games || [];
   const label = (g) =>
-    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"} — ${g.status}${g.error ? ` (${g.error})` : ""}`;
+    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"}, ${g.status}${g.error ? ` (${g.error})` : ""}`;
   host.hidden = false;
   host.innerHTML =
     html`<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span><select id="analysis-import-select" aria-label="Choose analyzed game">${games
@@ -1181,7 +1181,7 @@ function renderImportPicker(summary, mode) {
     });
   }
   setStatus(
-    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed — analyzing game ${summary.selected_index + 1}.`,
+    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed. Analyzing game ${summary.selected_index + 1}.`,
   );
 }
 
@@ -1276,7 +1276,7 @@ async function retryAnalyzeSave() {
     if (ownerId !== currentOwnerId()) return;
     if (checkpoint.serverSaved) { setStatusError(error.message); return; }
     if (isAuthError(error)) {
-      accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
+      accountService().handleAuthRequired("Sign in to save. The analysis stays on this device until you do.");
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
@@ -1333,11 +1333,11 @@ async function onCreateRepertoireFromGameClick() {
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
-    setStatus(`Repertoire “${payload.name}” created — edit it in Repertoire`, { severity: "success" });
+    setStatus(`Repertoire “${payload.name}” created. Edit it in Repertoire.`, { severity: "success" });
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
-    setStatusError(error.message || "Could not create repertoire — try again");
+    setStatusError(error.message || "Could not create repertoire. Try again.");
     if (btn) btn.disabled = false;
   }
 }

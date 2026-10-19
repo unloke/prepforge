@@ -11,7 +11,7 @@ import {
 // A starting-ish position FEN where the moves below are legal, so SAN resolves.
 const FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-describe("computeIntuition — policy (obviousness)", () => {
+describe("computeIntuition: policy (obviousness)", () => {
   it("returns null without any usable signal", () => {
     expect(computeIntuition({ predictions: [], fenBefore: FEN })).toBeNull();
     expect(computeIntuition({ predictions: null, fenBefore: FEN })).toBeNull();

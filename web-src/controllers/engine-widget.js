@@ -273,15 +273,15 @@ class EngineWidget {
     setEngineBestArrow(null);
     const text =
       over.kind === "checkmate"
-        ? `Checkmate — ${over.winner === "white" ? "White" : "Black"} wins`
+        ? `Checkmate: ${over.winner === "white" ? "White" : "Black"} wins`
         : over.kind === "stalemate"
-          ? "Stalemate — draw"
+          ? "Stalemate, draw"
           : "Draw";
     if (this.pvsEl) {
       this.pvsEl.innerHTML =
         html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
     }
-    if (this.depthReadout) this.depthReadout.textContent = "—";
+    if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
     this._paintDepth(null, null);
     if (this.evalBarWhite) {
       const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
