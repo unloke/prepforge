@@ -199,6 +199,9 @@ describe("workspace chrome layout", () => {
     // board bar.
     expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
     expect(phone).toMatch(/#build-inspector \.build-sync \{/);
+    // Desktop is the reverse: the board bar's chip is the only one. Both were
+    // visible at 1440 (board bar + inspector tools), printing one state twice.
+    expect(css).toMatch(/@media \(min-width: 761px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {

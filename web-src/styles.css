@@ -2730,6 +2730,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
   background: color-mix(in srgb, var(--warn) 8%, var(--panel-soft));
 }
+/* One save chip per screen. On desktop that is the board bar's, beside the
+   move label that edits change; the inspector's copy exists for phones, where
+   the board bar sits out of reach (phone.css). */
+@media (min-width: 761px) {
+  #build-sync-head { display: none; }
+}
 
 /* ===========================================================================
    Repertoire — Opus prototype composition
