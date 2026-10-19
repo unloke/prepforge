@@ -398,8 +398,10 @@
   .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
   :is(#view-analyze, #view-build) .board-bar :is(.board-label, .board-sub) { display: none; }
   .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
-  .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; }
-  .study .board-bar :is(#analysis-next, #build-next, #train-skip) { order: 6; }
+  /* The last two tracks. The pill is absolute in the free middle, so the
+     arrows must be placed: auto-placement would fill that track first. */
+  .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; grid-column: -3 / -2; }
+  .study .board-bar :is(#analysis-next, #build-next, #train-skip) { order: 6; grid-column: -2 / -1; }
   :is(#analysis-start, #analysis-end, #build-root, #build-end) { display: none !important; }
 
   /* Icon buttons: the label stays in title / aria-label. */
