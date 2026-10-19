@@ -5427,7 +5427,16 @@ async function runLichessCompare() {
         : `Fetched ${countOf(payload.count, "game")} for ${sourceLabel}`
     );
   } catch (error) {
-    if (isCurrent()) setStatusError(error.message);
+    if (isCurrent()) {
+      // The fetch painted skeleton rows; a failure must not leave the ledger
+      // pulsing forever. Drop back to the pre-check prompt; the notification
+      // carries the one error message.
+      resetGamesResults();
+      // A routine status line is shown on a 700ms delay; clear it (and its
+      // pending timer) so "Fetching games..." cannot appear under the error.
+      setStatus("");
+      setStatusError(error.message);
+    }
   } finally {
     if (appState.replayCheckToken === token) button.disabled = false;
   }
@@ -5468,10 +5477,17 @@ function writeGamesSelection(selection) {
 // sources replaces it with the pre-check prompt, otherwise the header keeps
 // naming accounts the user just removed ("2 shown · old_account").
 function clearGamesResults() {
+  appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
+  resetGamesResults();
+}
+
+// The visual/state half of clearing, without the check-token bump: a FAILED
+// Check must drop its skeleton too, but its own response is still the current
+// one, so the finally still has to re-enable the button.
+function resetGamesResults() {
   appState.replayResults = null;
   appState.replayFilter = null;
   appState.replayOpen = new Set();
-  appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
   saveReturnState("replay", { filter: null, openIndex: null });
   const summary = document.getElementById("replay-summary");
   if (summary) {

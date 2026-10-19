@@ -37,6 +37,7 @@ it("clearing the Games results drops the ledger, the filter and the selection", 
   };
   const code = extract("clearGamesResults", "\n\nfunction gamesSourceAccountIds(")
     + extract("gamesIdleHint", "\nfunction bindGamesSource(");
+  if (!code.includes("resetGamesResults")) throw new Error("clearGamesResults should reset through resetGamesResults");
   const clearGamesResults = new Function(...Object.keys(deps), code + "\nreturn clearGamesResults;")(...Object.values(deps));
   clearGamesResults();
   expect(appState.replayResults).toBe(null);
@@ -50,6 +51,39 @@ it("clearing the Games results drops the ledger, the filter and the selection", 
   expect(hint.textContent).toBe("Pick a sample size, then run a check.");
   expect(saved).toEqual([["replay", { filter: null, openIndex: null }]]);
   expect(paintGamesSource).toHaveBeenCalled();
+});
+
+it("a failed Check drops its skeleton without invalidating the in-flight token", () => {
+  const html = (strings, ...values) => strings.reduce((out, part, i) => out + part + (values[i] ?? ""), "");
+  const skeleton = { innerHTML: '<div class="lr is-skeleton">' };
+  const summary = { hidden: false, innerHTML: "<button>" };
+  const appState = { replayResults: null, replayFilter: null, replayOpen: new Set(),
+    replayCheckToken: 7, authKnown: true, signedIn: true };
+  const deps = {
+    appState, html,
+    document: { getElementById: (id) => ({ "replay-summary": summary, "replay-results": skeleton })[id] || null },
+    saveReturnState: () => {}, paintGamesSource: () => {},
+  };
+  const code = extract("resetGamesResults", "\n\nfunction gamesSourceAccountIds(");
+  const resetGamesResults = new Function(...Object.keys(deps), code + "\nreturn resetGamesResults;")(...Object.values(deps));
+  resetGamesResults();
+  // The token is untouched, so runLichessCompare's finally still re-enables Check.
+  expect(appState.replayCheckToken).toBe(7);
+  expect(summary.hidden).toBe(true);
+  expect(skeleton.innerHTML).toContain("No games checked yet");
+  expect(skeleton.innerHTML).not.toContain("is-skeleton");
+});
+
+it("a failed Check clears the delayed progress status before showing the error", () => {
+  const start = source.indexOf("async function runLichessCompare(");
+  const end = source.indexOf("\n}\n", start) + 2;
+  const body = source.slice(start, end);
+  const catchBlock = body.slice(body.indexOf("} catch (error) {"));
+  // "Fetching games from Lichess" is a routine status, shown on a 700ms timer;
+  // it must be cleared or it appears beneath the error a moment later.
+  expect(catchBlock).toContain("resetGamesResults();");
+  expect(catchBlock.indexOf('setStatus("")')).toBeGreaterThan(-1);
+  expect(catchBlock.indexOf('setStatus("")')).toBeLessThan(catchBlock.indexOf("setStatusError"));
 });
 
 it("every Games source change clears the stale ledger", () => {
