@@ -433,7 +433,7 @@ export function createAnalyzeView({
       pct = pointWinPct(chartPoint);
       side = pct > 52 ? "white" : pct < 48 ? "black" : "even";
     }
-    chip.textContent = text;
+    if (chip.textContent !== text) chip.textContent = text;
     chip.dataset.side = side;
     chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
@@ -445,11 +445,13 @@ export function createAnalyzeView({
       fill.style.transform = `scaleX(${share.toFixed(4)})`;
     }
     // An empty Evaluation card is an empty grey block: hide it until it has a
-    // number, a game graph or the live engine to show.
+    // number, a game graph or the live engine to show. A job is a fourth thing
+    // it can show: the running graph and the job's own progress and Stop.
     const card = document.getElementById("analysis-eval-card");
     if (card && !card.classList.contains("is-engine")) {
       const graph = document.getElementById("analysis-eval-graph");
-      card.hidden = !text && (!graph || graph.hidden);
+      const job = card.querySelector("#analysis-job-dock .notice");
+      card.hidden = !text && (!graph || graph.hidden) && !job;
     }
   }
 
@@ -460,6 +462,14 @@ export function createAnalyzeView({
   const TEXT_CHANGES = { childList: true, characterData: true, subtree: true };
   watch("engine-head-eval", paintEvalHead, { ...TEXT_CHANGES, attributes: true });
   watch("analysis-eval-card", paintEvalHead, { attributes: true, attributeFilter: ["class"] });
+  // The job dock is inside the card: a job's notice, its count and its Stop
+  // are the card's content while the run lasts.
+  watch("analysis-job-dock", paintEvalHead, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["data-state"],
+  });
 
   function updateChartCaption(point) {
     chartPoint = point || null;

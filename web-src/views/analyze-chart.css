@@ -493,7 +493,7 @@
 .analysis-job-dock :is(.notice-icon, .notice-title, .notice-track, .notice-close) { display: none; }
 .analysis-job-dock > .notice .notice-main { grid-column: 1; display: block; }
 .analysis-job-dock > .notice .notice-actions { grid-column: 2; }
-.analysis-job-dock > .notice .notice-text { white-space: normal; overflow-wrap: anywhere; }
+.analysis-job-dock > .notice .notice-text { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
 .rb-head {
   display: flex;
   flex-wrap: wrap;
