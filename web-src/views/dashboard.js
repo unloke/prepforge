@@ -189,7 +189,6 @@ export function createDashboardView({
         title: "Build your first repertoire",
         // No button here: while this step is open the library's empty state
         // already offers New repertoire / Import PGN right beside it.
-        detail: "New repertoire or Import PGN, in your library.",
         done: repertoires > 0,
       },
       {
@@ -204,7 +203,8 @@ export function createDashboardView({
         // Counted from started sessions (there is no "finished" flag), so the
         // step promises only what it measures.
         title: "Start a training session",
-        detail: repertoires > 0 ? "" : "Unlocks once you have a repertoire.",
+        // A finished step reads "Done", so it can neither show a disabled Train
+        // nor a reason it is locked; the disabled CTA explains the lock.
         done: ((payload && payload.training_sessions) || 0) > 0,
         action: "train",
         label: "Train",

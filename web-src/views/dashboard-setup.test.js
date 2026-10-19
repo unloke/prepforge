@@ -128,6 +128,20 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).toMatch(/data-lib-action="train" disabled/);
   });
 
+  it("a done step never carries a locked/blocked explanation (round 2, symptom 1)", async () => {
+    // The account once trained (8 sessions) but has no repertoire now: the step
+    // rendered "Done" and "Unlocks once you have a repertoire." together. Steps
+    // keep no standing detail copy at all — the disabled Train says why.
+    mockDashboard({ repertoires: 0, training_sessions: 8 });
+    await view.loadDashboard();
+    expect(String(steps.innerHTML)).toMatch(/data-setup-step="train"[^]*?Done/);
+    expect(String(steps.innerHTML)).not.toContain("Unlocks once");
+    expect(String(steps.innerHTML)).not.toMatch(/<div class="step-text"><b>[^<]+<\/b><p>/);
+    // The open repertoire step is where the lock is named.
+    expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
+    expect(String(container.innerHTML)).toContain("No repertoires yet.");
+  });
+
   it("keeps Link Lichess on the card after the first repertoire exists", async () => {
     mockDashboard({ repertoires: 1 }, [
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
