@@ -125,7 +125,14 @@
 .move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
 .move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
 .move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
-.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-xs)/1.4 var(--font); } 
+.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-xs)/1.4 var(--font); }
+@media (prefers-reduced-motion: no-preference) {
+  .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
+  @keyframes departure-mark {
+    from { opacity: 0; transform: translateX(-3px); }
+    to { opacity: 1; transform: none; }
+  }
+} 
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows path { opacity: 0.8; filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22)); }
