@@ -682,7 +682,7 @@
     min-width: 0;
     height: 18px;
     padding-left: 48px;
-    font-size: 12px;
+    font-size: var(--fs-s);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -691,7 +691,7 @@
   #build-rep-header .phone-back { grid-row: 1 / 3; color: var(--accent-strong); }
   #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   #build-rep-header .rep-name { grid-column: 2; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #build-rep-header .rep-stats { grid-column: 2; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #build-rep-header .rep-stats { grid-column: 2; font-size: var(--fs-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #build-rep-header #build-menu { grid-column: 3; grid-row: 1 / 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
@@ -726,7 +726,7 @@
   #build-inspector .dock-tools { padding-top: 12px; }
   /* Saving state beside the tools that trigger it (the board bar's chip is
      hidden here). */
-  #build-inspector .build-sync { flex: none; font-size: 12px; }
+  #build-inspector .build-sync { flex: none; font-size: var(--fs-s); }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
@@ -757,7 +757,7 @@
      stay dense like a score sheet, but their rows get a gap so neighbours do
      not fuse. */
   #view-build .fork-chip { min-height: 40px; padding: 0 14px; }
-  #view-build .fork-chip small { font-size: 12px; }
+  #view-build .fork-chip small { font-size: var(--fs-s); }
   #view-build .mtree-crumb { min-height: 32px; padding: 0 6px; }
   #view-build .mtree-collapse { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
   #view-build .build-empty { padding: 24px 16px; }

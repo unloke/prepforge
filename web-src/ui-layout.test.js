@@ -301,6 +301,21 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
   });
 
+  it("sets the Build ledger's small type at the panel's own floor", () => {
+    // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
+    // still hardcodes 9-12px is the one squinting line. The Explorer share, the
+    // in-repertoire dot, the crumb separator and the fork chip's number all read
+    // at that floor now; on a phone the header stats, save chip and fork share
+    // take the same token instead of a 12px literal.
+    expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*11px/);
+    expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
+    expect(ruleBody(".crumb-sep")).toMatch(/font-size:\s*var\(--fs-s\)/);
+    expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
+    expect(phoneCss).toMatch(/#build-rep-header \.rep-stats \{[^}]*font-size:\s*var\(--fs-s\)/);
+    expect(phoneCss).toMatch(/#build-inspector \.build-sync \{[^}]*font-size:\s*var\(--fs-s\)/);
+    expect(phoneCss).toMatch(/#view-build \.fork-chip small \{[^}]*font-size:\s*var\(--fs-s\)/);
+  });
+
   it("sizes the dock to its rows, and a dragged height survives a repaint", () => {
     const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
     // The fit sums the visible drawers (their scroll heights), the body's own
