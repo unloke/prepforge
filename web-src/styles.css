@@ -3051,7 +3051,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    fills inside it (chips, the up-next field, the health rows) carry the
    structure. */
 #view-train .tcard { border: 0; }
-#view-train .tcard > h3 { border-bottom: 0; }
+#view-train .tcard > h3 { border-bottom: 0; font-size: var(--fs); }
 /* The counters are pills on a soft fill, like the app's other chips. */
 #view-train .stat { border: 0; }
 /* Nothing in this panel that is meant to be read sits under the body size. */
