@@ -859,13 +859,45 @@
   #analysis-explain::after { content: ""; display: block; clear: both; }
   #analysis-explain .cc-head { float: right; flex-wrap: nowrap; gap: 6px; min-height: 0; margin: 0 0 2px 10px; }
   #analysis-explain .cc-head > b { display: none; }
-  #analysis-explain .explain-review .pf-row-label {
+  /* On phones the coach head floats beside the text. The switch is a 22px
+     control: its own padding gives it a 44px target (the border-box stays at a
+     knob-tall 22px, so the header keeps its height). */
+  #analysis-explain .cc-head .pf-switch {
+    position: relative;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+  }
+  #analysis-explain .cc-head .pf-switch.is-on { background: none; }
+  #analysis-explain .cc-head .pf-switch .pf-knob { display: none; }
+  #analysis-explain .cc-head .pf-switch::before {
+    content: "";
     position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
+    top: 11px;
+    left: 3px;
+    width: 34px;
+    height: 18px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--panel-soft);
+  }
+  #analysis-explain .cc-head .pf-switch::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  #analysis-explain .cc-head .pf-switch.is-on::before { border-color: var(--accent); background: var(--accent); }
+  #analysis-explain .cc-head .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
+  @media (prefers-reduced-motion: reduce) {
+    #analysis-explain .cc-head .pf-switch::after { transition: none; }
   }
   #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
