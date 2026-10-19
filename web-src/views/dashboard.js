@@ -607,7 +607,6 @@ export function createDashboardView({
     setLibraryEmpty(true, { error: true });
     container.innerHTML = html`
       <div class="empty-state is-error" role="alert" data-testid="library-list-error">
-        <div class="es-mark" aria-hidden="true">!</div>
         <h3>Could not refresh your repertoires.</h3>
         <p>${String(message || "The server did not respond.")}</p>
         <div class="row gap">

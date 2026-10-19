@@ -1428,6 +1428,10 @@ h2 {
   --fs-xs: 13px;
   --fs-s: 13px;
 }
+#view-dashboard .empty-state p {
+  color: var(--text);
+  font-size: 16px;
+}
 
 /* Teams — Opus prototype composition. Directory | team detail | incoming shares;
    card chrome, rows and the responsive collapse live in views/teams.css. */
@@ -1841,10 +1845,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   grid-template-columns: 22px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
+  padding: 12px;
 }
-.step:last-child { border-bottom: 0; }
 .step-n {
   display: grid;
   place-items: center;
