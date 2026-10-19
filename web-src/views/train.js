@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { nounOf } from "../plural.js";
 // Train tab rendering (lazy-loaded from app.js).
 
 // The queue a plain Start serves, in the same terms as the in-session chips:
@@ -10,7 +11,7 @@ export function sessionPreviewText(next) {
   const parts = ["weak", "due", "new", "polish"]
     .filter((kind) => Number(next[kind]) > 0)
     .map((kind) => `${next[kind]} ${kind}`);
-  const total = `${cards} card${cards === 1 ? "" : "s"}${next.resumed ? " left" : ""}`;
+  const total = `${cards} ${nounOf(cards, "card")}${next.resumed ? " left" : ""}`;
   return [total, ...parts].join(" · ");
 }
 
