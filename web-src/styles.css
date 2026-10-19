@@ -1748,13 +1748,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
   white-space: nowrap;
 }
+/* A shared tag is a tag, not a micro-label: it sits at the size of the other
+   chips instead of a 10px tracked cap, and says "shared" in lower case. */
 .lib-chip.is-shared {
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-weight: 600;
 }
 .lib-cell-mastery,
 .lib-cell-queue {
