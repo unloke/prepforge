@@ -282,6 +282,15 @@ export function openSourceComposer({
     const state = selfState();
     const checkedIds = new Set(sel.linkedMode === "subset" ? sel.accountIds : []);
     const selfChecked = linkedCount > 0 && state !== "none";
+    // The header counts the sources actually picked (linked + external), not
+    // the linked accounts on file: adding an opponent used to leave "1 account".
+    const pickedLinked =
+      sel.linkedMode === "all"
+        ? linked.length
+        : sel.linkedMode === "subset"
+          ? linked.filter((account) => checkedIds.has(account.id)).length
+          : 0;
+    const pickedCount = pickedLinked + sel.external.length;
     const linkedRows = linked
       .map((account) => {
         const checked = sel.linkedMode === "all" || checkedIds.has(account.id);
@@ -299,7 +308,7 @@ export function openSourceComposer({
         ? html`${linkedRows}${externalRows}`
         : html`<p class="muted">No sources yet — add a username below.</p>`;
     overlay.innerHTML =
-      html`<div class="src-popover" role="dialog" aria-modal="false" aria-label="${title}"><div class="src-head"><span class="src-title">${title}</span><span class="src-count">${linkedCount} account${linkedCount === 1 ? "" : "s"}</span></div><label class="src-row is-self" data-src-self><input type="checkbox" data-testid="src-self-checkbox" data-src-self-checkbox${selfChecked ? " checked" : ""}${state === "mixed" ? html` aria-checked="mixed"` : ""} /><span class="src-name">Self${linkedCount && state !== "none"
+      html`<div class="src-popover" role="dialog" aria-modal="false" aria-label="${title}"><div class="src-head"><span class="src-title">${title}</span><span class="src-count">${pickedCount} account${pickedCount === 1 ? "" : "s"}</span></div><label class="src-row is-self" data-src-self><input type="checkbox" data-testid="src-self-checkbox" data-src-self-checkbox${selfChecked ? " checked" : ""}${state === "mixed" ? html` aria-checked="mixed"` : ""} /><span class="src-name">Self${linkedCount && state !== "none"
         ? state === "mixed"
           ? html` <span class="src-self-count is-mixed">partial</span>`
           : html` <span class="src-self-count">${linkedCount}</span>`

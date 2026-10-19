@@ -5494,11 +5494,12 @@ async function runLichessCompare() {
 // listed linked ids; "none" = no linked accounts. External Lichess usernames
 // ride alongside on both pages (Games fetches them too). Persisted per
 // browser as one explicit selection object.
-function readSourceStore(key) {
+function readSourceStore(key, fallback = null) {
   try {
-    return normalizeSelection(JSON.parse(localStorage.getItem(key)));
+    const raw = localStorage.getItem(key);
+    return normalizeSelection(raw == null ? fallback : JSON.parse(raw));
   } catch (_) {
-    return normalizeSelection(null);
+    return normalizeSelection(fallback);
   }
 }
 
@@ -5688,9 +5689,12 @@ function bindGamesSource() {
 // on both pages. Page difference lives only in the analysis workflow after
 // picking, never in the picker.
 const SCOUT_SOURCE_KEY = "prepforge.scout_source";
+// Scout is about the opponent, so an unset Scout selection starts empty: the
+// shared default ("Self", used by Games) made Start scout the user's own games.
+const SCOUT_SOURCE_DEFAULT = { linkedMode: "none", accountIds: [], external: [] };
 
 function scoutSelection() {
-  return readSourceStore(SCOUT_SOURCE_KEY);
+  return readSourceStore(SCOUT_SOURCE_KEY, SCOUT_SOURCE_DEFAULT);
 }
 
 function writeScoutSelection(selection) {
