@@ -140,6 +140,7 @@ describe("scout error state", () => {
     // and its sentence ran the full width of the window.
     expect(css).toMatch(/\.scout-error-title \{[^}]*font-size: 15px/);
     expect(css).toMatch(/\.scout-error-body \{[^}]*max-width: 70ch/);
+    expect(css).toMatch(/\.scout-error-body \{[^}]*font-size: 15px/);
   });
 });
 
