@@ -40,8 +40,10 @@
   background: var(--danger-soft);
   color: var(--text);
 }
-.scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-size: 15px; font-weight: 700; }
-.scout-error-body { flex: 1 1 220px; max-width: 70ch; margin: 0; font-size: 15px; line-height: 1.45; }
+/* The failure title and its sentence are the reading layer, set one step above
+   the report's meta like every other running sentence on the page. */
+.scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-size: 16px; font-weight: 700; }
+.scout-error-body { flex: 1 1 220px; max-width: 70ch; margin: 0; font-size: 16px; line-height: 1.45; }
 
 .scout-btn {
   font-size: 12px;
