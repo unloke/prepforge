@@ -29,6 +29,7 @@ const GAMES = [
     lichess_id: "g2", white: "me_user", black: "opp_two", result: "1-0", user_color: "white",
     in_repertoire: true, matched_plies: 3, departure_ply: 4, departure_move_uci: "g8f6",
     departure_reason: "opponent_unprepared_branch", repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance",
+    last_matched_node_id: "n2",
     move_san_history: ["e4", "c6", "d4", "Nf6"], expected_move_uci: null, expected_move_san: null,
     training_recorded: false, source_account: "self",
   },
@@ -149,7 +150,18 @@ async function runViewport(vp) {
   check(/1 stayed in prep/.test(summaryText || ""), `summary should count 1 stayed in prep, got "${summaryText}"`);
   check(/1 you left prep/.test(summaryText || ""), `summary should count 1 you left prep`);
   check(/1 opponent left prep/.test(summaryText || ""), `summary should count 1 opponent departure`);
-  check(/\+1 queued for training/.test(summaryText || ""), `summary should show the real queued count`);
+  check(/\+1 move queued for training/.test(summaryText || ""), `summary should show the real queued count`);
+  check(/\+1 move queued/.test(summaryText || "") && !/\+1 queued/.test(summaryText || ""), `queued count should name what it counts, got "${summaryText}"`);
+
+  // The ledger header counts games, not a bare "3 shown".
+  const ledgerHead = await page.locator("#replay-results .ledger .faint").textContent().catch(() => "");
+  check(/^3 games/.test((ledgerHead || "").trim()), `ledger header should count games, got "${ledgerHead}"`);
+
+  // Phone: the outcome chips are the only way to narrow the ledger.
+  if (vp.width <= 760) {
+    const chipBox = await page.locator("#replay-summary .sum-chip").first().boundingBox();
+    check(!!chipBox && chipBox.height >= 40, `outcome chips need a 40px touch target on a phone, got ${chipBox?.height}`);
+  }
 
   // Ledger: 3 rows; focused row (first, user-error) is open.
   const rows = await page.locator("#replay-results .lr[data-index]").count();
@@ -189,6 +201,54 @@ async function runViewport(vp) {
   check(!!geom && geom.wide, "focus board should use most of the card's width");
 
   await shot("triage");
+
+  // Add reply acts on the row it sits in: the opponent's departure move is
+  // played into the matched repertoire (POST /api/build/add-moves), not just
+  // opened. The fixture has no build tree, so answer the load and the write.
+  await page.route("**/api/build/load**", (route) => {
+    return route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      repertoire_id: "rep-1", name: "Caro-Kann: Advance", color: "white", revision: 1, writable: true,
+      selected_node_id: "n2",
+      nodes: [
+        { id: "n1", parent_id: null, san: null, uci: null, fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", children: ["n2"] },
+        { id: "n2", parent_id: "n1", san: "e4", uci: "e2e4", fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", children: [] },
+      ],
+      }),
+    });
+  });
+  page.on("request", (request) => {
+  });
+  await page.route("**/api/build/add-moves", (route) => route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({ revision: 2, nodes: [{ id: "n1", parent_id: null, san: null, uci: null, fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", children: ["n2"] },
+      { id: "n2", parent_id: "n1", san: "e4", uci: "e2e4", fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", children: ["n3"] },
+      { id: "n3", parent_id: "n2", san: "Nf6", uci: "g8f6", fen: "rnbqkb1r/pppppppp/5n2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2", children: [] }] }),
+  }));
+  await page.locator('#replay-results .lr[data-index="1"]').evaluate((el) => el.click());
+  await page.waitForTimeout(300);
+  const addReply = page.locator('#replay-results .focus [data-act="build"]');
+  const addReplyLog = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/build/add-moves")) addReplyLog.push(request.postData() || "");
+  });
+  check((await addReply.count()) === 1, "the opponent-departure row should offer Add reply");
+  if (await addReply.count()) {
+    await addReply.evaluate((el) => el.click());
+    // Build's sync queue flushes 2s after an edit; the write only lands then.
+    await page.waitForTimeout(2600);
+    check(addReplyLog.length === 1, `Add reply should write the reply into the repertoire, got ${addReplyLog.length} writes`);
+    const written = addReplyLog[0] || "";
+    check(written.includes("g8f6"), `Add reply should play the departure move g8f6, wrote ${written.slice(0, 160)}`);
+    // Back to the games ledger for the remaining checks, with the same
+    // payload on screen (the check button re-fetches it).
+    await page.evaluate(() => document.querySelector('[data-testid="nav-replay"]').click());
+    await page.waitForTimeout(500);
+    await page.evaluate(() => document.getElementById("lichess-compare-btn").click());
+    await page.waitForTimeout(900);
+    check((await page.locator("#replay-results .lr[data-index]").count()) === 3, "the ledger should be back after Add reply");
+  }
 
   // Selecting the stayed-in-prep game drops the arrows.
   await page.locator("#replay-results .lr[data-index]").nth(2).evaluate((el) => el.click());

@@ -3,6 +3,7 @@ import { html } from "../html.js";
 
 import { Chess } from "chess.js";
 import { buildArrowPath } from "../board-arrows.js";
+import { nounOf } from "../plural.js";
 import "./replay.css";
 
 const REPLAY_KINDS = {
@@ -224,11 +225,11 @@ export function createReplayView({
       .filter(([kind]) => counts[kind] > 0)
       .map(
         ([kind, meta]) =>
-          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${meta.icon} ${counts[kind]} ${meta.label}</button>`
+          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${meta.icon} ${counts[kind]} ${nounOf(counts[kind], meta.label)}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
-      ? html`<span class="queued" title="Recorded as recall misses">+${queued} queued for training</span>`
+      ? html`<span class="queued" title="Recorded as recall misses">+${queued} ${nounOf(queued, "move")} queued for training</span>`
       : "";
     el.innerHTML = html`${chips}${queuedHtml}`;
     el.hidden = false;
@@ -291,15 +292,14 @@ export function createReplayView({
       const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
       if (isDifferentOpening(game)) {
         lines.push(
-          html`Opponent chose a different opening at ${moveNumberLabel(game.departure_ply)}${played}, before your repertoire got going. Add a reply to cover it.`
+          html`Opponent chose a different opening at ${moveNumberLabel(game.departure_ply)}${played}, before your repertoire got going.`
         );
       } else {
         lines.push(html`Opponent took an unprepared branch at ${moveNumberLabel(game.departure_ply)}${played}.`);
       }
     } else if (game.departure_reason === "game_stayed_in_preparation") {
-      lines.push("Game stayed entirely within preparation. Nice.");
+      lines.push("Game stayed entirely within preparation.");
     }
-    if (game.reentry_ply) lines.push(html`Back in prep: ${plyMoveLabel(game.reentry_ply, game.move_san_history)}`);
     return html`${lines.map((line) => html`<li>${line}</li>`)}`;
   }
 
@@ -384,7 +384,7 @@ export function createReplayView({
     renderReplaySummary(payload);
     const sourceErrors = (payload?.source_errors || []).map((error) =>
       `${error.username}: ${error.message}`).join(" ? ");
-    const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors} · Retry Check</div>` : "";
+    const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors}</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
       container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No recent games found</h3></div>`;
       return;
@@ -413,7 +413,7 @@ export function createReplayView({
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} shown${accountNote}</span></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);

@@ -1,12 +1,18 @@
+// "Add reply" opens the matched repertoire at the position the opponent left
+// prep and PLAYS their move into the line, which is what "Add reply" says. It
+// used to open Build one move earlier and rely on the incoming game's move;
+// from the review that move never came, so the button dropped the user into
+// Build at the wrong position with nothing added.
 export async function buildReply(game, deps) {
   const { editRepertoire, getNode, isBuildReadOnly, localBoardInfo, onBuildBoardMove, isCurrent } = deps;
   await editRepertoire(game.repertoire_id, game.last_matched_node_id || null);
   if (!isCurrent()) return;
   const uci = game.departure_move_uci, node = getNode();
   if (!uci || !node || node.id !== game.last_matched_node_id || isBuildReadOnly()) return;
-  const side = String(node.fen || "").split(" ")[1] === "b" ? "black" : "white";
-  if (game.user_color && side === game.user_color) return;
-  if (localBoardInfo(node.fen).legal_moves.includes(uci)) await onBuildBoardMove(uci);
+  if (!localBoardInfo(node.fen).legal_moves.includes(uci)) return;
+  // Legality on the matched node is the check; the side test would reject a
+  // legal reply whenever the repertoire's color disagrees with the payload.
+  await onBuildBoardMove(uci);
 }
 
 export async function replayToAnalyze(game, deps) {
