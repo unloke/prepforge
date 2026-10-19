@@ -199,7 +199,7 @@ export function createTrainView({
     }
     host.hidden = false;
     host.innerHTML =
-      html`<small class="faint">Up next</small>${upcoming
+      html`<span class="faint">Up next</span>${upcoming
         .map((card) => {
           const kind = smart.cardKinds[card.kind]?.label || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
@@ -209,9 +209,12 @@ export function createTrainView({
           // The card for a line's very first move asks about the starting
           // position: its path is empty, so name it instead of leaving the row
           // blank next to the rows that do carry a line.
-          const tail = lineTail(card.targets?.[0]?.line) || "Start";
+          const line = lineTail(card.targets?.[0]?.line);
+          const tail = line
+            ? html`<span class="un-line">${line}</span>`
+            : html`<span class="un-line is-plain">Start</span>`;
           return (
-            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${tail}</span></div>`
+            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</div>`
           );
         })}`;
   }

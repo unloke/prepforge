@@ -3047,6 +3047,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overscroll-behavior: contain;
 }
 #view-train .panel-head { padding: 8px 12px; }
+/* The panel's cards are not boxes: the content sits on the panel and the
+   fills inside it (chips, the up-next field, the health rows) carry the
+   structure. */
+#view-train .tcard { border: 0; }
+#view-train .tcard > h3 { border-bottom: 0; }
+/* The counters are pills on a soft fill, like the app's other chips. */
+#view-train .stat { border: 0; }
 /* Nothing in this panel that is meant to be read sits under the body size. */
 #view-train .tcard p,
 #view-train .note { font-size: var(--fs); }
@@ -3077,7 +3084,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border-bottom: 1px solid var(--line);
   background: var(--panel-soft);
 }
 #train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
@@ -3304,19 +3310,20 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .pips i.no { background: var(--danger); }
 .trail-empty { color: var(--label); font-size: var(--fs); }
 
-.upnext { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .un-row {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 2px 0;
   font-size: var(--fs);
 }
 .un-row .kchip { justify-self: start; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
+/* A card with no line of its own says so in words, not in the move face. */
+.un-line.is-plain { font-family: inherit; }
 
 /* Session summary. A .tcard like the rest; the stat cells are its fills. */
 /* The stat cells fill the row they are in: a session with a skip AND a day
@@ -3326,13 +3333,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
 .sum-cells b { font-size: 18px; }
 .sum-cells span { color: var(--label); font-size: var(--fs); }
-.delta { display: flex; flex-direction: column; }
+.delta { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .tsum-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 40px;
   gap: 8px;
-  padding: 5px 4px;
-  border-bottom: 1px solid var(--line);
+  padding: 3px 0;
   font-size: var(--fs);
 }
 .tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
