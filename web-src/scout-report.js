@@ -93,7 +93,7 @@ export function renderScoutColorTabsHtml(profile, { hidden = false, username = "
       // (and the a11y name) preserves the wording without the overflow.
       return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(games, "game")}</small></button>`;
     });
-  return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
+  return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays" data-ui${hidden ? ' hidden' : ''}>${buttons}</div>`;
 }
 
 // Tab switch = visibility only: the sections keep their computed line state
@@ -400,8 +400,8 @@ export function renderScoutEnginePanel(engineAgg) {
     const eligible = engineAgg.eligibleGames ?? 0;
     const coverage = engineAgg.coveragePct ?? 0;
     const staleNote =
-      engineAgg.status === "stale" ? " — new games arrived, re-run Deep scan" : "";
-    return html`<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage — need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${staleNote}</div>`;
+      engineAgg.status === "stale" ? ", new games arrived, so re-run Deep scan" : "";
+    return html`<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage, need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${staleNote}</div>`;
   }
   const families = engineAgg.families?.slice(0, 6) || [];
   const maxAcpl = Math.max(120, ...families.map((f) => f.acpl || 0));
@@ -418,7 +418,7 @@ export function renderScoutEnginePanel(engineAgg) {
   const worst = families[0];
   const scopeNote =
     engineAgg.scopeLimited && engineAgg.maxGames
-      ? ` — based on latest ${engineAgg.maxGames} games`
+      ? `: based on the latest ${engineAgg.maxGames} games`
       : "";
   const summary = worst
     ? html`<div class="scout-engine-summary muted hint">Most mistakes after 1.${worst.san}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
@@ -841,15 +841,15 @@ export function renderScoutIntelChartsStrip(
   return html`
       ${a11yBlock}
       <div class="scout-intel-charts charts">
-        <div class="scout-intel-panel card chart">
+        <div class="scout-intel-panel card chart" data-ui>
           <h3 class="scout-col-label"${baseline != null ? html` title="Their average ${baseline}%"` : ""}>${byFirstTitle}</h3>
           ${scoreBars}
         </div>
-        <div class="scout-intel-panel card chart">
+        <div class="scout-intel-panel card chart" data-ui>
           <h3 class="scout-col-label scout-engine-label">Where ${who} makes mistakes</h3>
           ${enginePanel}
         </div>
-        <div class="scout-intel-panel scout-intel-trends card chart">
+        <div class="scout-intel-panel scout-intel-trends card chart" data-ui>
           <h3 class="scout-col-label">Activity and habits</h3>
           <p class="scout-chart-title">Games per week</p>
           ${activityChart}
@@ -894,7 +894,7 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
       squares.push(html`<div class="scout-minisquare ${dark ? "dark" : "light"}${last?.has(sq) ? " last" : ""}">${p ? pieceSvg(p) : ""}</div>`);
     }
   }
-  return html`<div class="scout-miniboard" aria-hidden="true">${squares}</div>`;
+  return html`<div class="scout-miniboard" data-ui aria-hidden="true">${squares}</div>`;
 }
 
 // Games in the rendered report. The live fetch total lives in the toolbar
@@ -993,7 +993,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
   const replyNote = line.suggestedReply?.uci
     ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${formatReplyLabel(line.suggestedReply)}</strong> (${line.suggestedReply.source || "engine"})</p>`
     : line.needsPrep
-      ? html`<p class="scout-line-reply note warn">No reply in your prep yet — run Deep scan or extend repertoire</p>`
+      ? html`<p class="scout-line-reply note warn">No reply in your prep yet. Run Deep scan or extend the repertoire.</p>`
       : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
@@ -1012,7 +1012,6 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
            })}</div></div>`
       : "";
   return html`
-      <div class="eyebrow">Line detail</div>
       <h2 class="line-title">${scoutLineText(line.sans)}</h2>
       <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
@@ -1028,7 +1027,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
 
 export function buildScoutAnalyzePgn(line, oppColor, username) {
   const [white, black] = oppColor === "white" ? [username, "?"] : ["?", username];
-  const headers = `[Event "Scout — ${username}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "*"]`;
+  const headers = `[Event "Scout: ${username}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "*"]`;
   return `${headers}\n\n${scoutLineText(legalScoutLineSans(line))} *`;
 }
 
@@ -1152,7 +1151,7 @@ function scoutLineRowHtml(
   // decays toward 0 for old lines and would render a true n=1 line as "n=0".
   const rawCount = line.routeSupportGames ?? line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
   const engineFlag = line.hasEngineMistake || line.refutation
-    ? html`<i class="scout-err-marker eng" title="Engine-backed refutation available">⚠</i>`
+    ? html`<i class="scout-err-marker eng" title="Engine-backed refutation available"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.6 20h18.8L12 4Z"/><path d="M12 10v4.2"/><path d="M12 17.4v.01"/></svg></i>`
     : "";
   // Path guard (flagged prototype): a kept line whose earlier position fails the leaf gate.
   const pathFlag = line.pathStatus === "risk"
@@ -1409,7 +1408,7 @@ export function buildScoutSectionReport(
   const prepareAll = html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`;
 
   const trending = profile.recentlyChanged[oppColor]
-    ? html`<span class="scout-trending kchip k-due" title="Their recent games show a different opening">⚡ Recently changed</span>`
+    ? html`<span class="scout-trending kchip k-due" title="Their recent games show a different opening">Recently changed</span>`
     : "";
 
   const firstMoves = scoutDisplayDistribution(trie, scoutModule.moveDistribution)
@@ -1439,7 +1438,7 @@ export function buildScoutSectionReport(
           ${firstMovesHtml}
           ${gapActionsHtml}
           ${listHead}
-          <div class="scout-lines scout-ranked-list lines" role="list">${prepRows}</div>
+          <div class="scout-lines scout-ranked-list lines" role="list" data-ui>${prepRows}</div>
           ${rankedNote}
         </div>`
     : html`<div class="scout-game-plan plan">
@@ -1508,7 +1507,7 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
       for (const t of prep) {
         const their = scoutLineText(t.sans);
         const reply = t.suggestedReply?.uci ? ` → your move ${t.suggestedReply.uci}` : t.needsPrep ? " → no answer in your prep" : "";
-        let row = `- After ${their}${reply} — ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
+        let row = `- After ${their}${reply}: ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;
         }

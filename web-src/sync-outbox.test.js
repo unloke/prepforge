@@ -4,10 +4,12 @@ import {
   acquireFlushLock,
   buildAddId,
   buildDeleteId,
+  createSyncQueue,
   mergeOutboxState,
   outboxHasRejected,
   outboxHasWork,
   outboxIsQuiescent,
+  refreshFlushLock,
   releaseFlushLock,
   trainAttemptId,
 } from "./sync-queue.js";
@@ -108,9 +110,20 @@ describe("cross-tab flush lock", () => {
     expect(acquireFlushLock("owner", "tab-2", 1200)).toBe(false);
   });
 
-  it("steals a stale lock (holder went silent for 30s)", () => {
+  it("steals a lock whose holder stopped renewing it (a dead tab)", () => {
     expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
-    expect(acquireFlushLock("owner", "tab-2", 31_000)).toBe(true);
+    // The holder renews while it works, so only a holder that stopped (a crash)
+    // lets the lease run out — in seconds, not in half a minute.
+    expect(acquireFlushLock("owner", "tab-2", 5_000)).toBe(false);
+    expect(acquireFlushLock("owner", "tab-2", 9_500)).toBe(true);
+  });
+
+  it("renews the holder's lease without touching someone else's lock", () => {
+    expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
+    expect(refreshFlushLock("tab-1", "build", 6_000)).toBe(true);
+    // Renewed: the lock is still held, now until 6s + the lease.
+    expect(acquireFlushLock("owner", "tab-2", 8_000)).toBe(false);
+    expect(refreshFlushLock("tab-2", "build", 8_000)).toBe(false);
   });
 
   it("ignores locks held for a different owner", () => {
@@ -265,4 +278,52 @@ describe("outbox settling", () => {
     expect(merged.build.pending).toHaveLength(0);
   });
 });
+// The lock must never outlive the page that took it: a page that goes away
+// mid-flush (a reload) leaves the next load of the same owner unable to flush,
+// and Train then refuses to start the session ("Couldn't sync your last
+// session"). The browser fires pagehide BEFORE the visibilitychange flush that
+// takes the lock, so the release has to happen on the way out as well.
+describe("flush lock and the page that took it", () => {
+  let handlers;
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", fakeStorage());
+    handlers = {};
+    vi.stubGlobal("addEventListener", (type, fn) => { handlers[type] = fn; });
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+  });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  function queueWithStuckFlush() {
+    const state = { pending: [1], dirty: false, timer: null, flushing: null, retry: 0 };
+    const queue = createSyncQueue({
+      key: "train",
+      state: () => state,
+      owner: () => "owner",
+      generation: () => 1,
+      serialize: () => ({}),
+      persist: () => Promise.resolve(true),
+      hasWork: () => true,
+      idleMs: 10,
+      tabId: "tab-1",
+      flush: () => new Promise(() => {}), // never settles: the page dies with it
+    });
+    return { queue, state };
+  }
+
+  it("gives the lock back when the page unloads", () => {
+    const { queue } = queueWithStuckFlush();
+    // The browser tears a page down in this order: beforeunload, pagehide,
+    // visibilitychange(hidden) — the flush that TAKES the lock — then unload.
+    handlers.beforeunload?.();
+    handlers.pagehide?.();
+    queue.flush();
+    expect(acquireFlushLock("owner", "tab-2", 1000, "train")).toBe(false); // held
+    handlers.unload?.();
+    expect(acquireFlushLock("owner", "tab-2", 1100, "train")).toBe(true); // released
+  });
+});

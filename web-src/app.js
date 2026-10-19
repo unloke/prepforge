@@ -1550,7 +1550,11 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
     panel.hidden = !active;
     panel.setAttribute("aria-hidden", String(!active));
   });
-  document.querySelectorAll(".tab[data-replay-section]").forEach((button) => {
+  // The rail's Games/Scout entries are per-section; the phone bar's Review
+  // tab names the whole Review destination, so switchView's data-review-tab
+  // branch owns it. Without the skip this per-section loop would switch the
+  // Review tab off on Scout and leave the bottom bar with nothing lit.
+  document.querySelectorAll(".tab[data-replay-section]:not([data-review-tab])").forEach((button) => {
     const active = button.dataset.replaySection === next;
     button.classList.toggle("is-active", active && appState.currentView === "replay");
     button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
@@ -3840,6 +3844,10 @@ function setBuildLoading(on, { restore = true } = {}) {
   if (boards.build) {
     boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
   }
+  // The skeleton replaces the tree but the rule's subject is still the previous
+  // repertoire: repaint so the head drops the button the old tree made true
+  // (nothing here is settled yet, so it cannot apply).
+  paintGenerateVisibility();
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = true;
@@ -4413,6 +4421,7 @@ async function ensureBuildView() {
       selectBuildNode,
       openNodeContextMenu,
       buildBranchContext,
+      isReadOnly: isBuildReadOnly,
       onTreeRendered: syncViewHeads,
     });
   }
@@ -4429,6 +4438,14 @@ function renderBuildRepHeader() {
   if (empty) empty.hidden = !!appState.build;
   if (buildView) return buildView.renderBuildRepHeader();
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
+}
+
+// Generate's head button has exactly one rule, and it lives in the build view
+// (it reads the tree). Every path that changes what that rule reads must
+// repaint it, so app.js reaches the same paint the header uses.
+function paintGenerateVisibility() {
+  if (buildView) return buildView.paintGenerateVisibility();
+  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
 }
 
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
@@ -4794,6 +4811,7 @@ function renderBuilderTreeEmptyState() {
     html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
+  paintGenerateVisibility();
   syncViewHeads();
 }
 
@@ -5545,7 +5563,9 @@ async function runLichessCompare() {
     if (!isCurrent()) return;
     payload.requested_sources = usernames.length;
     appState.replayResults = payload;
-    appState.replayFilter = null;
+    // The filter is a view preference, not a position in the old list: a new
+    // check keeps it (and the return state restored after a reload). The
+    // selected game is gone with the old list, so its index is dropped.
     appState.replayOpen = new Set();
     await renderReplayResults(payload, isCurrent);
     if (!isCurrent()) return;
@@ -5634,7 +5654,7 @@ function resetGamesResults() {
   const results = document.getElementById("replay-results");
   if (results) {
     results.innerHTML =
-      html`<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
+      html`<div class="empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
   }
   paintGamesSource();
   const hint = document.getElementById("games-idle-hint");
@@ -5915,8 +5935,13 @@ async function ensureReplayView() {
       isGameOpen: (index) => appState.replayOpen.has(index),
       onToggleFilter: (kind) => {
         appState.replayFilter = appState.replayFilter === kind ? null : kind;
-        appState.replayOpen.clear();
-        saveReturnState("replay", { filter: appState.replayFilter, openIndex: null });
+        // The selection survives the filter: the ledger falls back to the
+        // first visible row while the open game is filtered out, so clearing
+        // the filter again brings the user's own game back.
+        saveReturnState("replay", {
+          filter: appState.replayFilter,
+          openIndex: [...appState.replayOpen][0] ?? null,
+        });
         void renderReplayResults(appState.replayResults).catch(() => {});
       },
       onToggleGame: (index) => {

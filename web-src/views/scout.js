@@ -374,7 +374,10 @@ export function createScoutView(deps) {
       resetBtn.hidden = state === "idle" || state === "running";
     }
     if (colorSel) {
-      colorSel.disabled = state !== "idle";
+      // The scope is read once, when the run starts. While a scout is
+      // initialising or streaming, the select must not take a change the
+      // run would then ignore.
+      colorSel.disabled = initGuard.isInitializing || state !== "idle";
     }
     if (card) {
       // The card shows the live stream card from the moment Start is pressed:
@@ -1297,7 +1300,7 @@ export function createScoutView(deps) {
     const drawer = document.getElementById("pgn-drawer");
     if (drawer) drawer.open = true;
     switchView("analyze");
-    setStatus(`Loaded ${username}'s line — press "Analyze game" to start`);
+    setStatus(`Loaded ${username}'s line. Press "Analyze game" to start.`);
   }
 
   async function scoutPickRepertoire(oppColor, { ownColor = false } = {}) {
@@ -1424,7 +1427,7 @@ export function createScoutView(deps) {
     if (!repId) return;
     const side = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
     const nodeId = await scoutWriteLineToRep(line, repId, { side });
-    if (nodeId) setStatus(`Added line to prep — opened at ${line.sans.at(-1) || "position"}`);
+    if (nodeId) setStatus(`Added line to prep. Opened at ${line.sans.at(-1) || "position"}.`);
   }
 
   async function scoutPrepareAll(lines, oppColor) {
@@ -1504,7 +1507,7 @@ export function createScoutView(deps) {
       await navigator.clipboard.writeText(text);
       setStatus("Scout report copied to clipboard");
     } catch (_) {
-      setStatus("Could not copy — check clipboard permissions");
+      setStatus("Could not copy. Check clipboard permissions.");
     }
   }
 
@@ -1993,7 +1996,7 @@ export function createScoutView(deps) {
       });
     const failedCount = statuses.length;
     bar.innerHTML =
-      html`<div class="source-warn-text" title="The report covers only the sources that returned games">⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
+      html`<div class="source-warn-text" title="The report covers only the sources that returned games">${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
     bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {
       bar.remove();
       const failedUsers = Object.entries(session.sourceStatus || {})
@@ -2180,7 +2183,7 @@ export function createScoutView(deps) {
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();
-      setStatus("No Scout sources selected — open Add and pick Self, an account, or a username");
+      setStatus("No Scout sources selected. Open Add and pick Self, an account, or a username.");
       return;
     }
     const color = colorSel?.value || "both";

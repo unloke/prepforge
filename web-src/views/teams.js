@@ -138,11 +138,11 @@ export function createTeamsView({
     },
     "no-teams": {
       title: "No teams yet",
-      body: "Create a team, then invite people with a shareable link or add existing PrepForge users by their Lichess username.",
+      body: "Create a team, then invite people with a link, or add PrepForge users by their Lichess username.",
     },
     choose: {
       title: "Choose a team",
-      body: "Open a team from the directory to see its members and shared repertoires.",
+      body: "Open a team to see its members and shared repertoires.",
     },
   };
   function renderTeamEmptyCard(kind) {

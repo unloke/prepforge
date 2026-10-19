@@ -7,15 +7,15 @@
     <meta name="supported-color-schemes" content="light dark" />
     <title>PrepForge Chess</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111318'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ffffff'%3E%E2%99%9E%3C/text%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="/static/assets/index-oPXUkJxG.js"></script>
+    <script type="module" crossorigin src="/static/assets/index-CdmC3PLa.js"></script>
     <link rel="modulepreload" crossorigin href="/static/assets/rolldown-runtime-DK3Fl9T5.js">
     <link rel="modulepreload" crossorigin href="/static/assets/html-A1qdFlh3.js">
     <link rel="modulepreload" crossorigin href="/static/assets/shared-constants-BulHn_HJ.js">
     <link rel="modulepreload" crossorigin href="/static/assets/preload-helper-TKEmbn41.js">
-    <link rel="modulepreload" crossorigin href="/static/assets/sync-queue-CaP6MztR.js">
+    <link rel="modulepreload" crossorigin href="/static/assets/sync-queue-DFoqVkyv.js">
     <link rel="modulepreload" crossorigin href="/static/assets/chess-DwBov9dY.js">
     <link rel="modulepreload" crossorigin href="/static/assets/material-DPbFImjt.js">
-    <link rel="stylesheet" crossorigin href="/static/assets/index-wV51pjhQ.css">
+    <link rel="stylesheet" crossorigin href="/static/assets/index-DE2F82LF.css">
   </head>
   <body>
     <a class="skip-link" href="#workspace-main" data-testid="skip-link">Skip to main content</a>
@@ -426,7 +426,7 @@
                   <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
                 </div>
                 <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="Timeout counts as a miss">
-                  <span class="pf-row-label" id="train-blitz-label">⚡ Blitz · 10s per move</span>
+                  <span class="pf-row-label" id="train-blitz-label">Blitz · 10s per move</span>
                   <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
                 </span>
                 <div class="train-start-row" id="train-srs-start">
@@ -520,7 +520,7 @@
                     <span class="trail-empty">No moves yet</span>
                   </div>
                 </div>
-                <div class="upnext" id="train-upnext" hidden></div>
+                <div class="upnext list-enter" id="train-upnext" hidden></div>
                 <div class="row">
                   <button class="btn sm" id="train-fresh" data-testid="train-fresh" type="button" disabled>New session</button>
                 </div>
@@ -562,7 +562,7 @@
               <span class="spacer"></span>
               <div id="replay-summary" class="sum-chips" role="group" aria-label="Filter by outcome" hidden></div>
             </div>
-            <div id="replay-results" class="replay-results"><div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div>
+            <div id="replay-results" class="replay-results"><div class="empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div>
           </section>
           <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <header class="page-head"><h1>Scout</h1></header>
@@ -587,7 +587,7 @@
             <div class="scout-grid">
               <div class="scout-main">
                 <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b id="scout-stream-phase">Loading your repertoire…</b><p id="scout-stream-detail" class="scout-stream-detail"></p></div></div>
-                <div class="scout-empty empty-state big"><div class="es-mark">♘</div><h3>Scout an opponent</h3><p id="scout-empty-hint">Add a Lichess username as a source, then Start.</p></div>
+                <div class="scout-empty empty-state big"><h3>Scout an opponent</h3><p id="scout-empty-hint">Add a Lichess username as a source, then Start.</p></div>
                 <div id="scout-profile" class="scout-profile profile card" hidden></div>
                 <div id="scout-results" class="scout-results"></div>
               </div>
@@ -644,7 +644,6 @@
           </section>
 
           <section class="card team-empty">
-            <div class="es-mark" aria-hidden="true">♙</div>
             <h3 id="team-empty-title">Choose a team</h3>
             <p class="muted" id="team-empty-body">Members and shared repertoires appear here.</p>
             <button type="button" class="btn primary" id="team-empty-signin" data-testid="team-empty-signin" hidden>Sign in</button>

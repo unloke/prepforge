@@ -204,11 +204,14 @@ export function createDashboardView({
         // step promises only what it measures.
         title: "Start a training session",
         // A finished step reads "Done", so it can neither show a disabled Train
-        // nor a reason it is locked; the disabled CTA explains the lock.
+        // nor a reason it is locked.
         done: ((payload && payload.training_sessions) || 0) > 0,
         action: "train",
         label: "Train",
+        // With no repertoire there is nothing to train, so the step says what
+        // is missing instead of carrying a button that cannot apply.
         locked: repertoires === 0,
+        lockNote: "Add a repertoire first",
       },
     ];
   }
@@ -225,18 +228,21 @@ export function createDashboardView({
       return;
     }
     card.innerHTML =
-      html`<header class="card-head"><h2>Get started</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide Get started" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
+      html`<header class="card-head"><h2>Next steps</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide next steps" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
         .map((step, i) => {
           const mark = step.done
-            ? html`<span class="step-n is-done" aria-hidden="true">✓</span>`
+            ? html`<span class="step-n is-done" aria-hidden="true"></span>`
             : html`<span class="step-n" aria-hidden="true">${i + 1}</span>`;
           const cta = step.done
             ? html`<span class="step-done">Done</span>`
+            : step.locked
+            ? ""
             : !step.action
             ? ""
-            : html`<button type="button" class="btn sm" data-lib-action="${step.action}"${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${step.label}</button>`;
+            : html`<button type="button" class="btn sm" data-lib-action="${step.action}" data-testid="setup-cta-${step.id}">${step.label}</button>`;
+          const note = step.locked && !step.done ? step.lockNote : step.detail;
           return (
-            html`<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}<div class="step-text"><b>${step.title}</b>${step.detail ? html`<p>${step.detail}</p>` : ""}</div>${cta}</div>`
+            html`<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}<div class="step-text"><b>${step.title}</b>${note ? html`<p>${note}</p>` : ""}</div>${cta}</div>`
           );
         })}`;
     card.hidden = false;
@@ -276,20 +282,30 @@ export function createDashboardView({
     }, 0);
   }
 
+  // Active repertoires the listing knows nothing about yet: the coverage badge
+  // is written the first time a repertoire is opened or trained, so until then
+  // its new and weak moves are unknown, not zero. The strip must not report a
+  // clear queue while a repertoire's size is still unknown.
+  function unopenedRepertoireCount() {
+    if (!repListLoaded) return 0;
+    return repListCache.own.filter((item) => item.is_active !== false && !item.health).length;
+  }
+
   // Queue line for the Today strip. "Queue is clear" next to a "41 new" row
   // read as a contradiction (UX walkthrough P1-4): reviews and never-trained
   // moves are reported separately.
-  function todayQueueText(due, soon, newMoves, weak = 0) {
+  function todayQueueText(due, soon, newMoves, weak = 0, unopened = 0) {
     const bits = [];
     if (due > 0) bits.push(html`<b>${due} due now</b>`);
     else if (weak > 0) bits.push(html`<b>${weak} weak spot${weak === 1 ? "" : "s"} to review</b>`);
+    else if (unopened > 0) bits.push(html`<b>${unopened} repertoire${unopened === 1 ? "" : "s"} not opened yet</b>`);
     else bits.push("Reviews clear");
     if (newMoves > 0) {
       const label = `${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`;
       bits.push(due > 0 || weak > 0 ? label : html`<b>${label}</b>`);
     }
     if (soon > 0) bits.push(`${soon} coming up in 24h`);
-    if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0) return "Queue is clear";
+    if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0 && unopened === 0) return "Queue is clear";
     return html`${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}`;
   }
 
@@ -318,7 +334,7 @@ export function createDashboardView({
     // buried Train now for new accounts. Always show the strip once we have a
     // dashboard payload.
     const note = streak.trained_today
-      ? `Trained today - day ${streak.current} ✓`
+      ? `Trained today - day ${streak.current}`
       : streak.current > 0
         ? `Train today to keep your ${streak.current}-day streak`
         : "Train today to start a streak";
@@ -331,16 +347,23 @@ export function createDashboardView({
         const h = Math.floor(msLeft / 3600000);
         const m = Math.floor((msLeft % 3600000) / 60000);
         const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        warningHtml = html`<div class="today-warning" role="alert">⏰ ${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
+        warningHtml = html`<div class="today-warning" role="alert">${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
       }
     }
     const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
-    const queueText = todayQueueText(due, soon, newMoves, weak);
+    const unopened = unopenedRepertoireCount();
     // Nothing stored in the account: the primary action is the first
     // repertoire, not Train, which can only answer "no active repertoire".
-    const firstRun = ownRepertoireCount() === 0 && !(Number(payload.training_sessions) > 0);
+    // A past training session does not change that — the account can have
+    // trained before and still have no repertoire to train now.
+    const firstRun = ownRepertoireCount() === 0;
+    // "Queue is clear" is a claim about a queue. With no repertoire there is
+    // no queue at all, so the line says what is missing instead.
+    const queueText = firstRun
+      ? "No repertoire to train yet"
+      : todayQueueText(due, soon, newMoves, weak, unopened);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
@@ -378,7 +401,6 @@ export function createDashboardView({
     card.innerHTML = html`
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
          title="Calendar days with at least one graded move">
-      <span class="today-flame" aria-hidden="true">\u{1F525}</span>
       <span class="today-count">${streak.current}</span>
       <span class="today-unit">day streak${best}</span>
     </div>
@@ -585,7 +607,6 @@ export function createDashboardView({
     setLibraryEmpty(true, { error: true });
     container.innerHTML = html`
       <div class="empty-state is-error" role="alert" data-testid="library-list-error">
-        <div class="es-mark" aria-hidden="true">!</div>
         <h3>Could not refresh your repertoires.</h3>
         <p>${String(message || "The server did not respond.")}</p>
         <div class="row gap">
@@ -615,7 +636,6 @@ export function createDashboardView({
       setListboxRole(container, false);
       container.innerHTML = html`
         <div class="empty-state big">
-          <div class="es-mark" aria-hidden="true">♜</div>
           <h3>No repertoires yet.</h3>
           <p>Create a repertoire, import a PGN, or build one from a game.</p>
           <div class="row gap">
@@ -756,7 +776,6 @@ export function createDashboardView({
     setLibraryEmpty(true);
     container.innerHTML = html`
       <div class="empty-state big" data-testid="library-signed-out">
-        <div class="es-mark" aria-hidden="true">♜</div>
         <h3>Sign in to start your library.</h3>
         <p>Sign in, then create a repertoire or import a PGN.</p>
         <div class="row gap">
@@ -795,7 +814,7 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
     card.innerHTML =
-      html`<header class="card-head"><h2>Get started</h2></header>${steps
+      html`<header class="card-head"><h2>Next steps</h2></header>${steps
         .map(
           ([title, detail, action, label], i) =>
             html`<div class="step"><span class="step-n" aria-hidden="true">${i + 1}</span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,

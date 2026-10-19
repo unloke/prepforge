@@ -1153,7 +1153,7 @@ describe("scout intelligence panel", () => {
           families: [{ san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 }],
         },
       )),
-    ).toContain("based on latest 60 games");
+    ).toContain("based on the latest 60 games");
   });
 
   // The ACPL is the most sample-sensitive figure on the card (it averages over

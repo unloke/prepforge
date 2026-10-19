@@ -58,8 +58,16 @@
 .mem-row.is-skeleton { cursor: default; }
 .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .team-row.is-selected {
+  position: relative;
   background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
+}
+.team-row.is-selected::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
 }
 .tr-text {
   display: flex;
@@ -240,6 +248,10 @@
   .team-role-select,
   .teams .tabs button { min-height: 44px; }
   .teams .card-head { flex-wrap: wrap; }
+  /* The spacer breaks the head in two: the name and the role on the first
+     line, the actions together on the second, all packed to the left. */
+  .team-detail .card-head { justify-content: flex-start; }
+  .team-detail .card-head .spacer { flex-basis: 100%; height: 0; }
   .mem-row { flex-wrap: wrap; }
   .team-member-tail { margin-left: auto; }
 }

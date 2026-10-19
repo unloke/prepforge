@@ -44,6 +44,44 @@ const BUILD_NODES = [
   { id: "n7", parent_id: "n5", depth: 6, san: "Na6", uci: "b8a6", fen: "r1bqkbnr/pp2pppp/n1p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4", fen_before: "rnbqkbnr/pp2pppp/2p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3", fen_after: "r1bqkbnr/pp2pppp/n1p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4", move_number: 3, ply: 6, move_side: "black", side_to_move: "white", source: "manual", is_mainline: false, is_enabled: true, is_prepared: false, mastery: "weak", maia_probability: null, arrows: [], circles: [] },
 ];
 
+// A large repertoire: 30 lines from the root, each running to move 9 (511
+// nodes). This is the tree that used to run out of the right-hand panel: the
+// .tree-wrap is a flex item with shrink 0, so it kept its content height,
+// pushed the panel's card to the top of the screen and scrolled the page under
+// the board. FENs are placeholders - nothing moves on them.
+const BIG_TREE_FENS = [
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+  "rnbqkbnr/pppp1ppp/8/4p3/2N1P3/8/PPPP1PPP/R1BQKBNR b KQkq - 1 2",
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2N1P3/8/PPPP1PPP/R1BQKBNR w KQkq - 2 3",
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2N1P3/5N2/PPPP1PPP/R1BQKB1R b KQkq - 3 3",
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2N1P3/5N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",
+];
+const BIG_TREE_SAN = ["c5", "c3", "g3", "a3", "h3", "f4", "b3", "e3", "a6", "h6", "Bb4", "Be7", "Nc6", "Nf6", "Qc7", "Qe7", "O-O", "d6", "d5", "e6"];
+function bigBuildNodes() {
+  const nodes = [];
+  let next = 0;
+  const push = (parentId, depth, san) => {
+    const id = "b" + next++;
+    nodes.push({
+      id, parent_id: parentId, depth, san: depth % 2 === 1 ? san : "x" + san, uci: "a7a6",
+      move_number: Math.ceil(depth / 2), ply: depth, move_side: depth % 2 === 1 ? "white" : "black",
+      fen: BIG_TREE_FENS[depth % BIG_TREE_FENS.length],
+      fen_before: BIG_TREE_FENS[(depth - 1) % BIG_TREE_FENS.length],
+      fen_after: BIG_TREE_FENS[depth % BIG_TREE_FENS.length],
+      source: "manual", is_mainline: true, is_enabled: true, is_prepared: false,
+      mastery: null, maia_probability: null, arrows: [], circles: [],
+    });
+    return id;
+  };
+  const root = push(null, 0, null);
+  for (let line = 0; line < 30; line += 1) {
+    let parent = root;
+    for (let d = 1; d <= 17; d += 1) parent = push(parent, d, BIG_TREE_SAN[(line + d) % BIG_TREE_SAN.length]);
+  }
+  return nodes;
+}
+
 const api = (path) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
@@ -57,6 +95,12 @@ const api = (path) => {
       nodes: BUILD_NODES,
     };
   }
+  if (path.startsWith("/api/build/load") && decodeURIComponent(path).includes("rep-big")) {
+    return {
+      repertoire_id: "rep-big", name: "Wide Repertoire", color: "black",
+      writable: true, selected_node_id: "b0", root_fen: BIG_TREE_FENS[0], nodes: bigBuildNodes(),
+    };
+  }
   if (path.startsWith("/api/build/load")) {
     return {
       repertoire_id: "rep-1", name: "Caro-Kann: Advance", color: "black",
@@ -66,10 +110,13 @@ const api = (path) => {
   }
   if (path.startsWith("/api/repertoires")) {
     return {
-      repertoires: [{ id: "rep-1", name: "Caro-Kann: Advance", color: "black", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", notes: "", tags: [], is_active: true, team_id: null, visibility: "private", health: { trainable: 3, mastered: 1, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 33, shallow_lines: 0 } }],
+      repertoires: [
+        { id: "rep-1", name: "Caro-Kann: Advance", color: "black", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", notes: "", tags: [], is_active: true, team_id: null, visibility: "private", health: { trainable: 3, mastered: 1, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 33, shallow_lines: 0 } },
+        { id: "rep-big", name: "Wide Repertoire", color: "black", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", notes: "", tags: [], is_active: false, team_id: null, visibility: "private", health: { trainable: 3, mastered: 1, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 33, shallow_lines: 0 } },
+      ],
       shared: [],
     };
-  }
+}
   if (path.startsWith("/api/dashboard")) {
     return { games: 0, repertoires: 1, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: { moves_reviewed_7d: 0, mastered_now: 0, mastered_delta: 0, weak_now: 0, weak_delta: 0 }, recommendations: [] };
   }
@@ -174,9 +221,9 @@ async function runViewport(vp) {
   check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
 
   // Build header: size summary + Generate's applicability rule. The button only
-  // applies where a move of yours is missing, so at 3.e5 (where Bf5 already
-  // answers for black) it must be OUT of the head — and reachable from the
-  // ⋯ menu's "Move …" entry instead.
+  // applies where a writable repertoire's move of yours is missing, so at 3.e5
+  // (where Bf5 already answers for black) it must be OUT of the head — and
+  // reachable from the ⋯ menu's "Move …" entry instead.
   const repStats = await page.locator("#build-rep-stats").textContent().catch(() => "");
   check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
   const genAtE5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
@@ -190,20 +237,26 @@ async function runViewport(vp) {
   check(genAtD5 === false, `Generate should apply at 2...d5, got hidden=${genAtD5}`);
   check(genShownAtD5 === 1, "Generate should be visible in the head where it applies");
 
-  // Hovering the current move row reveals it even where it does not apply.
-  // (Above the phone breakpoint only: a phone has no hover and the button is
-  // the board bar's pill.)
+  // Where it does not apply NOTHING reveals it: the hidden attribute is the
+  // only state, so a hover or a focused tree row can no longer force the button
+  // back (a head-row CSS rule used to override the attribute on :hover/:focus,
+  // which made the button appear exactly where it could not apply).
   await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
   await page.waitForTimeout(250);
   if (vp.width > 760) {
     await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').hover();
     await page.waitForTimeout(150);
     const genOnHover = await page.locator("#build-generate-node:visible").count();
-    check(genOnHover === 1, "hovering the current move row should reveal Generate");
-    await page.mouse.move(4, 4);
+    check(genOnHover === 0, "hovering the current move row must not reveal Generate");
+    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').focus();
     await page.waitForTimeout(150);
-    const genAfterLeave = await page.locator("#build-generate-node").evaluate((el) => el.hidden);
-    check(genAfterLeave === true, "Generate should hide again once the row is left");
+    const genOnFocus = await page.locator("#build-generate-node:visible").count();
+    check(genOnFocus === 0, "a focused tree row must not reveal Generate either");
+    await page.mouse.move(4, 4);
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await page.waitForTimeout(150);
+    const genSettled = await page.locator("#build-generate-node").evaluate((el) => el.hidden);
+    check(genSettled === true, "Generate stays hidden at 3.e5");
   }
 
   // Back to 3.e5: the ⋯ menu still reaches Generate at any position.
@@ -337,6 +390,19 @@ async function runViewport(vp) {
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);
+
+  // A large tree (the fixture's rows repeated 40 times) scrolls inside its
+  // panel on desktop; it used to grow past the card and scroll the whole page.
+  if (vp.width >= 1100) {
+    const big = await page.evaluate(() => {
+      const tree = document.getElementById("builder-tree");
+      tree.innerHTML = tree.innerHTML.repeat(40);
+      const wrap = document.querySelector(".tree-wrap");
+      return { pageScroll: document.documentElement.scrollHeight - innerHeight, treeScroll: wrap.scrollHeight - wrap.clientHeight };
+    });
+    check(big.pageScroll <= 0, `a large tree scrolled the page by ${big.pageScroll}px`);
+    check(big.treeScroll > 0, "a large tree should scroll inside its panel");
+  }
 
   await page.close();
 

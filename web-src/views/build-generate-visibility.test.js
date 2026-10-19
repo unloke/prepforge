@@ -1,12 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createBuildView } from "./build.js";
 
-// Generate offers *your* reply, so the head's button is shown only where it
-// applies: a position with no prepared move of your own in the tree (the first
-// move of a line, or past the end of one). Where a reply exists it is hidden —
-// re-running would only re-search a line you already have — and the ⋯ menu's
-// "Move …" entry still reaches it there.
+// Generate's head button follows ONE rule: it applies when a writable
+// repertoire is loaded, its current position is settled, and no move of your
+// own already answers it there. Where it does not apply the ⋯ menu's
+// "Move …" entry still reaches it.
 function makeNode(overrides) {
   return {
     id: "n" + Math.random().toString(36).slice(2, 8),
@@ -26,13 +25,14 @@ function makeNode(overrides) {
   };
 }
 
-function makeHarness({ nodes, currentNodeId, color = "black" }) {
+function makeHarness({ nodes, currentNodeId, color = "black", readOnly = false, loading = false }) {
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const appState = {
-    build: { nodes, color, repertoire_id: "rep-1" },
+    build: { nodes, color, repertoire_id: "rep-1", writable: !readOnly },
     buildNodeById: nodeById,
     buildCurrentNodeId: currentNodeId,
     buildBranchChoiceId: null,
+    buildLoading: loading,
   };
   const generateBtn = { hidden: true, classList: { toggle: vi.fn() } };
   const elements = {
@@ -41,6 +41,7 @@ function makeHarness({ nodes, currentNodeId, color = "black" }) {
     "build-tree-meta": { hidden: true, set innerHTML(v) {}, querySelectorAll: vi.fn(() => []) },
     "builder-tree": { set innerHTML(v) {}, querySelector: vi.fn(() => null), querySelectorAll: vi.fn(() => []) },
     "build-generate-node": generateBtn,
+    "build-empty": { hidden: false },
   };
   globalThis.document = {
     getElementById: (id) => elements[id] || null,
@@ -58,6 +59,7 @@ function makeHarness({ nodes, currentNodeId, color = "black" }) {
     selectBuildNode: vi.fn(),
     openNodeContextMenu: vi.fn(),
     buildBranchContext: () => null,
+    isReadOnly: () => readOnly,
   });
   return { view, generateBtn, appState };
 }
@@ -123,5 +125,60 @@ describe("build Generate visibility", () => {
     appState.buildCurrentNodeId = "d5";
     view.renderBuildRepHeader();
     expect(generateBtn.hidden).toBe(false);
+  });
+
+  // --- the states that used to leak through -------------------------------
+  it("stays hidden in a read-only shared repertoire", () => {
+    // A share link renders someone else's tree with no write access. The position
+    // "applies" (no reply of your own under it) but the action cannot run — the
+    // controller bails with "Read-only" — so the button must not appear.
+    const { view, generateBtn } = makeHarness({ nodes: tree(), currentNodeId: "d5", readOnly: true });
+    view.renderBuildRepHeader();
+    expect(generateBtn.hidden).toBe(true);
+  });
+
+  it("stays hidden while a repertoire is loading", () => {
+    // editRepertoire() puts a skeleton in the tree and keeps the view inert
+    // until the new payload lands. The rule's subject is still the previous
+    // repertoire, so the head must drop the button instead of showing it.
+    const { view, generateBtn } = makeHarness({ nodes: tree(), currentNodeId: "d5", loading: true });
+    view.renderBuildRepHeader();
+    expect(generateBtn.hidden).toBe(true);
+  });
+
+  it("repaints from every tree branch, not only the rendered one", () => {
+    // The no-repertoire branch returns before the move-tree renderer runs. It
+    // used to skip the head paint, so Generate kept the deleted tree's state.
+    const { view, generateBtn, appState } = makeHarness({ nodes: tree(), currentNodeId: "d5" });
+    view.renderBuilderTree();
+    expect(generateBtn.hidden).toBe(false);
+    appState.build = null;
+    appState.buildCurrentNodeId = null;
+    view.renderBuilderTree();
+    expect(generateBtn.hidden).toBe(true);
+  });
+
+  it("repaints the root-only branch a new repertoire renders", () => {
+    // A newly created repertoire renders its root only, which also returns
+    // before the tree renderer runs. The first move of the line is yours to
+    // find, so the button applies there.
+    const { view, generateBtn } = makeHarness({
+      nodes: [makeNode({ id: "root" })],
+      currentNodeId: "root",
+    });
+    view.renderBuilderTree();
+    expect(generateBtn.hidden).toBe(false);
+  });
+
+  it("follows a repertoire flipping to read-only under the cursor", () => {
+    // Signing in to a shared link (or signing out of one) re-hydrates the same
+    // position under a different write access. The rule re-reads the flag on the
+    // next paint instead of keeping the writable answer.
+    const writable = makeHarness({ nodes: tree(), currentNodeId: "d5" });
+    writable.view.renderBuildRepHeader();
+    expect(writable.generateBtn.hidden).toBe(false);
+    const shared = makeHarness({ nodes: tree(), currentNodeId: "d5", readOnly: true });
+    shared.view.renderBuildRepHeader();
+    expect(shared.generateBtn.hidden).toBe(true);
   });
 });

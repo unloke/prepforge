@@ -1,5 +1,6 @@
 import { html } from "../html.js";
-import { nounOf } from "../plural.js";
+import { staggerRows } from "../list-enter.js";
+import { countOf, nounOf } from "../plural.js";
 import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
 // Train tab rendering (lazy-loaded from app.js).
 
@@ -199,7 +200,7 @@ export function createTrainView({
     }
     host.hidden = false;
     host.innerHTML =
-      html`<small class="faint">Up next</small>${upcoming
+      html`<span class="faint">Up next</span>${upcoming
         .map((card) => {
           const kind = smart.cardKinds[card.kind]?.label || card.kind || "";
           const rep = card.repertoire_name || smart.repertoireName || "";
@@ -209,11 +210,16 @@ export function createTrainView({
           // The card for a line's very first move asks about the starting
           // position: its path is empty, so name it instead of leaving the row
           // blank next to the rows that do carry a line.
-          const tail = lineTail(card.targets?.[0]?.line) || "Start";
+          const line = lineTail(card.targets?.[0]?.line);
+          const tail = line
+            ? html`<span class="un-line">${line}</span>`
+            : html`<span class="un-line is-plain">Start</span>`;
           return (
-            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${tail}</span></div>`
+            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</div>`
           );
         })}`;
+    // The rows arrive one by one, with the app's shared stagger.
+    staggerRows(host);
   }
 
   // Card kind chip beside the counter (smart queue only; rehearsal has none).
@@ -283,7 +289,7 @@ export function createTrainView({
     if (day && day.current > 0) {
       document.getElementById("train-summary-stats").insertAdjacentHTML(
         "beforeend",
-        html`<div><b>\u{1F525}${day.current}</b><span>day streak</span></div>`,
+        html`<div><b>${day.current}</b><span>day streak</span></div>`,
       );
     }
     const deltaEl = document.getElementById("train-summary-delta");
@@ -308,8 +314,8 @@ export function createTrainView({
         })}`;
       footEl.textContent =
         after.due_tomorrow > 0
-          ? `${after.due_tomorrow} review${after.due_tomorrow === 1 ? "" : "s"} due tomorrow - come back!`
-          : "Nothing due tomorrow - the queue is clear.";
+          ? `${countOf(after.due_tomorrow, "review")} due tomorrow`
+          : "Nothing due tomorrow. The queue is clear.";
     } else {
       deltaEl.innerHTML = "";
       footEl.textContent = "";

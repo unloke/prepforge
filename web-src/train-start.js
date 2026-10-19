@@ -39,3 +39,14 @@ export function rehearsalStartBlockReason(repertoire) {
 export function isNothingToTrainError(error) {
   return error?.status === 400 && /no (active repertoires|trainable (moves|lines))/i.test(error.message || "");
 }
+
+// The repertoire a new queue is built for. "New session" means another queue
+// like this one: a queue drilled for one repertoire (a Train link, the
+// repertoire's own Train action) must not silently widen to every active
+// repertoire, and a mixed queue stays mixed. An explicit request always wins.
+export function queueRepertoireForStart({ requested = null, current = null, fresh = false } = {}) {
+  if (requested) return requested;
+  if (!fresh) return null;
+  if (current && !current.mixed && current.repertoireId) return current.repertoireId;
+  return null;
+}

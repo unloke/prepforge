@@ -1420,8 +1420,20 @@ h2 {
 .lib {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* The Today strip is its own band: the gap to the table is wider than the
+     gap inside a card, so the two do not read as one surface. */
+  gap: 20px;
   max-width: 1640px;
+}
+#view-dashboard,
+#view-teams {
+  --fs-xs: 13px;
+  --fs-s: 13px;
+}
+#view-dashboard .empty-state p,
+#view-teams .team-empty p {
+  color: var(--text);
+  font-size: 16px;
 }
 
 /* Teams — Opus prototype composition. Directory | team detail | incoming shares;
@@ -1479,6 +1491,8 @@ h2 {
 }
 
 /* Today strip */
+#view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
+#view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
 .today {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1490,13 +1504,10 @@ h2 {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-right: 18px;
-  border-right: 1px solid var(--line);
   white-space: nowrap;
 }
-.today-flame { font-size: 22px; }
-/* A streak at 0 shows a dimmed flame — the slot is there to be lit. */
-.today-streak[data-lit="0"] .today-flame { filter: grayscale(1); opacity: 0.5; }
+/* A live streak says so with the figure's colour; at 0 it stays in ink. */
+.today-streak[data-lit="1"] .today-count { color: var(--good-text); }
 .today-count {
   font-size: 26px;
   font-weight: 700;
@@ -1591,7 +1602,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-cols,
 .lr.head {
   color: var(--label);
-  font-size: var(--fs-xs);
+  font-size: 13px;
   font-weight: 600;
 }
 /* Table: column header + one grid row per repertoire */
@@ -1661,6 +1672,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   animation: row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 25ms);
 }
+#view-dashboard .list-enter > *,
+#view-teams .list-enter > * {
+  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
+}
 @keyframes row-enter {
   from {
     opacity: 0;
@@ -1669,8 +1684,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
+  position: relative;
   background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
+}
+.lib-row.is-selected::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
 }
 .lib-row.is-disabled .name { color: var(--label); }
 /* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
@@ -1736,7 +1759,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   transition: width var(--dur-slow) var(--ease-out);
 }
 .lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
-.lib-mbar i.is-mastered { background: var(--k-mastered); box-shadow: 1px 0 0 var(--surface-3); }
+.lib-mbar i.is-mastered { background: var(--k-mastered); }
 .lib-mastery-none {
   width: auto;
   padding: 1px 6px;
@@ -1763,7 +1786,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 50%;
   background: currentColor;
 }
-.kchip.k-weak { color: var(--danger); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
+.kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
@@ -1825,10 +1848,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   grid-template-columns: 22px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
+  padding: 12px;
 }
-.step:last-child { border-bottom: 0; }
 .step-n {
   display: grid;
   place-items: center;
@@ -1850,7 +1871,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .setup-bar i { display: block; height: 100%; background: var(--good); transition: width var(--dur-slow) var(--ease-out); }
-.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
+.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); }
+.step-n.is-done::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--good-text);
+  border-bottom: 2px solid var(--good-text);
+  transform: rotate(-45deg) translate(1px, -1px);
+}
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
 .step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
@@ -2443,7 +2472,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs);
   font-weight: 650;
   list-style: none;
   user-select: none;
@@ -2500,21 +2529,23 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--fs);
 }
 .train-repertoire-option .rep-option-color {
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs);
   white-space: nowrap;
 }
 .train-repertoire-select-all {
   padding-bottom: 7px;
   border-bottom: 1px solid var(--line-soft);
+  font-size: var(--fs);
   font-weight: 700;
 }
 .train-repertoire-empty {
   margin: 6px 4px 4px;
-  font-size: 12px;
+  font-size: var(--fs);
   line-height: 1.35;
 }
 /* Confetti */
@@ -2847,8 +2878,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .tree-wrap {
   /* Sized by its moves, which the inspector gives way to (the dock does not
      grow): a short tree leaves the leftover height to the Explorer instead of
-     sitting empty above it. */
-  flex: 1 0 auto;
+     sitting empty above it. But a tree taller than the panel cannot be allowed
+     to grow past it: it shrinks to the space left and scrolls inside, so the
+     panel keeps its card shape and the page never scrolls. */
+  flex: 1 1 auto;
   min-height: 90px;
   padding: 12px 12px;
   overflow: auto;
@@ -3045,8 +3078,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overscroll-behavior: contain;
 }
 #view-train .panel-head { padding: 8px 12px; }
+/* The panel's cards are not boxes: the content sits on the panel and the
+   fills inside it (chips, the up-next field, the health rows) carry the
+   structure. */
+#view-train .tcard { border: 0; }
+#view-train .tcard > h3 { border-bottom: 0; font-size: var(--fs); }
+/* The counters are pills on a soft fill, like the app's other chips. */
+#view-train .stat { border: 0; }
+/* Nothing in this panel that is meant to be read sits under the body size. */
+#view-train .tcard p,
+#view-train .note { font-size: var(--fs); }
+#view-train .btn.sm { font-size: var(--fs); }
 #view-train .seg { display: flex; width: 100%; }
-#view-train .seg-btn { flex: 1; min-width: 0; }
+#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); }
 
 .blitz-bar {
   position: absolute;
@@ -3071,7 +3115,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   gap: 12px;
   padding: 14px;
-  border-bottom: 1px solid var(--line);
   background: var(--panel-soft);
 }
 #train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
@@ -3125,7 +3168,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   color: var(--muted);
-  font-size: var(--fs-s);
+  font-size: var(--fs);
 }
 .train-coach-sub:empty { display: none; }
 /* The sub line is clamped to two lines; a tap on the banner shows the rest
@@ -3166,7 +3209,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .tcard .field,
 .train-play-setup { display: flex; flex-direction: column; gap: 10px; }
 .tcard .field { gap: 4px; }
-.train-picker-label { color: var(--label); font-size: var(--fs-s); font-weight: 550; }
+.train-picker-label { color: var(--label); font-size: var(--fs); font-weight: 550; }
 /* The card's own head, in the Games ledger-head terms: title, then a hairline
    separating it from the controls below. */
 .tcard > h3 {
@@ -3187,7 +3230,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: inherit;
   font: inherit;
 }
-.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs-s); font-weight: 600; user-select: none; }
+.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
 .train-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-start-row .btn { flex: 1; min-width: 0; }
 /* The setup's primary action: one size taller than the Games toolbar buttons,
@@ -3206,7 +3249,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
   font-size: var(--fs-s);
 }
-.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs-s); }
+.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
 .train-play-chip {
   align-self: flex-start;
   margin: 0;
@@ -3214,14 +3257,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 10px;
   background: var(--warn-soft);
   color: var(--warn-text);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 650;
 }
 
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
-.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
+.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs); cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
 .train-mode-name:hover, .train-mode-name:focus-visible { color: var(--text); text-decoration-color: currentColor; }
 /* Choosing a mode is setup: once a session runs, or its result shows, the tabs
    leave with the setup card (the card head names the mode). */
@@ -3244,8 +3287,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   cursor: pointer;
 }
 .train-line-path bdi { direction: ltr; unicode-bidi: isolate; }
+/* It is a button: it says so under the pointer and to the keyboard. */
+.train-line-path:hover { color: var(--text); }
+.train-line-path:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
-.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs-xs); }
+.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs); }
 .card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
 .card-dots i.done { background: var(--good); }
 .card-dots i.cur { background: var(--accent); }
@@ -3266,7 +3312,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 
-.train-session-preview { margin: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
+.train-session-preview { margin: 0; font-size: var(--fs); font-weight: 600; color: var(--label); }
 
 /* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
 .stats { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3285,46 +3331,55 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .stat b { font-size: var(--fs); line-height: 1.2; }
 .stat b.good { color: var(--good-text); }
 .stat b.bad { color: var(--danger); }
-.stat span { color: var(--label); font-size: var(--fs-xs); }
+.stat span { color: var(--label); font-size: var(--fs); }
 .stat.pop { animation: streakPop var(--dur) var(--ease-emphasis); }
 .stat.milestone { border-color: var(--good); background: var(--good-soft); }
 .stat.milestone b { color: var(--good-text); }
 .stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
 .stat.at-risk span::after { content: " · at risk"; color: var(--danger); }
-.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-xs); }
+.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs); }
 .pips { display: flex; flex-wrap: wrap; gap: 3px; min-height: 9px; }
 .pips i { width: 9px; height: 9px; border-radius: 2px; }
 .pips i.ok { background: var(--good); }
 .pips i.no { background: var(--danger); }
-.trail-empty { color: var(--label); font-size: var(--fs-xs); }
+.trail-empty { color: var(--label); font-size: var(--fs); }
 
-.upnext { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+.upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .un-row {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: var(--fs-s);
+  padding: 2px 0;
+  font-size: var(--fs);
 }
 .un-row .kchip { justify-self: start; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.un-line { color: var(--label); font: var(--fs-xs) var(--mono); white-space: nowrap; }
+.un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
+/* A card with no line of its own says so in words, not in the move face. */
+.un-line.is-plain { font-family: inherit; }
+
+/* The result card arrives when the session ends: one rise, once. */
+#train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
+@keyframes trainCardEnter {
+  from { opacity: 0; transform: translateY(10px); }
+}
 
 /* Session summary. A .tcard like the rest; the stat cells are its fills. */
-.sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* The stat cells fill the row they are in: a session with a skip AND a day
+   streak has five of them, and a fixed four-column grid left three empty
+   columns under the last one. */
+.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
 .sum-cells b { font-size: 18px; }
-.sum-cells span { color: var(--label); font-size: var(--fs-xs); }
-.delta { display: flex; flex-direction: column; }
+.sum-cells span { color: var(--label); font-size: var(--fs); }
+.delta { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .tsum-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 40px;
   gap: 8px;
-  padding: 5px 4px;
-  border-bottom: 1px solid var(--line);
-  font-size: var(--fs-s);
+  padding: 3px 0;
+  font-size: var(--fs);
 }
 .tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
 .tsum-row .num { text-align: right; }
@@ -5179,6 +5234,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   *::before,
   *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
@@ -5453,14 +5509,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .rail .nav-group-label { height: 14px; line-height: 14px; }
   .rail-foot { gap: 2px; padding-top: 6px; }
   .rail .account-btn { height: 36px; }
-  /* A head row stays quiet until the action is wanted. The `hidden` attribute
-     carries whether Generate applies at this position; the row act overrides it,
-     above the phone breakpoint only — on a phone there is no hover and the
-     button is the board bar's pill. The attribute keeps the button out of the
-     a11y tree and the Tab order, so this costs no focus stop. Overriding the
-     global `[hidden]` rule below is the whole point of this rule. */
-  #build-sidebar:has(#builder-tree .mtree-move.is-current:hover) #build-generate-node,
-  #build-sidebar:has(#builder-tree .mtree-move.is-current:focus) #build-generate-node { display: inline-flex !important; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a

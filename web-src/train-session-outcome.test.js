@@ -4,7 +4,7 @@ import { smartSessionOutcomeText } from "./controllers/train-session.js";
 describe("smart session outcome copy", () => {
   it("reports zero review attempts as learning rather than a failed score", () => {
     expect(smartSessionOutcomeText({}, { correct: 0, mistakes: 0 })).toBe(
-      "New moves learned — no review moves scored yet.",
+      "New moves learned. No review moves scored yet.",
     );
   });
 

@@ -7,13 +7,13 @@ import { nounOf } from "../plural.js";
 import "./replay.css";
 
 const REPLAY_KINDS = {
-  "in-prep": { icon: "✓", badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
-  "user-error": { icon: "✗", badge: "You left prep", label: "you left prep", tone: "bad" },
+  "in-prep": { badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
+  "user-error": { badge: "You left prep", label: "you left prep", tone: "bad" },
   // One bucket (filter, Add reply) for both a late novelty and an early
   // "different opening": the badge says what they share — the OPPONENT was the
   // one who stepped out. Who left, not which opening, is the useful signal.
-  "left-prep": { icon: "⚡", badge: "Opponent left prep", label: "opponent left prep", tone: "warn" },
-  "no-prep": { icon: "—", badge: "No repertoire", label: "not covered", tone: "none", departure: "—" },
+  "left-prep": { badge: "Opponent left prep", label: "opponent left prep", tone: "warn" },
+  "no-prep": { badge: "No repertoire", label: "not covered", tone: "none", departure: "–" },
 };
 
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -225,7 +225,7 @@ export function createReplayView({
       .filter(([kind]) => counts[kind] > 0)
       .map(
         ([kind, meta]) =>
-          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${meta.icon} ${counts[kind]} ${nounOf(counts[kind], meta.label)}</button>`
+          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${counts[kind]} ${nounOf(counts[kind], meta.label)}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
@@ -291,9 +291,14 @@ export function createReplayView({
       const expected = game.expected_move_san ? html` (expected <strong>${game.expected_move_san}</strong>)` : "";
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
+      // The server records a miss only when the repertoire holds a prepared
+      // move at the departure node. Without one there is nothing in the queue,
+      // and claiming otherwise would be a lie the Train action then backs up.
       const queued = game.training_recorded
         ? " Added to your training queue."
-        : " Already in your training queue.";
+        : game.expected_node_id
+          ? " Already in your training queue."
+          : " Your repertoire has no prepared move here.";
       lines.push(html`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
@@ -333,7 +338,7 @@ export function createReplayView({
     const preview = (game.move_san_history || []).slice(0, 6).join(" ");
     const departure = game.departure_ply
       ? plyMoveLabel(game.departure_ply, game.move_san_history)
-      : meta.departure || "—";
+      : meta.departure || "–";
     return (
       html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
     );
@@ -347,7 +352,10 @@ export function createReplayView({
       ? html`<a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${game.lichess_id}" title="Open on Lichess">lichess ↗</a>`
       : "";
     const actions = [];
-    if (kind === "user-error") {
+    // Train drills the prepared move the user skipped. A game that left prep
+    // where the repertoire has no move has nothing to drill, so the button
+    // would only fail.
+    if (kind === "user-error" && game.expected_node_id && game.repertoire_id) {
       actions.push(html`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`);
     }
     if (kind === "left-prep" && game.repertoire_id) {
@@ -357,7 +365,7 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top">${boardHtml}<div class="focus-info"><div class="eyebrow">Preparation detail · ${displayReplayResult(game.result)}</div><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><i class="kind-badge t-${meta.tone}">${meta.badge}</i><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline">${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top">${boardHtml}<div class="focus-info"><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><p class="focus-line"><i class="kind-badge t-${meta.tone}">${meta.badge}</i><span class="focus-result ${replayResultClass(game)}">${displayReplayResult(game.result)}</span></p><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui>${renderReplayMoveLine(game)}</div></section>`
     );
   }
 
@@ -384,17 +392,17 @@ export function createReplayView({
     // The focus card mirrors the board-plus-text shape it is replaced by, so
     // the triage does not jump when the first rows land.
     const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><span class="skeleton-bar skeleton-thin" style="width:38%"></span><span class="skeleton-bar" style="width:62%"></span><span class="skeleton-bar" style="width:80%"></span><span class="skeleton-bar" style="width:44%"></span><span class="skeleton-bar skeleton-chip" style="width:64px"></span></div></div><span class="skeleton-bar skeleton-thin" style="width:70%"></span></section>`;
-    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
+    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
   }
 
   function renderReplayResults(payload) {
     const container = document.getElementById("replay-results");
     renderReplaySummary(payload);
     const sourceErrors = (payload?.source_errors || []).map((error) =>
-      `${error.username}: ${error.message}`).join(" ? ");
+      `${error.username}: ${error.message}`).join(" · ");
     const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors}</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
-      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No recent games found</h3></div>`;
+      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No recent games found</h3></div>`;
       return;
     }
     const filter = getReplayFilter();
@@ -402,7 +410,13 @@ export function createReplayView({
       .map((game, index) => ({ game, index }))
       .filter(({ game }) => !filter || replayGameKind(game) === filter);
     if (!rows.length) {
-      container.innerHTML = html`${warning}<div class="empty-state big"><div class="es-mark">♙</div><h3>No games in this bucket</h3></div>`;
+      // A filter with no games must not be a dead end: the chip that set it is
+      // not drawn (its count is zero), so the card carries the way back.
+      const showAll = filter
+        ? html`<div class="row"><button type="button" class="btn" data-show-all>Show all</button></div>`
+        : "";
+      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No games in this bucket</h3>${showAll}</div>`;
+      container.querySelector?.("[data-show-all]")?.addEventListener?.("click", () => onToggleFilter(filter));
       return;
     }
     const selectedIndex = rows.find(({ index }) => isGameOpen(index))?.index ?? rows[0].index;
@@ -421,7 +435,7 @@ export function createReplayView({
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table"><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);
