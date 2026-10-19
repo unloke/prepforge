@@ -411,7 +411,6 @@ h2 {
   width: 60px;
   min-width: 0;
   background: var(--panel);
-  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   padding: 10px 8px 12px;
@@ -1938,9 +1937,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   .step .btn.sm { height: 34px; }
 }
 
+/* A card is a raised panel on the page: one tone step, no outline. The
+   outline it used to carry drew a box around every block and fought the
+   hairline rows inside it. */
 .card {
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-card);
   padding: 14px;
 }
@@ -1958,7 +1960,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--muted);
   font-size: 13px;
   padding: 12px;
-  border: 1px dashed var(--line);
   border-radius: var(--radius);
   background: var(--panel-soft);
   text-align: center;
@@ -2743,9 +2744,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   min-width: 0;
   min-height: 0;
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 #view-build .sidebar { gap: 0; }
