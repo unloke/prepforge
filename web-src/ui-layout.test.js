@@ -383,6 +383,11 @@ describe("workspace chrome layout", () => {
     expect(buildHeadRules).toMatch(/#build-rep-header \{ flex-wrap: wrap/);
     expect(buildHeadRules).toMatch(/#build-rep-header \.rep-stats \{ flex: 1 1 100%; order: 3/);
     expect(buildHeadRules).toMatch(/#build-rep-header \.rep-name \{ flex: 1 1 auto/);
+    // The empty panel's one sentence is running text: it reads at prose size in
+    // the full ink, not at the dense 13px the move ledger uses.
+    const buildEmpty = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-tree-meta"'));
+    expect(buildEmpty).toContain("Open one from the Library, or play a move.");
+    expect(css).toMatch(/#view-build \.empty-state\.big p \{ color: var\(--text\); font-size: 16px; \}/);
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
     expect(view).toContain('class="moves-grid" id="analysis-moves"');

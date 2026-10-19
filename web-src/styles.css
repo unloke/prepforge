@@ -2791,6 +2791,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
 .build-empty { flex: 1; justify-content: center; }
 #build-sidebar:has(#build-empty:not([hidden])) .panel-body > :is(.tree-meta, .forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
+/* The one line a new user reads here is running text, so it reads at the size
+   the Library's empty state uses, not at the panel's dense 13px. */
+#view-build .empty-state.big p { color: var(--text); font-size: 16px; }
 
 /* Repertoire reads at 13px, and tells its sections apart by tone rather than
    by rules. The panel is where the work happens — move tokens, breadcrumbs,
