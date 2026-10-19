@@ -19,7 +19,7 @@ let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, 
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
   loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
   notices, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
-  refreshAuthStatus, renderSmartSummaryStats, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
+  refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, renderSmartSummaryStats, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
   setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
   syncWorkspaceUrl, updateTrainTurnBadge;
 
@@ -30,7 +30,8 @@ export function createTrainSession(deps) {
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
-    queueTrainAttempt, refreshAuthStatus, renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
+    renderSmartSummaryStats, renderTrainStats, requireSignIn,
     setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   } = deps);
@@ -344,6 +345,8 @@ function invalidateTrainSessionPreview() {
   trainPreviewCache.at = 0;
   trainPreviewCache.nextSession = null;
 }
+
+
 async function refreshTrainSessionPreview() {
   const el = document.getElementById("train-session-preview");
   if (!el) return;
@@ -352,6 +355,7 @@ async function refreshTrainSessionPreview() {
     el.hidden = true;
     return;
   }
+
   const paint = () => {
     // One setup heading only: an empty queue says so in the banner instead of
     // stacking the same message above a start button.
@@ -2479,6 +2483,17 @@ async function finishSmartSession() {
   // (switched to Line rehearsal / Play, or restarted), the report belongs to a
   // session that is no longer on screen — don't paint it over the new mode.
   if (appState.smart !== smart || (appState.trainMode || "smart") !== "smart") return;
+  // The results card has replaced the live session: from here the setup screen
+  // (and Start) describes the queue as it now stands, not the one just played.
+  appState.smart = null;
   await renderSmartSummary(smart, stats, after);
   syncTrainSessionControls();
+  // The session just wrote spaced-repetition state, so every cached count of
+  // what is left to train is stale: the Library rows, the Train preview and the
+  // Repertoire header's "to train".
+  refreshRepertoireHead();
+  void refreshDashboardRepertoires().catch(() => {});
+  invalidateTrainSessionPreview();
+  paintTrainStartDisabled();
+  void refreshTrainSessionPreview().catch(() => {});
 }

@@ -47,9 +47,12 @@ function harness(overrides = {}) {
     smartLocalPrompt: (smart) => smart.cardIndex < smart.queue.length
       ? { cardIndex: smart.cardIndex, targetIndex: smart.targetIndex } : null,
     presentSmartPrompt: present, finishSmartSession: vi.fn(async () => {}),
+    refreshRepertoireHead: vi.fn(async () => {}), refreshDashboardRepertoires: vi.fn(async () => {}),
+    refreshTrainSessionPreview: vi.fn(async () => {}),
   };
   deps.setSmartPanelsHidden = compile("function setSmartPanelsHidden(", deps);
   deps.renderSmartSummaryStats = vi.fn();
+  deps.paintTrainStartDisabled = vi.fn();
   deps.syncTrainSessionControls = vi.fn();
   deps.showSmartSummary = compile("function showSmartSummary(", deps);
   deps.smartSessionOutcomeText = compile("function smartSessionOutcomeText(", deps);
@@ -217,8 +220,16 @@ describe("Smart memo integration at Start", () => {
     await h.start();
     h.appState.smart.blitz = false;
     await finish();
+    // The session moved spaced-repetition state: the "to train" counts are stale.
+    // The live session is released once the report owns the screen, so the setup
+    // screen and Start describe the queue as it now stands.
+    expect(h.appState.smart).toBeNull();
+    await vi.waitFor(() => expect(h.deps.refreshRepertoireHead).toHaveBeenCalled());
+    expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
+    expect(h.deps.refreshTrainSessionPreview).toHaveBeenCalled();
     // The report is on screen before the flush and the summary fetch answer.
-    expect(h.deps.renderSmartSummaryStats).toHaveBeenCalledWith(h.appState.smart, h.appState.trainStats);
+    expect(h.deps.renderSmartSummaryStats).toHaveBeenCalled();
+    expect(h.deps.renderSmartSummaryStats.mock.calls[0][0].sessionId).toBe("session");
     const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
     expect(titles.filter((title) => /session complete/i.test(title))).toEqual(["Session complete"]);
     for (const title of titles) expect(title).not.toContain("!");
