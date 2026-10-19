@@ -136,7 +136,8 @@ describe("Train keeps the requested hint after a miss (P1-4)", () => {
 describe("Train save chip names training progress (P2-7)", () => {
   it("says progress, not 'Unsaved changes', on Train", () => {
     expect(syncChipVariant("dirty", "training").text).not.toMatch(/Unsaved changes/);
-    expect(syncChipVariant("dirty", "training").text).toMatch(/progress/i);
+    // The queued state says nothing at all: it is the ordinary debounce.
+    expect(syncChipVariant("dirty", "training").text).toBe("");
     expect(syncChipVariant("saved", "training").text).toBe("✓ Progress saved");
     expect(syncChipVariant("syncing", "training").cls).toBe("is-syncing");
   });

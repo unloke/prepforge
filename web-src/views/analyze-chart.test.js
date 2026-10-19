@@ -210,6 +210,14 @@ describe("eval chart sizing", () => {
   });
 });
 
+describe("evaluation win meter", () => {
+  it("draws an empty track, not a mid-width fill, while there is no number", () => {
+    // A half-full bar with no figures beside it reads as a real 50/50 eval,
+    // so the fill is held at zero until a number paints it.
+    expect(ALL_STYLES).toMatch(/\.ev-head:not\(\.has-eval\) \.ev-meter > i \{ transform: scaleX\(0\); \}/);
+  });
+});
+
 describe("eval chart theme colours", () => {
   it("renders no hardcoded colours — every hue comes from CSS classes", () => {
     const { chart, view } = setup();

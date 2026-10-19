@@ -89,6 +89,20 @@ export function filterPaletteItems(items, query) {
     .map((row) => row.item);
 }
 
+// The active row is kept on screen: a clamped index just out of sight would
+// leave the palette highlighting a row the user cannot see (the 13-item list
+// already overflows a 390x660 phone and a 900-tall desktop). Pure so vitest
+// can drive it; the caller does the DOM work.
+export function paletteScrollTop({ boxTop, boxHeight, itemTop, itemHeight, scrollTop }) {
+  if (![boxTop, boxHeight, itemTop, itemHeight].every((n) => Number.isFinite(n))) return scrollTop;
+  const top = Number(scrollTop) || 0;
+  const itemBottom = itemTop + itemHeight;
+  const boxBottom = boxTop + boxHeight;
+  if (itemTop < boxTop) return Math.max(0, top + (itemTop - boxTop));
+  if (itemBottom > boxBottom) return Math.max(0, top + (itemBottom - boxBottom));
+  return top;
+}
+
 export function renderPaletteItems(items, activeIndex = 0) {
   if (!items.length) {
     return html`<div class="empty-state">No matching commands</div>`;

@@ -159,6 +159,32 @@ describe("replay focus internals", () => {
   beforeEach(() => {
     elements = makeElements();
   });
+
+  it("counts games and queued moves with real plurals", () => {
+    const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
+    makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
+    const summary = String(elements["replay-summary"].innerHTML);
+    expect(summary).toContain("2 you left prep");
+    expect(summary).toContain("+2 moves queued for training");
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-summary"].innerHTML)).toContain("+1 move queued for training");
+    // The ledger header counts games, not a bare number.
+    expect(String(elements["replay-results"].innerHTML)).toContain("1 game \u00b7");
+  });
+
+  it("counts outcomes and queued moves with real plurals", () => {
+    const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
+    makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
+    const summary = String(elements["replay-summary"].innerHTML);
+    // Two games, so the plural noun; one queued move stays singular at 1.
+    expect(summary).toContain("2 you left prep");
+    expect(summary).toContain("+2 moves queued for training");
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-summary"].innerHTML)).toContain("+1 move queued for training");
+    // The ledger header counts games, not a bare number.
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    expect(String(elements["replay-results"].innerHTML)).toContain("1 game \u00b7");
+  });
   afterEach(() => {
     globalThis.document = undefined;
   });
@@ -173,6 +199,23 @@ describe("replay focus internals", () => {
     expect(String(html)).toContain('data-square="f3"');
     // Pieces render through the production SVG helpers.
     expect(String(html)).toMatch(/data-piece="p"/);
+  });
+
+  it("resolves You in the detail header like the ledger rows", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).toContain("<h2>opp_one vs You</h2>");
+    expect(html).not.toContain("<h2>opp_one vs me_user</h2>");
+  });
+
+  it("renders the moveline as move-pair rows with the departure called out", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html.match(/class="move-pair/g)).toHaveLength(2);
+    expect(html).toContain('data-move="2"');
+    expect(html).toMatch(/<div class="move-pair is-departure t-bad" data-move="2">/);
+    expect(html).toMatch(/<span class="ply dep t-bad" data-ply="4">d5<\/span>/);
+    expect(html).toContain('<span class="dep-note t-bad">You left prep</span>');
   });
 
   it("draws expected (good) vs played (bad) arrows from the payload UCIs", () => {
@@ -218,7 +261,7 @@ describe("replay focus internals", () => {
     expect(String(html)).not.toContain("1/2-1/2");
     // Both games come from "self": the account sits in the header, not per row.
     expect(String(html).match(/class="acct"/g)).toHaveLength(1);
-    expect(String(html)).toMatch(/shown · <i class="acct"[^>]*>self<\/i>/);
+    expect(String(html)).toMatch(/2 games · <i class="acct"[^>]*>self<\/i>/);
     // The finish date is shown on the row.
     expect(String(html)).toContain('<time class="lr-date" datetime="2026-09-28T12:00:00Z">');
   });
@@ -228,13 +271,13 @@ describe("replay focus internals", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame, other], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);
     expect(String(html).match(/class="acct"/g)).toHaveLength(2);
-    expect(String(html)).not.toMatch(/shown · <i class="acct"/);
+    expect(String(html)).not.toMatch(/games · <i class="acct"/);
   });
 
   it("names the account per row when two accounts were selected but one supplied every game", () => {
     makeView(elements).renderReplayResults({ games: [stayedGame, userErrorGame], misses_recorded: 0, requested_sources: 2 });
     const html = String(elements["replay-results"].innerHTML);
-    expect(String(html)).not.toMatch(/shown · <i class="acct"/);
+    expect(String(html)).not.toMatch(/games · <i class="acct"/);
     expect(String(html).match(/class="acct"/g)).toHaveLength(2);
   });
 
@@ -367,7 +410,7 @@ it("keeps partial-source failures visible with results and empty results", () =>
     view.renderReplayResults({ games, source_errors: [{ username: "Unavailable", message: "429 rate limited" }] });
     expect(String(elements["replay-results"].innerHTML)).toContain('role="alert"');
     expect(String(elements["replay-results"].innerHTML)).toContain("Unavailable: 429 rate limited");
-    expect(String(elements["replay-results"].innerHTML)).toContain("Retry Check");
+    expect(String(elements["replay-results"].innerHTML)).not.toContain("Retry Check");
   }
   view.renderReplayResults({ games: [] });
   expect(String(elements["replay-results"].innerHTML)).not.toContain('role="alert"');

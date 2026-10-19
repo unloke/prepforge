@@ -174,6 +174,31 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-rows.is-stale .explorer-row")).toMatch(
       /transition:\s*opacity\s+var\(--dur[^)]*\)\s+var\(--[^)]*\)\s+\d+ms/,
     );
+    // Stale rows alone were easy to read as the current position's: a moving
+    // bar on the dock says the list is still the previous position's.
+    expect(css).toMatch(
+      /\.dock[^{]*:has\(#explorer-drawer:not\(\[hidden\]\) #explorer-rows\.is-stale\)::after/,
+    );
+    expect(css).toContain("@keyframes dock-loading");
+    const reduced = css.slice(css.indexOf("@keyframes dock-loading"));
+    expect(reduced.slice(0, 600)).toMatch(/prefers-reduced-motion[\s\S]{0,200}animation:\s*none/);
+  });
+
+  it("lines the phone Repertoire header up and gives the board its top gap", () => {
+    const phone = phoneCss;
+    const header = phone.slice(phone.indexOf("  #build-rep-header {"));
+    const rule = header.slice(0, header.indexOf("\n  }"));
+    // Flow layout with centered lines: a grid centered the 44px back button
+    // across both rows while the title sat on the first one, ~9px apart.
+    expect(rule).not.toMatch(/display:\s*grid/);
+    expect(rule).toMatch(/display:\s*flex/);
+    expect(rule).toMatch(/align-content:\s*center/);
+    // The header is the board's top neighbour on a phone: it owns the gap.
+    expect(rule).toMatch(/margin:\s*0 0 12px/);
+    // The save chip lives beside the inspector tools here, not in the far-off
+    // board bar.
+    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
+    expect(phone).toMatch(/#build-inspector \.build-sync \{/);
   });
 
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
@@ -251,7 +276,12 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
-    expect(ruleBody(".dock")).toMatch(/flex:\s*0 0 clamp\(210px,\s*40%,\s*330px\)/);
+    // The inspector takes the height the tree does not need, so a short
+    // repertoire leaves no dead space above it and the Explorer rows are not
+    // boxed into their own scrollbar; a fixed 40% share did both.
+    expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
+    expect(ruleBody(".dock")).toMatch(/height:\s*clamp\(210px,\s*40%,\s*330px\)/);
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 0 auto/);
   });
 
   it("composes Analyze as one panel: game head, coach card, results, drawers", () => {
@@ -261,12 +291,14 @@ describe("workspace chrome layout", () => {
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
     expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
-    expect(view).toContain('id="analysis-game-title"');
+    // The head is actions only: no title of its own (it repeated the board caption).
+    expect(view).not.toContain('id="analysis-game-title"');
     expect(view).toContain('class="board-label" id="analysis-board-label"');
     // It sits in the board bar under the board, not in the panel head: the
     // head's own block is just the one title line plus the actions.
     const headRow = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
     expect(headRow).not.toContain("analysis-game-meta");
+    expect(headRow).not.toContain("analysis-game-title");
     const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
     expect(boardBar).toContain('class="board-sub" id="analysis-game-meta"');
     expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
@@ -725,4 +757,14 @@ describe("workspace chrome layout", () => {
     expect(mobile).toMatch(/#view-train \.board-bar \.btn\.icon\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);
   });
+});
+
+// ---- Analyze desktop geometry --------------------------------------------------
+
+it("does not stretch the board column past the board on desktop", () => {
+  // The board is a square capped by its width share, so a stretched column left a
+  // tall empty area under it (175px at 1180x900) while the panel stayed full height.
+  const desktop = css.match(/@media \(min-width: 960px\) \{[\s\S]*?\n\}/);
+  expect(desktop).toBeTruthy();
+  expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
 });

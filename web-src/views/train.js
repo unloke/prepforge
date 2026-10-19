@@ -1,5 +1,16 @@
 import { html } from "../html.js";
+import { nounOf } from "../plural.js";
+import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
 // Train tab rendering (lazy-loaded from app.js).
+
+// The result screen's stat cells: [value, label]. Counts read "1 card" / "3 cards".
+export function summaryStatCells(smart = {}, stats = {}) {
+  const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
+  const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
+  const cells = [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [acc, "first try"], [stats.best || 0, "best in a row"]];
+  if (stats.skipped) cells.push([stats.skipped, "skipped"]);
+  return cells;
+}
 
 // The queue a plain Start serves, in the same terms as the in-session chips:
 // "11 cards · 1 weak · 4 new · 6 polish", or what is left of a resumable one.
@@ -10,7 +21,7 @@ export function sessionPreviewText(next) {
   const parts = ["weak", "due", "new", "polish"]
     .filter((kind) => Number(next[kind]) > 0)
     .map((kind) => `${next[kind]} ${kind}`);
-  const total = `${cards} card${cards === 1 ? "" : "s"}${next.resumed ? " left" : ""}`;
+  const total = `${cards} ${nounOf(cards, "card")}${next.resumed ? " left" : ""}`;
   return [total, ...parts].join(" · ");
 }
 
@@ -35,6 +46,11 @@ export function createTrainView({
   updateTrainTurnBadge,
   onStreakRendered,
 }) {
+  // The coach sub line is clamped to two lines; a tap on the banner shows the
+  // rest. The full text also sits in the element title for hover.
+  document.getElementById("train-banner")?.addEventListener("click", () => {
+    document.getElementById("train-banner-sub")?.classList.toggle("expanded");
+  });
   document.getElementById("train-line-path")?.addEventListener("click", (event) => {
     const el = event.currentTarget;
     el.setAttribute("aria-expanded", String(el.getAttribute("aria-expanded") !== "true"));
@@ -43,27 +59,35 @@ export function createTrainView({
   function renderTrainSync() {
     const el = document.getElementById("train-sync");
     if (!el) return;
+    const quiet = !TRAINING_SYNC_TEXT.includes(appState.trainSyncState);
     renderSyncChip(el, appState.trainSyncState, "training");
+    el.hidden = quiet;
+    if (quiet) el.textContent = "";
   }
 
   function renderTrainStats() {
     const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0, history: [], lastStreak: 0 };
     const streakEl = document.getElementById("train-stat-streak");
-    const flame = "";
-    streakEl.innerHTML = html`${s.streak}${flame}`;
+    // Write only the number: assigning a SafeHtml object to innerHTML stores
+    // "[object Object]", and the "1" -> "[object Object]" change on every repaint
+    // re-triggered the streak pop (classList.remove/add + offsetWidth reads) on
+    // every answer, which starved the later stats lines. They never repainted.
+    streakEl.textContent = String(s.streak);
     const chip = streakEl.closest(".stat");
     if (chip) {
       chip.classList.toggle(
         "at-risk",
         !!(appState.trainReview && appState.trainReview.savedStreak > 0 && s.streak === 0)
       );
-      if (s.streak > (s.lastStreak || 0)) {
-        chip.classList.remove("pop");
-        void chip.offsetWidth;
-        chip.classList.add("pop");
-        if (s.streak > 0 && s.streak % 5 === 0) chip.classList.add("milestone");
-        else chip.classList.remove("milestone");
-      }
+    }
+    // The pop fires only when the streak grows, from a number that is actually
+    // on screen (a SafeHtml object here stringified to "[object Object]").
+    const grew = !!chip && typeof s.lastStreak === "number" && s.streak > s.lastStreak;
+    if (grew) {
+      chip.classList.remove("pop");
+      void chip.offsetWidth;
+      chip.classList.add("pop");
+      chip.classList.toggle("milestone", s.streak > 0 && s.streak % 5 === 0);
     }
     onStreakRendered(s.streak);
     document.getElementById("train-stat-correct").textContent = s.correct;
@@ -74,6 +98,7 @@ export function createTrainView({
       ? `${Math.round((s.correct / total) * 100)}% first try`
       : "";
     const trail = document.getElementById("train-line-trail");
+    if (!trail) return;
     if (!s.history.length) {
       trail.innerHTML = html`<span class="trail-empty">No moves yet</span>`;
     } else {
@@ -181,7 +206,10 @@ export function createTrainView({
           const dot = card.color === "black" ? "black" : "white";
           // Name the position, never the answer: every card can come back as
           // a recall test.
-          const tail = lineTail(card.targets?.[0]?.line);
+          // The card for a line's very first move asks about the starting
+          // position: its path is empty, so name it instead of leaving the row
+          // blank next to the rows that do carry a line.
+          const tail = lineTail(card.targets?.[0]?.line) || "Start";
           return (
             html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span><span class="un-line">${tail}</span></div>`
           );
@@ -233,26 +261,31 @@ export function createTrainView({
     }
   }
 
+  // The result cells, painted the moment the session ends (the health delta and
+  // the day streak arrive with the server summary).
+  function renderSmartSummaryStats(smart, stats) {
+    const host = document.getElementById("train-summary-stats");
+    if (!host) return;
+    host.innerHTML = html`${summaryStatCells(smart, stats)
+      .map(
+        ([value, label]) =>
+          html`<div><b>${value}</b><span>${label}</span></div>`
+      )}`;
+  }
+
   function renderSmartSummary(smart, stats, after, dayStreak) {
     const panel = document.getElementById("train-summary");
     if (!panel) return;
     const queue = document.getElementById("train-queue");
     if (queue) queue.hidden = true;
-    const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
-    const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
-    const statCells = [
-      [smart.cardsDone, "cards"],
-      [acc, "first try"],
-      [stats.best || 0, "best in a row"],
-    ];
-    if (stats.skipped) statCells.push([stats.skipped, "skipped"]);
+    renderSmartSummaryStats(smart, stats);
     const day = dayStreak;
-    if (day && day.current > 0) statCells.push([`\u{1F525}${day.current}`, "day streak"]);
-    document.getElementById("train-summary-stats").innerHTML = html`${statCells
-      .map(
-        ([value, label]) =>
-          html`<div><b>${value}</b><span>${label}</span></div>`
-      )}`;
+    if (day && day.current > 0) {
+      document.getElementById("train-summary-stats").insertAdjacentHTML(
+        "beforeend",
+        html`<div><b>\u{1F525}${day.current}</b><span>day streak</span></div>`,
+      );
+    }
     const deltaEl = document.getElementById("train-summary-delta");
     const footEl = document.getElementById("train-summary-foot");
     const before = smart.healthBefore;
@@ -291,5 +324,6 @@ export function createTrainView({
     renderSmartQueueStrip,
     renderSmartProgress,
     renderSmartSummary,
+    renderSmartSummaryStats,
   };
 }

@@ -189,7 +189,6 @@ export function createDashboardView({
         title: "Build your first repertoire",
         // No button here: while this step is open the library's empty state
         // already offers New repertoire / Import PGN right beside it.
-        detail: "New repertoire or Import PGN, in your library.",
         done: repertoires > 0,
       },
       {
@@ -204,7 +203,8 @@ export function createDashboardView({
         // Counted from started sessions (there is no "finished" flag), so the
         // step promises only what it measures.
         title: "Start a training session",
-        detail: repertoires > 0 ? "" : "Unlocks once you have a repertoire.",
+        // A finished step reads "Done", so it can neither show a disabled Train
+        // nor a reason it is locked; the disabled CTA explains the lock.
         done: ((payload && payload.training_sessions) || 0) > 0,
         action: "train",
         label: "Train",
@@ -295,6 +295,18 @@ export function createDashboardView({
 
   let lastTodayPayload = null;
 
+  // A failed statistics read owns the strip's slot: the message once, with the
+  // retry that fixes it. Re-entering the Library (boot starts two reads) must
+  // not wipe this card, so it is only replaced by success or another failure.
+  function renderTodayError(message) {
+    const card = document.getElementById("dashboard-today");
+    if (!card) return;
+    card.hidden = false;
+    card.innerHTML = html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`;
+    card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
+    lastTodayPayload = null;
+  }
+
   function renderDashboardToday(payload) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
@@ -326,6 +338,9 @@ export function createDashboardView({
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
     const queueText = todayQueueText(due, soon, newMoves, weak);
+    // Nothing stored in the account: the primary action is the first
+    // repertoire, not Train, which can only answer "no active repertoire".
+    const firstRun = ownRepertoireCount() === 0 && !(Number(payload.training_sessions) > 0);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
@@ -351,10 +366,10 @@ export function createDashboardView({
     // pressing Train, and "Due review" already carries the queue number the
     // strip leads with — so one chip holds them and the Due shortcut stays
     // inline, where the action is.
-    const metric = (value, one) => html`<b>${value}</b> ${nounOf(value, one)}`;
+    const metric = (value, one, many) => html`<b>${value}</b> ${nounOf(value, one, many)}`;
     const repCount = ownRepertoireCount();
     const countsHtml = [
-      metric(payload.games || 0, "game"),
+      metric(payload.games || 0, "analysis", "analyses"),
       // Until the listing lands, fall back to the dashboard read; after it,
       // the listing is authoritative so the count tracks the table.
       metric(repCount ?? (payload.repertoires || 0), "repertoire"),
@@ -371,12 +386,20 @@ export function createDashboardView({
       ${warningHtml || html`<div class="today-note">${note}</div>`}
       <div class="today-queue">${queueText}</div>
       <div class="today-counts" data-testid="dashboard-counts"
-           title="Everything stored in this account">${countsHtml}</div>
+           title="Saved analyses, repertoires and training sessions">${countsHtml}</div>
       ${recapHtml}
     </div>
-    <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>
+    ${firstRun
+      ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
+      : html`<button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
   `;
     card.hidden = false;
+    if (firstRun) {
+      // The strip is re-rendered on every load, so it binds its own action;
+      // a Train listener looked up by id would not exist.
+      card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
+      return;
+    }
     const trainNow = () =>
       goToSmartTraining(
         due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
@@ -604,10 +627,14 @@ export function createDashboardView({
       return;
     }
     if (!shown.length) {
-      // Non-empty list narrowed to nothing by the filter/search.
+      // Non-empty list narrowed to nothing by the filter/search. On phones the
+      // filter chips are hidden in this state, so the card carries the way back.
+      const q = libraryQuery.trim();
       setListboxRole(container, false);
-      container.innerHTML =
-        html`<div class="empty-state">No repertoires match this filter.</div>`;
+      container.innerHTML = html`<div class="empty-state lib-no-match" data-testid="library-no-match">
+        <p>No repertoires match ${q ? "this search" : "this filter"}.</p>
+        <button type="button" class="btn sm" data-lib-action="clear-filter">Clear filter</button>
+      </div>`;
       selectedRepId = null;
       return;
     }
@@ -657,6 +684,14 @@ export function createDashboardView({
     renderRepertoireList();
   }
 
+  // The query lives in the input element, so clearing it clears both.
+  function clearLibraryFilter() {
+    libraryQuery = "";
+    const search = document.getElementById("lib-filter-search");
+    if (search) search.value = "";
+    setLibraryFilter("all");
+  }
+
   // Fetches and renders the listing; throws on failure so each caller picks
   // its own error composition.
   async function fetchDashboardRepertoires(seq, isCurrent = currentLoad(seq)) {
@@ -688,6 +723,8 @@ export function createDashboardView({
     // The Today strip's "new moves to learn" depends on this listing.
     const today = document.getElementById("dashboard-today");
     if (lastTodayPayload && today && !today.hidden) renderDashboardToday(lastTodayPayload);
+    // A first-run strip (no dashboard read yet) still learns it has none.
+    else refreshFirstRunAction();
     return true;
   }
 
@@ -743,6 +780,16 @@ export function createDashboardView({
     ]);
   }
 
+  // A listing refresh can land before the first dashboard read; a first-run
+  // strip only follows the count once it is known.
+  function refreshFirstRunAction() {
+    const card = document.getElementById("dashboard-today");
+    if (!card || card.hidden) return;
+    const train = card.querySelector('[data-testid="dashboard-train-now"]');
+    if (!train || !ownRepertoireCount()) return;
+    if (lastTodayPayload) renderDashboardToday(lastTodayPayload);
+  }
+
   // "Get started" checklist; buttons are delegated through data-lib-action.
   function renderOnboardingSteps(steps) {
     const card = document.getElementById("dashboard-steps");
@@ -770,12 +817,10 @@ export function createDashboardView({
         renderSteps(payload);
       } catch (error) {
         if (!isCurrent()) return;
-        const today = document.getElementById("dashboard-today");
-        if (today) {
-          today.hidden = false;
-          today.innerHTML = html`<div role="alert">${error.message} <button class="btn sm">Retry</button></div>`;
-          today.querySelector("button")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
-        }
+        // The strip shows the failure and its retry; the caller adds the status
+        // line for the view, so the message is named in both places at most once
+        // each (the old raw markup rendered it twice in the strip itself).
+        renderTodayError(error.message);
         throw error;
       }
     })();
@@ -852,6 +897,8 @@ export function createDashboardView({
       else if (action === "signin") {
         if (openSignIn) openSignIn();
         else requireSignIn("Sign in (or create an account) to start your library");
+      } else if (action === "clear-filter") {
+        clearLibraryFilter();
       } else if (action === "retry") {
         loadDashboard().catch((error) => setStatusError(error.message));
       } else if (action === "retry-list") {

@@ -107,15 +107,32 @@
 .reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--muted); font-size: var(--fs-s); }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
-.moveline { font: 12px/1.9 var(--mono); }
-.mvw { white-space: nowrap; }
-.mn { color: var(--label); }
-.moveline .inprep { padding: 0 2px; border-radius: 3px; background: var(--good-soft); color: var(--good-text); }
-.moveline .dep { padding: 0 3px; border-radius: 3px; color: var(--accent-ink); font-weight: 700; }
-.moveline .dep.t-bad { background: var(--danger); }
-.moveline .dep.t-warn { background: var(--warn); }
-/* Same tokens as `.moveline .inprep` above, so the key matches the moves it explains. */
-
+.moveline { display: grid; gap: 2px; font: 12px/1.5 var(--mono); }
+.move-pair {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 1px 2px;
+  border-radius: 4px;
+}
+.move-no { color: var(--label); text-align: right; font-variant-numeric: tabular-nums; }
+.ply { min-width: 0; padding: 0 2px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ply.inprep { background: var(--good-soft); color: var(--good-text); }
+.ply.dep { padding: 0 3px; color: var(--accent-ink); font-weight: 700; }
+.ply.dep.t-bad { background: var(--danger); }
+.ply.dep.t-warn { background: var(--warn); }
+.move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
+.move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
+.move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
+.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-xs)/1.4 var(--font); }
+@media (prefers-reduced-motion: no-preference) {
+  .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
+  @keyframes departure-mark {
+    from { opacity: 0; transform: translateX(-3px); }
+    to { opacity: 1; transform: none; }
+  }
+} 
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows path { opacity: 0.8; filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22)); }
@@ -139,9 +156,10 @@
   .ledger-table,
   .focus { overflow: visible; }
 }
-/* ≤760: focus card first, two-line rows, no column header. */
+/* ≤760: ledger first (reachable at the top, like the desktop column order),
+   two-line rows, no column header. */
 @media (max-width: 760px) {
-  .triage { display: flex; flex-direction: column-reverse; }
+  .triage { display: flex; flex-direction: column; }
   .lr.head { display: none; }
   .lr {
     grid-template-columns: 1fr auto;
@@ -154,4 +172,7 @@
   .lr > :nth-child(3) { grid-area: res; text-align: right; }
   .lr > :nth-child(5) { grid-area: dep; }
   .actions .btn { min-height: 44px; }
+  /* The outcome filters are the only way to narrow the ledger on a phone;
+     the shared 26px chip is below a reliable touch target. */
+  .games-panel .sum-chip { height: 40px; padding: 0 14px; border-radius: 20px; }
 }

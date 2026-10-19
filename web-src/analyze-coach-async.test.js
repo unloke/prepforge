@@ -269,3 +269,32 @@ describe("PositionCoach async continuation ownership", () => {
   run({ fen: "uncached" });
   expect(instant).toHaveBeenCalledOnce();
  });
+
+it("does not invite a move while a loaded game's review is still running", () => {
+  // A whole game on the board has no "just played" move to grade yet, and the user
+  // did not play it: the empty-board invitation is wrong until the review lands.
+  const prose = { textContent: "", dataset: {}, classList: { toggle() {} }, append() {} };
+  const document = { getElementById: (id) => (id === "coach-prose" ? prose : null), createElement: () => ({ addEventListener() {} }) };
+  const start = source.indexOf("function renderInstantCoach(");
+  const end = source.indexOf("\nasync function runAnalysis(", start);
+  const run = new Function("appState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
+    "START_FEN", "paintPhaseChip", "paintMaiaCoachLine", "setCoachProse", "describeMove", "showAnalysisPly", "savedCoachQuality", "COACH_QUALITY_GROUP",
+    "COACH_TONES",
+    `${source.slice(start, end)}; return renderInstantCoach;`)({ analysis: { moves: [{ ply: 1, san: "e4" }] }, explainContext: {} },
+      document, () => false, () => null, () => "white", "startfen", () => {}, () => {},
+      (text) => { prose.textContent = text; }, () => "", () => {}, () => null, {}, []);
+
+  run();
+  expect(prose.textContent).toBe("Reading the game…");
+
+  // Nothing loaded: the invitation is the right empty state.
+  const empty = { analysis: null, explainContext: {} };
+  const runEmpty = new Function("appState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
+    "START_FEN", "paintPhaseChip", "paintMaiaCoachLine", "setCoachProse", "describeMove", "showAnalysisPly", "savedCoachQuality", "COACH_QUALITY_GROUP",
+    "COACH_TONES",
+    `${source.slice(start, end)}; return renderInstantCoach;`)(empty,
+      document, () => false, () => null, () => "white", "startfen", () => {}, () => {},
+      (text) => { prose.textContent = text; }, () => "", () => {}, () => null, {}, []);
+  runEmpty();
+  expect(prose.textContent).toBe("Make a move and I'll tell you what I think.");
+});

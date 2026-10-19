@@ -426,6 +426,13 @@ export function createAnalyzeView({
       const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 50;
       fill.style.transform = `scaleX(${(share / 100).toFixed(4)})`;
     }
+    // An empty Evaluation card is an empty grey block: hide it until it has a
+    // number, a game graph or the live engine to show.
+    const card = document.getElementById("analysis-eval-card");
+    if (card && !card.classList.contains("is-engine")) {
+      const graph = document.getElementById("analysis-eval-graph");
+      card.hidden = !text && (!graph || graph.hidden);
+    }
   }
 
   const watch = (id, fn, options) => {

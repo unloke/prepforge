@@ -7,6 +7,7 @@ import { appSource } from "./test-app-source.js";
 const source = appSource();
 function compile(marker, deps) {
   const start = source.indexOf(marker);
+  if (start < 0) throw new Error(`not found: ${marker}`);
   const end = source.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `let smartStartSeq = 0; return (${source.slice(start, end)});`)(...Object.values(deps));
 }
@@ -40,13 +41,22 @@ function harness(overrides = {}) {
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},
-    document: { getElementById: () => ({ hidden: false }) }, setSmartPanelsHidden: vi.fn(),
+    document: { getElementById: () => ({ hidden: false, scrollIntoView() {} }) },
     renderSmartQueueStrip: async () => {}, renderTrainStats: async () => {}, setTrainSyncState: vi.fn(),
     loadPhaseCoach: () => phase.promise, syncWorkspaceUrl: vi.fn(),
     smartLocalPrompt: (smart) => smart.cardIndex < smart.queue.length
       ? { cardIndex: smart.cardIndex, targetIndex: smart.targetIndex } : null,
     presentSmartPrompt: present, finishSmartSession: vi.fn(async () => {}),
+    refreshRepertoireHead: vi.fn(async () => {}), refreshDashboardRepertoires: vi.fn(async () => {}),
+    refreshTrainSessionPreview: vi.fn(async () => {}),
   };
+  deps.setSmartPanelsHidden = compile("function setSmartPanelsHidden(", deps);
+  deps.renderSmartSummaryStats = vi.fn();
+  deps.paintTrainStartDisabled = vi.fn();
+  deps.syncTrainSessionControls = vi.fn();
+  deps.showSmartSummary = compile("function showSmartSummary(", deps);
+  deps.smartSessionOutcomeText = compile("function smartSessionOutcomeText(", deps);
+  deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
   return { appState, deps, start: compile("async function startSmartTraining(", deps), present, phase, payload };
 }
@@ -74,10 +84,14 @@ describe("Smart memo integration at Start", () => {
     const h = harness();
     await h.start();
     const subtitles = h.deps.setTrainBanner.mock.calls.map((call) => call[2]);
+    // No subtitle restates the title: the server step is "Choosing the cards…",
+    // not "Building the queue on the server…" under "Building your queue…".
+    const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
+    for (let i = 0; i < titles.length; i += 1) expect(subtitles[i]).not.toBe(titles[i]);
     expect(subtitles).toEqual(expect.arrayContaining([
       "Saving repertoire edits…",
       "Syncing your last session…",
-      "Building the queue on the server…",
+      "Choosing the cards…",
       "Loading session tools…",
       "Opening your first card…",
     ]));
@@ -175,12 +189,62 @@ describe("Smart memo integration at Start", () => {
     expect(h.present).not.toHaveBeenCalled();
     expect(loadSessionMemo("alice", "session", "start-1")).toBeNull();
   });
+  it("a new queue clears the last session's result cells", async () => {
+    const h = harness();
+    const cells = { innerHTML: "old cells" };
+    const delta = { innerHTML: "old delta" };
+    const foot = { textContent: "old foot" };
+    const els = { "train-summary-stats": cells, "train-summary-delta": delta, "train-summary-foot": foot };
+    // The clear lives in setSmartPanelsHidden; call it as Start does.
+    const dom = { getElementById: (id) => els[id] || null };
+    const clear = compile("function setSmartPanelsHidden(", { ...h.deps, document: dom });
+    clear();
+    expect(String(cells.innerHTML)).toBe("");
+    expect(String(delta.innerHTML)).toBe("");
+    expect(foot.textContent).toBe("");
+  });
+
+  it("the finished session speaks without exclamation marks", async () => {
+    const h = harness();
+    const setAttribute = vi.fn();
+    const node = { style: {}, innerHTML: "", textContent: "", setAttribute, hidden: false, className: "", appendChild() {}, remove() {}, scrollIntoView() {} };
+    const el = () => node;
+    const fakeDoc = { getElementById: el, createElement: () => node };
+    h.deps.celebrate = compile("function celebrate(", { ...h.deps, document: fakeDoc, window: { setTimeout: () => {} } });
+    const finish = compile("async function finishSmartSession(", {
+      ...h.deps, document: fakeDoc,
+      boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
+      syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), updateTrainTurnBadge: vi.fn(),
+      localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
+    });
+    await h.start();
+    h.appState.smart.blitz = false;
+    await finish();
+    // The session moved spaced-repetition state: the "to train" counts are stale.
+    // The live session is released once the report owns the screen, so the setup
+    // screen and Start describe the queue as it now stands.
+    expect(h.appState.smart).toBeNull();
+    await vi.waitFor(() => expect(h.deps.refreshRepertoireHead).toHaveBeenCalled());
+    expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
+    expect(h.deps.paintTrainStartDisabled).toHaveBeenCalled();
+    // The report is on screen before the flush and the summary fetch answer.
+    expect(h.deps.renderSmartSummaryStats).toHaveBeenCalled();
+    expect(h.deps.renderSmartSummaryStats.mock.calls[0][0].sessionId).toBe("session");
+    const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
+    expect(titles.filter((title) => /session complete/i.test(title))).toEqual(["Session complete"]);
+    for (const title of titles) expect(title).not.toContain("!");
+    // The end label names the position in a few words: the phone's thumb bar
+    // ellipsized "Final position of the last card". The fixture cards carry no
+    // fen_after, so the label is cleared here.
+    expect(String(node.textContent)).toBe("");
+  });
+
   it("Finish clears only this owner/session's memo", async () => {
     const h = harness();
     await h.start();
     saveSessionMemo("bob", "session", memo);
     const finish = compile("async function finishSmartSession(", {
-      ...h.deps, document: { getElementById: () => ({ style: {}, innerHTML: "" }) },
+      ...h.deps, document: { getElementById: () => ({ style: {}, innerHTML: "", scrollIntoView() {} }) },
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
       syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(),
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},

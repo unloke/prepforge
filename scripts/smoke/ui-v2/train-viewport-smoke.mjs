@@ -239,8 +239,8 @@ async function runViewport(vp) {
 
   await shot("active");
 
-  // Result screen: the finished session is a report, so the mode tabs go dead —
-  // "New session" is the deliberate way to start another queue. Reach it by
+  // Result screen: the finished session is a report, so the mode tabs are gone
+  // with the setup card — "New session" is the way back to them. Reach it by
   // playing the whole 4-card fixture queue, one card at a time.
   for (const [from, to] of [["c7", "c6"], ["g1", "f3"], ["e7", "e6"], ["f1", "b5"]]) {
     for (const sq of [from, to]) {
@@ -254,14 +254,14 @@ async function runViewport(vp) {
   const summaryUp = await page.locator("#train-summary:not([hidden])").count();
   check(summaryUp === 1, "finishing the last card should show the session results");
   await shot("summary");
-  for (const mode of ["smart", "all_lines", "play"]) {
-    const tab = page.locator(`#train-modes .train-mode[data-mode="${mode}"]`);
-    check(await tab.isDisabled(), `${mode} tab should be disabled on the result screen`);
-    check(/New session/.test((await tab.getAttribute("title")) || ""), `${mode} tab should point at New session`);
-  }
+  check(!(await page.locator("#train-modes").isVisible()), "the mode tabs should be hidden on the result screen");
+  check((await page.locator("#train-mode-name").textContent()) === "Smart queue", "the result card should name the session's mode");
   await page.evaluate(() => document.getElementById("train-summary-new").click());
   await page.waitForTimeout(400);
-  check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isEnabled(), "New session should re-enable the mode tabs");
+  check(!(await page.locator("#train-modes").isVisible()), "New session starts the next queue without the mode tabs");
+  await page.locator("#train-mode-name").click();
+  await page.waitForTimeout(300);
+  check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isVisible(), "the card's mode name should lead back to the mode tabs");
   check(await page.locator("#train-summary").evaluate((el) => el.hidden), "New session should clear the result screen");
 
   // Start a fresh session for the rest of the checks.

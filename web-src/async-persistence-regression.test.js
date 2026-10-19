@@ -90,7 +90,8 @@ it("team detail B stays visible after slow A responds", async () => {
   const deps = { appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
-    renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton };
+    renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton,
+    formatDay: () => "", renderTeamInviteFooter: () => {} };
   const open = compile("async function openTeamDetail(", deps, "let teamDetailSeq = 0");
   const a = open("A"), b = open("B");
   second.resolve({ name: "B", role: "member", members: [] }); await b;
@@ -144,7 +145,7 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
   const code = scoutSource.replace(/^  /gm, "");
   const notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
-  const run = compile("async function scoutPrepareAll(", {
+  const run = compile("async function runPrepareAll(", {
     scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices,
     scoutPickRepertoire: async () => "r", scoutWriteLineToRep: write,
   }, "", code);

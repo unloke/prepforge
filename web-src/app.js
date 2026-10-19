@@ -5,6 +5,8 @@ import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
 import { createNotices } from "./notices.js";
+import { resetViewScroll } from "./view-scroll.js";
+import { closeSheetOffPhone } from "./phone-layout.js";
 import { watchMaiaInit } from "./maia-init-notice.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "./board-arrows.js";
@@ -47,7 +49,7 @@ import {
 } from "./engine/maia3-provider.js";
 import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo, localBoardAfterMove, localSanLine, isStartFen } from "./chess-local.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme, readStoredPrefs, readStoredTheme, storeTheme } from "./theme.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { parsePgn } from "./analyze-pgn.js";
 import { createBoardController } from "./board/board-controller.js";
@@ -95,6 +97,7 @@ import { fetchLichessProfile } from "./lichess-profile.js";
 import {
   buildPaletteItems,
   filterPaletteItems,
+  paletteScrollTop,
   renderPaletteItems,
 } from "./command-palette.js";
 import { createAccountController } from "./controllers/account.js";
@@ -117,6 +120,7 @@ import {
   sameFetchSources,
 } from "./views/shared/source-composer.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
+import { createInviteDialogUi, formatDay, runInviteDialog } from "./views/team-invite.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 let _coachReady = null;
 function loadTrainResume() {
@@ -258,12 +262,11 @@ const PREF_LABELS = {
   bestArrow: "Engine best-move arrow",
 };
 
-function loadPrefs() {
-  try {
-    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") };
-  } catch (_) {
-    return { ...DEFAULT_PREFS };
-  }
+// The stored blob is merged over the defaults, and the theme is normalized in
+// place: a hand-written or unknown theme must not survive as `undefined` and
+// then fail to match the Settings control it is painted next to.
+function loadPrefs(storage = globalThis.localStorage) {
+  return { ...DEFAULT_PREFS, ...readStoredPrefs(storage), theme: readStoredTheme(storage) };
 }
 
 function pref(name) {
@@ -282,10 +285,15 @@ function maiaAnalysisEnabled() {
 
 function setPref(name, value) {
   appState.prefs[name] = value;
-  try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(appState.prefs));
-  } catch (_) {
-    // ignore storage errors
+  if (name === "theme") {
+    // One writer for the persisted theme, shared with the rail toggle.
+    appState.prefs.theme = storeTheme(value, localStorage);
+  } else {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(appState.prefs));
+    } catch (_) {
+      // ignore storage errors
+    }
   }
   applyPref(name);
 }
@@ -294,6 +302,9 @@ function applyPref(name) {
   if (name === "theme") {
     applyTheme(pref("theme"));
     syncThemeToggle();
+    // Settings owns the full System / Light / Dark control; it must show the
+    // rail toggle's pick, whichever control made it.
+    settingsView?.renderThemeControl?.();
   }
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
@@ -1129,7 +1140,8 @@ function activateModal(overlay, { initialFocus = null, additionalRoots = [] } = 
   const background = [...document.body.children].filter(
     (child) => child !== overlay && !additionalRoots.includes(child) && !child.inert,
   );
-  for (const child of background) child.inert = true;
+  // Only a real sibling gets inert: an ancestor would take this dialog with it.
+  for (const child of background) if (!child.contains(overlay)) child.inert = true;
 
   const dialog = overlay.matches('[role="dialog"]')
     ? overlay
@@ -1171,7 +1183,7 @@ function activateModal(overlay, { initialFocus = null, additionalRoots = [] } = 
     if (cleaned) return;
     cleaned = true;
     keyTarget.removeEventListener("keydown", onKeyDown);
-    for (const child of background) child.inert = false;
+    for (const child of background) if (!child.contains(overlay)) child.inert = false;
     overlay.remove = nativeRemove;
     if (restoreFocus && previouslyFocused?.isConnected) previouslyFocused.focus();
   };
@@ -1231,6 +1243,18 @@ function paintPalette() {
   if (input) {
     if (active) input.setAttribute("aria-activedescendant", active.id);
     else input.removeAttribute("aria-activedescendant");
+  }
+  // Arrow keys move the highlight; the list must follow it.
+  if (active) {
+    const boxRect = box.getBoundingClientRect();
+    const itemRect = active.getBoundingClientRect();
+    box.scrollTop = paletteScrollTop({
+      boxTop: boxRect.top,
+      boxHeight: boxRect.height,
+      itemTop: itemRect.top,
+      itemHeight: itemRect.height,
+      scrollTop: box.scrollTop,
+    });
   }
 }
 
@@ -1443,7 +1467,9 @@ async function restoreWorkspaceLocation() {
       appState.replayOpen = new Set([replayReturn.openIndex]);
     }
   }
-  if (loc.repertoireId && appState.signedIn) {
+  // Only Build's link names the repertoire its editor shows; Train's names the
+  // queue's, which startTraining below loads for itself.
+  if (loc.view === "build" && loc.repertoireId && appState.signedIn) {
     try {
       const payload = await api(
         `/api/build/load?repertoire_id=${encodeURIComponent(loc.repertoireId)}`,
@@ -1464,15 +1490,33 @@ async function restoreWorkspaceLocation() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
-  if (loc.view === "analyze" && loc.ply && appState.analysis) {
-    await showAnalysisPly(loc.ply);
-  }
+  if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply);
   if (loc.view === "train" && appState.signedIn) {
     // The URL's repertoire is the queue's. A Train link that names one (the
     // one the Library/Repertoire Train action leaves behind) drills that
     // repertoire; no ?rep= means the mixed queue over all active ones.
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
+}
+
+// Analyze keeps the loaded game in a session slot (controllers/analyze-session.js
+// persistAnalysisSession), so a reload puts the move list and the board back
+// together instead of a PGN box whose game the board never loaded. The URL's
+// ?ply= wins when it names a move: a shared/returned link is about that ply.
+async function restoreAnalyzeSession(urlPly) {
+  if (appState.analysis) {
+    if (urlPly) await showAnalysisPly(urlPly);
+    return;
+  }
+  const saved = loadReturnState("analyze");
+  const pgn = typeof saved?.pgn === "string" ? saved.pgn : "";
+  if (!pgn.trim()) return;
+  const input = document.getElementById("pgn-input");
+  if (input) input.value = pgn;
+  const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
+  if (!loaded) return;
+  const ply = urlPly || saved?.ply;
+  if (ply) await showAnalysisPly(ply);
 }
 
 // In-page route changes (back/forward and location.hash) take the same path as
@@ -1485,6 +1529,10 @@ async function handleWorkspacePopstate() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
+  // Back/forward to an Analyze ply puts the board on that move, the same way boot does.
+  if (loc.view === "analyze" && loc.ply && loc.ply !== appState.analysisPly) {
+    await showAnalysisPly(loc.ply);
+  }
   if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
@@ -1496,6 +1544,7 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   // replay view: an error from one must not follow them to the other.
   if (appState.replaySection && appState.replaySection !== next) notices.clearStatusOnNavigate();
   appState.replaySection = next;
+  resetViewScroll();
   document.querySelectorAll("[data-replay-panel]").forEach((panel) => {
     const active = panel.dataset.replayPanel === next;
     panel.hidden = !active;
@@ -1554,9 +1603,8 @@ function analyzeHeaderTags(pgnText) {
 }
 
 function syncAnalyzeHead() {
-  const title = document.getElementById("analysis-game-title");
   const meta = document.getElementById("analysis-game-meta");
-  if (!title || !meta) return;
+  if (!meta) return;
   const analysis = appState.analysis;
   // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
   // the source box must not title an empty board "PrepForge vs Demo".
@@ -1566,16 +1614,12 @@ function syncAnalyzeHead() {
   const white = known(tags.White) || known(analysis?.white);
   const black = known(tags.Black) || known(analysis?.black);
   const plies = analysis?.moves?.length || 0;
-  title.textContent = white || black ? `${white || "?"} vs ${black || "?"}` : "Analysis board";
+  const playersText = white || black ? `${white || "?"} vs ${black || "?"}` : "";
   const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
     .filter(Boolean);
-  // The tag line rides under the board beside the move, not in the panel head:
-  // the head is one row of title and actions.
-  meta.textContent = bits.length
-    ? bits.join(" · ")
-    : plies
-      ? `${plies} half-move${plies === 1 ? "" : "s"}`
-      : "";
+  meta.textContent = [playersText, bits.length ? bits.join(" · ") : plies ? `${plies} half-move${plies === 1 ? "" : "s"}` : ""]
+    .filter(Boolean)
+    .join(" · ");
   meta.title = meta.textContent;
 }
 
@@ -1660,6 +1704,7 @@ function switchView(name, { fromUrl = false } = {}) {
     moreBtn.setAttribute("aria-current", active ? "page" : "false");
   }
   syncPageTitle();
+  resetViewScroll();
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("is-active", view.id === `view-${name}`);
   });
@@ -2905,6 +2950,23 @@ function renderTeamsList() {
   void ensureTeamsView().then((view) => view.renderTeamsList()).catch(() => {});
 }
 
+// The invite line under the team tabs: what the team has NOW (no status means
+// no line — never an implied link). Fed by openTeamDetail, and by teamInvite
+// after the dialog, whose final status is the truth for that card.
+function renderTeamInviteFooter(status) {
+  const foot = document.getElementById("team-invite-foot");
+  if (!foot) return;
+  if (!status || !status.exists) {
+    foot.hidden = true;
+    foot.innerHTML = "";
+    return;
+  }
+  const expiresDay = formatDay(status.expires_at);
+  const when = expiresDay ? ` · expires ${expiresDay}` : "";
+  foot.innerHTML = html`Invite link active${when} · revoke from Invite`;
+  foot.hidden = false;
+}
+
 function hideTeamDetail() {
   appState.selectedTeamId = null;
   const card = document.getElementById("team-detail-card");
@@ -2931,7 +2993,7 @@ async function openTeamDetail(teamId) {
   const shares = document.getElementById("team-shared-repertoires");
   if (shares) shares.innerHTML = sharedRepRowsSkeleton(2);
   teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
-  teamsView?.renderTeamInviteFooter(null);
+  renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
@@ -2985,7 +3047,7 @@ async function openTeamDetail(teamId) {
   // manager-only invite footer, both before the member rows render.
   if (teamsView) {
     teamsView.renderTeamTabCounts({ members: members.length });
-    teamsView.renderTeamInviteFooter(detail);
+    renderTeamInviteFooter(detail.invite);
   }
   membersEl.innerHTML = html`${members
     .map((m) => {
@@ -3231,12 +3293,30 @@ async function removeTeamMember(teamId, userId, label, isSelf) {
 // never rotates it; minting a new code is an explicit, confirmed action inside
 // the dialog (views/team-invite.js).
 async function teamInvite(teamId) {
+  // The dialog stays open across actions. Its own openTeamDetail re-read is a
+  // snapshot from opening time and paints AFTER the dialog closes, so the line
+  // is repainted from the dialog's last known status after that read, not before.
+  let status = null;
+  const ui = createInviteDialogUi({
+    activateModal,
+    onInviteStatus: (next) => { status = next; renderTeamInviteFooter(next); },
+  });
   try {
-    await (await ensureTeamsView()).openInviteDialog(teamId);
+    status = await runInviteDialog(teamId, {
+      api,
+      postJson,
+      origin: window.location.origin,
+      copyText: (text) => navigator.clipboard.writeText(text),
+      confirm: showConfirmModal,
+      setStatus,
+      setStatusError,
+      ui,
+    });
   } catch (error) {
     setStatusError(error.message);
   }
   await openTeamDetail(teamId);
+  renderTeamInviteFooter(status);
 }
 
 // In-team "add a repertoire": share one of the caller's OWN repertoires with this
@@ -3453,7 +3533,7 @@ async function shareRepertoireWithTeam(repertoireId) {
 // (values, close) lets a caller run its request while the dialog holds the
 // pending state: it calls `close(values)` on success, or returns/throws to leave
 // the form open for another try.
-function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true }) {
+function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true, dismissOnSubmit = false }) {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
@@ -3546,6 +3626,15 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
       cleanup();
       resolve(values);
     };
+    // A caller that opens its own optimistic view dismisses the form on submit:
+    // the promise still resolves when the caller closes it with the request's
+    // outcome, but the overlay is gone immediately.
+    let dismissed = false;
+    const dismiss = () => {
+      if (dismissed) return;
+      dismissed = true;
+      cleanup();
+    };
     const collect = () => {
       const values = {};
       overlay.querySelectorAll("[data-field]").forEach((el) => {
@@ -3555,13 +3644,17 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
     };
     // Submitting hands the dialog a promise the caller keeps pending while its
     // request is in flight. Callers that don't (plain data entry) close on
-    // submit, exactly as before.
+    // submit, exactly as before. One request per dialog: Enter (or a double
+    // click) while onSubmit is still running must not start a second one.
+    let submitting = false;
     const submit = () => {
+      if (submitting) return;
       const values = collect();
       if (typeof onSubmit !== "function") {
         close(values);
         return;
       }
+      submitting = true;
       const okBtn = overlay.querySelector('[data-action="ok"]');
       const controls = [...overlay.querySelectorAll(".modal-footer .btn, [data-field]")];
       okBtn.classList.add("is-loading");
@@ -3572,6 +3665,7 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
       // Silence/`controls` capture lets a failed submit re-enable the form
       // unless the caller closed the dialog (success) or submitted again.
       const idle = () => {
+        submitting = false;
         if (settled) return;
         okBtn.classList.remove("is-loading");
         for (const el of controls) el.disabled = false;
@@ -3581,9 +3675,10 @@ function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmi
         settled = true;
         fn(result);
       };
+      if (dismissOnSubmit) dismiss();
       Promise.resolve()
         .then(() => onSubmit(values, finish(close)))
-        .catch(() => {})
+        .catch(() => { if (dismissOnSubmit && !closed) close(null); })
         .then(idle);
     };
     const onKey = (event) => {
@@ -4347,8 +4442,9 @@ function loadTrainSession() {
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
-    queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
+    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
+    renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   })).catch((error) => {
     trainSessionLoading = null;
@@ -4476,9 +4572,10 @@ function syncEngineChrome() {
   syncAnalysisEvalCard();
 }
 
-// The Evaluation card shows when there is a game graph or the engine is on;
-// the graph itself only once an analysis has plotted points (a loaded but not
-// yet analyzed game has nothing to draw, so no empty grey box).
+// The Evaluation card shows when there is a game graph, a number to read or the
+// engine is on; the graph itself only once an analysis has plotted points (a
+// loaded but not yet analyzed game has nothing to draw, so no empty grey box).
+// With nothing loaded the card is empty, so it is not drawn at all.
 function syncAnalysisEvalCard() {
   const card = document.getElementById("analysis-eval-card");
   const graph = document.getElementById("analysis-eval-graph");
@@ -4486,7 +4583,10 @@ function syncAnalysisEvalCard() {
   const points = Array.isArray(appState.evalChartPoints) ? appState.evalChartPoints : [];
   const hasGraph = !!results && !results.hidden && points.length > 0;
   if (graph) graph.hidden = !hasGraph;
-  card?.classList.toggle("is-engine", engineWantedIn("analyze"));
+  const isEngine = engineWantedIn("analyze");
+  card?.classList.toggle("is-engine", isEngine);
+  const hasNumber = !!(document.getElementById("analysis-chart-caption")?.textContent || "").trim();
+  if (card) card.hidden = !hasGraph && !isEngine && !hasNumber;
 }
 
 // ---- Explorer row evals ------------------------------------------------------
@@ -4827,15 +4927,23 @@ function renderSyncChip(el, state, scope = "repertoire") {
 }
 
 function renderBuildSync() {
-  const el = document.getElementById("build-sync");
-  if (!el) return;
-  // Nothing to show without an editable repertoire (read-only shared view = no
-  // local edits ever happen).
-  if (!appState.build || isBuildReadOnly()) {
-    el.hidden = true;
-    return;
+  // Two hosts, one state: the board bar's chip on desktop, and the same chip in
+  // the inspector tools row on phones, where the board bar sits at the screen's
+  // bottom out of reach of an edit made above. Only one is ever visible.
+  let shown = false;
+  for (const id of ["build-sync", "build-sync-head"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    // Nothing to show without an editable repertoire (read-only shared view =
+    // no local edits ever happen).
+    if (!appState.build || isBuildReadOnly()) {
+      el.hidden = true;
+      continue;
+    }
+    renderSyncChip(el, appState.buildSyncState);
+    shown = true;
   }
-  renderSyncChip(el, appState.buildSyncState);
+  return shown;
 }
 
 let trainModule = null;
@@ -4880,6 +4988,9 @@ async function renderTrainSync() {
   const el = document.getElementById("train-sync");
   if (!el) return;
   const sync = appState.trainSync;
+  // Nothing to say without a session or pending work, and nothing to say while
+  // the debounce simply waits: "Saving progress soon" sat there for seconds at
+  // a time between answers.
   if (!appState.smart && !sync.pending.length && !sync.dirty) {
     el.hidden = true;
     return;
@@ -4889,6 +5000,29 @@ async function renderTrainSync() {
 
 async function renderTrainStats() {
   return (await ensureTrainView()).renderTrainStats();
+}
+
+async function renderSmartSummaryStats(smart, stats) {
+  return (await ensureTrainView()).renderSmartSummaryStats(smart, stats);
+}
+
+// The "N to train" counts come from the repertoire listing, which a finished
+// training session made stale: drop the cached list and repaint every reader
+// (Library rows, palette, the Repertoire header) once the fresh list lands.
+async function refreshRepertoireHead() {
+  const view = dashboardView;
+  if (view) {
+    // Also re-reads the active repertoire's tree: spaced repetition moved its
+    // moves from "to train" to learned, so the header's count is stale too.
+    await Promise.all([
+      view.loadDashboardRepertoires(),
+      appState.build && appState.signedIn ? hydrateBuild(appState.build.repertoire_id) : null,
+    ]);
+  } else if (appState.signedIn) {
+    appState.repertoireList = ((await api("/api/repertoires")).repertoires || []);
+  }
+  renderBuildRepHeader();
+  syncViewHeads();
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
@@ -5002,6 +5136,7 @@ async function deleteBuildNodeLocal(nodeId) {
   } else {
     renderBuilderTree();
   }
+  syncViewHeads();
   // The delete doesn't queue for the server until the undo window closes; until
   // then it lives in buildUndoDeletes so a reconcile re-hydrate re-prunes it.
   appState.buildUndoDeletes.add(nodeId);
@@ -5053,6 +5188,7 @@ async function deleteBuildNodeLocal(nodeId) {
       } else {
         renderBuilderTree();
       }
+      syncViewHeads();
       if (parkedAdds.length) {
         setBuildSync("dirty");
         scheduleBuildFlush();
@@ -5427,7 +5563,16 @@ async function runLichessCompare() {
         : `Fetched ${countOf(payload.count, "game")} for ${sourceLabel}`
     );
   } catch (error) {
-    if (isCurrent()) setStatusError(error.message);
+    if (isCurrent()) {
+      // The fetch painted skeleton rows; a failure must not leave the ledger
+      // pulsing forever. Drop back to the pre-check prompt; the notification
+      // carries the one error message.
+      resetGamesResults();
+      // A routine status line is shown on a 700ms delay; clear it (and its
+      // pending timer) so "Fetching games..." cannot appear under the error.
+      setStatus("");
+      setStatusError(error.message);
+    }
   } finally {
     if (appState.replayCheckToken === token) button.disabled = false;
   }
@@ -5439,11 +5584,12 @@ async function runLichessCompare() {
 // listed linked ids; "none" = no linked accounts. External Lichess usernames
 // ride alongside on both pages (Games fetches them too). Persisted per
 // browser as one explicit selection object.
-function readSourceStore(key) {
+function readSourceStore(key, fallback = null) {
   try {
-    return normalizeSelection(JSON.parse(localStorage.getItem(key)));
+    const raw = localStorage.getItem(key);
+    return normalizeSelection(raw == null ? fallback : JSON.parse(raw));
   } catch (_) {
-    return normalizeSelection(null);
+    return normalizeSelection(fallback);
   }
 }
 
@@ -5462,6 +5608,37 @@ function gamesSourceSelection() {
 
 function writeGamesSelection(selection) {
   writeSourceStore(GAMES_SOURCE_KEY, selection);
+}
+
+// The ledger belongs to the sources the last Check fetched from. Changing the
+// sources replaces it with the pre-check prompt, otherwise the header keeps
+// naming accounts the user just removed ("2 shown · old_account").
+function clearGamesResults() {
+  appState.replayCheckToken = (appState.replayCheckToken || 0) + 1;
+  resetGamesResults();
+}
+
+// The visual/state half of clearing, without the check-token bump: a FAILED
+// Check must drop its skeleton too, but its own response is still the current
+// one, so the finally still has to re-enable the button.
+function resetGamesResults() {
+  appState.replayResults = null;
+  appState.replayFilter = null;
+  appState.replayOpen = new Set();
+  saveReturnState("replay", { filter: null, openIndex: null });
+  const summary = document.getElementById("replay-summary");
+  if (summary) {
+    summary.hidden = true;
+    summary.innerHTML = "";
+  }
+  const results = document.getElementById("replay-results");
+  if (results) {
+    results.innerHTML =
+      html`<div class="empty-state big"><div class="es-mark" aria-hidden="true">♙</div><h3>No games checked yet</h3><p id="games-idle-hint"></p></div>`;
+  }
+  paintGamesSource();
+  const hint = document.getElementById("games-idle-hint");
+  if (hint) hint.textContent = gamesIdleHint();
 }
 
 
@@ -5485,7 +5662,7 @@ function openGamesComposer(anchor) {
     externalPlaceholder: "Add Lichess username…",
     onChange: (sel) => {
       writeGamesSelection(sel);
-      paintGamesSource();
+      clearGamesResults();
     },
     onClose: () => paintGamesSource(),
   });
@@ -5536,19 +5713,20 @@ function paintGamesSource() {
       html`<span class="src-empty">No sources — open Add and pick one</span>`;
     return;
   }
-  // The idle card names the next step for where the user actually is. While the
-  // session is unread it says nothing: a guest/signed-in distinction is a guess.
-  // It only shows before a check — a rendered result replaces the whole host.
   const hint = document.getElementById("games-idle-hint");
-  if (hint) {
-    hint.textContent = !appState.authKnown
-      ? ""
-      : !appState.signedIn
-        ? "Sign in to check your games against your repertoires."
-        : lichessAccounts().length || selection.external.length
-          ? "Pick a sample size, then run a check."
-          : "Connect a Lichess account, then run a check.";
-  }
+  if (hint) hint.textContent = gamesIdleHint();
+}
+
+// The idle card names the next step for where the user actually is. While the
+// session is unread it says nothing: a guest/signed-in distinction is a guess.
+// It only shows before a check — a rendered result replaces the whole host.
+function gamesIdleHint() {
+  const selection = gamesSourceSelection();
+  if (!appState.authKnown) return "";
+  if (!appState.signedIn) return "Sign in to check your games against your repertoires.";
+  return lichessAccounts().length || selection.external.length
+    ? "Pick a sample size, then run a check."
+    : "Connect a Lichess account, then run a check.";
 }
 
 function bindGamesSource() {
@@ -5575,7 +5753,7 @@ function bindGamesSource() {
         accountIds: sel.accountIds,
         external: sel.external.filter((n) => n !== removeExt.dataset.gamesUnpickExternal),
       });
-      paintGamesSource();
+      clearGamesResults();
       return;
     }
     const remove = event.target.closest("[data-games-unpick]");
@@ -5589,7 +5767,7 @@ function bindGamesSource() {
     } else {
       writeGamesSelection({ linkedMode: "subset", accountIds: rest, external: sel.external });
     }
-    paintGamesSource();
+    clearGamesResults();
   });
   paintGamesSource();
 }
@@ -5601,9 +5779,12 @@ function bindGamesSource() {
 // on both pages. Page difference lives only in the analysis workflow after
 // picking, never in the picker.
 const SCOUT_SOURCE_KEY = "prepforge.scout_source";
+// Scout is about the opponent, so an unset Scout selection starts empty: the
+// shared default ("Self", used by Games) made Start scout the user's own games.
+const SCOUT_SOURCE_DEFAULT = { linkedMode: "none", accountIds: [], external: [] };
 
 function scoutSelection() {
-  return readSourceStore(SCOUT_SOURCE_KEY);
+  return readSourceStore(SCOUT_SOURCE_KEY, SCOUT_SOURCE_DEFAULT);
 }
 
 function writeScoutSelection(selection) {
@@ -6264,6 +6445,9 @@ function wireMobileNav() {
     if (sheet.hidden) openSheet();
     else closeSheet();
   });
+  // The sheet belongs to the phone layout: a bar that is gone must not leave it
+  // as a full-width bottom sheet over the desktop board.
+  closeSheetOffPhone(() => closeSheet({ restoreFocus: false }));
   sheet.addEventListener("click", (event) => {
     if (event.target === sheet) closeSheet();
   });
@@ -6751,40 +6935,50 @@ function bindEvents() {
       paintBlitz(next);
     });
   }
+  // Picking a mode is setup: it ends whatever session the current mode has
+  // (each answer is already saved) and shows that mode's setup card.
+  const selectTrainMode = (mode) => {
+    document
+      .querySelectorAll("#train-modes .train-mode")
+      .forEach((b) => b.classList.toggle("is-active", b.dataset.mode === mode));
+    appState.trainMode = mode;
+    appState.playStartToken = (appState.playStartToken || 0) + 1;
+    appState.playStarting = null;
+    appState.play = null;
+    appState.trainBusy = false;
+    if (mode !== "smart") appState.smart = null;
+    if (mode !== "all_lines") appState.training = null;
+    clearBlitzTimer();
+    setBlitzBarVisible(false);
+    if (mode === "play") {
+      appState.smart = null;
+      appState.training = null;
+      setTrainBanner("idle", "Practice game", "");
+      void resetTrainBoardIdle("Practice game");
+    } else {
+      // "Press Start" is said once, by the Start button itself (UX P2-10).
+      setTrainBanner("idle", "Ready to train", "");
+      void resetTrainBoardIdle("");
+      const progress = document.getElementById("train-progress-panel");
+      if (progress) progress.hidden = true;
+      const summary = document.getElementById("train-summary");
+      if (summary) summary.hidden = true;
+    }
+    // The answer clock only exists in the smart queue; rehearsal is untimed.
+    document.getElementById("train-blitz-row").hidden = mode !== "smart";
+    syncTrainPickerVisibility();
+  };
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const mode = btn.dataset.mode;
-      if (appState.trainMode === mode && btn.classList.contains("is-active")) return;
-      document
-        .querySelectorAll("#train-modes .train-mode")
-        .forEach((b) => b.classList.toggle("is-active", b === btn));
-      appState.trainMode = mode;
-      appState.playStartToken = (appState.playStartToken || 0) + 1;
-      appState.playStarting = null;
-      appState.play = null;
-      appState.trainBusy = false;
-      if (mode !== "smart") appState.smart = null;
-      if (mode !== "all_lines") appState.training = null;
-      clearBlitzTimer();
-      setBlitzBarVisible(false);
-      if (mode === "play") {
-        appState.smart = null;
-        appState.training = null;
-        setTrainBanner("idle", "Practice game", "");
-        void resetTrainBoardIdle("Practice game");
-      } else {
-        // "Press Start" is said once, by the Start button itself (UX P2-10).
-        setTrainBanner("idle", "Ready to train", "");
-        void resetTrainBoardIdle("");
-        const progress = document.getElementById("train-progress-panel");
-        if (progress) progress.hidden = true;
-        const summary = document.getElementById("train-summary");
-        if (summary) summary.hidden = true;
-      }
-      // The answer clock only exists in the smart queue; rehearsal is untimed.
-      document.getElementById("train-blitz-row").hidden = mode !== "smart";
-      syncTrainPickerVisibility();
+      if (appState.trainMode === btn.dataset.mode && btn.classList.contains("is-active")) return;
+      selectTrainMode(btn.dataset.mode);
     });
+  });
+  // The tabs leave with the setup card; the session card's mode name leads back.
+  document.getElementById("train-mode-name")?.addEventListener("click", () => {
+    appState.smart = null;
+    appState.training = null;
+    selectTrainMode(appState.trainMode || "smart");
   });
   const trainSelect = document.getElementById("train-repertoire-select");
   if (trainSelect) {
@@ -6871,6 +7065,13 @@ function bindEvents() {
       if (inBuild) buildGoForward();
       else void analysisTreeNav("next").catch(() => {});
     }
+    if (event.key === "Home" || event.key === "End") {
+      // Home/End: the ends of the line. A held key repeats keydown, so one
+      // hold steps the whole game instead of one move per press.
+      event.preventDefault();
+      if (inBuild) event.key === "Home" ? buildGoRoot() : buildGoToEnd();
+      else void analysisTreeNav(event.key === "Home" ? "start" : "end").catch(() => {});
+    }
     // Up/Down (and j/k) move the fork pick — which prepared continuation → will
     // play next. The on-screen fork bar and the board arrows mirror the pick.
     // With no fork at the current position they do nothing (← → step the line).
@@ -6922,6 +7123,8 @@ async function init() {
   if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
   initAccountController();
+  // First paint reads the stored theme; it never writes, so opening the app
+  // does not fabricate a pref blob.
   applyPref("theme");
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");

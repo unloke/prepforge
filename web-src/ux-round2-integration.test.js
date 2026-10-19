@@ -122,6 +122,7 @@ describe("Games link chip respects explicit Self selection", () => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     compile("function paintGamesSource(", {
       appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
+      gamesIdleHint: () => "",
     })();
     expect(String(tray.innerHTML)).toContain("Foe");
     expect(String(tray.innerHTML)).not.toContain("data-games-link");

@@ -129,6 +129,23 @@ it("a docked job replaces the previous card and Analyze's leaves on completion",
   expect(vi.getTimerCount()).toBe(0);
 });
 
+it("a failed docked job leaves the dock so the next card is visible and reachable", () => {
+  const dock = fakeEl();
+  dock.id = "analysis-job-dock";
+  const job = notices.startJob({ title: "Analyzing game", dock });
+  expect(dock._notice).toBe(job);
+  notices.failJob("Invalid FEN");
+  expect(job.removed).toBe(true);
+  expect(dock._notice).toBeNull();
+  expect(dock.children).toHaveLength(0);
+  expect(notices.active).toBeNull();
+  // The next repeated message is a plain card in the stack, not a docked job.
+  const card = notices.show("Invalid FEN", { tone: "error" });
+  expect(card.removed).toBe(false);
+  expect(card.dock).toBeNull();
+  expect(container.children).toContain(card.el);
+});
+
 it("drops status lines on navigation unless the navigating action raised them", () => {
   expect(shouldClearStatusOnNavigate(1000, 5000, 400)).toBe(true);
   expect(shouldClearStatusOnNavigate(4900, 5000, 400)).toBe(false);

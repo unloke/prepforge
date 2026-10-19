@@ -30,6 +30,7 @@ import {
   scoutLineWdlCounts,
   buildScoutIntelligenceA11ySummary,
   scoutDistRowHtml,
+  openScoutLine,
 } from "./scout-report.js";
 import {
   MAIA_ENRICH_LOADING,
@@ -394,6 +395,28 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     expect(sideEl.hidden).toBe(false);
     expect(sideEl.dataset.lineKey).toBe(key);
     expect(results.scrollTop).toBe(88);
+  });
+
+  it("repaints the open detail when the same line is rebuilt with new numbers", () => {
+    const lineEl = createStubElement("div");
+    lineEl.classList.add("scout-line");
+    lineEl.dataset.lineKey = "e2e4";
+    lineEl.dataset.color = "white";
+    lineEl.dataset.rowIdx = "0";
+    lineEl.dataset.rowKind = "prep";
+    const sideEl = createStubElement("aside");
+    const ctx = (games) => ({
+      scoutModule,
+      sideEl,
+      ecoCache: new Map(),
+      callbacks: { scoutLineDetailHtml: () => `<p>seen in ${games} games</p>` },
+    });
+    openScoutLine(lineEl, { ucis: ["e2e4"], games: 3 }, "prep", ctx(3));
+    expect(String(sideEl.innerHTML)).toContain("seen in 3 games");
+    // Streaming re-renders the same key/colour from a fresh line object; the
+    // detail used to keep the old snapshot and disagree with the row.
+    openScoutLine(lineEl, { ucis: ["e2e4"], games: 4 }, "prep", ctx(4));
+    expect(String(sideEl.innerHTML)).toContain("seen in 4 games");
   });
 
   it("preserves expansion across a simulated live re-render", () => {

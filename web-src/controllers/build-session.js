@@ -289,7 +289,10 @@ function applyBuildDockHeight(px) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
+  // Basis and floor together: the dock neither grows past what the tree does
+  // not need nor gets squashed under a long one (rule: .dock min-height 0).
   dock.style.flexBasis = `${clamped}px`;
+  dock.style.minHeight = `${clamped}px`;
   return clamped;
 }
 
@@ -318,7 +321,7 @@ function initBuildDockLayout() {
   const fold = document.getElementById("build-dock-fold");
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
-  if (Number.isFinite(stored) && stored > 0) dock.style.flexBasis = `${Math.round(stored)}px`;
+  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored);
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
@@ -975,17 +978,26 @@ async function onBuildBoardMove(moveUci) {
   scheduleBuildFlush();
 }
 
+// One create dialog at a time. The Library offers New repertoire in the page
+// head and the list header, so re-entering while the first dialog is still open
+// would ask twice and, on Enter, send two creates.
+let createRepertoireDialog = null;
+
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
-  const created = await showInputModal({
+  if (createRepertoireDialog) return createRepertoireDialog;
+  createRepertoireDialog = showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
     ],
-    // The dialog keeps its pending state until the server answers: the create
-    // used to leave the modal dead on the screen and the click to look ignored.
+    // The optimistic empty repertoire is already on screen, so the form has
+    // done its job the moment Enter lands: dismiss it and let the board/tree
+    // carry the wait. The promise still resolves when the server answers, so a
+    // first Build move can play onto the real repertoire.
+    dismissOnSubmit: true,
     onSubmit: async (result, close) => {
       const name = (result.name || "").trim() || "New repertoire";
       const color = normalizeRepertoireColor(result.color);
@@ -1002,11 +1014,16 @@ async function createRepertoirePrompt({ title, defaultName, openAfter = true, de
         await refreshDashboardRepertoires();
       } catch (error) {
         if (optimistic) rollbackOptimisticRepertoire(optimistic);
+        close(null);
         setStatusError(error.message);
       }
     },
   });
-  return created || null;
+  try {
+    return (await createRepertoireDialog) || null;
+  } finally {
+    createRepertoireDialog = null;
+  }
 }
 
 // A local-only placeholder for a repertoire the server has not confirmed yet.

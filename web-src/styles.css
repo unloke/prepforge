@@ -805,6 +805,18 @@ h2 {
   outline-offset: 1px;
 }
 
+/* Phone: the 20px chip × sat between the toolbar's 44px controls and was the
+   only way to drop a source. Give it a 40px target that still looks 24px. */
+@media (max-width: 760px) {
+  .src-chip-x {
+    width: 40px;
+    height: 40px;
+    margin: -8px -10px -8px -2px;
+    font-size: 17px;
+  }
+  .src-chip { height: auto; min-height: 40px; padding-left: 11px; font-size: var(--fs-s); }
+}
+
 .src-composer-overlay {
   position: fixed;
   inset: 0;
@@ -1424,6 +1436,10 @@ h2 {
   gap: 12px;
   align-items: start;
 }
+/* Directory, detail and incoming shares share one row height: a short card
+   (an empty directory) used to leave the row ragged. */
+.teams > .card { align-self: stretch; }
+
 @media (max-width: 1279px) {
   .teams { grid-template-columns: 250px minmax(0, 1fr); }
   .incoming { grid-column: 2; }
@@ -1522,6 +1538,10 @@ h2 {
   font-weight: 600;
 }
 .today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
+/* Today's payload failed: the strip's slot carries the message and the retry,
+   at the same quiet weight as the rest of the strip. */
+.today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
+.today-error .btn { color: var(--text); }
 .btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
@@ -1593,6 +1613,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-list.is-empty .lib-cols { display: none; }
 /* Failed load: same empty layout, and the search goes too (nothing to filter). */
 .lib-list.is-error .card-head .search-field { display: none; }
+/* Nothing matched: the filter chips must stay reachable or narrowing to zero
+   rows is a dead end (the empty card carries a Clear filter action too). */
+.lib-list.is-empty:not(.is-error):has(.lib-no-match) .card-head .seg { display: flex; }
+.lib-no-match { display: grid; justify-items: center; gap: 10px; }
+.lib-no-match p { margin: 0; }
 /* Nothing to filter or add over yet: the empty card (and Get started) carry
    New / Import / Sign in, so the header keeps only its title. While the first
    load runs, the column header stays out over an empty table. */
@@ -2820,7 +2845,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 
 .tree-wrap {
-  flex: 1 1 auto;
+  /* Sized by its moves, which the inspector gives way to (the dock does not
+     grow): a short tree leaves the leftover height to the Explorer instead of
+     sitting empty above it. */
+  flex: 1 0 auto;
   min-height: 90px;
   padding: 12px 12px;
   overflow: auto;
@@ -2831,17 +2859,19 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
 
 .dock {
-  flex: 0 0 clamp(210px, 40%, 330px);
-  /* The drag handle writes a px `flex-basis` inline; `flex` sets all three
-     sub-properties, so without `grow`/`shrink` declared separately here the
-     inline basis is dropped on the next style recalc and the snap-back makes
-     the drag look dead. Keeping the shorthand for the initial size and then
-     overriding the basis keeps the inline value. */
-  flex-grow: 0;
-  flex-shrink: 0;
+  position: relative;
+  /* A starting size only: the tree is the workspace and gets what it needs
+     (see .tree-wrap), the inspector takes the rest. A fixed 40%-of-panel dock
+     left a two-line tree above ~340px of empty height and pushed five Explorer
+     rows into their own scrollbar. The drag handle writes basis + min-height
+     inline; 0 (a flex item's own min-height) lets the tree scroll inside its
+     share instead of overflowing the panel. */
+  flex: 0 1 auto;
+  /* The starting size doubles as the floor: a two-row tree must not collapse
+     the Explorer to a tab strip. A dragged height replaces it inline. */
+  min-height: clamp(210px, 40%, 330px);
   display: flex;
   flex-direction: column;
-  min-height: 0;
   border-top: 1px solid var(--line);
 }
 .dock-tabs {
@@ -3098,6 +3128,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: var(--fs-s);
 }
 .train-coach-sub:empty { display: none; }
+/* The sub line is clamped to two lines; a tap on the banner shows the rest
+   (the full text is also in its title). */
+#train-banner .train-coach-sub.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+#train-banner:has(.train-coach-sub:not(:empty)) { cursor: pointer; }
 #train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
 #train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
 #train-banner[data-state="reveal"] .train-coach-title,
@@ -3119,7 +3153,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    focus cards from: a bordered, panel-filled block whose quiet inner rows and
    chips sit on --panel-soft, so three levels of hierarchy (panel → card → fill)
    instead of one undifferentiated white sheet. */
-.tcard {
+.tcard:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -3187,6 +3221,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
+.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
+.train-mode-name:hover, .train-mode-name:focus-visible { color: var(--text); text-decoration-color: currentColor; }
+/* Choosing a mode is setup: once a session runs, or its result shows, the tabs
+   leave with the setup card (the card head names the mode). */
+#view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { display: none; }
 .train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {
@@ -3304,6 +3343,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .train-sidebar[data-session-state="active"] .train-setup,
 #view-train .train-sidebar[data-session-state="summary"] .train-setup,
 #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
+/* The result card takes the room of the panel it fills instead of stacking
+   under the session card. */
+#view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 @media (max-width: 860px) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
@@ -3591,6 +3633,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 12px;
 }
 
+.coverage-kinds {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}
+
 .coverage-gap {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -3799,6 +3848,36 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .explorer-rows.is-stale .explorer-row:hover {
   background: transparent;
+}
+
+/* The rows stay (dimmed) so the panel does not collapse, but a moving bar on
+   the dock says the list belongs to the previous position until the fetch
+   lands. Inset from the tab strip so it reads as the panel loading. */
+.dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--accent);
+  transform: scaleX(0.15);
+  transform-origin: 0 50%;
+  animation: dock-loading 1.1s var(--ease-out) infinite;
+}
+@keyframes dock-loading {
+  0% { opacity: 0.35; transform: translateX(0) scaleX(0.15); }
+  50% { opacity: 1; }
+  100% { opacity: 0.35; transform: translateX(566%) scaleX(0.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
+    animation: none;
+    opacity: 0.6;
+    transform: scaleX(1);
+  }
 }
 
 .explorer-san {
@@ -5308,7 +5387,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   /* Study geometry is authoritative in the base .study block (max-content
      board column + viewport-height board size); desktop only keeps the shared
      16px gap — no second column definition. */
-  .study .board-area { justify-self: start; }
+  /* The board is square and its width budget (the share of the row) binds
+     before the height does on most desktops, so a stretched column left a tall
+     empty area under the board. Let the column end at the board instead; the
+     panel keeps the full height. */
+  .study .board-area { justify-self: start; align-self: start; }
 }
 
 /* ===========================================================================
@@ -5389,7 +5472,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress card rows keep their size as the session advances: the pip row is
    as tall as its "No moves yet" placeholder, and Up next reserves its three
    rows, so the buttons below never creep upward card by card. */
+/* A hint is asked for while looking at the board, but the hint itself is in the
+   coach strip above it and the stats card renders below it; on a phone that row
+   sits past the fold the moment the board is tapped. So hold the hint line at the
+   top of the scroller until the answer is played: the words stay next to the
+   position they describe. */
+#view-train .train-hint-line {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: -4px -4px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+  color: var(--warn-text);
+  font-size: var(--fs-s);
+  font-weight: 600;
+  line-height: 1.35;
+}
 #train-progress-panel .pips { min-height: 1.4em; align-content: center; }
+/* The setup card's controls stay out of the layout while it is hidden. */
+#view-train .train-play-setup[hidden] { display: none; }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
 
 @media (max-width: 1279px) {

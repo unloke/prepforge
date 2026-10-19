@@ -110,10 +110,12 @@ export function serializeWorkspaceLocation(loc, currentHref) {
   return `${url.pathname}${url.search}${formatWorkspaceHash(loc)}`;
 }
 
-// Views whose URL carries the open repertoire: the builder shows it and
-// Analyze's coach reads its book line. Train is not one of them — its link
-// carries the repertoire its queue drills (see trainQueueRepertoireId).
-export const REPERTOIRE_VIEWS = Object.freeze(["build", "analyze"]);
+// Views whose URL carries the open repertoire: only the builder shows one.
+// Analyze's coach reads the book lines of every active repertoire rather than
+// one named in the URL, so a rep= on an Analyze link would be a leftover from
+// whatever Build last opened. Train carries the repertoire its queue drills
+// instead (see trainQueueRepertoireId).
+export const REPERTOIRE_VIEWS = Object.freeze(["build"]);
 const REPERTOIRE_VIEW_SET = new Set(REPERTOIRE_VIEWS);
 
 // The one repertoire Train's queue is drilling. A smart queue over all active

@@ -1,5 +1,51 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyTheme, effectiveTheme, normalizeTheme, } from "./theme.js";
+import { applyTheme, effectiveTheme, normalizeTheme, readStoredPrefs, readStoredTheme, storeTheme } from "./theme.js";
+
+function fakeStorage(initial = null) {
+  let value = initial;
+  return {
+    getItem: () => value,
+    setItem: (_key, next) => { value = String(next); },
+    value: () => value,
+    parsed: () => JSON.parse(value || "{}"),
+  };
+}
+
+describe("persisted theme", () => {
+  it("reads a stored pick and falls back to system", () => {
+    expect(readStoredTheme(fakeStorage(JSON.stringify({ theme: "dark" })))).toBe("dark");
+    expect(readStoredTheme(fakeStorage(null))).toBe("system");
+    expect(readStoredTheme(fakeStorage("{not json"))).toBe("system");
+    expect(readStoredTheme(fakeStorage(JSON.stringify({ theme: "neon" })))).toBe("system");
+  });
+
+  it("picker and rail toggle write the one prepforge.prefs theme key", () => {
+    const storage = fakeStorage(null);
+    expect(storeTheme("light", storage)).toBe("light");
+    expect(storage.parsed().theme).toBe("light");
+    expect(storeTheme("dark", storage)).toBe("dark");
+    expect(storage.parsed().theme).toBe("dark");
+    expect(Object.keys(storage.parsed())).toEqual(["theme"]);
+  });
+
+  it("keeps the other prefs in the blob", () => {
+    const storage = fakeStorage(JSON.stringify({ sounds: false, theme: "system" }));
+    storeTheme("dark", storage);
+    expect(storage.parsed()).toEqual({ sounds: false, theme: "dark" });
+    expect(readStoredPrefs(storage)).toEqual({ sounds: false, theme: "dark" });
+  });
+
+  it("normalizes an unknown stored value instead of keeping it", () => {
+    const storage = fakeStorage(JSON.stringify({ theme: "neon" }));
+    expect(storeTheme("neon", storage)).toBe("system");
+    expect(storage.parsed().theme).toBe("system");
+  });
+
+  it("still applies a pick when storage is unavailable", () => {
+    const broken = { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } };
+    expect(storeTheme("dark", broken)).toBe("dark");
+  });
+});
 
 describe("theme preferences", () => {
   it("normalizes unknown values to the safe system default", () => {
