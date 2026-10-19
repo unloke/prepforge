@@ -34,6 +34,13 @@ function el(extra = {}) {
   };
 }
 
+// The setup bar is driven by a CSS variable (the fill scales with --progress),
+// so the mock keeps the properties it was given.
+function styleMock() {
+  const props = {};
+  return { props, setProperty: (name, value) => { props[name] = value; } };
+}
+
 function harness() {
   const elements = {
     "settings-refresh": el(),
@@ -41,7 +48,7 @@ function harness() {
     "settings-stockfish-status": el(),
     "settings-stockfish-version": el({ textContent: "checking…" }),
     "settings-profile-status": el(),
-    "settings-profile-progress": el({ firstElementChild: { style: {} } }),
+    "settings-profile-progress": el({ firstElementChild: { style: styleMock() } }),
     "settings-detect": el(),
   };
   globalThis.document = {
@@ -108,13 +115,13 @@ describe("Settings → Engine Refresh", () => {
     const bar = elements["settings-profile-progress"];
     expect(bar.hidden).toBe(false);
     // Getting the net fills the first half of the one setup bar.
-    expect(bar.firstElementChild.style.width).toBe("13%");
+    expect(bar.firstElementChild.style.props["--progress"]).toBe("0.125");
     expect(elements["settings-profile-status"].textContent).toContain("1 / 4 MB");
     await view.refreshEngineCard();
     const fetches = globalThis.fetch.mock.calls.length;
     shared.setup = { ...shared.setup, fraction: 0.75, loaded: 3145728 };
     for (const fn of shared.listeners) fn(shared.setup);
-    expect(bar.firstElementChild.style.width).toBe("38%");
+    expect(bar.firstElementChild.style.props["--progress"]).toBe("0.375");
     shared.setup = { ...shared.setup, phase: "compile", fraction: 1, label: "Compiling engine…" };
     for (const fn of shared.listeners) fn(shared.setup);
     expect(elements["settings-profile-status"].textContent).toBe("Compiling engine…");
