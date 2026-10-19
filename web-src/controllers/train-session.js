@@ -13,7 +13,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { isNothingToTrainError, rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -1862,10 +1862,18 @@ async function startSmartTraining(options = {}) {
       "Choosing the cards…",
     );
     const targets = options.targetNodeIds || [];
+    // A new session keeps the queue's scope: a queue drilled for one
+    // repertoire must not widen to every active repertoire because the user
+    // asked for another queue.
+    const repertoireId = queueRepertoireForStart({
+      requested: options.repertoireId,
+      current: appState.smart,
+      fresh,
+    });
     payload = await postJson("/api/train/smart/start", {
-      mixed: !options.repertoireId,
+      mixed: !repertoireId,
       fresh: fresh || !!targets.length,
-      ...(options.repertoireId ? { repertoire_id: options.repertoireId } : {}),
+      ...(repertoireId ? { repertoire_id: repertoireId } : {}),
       ...(targets.length ? { target_node_ids: targets } : {}),
     });
   } catch (error) {
