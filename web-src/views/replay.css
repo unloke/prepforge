@@ -153,4 +153,7 @@
   .lr > :nth-child(3) { grid-area: res; text-align: right; }
   .lr > :nth-child(5) { grid-area: dep; }
   .actions .btn { min-height: 44px; }
+  /* The outcome filters are the only way to narrow the ledger on a phone;
+     the shared 26px chip is below a reliable touch target. */
+  .games-panel .sum-chip { height: 40px; padding: 0 14px; border-radius: 20px; }
 }

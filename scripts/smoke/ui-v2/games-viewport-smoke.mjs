@@ -157,6 +157,12 @@ async function runViewport(vp) {
   const ledgerHead = await page.locator("#replay-results .ledger .faint").textContent().catch(() => "");
   check(/^3 games/.test((ledgerHead || "").trim()), `ledger header should count games, got "${ledgerHead}"`);
 
+  // Phone: the outcome chips are the only way to narrow the ledger.
+  if (vp.width <= 760) {
+    const chipBox = await page.locator("#replay-summary .sum-chip").first().boundingBox();
+    check(!!chipBox && chipBox.height >= 40, `outcome chips need a 40px touch target on a phone, got ${chipBox?.height}`);
+  }
+
   // Ledger: 3 rows; focused row (first, user-error) is open.
   const rows = await page.locator("#replay-results .lr[data-index]").count();
   check(rows === 3, `ledger should list 3 games, got ${rows}`);
