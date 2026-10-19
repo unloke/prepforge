@@ -74,7 +74,7 @@ it("a failed Check drops its skeleton without invalidating the in-flight token",
   expect(skeleton.innerHTML).not.toContain("is-skeleton");
 });
 
-it("a failed Check clears the delayed progress status before showing the error", () => {
+it("a failed Check clears the delayed progress status before painting the error", () => {
   const start = source.indexOf("async function runLichessCompare(");
   const end = source.indexOf("\n}\n", start) + 2;
   const body = source.slice(start, end);
@@ -82,11 +82,13 @@ it("a failed Check clears the delayed progress status before showing the error",
   // "Fetching games from Lichess" is a routine status, shown on a 700ms timer;
   // it must be cleared or it appears beneath the error a moment later. The
   // panel keeps its own error card (keepPanel), so the idle prompt cannot
-  // replace the failure the user just hit.
+  // replace the failure the user just hit, and the card is the only place the
+  // message appears.
   expect(catchBlock).toContain("resetGamesResults({ keepPanel: true });");
   expect(catchBlock).toContain("renderReplayFailure(");
   expect(catchBlock.indexOf('setStatus("")')).toBeGreaterThan(-1);
-  expect(catchBlock.indexOf('setStatus("")')).toBeLessThan(catchBlock.indexOf("setStatusError"));
+  expect(catchBlock.indexOf('setStatus("")')).toBeLessThan(catchBlock.indexOf("renderReplayFailure("));
+  expect(catchBlock).not.toContain("setStatusError");
 });
 
 it("every Games source change clears the stale ledger", () => {

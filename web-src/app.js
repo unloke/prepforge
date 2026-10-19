@@ -5585,12 +5585,11 @@ async function runLichessCompare() {
   } catch (error) {
     if (isCurrent()) {
       // The fetch painted skeleton rows; a failure must not leave the ledger
-      // pulsing forever. The panel says what failed and offers Check again;
-      // the notification carries the same one-line error.
+      // pulsing forever. The panel carries the one error message and the way
+      // to retry; a notification on top of it would say the same thing twice.
       resetGamesResults({ keepPanel: true });
       setStatus("");
       await renderReplayFailure(error.message);
-      if (isCurrent()) setStatusError(error.message);
     }
   } finally {
     if (appState.replayCheckToken === token) button.disabled = false;
