@@ -267,27 +267,23 @@
   /* A long section title plus its info and action buttons (Maia3: "Download",
      "Reset cache") overflowed 320px; the buttons wrap under the title instead. */
   #view-settings .set h2 { flex-wrap: wrap; gap: 4px 2px; }
+  /* The section title is a heading, not a stamped label: sentence case, ink,
+     and separated from the rows by space. */
   #view-settings .set h2 {
     min-height: 44px;
     margin: 0;
-    padding: 6px 0 0;
-    border-bottom: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 13px;
+    padding: 14px 0 4px;
+    color: var(--text);
+    font-size: 15px;
     font-weight: 650;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
   }
   #view-settings :is(.set-row, .pf-row, .acct-row, .conn-row) {
     flex-wrap: nowrap;
     min-height: 48px;
     padding: 6px 0;
-    border-top: 0;
-    border-bottom: 1px solid var(--line);
+    border: 0;
     font-size: 16px;
   }
-  #view-settings .set > :last-child,
-  #view-settings .set > :last-child > :last-child { border-bottom: 0; }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
   /* Settings is a thumb target: its row buttons keep the quiet ghost look but
      take a 40px box (they were 36px, and "Edit" only 34x36). */
@@ -305,15 +301,15 @@
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
   /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
   #view-settings .set .seg-btn { min-height: 40px; height: 40px; padding: 0 12px; }
-  #view-settings .status-pill { font-size: 12px; }
+  #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
   #view-settings .acct-id { gap: 12px; padding: 12px 0; flex-wrap: nowrap; }
   #view-settings .acct-signout { align-self: center; margin: 0; }
   #view-settings .acct-block { margin-top: 0; }
-  #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; color: var(--muted); font-size: 13px; font-weight: 650; }
   #view-settings .acct-block > .btn { margin: 4px 0; }
-  #view-settings #settings-account-data { padding-top: 0; border-top: 0; }
+  #view-settings #settings-account-data { padding-top: 0; }
   #view-settings .acct-danger-zone { margin: 0; padding: 12px 0; }
   #view-settings .acct-danger-zone > summary { font-size: 15px; }
   /* Sliders: the label on its own line, the control under it full width. */
