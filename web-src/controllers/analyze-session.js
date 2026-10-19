@@ -719,7 +719,13 @@ function renderInstantCoach() {
     const summary = hasClassifiedMoves(appState.analysis)
       ? buildGameSummary({ moves: appState.analysis.moves, selfSide: analysisSelfSide() })
       : null;
-    setCoachProse(summary?.text || "Make a move and I'll tell you what I think.", "info");
+    // A game is on the board but its review hasn't landed yet: the coach has nothing
+    // to grade, and "make a move" would invite one in a game the user is reviewing.
+    const loaded = appState.analysis?.moves?.length > 0;
+    setCoachProse(
+      summary?.text || (loaded ? "Reading the game…" : "Make a move and I'll tell you what I think."),
+      "info",
+    );
     const turn = summary?.turningPoint;
     if (turn) {
       const prose = document.getElementById("coach-prose");
