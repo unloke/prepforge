@@ -1686,8 +1686,12 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 .lib-row:hover { background: var(--panel-soft); }
+/* A table row cannot scale on press, so the press reads as a step deeper
+   into the surface. */
+.lib-row:active { background: var(--surface-3); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
 
 /* ---- One list-entry primitive -----------------------------------------

@@ -48,8 +48,12 @@
   padding: 9px 12px;
   border-top: 1px solid var(--line);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 .team-row:hover { background: var(--panel-soft); }
+/* The same press as the Library rows: a row cannot scale, so it steps deeper
+   into the surface. */
+.team-row:active { background: var(--surface-3); }
 /* Loading: the row's own geometry, bars where the values go. */
 .team-row.is-skeleton:hover { background: none; }
 .team-row.is-skeleton { cursor: default; }
@@ -127,6 +131,9 @@
   border-bottom-color: var(--accent);
   color: var(--text);
 }
+/* An inactive tab brightens under the pointer: the strip sits on the quiet
+   panel fill, so a fill would not read. */
+.teams .tabs button:hover { color: var(--text); }
 .teams .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .teams .tabs .count[hidden] { display: none; }
 [data-team-panel][hidden] { display: none; }
@@ -198,8 +205,21 @@
 .shared-rep-row { cursor: pointer; }
 .team-shared-rep-row:hover,
 .shared-rep-row:hover { background: var(--panel-soft); }
+.team-shared-rep-row:active,
+.shared-rep-row:active { background: var(--surface-3); }
 .team-shared-rep-row:focus-visible,
 .shared-rep-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Opening a team brings its members in one after another, the way the
+   directory list arrives. The rows are written by the shell, so the order is
+   set here rather than by the list helper. */
+#team-members > .mem-row {
+  animation: row-enter var(--dur) var(--ease-out) both;
+}
+#team-members > .mem-row:nth-child(1) { animation-delay: 0ms; }
+#team-members > .mem-row:nth-child(2) { animation-delay: 60ms; }
+#team-members > .mem-row:nth-child(3) { animation-delay: 120ms; }
+#team-members > .mem-row:nth-child(n + 4) { animation-delay: 180ms; }
 
 /* Invite footer — one muted line under the panel. */
 .team-invite-foot {
