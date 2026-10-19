@@ -201,6 +201,13 @@ describe("replay focus internals", () => {
     expect(String(html)).toMatch(/data-piece="p"/);
   });
 
+  it("resolves You in the detail header like the ledger rows", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).toContain("<h2>opp_one vs You</h2>");
+    expect(html).not.toContain("<h2>opp_one vs me_user</h2>");
+  });
+
   it("draws expected (good) vs played (bad) arrows from the payload UCIs", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);
