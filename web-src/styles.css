@@ -1420,7 +1420,9 @@ h2 {
 .lib {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  /* The Today strip is its own band: the gap to the table is wider than the
+     gap inside a card, so the two do not read as one surface. */
+  gap: 20px;
   max-width: 1640px;
 }
 #view-dashboard,
