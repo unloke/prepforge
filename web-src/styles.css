@@ -1428,7 +1428,8 @@ h2 {
   --fs-xs: 13px;
   --fs-s: 13px;
 }
-#view-dashboard .empty-state p {
+#view-dashboard .empty-state p,
+#view-teams .team-empty p {
   color: var(--text);
   font-size: 16px;
 }
