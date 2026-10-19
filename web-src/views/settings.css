@@ -16,10 +16,12 @@
   text-decoration: none;
 }
 .settings-nav-link:hover { background: var(--surface-3); }
+/* The section you are in is a soft accent plate, the same signal the rail
+   uses for the active page. */
 .settings-nav-link.is-active {
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 650;
 }
 .settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
@@ -69,9 +71,10 @@
   padding: 4px 10px 4px 4px;
   min-height: 34px;
 }
-/* The chosen set needs to read as chosen: accent ring + weight, not a faint tint. */
+/* The chosen set needs to read as chosen: a soft accent plate + weight, not a
+   ring drawn around the pieces. */
 #piece-style-picker .piece-style-option.is-active {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--accent-soft);
   font-weight: 650;
 }
 .piece-style-preview { display: flex; border-radius: 4px; overflow: hidden; }

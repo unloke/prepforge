@@ -1093,7 +1093,7 @@ h2 {
 }
 
 .seg-btn:hover {
-  background: var(--surface-3);
+  background: var(--panel-soft);
 }
 
 .seg-btn:focus-visible {
@@ -1101,12 +1101,12 @@ h2 {
   outline-offset: 1px;
 }
 
-/* Segmented control (prototype): a raised panel-coloured tile on the
-   surface-3 track. Text stays on --text in both states so contrast holds in
-   light and dark; the tile + hairline carry the selection. */
+/* Segmented control: the chosen tile is a panel-coloured plate on the
+   surface-3 track. One tone step carries the selection - no resting shadow,
+   no ring. Text stays on --text in both states so contrast holds in light
+   and dark. */
 .seg-btn.is-active {
   background: var(--panel);
-  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
 }
 
 .seg-btn:disabled {
