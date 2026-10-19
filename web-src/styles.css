@@ -2870,7 +2870,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   cursor: pointer;
 }
 .fork-chip .mtree-num { padding: 0; margin: 0; font-size: 11px; font-weight: 500; }
-.fork-chip i { color: var(--k-due); font-size: 11px; font-style: normal; }
+.fork-chip.is-main { font-weight: 750; }
 .fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
 .fork-chip:hover { border-color: var(--accent); }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }

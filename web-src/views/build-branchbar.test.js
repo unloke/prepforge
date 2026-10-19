@@ -118,6 +118,32 @@ describe("build branch bar — practical share", () => {
     expect(String(bar.innerHTML)).toContain("31%");
   });
 
+  it("marks the mainline by weight, not by a glyph or a mastery colour", () => {
+    const e5 = makeNode({
+      id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",
+      move_side: "black", is_mainline: true,
+    });
+    const c5 = makeNode({
+      id: "c5", depth: 1, parent_id: "root", san: "c5", uci: "c7c5",
+      move_side: "black", is_mainline: false,
+    });
+    const { view, bar } = makeHarness({
+      nodes: [makeNode({ id: "root" }), e5, c5],
+      currentNodeId: "root",
+    });
+    view.renderBuildBranchBar();
+    const markup = String(bar.innerHTML);
+    const main = markup.match(/<button[^>]*data-node-id="e5"[^>]*>/)[0];
+    const off = markup.match(/<button[^>]*data-node-id="c5"[^>]*>/)[0];
+    expect(main).toContain("is-main");
+    expect(off).not.toContain("is-main");
+    // The chip carried a star that was an emoji and reused the "due" colour,
+    // reading as a training prompt; it must stay text.
+    expect(markup).not.toContain("★");
+    expect(main).toContain("main line");
+    expect(off).not.toContain("main line");
+  });
+
   it("omits the share when the server has no probability (manual moves)", () => {
     const e5 = makeNode({
       id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",

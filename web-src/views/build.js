@@ -132,7 +132,9 @@ export function createBuildView({
         ]
           .filter(Boolean)
           .join(" ");
-        const mainMark = n.is_mainline ? html`<i title="Mainline">★</i>` : "";
+        // Mainline is a weight, as it is in the tree — not a glyph. The star
+        // that used to sit here was an emoji and borrowed the "due" mastery
+        // colour, so the chip read as a training prompt it was not.
         // Practical share: the server's real Maia probability for this move
         // (human-likeness at the repertoire's rating). Manual/imported moves have
         // none — show nothing rather than a made-up number.
@@ -140,8 +142,9 @@ export function createBuildView({
           typeof n.maia_probability === "number" && n.maia_probability > 0
             ? html`<small>${Math.round(n.maia_probability * 100)}%</small>`
             : "";
+        const title = n.is_mainline ? `Play ${n.san} — main line` : `Play ${n.san}`;
         return (
-          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="Play ${n.san}"><span class="mtree-num">${num}</span>${n.san}${mainMark}${share}</button>`
+          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="${title}"><span class="mtree-num">${num}</span>${n.san}${share}</button>`
         );
       });
     bar.hidden = false;
