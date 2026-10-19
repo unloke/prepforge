@@ -192,7 +192,7 @@
 /* The reasons are the only running prose on the page and the only thing a
    player reads word by word, so they take the reading step (15px); the two
    sentences tell what left prep and how to fix it. */
-#view-replay .reasons { display: flex; flex-direction: column; gap: 6px; max-width: 68ch; margin: 0; padding-left: 16px; color: var(--text); font-size: 15px; line-height: 1.5; }
+#view-replay .reasons { display: flex; flex-direction: column; gap: 6px; max-width: 68ch; margin: 0; padding-left: 16px; color: var(--text); font-size: 16px; line-height: 1.5; }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
 .moveline { display: grid; gap: 2px; font: 13px/1.55 var(--font); font-variant-numeric: tabular-nums; }
