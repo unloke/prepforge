@@ -242,6 +242,11 @@
   #view-dashboard .steps .setup-dismiss { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
   #view-dashboard .step.is-done { display: none; }
   #view-dashboard .step { min-height: 56px; margin: 0; padding: 8px 14px; gap: 12px; border: 0; }
+  /* The phone checklist hides the finished steps, so a step's number points at
+     a list the phone never drew: one visible step was left reading "2". The
+     title leads instead. */
+  #view-dashboard .step[data-setup-step] { grid-template-columns: minmax(0, 1fr) auto; }
+  #view-dashboard .step[data-setup-step] .step-n { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
   #view-dashboard .step .btn { min-height: 40px; height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 

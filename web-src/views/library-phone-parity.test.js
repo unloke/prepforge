@@ -54,3 +54,11 @@ it("the phone repertoire row keeps the mastery figure", () => {
   // The word names the number: the phone has no column header to do it.
   expect(rule("#view-dashboard .lib-row .lib-mastery-word {")).toMatch(/display:\s*inline/);
 });
+
+it("the phone checklist shows no step number", () => {
+  // A phone hides the finished steps, so the one step left wore a badge
+  // reading "2" that pointed at a list the phone never drew.
+  expect(rule("#view-dashboard .step[data-setup-step] .step-n {")).toMatch(/display:\s*none/);
+  // The row drops the badge's column so the title gets the width.
+  expect(rule("#view-dashboard .step[data-setup-step] {")).toMatch(/grid-template-columns/);
+});

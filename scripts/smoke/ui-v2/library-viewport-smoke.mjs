@@ -195,6 +195,11 @@ async function runViewport(vp) {
     const phoneMasteryText = (await phoneMastery.textContent()) || "";
     check(/50%/.test(phoneMasteryText) && /mastered/.test(phoneMasteryText),
       `the phone mastery figure should read "50% mastered", got "${phoneMasteryText}"`);
+    // The phone checklist hides the finished steps, so a step number would
+    // point at a list the phone never drew.
+    const phoneStepBadge = page.locator("#dashboard-steps .step:not(.is-done) .step-n");
+    check((await phoneStepBadge.count()) === 0 || !(await phoneStepBadge.first().isVisible()),
+      "the phone checklist must not show a step number");
   }
 
   // No preview pane: the table takes the full width and a row click opens.
