@@ -3313,7 +3313,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .un-line { color: var(--label); font: var(--fs-xs) var(--mono); white-space: nowrap; }
 
 /* Session summary. A .tcard like the rest; the stat cells are its fills. */
-.sum-cells { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+/* The stat cells fill the row they are in: a session with a skip AND a day
+   streak has five of them, and a fixed four-column grid left three empty
+   columns under the last one. */
+.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
 .sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
 .sum-cells b { font-size: 18px; }
 .sum-cells span { color: var(--label); font-size: var(--fs-xs); }
