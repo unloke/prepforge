@@ -27,7 +27,8 @@
 
 /* Fixed height: the coach's comment changes length on every move, and a
    growing card used to shove the chart and move list up and down ("jitter").
-   A longer note scrolls inside its own row; the human picks stay pinned under it. */
+   A longer note scrolls inside its own row; the human picks stay pinned under it.
+   The card is a quiet band of its own tone, not a box with an edge. */
 .coach-card {
   flex: none;
   display: flex;
@@ -36,7 +37,7 @@
   height: 118px;
   padding: 10px 12px;
   background: var(--panel-soft);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -123,7 +124,7 @@
   gap: 5px;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
   background: var(--surface-3);
   color: var(--text);
@@ -132,10 +133,11 @@
   white-space: nowrap;
   cursor: pointer;
 }
-.hp:hover { border-color: var(--line-strong); }
+.hp:hover { background: var(--line); }
 .hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .hp-pct { color: var(--muted); }
-.hp.is-played { border-color: var(--accent); }
+/* The move the player actually made sits a step darker than its neighbours. */
+.hp.is-played { background: var(--line); }
 /* The engine's own choice wears a disc, not a tick: a shape that needs no
    character to read. */
 .hp.is-best::before {
@@ -153,14 +155,15 @@
 .coach-bookline[hidden] {
   display: none;
 }
+/* The book line is a quiet link in the coach's own row, not a button in a box. */
 .coach-bookaction {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   margin-left: 2px;
-  padding: 1px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 10px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--accent-text);
   font: inherit;
@@ -221,14 +224,15 @@
 .res-block[hidden] {
   display: none;
 }
-/* Evaluation card: game graph + live engine lines, between Coach and moves. */
+/* Evaluation card: game graph + live engine lines, between Coach and moves.
+   It is the instrument, so it sits in a recessed band with no edge of its own. */
 .eval-card {
   flex: none;
   min-width: 0;
   padding: 10px 12px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
-  background: var(--panel);
+  background: var(--surface-3);
   gap: 8px;
 }
 #analyze-sidebar .panel-scroll > * { min-width: 0; }
@@ -299,11 +303,14 @@
 .ev-meter {
   height: 12px;
   min-width: 0;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: 4px;
   background: var(--eval-side-black);
   overflow: hidden;
 }
+/* The track keeps its own edge: the win meter is an eval display, so it is
+   real interface and keeps its line (data-ui). */
+#analysis-eval-meter[data-ui] { border: 1px solid var(--line-strong); }
 .ev-meter > i {
   display: block;
   width: 100%;
@@ -348,7 +355,9 @@
   color: var(--muted);
 }
 #analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
-#analysis-engine-slot .engine-step {
+/* The line stepper is a control: it keeps its own edge (the engine slot is
+   real interface, marked data-ui). */
+#analysis-engine-slot[data-ui] .engine-step {
   width: 18px;
   height: 18px;
   background: none;
@@ -363,9 +372,9 @@
   gap: 6px;
   height: 24px;
   padding: 0 9px 0 8px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
-  background: var(--panel);
+  background: var(--panel-soft);
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-xs);
@@ -379,9 +388,9 @@
   border-radius: 50%;
   background: var(--line-strong);
 }
-.ev-engine:hover { color: var(--text); }
+.ev-engine:hover { color: var(--text); background: var(--surface-3); }
 .ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ev-engine.is-active { border-color: var(--accent); color: var(--text); }
+.ev-engine.is-active { color: var(--text); }
 /* The active engine says so with a bigger disc, not with a ring around it. */
 .ev-engine.is-active::before {
   background: var(--accent);
@@ -548,7 +557,7 @@
   transform: translateX(-50%);
   z-index: 5;
   padding: 4px 8px;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
@@ -563,6 +572,8 @@
   text-overflow: ellipsis;
   pointer-events: none;
 }
+/* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
+#eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
 
 /* Moves: the mainline is a three-column grid (number | White | Black); a
    variation the reader explores interrupts it as a full-width row. Only the
@@ -573,7 +584,7 @@
 .moves-grid {
   max-height: 190px;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
   font-size: 13px;
 }
@@ -697,7 +708,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
   background: var(--panel-soft);
 }
@@ -705,7 +716,8 @@
   display: none;
 }
 
-/* F-03: saved-on-device notice + Retry save. F-04: batch import summary. */
+/* F-03: saved-on-device notice + Retry save. F-04: batch import summary.
+   A notice is a filled tint, not an outlined box. */
 .analysis-retry-save,
 .analysis-import-picker {
   display: flex;
@@ -713,9 +725,9 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+  border: 0;
   border-radius: 8px;
-  background: var(--panel-soft);
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel-soft));
 }
 .analysis-retry-save[hidden],
 .analysis-import-picker[hidden] {
@@ -899,9 +911,13 @@
     left: 3px;
     width: 34px;
     height: 18px;
-    border: 1px solid var(--line-strong);
+    border: 0;
     border-radius: 999px;
     background: var(--panel-soft);
+  }
+  /* The switch is a form control: it keeps its own edge (data-ui). */
+  #analysis-explain .cc-head .pf-switch[data-ui]::before {
+    border: 1px solid var(--line-strong);
   }
   #analysis-explain .cc-head .pf-switch::after {
     content: "";
@@ -960,9 +976,9 @@
     align-items: center;
     height: 32px;
     padding: 0 12px;
-    border: 1px solid var(--line);
+    border: 0;
     border-radius: 999px;
-    background: var(--panel);
+    background: var(--panel-soft);
     color: var(--text);
     font: inherit;
     font-size: 13px;
