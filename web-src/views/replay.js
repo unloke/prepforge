@@ -291,9 +291,14 @@ export function createReplayView({
       const expected = game.expected_move_san ? html` (expected <strong>${game.expected_move_san}</strong>)` : "";
       const playedSan = replayDepartureSan(game);
       const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
+      // The server records a miss only when the repertoire holds a prepared
+      // move at the departure node. Without one there is nothing in the queue,
+      // and claiming otherwise would be a lie the Train action then backs up.
       const queued = game.training_recorded
         ? " Added to your training queue."
-        : " Already in your training queue.";
+        : game.expected_node_id
+          ? " Already in your training queue."
+          : " Your repertoire has no prepared move here.";
       lines.push(html`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
@@ -347,7 +352,10 @@ export function createReplayView({
       ? html`<a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://lichess.org/${game.lichess_id}" title="Open on Lichess">lichess ↗</a>`
       : "";
     const actions = [];
-    if (kind === "user-error") {
+    // Train drills the prepared move the user skipped. A game that left prep
+    // where the repertoire has no move has nothing to drill, so the button
+    // would only fail.
+    if (kind === "user-error" && game.expected_node_id && game.repertoire_id) {
       actions.push(html`<button class="btn primary" data-act="train" data-index="${index}">Train</button>`);
     }
     if (kind === "left-prep" && game.repertoire_id) {
