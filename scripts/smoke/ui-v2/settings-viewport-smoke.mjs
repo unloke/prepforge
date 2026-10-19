@@ -175,6 +175,21 @@ async function runViewport(vp) {
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
 
+  // Engine Refresh re-checks the browser engine beside it, not only /api/settings.
+  await page.evaluate(() => {
+    Object.defineProperty(self, "crossOriginIsolated", { value: false, configurable: true });
+    document.getElementById("settings-browser-engine-status").textContent = "checking…";
+  });
+  await page.locator("#settings-refresh").click();
+  await page.waitForTimeout(900);
+  const refreshedStatus = await page.locator("#settings-browser-engine-status").textContent();
+  check(refreshedStatus === "unavailable", `Refresh should re-check browser Stockfish, got "${refreshedStatus}"`);
+  await page.evaluate(() => { Object.defineProperty(self, "crossOriginIsolated", { value: true, configurable: true }); });
+  await page.locator("#settings-refresh").click();
+  await page.waitForTimeout(900);
+  const backAvailable = await page.locator("#settings-browser-engine-status").textContent();
+  check(backAvailable === "available", `Refresh should see the engine available again, got "${backAvailable}"`);
+
   // Maia3 card: a REAL state line (manifest is served, so state is on-demand/cache/off — never a canned "Ready").
   const maiaModel = await page.locator("#settings-maia-model").textContent().catch(() => "");
   check(maiaModel.length > 0 && maiaModel !== "checking…", `Maia3 state should render, got "${maiaModel}"`);
