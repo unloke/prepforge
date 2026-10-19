@@ -111,16 +111,16 @@ export function createTeamsView({
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
       renderTeamsList();
-      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
-      // Re-open an expanded team after a reload so a member add/remove stays in view.
-      if (appState.selectedTeamId && appState.teams.some((tm) => tm.id === appState.selectedTeamId)) {
+      // Only a team the user picked opens on its own (a reload, or a member
+      // add/remove). A single-team directory used to auto-expand, which skipped
+      // the list and hid the empty card under "Choose a team / Select a team
+      // from the list" — the card now explains how to get a second team.
+      if (appState.selectedTeamId && appState.teams.some((team) => team.id === appState.selectedTeamId)) {
         openTeamDetail(appState.selectedTeamId);
-      } else if (appState.teams.length === 1) {
-        // Only one team: open it rather than leaving a big "Choose a team" blank.
-        openTeamDetail(appState.teams[0].id);
       } else {
         hideTeamDetail();
       }
+      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
     } catch (error) {
       if (!isCurrent()) return;
       // A failure says what went wrong and how to retry, like the Library's.
@@ -143,7 +143,7 @@ export function createTeamsView({
     },
     choose: {
       title: "Choose a team",
-      body: "Select a team from the list.",
+      body: "Open a team from the directory to see its members and shared repertoires.",
     },
   };
   function renderTeamEmptyCard(kind) {
