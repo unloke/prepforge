@@ -399,7 +399,7 @@ export function createReplayView({
     const container = document.getElementById("replay-results");
     renderReplaySummary(payload);
     const sourceErrors = (payload?.source_errors || []).map((error) =>
-      `${error.username}: ${error.message}`).join(" ? ");
+      `${error.username}: ${error.message}`).join(" · ");
     const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors}</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
       container.innerHTML = html`${warning}<div class="empty-state big"><h3>No recent games found</h3></div>`;
