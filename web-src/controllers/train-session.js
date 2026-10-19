@@ -352,12 +352,20 @@ async function refreshTrainSessionPreview() {
     el.hidden = true;
     return;
   }
-  const paint = (text) => {
+  const paint = () => {
+    // One setup heading only: an empty queue says so in the banner instead of
+    // stacking the same message above a start button.
+    const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
+    const text = empty ? "" : trainPreviewCache.text;
     el.textContent = text;
     el.hidden = !text;
+    const banner = document.getElementById("train-banner");
+    if (banner && banner.dataset.state === "idle" && !trainSessionLive()) {
+      setTrainBanner("idle", empty ? "No moves to train yet" : "Ready to train", "");
+    }
   };
   if (Date.now() - trainPreviewCache.at < 30000) {
-    paint(trainPreviewCache.text);
+    paint();
     return;
   }
   if (!trainPreviewCache.loading) {
@@ -379,7 +387,7 @@ async function refreshTrainSessionPreview() {
     });
   }
   await trainPreviewCache.loading;
-  paint(trainPreviewCache.text);
+  paint();
   // The payload just decided whether Start is live: repaint it now rather than
   // leaving a dead/enabled button until the next unrelated sync.
   paintTrainStartDisabled();
