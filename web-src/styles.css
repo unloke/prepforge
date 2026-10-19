@@ -3335,7 +3335,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-brief-count { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
 .train-brief-reps { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: var(--fs); }
-.train-source { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px auto; align-items: center; gap: 10px; }
+/* Name, then the same three columns on every row: the meters line up with each
+   other and with the numbers, so two repertoires read as one small table
+   instead of two rows placed by their own text lengths. */
+.train-source { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px 176px; align-items: center; gap: 10px; }
 .train-source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 /* Mastery is the one progress signal a player has before starting: a small
    track on the recess, read against the number beside it. */

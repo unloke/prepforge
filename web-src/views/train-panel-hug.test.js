@@ -18,3 +18,11 @@ it("the desktop panel ends at its content instead of stretching to the board", (
   const base = css.match(/#view-train \.train-sidebar \{[^}]*\}/);
   expect(base[0]).toMatch(/max-height: var\(--study-h\)/);
 });
+
+// The queue's source rows are a small table: a name, one meter column and one
+// number column, the same x on every row. With the last column sized `auto`
+// each row's meter started wherever its own text ended (7px apart at 768px).
+it("the source rows share their meter and count columns", () => {
+  const row = css.match(/\.train-source \{[^}]*\}/);
+  expect(row[0]).toMatch(/grid-template-columns: auto minmax\(0, 1fr\) 72px \d+px/);
+});
