@@ -213,6 +213,23 @@ def test_untrained_repertoire_yields_new_cards_shallow_first():
     assert targets == {ids["e4"], ids["d4"], ids["nf3"]}
 
 
+def test_new_cards_follow_the_line_not_the_seed():
+    """New material is introduced in the order a line is played: 1.e4 before
+    2.Nf3 before 3.Bc4. Shuffling the new band dealt 3.Bc4 as card 1, which
+    tests a position the player has not been shown."""
+    repertoire, ids = _build_tree()
+    for seed in range(12):
+        plan = build_session_plan(
+            repertoire.root_node, Color.WHITE, {}, seed=seed, new_cap=3,
+            session_size=12, max_targets_per_card=1,
+        )
+        order = [card.first_target_id for card in plan.cards]
+        # Each card that is in the plan sits in the order the line is played
+        # (the d4 family's cards may fill the other slots).
+        line = [node for node in order if node in (ids["e4"], ids["nf3"], ids["bb5"])]
+        assert line == sorted(line, key=(ids["e4"], ids["nf3"], ids["bb5"]).index), (seed, order)
+
+
 def test_new_cap_limits_introductions():
     repertoire, _ = _build_tree()
     plan = build_session_plan(repertoire.root_node, Color.WHITE, {}, seed=1, new_cap=2)

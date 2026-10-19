@@ -3338,6 +3338,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .train-sidebar[data-session-state="active"] .train-setup,
 #view-train .train-sidebar[data-session-state="summary"] .train-setup,
 #view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
+/* The result card takes the room of the panel it fills instead of stacking
+   under the session card. */
+#view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 @media (max-width: 860px) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }

@@ -4442,8 +4442,9 @@ function loadTrainSession() {
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
     notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
-    queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
+    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
+    renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   })).catch((error) => {
     trainSessionLoading = null;
@@ -4987,6 +4988,9 @@ async function renderTrainSync() {
   const el = document.getElementById("train-sync");
   if (!el) return;
   const sync = appState.trainSync;
+  // Nothing to say without a session or pending work, and nothing to say while
+  // the debounce simply waits: "Saving progress soon" sat there for seconds at
+  // a time between answers.
   if (!appState.smart && !sync.pending.length && !sync.dirty) {
     el.hidden = true;
     return;
@@ -4996,6 +5000,29 @@ async function renderTrainSync() {
 
 async function renderTrainStats() {
   return (await ensureTrainView()).renderTrainStats();
+}
+
+async function renderSmartSummaryStats(smart, stats) {
+  return (await ensureTrainView()).renderSmartSummaryStats(smart, stats);
+}
+
+// The "N to train" counts come from the repertoire listing, which a finished
+// training session made stale: drop the cached list and repaint every reader
+// (Library rows, palette, the Repertoire header) once the fresh list lands.
+async function refreshRepertoireHead() {
+  const view = dashboardView;
+  if (view) {
+    // Also re-reads the active repertoire's tree: spaced repetition moved its
+    // moves from "to train" to learned, so the header's count is stale too.
+    await Promise.all([
+      view.loadDashboardRepertoires(),
+      appState.build && appState.signedIn ? hydrateBuild(appState.build.repertoire_id) : null,
+    ]);
+  } else if (appState.signedIn) {
+    appState.repertoireList = ((await api("/api/repertoires")).repertoires || []);
+  }
+  renderBuildRepHeader();
+  syncViewHeads();
 }
 
 // Re-insert still-pending provisional nodes onto the freshly hydrated tree (which

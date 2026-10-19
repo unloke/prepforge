@@ -771,7 +771,10 @@
     border: 0;
     background: var(--bg);
   }
-  #view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { order: 3; padding: 0 12px 8px; }
+  /* The mode tabs and the board bar stay put at the bottom; a live session or a
+     result card reads from the top, exactly like the mode's setup card, instead
+     of being scrolled to fit in what is left between them. */
+  #view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { order: 5; padding: 0 12px 8px; }
   #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
   #view-train #train-modes .seg-btn { flex: 1 1 0; min-width: 0; min-height: 32px; height: 32px; padding: 0 4px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
   #view-train #train-modes .seg-btn.is-active { background: var(--line-strong); color: var(--text); }
@@ -785,6 +788,20 @@
     box-shadow: none;
     font-size: 14px;
   }
+  /* A result card replaces the session card, so it takes the session card's
+     room: full height between the tab row and the banner, scrolling inside.
+     With the live board gone, a result is read, not played on. */
+  #view-train .study:has([data-session-state="summary"]) .board-stack { display: none; }
+  #view-train .train-sidebar[data-session-state="summary"] > .panel-scroll {
+    order: 2;
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 0; min-height: 0; overflow-y: auto; }
   #view-train .train-start-row .btn { flex: 1 1 140px; min-height: 46px; border-radius: 12px; }
 
   /* Session card: progress, then one row each for stats and up next. */
