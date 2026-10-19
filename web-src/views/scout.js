@@ -223,10 +223,11 @@ export function createScoutView(deps) {
     delete side.dataset.color;
   }
 
-  // Phone layout stacks the detail after the plan: bring it into view on select.
+  // Below 1020px the detail stacks under the plan; bring it into view on select.
+  // At 768-1020 it sat ~1,400px down and opening a row showed nothing.
   function revealScoutDetail() {
     const side = getSideEl();
-    if (!side || side.hidden || !window.matchMedia?.("(max-width: 760px)").matches) return;
+    if (!side || side.hidden || !window.matchMedia?.("(max-width: 1020px)").matches) return;
     side.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }
 

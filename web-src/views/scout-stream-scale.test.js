@@ -211,3 +211,14 @@ describe("scout gap state", () => {
     expect(rule).not.toContain("danger");
   });
 });
+
+describe("scout stacked detail", () => {
+  const js = readFileSync(resolve(here, "./scout.js"), "utf8");
+
+  it("brings the detail into view wherever it stacks under the plan", () => {
+    // The card stacks below 1020px; the reveal only fired below 760px, so at
+    // 768-1020 opening a row changed something 1,400px below the fold.
+    const fn = js.match(/function revealScoutDetail\(\) \{[\s\S]*?\n  \}/)[0];
+    expect(fn).toContain('"(max-width: 1020px)"');
+  });
+});
