@@ -945,6 +945,33 @@
   transition: none;
 }
 
+/* Reduced motion is fewer and gentler, never less: the blocks still arrive,
+   they just stop travelling, and the figures land at once. */
+@media (prefers-reduced-motion: reduce) {
+  .res-stack {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .res-stack.is-visible > .res-block,
+  .eval-chart.is-entering .eval-line,
+  .eval-chart.is-entering .eval-area,
+  .eval-chart.is-entering .eval-marker {
+    animation: none;
+  }
+  .ev-meter > i {
+    transition: none;
+  }
+  .ev-engine,
+  .ev-report,
+  .coach-bookaction,
+  .history-item,
+  .history-item .hi-open,
+  .history-item .hi-delete {
+    transition: none;
+  }
+}
+
 /* ---- Phone ------------------------------------------------------------
    Shell, thumb bar and sheets in phone.css. One screen, no page scroll, and
    nothing above the board changes height between moves: the game graph and

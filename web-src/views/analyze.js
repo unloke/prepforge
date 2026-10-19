@@ -907,6 +907,10 @@ export function createAnalyzeView({
     if (!host) return;
     const segs = [...host.querySelectorAll(".cbar-seg")];
     if (!segs.length) return;
+    // Reduced motion: the figure is already on the bar, so it stays there.
+    const still = Boolean(
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
     const token = ++countUpToken;
     segs.forEach((seg, i) => {
       const label = seg.querySelector(".cbar-seg-n");
@@ -915,6 +919,7 @@ export function createAnalyzeView({
       if (!m) return;
       const [, glyph, endRaw] = m;
       const end = Number(endRaw) || 0;
+      if (still) return;
       const start = performance.now();
       const dur = 360;
       const delay = Math.min(i, 5) * 45;
