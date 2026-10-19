@@ -233,8 +233,7 @@ describe("Coverage scan progress", () => {
       expect(total, label).toBeGreaterThan(99);
     }
     // The three runs really differ: a sliver of unchecked mass, a split, and a
-    // complete hit.
-    if (process.env.PF_DEBUG) throw new Error("Q " + JSON.stringify(seen.map((s) => [s.label, s.f.missing, s.f.unchecked])));
+    // complete hit: only the first has unchecked mass.
     expect(seen.map((s) => s.f.missing)).toEqual([99.9, 100, 100]);
   });
 
