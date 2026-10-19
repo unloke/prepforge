@@ -1494,9 +1494,8 @@ h2 {
   border-right: 1px solid var(--line);
   white-space: nowrap;
 }
-.today-flame { font-size: 22px; }
-/* A streak at 0 shows a dimmed flame — the slot is there to be lit. */
-.today-streak[data-lit="0"] .today-flame { filter: grayscale(1); opacity: 0.5; }
+/* A live streak says so with the figure's colour; at 0 it stays in ink. */
+.today-streak[data-lit="1"] .today-count { color: var(--good-text); }
 .today-count {
   font-size: 26px;
   font-weight: 700;
@@ -1850,7 +1849,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .setup-dismiss:hover { color: var(--text); background: var(--surface-3); }
 .setup-bar { height: 3px; margin: 0 12px 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
 .setup-bar i { display: block; height: 100%; background: var(--good); transition: width var(--dur-slow) var(--ease-out); }
-.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good-text); }
+.step-n.is-done { background: color-mix(in srgb, var(--good) 22%, transparent); }
+.step-n.is-done::before {
+  content: "";
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid var(--good-text);
+  border-bottom: 2px solid var(--good-text);
+  transform: rotate(-45deg) translate(1px, -1px);
+}
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
 .step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 

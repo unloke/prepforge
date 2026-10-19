@@ -100,7 +100,6 @@
     background: var(--surface-3);
     line-height: 1;
   }
-  #view-dashboard .today-flame { width: auto; height: auto; font-size: 13px; }
   #view-dashboard .today-count { font-size: 13px; font-weight: 700; }
   #view-dashboard .today-unit,
   #view-dashboard .today-note,

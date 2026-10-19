@@ -231,7 +231,7 @@ export function createDashboardView({
       html`<header class="card-head"><h2>Get started</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide Get started" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
         .map((step, i) => {
           const mark = step.done
-            ? html`<span class="step-n is-done" aria-hidden="true">✓</span>`
+            ? html`<span class="step-n is-done" aria-hidden="true"></span>`
             : html`<span class="step-n" aria-hidden="true">${i + 1}</span>`;
           const cta = step.done
             ? html`<span class="step-done">Done</span>`
@@ -334,7 +334,7 @@ export function createDashboardView({
     // buried Train now for new accounts. Always show the strip once we have a
     // dashboard payload.
     const note = streak.trained_today
-      ? `Trained today - day ${streak.current} ✓`
+      ? `Trained today - day ${streak.current}`
       : streak.current > 0
         ? `Train today to keep your ${streak.current}-day streak`
         : "Train today to start a streak";
@@ -347,7 +347,7 @@ export function createDashboardView({
         const h = Math.floor(msLeft / 3600000);
         const m = Math.floor((msLeft % 3600000) / 60000);
         const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        warningHtml = html`<div class="today-warning" role="alert">⏰ ${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
+        warningHtml = html`<div class="today-warning" role="alert">${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
       }
     }
     const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
@@ -401,7 +401,6 @@ export function createDashboardView({
     card.innerHTML = html`
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
          title="Calendar days with at least one graded move">
-      <span class="today-flame" aria-hidden="true">\u{1F525}</span>
       <span class="today-count">${streak.current}</span>
       <span class="today-unit">day streak${best}</span>
     </div>
@@ -638,7 +637,6 @@ export function createDashboardView({
       setListboxRole(container, false);
       container.innerHTML = html`
         <div class="empty-state big">
-          <div class="es-mark" aria-hidden="true">♜</div>
           <h3>No repertoires yet.</h3>
           <p>Create a repertoire, import a PGN, or build one from a game.</p>
           <div class="row gap">
@@ -779,7 +777,6 @@ export function createDashboardView({
     setLibraryEmpty(true);
     container.innerHTML = html`
       <div class="empty-state big" data-testid="library-signed-out">
-        <div class="es-mark" aria-hidden="true">♜</div>
         <h3>Sign in to start your library.</h3>
         <p>Sign in, then create a repertoire or import a PGN.</p>
         <div class="row gap">
