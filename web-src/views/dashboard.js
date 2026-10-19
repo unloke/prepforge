@@ -295,6 +295,30 @@ export function createDashboardView({
 
   let lastTodayPayload = null;
 
+  // The Today strip across a statistics load: hidden while a first read is in
+  // flight (nothing to show yet), and a retry-only state when the read fails.
+  // Phones drop that failed strip from their single-row layout.
+  function markTodayForShell({ pending = false } = {}) {
+    const card = document.getElementById("dashboard-today");
+    if (!card) return;
+    const shell = document.getElementById("view-dashboard");
+    if (pending) {
+      // No snapshot yet: the strip is in flight, so it has nothing to keep.
+      if (lastTodayPayload) return;
+      card.hidden = true;
+      card.innerHTML = "";
+      return;
+    }
+    // Failed: the caller reports the error once, through the notices stack; the
+    // strip's slot keeps only the retry. (A second role=alert here announced
+    // the same server error twice.)
+    card.hidden = false;
+    card.innerHTML = html`<div class="today-error" data-testid="today-error"><span>Today is unavailable.</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts" aria-label="Try again loading today's counts">Try again</button></div>`;
+    card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
+    lastTodayPayload = null;
+    shell?.classList.toggle("dash-today-down", true);
+  }
+
   function renderDashboardToday(payload) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
@@ -377,6 +401,7 @@ export function createDashboardView({
     <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>
   `;
     card.hidden = false;
+    document.getElementById("view-dashboard")?.classList.remove("dash-today-down");
     const trainNow = () =>
       goToSmartTraining(
         due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
@@ -604,10 +629,14 @@ export function createDashboardView({
       return;
     }
     if (!shown.length) {
-      // Non-empty list narrowed to nothing by the filter/search.
+      // Non-empty list narrowed to nothing by the filter/search. On phones the
+      // filter chips are hidden in this state, so the card carries the way back.
+      const q = libraryQuery.trim();
       setListboxRole(container, false);
-      container.innerHTML =
-        html`<div class="empty-state">No repertoires match this filter.</div>`;
+      container.innerHTML = html`<div class="empty-state lib-no-match" data-testid="library-no-match">
+        <p>No repertoires match ${q ? "this search" : "this filter"}.</p>
+        <button type="button" class="btn sm" data-lib-action="clear-filter">Clear filter</button>
+      </div>`;
       selectedRepId = null;
       return;
     }
@@ -655,6 +684,14 @@ export function createDashboardView({
   function setLibraryQuery(query) {
     libraryQuery = String(query ?? "");
     renderRepertoireList();
+  }
+
+  // The query lives in the input element, so clearing it clears both.
+  function clearLibraryFilter() {
+    libraryQuery = "";
+    const search = document.getElementById("lib-filter-search");
+    if (search) search.value = "";
+    setLibraryFilter("all");
   }
 
   // Fetches and renders the listing; throws on failure so each caller picks
@@ -761,6 +798,7 @@ export function createDashboardView({
   async function loadDashboard() {
     const seq = ++loadSeq;
     const isCurrent = currentLoad(seq);
+    markTodayForShell({ pending: true });
     const statistics = (async () => {
       try {
         const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
@@ -770,12 +808,9 @@ export function createDashboardView({
         renderSteps(payload);
       } catch (error) {
         if (!isCurrent()) return;
-        const today = document.getElementById("dashboard-today");
-        if (today) {
-          today.hidden = false;
-          today.innerHTML = html`<div role="alert">${error.message} <button class="btn sm">Retry</button></div>`;
-          today.querySelector("button")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
-        }
+        // The caller reports the error once, through the notices stack; the
+        // strip's slot keeps only the retry (no second role=alert copy).
+        markTodayForShell();
         throw error;
       }
     })();
@@ -852,6 +887,8 @@ export function createDashboardView({
       else if (action === "signin") {
         if (openSignIn) openSignIn();
         else requireSignIn("Sign in (or create an account) to start your library");
+      } else if (action === "clear-filter") {
+        clearLibraryFilter();
       } else if (action === "retry") {
         loadDashboard().catch((error) => setStatusError(error.message));
       } else if (action === "retry-list") {

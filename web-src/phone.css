@@ -103,6 +103,8 @@
   #view-dashboard .today > * { grid-column: auto; grid-row: 1; }
   #view-dashboard .today-body { gap: 2px; min-width: 0; }
   #view-dashboard .today-warning { font-size: 12px; }
+  /* A failed read is announced once by the notice; the strip itself leaves. */
+  #view-dashboard.dash-today-down #dashboard-today { display: none; }
   #view-dashboard .today-queue { color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.3; }
   #view-dashboard .today-queue b { font: inherit; }
   #view-dashboard .today .btn.lg { min-height: 36px; height: 36px; padding: 0 14px; border-radius: 18px; font-size: 14px; }
@@ -125,7 +127,7 @@
     scrollbar-width: none;
   }
   #view-dashboard .lib-list .seg::-webkit-scrollbar { display: none; }
-  #view-dashboard .lib-list:is(.is-empty, .is-loading) .seg { display: none; }
+  #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: none;
     min-height: 34px;

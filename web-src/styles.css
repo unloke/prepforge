@@ -1522,6 +1522,10 @@ h2 {
   font-weight: 600;
 }
 .today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
+/* Today's payload failed: the notice carries the message; the strip keeps its
+   slot with the retry, at the same quiet weight as the queue line. */
+.today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
+.today-error .btn { color: var(--text); }
 .btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
@@ -1593,6 +1597,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-list.is-empty .lib-cols { display: none; }
 /* Failed load: same empty layout, and the search goes too (nothing to filter). */
 .lib-list.is-error .card-head .search-field { display: none; }
+/* Nothing matched: the filter chips must stay reachable or narrowing to zero
+   rows is a dead end (the empty card carries a Clear filter action too). */
+.lib-list.is-empty:not(.is-error):has(.lib-no-match) .card-head .seg { display: flex; }
+.lib-no-match { display: grid; justify-items: center; gap: 10px; }
+.lib-no-match p { margin: 0; }
 /* Nothing to filter or add over yet: the empty card (and Get started) carry
    New / Import / Sign in, so the header keeps only its title. While the first
    load runs, the column header stays out over an empty table. */
