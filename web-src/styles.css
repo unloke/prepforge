@@ -441,6 +441,8 @@ h2 {
   white-space: nowrap;
 }
 
+/* The mark is the app's own knight, drawn from the piece set: a silhouette
+   that still reads at 26px, not a glyph that changes with the platform font. */
 .brand-mark {
   display: grid;
   place-items: center;
@@ -449,9 +451,12 @@ h2 {
   border-radius: 7px;
   background: var(--text);
   color: var(--panel);
-  font-size: 16px;
   flex: none;
 }
+.brand-mark svg { width: 19px; height: 19px; display: block; }
+.brand-mark path,
+.brand-mark circle { fill: currentColor; stroke: none; }
+.brand-mark .brand-cut { fill: var(--text); }
 
 .nav-group {
   display: flex;

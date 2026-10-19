@@ -44,6 +44,19 @@ describe("workspace chrome layout", () => {
     expect(focused).toMatch(/top:\s*8px/);
   });
 
+  it("draws the brand mark as the app's own knight, not as a text glyph", () => {
+    const mark = html.match(/<span class="brand-mark"[^>]*>([\s\S]*?)<\/span>/)?.[1] || "";
+    expect(mark).toContain("<svg");
+    // A glyph reads differently on every platform; the piece set's own path
+    // does not.
+    expect(html).not.toContain("♞");
+    const path = mark.match(/d="(M16 34c1-10[^"]+)"/)?.[1] || "";
+    expect(path).not.toBe("");
+    const knight = app.match(/classic:\s*\{[\s\S]*?n:\s*html`([^`]+)`/)?.[1] || "";
+    expect(knight).toContain(path);
+    expect(ruleBody(".brand-mark")).toMatch(/width:\s*26px/);
+  });
+
   it("sizes study boards off the viewport with a full-width workspace", () => {
     expect(css).toContain(".study");
     expect(css).toMatch(/\.study\s*\{[^}]*--board-size:\s*min\(/s);
