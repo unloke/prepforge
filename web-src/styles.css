@@ -1482,7 +1482,6 @@ h2 {
   flex-wrap: wrap;
   margin: 0;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
 }
 .lib .card-head h2 {
   display: flex;
