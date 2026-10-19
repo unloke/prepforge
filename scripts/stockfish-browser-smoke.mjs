@@ -95,6 +95,9 @@ try {
           resolve(output);
         }
       };
+      worker.postMessage({ wasmMemory: new WebAssembly.Memory({
+        initial: build.initialHeapPages, maximum: build.maxHeapPages, shared: true,
+      }) });
       worker.postMessage("uci");
     });
     runs.push({ net, lines });

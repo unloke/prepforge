@@ -14,6 +14,11 @@ _spec = importlib.util.spec_from_file_location(
 )
 fetch_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fetch_mod)
+_engines = json.loads((
+    Path(__file__).parents[1] / "src/prepforge_chess/web/static/engine/stockfish.manifest.json"
+).read_text(encoding="utf-8"))["engines"]
+_big = _engines["big"]["files"]["wasm"]["source"]
+_lite = _engines["lite"]["files"]["wasm"]["source"]
 
 
 def _setup(tmp_path: Path, files: dict[str, bytes], sha_override: str | None = None, packed: tuple[str, ...] | None = None):
@@ -27,14 +32,14 @@ def _setup(tmp_path: Path, files: dict[str, bytes], sha_override: str | None = N
             tar.addfile(info, io.BytesIO(data))
     engines = {
         net: {
-            "packageVersion": "19.0.0",
+            "packageVersion": _engines[net]["packageVersion"],
             "files": {"wasm": {
                 "source": source,
                 "bundled": f"{folder}/stockfish.wasm",
                 "sha256": sha_override or hashlib.sha256(files[source]).hexdigest(),
             }},
         }
-        for net, source, folder in (("big", "stockfish-19.wasm", "aaaa0000"), ("lite", "stockfish-19-lite.wasm", "bbbb1111"))
+        for net, source, folder in (("big", _big, "aaaa0000"), ("lite", _lite, "bbbb1111"))
     }
     manifest = tmp_path / "stockfish.manifest.json"
     manifest.write_text(json.dumps({"package": "stockfish", "engines": engines}), encoding="utf-8")
@@ -42,7 +47,7 @@ def _setup(tmp_path: Path, files: dict[str, bytes], sha_override: str | None = N
 
 
 def test_fetch_writes_each_named_wasm(tmp_path):
-    files = {"stockfish-19.wasm": b"big", "stockfish-19-lite.wasm": b"lite", "stockfish-19-single.wasm": b"other"}
+    files = {_big: b"big", _lite: b"lite", "unrelated.wasm": b"other"}
     manifest, tarball = _setup(tmp_path, files)
     fetch_mod.fetch(manifest, tmp_path / "out", str(tarball))
     assert (tmp_path / "out" / "aaaa0000" / "stockfish.wasm").read_bytes() == b"big"
@@ -51,13 +56,13 @@ def test_fetch_writes_each_named_wasm(tmp_path):
 
 
 def test_fetch_rejects_a_changed_file(tmp_path):
-    manifest, tarball = _setup(tmp_path, {"stockfish-19.wasm": b"big", "stockfish-19-lite.wasm": b"lite"}, "0" * 64)
+    manifest, tarball = _setup(tmp_path, {_big: b"big", _lite: b"lite"}, "0" * 64)
     with pytest.raises(SystemExit, match="sha256"):
         fetch_mod.fetch(manifest, tmp_path / "out", str(tarball))
 
 
 def test_fetch_rejects_a_missing_file(tmp_path):
-    files = {"stockfish-19.wasm": b"big", "stockfish-19-lite.wasm": b"lite"}
-    manifest, tarball = _setup(tmp_path, files, packed=("stockfish-19.wasm",))
+    files = {_big: b"big", _lite: b"lite"}
+    manifest, tarball = _setup(tmp_path, files, packed=(_big,))
     with pytest.raises(SystemExit, match="missing"):
         fetch_mod.fetch(manifest, tmp_path / "out", str(tarball))

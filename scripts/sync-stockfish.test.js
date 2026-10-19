@@ -4,6 +4,7 @@ import { runInNewContext } from "node:vm";
 import { join, resolve } from "node:path";
 import { capSharedHeap, injectSharedHeap, discoverStockfishBuild, stockfishBuild, stockfishIdentity, syncStockfish, MAX_HEAP_PAGES } from "./sync-stockfish.mjs";
 const root = resolve(import.meta.dirname, "..");
+const manifest = JSON.parse(readFileSync(join(root, "src/prepforge_chess/web/static/engine/stockfish.manifest.json"), "utf8"));
 describe("Stockfish package synchronization", () => {
   it.each(["big", "lite"])("discovers and bundles the %s threaded pair with net identity", net => {
     const suffix = net === "lite" ? "-lite" : "";
@@ -17,7 +18,11 @@ describe("Stockfish package synchronization", () => {
     expect(build.files.script.data).toContain('f={wasmMemory:f.wasmMemory,locateFile:');
     expect(build.files.script.data).toContain('if(e.data.wasmMemory){f.wasmMemory=e.data.wasmMemory;i();return}');
     expect(build.files.script.data).not.toContain('i(),onmessage=onmessage||');
-    expect(stockfishIdentity()[net]).toMatchObject({ initialHeapPages: 2048, maxHeapPages: MAX_HEAP_PAGES[net] });
+    expect(stockfishIdentity()[net]).toMatchObject({
+      packageVersion: manifest.engines[net].packageVersion,
+      initialHeapPages: manifest.engines[net].initialHeapPages,
+      maxHeapPages: MAX_HEAP_PAGES[net],
+    });
   });
   it("ships both distinct hashed folders and complete manifest metadata", () => {
     const manifest = syncStockfish();
@@ -36,7 +41,7 @@ describe("Stockfish package synchronization", () => {
       files: ["stockfish-99.js"] })).toThrow(/missing WASM pair/);
     expect(() => capSharedHeap("new WebAssembly.Memory({initial:1})", "big")).toThrow(/changed upstream/);
     expect(() => injectSharedHeap("changed")).toThrow(/changed upstream/);
-    const upstream = readFileSync(join(root, "node_modules/stockfish/bin/stockfish-19.js"), "utf8");
+    const upstream = readFileSync(join(root, "node_modules/stockfish/bin", manifest.engines.big.files.script.source), "utf8");
     expect(() => injectSharedHeap(upstream.replace('i(),onmessage=', 'changed(),onmessage='))).toThrow(/changed upstream/);
     expect(() => injectSharedHeap(upstream + upstream)).toThrow(/changed upstream/);
   });
