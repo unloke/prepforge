@@ -25,7 +25,12 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.8fr);
+  /* The detail column is as wide as the board inside it, and the board yields
+     to the window height so a 1280×800 laptop still ends the detail inside
+     the card instead of scrolling the move list out of view. One measure for
+     both, so the board, the sentences and the move rows share both edges. */
+  --focus-w: clamp(260px, calc(100dvh - 400px), 520px);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, calc(var(--focus-w) + 24px));
   gap: 12px;
 }
 .ledger,
@@ -171,7 +176,9 @@
 /* Board above, detail text below, at every width: the board takes the card's
    full width instead of sharing it with the text. */
 .focus-top { display: flex; flex-direction: column; gap: 12px; }
-.focus-board { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; }
+/* The board fills the card's width; the card itself is sized from the window
+   height in `.triage`. */
+.focus-board { position: relative; width: 100%; max-width: var(--focus-w); aspect-ratio: 1; }
 .focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 /* The detail is the one part of the page that is prose, not a table: it gets
@@ -241,6 +248,8 @@
   .triage { grid-template-columns: minmax(0, 1fr); }
   .ledger-table,
   .focus { overflow: visible; }
+  /* One column and a scrolling page: the board is the card's width. */
+  .focus-board { max-width: none; }
 }
 /* ≤760: ledger first (reachable at the top, like the desktop column order),
    two-line rows, no column header. */
