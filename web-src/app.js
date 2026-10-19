@@ -6935,40 +6935,50 @@ function bindEvents() {
       paintBlitz(next);
     });
   }
+  // Picking a mode is setup: it ends whatever session the current mode has
+  // (each answer is already saved) and shows that mode's setup card.
+  const selectTrainMode = (mode) => {
+    document
+      .querySelectorAll("#train-modes .train-mode")
+      .forEach((b) => b.classList.toggle("is-active", b.dataset.mode === mode));
+    appState.trainMode = mode;
+    appState.playStartToken = (appState.playStartToken || 0) + 1;
+    appState.playStarting = null;
+    appState.play = null;
+    appState.trainBusy = false;
+    if (mode !== "smart") appState.smart = null;
+    if (mode !== "all_lines") appState.training = null;
+    clearBlitzTimer();
+    setBlitzBarVisible(false);
+    if (mode === "play") {
+      appState.smart = null;
+      appState.training = null;
+      setTrainBanner("idle", "Practice game", "");
+      void resetTrainBoardIdle("Practice game");
+    } else {
+      // "Press Start" is said once, by the Start button itself (UX P2-10).
+      setTrainBanner("idle", "Ready to train", "");
+      void resetTrainBoardIdle("");
+      const progress = document.getElementById("train-progress-panel");
+      if (progress) progress.hidden = true;
+      const summary = document.getElementById("train-summary");
+      if (summary) summary.hidden = true;
+    }
+    // The answer clock only exists in the smart queue; rehearsal is untimed.
+    document.getElementById("train-blitz-row").hidden = mode !== "smart";
+    syncTrainPickerVisibility();
+  };
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const mode = btn.dataset.mode;
-      if (appState.trainMode === mode && btn.classList.contains("is-active")) return;
-      document
-        .querySelectorAll("#train-modes .train-mode")
-        .forEach((b) => b.classList.toggle("is-active", b === btn));
-      appState.trainMode = mode;
-      appState.playStartToken = (appState.playStartToken || 0) + 1;
-      appState.playStarting = null;
-      appState.play = null;
-      appState.trainBusy = false;
-      if (mode !== "smart") appState.smart = null;
-      if (mode !== "all_lines") appState.training = null;
-      clearBlitzTimer();
-      setBlitzBarVisible(false);
-      if (mode === "play") {
-        appState.smart = null;
-        appState.training = null;
-        setTrainBanner("idle", "Practice game", "");
-        void resetTrainBoardIdle("Practice game");
-      } else {
-        // "Press Start" is said once, by the Start button itself (UX P2-10).
-        setTrainBanner("idle", "Ready to train", "");
-        void resetTrainBoardIdle("");
-        const progress = document.getElementById("train-progress-panel");
-        if (progress) progress.hidden = true;
-        const summary = document.getElementById("train-summary");
-        if (summary) summary.hidden = true;
-      }
-      // The answer clock only exists in the smart queue; rehearsal is untimed.
-      document.getElementById("train-blitz-row").hidden = mode !== "smart";
-      syncTrainPickerVisibility();
+      if (appState.trainMode === btn.dataset.mode && btn.classList.contains("is-active")) return;
+      selectTrainMode(btn.dataset.mode);
     });
+  });
+  // The tabs leave with the setup card; the session card's mode name leads back.
+  document.getElementById("train-mode-name")?.addEventListener("click", () => {
+    appState.smart = null;
+    appState.training = null;
+    selectTrainMode(appState.trainMode || "smart");
   });
   const trainSelect = document.getElementById("train-repertoire-select");
   if (trainSelect) {

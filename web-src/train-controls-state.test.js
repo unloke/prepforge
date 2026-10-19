@@ -33,14 +33,18 @@ function runTrainControls(appState) {
   // current mode is live.
   const hint = { disabled: false, title: "" };
   const skip = { disabled: false, title: "" };
+  const modeName = { textContent: "" };
   const doc = {
     getElementById: (id) => (id === "feeling-lucky" ? lucky
       : id === "start-train" ? start
       : id === "train-summary" ? summary
       : id === "train-hint" ? hint
       : id === "train-skip" ? skip
+      : id === "train-mode-name" ? modeName
       : null),
-    querySelector: () => null,
+    querySelector: (sel) => (sel === "#train-modes .train-mode.is-active"
+      ? { textContent: { smart: "Smart queue", all_lines: "Line rehearsal", play: "Practice game" }[appState.trainMode] }
+      : null),
     querySelectorAll: (sel) => (sel === "#train-modes .train-mode" ? modeTabs : []),
   };
   const deps = {
@@ -55,7 +59,7 @@ function runTrainControls(appState) {
   const controls = build(trainStartBlockReason, rehearsalStartBlockReason, trainStartDisabled, () => appState.selectedRepertoireId ?? null, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
   controls.syncTrainSessionControls();
   controls.paintTrainStartDisabled();
-  return { lucky, start, modeTabs, hint, skip };
+  return { lucky, start, modeTabs, hint, skip, modeName };
 }
 
 describe("syncTrainSessionControls", () => {
@@ -83,33 +87,17 @@ describe("syncTrainSessionControls", () => {
     expect(lucky.title).toBe("Jump to a key position instead of move 1");
   });
 
-  it("disables the mode tabs on the result screen and names the way back", () => {
-    const { modeTabs } = runTrainControls({
-      trainMode: "smart",
+  it("names the running session's mode in the card head", () => {
+    const { modeName } = runTrainControls({
+      trainMode: "all_lines",
       signedIn: true,
       repertoireList: [],
       pendingRepDeletes: new Set(),
-      smart: { prompt: {}, cardsDone: 4, queue: [], cardIndex: 4, cardKinds: {} },
-      training: null,
-      nextSession: { cards: 4, resumed: 0 },
-      __summaryHidden: false,
-    });
-    expect(modeTabs.every((t) => t.disabled)).toBe(true);
-    expect(modeTabs[0].title).toBe("Start again with New session");
-  });
-
-  it("keeps the mode tabs live while a session runs", () => {
-    const { modeTabs } = runTrainControls({
-      trainMode: "smart",
-      signedIn: true,
-      repertoireList: [],
-      pendingRepDeletes: new Set(),
-      smart: { prompt: { card_index: 0 }, queue: [], cardIndex: 0, cardKinds: {} },
-      training: null,
+      smart: null,
+      training: { prompt: { card_index: 0 } },
       nextSession: { cards: 4, resumed: 0 },
     });
-    expect(modeTabs.every((t) => !t.disabled)).toBe(true);
-    expect(modeTabs[2].title).toBe("Play a game");
+    expect(modeName.textContent).toBe("Line rehearsal");
   });
 });
 

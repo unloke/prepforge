@@ -456,16 +456,11 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
-  // The result screen is a report on a finished session. Switching mode here would
-  // throw the finished session away without the player asking, the way Lucky would
-  // mid-game; "New session" is the deliberate way to start again.
-  const modeTabs = document.querySelectorAll("#train-modes .train-mode");
-  const summaryLive = !play && summaryVisible;
-  modeTabs.forEach((btn) => {
-    btn.dataset.tip ??= btn.title;
-    btn.disabled = summaryLive;
-    btn.title = summaryLive ? "Start again with New session" : btn.dataset.tip;
-  });
+  // The mode tabs belong to setup and are hidden with it (styles.css); a running
+  // or finished session names its mode in the card head instead, and "New
+  // session" is the way back to the tabs.
+  const modeName = document.getElementById("train-mode-name");
+  if (modeName) modeName.textContent = document.querySelector("#train-modes .train-mode.is-active")?.textContent || "";
   syncViewHeads();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;

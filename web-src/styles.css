@@ -3221,6 +3221,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
+.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
+.train-mode-name:hover, .train-mode-name:focus-visible { color: var(--text); text-decoration-color: currentColor; }
+/* Choosing a mode is setup: once a session runs, or its result shows, the tabs
+   leave with the setup card (the card head names the mode). */
+#view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { display: none; }
 .train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {
