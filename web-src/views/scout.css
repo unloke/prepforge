@@ -514,6 +514,22 @@
 }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
 @media (max-width: 760px) {
+  /* The first screen was the toolbar, the profile and a 150px section head; the
+     first line sat 1,228px down. On a phone the lines are the page: the head
+     names the player and colour, the plan follows, and the summary sentence
+     closes the card underneath. */
+  .color-sec { display: flex; flex-direction: column; }
+  .cs-head { order: 0; }
+  .plan { order: 1; }
+  .intel { order: 2; }
+  /* The identity card repeats the player the section head names and the score
+     the colour tabs already show. On a phone it keeps the sample-size chips
+     and the two actions, and gives the rest of its height to the lines. */
+  .scout-panel .prof-id,
+  .scout-panel .scout-color-rec { display: none; }
+  .scout-panel .scout-profile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; }
+  .scout-panel .prof-row { flex: 1 1 100%; }
+  .scout-panel .prof-row .spacer { display: none; }
   .scout-color-tab { min-height: 44px; }
   /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
      are the only way to switch sample size or start the prep. */
@@ -532,6 +548,10 @@
   .line-row .lr-flags { display: none; }
   .line-row .lr-score { text-align: right; }
   .scout-lines-head > :nth-child(3) { text-align: right; }
+  /* No spacer on a phone: the score joins the name and W/D/L on one line, so
+     the first line row can reach the first screen. */
+  .cs-head { gap: 6px 10px; }
+  .cs-head .spacer { display: none; }
   .cs-head .cov { flex: 1 1 100%; min-width: 0; }
   .cs-head .scout-coverage-label { min-width: 0; white-space: normal; }
   /* The add-to-prep button is the row's only action: it needs a thumb. */

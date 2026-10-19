@@ -151,3 +151,24 @@ describe("scout phone controls", () => {
     expect(css).toMatch(/\.scout-color-tab:active \{ transform: scale/);
   });
 });
+
+describe("scout phone composition", () => {
+  const css = readFileSync(resolve(here, "./scout.css"), "utf8");
+  const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
+
+  it("puts the game plan before the summary sentence on a phone", () => {
+    // The head, a 250px summary band and the plan stacked in source order put
+    // the first line 1,228px down at 390x844. The plan is what the page is for.
+    expect(phone).toMatch(/\.cs-head \{ order: 0; \}/);
+    expect(phone).toMatch(/\.plan \{ order: 1; \}/);
+    expect(phone).toMatch(/\.intel \{ order: 2; \}/);
+  });
+
+  it("keeps the speed chips and the two actions, and drops the repeated identity", () => {
+    // The identity card repeated the player the section head names and the
+    // score the colour tabs already show; the chips and actions stay.
+    expect(phone).toMatch(/\.scout-panel \.prof-id,\n\s*\.scout-panel \.scout-color-rec \{ display: none; \}/);
+    expect(phone).toContain(".scout-panel .prof-row .spacer { display: none; }");
+    expect(phone).toContain(".prof-row .btn { min-height: 44px; }");
+  });
+});
