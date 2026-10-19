@@ -5540,6 +5540,17 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 #build-rep-header #build-generate-node { margin-left: auto; flex: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }
+
+/* The head is two lines: the repertoire and its action, then the counts that
+   describe it. On one line the counts held ~160px of a ~410px panel, so the
+   name lost its ending to an ellipsis ("Caro-Kann: Ad…") while the primary
+   action had to shrink to a bare glyph. The counts are the name's subline,
+   the same shape the phone already uses. */
+@media (min-width: 761px) {
+  #build-rep-header { flex-wrap: wrap; row-gap: 0; }
+  #build-rep-header .rep-name { flex: 1 1 auto; }
+  #build-rep-header .rep-stats { flex: 1 1 100%; order: 3; padding-left: 0; }
+}
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {

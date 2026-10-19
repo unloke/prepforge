@@ -368,16 +368,21 @@ describe("workspace chrome layout", () => {
     // survive .panel-head's rule that hides icons in word buttons.
     expect(view).toContain('class="btn icon sm" id="fetch-my-game"');
     expect(css).toContain(".panel-head .btn:not(.icon) > .bi");
-    // Build's row keeps the same shape: an icon action beside the repertoire
-    // name, with the ⋯ menu carrying the rest.
+    // Build's head names its primary action in words; the counts move to a
+    // second line so the repertoire name keeps its ending.
     const build = html.slice(html.indexOf('id="view-build"'));
     const buildHead = build.slice(build.indexOf('id="build-rep-header"'), build.indexOf("<div class=\"panel-body\""));
-    expect(buildHead).toContain('class="btn icon sm primary" id="build-generate-node"');
+    expect(buildHead).toContain('class="btn primary" id="build-generate-node"');
+    expect(buildHead).toMatch(/id="build-generate-node"[^>]*><svg[^>]*>.*?<span class="bl">Generate<\/span>/);
     expect(buildHead).toContain('id="build-menu"');
-    // The row is one line of title, meta and actions; the size summary stays
-    // the only meta, with no second description row.
     expect(buildHead).toContain('id="build-rep-name"');
     expect(buildHead).toContain('id="build-rep-stats"');
+    // The head wraps: the name and action on the first line, the counts filling
+    // their own line, so neither has to be shortened on a narrow sidebar.
+    const buildHeadRules = css.slice(css.indexOf("#build-rep-header .rep-stats {"));
+    expect(buildHeadRules).toMatch(/#build-rep-header \{ flex-wrap: wrap/);
+    expect(buildHeadRules).toMatch(/#build-rep-header \.rep-stats \{ flex: 1 1 100%; order: 3/);
+    expect(buildHeadRules).toMatch(/#build-rep-header \.rep-name \{ flex: 1 1 auto/);
     expect(view).toContain('<section class="coach-card" id="analysis-explain"');
     expect(view).toContain('<header class="cc-head">');
     expect(view).toContain('class="moves-grid" id="analysis-moves"');
