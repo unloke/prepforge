@@ -293,6 +293,8 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
+    // The one sentence that explains the panel reads at the panel's size.
+    expect(ruleBody(".inspector-info-pop")).toMatch(/font-size:\s*var\(--fs-s\)/);
     // The inspector is sized to its own contents by fitBuildDock(), so a short
     // repertoire leaves no dead space above it and a long Explorer is not boxed
     // into its own scrollbar; a fixed 40% share did both.
