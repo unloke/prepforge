@@ -32,3 +32,10 @@ export function rehearsalStartBlockReason(repertoire) {
   if (Number(repertoire.health.trainable) > 0) return "";
   return "No moves to train. Add lines in Repertoire.";
 }
+
+// A Start 400 that only means the server has nothing to serve. Start's disabled
+// reason already owns that state, so callers must not paint it as a fault.
+// Covers the smart single- and mixed-repertoire messages and line rehearsal.
+export function isNothingToTrainError(error) {
+  return error?.status === 400 && /no (active repertoires|trainable (moves|lines))/i.test(error.message || "");
+}
