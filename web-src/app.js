@@ -1467,7 +1467,10 @@ async function restoreWorkspaceLocation() {
     await showAnalysisPly(loc.ply);
   }
   if (loc.view === "train" && appState.signedIn) {
-    await startTraining(appState.trainMode, { fresh: false });
+    // The URL's repertoire is the queue's. A Train link that names one (the
+    // one the Library/Repertoire Train action leaves behind) drills that
+    // repertoire; no ?rep= means the mixed queue over all active ones.
+    await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
 }
 

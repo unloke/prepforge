@@ -548,7 +548,9 @@ async function startTraining(mode, options = {}) {
   clearBlitzTimer();
   setBlitzBarVisible(false);
   setSmartPanelsHidden();
-  const repertoireId = selectedTrainRepertoireId();
+  // A caller that names the repertoire (a deep link, a repertoire's own Train
+  // action) is the source of truth; otherwise Start follows the picker.
+  const repertoireId = options.repertoireId || selectedTrainRepertoireId();
   appState.trainingRepertoireId = repertoireId;
   // No unauthenticated demo in the SaaS model: training is always against one of the
   // user's own repertoires. Without one, prompt them to build first instead of
@@ -1863,7 +1865,10 @@ async function startSmartTraining(options = {}) {
     return;
   }
   if (!isCurrent()) return;
-  appState.trainingRepertoireId = payload.repertoire_id;
+  // The URL names the repertoire the queue drills; a mixed queue drills all of
+  // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
+  // into a Train link that is not about that repertoire.
+  appState.trainingRepertoireId = payload.mixed ? null : payload.repertoire_id;
   setTrainBanner(
     "runin",
     fresh ? "Building a new queue…" : "Building your queue…",
