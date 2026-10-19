@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { runInNewContext } from "node:vm";
-import { parseWorkspaceLocation } from "./workspace-url.js";
+import { parseWorkspaceLocation, trainQueueRepertoireId } from "./workspace-url.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -63,6 +63,7 @@ function popstateRuntime(extra = {}) {
     appState: { signedIn: true, currentView: "train", trainMode: "smart" },
     window: { location: { href: "http://local/#/train?rep=r2" } },
     parseWorkspaceLocation,
+    trainQueueRepertoireId,
     switchView: vi.fn(),
     startTraining: vi.fn(async () => {}),
     ...extra,
@@ -77,6 +78,15 @@ it("rebuilds Train's queue for an in-page ?rep change", async () => {
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
   expect(ctx.startTraining).toHaveBeenCalledTimes(1);
   expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: "r2" });
+});
+
+it("keeps the live queue when the popstate names the repertoire it drills", async () => {
+  const ctx = popstateRuntime({
+    appState: { signedIn: true, currentView: "analyze", trainMode: "smart", smart: { mixed: false, repertoireId: "r2" } },
+  });
+  await ctx.run();
+  expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
+  expect(ctx.startTraining).not.toHaveBeenCalled();
 });
 
 it("does not start a session on a non-Train popstate", async () => {

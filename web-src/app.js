@@ -75,6 +75,7 @@ import {
   activateWorkspaceTab,
   parseWorkspaceLocation,
   serializeWorkspaceLocation,
+  trainQueueRepertoireId,
   workspaceLocationFromState,
 } from "./workspace-url.js";
 import {
@@ -1476,14 +1477,15 @@ async function restoreWorkspaceLocation() {
 
 // In-page route changes (back/forward and location.hash) take the same path as
 // boot restore: switch the view, then rebuild Train's queue for the URL's
-// repertoire. Without this, ?rep= only took effect on a full reload.
+// repertoire. Without this, ?rep= only took effect on a full reload. Coming
+// back to the repertoire the queue already drills keeps the live session.
 async function handleWorkspacePopstate() {
   const loc = parseWorkspaceLocation(window.location.href);
   if (loc.view === "replay" && loc.replaySection) {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
-  if (loc.view === "train" && appState.signedIn) {
+  if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
 }
@@ -6732,7 +6734,7 @@ function bindEvents() {
   }
   bindCommandPalette();
   window.addEventListener("popstate", () => {
-    void handleWorkspacePopstate().catch(() => {});
+    void handleWorkspacePopstate();
   });
   document.getElementById("train-hint").addEventListener("click", trainHint);
   const blitzToggle = document.getElementById("train-blitz-toggle");

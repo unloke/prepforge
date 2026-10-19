@@ -610,7 +610,7 @@ async function startTraining(mode, options = {}) {
     if (isNothingToTrainError(error)) {
       // The picked repertoire has no moves to walk; Start's disabled reason
       // already says so. A raw 400 toast would repeat it as a fault.
-      setTrainBanner("idle", "Ready to train", "");
+      setTrainBanner("idle", "No moves to train yet", "");
       return;
     }
     setStatusError(error.message);
@@ -1873,7 +1873,7 @@ async function startSmartTraining(options = {}) {
     if (isNothingToTrainError(error)) {
       // Nothing to train is not a fault: Start is already dead with the reason
       // (and the preview names it), so do not stack a failure notice on it.
-      setTrainBanner("idle", "Ready to train", "");
+      setTrainBanner("idle", "No moves to train yet", "");
       return;
     }
     setStatusError(error.message);

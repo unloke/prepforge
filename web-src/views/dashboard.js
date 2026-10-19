@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { countOf } from "../plural.js";
+import { nounOf } from "../plural.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
@@ -351,11 +351,7 @@ export function createDashboardView({
     // pressing Train, and "Due review" already carries the queue number the
     // strip leads with — so one chip holds them and the Due shortcut stays
     // inline, where the action is.
-    // Bold the number, but let countOf own the singular/plural noun.
-    const metric = (value, one) => {
-      const noun = countOf(value, one).replace(/^\S+\s+/, "");
-      return html`<b>${value}</b> ${noun}`;
-    };
+    const metric = (value, one) => html`<b>${value}</b> ${nounOf(value, one)}`;
     const repCount = ownRepertoireCount();
     const countsHtml = [
       metric(payload.games || 0, "game"),

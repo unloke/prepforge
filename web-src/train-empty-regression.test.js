@@ -27,7 +27,7 @@ it.each([
 ])("a start with '%s' leaves the disabled Start as the only signal", async (message) => {
   const { run, deps } = startWith(message);
   await run();
-  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("idle", "Ready to train", "");
+  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("idle", "No moves to train yet", "");
   expect(deps.setStatusError).not.toHaveBeenCalled();
 });
 
