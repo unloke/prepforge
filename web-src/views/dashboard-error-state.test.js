@@ -136,7 +136,16 @@ describe("Library error state", () => {
     });
     await expect(view.loadDashboard()).rejects.toThrow("dashboard 500");
     expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
+    // One alert in the strip, with the server message and the retry; the raw
+    // markup used to render the message twice and without a role.
+    expect(today.hidden).toBe(false);
+    expect(String(today.innerHTML)).toContain('data-testid="today-error"');
+    expect(String(today.innerHTML)).toContain("Try again");
+    expect(String(today.innerHTML)).toContain('role="alert"');
     expect(String(today.innerHTML)).toContain("dashboard 500");
+    expect(String(today.innerHTML).match(/dashboard 500/g)).toHaveLength(1);
+    expect(String(today.innerHTML).match(/role="alert"/g)).toHaveLength(1);
+    expect(String(today.innerHTML)).toContain('data-today-retry');
     expect(api).toHaveBeenCalledWith("/api/repertoires");
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });

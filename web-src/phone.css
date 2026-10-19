@@ -103,8 +103,9 @@
   #view-dashboard .today > * { grid-column: auto; grid-row: 1; }
   #view-dashboard .today-body { gap: 2px; min-width: 0; }
   #view-dashboard .today-warning { font-size: 12px; }
-  /* A failed read is announced once by the notice; the strip itself leaves. */
-  #view-dashboard.dash-today-down #dashboard-today { display: none; }
+  /* A failed read is one card: the strip's three-column layout would clip it
+     into the 40px streak slot, so it spans the full row instead. */
+  #view-dashboard .today-error { grid-column: 1 / -1; }
   #view-dashboard .today-queue { color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.3; }
   #view-dashboard .today-queue b { font: inherit; }
   #view-dashboard .today .btn.lg { min-height: 36px; height: 36px; padding: 0 14px; border-radius: 18px; font-size: 14px; }

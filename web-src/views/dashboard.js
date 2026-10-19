@@ -295,28 +295,16 @@ export function createDashboardView({
 
   let lastTodayPayload = null;
 
-  // The Today strip across a statistics load: hidden while a first read is in
-  // flight (nothing to show yet), and a retry-only state when the read fails.
-  // Phones drop that failed strip from their single-row layout.
-  function markTodayForShell({ pending = false } = {}) {
+  // A failed statistics read owns the strip's slot: the message once, with the
+  // retry that fixes it. Re-entering the Library (boot starts two reads) must
+  // not wipe this card, so it is only replaced by success or another failure.
+  function renderTodayError(message) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
-    const shell = document.getElementById("view-dashboard");
-    if (pending) {
-      // No snapshot yet: the strip is in flight, so it has nothing to keep.
-      if (lastTodayPayload) return;
-      card.hidden = true;
-      card.innerHTML = "";
-      return;
-    }
-    // Failed: the caller reports the error once, through the notices stack; the
-    // strip's slot keeps only the retry. (A second role=alert here announced
-    // the same server error twice.)
     card.hidden = false;
-    card.innerHTML = html`<div class="today-error" data-testid="today-error"><span>Today is unavailable.</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts" aria-label="Try again loading today's counts">Try again</button></div>`;
+    card.innerHTML = html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`;
     card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
     lastTodayPayload = null;
-    shell?.classList.toggle("dash-today-down", true);
   }
 
   function renderDashboardToday(payload) {
@@ -401,7 +389,6 @@ export function createDashboardView({
     <button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>
   `;
     card.hidden = false;
-    document.getElementById("view-dashboard")?.classList.remove("dash-today-down");
     const trainNow = () =>
       goToSmartTraining(
         due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
@@ -798,7 +785,6 @@ export function createDashboardView({
   async function loadDashboard() {
     const seq = ++loadSeq;
     const isCurrent = currentLoad(seq);
-    markTodayForShell({ pending: true });
     const statistics = (async () => {
       try {
         const payload = await api(`/api/dashboard?local_date=${localDateString()}`);
@@ -808,9 +794,10 @@ export function createDashboardView({
         renderSteps(payload);
       } catch (error) {
         if (!isCurrent()) return;
-        // The caller reports the error once, through the notices stack; the
-        // strip's slot keeps only the retry (no second role=alert copy).
-        markTodayForShell();
+        // The strip shows the failure and its retry; the caller adds the status
+        // line for the view, so the message is named in both places at most once
+        // each (the old raw markup rendered it twice in the strip itself).
+        renderTodayError(error.message);
         throw error;
       }
     })();
