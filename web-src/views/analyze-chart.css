@@ -9,6 +9,42 @@
    classes carry a colour role only: .eval-dot fills with currentColor,
    .eval-cliff strokes with it. */
 
+/* This page's own rules over the shared chrome --------------------- */
+
+/* The panel is a surface on a grey page, not a card floating over it: the
+   tone step already separates it from the board, so it carries no edge and no
+   shadow. Its head is a row of actions, not a titled section, so nothing
+   rules it off from the band below. */
+#analyze-sidebar.panel {
+  border: 0;
+  box-shadow: none; /* taste-skill-ignore: the shared .panel paints a resting shadow */
+}
+#analyze-sidebar .panel-head {
+  border-bottom: 0;
+}
+
+/* The board bar's rule is the last line on the phone; the board's own frame
+   and the evaluation row's tone already say where the board ends. */
+#view-analyze .board-bar {
+  border-bottom: 0;
+}
+
+/* Captions on this page are read, not decoration: the drawer titles, the
+   history rows and the coach's own link all carry meaning, so they read at
+   the body size rather than at the app's 12px chrome size. */
+#view-analyze .board-sub,
+#analyze-open .drawer > summary,
+#analyze-open .btn.sm,
+#analyze-open .history-item .hi-open,
+#analyze-open .history-item .hi-meta {
+  font-size: 13px;
+}
+/* The coach's own link sits inside the card's own rules, so it needs a
+   selector that reaches past them. */
+.coach-card .coach-bookaction {
+  font-size: 13px;
+}
+
 /* Panel head + coach card ------------------------------------------ */
 
 /* The head is one row: the game's identity, then the actions. The tag line
@@ -1021,6 +1057,7 @@
   #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
+  #analyze-open .history-item .hi-open { font-size: 15px; }
   #analyze-open .history-item .hi-meta { font-size: 13px; }
   /* Touch target, and always visible: a phone has no hover to reveal it. */
   #analyze-open .history-item .hi-delete {
