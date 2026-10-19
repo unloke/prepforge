@@ -3612,6 +3612,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 12px;
 }
 
+.coverage-kinds {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}
+
 .coverage-gap {
   display: grid;
   grid-template-columns: auto 1fr;
