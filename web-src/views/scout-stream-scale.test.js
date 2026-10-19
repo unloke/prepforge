@@ -82,6 +82,9 @@ describe("scout report type", () => {
     // 12px meta and 11px labels read as captions; nothing read is under 13px.
     expect(css).toContain(".scout-panel { --fs-s: 13px; --fs-xs: 12px; }");
     expect(css).not.toMatch(/font-size: 11px/);
+    // <small> is 0.83em of its parent: the tab and speed-chip counts rendered
+    // at 10.8px. They are compared figures, so they take the label's size.
+    expect(css).toMatch(/\.scout-color-tab small,\n\.speed small \{ font-size: var\(--fs-s\);/);
   });
 });
 

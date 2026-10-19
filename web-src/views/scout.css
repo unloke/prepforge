@@ -76,7 +76,6 @@
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.speed small { color: var(--label); font-weight: 500; }
 .speed:hover { border-color: var(--line-strong); }
 .speed:active { transform: scale(0.96); }
 .speed.is-on { background: var(--text); border-color: var(--text); color: var(--panel); }
@@ -129,7 +128,12 @@
   white-space: nowrap;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.scout-color-tab small { font-weight: 500; font-variant-numeric: tabular-nums; }
+/* <small> inherits the browser's 0.83em: the game count under a tab and a speed
+   chip's sample were rendering at 10.8px. They are figures the reader compares,
+   so they keep the label's size and take the muted colour instead. */
+.scout-color-tab small,
+.speed small { font-size: var(--fs-s); font-weight: 500; font-variant-numeric: tabular-nums; }
+.speed small { color: var(--label); }
 .scout-color-tab:hover { color: var(--text); background: var(--surface-3); }
 .scout-color-tab:active { transform: scale(0.98); }
 .scout-color-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
