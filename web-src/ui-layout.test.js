@@ -184,6 +184,23 @@ describe("workspace chrome layout", () => {
     expect(reduced.slice(0, 600)).toMatch(/prefers-reduced-motion[\s\S]{0,200}animation:\s*none/);
   });
 
+  it("lines the phone Repertoire header up and gives the board its top gap", () => {
+    const phone = phoneCss;
+    const header = phone.slice(phone.indexOf("  #build-rep-header {"));
+    const rule = header.slice(0, header.indexOf("\n  }"));
+    // Flow layout with centered lines: a grid centered the 44px back button
+    // across both rows while the title sat on the first one, ~9px apart.
+    expect(rule).not.toMatch(/display:\s*grid/);
+    expect(rule).toMatch(/display:\s*flex/);
+    expect(rule).toMatch(/align-content:\s*center/);
+    // The header is the board's top neighbour on a phone: it owns the gap.
+    expect(rule).toMatch(/margin:\s*0 0 12px/);
+    // The save chip lives beside the inspector tools here, not in the far-off
+    // board bar.
+    expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
+    expect(phone).toMatch(/#build-inspector \.build-sync \{/);
+  });
+
   it("docks one single-select Build inspector (Explorer / Coverage)", () => {
     expect(html).toContain('id="build-inspector"');
     expect(html).toContain('class="dock"');

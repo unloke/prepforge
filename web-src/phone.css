@@ -617,20 +617,49 @@
      Header (back, name, size, ⋯) over the board; under it the Explorer —
      the next moves, yours dotted, a tap adds one — then the line tree. */
   #view-build { --phone-reserve: max(244px, 40dvh); }
+  /* Header (back, name, size, ⋯) over the board. It is the board's top
+     neighbour here (the board bar is the thumb bar below), and it is flow
+     layout rather than a grid: in a grid the 44px back button at the end of
+     the row is centered on the two text rows, while the title sits on the
+     first one, so the two never lined up. The separator counts as an
+     annotation, not a word, so alignment ignores it. */
   #build-rep-header {
     order: 0;
     flex: none;
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 44px;
-    grid-template-rows: auto auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    align-content: center;
     column-gap: 4px;
+    row-gap: 0;
     min-height: 52px;
-    margin: 0;
+    margin: 0 0 12px;
     padding: 2px 4px;
     border: 0;
     background: var(--bg);
   }
+  #build-rep-header .rep-name {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 24px;
+    font-size: 17px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #build-rep-header .rep-stats {
+    flex: 1 1 100%;
+    order: 3;
+    min-width: 0;
+    height: 18px;
+    padding-left: 48px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #build-rep-header .rep-color-sub { display: none; }
   #build-rep-header .phone-back { grid-row: 1 / 3; color: var(--accent-strong); }
   #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   #build-rep-header .rep-name { grid-column: 2; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
