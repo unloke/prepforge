@@ -218,6 +218,18 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
     // The undo card sits in the tree column, before the Explorer dock.
     expect(html.indexOf('id="build-undo"')).toBeLessThan(html.indexOf('id="build-inspector"'));
   });
+
+  it("takes the deleted comment out of the position trail with the move", () => {
+    // The trail under the breadcrumbs shows the current move's comment. A delete
+    // that lands on the current move selects its parent, so the stale paragraph
+    // has to go with it: the path repaint alone left the removed move's comment
+    // on screen (and a delete button click stays on the button, so nothing else
+    // repainted the trail either).
+    const del = extractByMarker("async function deleteBuildNodeLocal(nodeId) {");
+    const parentSelect = del.indexOf("await selectBuildNode(parentId);");
+    expect(parentSelect).toBeGreaterThan(-1);
+    expect(del.indexOf("syncViewHeads()", parentSelect)).toBeGreaterThan(parentSelect);
+  });
 });
 
 describe("Notices report finished work in past tense", () => {
