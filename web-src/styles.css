@@ -3093,7 +3093,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .note { font-size: var(--fs); }
 #view-train .btn.sm { font-size: var(--fs); }
 #view-train .seg { display: flex; width: 100%; }
-#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); }
+#view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+/* The mode tabs answer a press like every other control on the page. */
+#view-train .seg-btn:active:not(:disabled) { transform: scale(0.97); }
 
 .blitz-bar {
   position: absolute;
@@ -3382,6 +3384,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* The result card arrives when the session ends: one rise, once. */
 #train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
+/* The session card arrives the same way when Start opens it, and only then:
+   the panel stays mounted as the queue advances, so cards never re-rise. */
+#train-progress-panel:not([hidden]) { animation: trainCardEnter var(--dur) var(--ease-out) both; }
 @keyframes trainCardEnter {
   from { opacity: 0; transform: translateY(10px); }
 }
