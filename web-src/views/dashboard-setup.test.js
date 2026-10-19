@@ -124,8 +124,10 @@ describe("dashboard setup checklist", () => {
     // One entry point per job: the repertoire step doesn't repeat Import PGN
     // (the empty state and the list header already carry it).
     expect(String(steps.innerHTML)).not.toContain('data-lib-action="import"');
-    // Training is locked until there is something to train.
-    expect(String(steps.innerHTML)).toMatch(/data-lib-action="train" disabled/);
+    // Training waits for a repertoire, so the step names what is missing
+    // instead of carrying a button that cannot apply.
+    expect(String(steps.innerHTML)).not.toContain('data-lib-action="train"');
+    expect(String(steps.innerHTML)).toMatch(/data-setup-step="train"[^]*?Add a repertoire first/);
   });
 
   it("a done step never carries a locked/blocked explanation (round 2, symptom 1)", async () => {
@@ -138,7 +140,7 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).not.toContain("Unlocks once");
     expect(String(steps.innerHTML)).not.toMatch(/<div class="step-text"><b>[^<]+<\/b><p>/);
     // The open repertoire step is where the lock is named.
-    expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
+    expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train"/);
     expect(String(container.innerHTML)).toContain("No repertoires yet.");
   });
 
@@ -151,6 +153,7 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).toContain("1 of 3 done");
     expect(String(steps.innerHTML)).toMatch(/data-setup-step="repertoire"[^>]*>.*Done/s);
     expect(String(steps.innerHTML)).toContain('data-lib-action="lichess"');
+    expect(String(steps.innerHTML)).toContain('data-lib-action="train"');
     expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
     expect(String(container.innerHTML)).not.toContain("step-n");
   });
@@ -191,6 +194,7 @@ describe("dashboard setup checklist", () => {
     mockDashboard({ repertoires: 0 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
     await view.loadDashboard();
     expect(String(steps.innerHTML)).toContain("1 of 3 done");
+    expect(String(steps.innerHTML)).toContain('data-lib-action="train"');
     expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
   });
 

@@ -204,11 +204,14 @@ export function createDashboardView({
         // step promises only what it measures.
         title: "Start a training session",
         // A finished step reads "Done", so it can neither show a disabled Train
-        // nor a reason it is locked; the disabled CTA explains the lock.
+        // nor a reason it is locked.
         done: ((payload && payload.training_sessions) || 0) > 0,
         action: "train",
         label: "Train",
+        // With no repertoire there is nothing to train, so the step says what
+        // is missing instead of carrying a button that cannot apply.
         locked: repertoires === 0,
+        lockNote: "Add a repertoire first",
       },
     ];
   }
@@ -232,11 +235,14 @@ export function createDashboardView({
             : html`<span class="step-n" aria-hidden="true">${i + 1}</span>`;
           const cta = step.done
             ? html`<span class="step-done">Done</span>`
+            : step.locked
+            ? ""
             : !step.action
             ? ""
-            : html`<button type="button" class="btn sm" data-lib-action="${step.action}"${step.locked ? " disabled" : ""} data-testid="setup-cta-${step.id}">${step.label}</button>`;
+            : html`<button type="button" class="btn sm" data-lib-action="${step.action}" data-testid="setup-cta-${step.id}">${step.label}</button>`;
+          const note = step.locked && !step.done ? step.lockNote : step.detail;
           return (
-            html`<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}<div class="step-text"><b>${step.title}</b>${step.detail ? html`<p>${step.detail}</p>` : ""}</div>${cta}</div>`
+            html`<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}<div class="step-text"><b>${step.title}</b>${note ? html`<p>${note}</p>` : ""}</div>${cta}</div>`
           );
         })}`;
     card.hidden = false;
