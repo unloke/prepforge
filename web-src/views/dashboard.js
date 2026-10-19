@@ -337,10 +337,14 @@ export function createDashboardView({
     const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
-    const queueText = todayQueueText(due, soon, newMoves, weak);
     // Nothing stored in the account: the primary action is the first
     // repertoire, not Train, which can only answer "no active repertoire".
-    const firstRun = ownRepertoireCount() === 0 && !(Number(payload.training_sessions) > 0);
+    // A past training session does not change that — the account can have
+    // trained before and still have no repertoire to train now.
+    const firstRun = ownRepertoireCount() === 0;
+    // "Queue is clear" is a claim about a queue. With no repertoire there is
+    // no queue at all, so the line says what is missing instead.
+    const queueText = firstRun ? "No repertoire to train yet" : todayQueueText(due, soon, newMoves, weak);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;

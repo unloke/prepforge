@@ -271,12 +271,25 @@ describe("dashboard setup checklist", () => {
     mockDashboard({ repertoires: 0, training_sessions: 0 });
     await view.loadDashboard();
     const today = String(todayCard.innerHTML);
-    expect(today).toContain("Queue is clear");
+    expect(today).toContain("No repertoire to train yet");
+    expect(today).not.toContain("Queue is clear");
     expect(today).toContain('data-lib-action="new"');
     expect(today).not.toContain("dashboard-train-now");
   });
 
-  it("keeps Train once the account has stored something (a repertoire or a session)", async () => {
+  it("the Today primary action follows the repertoire count, not the training history", async () => {
+    // The account trained before and has no repertoire now: Train can only
+    // answer "nothing to train", so the strip offers the first repertoire.
+    mockDashboard({ repertoires: 0, training_sessions: 8 });
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain('data-lib-action="new"');
+    expect(today).not.toContain("dashboard-train-now");
+    expect(today).toContain("No repertoire to train yet");
+    expect(today).not.toContain("Queue is clear");
+  });
+
+  it("keeps Train once the account has a repertoire", async () => {
     mockDashboard({ repertoires: 1 }, [
       { id: "rep-1", name: "e4", color: "white", is_active: false, health: { untrained: 0, due: 0 } },
     ]);
