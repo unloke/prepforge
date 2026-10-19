@@ -1944,8 +1944,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
      an empty card. (On an empty library there is no table, so it grows.) */
   .lib-grid > .steps { align-self: start; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { align-self: stretch; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .lib-list { display: flex; flex-direction: column; }
-  .lib-list.is-empty:not(.is-error) > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+  /* The error card and the empty card are the only thing in this card, so both
+     stand in the middle of it. The error used to float at the top of the card
+     with the whole surface empty under it. */
+  .lib-grid:has(> .lib-list.is-empty) > .lib-list { display: flex; flex-direction: column; }
+  .lib-list.is-empty > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
   /* The checklist is a list: its rows sit next to each other. Letting them
      grow to fill the card spread three steps over half a screen of white. */

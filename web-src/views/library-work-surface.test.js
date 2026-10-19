@@ -47,3 +47,11 @@ it("the checklist's rows stay a list on an empty library", () => {
   expect(step).toMatch(/flex:\s*0 0 auto/);
   expect(step).not.toMatch(/max-height/);
 });
+
+it("the error card stands where the empty card stands", () => {
+  // Both are the only thing in the list card, so both stand in the middle of
+  // it. The error used to float at the top with the whole surface empty under
+  // it, while the empty state beside it sat in the middle.
+  expect(rule(".lib-grid:has(> .lib-list.is-empty) > .lib-list {")).toMatch(/display:\s*flex/);
+  expect(rule(".lib-list.is-empty > .lib-rep-list {")).toMatch(/justify-content:\s*center/);
+});
