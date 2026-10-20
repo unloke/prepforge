@@ -211,7 +211,8 @@ moves = Table(
     metadata,
     Column("game_id", Text, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True),
     Column("ply", Integer, primary_key=True),
-    Column("uci", Text, nullable=False),
+    # The arriving move is games.uci_blob[ply-1]; only what cannot be rebuilt
+    # from it is here.
     Column("engine_eval_before_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("engine_eval_after_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("best_move_uci", Text),

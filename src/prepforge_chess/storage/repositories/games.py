@@ -165,7 +165,6 @@ class GameRepository(EvaluationRepository):
             {
                 "game_id": game.id,
                 "ply": move.ply,
-                "uci": move.uci,
                 "engine_eval_before_id": _eval_id(move.engine_eval_before, move.fen_before),
                 "engine_eval_after_id": _eval_id(move.engine_eval_after, move.fen_after),
                 "best_move_uci": move.best_move_uci,
@@ -191,7 +190,6 @@ class GameRepository(EvaluationRepository):
                 stmt = stmt.on_conflict_do_update(
                     index_elements=["game_id", "ply"],
                     set_={
-                        "uci": stmt.excluded.uci,
                         "engine_eval_before_id": stmt.excluded.engine_eval_before_id,
                         "engine_eval_after_id": stmt.excluded.engine_eval_after_id,
                         "best_move_uci": stmt.excluded.best_move_uci,

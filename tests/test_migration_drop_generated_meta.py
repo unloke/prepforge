@@ -57,9 +57,9 @@ def test_upgrade_drops_the_unread_column_and_keeps_annotations(migrate):
     with engine.connect() as conn:
         columns = {row[1] for row in conn.execute(text("PRAGMA table_info(moves)"))}
         row = conn.execute(text(
-            "SELECT ply, uci, classification, generated_comment FROM moves"
+            "SELECT ply, classification, generated_comment FROM moves"
         )).mappings().one()
     assert "generated_meta_json" not in columns
     assert dict(row) == {
-        "ply": 1, "uci": "e2e4", "classification": "best", "generated_comment": "A strong start.",
+        "ply": 1, "classification": "best", "generated_comment": "A strong start.",
     }
