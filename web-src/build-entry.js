@@ -242,10 +242,8 @@ export function setBuildInspector(tool) {
     button.tabIndex = on ? 0 : -1;
   });
   const dbs = document.getElementById("inspector-dbs");
-  const opening = document.getElementById("explorer-opening");
   const engineSwitch = document.getElementById("explorer-engine-switch");
   if (dbs) dbs.hidden = tab !== "explorer";
-  if (opening) opening.hidden = tab !== "explorer";
   if (engineSwitch) engineSwitch.hidden = tab !== "explorer";
   for (const id of ["coverage-scope", "coverage-depth", "coverage-run"]) {
     const el = document.getElementById(id);

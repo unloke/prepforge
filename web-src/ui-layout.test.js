@@ -297,19 +297,19 @@ describe("workspace chrome layout", () => {
   });
 
   it("keeps the dock chrome to one tools row above the panel", () => {
-    // Database seg + opening + score chip + info popover + scan share one row;
-    // the old multi-line chrome (separate label, explorer-head, scope line,
-    // coverage head + standing hint) is gone.
+    // The database seg, the ⓘ and Scan share one row; the old multi-line
+    // chrome is gone, and the opening's name is a caption in the ⓘ tooltip.
     expect(html).toContain('id="build-dock-tools"');
     expect(html).toContain('id="inspector-dbs"');
     expect(html).toContain('id="inspector-info"');
-    expect(html).not.toContain("build-inspector-label");
+    // The opening's name is a caption on the data, so it lives in the ⓘ
+    // tooltip rather than on a line of its own above the rows.
+    expect(html).not.toMatch(/id="explorer-opening"|id="build-inspector-label"/);
     expect(html).not.toContain("explorer-scope");
     expect(html).not.toContain("coverage-head");
     expect(html).not.toContain("coverage-hint");
     expect(html).not.toContain("Master games — strong-player games");
     expect(html).not.toContain("How much of real human play");
-    expect(app).toContain("inspectorScopeText");
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");
@@ -320,13 +320,13 @@ describe("workspace chrome layout", () => {
     // into its own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    // The tree sizes to its moves (shrinkable, with a floor: a long line
-    // scrolls inside rather than growing the panel) and the panel's leftover
-    // height closes the panel after the foot, not between a short line and the
-    // inspector, where it was a 400px hole.
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
+    // The tree is the workspace and takes the panel's leftover height, so the
+    // inspector pins to the panel's foot instead of leaving ground under it; a
+    // long line still scrolls inside the tree, above the dock, with a floor so
+    // the dock can never squeeze it away.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
     expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
-    expect(css).toMatch(/#build-sidebar \.panel-body::after \{[^}]*flex:\s*1 1 auto/);
+    expect(css).not.toContain("#build-sidebar .panel-body::after");
   });
 
   it("captions the board with the position, not the repertoire", () => {
@@ -341,13 +341,12 @@ describe("workspace chrome layout", () => {
     // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
     // still hardcodes 9-12px is the one squinting line. The Explorer share, the
     // in-repertoire dot, the crumb separator and the fork chip's number all read
-    // at that floor now; on a phone the panel's foot, save chip and fork share
-    // take the same token instead of a 12px literal.
+    // at that floor now; on a phone the save chip and fork share take the same
+    // token instead of a 12px literal.
     expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*11px/);
     expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
     expect(ruleBody(".crumb-sep")).toMatch(/font-size:\s*var\(--fs-s\)/);
     expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
-    expect(phoneCss).toMatch(/#view-build \.build-foot \{[^}]*font-size:\s*var\(--fs-s\)/);
     expect(phoneCss).toMatch(/#build-inspector \.build-sync \{[^}]*font-size:\s*var\(--fs-s\)/);
     expect(phoneCss).toMatch(/#view-build \.fork-chip small \{[^}]*font-size:\s*var\(--fs-s\)/);
   });
@@ -410,10 +409,14 @@ describe("workspace chrome layout", () => {
     // the panel's title, one step above the 13px ledger under it.
     expect(ruleBody("#build-rep-header")).toMatch(/min-height:\s*52px/);
     expect(ruleBody("#build-rep-header .rep-name")).toMatch(/font-size:\s*17px/);
-    // The totals are the panel's last line (after the dock), not a head strip.
-    const panelBody = build.slice(build.indexOf("<div class=\"panel-body\""), build.indexOf("</aside>", build.indexOf('id="build-inspector"')));
-    expect(panelBody.indexOf('id="build-rep-stats"')).toBeGreaterThan(panelBody.indexOf('id="build-inspector"'));
-    expect(ruleBody(".build-foot")).toMatch(/font-size:\s*var\(--fs-s\)/);
+    // The size summary is a caption on that name (its tooltip), so the panel
+    // has no foot band: it described the whole tree, which the trail, the tree
+    // and the name already show what matters of.
+    expect(html).not.toContain('id="build-rep-stats"');
+    expect(html).not.toContain('class="build-foot');
+    expect(css).not.toMatch(/\.build-foot\s*\{/);
+    expect(app).toMatch(/nameEl\.title\s*=/);
+    expect(app).toContain("which Train drills; opponent replies aren't drilled");
     // The empty panel's one sentence is running text: it reads at prose size in
     // the full ink, not at the dense 13px the move ledger uses.
     const buildEmpty = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-tree-meta"'));

@@ -2896,8 +2896,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   --fs-xs: 13px;
   --fs-s: 13px;
 }
-#view-build :is(.mtree-num, .mtree-collapse, .build-sync),
-#view-build .engine-banner :is(.engine-banner-why, .engine-banner-action) {
+#view-build :is(.mtree-num, .mtree-collapse, .build-sync) {
   font-size: var(--fs-s);
 }
 /* The shared .panel-head and .engine-banner keep their rule for Analyze and
@@ -2907,17 +2906,27 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    is a diagnostic, not a pane: it never shrinks under a long tree (a squeezed
    grid clipped its own sentence mid-line). */
 #view-build .engine-banner { border: 0; border-radius: 0; flex: none; }
-#view-build .engine-banner p { max-width: 62ch; }
-/* The action names the cause and the fix in one sentence ("Open PrepForge in
-   Chrome or Edge — a browser that keeps COOP/COEP isolation"), so the line
-   above it repeated it in technical words. Build keeps the title and the
-   sentence you act on; Analyze and Train keep the full explanation. It is the
-   only running text in this panel, so it reads at prose size. */
-#view-build .engine-banner .engine-banner-why { display: none; }
-#view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) {
-  font-size: 16px;
-  line-height: 1.45;
+/* One line, in the short form. The same state at 16px over two or three lines
+   cost the panel 86px of its height on every session without a browser engine,
+   which is a state and not the work; the full fix is in the tooltip, where a
+   cut sentence belongs. */
+#view-build .engine-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 5px var(--build-pad, 14px) 6px;
+  white-space: nowrap;
 }
+#view-build .engine-banner :is(.engine-banner-why, .engine-banner-action) { display: none; }
+#view-build .engine-banner :is(.engine-banner-title, .engine-banner-brief) {
+  font-size: var(--fs-s);
+  line-height: 1.4;
+}
+#view-build .engine-banner .engine-banner-title { flex: none; }
+#view-build .engine-banner .engine-banner-brief { display: inline; min-width: 0; color: var(--muted); }
+/* Analyze keeps the full sentence; the short form is Build's alone. */
+.engine-banner-brief { display: none; }
 
 /* Motion in the panel, on the same rules as the rest of the app: the fork bar
    and the Explorer rows arrive after a move or a fetch, so they enter with a
@@ -3012,6 +3021,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .fork-head b { font-weight: 600; color: var(--muted); }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The full list is an explicit request, so it may be long — but it scrolls
+   inside a capped block. A thirty-move fork opened whole pushed the move tree
+   to its 90px floor at 1024 and left the line you are building off screen; at
+   four rows the tree keeps its place while you read the list. */
+.fork-chips.is-all {
+  max-height: 118px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .fork-chip {
   display: inline-flex;
   align-items: baseline;
@@ -3033,15 +3051,28 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
 .fork-chip:hover { border-color: var(--accent); }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+/* "Show all" is a disclosure, not a move: it sits at the head's right edge,
+   in the secondary ink, so it never reads as a fourth option. */
+.fork-more {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.fork-more:hover { text-decoration: underline; }
+.fork-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
 .tree-wrap {
-  /* Sized by its moves. The panel's leftover height goes after the tree and
-     the dock, where it is the workspace's own rest; letting the tree grow
-     instead put a 400px hole between a short line and the reference table
-     under it. A tree taller than the panel shrinks to the space left and
-     scrolls inside, so the panel keeps its card shape and the page never
-     scrolls. */
-  flex: 0 1 auto;
+  /* The workspace, so the panel's leftover height is the tree's: the tree
+     fills down to the inspector, which pins to the panel's foot as the
+     console does. Left to a trailing spacer, the leftover showed up as ground
+     under the dock, which read as a broken card rather than as an open line. */
+  flex: 1 1 auto;
   min-height: 90px;
   padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
   overflow: auto;
@@ -3050,14 +3081,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   line-height: 1.75;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
-/* The panel's leftover height is the foot's: one flexible block after the
-   totals, so head, trail, fork, line, inspector and foot stack from the top
-   and the empty ground closes the panel instead of splitting it. */
-#build-sidebar .panel-body::after {
-  content: "";
-  flex: 1 1 auto;
-  min-height: 0;
-}
 
 .dock {
   position: relative;
@@ -3995,23 +4018,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow-wrap: anywhere;
 }
 
-/* Opening explorer: a Move / Games / W-D-L table. Its name is a caption on
-   the data, not a peer of the controls: it takes the line under the database
-   picker and the Engine switch instead of squeezing them apart and pushing
-   the ⓘ onto a row of its own (which happened at 1024, where the name is
-   longer than the space left beside it). */
-.explorer-opening {
-  flex: 1 1 100%;
-  order: 3;
-  margin-top: -2px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-s);
-  font-style: italic;
-  color: var(--muted);
-}
+/* Opening explorer: a Move / Games / W-D-L table. The opening's name is a
+   caption on the data, and the rows are readable without it (the panel head
+   names the repertoire and the trail names the line), so it lives in the ⓘ
+   tooltip and its popover instead of taking a line of the dock's height. */
 
 .explorer-rows {
   display: grid;
@@ -5726,9 +5736,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }
 
 /* The head is the panel's title and nothing else: the repertoire's name at the
-   size a title is read at, then its two actions. The counts that used to spend
-   a second line here now close the panel (see .build-foot) — they describe the
-   whole tree, not this moment in it. */
+   size a title is read at, then its two actions. Its size (lines, moves, moves
+   to train) is a caption on that name, in its tooltip: as a band at the panel's
+   foot it spent 38px of every build on a number read once. */
 #build-rep-header {
   min-height: 52px;
   padding: 10px 10px 10px var(--build-pad, 14px);
@@ -5736,16 +5746,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #build-rep-header .rep-name { font-size: 17px; font-weight: 650; flex: 1 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 13px; }
 
-/* The tree's totals: the last line of the panel, on the panel's own ground.
-   A rule above it would be a fifth band; the gap and the quiet ink are
-   enough. */
-.build-foot {
-  flex: none;
-  padding: 9px 14px 11px;
-  font-size: var(--fs-s);
-  line-height: 1.4;
-}
-#build-sidebar:has(#build-empty:not([hidden])) .build-foot { display: none; }
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {

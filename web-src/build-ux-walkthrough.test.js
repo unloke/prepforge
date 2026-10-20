@@ -169,7 +169,9 @@ describe("Move counts (P2-4)", () => {
   it("uses the same 'to train' wording on the Library row and the Repertoire header", () => {
     expect(dashboard).toContain("to train`");
     expect(dashboard).not.toContain("trainable move");
-    expect(app).toContain("` · ${train} to train`");
+    // The Repertoire's count is a caption on the repertoire's name, and it
+    // says "to train" exactly as the Library row does.
+    expect(app).toContain('${train} to train.`');
   });
 });
 

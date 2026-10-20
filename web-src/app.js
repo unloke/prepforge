@@ -505,25 +505,26 @@ function syncViewHeads() {
     item.hidden = appState.currentView !== "dashboard";
   });
   if (appState.currentView === "analyze") syncAnalyzeHead();
-  const stats = document.getElementById("build-rep-stats");
-  if (!stats) return;
+  // The repertoire's size describes the whole tree, not the position, so it is
+  // a caption on the name: as the panel's last band it spent 38px of every
+  // build on a number the builder reads once.
+  const nameEl = document.getElementById("build-rep-name");
+  if (!nameEl) return;
   const build = appState.build;
   if (!build || isBuildReadOnly()) {
-    stats.textContent = "";
-    stats.title = "";
-  } else {
-    const played = build.nodes.filter((n) => n.depth > 0);
-    const parents = new Set(build.nodes.map((n) => n.parent_id));
-    const lines = played.filter((n) => !parents.has(n.id)).length;
-    // "to train" is the Library's count too: your own enabled moves — the
-    // ones Train drills (opponent replies are context, not cards).
-    const train = countBuildMovesToTrain(build);
-    stats.textContent =
-      `${lines} line${lines === 1 ? "" : "s"} · ${played.length} move${played.length === 1 ? "" : "s"}` +
-      ` · ${train} to train`;
-    stats.title = `${countOf(played.length, "move")} in the tree; ${train} of them are your moves, which Train drills. Opponent replies aren't drilled.`;
+    // An empty title renders as no tooltip, and it clears the old tree's size.
+    nameEl.title = "";
+    return;
   }
-  stats.hidden = !stats.textContent;
+  const played = build.nodes.filter((n) => n.depth > 0);
+  const parents = new Set(build.nodes.map((n) => n.parent_id));
+  const lines = played.filter((n) => !parents.has(n.id)).length;
+  // "to train" is the Library's count too: your own enabled moves — the
+  // ones Train drills (opponent replies are context, not cards).
+  const train = countBuildMovesToTrain(build);
+  nameEl.title =
+    `${countOf(lines, "line")} · ${countOf(played.length, "move")} · ${train} to train.` +
+    ` ${train === 1 ? "It is your move" : "They are your moves"}, which Train drills; opponent replies aren't drilled.`;
 }
 
 // Own-side moves on the enabled tree (a disabled node hides its subtree) —
@@ -740,9 +741,11 @@ function setBuildLoading(on, { restore = true } = {}) {
   const empty = document.getElementById("build-empty");
   if (empty) empty.hidden = true;
   const nameEl = document.getElementById("build-rep-name");
-  if (nameEl) nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
-  const stats = document.getElementById("build-rep-stats");
-  if (stats) stats.hidden = true;
+  if (nameEl) {
+    nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
+    // The old tree's size is not this tree's: the caption goes with it.
+    nameEl.title = "";
+  }
   const meta = document.getElementById("build-tree-meta");
   if (meta) meta.innerHTML = "";
   const tree = document.getElementById("builder-tree");
