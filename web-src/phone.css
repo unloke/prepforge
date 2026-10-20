@@ -320,12 +320,14 @@
     padding: 6px 0 8px;
     border-radius: 0;
     background: var(--bg);
+    /* Cards pass under the strip while the page scrolls; the edge says the
+       strip ends there instead of the card looking cut. */
+    border-bottom: 1px solid var(--line);
   }
   #view-settings .settings-nav-link {
-    flex: 1 1 auto;
-    justify-content: center;
+    flex: 0 1 auto;
     min-height: 42px;
-    padding: 0 12px;
+    padding: 0 14px;
     border-radius: 10px;
     background: var(--panel);
     font-size: 15px;

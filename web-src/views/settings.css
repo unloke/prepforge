@@ -268,7 +268,8 @@
    follows the page down. The shared view-enter keyframes do the travel, so
    this reads like the rest of the app. The animation hangs off the active
    view, so it plays again every time the page is opened. */
-#view-settings.is-active .page-head h1 {
+#view-settings.is-active .page-head h1,
+#view-settings.is-active .settings-here {
   animation: view-enter var(--dur) var(--ease-out) both;
 }
 #view-settings.is-active .settings-nav-link {
