@@ -28,6 +28,7 @@ const FILES = [
   "./build-entry.js",
   "./palette.js",
   "./train-entry.js",
+  "./analyze-book-state.js",
   "./undo.js",
   "./controllers/analyze-entry.js",
   "./views/shared/source-store.js",
