@@ -47,6 +47,38 @@ const trustedRaw = {
   }),
 };
 
+// Every web-src file still over the 500-line ceiling, at its measured size.
+const OVER_CEILING = [
+  ["web-src/app.js", 1931],
+  ["web-src/board/board-controller.js", 621],
+  ["web-src/coach/brilliant-assess.test.js", 667],
+  ["web-src/coach/why/facts.js", 816],
+  ["web-src/controllers/account.js", 680],
+  ["web-src/controllers/analyze-session.js", 1293],
+  ["web-src/controllers/build-session.js", 1427],
+  ["web-src/controllers/sync.js", 586],
+  ["web-src/controllers/train-session.js", 2176],
+  ["web-src/engine/build-generator.test.js", 720],
+  ["web-src/engine/maia3-provider.test.js", 627],
+  ["web-src/engine/stockfish-provider.js", 595],
+  ["web-src/engine/stockfish-provider.test.js", 550],
+  ["web-src/scout-prefilter.test.js", 612],
+  ["web-src/scout-report.js", 1417],
+  ["web-src/scout-report.test.js", 1351],
+  ["web-src/scout-stats.js", 905],
+  ["web-src/scout-stats.test.js", 769],
+  ["web-src/scout.js", 1531],
+  ["web-src/scout.test.js", 1717],
+  ["web-src/train-lucky-db.js", 505],
+  ["web-src/train-lucky-db.test.js", 554],
+  ["web-src/ui-layout.test.js", 668],
+  ["web-src/views/analyze.js", 768],
+  ["web-src/views/dashboard.js", 803],
+  ["web-src/views/scout.js", 2002],
+  ["web-src/views/settings.js", 645],
+  ["web-src/views/teams-controller.js", 609],
+];
+
 const commonRules = {
   "no-undef": "error",
   "no-unreachable": "error",
@@ -79,8 +111,24 @@ export default [
       sourceType: "module",
       globals: { ...globals.browser, ...globals.es2021 },
     },
-    rules: { ...commonRules, "local/html-templates": "error", "local/trusted-raw": "error" },
+    rules: {
+      ...commonRules,
+      "local/html-templates": "error",
+      "local/trusted-raw": "error",
+      // One module, one concern. 500 code lines (blank lines and comments
+      // excluded) is where a file stops being readable end to end — the reason
+      // app.js was split into the modules around it.
+      "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }],
+    },
   },
+  // Files already over the ceiling when it was introduced, with the measured
+  // size (blank lines and comments excluded). Each number is a floor as well
+  // as a ceiling: growth fails the lint, shrinking means lowering the number,
+  // and splitting the file means deleting its line. This is the to-do list.
+  ...OVER_CEILING.map(([file, max]) => ({
+    files: [file],
+    rules: { "max-lines": ["error", { max, skipBlankLines: true, skipComments: true }] },
+  })),
   {
     files: ["scripts/**/*.mjs"],
     languageOptions: {
