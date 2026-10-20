@@ -4279,12 +4279,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 5px;
   color: inherit;
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
+/* The mainline is the line, so it reads at full ink; variations stay one step
+   back. Weight is not the tree's signal (it used to bold every mainline move
+   and every own move at once, which is every move). */
 .mtree-line.is-main > .mtree-move {
   color: var(--text);
 }
@@ -4293,14 +4296,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--surface-3);
 }
 
-/* The single selected move — the only strong highlight in the tree. */
+/* The one selected move: a filled pill, and the only strong mark in the tree.
+   The path that leads to it is drawn by the variation rails, so no move on the
+   way here carries a second accent fill. */
 .mtree-move.is-current {
   background: var(--accent);
   color: var(--accent-ink);
   box-shadow: var(--shadow-1);
 }
 
-/* A faint trail marking the line that leads to the current move. */
+/* A faint trail marking the line that leads to the current move (Analyze's
+   game list). Build does not paint it: its trail above the tree already says
+   where you stand, and filling every move on the way here spent the accent on
+   almost the whole tree. */
 .mtree-move.on-path {
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -4312,10 +4320,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-style: italic;
 }
 
-/* Opponent replies read lighter than the moves you own. */
+/* Opponent replies are context, not cards of yours. */
 .mtree-move.is-opp {
   color: var(--muted);
-  font-weight: 500;
 }
 
 .mtree-move.is-disabled {
@@ -4323,37 +4330,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   text-decoration: line-through;
 }
 
-/* Build-only decorations. */
-.mtree-move.is-main {
-  font-weight: 700;
-}
-.mtree-move.is-prep {
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-underline-offset: 2px;
-}
-/* Mastery heatmap: a colored underline on trained own-side moves. */
-.mtree-move.m-mastered {
-  box-shadow: inset 0 -2px 0 var(--k-mastered);
-}
-.mtree-move.m-learning {
-  box-shadow: inset 0 -2px 0 var(--k-learning);
-}
-.mtree-move.m-due {
-  box-shadow: inset 0 -2px 0 var(--k-due);
-}
-.mtree-move.m-weak {
-  box-shadow: inset 0 -2px 0 var(--k-weak);
-}
+/* Training status, one mark per move: a 2px bar under a move that is DUE
+   (amber) or WEAK (red) — the two states that ask you to do something. Every
+   other status (learning, mastered, untrained) stays unmarked and says its
+   name in the move's tooltip, so a calm tree is not a tree without data. */
+.mtree-move.m-due { box-shadow: inset 0 -2px 0 var(--k-due); }
+.mtree-move.m-weak { box-shadow: inset 0 -2px 0 var(--k-weak); }
 /* The selected move keeps full contrast whatever it is decorated with: the
    opponent-move grey (and a disabled move's fade) must not bleed onto the
    accent fill. Dark theme: white on the lighter accent is only ~3:1, so the
    label goes dark instead. */
 .mtree-move.is-current.is-opp,
-.mtree-move.is-current.is-prep,
 .mtree-move.is-current {
   color: var(--accent-ink);
-  text-decoration-color: currentColor;
 }
 .mtree-move.is-current.is-disabled { opacity: 0.8; }
 
