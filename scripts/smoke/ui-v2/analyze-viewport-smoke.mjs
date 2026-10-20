@@ -331,6 +331,9 @@ async function runViewport(vp) {
   });
   console.log(`[analyze-smoke] engine button: ${JSON.stringify(engineSpot)}`);
   await page.locator("#open-engine-widget").click();
+  // A device that has not answered for the 94 MB full net is asked first: the
+  // smoke keeps lite, which is the answer that costs nothing.
+  await page.locator('[data-testid="engine-full-choice"] [data-choice="no"]').click({ timeout: 2000 }).catch(() => {});
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await page.evaluate(async () => {
     for (const id of ["analysis-next", "analysis-next", "analysis-prev", "analysis-next", "analysis-prev", "analysis-next"]) {
