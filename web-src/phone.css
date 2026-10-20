@@ -765,7 +765,7 @@
     border-radius: var(--phone-radius);
     background: var(--panel);
   }
-  #view-build .tree-wrap { max-height: none; padding: 10px 12px; overflow: visible; line-height: 1.6; }
+  #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
   #view-build .dock-resizer,
   #build-inspector .dock-fold { display: none; }
   #build-inspector { height: auto !important; max-height: none; margin: 0; overflow: hidden; }

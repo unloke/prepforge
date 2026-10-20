@@ -2927,14 +2927,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 #build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 #build-branchbar .fork-chip:active { transform: scale(0.97); }
 
+/* One panel, one ground. The trail, the fork, the tree, the dock and the foot
+   used to alternate between --panel and a recessed --surface-3, which read as
+   five stacked strips with the board beside them. They all sit on the panel
+   now and every block hangs from the same 14px left edge; the only other tone
+   step is the dock's, because reference data under the line is a different
+   kind of thing. */
+#build-sidebar { --build-pad: 14px; }
+
 .tree-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding-right: 12px;
-  background: var(--surface-3);
+  background: var(--panel);
 }
 .crumbs {
   flex: 1;
@@ -2942,7 +2949,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 1px;
-  padding: 6px 12px;
+  padding: 6px var(--build-pad, 12px);
   overflow-x: auto;
   white-space: nowrap;
   font-size: var(--fs-s);
@@ -2985,8 +2992,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .forkbar {
-  padding: 8px 12px;
-  background: var(--surface-3);
+  padding: 8px var(--build-pad, 12px) 10px;
+  background: var(--panel);
 }
 .fork-head {
   display: flex;
@@ -2995,6 +3002,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   margin-bottom: 6px;
   font-size: var(--fs-s);
 }
+.fork-head b { font-weight: 600; color: var(--muted); }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .fork-chip {
   display: inline-flex;
@@ -3026,8 +3034,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
      panel keeps its card shape and the page never scrolls. */
   flex: 1 1 auto;
   min-height: 90px;
-  padding: 8px 12px 12px;
-  background: var(--surface-3);
+  padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
   overflow: auto;
   overscroll-behavior: contain;
   font-size: 13px;
@@ -3046,11 +3053,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Reference data under the line: one tone step down from the panel, so it
+     reads as a different kind of thing without a rule or a card. */
+  background: var(--surface-3);
 }
 .dock-tabs {
   display: flex;
   gap: 2px;
-  padding: 0 8px;
+  padding: 0 var(--build-pad, 12px);
 }
 .dock-tabs button {
   display: inline-flex;
@@ -3069,7 +3079,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.dock-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
+.dock-body { flex: 1; min-height: 0; padding: 8px var(--build-pad, 12px); overflow: auto; }
 /* Drag handle between the move tree and the inspector: the whole seam is the
    grab area, the visible grip is a short pill in the middle. The element is
    zero-height, so the cursor and the touch-action live on both it and its
@@ -5687,7 +5697,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    whole tree, not this moment in it. */
 #build-rep-header {
   min-height: 52px;
-  padding: 10px 10px 10px 14px;
+  padding: 10px 10px 10px var(--build-pad, 14px);
 }
 #build-rep-header .rep-name { font-size: 15px; font-weight: 650; }
 #build-rep-header .rep-color-sub { font-size: 13px; }
