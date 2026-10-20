@@ -5,7 +5,7 @@ import { html } from "../html.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
 import "./settings.css";
-import { resolveModelBase, peekSharedMaia3Provider } from "../engine/maia3-provider.js";
+import { resolveModelBase, peekSharedMaia3Provider, loadMaia3Manifest } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 import { createAccountSection } from "./settings-account.js";
 
@@ -421,9 +421,7 @@ export function createSettingsView({
       }
       let manifest;
       try {
-        const resp = await fetch("/static/maia3/maia3.manifest.json");
-        if (!resp.ok) throw new Error(`manifest ${resp.status}`);
-        manifest = await resp.json();
+        manifest = await loadMaia3Manifest();
       } catch {
         set(MAIA_STATUS.UNAVAILABLE, "Model manifest is not reachable from this server.");
         return;
