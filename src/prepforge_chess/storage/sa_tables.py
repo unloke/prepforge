@@ -13,12 +13,12 @@ Compact persistent representation:
 from __future__ import annotations
 
 from sqlalchemy import (
-    BLOB,
     Column,
     Float,
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     PrimaryKeyConstraint,
     Table,
     Text,
@@ -203,7 +203,7 @@ engine_evaluations = Table(
     # 32-byte BLOB. It already commits to position, engine and every search
     # limit, so it is also the whole dedupe identity: a unique key repeating
     # those columns would store them a second time for nothing.
-    Column("fingerprint", BLOB, nullable=False, unique=True),
+    Column("fingerprint", LargeBinary, nullable=False, unique=True),
 )
 
 moves = Table(

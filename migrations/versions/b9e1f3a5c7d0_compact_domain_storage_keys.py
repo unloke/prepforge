@@ -80,12 +80,15 @@ def upgrade() -> None:
         # the final shape and its rows carried over by their own columns.
         op.execute(
             "CREATE TABLE training_progress_compact ("
-            " owner_user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,"
-            " repertoire_id TEXT NOT NULL REFERENCES repertoires (id) ON DELETE CASCADE,"
-            " node_id TEXT NOT NULL REFERENCES opening_nodes (id) ON DELETE CASCADE,"
+            " owner_user_id TEXT NOT NULL,"
+            " repertoire_id TEXT NOT NULL, node_id TEXT NOT NULL,"
             " attempts INTEGER NOT NULL, correct_attempts INTEGER NOT NULL,"
             " last_reviewed_at DATETIME, spaced_repetition_score FLOAT NOT NULL,"
             " due_at DATETIME, is_mastered INTEGER NOT NULL,"
+            " CONSTRAINT fk_training_progress_owner_user_id FOREIGN KEY (owner_user_id)"
+            " REFERENCES users (id) ON DELETE CASCADE,"
+            " FOREIGN KEY (repertoire_id) REFERENCES repertoires (id) ON DELETE CASCADE,"
+            " FOREIGN KEY (node_id) REFERENCES opening_nodes (id) ON DELETE CASCADE,"
             " PRIMARY KEY (node_id, owner_user_id))"
         )
         op.execute(
