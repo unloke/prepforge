@@ -7,6 +7,8 @@ import { resetViewScroll } from "./view-scroll.js";
 import { closeSheetOffPhone } from "./phone-layout.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";
+import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync, renderSyncChip,
+  setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
 import { pgnHeaderTags } from "./analyze-pgn.js";
 import { createEngineProvider, isBrowserEngineAvailable } from "./engine/stockfish-provider.js";
@@ -26,6 +28,7 @@ import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocatio
 import { createPalette } from "./palette.js";
 import { bindCommandPalette, closePalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
+  isBuildReadOnly,
   deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
   hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, queueBuildDelete, reapplyPendingBuildDeletes,
   reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
@@ -885,11 +888,6 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
 // pending state: it calls `close(values)` on success, or returns/throws to leave
 // the form open for another try.
 
-function isBuildReadOnly() {
-  return !!(
-    appState.sharedToken || (appState.build && appState.build.writable === false)
-  );
-}
 
 let buildLoadSeq = 0;
 async function editRepertoire(repertoireId, nodeId = null) {
@@ -1562,99 +1560,6 @@ const takebackPlaySession = viaTrainSession("takebackPlaySession");
 const trainHint = viaTrainSession("trainHint");
 
 // ----- Sync indicator (Google-Docs style chip by the Build board label) -------
-function setBuildSync(state) {
-  appState.buildSyncState = state;
-  renderBuildSync();
-}
-
-function renderSyncChip(el, state, scope = "repertoire") {
-  const v = syncChipVariant(state, scope);
-  el.hidden = false;
-  el.className = `build-sync ${v.cls}`;
-  el.textContent = v.text;
-  el.title = v.text;
-}
-
-function renderBuildSync() {
-  // Two hosts, one state: the board bar's chip on desktop, and the same chip in
-  // the inspector tools row on phones, where the board bar sits at the screen's
-  // bottom out of reach of an edit made above. Only one is ever visible.
-  let shown = false;
-  for (const id of ["build-sync", "build-sync-head"]) {
-    const el = document.getElementById(id);
-    if (!el) continue;
-    // Nothing to show without an editable repertoire (read-only shared view =
-    // no local edits ever happen).
-    if (!appState.build || isBuildReadOnly()) {
-      el.hidden = true;
-      continue;
-    }
-    renderSyncChip(el, appState.buildSyncState);
-    shown = true;
-  }
-  return shown;
-}
-
-let trainModule = null;
-let trainView = null;
-
-function preloadTrainView() {
-  if (!trainModule) {
-    trainModule = import("./views/train.js").catch((err) => {
-      trainModule = null;
-      throw err;
-    });
-  }
-  return trainModule;
-}
-
-async function ensureTrainView() {
-  const mod = await preloadTrainView();
-  if (!trainView) {
-    trainView = mod.createTrainView({
-      appState,
-      boards,
-      renderSyncChip,
-      setTrainBanner,
-      updateTrainTurnBadge,
-      onStreakRendered: (streak) => {
-        const s = appState.trainStats;
-        if (s) s.lastStreak = streak;
-      },
-    });
-  }
-  return trainView;
-}
-
-// Train's counterpart chip (same look/classes): visible during a smart session
-// or while abandoned-session attempts still wait to land.
-function setTrainSyncState(state) {
-  appState.trainSyncState = state;
-  void renderTrainSync().catch(() => {});
-}
-
-async function renderTrainSync() {
-  const el = document.getElementById("train-sync");
-  if (!el) return;
-  const sync = appState.trainSync;
-  // Nothing to say without a session or pending work, and nothing to say while
-  // the debounce simply waits: "Saving progress soon" sat there for seconds at
-  // a time between answers.
-  if (!appState.smart && !sync.pending.length && !sync.dirty) {
-    el.hidden = true;
-    return;
-  }
-  return (await ensureTrainView()).renderTrainSync();
-}
-
-async function renderTrainStats() {
-  return (await ensureTrainView()).renderTrainStats();
-}
-
-async function renderSmartSummaryStats(smart, stats) {
-  return (await ensureTrainView()).renderSmartSummaryStats(smart, stats);
-}
-
 // The "N to train" counts come from the repertoire listing, which a finished
 // training session made stale: drop the cached list and repaint every reader
 // (Library rows, palette, the Repertoire header) once the fresh list lands.
@@ -2889,6 +2794,7 @@ async function init() {
     showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff,
   });
   accountEntry.bindAnalyzeEntry(analyzeEntry);
+  createTrainEntry({ setTrainBanner, updateTrainTurnBadge });
   hooks.build = {
     get view() { return buildView; },
     selectBuildNode, scheduleBuildFlush, setBuildSync,

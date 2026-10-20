@@ -28,6 +28,12 @@ export let explorerModule = null;
 export let explorerClient = null;
 let explorerLoading = null;
 // One explorer client for Build and practice games, imported on first use.
+export function isBuildReadOnly() {
+  return !!(
+    appState.sharedToken || (appState.build && appState.build.writable === false)
+  );
+}
+
 export function ensureExplorerClient() {
   explorerLoading ||= import("./explorer.js").then((mod) => {
     explorerModule = mod;
