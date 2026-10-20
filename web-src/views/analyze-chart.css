@@ -102,20 +102,23 @@
 .ahi-game:not(:empty) ~ :is(.ahi-status, .ahi-hint),
 .ahi-status:not(:empty) ~ .ahi-hint { display: none; }
 
-/* Fixed height: the coach's comment changes length on every move, and a
-   growing card used to shove the chart and move list up and down ("jitter").
-   A longer note scrolls inside its own row; the human picks stay pinned under it.
-   The card is a quiet band of its own tone, not a box with an edge. */
+/* The verdict is the panel's own voice, not a card in it: running text on the
+   panel ground, with the 3px quality rule carrying its tone. It was a filled
+   118px band holding a 68px note, so every move left ~50px of empty tone
+   between the verdict and the instrument below it (measured at 1440x900).
+   The room is reserved in the text's own measure instead: three lines are
+   always there (the common note is three lines, so the chart below does not
+   move between ordinary moves), and a longer note grows the block until it
+   scrolls at five. */
 .coach-card {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 118px;
-  padding: 10px 12px;
-  background: var(--panel-soft);
+  padding: 0;
+  background: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 .coach-card > .cc-head,
@@ -144,12 +147,13 @@
   display: none;
 }
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
-   never depends on colour alone (the words say it too). The paragraph takes
-   the room the card has, so the rule runs the height of the card instead of
-   the height of the note. */
+   never depends on colour alone (the words say it too). Three lines are
+   reserved (min-height), so the chart below holds still between ordinary
+   moves; past five it scrolls rather than push the score sheet down. */
 .coach-prose {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 1 auto;
+  min-height: calc(1.5em * 3 + 4px);
+  max-height: calc(1.5em * 5 + 4px);
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;

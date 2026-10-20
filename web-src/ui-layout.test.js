@@ -443,12 +443,12 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
-    // Coach copy wraps instead of clipping; the card has a fixed height so a
-    // longer comment never shifts the chart below it. The height is what the
-    // reading-size note needs: a shorter card would clip the prose, a taller
-    // one would keep an empty band under it.
+    // Coach copy wraps instead of clipping; the block reserves three lines so
+    // the chart below holds still, and a longer note grows it (to five, then
+    // it scrolls) instead of shoving the sheet down or leaving empty tone.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-card")).toMatch(/height:\s*118px/);
+    expect(rule(".coach-prose")).toMatch(/min-height: calc\(1\.5em \* 3/);
+    expect(rule(".coach-card")).not.toMatch(/height:\s*\d+px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     // The score sheet is sized to its content so the two sides of a move sit
     // next to each other, the way a score sheet prints them; the trailing
