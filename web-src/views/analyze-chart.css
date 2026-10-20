@@ -334,13 +334,13 @@
    was capped at a flat 190px while the fold and the two source drawers sat
    below the fold. Now the column above the score sheet (coach, evaluation, the
    report fold, the sources) is fixed and the score sheet takes what is left,
-   scrolling inside itself, so a tall window buys move rows — what a reader
+   scrolling inside itself, so a tall window buys move rows, which is what a reader
    stepping a game wants.
    The sheet has no floor: a minimum did keep ten pairs on a short panel, but
    it also let the sheet paint over the fold below it (measured at 1024x768:
    the fold's own line sat under move rows and could not be clicked).
-   A short panel (982x614 measured: 578px) has no leftover at all — the coach,
-   the instrument, the fold and the two sources need every pixel — so this
+   A short panel (982x614 measured: 578px) has no leftover at all: the coach,
+   the instrument, the fold and the two sources need every pixel, so this
    only applies where there is room to give: a window at least 700px tall.
    Below that the panel scrolls as one sheet again and the sheet keeps its own
    cap, which is the only way a reader still reaches the sources. */
@@ -372,7 +372,7 @@
    losing the Engine button: the card is 361px at 982x614 and the five items
    need 381 with "Depth" and "Lines" in front of them. Each figure already
    carries a title tooltip, and the pair reads as "16/16  − 3 +" beside the
-   meter — the same shape the floating engine panel uses. */
+   meter, the same shape the floating engine panel uses. */
 #analysis-eval-card {
   display: grid;
   grid-template-columns: auto minmax(64px, 1fr) auto auto auto;
@@ -450,7 +450,7 @@
    search has come without a progress bar under it.
    min-width: max-content: the card is a grid whose auto tracks shrink when the
    head row runs out of room, and a 0 minimum let this readout be cut to 34px
-   around 60px of text — "Depth 16/16" then ran over the Lines stepper
+   around 60px of text, and "Depth 16/16" then ran over the Lines stepper
    (measured at 1024x768, card 379px). Its content is the floor. */
 #analysis-engine-slot .engine-head-depth {
   display: inline-flex;
@@ -785,7 +785,7 @@
 }
 /* The grade glyph takes its move's text-safe colour. It used to take the fill
    colour (--brilliant), which is a 4.25:1 mark for a dot or a bar but a 4:1
-   word for this glyph — under AA at 13px (measured: "!!" at 4:1). The
+   word for this glyph, under AA at 13px (measured: "!!" at 4:1). The
    *-text tokens are the ones the rest of the app uses when a grade colour is
    read rather than filled. */
 .mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant-text); }
@@ -802,7 +802,7 @@
 /* On the selected cell the accent fill carries the glyph in the cell's ink.
    This has to out-rank the grade rules above, which set their own colour on
    this same property: without it the glyph inherited the accent-blue ink from
-   the cell while the glyph's own rule painted it dark — measured at 2.9:1. */
+   the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
 /* Per-side classification bars — the at-a-glance "how did each side play"
