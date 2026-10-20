@@ -446,12 +446,13 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
-    // Coach copy wraps instead of clipping; the card has a fixed height so a
-    // longer comment never shifts the chart below it. The height is what the
-    // reading-size note needs: a shorter card would clip the prose, a taller
-    // one would keep an empty band under it.
+    // Coach copy wraps instead of clipping; the note takes its own height (the
+    // rule beside it is the note, not a reserved box) and scrolls past five
+    // lines. The block's two-line floor is what keeps the chart below still.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-card")).toMatch(/height:\s*118px/);
+    expect(rule(".coach-prose")).toMatch(/max-height: calc\(1\.5em \* 5/);
+    expect(rule(".coach-card")).toMatch(/min-height: calc\(1\.5em \* 2/);
+    expect(rule(".coach-card")).not.toMatch(/(^|[^-])height:\s*\d+px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     // The score sheet is sized to its content so the two sides of a move sit
     // next to each other, the way a score sheet prints them; the trailing
@@ -742,16 +743,16 @@ describe("workspace chrome layout", () => {
     // board's height and hold hundreds of px of empty tone under a short game.
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
     expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
-    // The move list takes its rows' height, not the viewport's leftover; on a
-    // phone the score sheet still fills the screen (its own rule below 761px).
-    expect(analyzeCss).toMatch(/\.moves-grid \{[^}]*max-height: 190px/);
+    // On a wide panel the sheet is the last flexing row and the only scroller.
+    // No minimum: one let the sheet paint over the report fold below it.
+    expect(analyzeCss).toMatch(/@media \(min-width: 861px\) and \(min-height: 700px\) \{[\s\S]*?#analysis-results:not\(\[hidden\]\) > \.moves-grid \{\s*flex: 1 1 auto;\s*min-height: 0;/);
     expect(analyzeCss).not.toMatch(/#analysis-results \.moves-grid \{ flex: 1 1 0/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
     expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
-    expect(analyzeCss).toMatch(/\.moves-grid\s*\{[^}]*overflow:\s*auto/);
+    expect(analyzeCss).toMatch(/\.moves-grid\s*\{[^}]*max-height: clamp\([^)]*\)[^}]*overflow:\s*auto/);
     expect(ruleBody(".src-popover")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".context-menu")).toMatch(/overflow-y:\s*auto/);

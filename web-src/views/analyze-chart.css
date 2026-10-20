@@ -27,23 +27,9 @@
   padding-inline: 14px;
 }
 
-/* One filled action on the panel: once the report is on it, the accent belongs
-   to the handoff below, and running the analysis again is a quiet text action.
-   The demotion holds only while that handoff is there: a reader who already
-   has a repertoire never sees it, and demoting the head's action then would
-   leave the panel with no filled action at all. The phone's own bar keeps its
-   filled button. */
-@media (min-width: 861px) {
-  #analyze-sidebar:has(#analysis-results:not([hidden])):has(#analysis-handoff:not([hidden])) #run-analysis {
-    background: transparent;
-    border-color: transparent;
-    color: var(--muted);
-  }
-  #analyze-sidebar:has(#analysis-results:not([hidden])):has(#analysis-handoff:not([hidden])) #run-analysis:hover:not(:disabled) {
-    background: var(--surface-3);
-    color: var(--text);
-  }
-}
+/* One filled action on the panel: the Analyze button. The report's handoff
+   now lives behind the report fold, so it is only on screen while that fold is
+   open, and the two are never read together. */
 
 /* The board bar's rule is the last line on the phone; the board's own frame
    and the evaluation row's tone already say where the board ends. */
@@ -116,20 +102,24 @@
 .ahi-game:not(:empty) ~ :is(.ahi-status, .ahi-hint),
 .ahi-status:not(:empty) ~ .ahi-hint { display: none; }
 
-/* Fixed height: the coach's comment changes length on every move, and a
-   growing card used to shove the chart and move list up and down ("jitter").
-   A longer note scrolls inside its own row; the human picks stay pinned under it.
-   The card is a quiet band of its own tone, not a box with an edge. */
+/* The verdict is the panel's own voice, not a card in it: running text on the
+   panel ground, with the 3px quality rule carrying its tone. It was a filled
+   118px band holding a 68px note, so every move left ~50px of empty tone
+   between the verdict and the instrument below it (measured at 1440x900).
+   The block keeps a floor of two lines (the common verdict's length) so the
+   instrument below does not jump between moves, but the floor is this box's,
+   not the rule's: a one-line verdict leaves a rest under the text instead of
+   drawing a 76px stroke beside it. A note past five lines scrolls. */
 .coach-card {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 118px;
-  padding: 10px 12px;
-  background: var(--panel-soft);
+  min-height: calc(1.5em * 2 + 52px);
+  padding: 0;
+  background: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 .coach-card > .cc-head,
@@ -158,12 +148,12 @@
   display: none;
 }
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
-   never depends on colour alone (the words say it too). The paragraph takes
-   the room the card has, so the rule runs the height of the card instead of
-   the height of the note. */
+   never depends on colour alone (the words say it too). The rule runs the
+   note's own height; past five lines the note scrolls rather than pushing the
+   score sheet down. */
 .coach-prose {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 1 auto;
+  max-height: calc(1.5em * 5 + 4px);
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;
@@ -339,13 +329,53 @@
 /* Wrapped actions keep their height; only the result body may shrink/scroll. */
 #analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
 #analyze-actions { flex-wrap: wrap; }
+
+/* Who scrolls. The panel body used to scroll as one sheet, so the score sheet
+   was capped at a flat 190px while the fold and the two source drawers sat
+   below the fold. Now the column above the score sheet (coach, evaluation, the
+   report fold, the sources) is fixed and the score sheet takes what is left,
+   scrolling inside itself, so a tall window buys move rows, which is what a reader
+   stepping a game wants.
+   The sheet has no floor: a minimum did keep ten pairs on a short panel, but
+   it also let the sheet paint over the fold below it (measured at 1024x768:
+   the fold's own line sat under move rows and could not be clicked).
+   A short panel (982x614 measured: 578px) has no leftover at all: the coach,
+   the instrument, the fold and the two sources need every pixel, so this
+   only applies where there is room to give: a window at least 700px tall.
+   Below that the panel scrolls as one sheet again and the sheet keeps its own
+   cap, which is the only way a reader still reaches the sources. */
+@media (min-width: 861px) and (min-height: 700px) {
+  #analyze-sidebar:has(#analysis-results:not([hidden])) .panel-scroll > .analyze-main {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #analyze-sidebar .panel-scroll > .analyze-main > :not(#analysis-results) {
+    flex: none;
+  }
+  #analyze-sidebar #analysis-results:not([hidden]) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #analyze-sidebar #analysis-results:not([hidden]) > .moves-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
 /* One header row: eval (or the title while there is none) | win meter | depth
    | lines | Engine. The docked engine window and its head dissolve into the
    card's grid (display: contents), so its depth readout and line stepper sit
-   in the header and its lines run under the chart instead of a second row. */
+   in the header and its lines run under the chart instead of a second row.
+   The win meter is the one part that gives up width: it is a bar, and a bar
+   stays readable at 64px while a clipped readout does not.
+   On a narrow card the two readouts lose their words rather than the row
+   losing the Engine button: the card is 361px at 982x614 and the five items
+   need 381 with "Depth" and "Lines" in front of them. Each figure already
+   carries a title tooltip, and the pair reads as "16/16  − 3 +" beside the
+   meter, the same shape the floating engine panel uses. */
 #analysis-eval-card {
   display: grid;
-  grid-template-columns: auto minmax(72px, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(64px, 1fr) auto auto auto;
   align-items: center;
   column-gap: 10px;
   row-gap: 8px;
@@ -421,12 +451,16 @@
    open until there is a number to fill the track with. */
 .ev-head:not(.has-eval) .ev-meter { display: none; }
 /* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
-   search has come without a progress bar under it. */
+   search has come without a progress bar under it.
+   min-width: max-content: the card is a grid whose auto tracks shrink when the
+   head row runs out of room, and a 0 minimum let this readout be cut to 34px
+   around 60px of text, and "Depth 16/16" then ran over the Lines stepper
+   (measured at 1024x768, card 379px). Its content is the floor. */
 #analysis-engine-slot .engine-head-depth {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  min-width: 0;
+  min-width: max-content;
   padding: 0 0 2px;
   border: 0;
   border-radius: 0;
@@ -452,6 +486,13 @@
   color: var(--muted);
 }
 #analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
+/* A narrow card keeps the figures and drops the two words: at 982x614 the card
+   is 361px and the five items need 381 with them, which pushed the Engine
+   button past the card's edge. Each figure carries its own title tooltip. */
+@container (max-width: 400px) {
+  #analysis-engine-slot .engine-head-depth::before,
+  #analysis-engine-slot .engine-lines::before { content: none; }
+}
 /* The line stepper is a control: it keeps its own edge (the engine slot is
    real interface, marked data-ui). */
 #analysis-engine-slot[data-ui] .engine-step {
@@ -681,13 +722,12 @@
    shared inline tree flow. The list sits inside the scrolling panel, so it
    does not contain overscroll: at its top/bottom the wheel moves the panel
    (or the page when stacked) instead of feeling stuck.
-   It is a score sheet: it takes the room its rows need, up to a cap, and
-   scrolls past it. It used to take whatever height the viewport had left, so
-   a three-move game showed 69px of rows on 428px of table (measured at
-   1440x900) — a hole large enough to read as a list that failed to load. The
-   cap keeps a long game from pushing the grade bars and the handoff away. */
+   On a wide panel the sheet is sized by the panel (see the scroll rules
+   above) and is the panel's only scroller; this cap is what a stacked layout
+   uses, where the panel is as tall as its content. It used to be 190px
+   everywhere, which showed eight move pairs on a 900px screen. */
 .moves-grid {
-  max-height: 190px;
+  max-height: clamp(190px, 40dvh, 440px);
   overflow: auto;
   border: 0;
   border-radius: 8px;
@@ -726,6 +766,15 @@
 }
 .moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
+/* The selected cell's ink. The shared tree paints the current move with
+   --accent-ink, but the mainline ink rule (4 classes) out-ranks it, so on this
+   grid the current move read --text on the accent fill: 2.9:1, and its grade
+   glyph came out in --text too. The cell is a filled pill, so its ink is the
+   accent's (`accent-ink`, white in light and near-black in dark) and the
+   glyph takes the cell's ink instead of its grade colour. Measured after:
+   5.9:1 at 1440x900. */
+.moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
+.moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
 /* The move list keeps the shared tree's own tiles: the selected move is filled
    and raised there too, so Analyze reads like the rest of the app. */
 .moves-grid .mtree-line.is-main > .mtree-var {
@@ -738,18 +787,26 @@
   font-size: var(--fs-s);
   font-weight: 800;
 }
-.mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant); }
+/* The grade glyph takes its move's text-safe colour. It used to take the fill
+   colour (--brilliant), which is a 4.25:1 mark for a dot or a bar but a 4:1
+   word for this glyph, under AA at 13px (measured: "!!" at 4:1). The
+   *-text tokens are the ones the rest of the app uses when a grade colour is
+   read rather than filled. */
+.mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant-text); }
 .mtree-move.cls-great .mtree-glyph { color: var(--great-text); }
 .mtree-move.cls-excellent .mtree-glyph,
 .mtree-move.cls-best .mtree-glyph,
 .mtree-move.cls-good .mtree-glyph,
 .mtree-move.cls-book .mtree-glyph { color: var(--good-text); }
-.mtree-move.cls-inaccuracy .mtree-glyph { color: var(--inaccuracy); }
+.mtree-move.cls-inaccuracy .mtree-glyph { color: var(--inaccuracy-text); }
 .mtree-move.cls-mistake .mtree-glyph { color: var(--warn-text); }
 .mtree-move.cls-blunder .mtree-glyph { color: var(--danger); }
 .mtree-move.cls-missed_win .mtree-glyph,
 .mtree-move.cls-missed_tactic .mtree-glyph { color: var(--missed); }
-/* On the selected cell the accent fill carries the glyph in the cell's ink. */
+/* On the selected cell the accent fill carries the glyph in the cell's ink.
+   This has to out-rank the grade rules above, which set their own colour on
+   this same property: without it the glyph inherited the accent-blue ink from
+   the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
 /* Per-side classification bars — the at-a-glance "how did each side play"
@@ -805,8 +862,12 @@
   color: var(--label);
   font-size: var(--fs);
 }
-.seg-brilliant { background: var(--brilliant); }
-.seg-great { background: var(--great); }
+/* The bar carries its count as text, so each fill is the grade's text-safe
+   colour: --brilliant at white ink is 4:1 and --great is 4.2:1 (measured:
+   "!! 3" and "!! 7" both under AA). The *-text tokens keep their hue and read
+   at 5.9:1 and 5.5:1 in light, and stay the fill colours in dark. */
+.seg-brilliant { background: var(--brilliant-text); }
+.seg-great { background: var(--great-text); }
 .seg-good { background: var(--good-text); }
 /* The amber is light in both themes, so it takes dark ink. */
 .seg-inaccuracy { background: var(--inaccuracy); color: #1b1c1e; }
@@ -849,13 +910,37 @@
   max-width: 100%;
 }
 
-/* ---- Drawers: PGN source + recent analyses ---------------------------- */
+/* ---- Drawers: the report, the PGN source, recent analyses ----------- */
 
 /* The panel is two groups: what the analysis says, then where the game came
-   from. Every gap inside a group is the panel's 14px, so the first drawer
-   takes a larger one; at the same 14px the sources read as another result. */
+   from. The gap between the groups is the body's own 14px; inside the group of
+   folds the gaps are half that, because three collapsed one-line names read as
+   one block of three lines, not as three separate objects. */
+#analyze-sidebar .panel-scroll { gap: 8px; }
+#analyze-sidebar .panel-scroll > .analyze-main { margin-bottom: 6px; }
+#analyze-sidebar .panel-scroll > #analyze-sheet,
+#analyze-sidebar .panel-scroll > #analyze-open { margin: 0; }
 #analyze-sidebar .panel-scroll > #analyze-open > .drawer:first-of-type {
-  margin-top: 8px;
+  margin-top: 0;
+}
+
+/* The report is the game's summary, not its instrument: the grade bars, and
+   the offer to turn the game into a repertoire. It used to sit open under the
+   score sheet and take 96px of a 732px panel (1024x768) that the score sheet
+   wanted, for a tally a player reads once and then leaves. Behind its own
+   name it costs one line until asked for. */
+.report-fold {
+  flex: none;
+}
+.report-fold > summary {
+  margin-bottom: 0;
+}
+.report-fold[open] > summary {
+  margin-bottom: 10px;
+}
+/* Nothing to report yet (no game analysed): the fold is not offered. */
+.report-fold:has(#analysis-summary:empty):has(#analysis-handoff[hidden]) {
+  display: none;
 }
 
 .drawer {
@@ -1183,6 +1268,13 @@
   #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { visibility: hidden; }
   #analysis-summary:empty { display: none; }
+  /* The sheet's own bar already says "Report", so the fold's name inside it
+     would be the same word twice: on a phone the sheet is the disclosure and
+     the fold is simply open. Its content is forced visible rather than set
+     open, so the state survives a collapse and re-raise of the sheet. */
+  #analyze-sheet .report-fold > summary { display: none; }
+  #analyze-sheet .report-fold::details-content { content-visibility: visible; block-size: auto; }
+  #analyze-sheet .report-fold > :not(summary) { display: block; }
   :is(#analyze-sheet, #analyze-open) :is(#analysis-summary, #pgn-drawer, #history-drawer:not([hidden])) {
     margin: 0;
     padding: 10px 14px;

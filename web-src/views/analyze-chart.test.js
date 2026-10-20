@@ -237,29 +237,54 @@ describe("class bars", () => {
     expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
     expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
   });
+
+  it("gives a grade glyph a text-safe colour, not the fill", () => {
+    // --brilliant fills a dot or a bar; as 13px text it is 4:1 on the panel,
+    // under AA ("!!" measured at 4:1 in the grade tally). The same applies to
+    // the amber, which is 2.9:1 against white — hence its own text token.
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-brilliant \.mtree-glyph \{ color: var\(--brilliant-text\)/);
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-inaccuracy \.mtree-glyph \{ color: var\(--inaccuracy-text\)/);
+    expect(STYLES).toMatch(/--inaccuracy-text:/);
+  });
 });
 
 describe("coach note", () => {
-  it("sets the note at reading size and gives it the card's height", () => {
-    // The note is running text: 15px, and it takes the room the card has, so
-    // the quiet rule runs the height of the card and not the height of the note.
+  it("sets the note at reading size and sizes the block to the note", () => {
+    // The note is running text at 15px on a phone. It takes its own height, so
+    // the rule beside it runs the note and not a reserved box, and a note past
+    // five lines scrolls instead of pushing the score sheet down.
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*flex: 1 1 auto/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(1\.5em \* 5/);
+    expect(ALL_STYLES).not.toMatch(/\.coach-prose \{[^}]*min-height: calc\(1\.5em/);
   });
 });
 
 describe("the panel's one filled action", () => {
-  it("demotes the head's Analyze only while the handoff is on the panel", () => {
-    // The accent moves to "New repertoire from this game" once the report is
-    // up, but that handoff is hidden for a reader who already has a
-    // repertoire. Demoting the head's action regardless left the panel with
-    // no accent anywhere (measured: transparent, at rest).
-    const rule = ALL_STYLES.match(
-      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\):has\(#analysis-handoff:not\(\[hidden\]\)\) #run-analysis \{([^}]+)\}/,
-    )?.[1] || "";
-    expect(rule).toMatch(/background:\s*transparent/);
+  it("keeps Analyze the accent and puts the handoff behind the report fold", () => {
+    // The accent used to move to "New repertoire from this game" whenever that
+    // handoff was on the panel — two filled blue actions in one column, the
+    // second one always open under an already-run report. The handoff now
+    // lives inside the report fold, so the two are never on screen together
+    // and the head's Analyze keeps the accent unconditionally.
+    expect(ALL_STYLES).not.toMatch(/#run-analysis \{[^}]*background:\s*transparent/);
     expect(ALL_STYLES).not.toMatch(
-      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\) #run-analysis \{/,
+      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\)[^{]*#run-analysis \{/,
+    );
+  });
+});
+
+describe("score sheet ink", () => {
+  it("paints the selected move in the accent's ink, glyph included", () => {
+    // The mainline ink rule and the grade-glyph rules both out-ranked the
+    // shared tree's .is-current colour, so on this grid the selected move read
+    // --text on the accent fill (2.9:1 at 1440x900) and its glyph came out in
+    // --text on the same fill. Both now take the accent's ink.
+    const row = CHART_STYLES.match(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \{([^}]+)\}/,
+    )?.[1] || "";
+    expect(row).toMatch(/color:\s*var\(--accent-ink\)/);
+    expect(CHART_STYLES).toMatch(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
     );
   });
 });

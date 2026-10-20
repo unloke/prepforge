@@ -71,6 +71,9 @@
   --good-text: #166b3e;
   --brilliant-text: #2563b8;
   --great-text: #3d6c9c;
+  /* The amber is a fill colour: white on it is 2.9:1, so a glyph or word in
+     this grade's colour needs its own darker ink. */
+  --inaccuracy-text: #8a5200;
 
   /* Classification palette completion: inaccuracy/missed had no semantic token
      (they were hard-coded in the bars, tree dots and eval chart). */
@@ -232,6 +235,7 @@
   --good-text: #45b97a;
   --brilliant-text: #6d9ff0;
   --great-text: #8db0da;
+  --inaccuracy-text: #e6bc72;
 
   /* Classification + mastery kinds */
   --inaccuracy: #e6bc72;
