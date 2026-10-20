@@ -542,6 +542,7 @@ function countBuildMovesToTrain(build) {
 
 function switchView(name, { fromUrl = false } = {}) {
   workspaceNavigationSeq += 1;
+  const previousView = appState.currentView;
   if (!fromUrl && !workspaceUrlReady) navigatedDuringBoot = true;
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
@@ -618,14 +619,12 @@ function switchView(name, { fromUrl = false } = {}) {
       .then(() => updateBookline())
       .catch(() => { /* best-effort */ });
   }
-  // Entering dashboard loads the view chunk; signed-in users also refresh counters.
+  // Entering dashboard loads the chunk; signed-in users refresh counters, except a
+  // boot restore of the view loadSignedInWorkspace just loaded. Moves flush first.
   if (name === "dashboard") {
     ensureDashboardView().catch(() => {});
-    if (appState.signedIn) {
-      // Moves added in Repertoire sit in the debounced outbox for a moment;
-      // send them first so the listing's move counts include them.
-      settleBuildOutbox()
-        .then(() => loadDashboard())
+    if (appState.signedIn && !(fromUrl && previousView === name)) {
+      settleBuildOutbox().then(() => loadDashboard())
         .catch(() => { /* counters refresh is best-effort */ });
     }
   }

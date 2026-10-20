@@ -246,3 +246,38 @@ describe("app boot holds auth-dependent state until the session is known", () =>
     expect(compiled.isHeld()).toBe(false);
   });
 });
+
+// Cold boot read the Library twice: loadSignedInWorkspace loads it, then
+// restoreWorkspaceLocation switches to the URL's view — and for the default
+// route that view IS the dashboard, so switchView ran the whole load again
+// (/api/dashboard + /api/repertoires + /api/teams, measured 66 ms apart).
+describe("switchView does not re-read a view it is already on", () => {
+  const src = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+
+  function dashboardBranch() {
+    const start = src.indexOf('  if (name === "dashboard") {');
+    const end = src.indexOf("// Entering Teams (re)loads", start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    return src.slice(start, end);
+  }
+
+  it("skips the refresh when a boot restore re-enters the current view", () => {
+    // switchView remembers the view it is leaving, and the dashboard branch
+    // guards the reload on it: fromUrl && previousView === name is the boot
+    // restore of the route loadSignedInWorkspace already loaded.
+    expect(src).toMatch(/const previousView = appState\.currentView;/);
+    expect(dashboardBranch()).toMatch(
+      /if \(appState\.signedIn && !\(fromUrl && previousView === name\)\) \{/,
+    );
+  });
+
+  it("still refreshes on a real arrival and on a Library tab click", () => {
+    const branch = dashboardBranch();
+    // The guard is on the signed-in refresh only: a click passes fromUrl false
+    // and an arrival from another view passes a different previousView, so both
+    // reach settleBuildOutbox → loadDashboard.
+    expect(branch).toMatch(/settleBuildOutbox\(\)\.then\(\(\) => loadDashboard\(\)\)/);
+    expect(branch).toMatch(/ensureDashboardView\(\)\.catch\(\(\) => \{\}\);/);
+  });
+});
