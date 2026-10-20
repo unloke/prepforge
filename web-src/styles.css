@@ -5050,6 +5050,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   animation: notice-spin 900ms linear infinite;
 }
 @keyframes notice-spin { to { transform: rotate(360deg); } }
+/* A job that has just finished: the spinner becomes its tick in place, so the
+   card settles instead of silently changing meaning. One gesture, not a loop. */
+.notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-emphasis); }
+.notice[data-state="failed"] .notice-icon { animation: notice-land 200ms var(--ease-out); }
+@keyframes notice-land {
+  from { transform: scale(0.6); }
+  to { transform: none; }
+}
 
 .notice-main { grid-column: 2; display: grid; gap: 2px; min-width: 0; }
 .notice-title { font-weight: 600; }
