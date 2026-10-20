@@ -268,6 +268,9 @@ describe("analyzeGamePositions (worker pool)", () => {
 function managedRun(profile = { net: "big", workers: 2 }) {
   const data = new Map();
   const manager = createEngineProfileManager({ assetState: () => ({ phase: "ready" }), beginSession: () => () => {},
+    // A real desktop reports both signals; a device with no memory signal is the
+    // phone-safe case and is covered by its own test.
+    device: () => ({ hardwareConcurrency: 8, deviceMemory: 8 }),
     subscribeAsset: () => () => {}, storage: () => ({ getItem: k => data.get(k) ?? null,
     setItem: (k, v) => data.set(k, v), removeItem: k => data.delete(k) }) });
   manager.setEngineProfile(profile);

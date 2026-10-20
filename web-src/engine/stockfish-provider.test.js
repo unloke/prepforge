@@ -65,7 +65,8 @@ describe("per-net provider identity", () => {
   it("starts lite at the user's depth while the recommended full asset is not ready", async () => {
     const data = new Map();
     const manager = createEngineProfileManager({ storage: () => ({ getItem: k => data.get(k) ?? null,
-      setItem: (k, v) => data.set(k, v) }), assetState: () => ({ phase: "download" }) });
+      setItem: (k, v) => data.set(k, v) }), assetState: () => ({ phase: "download" }),
+    device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
     manager.setEngineProfile({ net: "big", workers: 3 });
     expect(manager.engineProfile()).toMatchObject({ net: "big", workers: 3 });
     const originalUsable = usableEngineProfile.getMockImplementation();

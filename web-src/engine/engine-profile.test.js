@@ -29,7 +29,7 @@ function fixture({ throughput = (_net, n) => n, Memory = class { constructor(opt
   let t = 0;
   const manager = createEngineProfileManager({ storage: () => storage, createEngine, reserveMemory, loadModule,
     assetState: () => ({ phase: "ready" }), subscribeAsset: () => () => {}, beginSession: () => () => {},
-    probeBudget: async () => () => {}, device: () => ({ hardwareConcurrency: 4 }), now: () => (t += 1000), ...options });
+    probeBudget: async () => () => {}, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }), now: () => (t += 1000), ...options });
   return { ...manager, data, storage, engines, createEngine, reserveMemory, loadModule, modules };
 }
 
@@ -112,7 +112,7 @@ describe("device engine profile", () => {
     await f.detectEngineProfile();
     expect(f.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
     const loadModule = vi.fn();
-    const next = createEngineProfileManager({ storage: () => f.storage, loadModule });
+    const next = createEngineProfileManager({ storage: () => f.storage, loadModule, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
     next.engineStarted();
     expect(next.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
     expect(loadModule).not.toHaveBeenCalled();
@@ -159,7 +159,7 @@ describe("device engine profile", () => {
     const unsubscribe = f.subscribeEngineProfile(listener);
     f.setEngineProfile({ net: "big", workers: 2 });
     expect(f.engineProfile()).toEqual({ net: "big", workers: 2, source: "user" });
-    expect(createEngineProfileManager({ storage: () => f.storage }).engineProfile()).toEqual(f.engineProfile());
+    expect(createEngineProfileManager({ storage: () => f.storage, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) }).engineProfile()).toEqual(f.engineProfile());
     expect(() => f.setEngineProfile({ net: "big", workers: 4 })).toThrow(RangeError);
     unsubscribe();
     f.resetEngineProfile();
@@ -230,7 +230,7 @@ describe("device engine profile", () => {
   });
 
   it.each([1.49, 1.5])("compares extra worker gain with the net's one-worker baseline (%s)", async gain => {
-    const f = fixture({ device: () => ({ hardwareConcurrency: 2 }), throughput: (_net, n) => n === 1 ? 1 : gain });
+    const f = fixture({ device: () => ({ hardwareConcurrency: 2, deviceMemory: 8 }), throughput: (_net, n) => n === 1 ? 1 : gain });
     expect(await f.detectEngineProfile()).toMatchObject({ net: "big", workers: gain < 1.5 ? 1 : 2 });
     expect(f.engines).toHaveLength(3);
   });
@@ -253,7 +253,7 @@ describe("device engine profile", () => {
       if (checked || index !== step) return;
       checked = true;
       expect(JSON.parse(f.data.get(CRASH_KEY))).toMatchObject({ net, workers });
-      const nextLoad = createEngineProfileManager({ storage: () => f.storage, createEngine: () => { throw new Error("must not probe"); } });
+      const nextLoad = createEngineProfileManager({ storage: () => f.storage, createEngine: () => { throw new Error("must not probe"); }, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
       expect(nextLoad.engineProfile()).toEqual({ net: previous[0], workers: previous[1], source: "fallback" });
       expect(nextLoad.engineProfile().source).toBe("fallback");
     } });
@@ -316,7 +316,7 @@ describe("device engine profile", () => {
     expect(late[0]).toEqual(first.at(-1));
     const joined = f.detectEngineProfile();
     await Promise.all([run, joined]);
-    const total = (1 + maxWorkers({ hardwareConcurrency: 4 })) * 3;
+    const total = (1 + maxWorkers({ hardwareConcurrency: 4, deviceMemory: 8 })) * 3;
     expect(first.map(p => p.done)).toEqual([...first.map(p => p.done)].sort((a, b) => a - b));
     expect(first.at(-1)).toMatchObject({ stage: "complete", done: total, probeTotal: total, fraction: 1 });
     expect(first.some(p => p.stage === "workers")).toBe(true);
@@ -336,11 +336,11 @@ describe("device engine profile", () => {
   it("detects again on a new build, keeping only explicit user choices", async () => {
     const f = fixture({ probeId: "old" });
     await f.detectEngineProfile();
-    const rebuilt = createEngineProfileManager({ storage: () => f.storage, probeId: "new" });
+    const rebuilt = createEngineProfileManager({ storage: () => f.storage, probeId: "new", device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
     expect(rebuilt.engineProfile()).toMatchObject({ source: "fallback" });
     expect(rebuilt.engineMeasurements()).toBeNull();
     f.setEngineProfile({ net: "lite", workers: 2 });
-    expect(createEngineProfileManager({ storage: () => f.storage, probeId: "new" }).engineProfile())
+    expect(createEngineProfileManager({ storage: () => f.storage, probeId: "new", device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) }).engineProfile())
       .toEqual({ net: "lite", workers: 2, source: "user" });
   });
 
@@ -356,7 +356,7 @@ describe("device engine profile", () => {
     page.visibilityState = "hidden";
     page.dispatchEvent(new Event("visibilitychange"));
     expect(f.data.has(CRASH_KEY)).toBe(false);
-    expect(createEngineProfileManager({ storage: () => f.storage }).engineProfile()).toMatchObject({ net: "big", workers: 2 });
+    expect(createEngineProfileManager({ storage: () => f.storage, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) }).engineProfile()).toMatchObject({ net: "big", workers: 2 });
     page.visibilityState = "visible";
     page.dispatchEvent(new Event("visibilitychange"));
     expect(f.data.has(CRASH_KEY)).toBe(true);
@@ -399,5 +399,89 @@ describe("device engine profile", () => {
     expect(baseline.retry(error)).toBe(false);
     expect(listener).not.toHaveBeenCalled();
     run.done(); baseline.done();
+  });
+});
+
+// The owner's report: Detect on a desktop, then the phone ran the same profile and
+// ran out of memory. These pin the two halves of the fix: one device's measurement
+// never reaches another device, and a device that has not measured gets the
+// phone-safe profile instead of borrowing a bigger one.
+describe("a phone never starts with a desktop's measurement", () => {
+  const DESKTOP = { hardwareConcurrency: 20, deviceMemory: 32 };
+  // WebKit exposes cores but no memory signal at all — the shape of the phone.
+  const PHONE = { hardwareConcurrency: 6 };
+
+  it("bounds engines by the memory signal: no signal is one engine, cores cannot raise it", () => {
+    expect(maxWorkers(DESKTOP)).toBe(3);
+    expect(maxWorkers(PHONE)).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 8 })).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 2 })).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 4 })).toBe(2);
+    expect(maxWorkers({ hardwareConcurrency: 1, deviceMemory: 32 })).toBe(1);
+    // Never below one engine, and no more than the shared ceiling.
+    expect(maxWorkers({ hardwareConcurrency: 0, deviceMemory: 0 })).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 64, deviceMemory: 64 })).toBe(3);
+  });
+
+  it("Detect on the desktop stays on that device: no request, one local record", async () => {
+    const requests = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (...args) => { requests.push(args[0]); return originalFetch(...args); };
+    try {
+      const desktop = fixture({ device: () => DESKTOP });
+      expect(await desktop.detectEngineProfile()).toMatchObject({ net: "big", workers: 3, source: "detected" });
+      // Nothing about the measurement leaves the device: no settings write, no
+      // request of any kind, so no other device can read it back.
+      expect(requests).toEqual([]);
+      expect([...desktop.data.keys()]).toEqual([PROFILE_KEY]);
+      expect(JSON.parse(desktop.data.get(PROFILE_KEY))).toMatchObject({
+        profile: { net: "big", workers: 3 }, detected: { net: "big", workers: 3 },
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+    // The phone has its own (empty) storage and therefore its own safe default.
+    const phone = fixture({ device: () => PHONE });
+    expect(phone.engineProfile()).toEqual({ net: "lite", workers: 1, source: "fallback" });
+    expect(phone.data.has(PROFILE_KEY)).toBe(false);
+  });
+
+  it("the phone's first engine start is bounded before any probe runs", () => {
+    // A device that never ran Detect still starts the engine (engineStarted →
+    // detect), so the bound has to hold on that path too, not only inside Detect.
+    const phone = fixture({ device: () => PHONE, throughput: () => 1 });
+    phone.engineStarted();
+    return vi.waitFor(() => expect(phone.engineProfile().source).toBe("detected")).then(() => {
+      expect(phone.engineProfile()).toMatchObject({ net: "big", workers: 1 });
+      // lite 1 then big 1: no second heap is ever reserved on this device.
+      expect(phone.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big"]);
+    });
+  });
+
+  it("a fresh device gets one engine per Detect step, whatever its cores say", async () => {
+    const phone = fixture({ device: () => PHONE, throughput: () => 1 });
+    expect(await phone.detectEngineProfile()).toMatchObject({ net: "big", workers: 1 });
+    // lite 1 then big 1 only: the ladder never tries a second heap on this device.
+    expect(phone.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big"]);
+  });
+
+  it("a stored record cannot lift a device past what it can hold", () => {
+    // A record written by another device's build (or edited by hand) is bounded
+    // on read, so nothing starts three heaps on a device that can hold one.
+    const phone = fixture({ device: () => PHONE });
+    phone.data.set(PROFILE_KEY, JSON.stringify({
+      profile: { net: "big", workers: 3, source: "user" }, detected: { net: "big", workers: 3, source: "detected" },
+      measurements: null, probe: `3:${globalThis.__STOCKFISH__?.big?.id}`,
+    }));
+    const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => PHONE,
+      assetState: () => ({ phase: "ready" }) });
+    expect(reloaded.engineProfile()).toMatchObject({ net: "big", workers: 1 });
+    expect(reloaded.usableEngineProfile()).toMatchObject({ net: "big", workers: 1 });
+  });
+
+  it("the Settings controls cannot raise a phone past its bound either", () => {
+    const phone = fixture({ device: () => PHONE });
+    expect(phone.setEngineProfile({ net: "big", workers: 3 })).toMatchObject({ net: "big", workers: 1 });
+    expect(phone.usableEngineProfile()).toMatchObject({ net: "big", workers: 1 });
   });
 });

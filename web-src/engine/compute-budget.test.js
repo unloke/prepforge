@@ -109,4 +109,22 @@ describe("app-wide Stockfish allocation", () => {
     expect(order).toEqual(["interactive", "background"]);
     expect(budget.snapshot()).toMatchObject({ used: 0, queued: 0 });
   });
+
+  // The device's worker bound is applied here, which is why it holds for every
+  // consumer: Scout asks for 3 and the trap pass for 2, but no more than the
+  // device's limit is ever resident, so a one-engine phone keeps one heap.
+  it("holds a device at its worker bound whatever a consumer requests", async () => {
+    const budget = createComputeBudget({ limit: 3, backgroundLimit: 3 });
+    budget.configure(1);
+    expect(budget.snapshot()).toMatchObject({ limit: 1, backgroundLimit: 1 });
+    const first = await budget.acquire();
+    let secondStarted = false;
+    const second = budget.acquire().then((release) => { secondStarted = true; return release; });
+    await Promise.resolve();
+    expect(secondStarted).toBe(false);
+    expect(budget.snapshot()).toMatchObject({ used: 1, queued: 1 });
+    first();
+    (await second)();
+    expect(budget.snapshot()).toMatchObject({ used: 0, queued: 0 });
+  });
 });
