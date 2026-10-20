@@ -739,16 +739,15 @@ describe("workspace chrome layout", () => {
     // board's height and hold hundreds of px of empty tone under a short game.
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
     expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
-    // The move list takes its rows' height, not the viewport's leftover; on a
-    // phone the score sheet still fills the screen (its own rule below 761px).
-    expect(analyzeCss).toMatch(/\.moves-grid \{[^}]*max-height: 190px/);
+    // On a wide panel the sheet is the last flexing row and the only scroller.
+    expect(analyzeCss).toMatch(/@media \(min-width: 861px\) \{[\s\S]*?#analyze-sidebar #analysis-results:not\(\[hidden\]\) > \.moves-grid \{[\s\S]{0,80}?flex: 1 1 auto;[\s\S]{0,80}?min-height: \d+px/);
     expect(analyzeCss).not.toMatch(/#analysis-results \.moves-grid \{ flex: 1 1 0/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
     // move lists, composer rows/popover, context menus.
     expect(ruleBody(".dock-body")).toMatch(/overflow:\s*auto/);
-    expect(analyzeCss).toMatch(/\.moves-grid\s*\{[^}]*overflow:\s*auto/);
+    expect(analyzeCss).toMatch(/\.moves-grid\s*\{[^}]*max-height: clamp\([^)]*\)[^}]*overflow:\s*auto/);
     expect(ruleBody(".src-popover")).toMatch(/overflow-y:\s*auto/);
     expect(ruleBody(".src-rows")).toMatch(/overflow:\s*auto/);
     expect(ruleBody(".context-menu")).toMatch(/overflow-y:\s*auto/);

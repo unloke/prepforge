@@ -210,25 +210,29 @@
                   <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
                 </div>
               </div>
-              <!-- The report, then where games come from. Phones show each as
-                   a bottom sheet (the sources inline while no game is
-                   loaded); wider screens lay both out in the panel. -->
+              <!-- The report, then where games come from. A phone lays each out
+                   as a bottom sheet (the sources inline while no game is
+                   loaded); a wide panel lays the same content under the score
+                   sheet as folds, closed until the reader asks for them. -->
               <div class="phone-sheet" id="analyze-sheet">
                 <div class="sheet-bar">
                   <b>Report</b>
                   <button type="button" class="sheet-done" data-sheet-close>Done</button>
                 </div>
-                <section class="res-block" id="analysis-summary"></section>
-                <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
-                  <button
-                    class="btn primary"
-                    id="create-repertoire-from-game"
-                    data-testid="create-repertoire-from-game"
-                    type="button"
-                  >
-                    New repertoire from this game
-                  </button>
-                </div>
+                <details class="drawer report-fold" id="report-fold" data-testid="report-fold">
+                  <summary>Game report</summary>
+                  <section class="res-block" id="analysis-summary"></section>
+                  <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
+                    <button
+                      class="btn primary"
+                      id="create-repertoire-from-game"
+                      data-testid="create-repertoire-from-game"
+                      type="button"
+                    >
+                      New repertoire from this game
+                    </button>
+                  </div>
+                </details>
               </div>
               <div class="phone-sheet" id="analyze-open">
                 <div class="sheet-bar">
@@ -253,7 +257,7 @@
                     <input type="file" id="pgn-file-input" accept=".pgn,application/x-chess-pgn,text/plain" hidden />
                   </div>
                 </details>
-                <details class="drawer" id="history-drawer" data-testid="history-drawer" open hidden>
+                <details class="drawer" id="history-drawer" data-testid="history-drawer" hidden>
                   <summary>Recent analyses</summary>
                   <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
                 </details>

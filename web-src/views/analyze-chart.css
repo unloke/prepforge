@@ -27,23 +27,9 @@
   padding-inline: 14px;
 }
 
-/* One filled action on the panel: once the report is on it, the accent belongs
-   to the handoff below, and running the analysis again is a quiet text action.
-   The demotion holds only while that handoff is there: a reader who already
-   has a repertoire never sees it, and demoting the head's action then would
-   leave the panel with no filled action at all. The phone's own bar keeps its
-   filled button. */
-@media (min-width: 861px) {
-  #analyze-sidebar:has(#analysis-results:not([hidden])):has(#analysis-handoff:not([hidden])) #run-analysis {
-    background: transparent;
-    border-color: transparent;
-    color: var(--muted);
-  }
-  #analyze-sidebar:has(#analysis-results:not([hidden])):has(#analysis-handoff:not([hidden])) #run-analysis:hover:not(:disabled) {
-    background: var(--surface-3);
-    color: var(--text);
-  }
-}
+/* One filled action on the panel: the Analyze button. The report's handoff
+   now lives behind the report fold, so it is only on screen while that fold is
+   open, and the two are never read together. */
 
 /* The board bar's rule is the last line on the phone; the board's own frame
    and the evaluation row's tone already say where the board ends. */
@@ -339,17 +325,46 @@
 /* Wrapped actions keep their height; only the result body may shrink/scroll. */
 #analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
 #analyze-actions { flex-wrap: wrap; }
+
+/* Who scrolls. The panel body used to scroll as one sheet, so the score sheet
+   was capped at a flat 190px while the fold and the two source drawers sat
+   below the fold. Now the column above the score sheet (coach, evaluation, the
+   report fold, the sources) is fixed and the score sheet takes what is left,
+   scrolling inside itself. A tall window therefore buys move rows, which is
+   what a reader stepping a game wants; the summary and the sources stay where
+   they are. The sheet keeps a floor, so on a short panel (1024x768 measured)
+   it still shows ten move pairs and the panel scrolls the last stretch to
+   reach the sources instead of the sheet shrinking to four. */
+@media (min-width: 861px) {
+  #analyze-sidebar:has(#analysis-results:not([hidden])) .panel-scroll > .analyze-main {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #analyze-sidebar .panel-scroll > .analyze-main > :not(#analysis-results) {
+    flex: none;
+  }
+  #analyze-sidebar #analysis-results:not([hidden]) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #analyze-sidebar #analysis-results:not([hidden]) > .moves-grid {
+    flex: 1 1 auto;
+    min-height: 230px;
+    max-height: none;
+  }
+}
 /* One header row: eval (or the title while there is none) | win meter | depth
    | lines | Engine. The docked engine window and its head dissolve into the
    card's grid (display: contents), so its depth readout and line stepper sit
-   in the header and its lines run under the chart instead of a second row. */
+   in the header and its lines run under the chart instead of a second row.
+   The win meter is the one part that gives up width: it is a bar, and a bar
+   stays readable at 64px while a clipped readout does not. */
 #analysis-eval-card {
   display: grid;
-  grid-template-columns: auto minmax(72px, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(64px, 1fr) auto auto auto;
   align-items: center;
   column-gap: 10px;
   row-gap: 8px;
-  container-type: inline-size;
 }
 #analysis-eval-card > :not(.ev-head):not(.engine-slot),
 #analysis-engine-slot .engine-window-body { grid-column: 1 / -1; }
@@ -417,12 +432,16 @@
    open until there is a number to fill the track with. */
 .ev-head:not(.has-eval) .ev-meter { display: none; }
 /* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
-   search has come without a progress bar under it. */
+   search has come without a progress bar under it.
+   min-width: max-content: the card is a grid whose auto tracks shrink when the
+   head row runs out of room, and a 0 minimum let this readout be cut to 34px
+   around 60px of text — "Depth 16/16" then ran over the Lines stepper
+   (measured at 1024x768, card 379px). Its content is the floor. */
 #analysis-engine-slot .engine-head-depth {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  min-width: 0;
+  min-width: max-content;
   padding: 0 0 2px;
   border: 0;
   border-radius: 0;
@@ -677,13 +696,12 @@
    shared inline tree flow. The list sits inside the scrolling panel, so it
    does not contain overscroll: at its top/bottom the wheel moves the panel
    (or the page when stacked) instead of feeling stuck.
-   It is a score sheet: it takes the room its rows need, up to a cap, and
-   scrolls past it. It used to take whatever height the viewport had left, so
-   a three-move game showed 69px of rows on 428px of table (measured at
-   1440x900) — a hole large enough to read as a list that failed to load. The
-   cap keeps a long game from pushing the grade bars and the handoff away. */
+   On a wide panel the sheet is sized by the panel (see the scroll rules
+   above) and is the panel's only scroller; this cap is what a stacked layout
+   uses, where the panel is as tall as its content. It used to be 190px
+   everywhere, which showed eight move pairs on a 900px screen. */
 .moves-grid {
-  max-height: 190px;
+  max-height: clamp(190px, 40dvh, 440px);
   overflow: auto;
   border: 0;
   border-radius: 8px;
@@ -845,13 +863,32 @@
   max-width: 100%;
 }
 
-/* ---- Drawers: PGN source + recent analyses ---------------------------- */
+/* ---- Drawers: the report, the PGN source, recent analyses ----------- */
 
 /* The panel is two groups: what the analysis says, then where the game came
    from. Every gap inside a group is the panel's 14px, so the first drawer
    takes a larger one; at the same 14px the sources read as another result. */
 #analyze-sidebar .panel-scroll > #analyze-open > .drawer:first-of-type {
   margin-top: 8px;
+}
+
+/* The report is the game's summary, not its instrument: the grade bars, and
+   the offer to turn the game into a repertoire. It used to sit open under the
+   score sheet and take 96px of a 732px panel (1024x768) that the score sheet
+   wanted, for a tally a player reads once and then leaves. Behind its own
+   name it costs one line until asked for. */
+.report-fold {
+  flex: none;
+}
+.report-fold > summary {
+  margin-bottom: 0;
+}
+.report-fold[open] > summary {
+  margin-bottom: 10px;
+}
+/* Nothing to report yet (no game analysed): the fold is not offered. */
+.report-fold:has(#analysis-summary:empty):has(#analysis-handoff[hidden]) {
+  display: none;
 }
 
 .drawer {
@@ -1179,6 +1216,13 @@
   #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { visibility: hidden; }
   #analysis-summary:empty { display: none; }
+  /* The sheet's own bar already says "Report", so the fold's name inside it
+     would be the same word twice: on a phone the sheet is the disclosure and
+     the fold is simply open. Its content is forced visible rather than set
+     open, so the state survives a collapse and re-raise of the sheet. */
+  #analyze-sheet .report-fold > summary { display: none; }
+  #analyze-sheet .report-fold::details-content { content-visibility: visible; block-size: auto; }
+  #analyze-sheet .report-fold > :not(summary) { display: block; }
   :is(#analyze-sheet, #analyze-open) :is(#analysis-summary, #pgn-drawer, #history-drawer:not([hidden])) {
     margin: 0;
     padding: 10px 14px;

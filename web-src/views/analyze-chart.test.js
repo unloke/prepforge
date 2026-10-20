@@ -240,17 +240,15 @@ describe("coach note", () => {
 });
 
 describe("the panel's one filled action", () => {
-  it("demotes the head's Analyze only while the handoff is on the panel", () => {
-    // The accent moves to "New repertoire from this game" once the report is
-    // up, but that handoff is hidden for a reader who already has a
-    // repertoire. Demoting the head's action regardless left the panel with
-    // no accent anywhere (measured: transparent, at rest).
-    const rule = ALL_STYLES.match(
-      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\):has\(#analysis-handoff:not\(\[hidden\]\)\) #run-analysis \{([^}]+)\}/,
-    )?.[1] || "";
-    expect(rule).toMatch(/background:\s*transparent/);
+  it("keeps Analyze the accent and puts the handoff behind the report fold", () => {
+    // The accent used to move to "New repertoire from this game" whenever that
+    // handoff was on the panel — two filled blue actions in one column, the
+    // second one always open under an already-run report. The handoff now
+    // lives inside the report fold, so the two are never on screen together
+    // and the head's Analyze keeps the accent unconditionally.
+    expect(ALL_STYLES).not.toMatch(/#run-analysis \{[^}]*background:\s*transparent/);
     expect(ALL_STYLES).not.toMatch(
-      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\) #run-analysis \{/,
+      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\)[^{]*#run-analysis \{/,
     );
   });
 });
