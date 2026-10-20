@@ -657,8 +657,10 @@
 .moves-grid .mtree-line.is-main {
   display: grid;
   /* The two sides of a move belong to each other: sized to their content they
-     sit next to one another, the way a score sheet prints them. */
-  grid-template-columns: 32px max-content max-content;
+     sit next to one another, the way a score sheet prints them. The trailing
+     track soaks up the rest of the sheet so a variation row, which spans every
+     track, still draws its rule across the full width. */
+  grid-template-columns: 32px max-content max-content minmax(0, 1fr);
   column-gap: 18px;
 }
 .moves-grid .mtree-line.is-main > .mtree-num {
