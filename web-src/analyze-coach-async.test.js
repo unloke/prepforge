@@ -25,7 +25,10 @@ function fakeStore() {
     maiaRead: vi.fn(),
   };
 }
-const read = (fen, depth = 16) => ({ fen, current_depth: depth, running: false, pvs: [{ score_cp: 20, pv_uci: ["e2e4"], pv_san: ["e4"] }] });
+const read = (fen, depth = 16, lines = 2) => ({
+  fen, current_depth: depth, running: false,
+  pvs: Array.from({ length: lines }, (_, i) => ({ score_cp: 20 - i, pv_uci: ["e2e4"], pv_san: ["e4"] })),
+});
 
 function harness({ reviewed = true } = {}) {
   let view = "analyze";
@@ -108,14 +111,16 @@ describe("PositionCoach async continuation ownership", () => {
     expect(h.render).not.toHaveBeenCalled();
   });
 
-  it("reads the before and after positions at once, at the Settings depth with two lines", async () => {
+  it("reads the before position with two lines and the after position with one", async () => {
     const h = harness();
     h.moduleGate.resolve(h.mod);
     const pending = h.coach._run(h.coach.fen);
     await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    // Only the before-read consumes the second line (the best alternative → "only
+    // move"/Brilliant); the after-read uses its top line alone, so it asks for one.
     expect(h.store.leases.map((l) => [l.fen, l.opts])).toEqual([
       ["before w - - 0 1", { depth: 16, multipv: 2 }],
-      ["after b - - 0 1", { depth: 16, multipv: 2 }],
+      ["after b - - 0 1", { depth: 16, multipv: 1 }],
     ]);
     h.answerAll();
     await pending;
@@ -225,7 +230,7 @@ describe("PositionCoach async continuation ownership", () => {
   h.moduleGate.resolve(h.mod);
   h.coach._ensureEngine();
   h.coach._remember(h.coach.ctx.prevFen, read(h.coach.ctx.prevFen), 0);
-  h.coach._remember(h.coach.fen, read(h.coach.fen), 0);
+  h.coach._remember(h.coach.fen, read(h.coach.fen, 16, 1), 0);
   expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
   await vi.waitFor(() => expect(h.render).toHaveBeenCalledOnce());
   expect(vi.getTimerCount()).toBe(0);
@@ -238,7 +243,7 @@ describe("PositionCoach async continuation ownership", () => {
   h.moduleGate.resolve(h.mod);
   h.coach._ensureEngine();
   h.coach._remember(h.coach.ctx.prevFen, read(h.coach.ctx.prevFen), 0);
-  h.coach._remember(h.coach.fen, read(h.coach.fen), 0);
+  h.coach._remember(h.coach.fen, read(h.coach.fen, 16, 1), 0);
   expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
   await vi.advanceTimersByTimeAsync(0); // waitFor would advance the faked clock past the window
   expect(h.render).toHaveBeenCalledOnce();

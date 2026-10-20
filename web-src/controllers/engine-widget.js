@@ -31,16 +31,13 @@ class EngineWidget {
     this.depthReadout = null;
     this.closeBtn = null;
     this.open = false;
-    this.pollTimer = null;
+    this.unwatch = null;
     this.lastFen = null;
     this.lastSnapshot = null;
     // The engine line shown on the board (see _previewLine), or null.
     this.preview = null;
+    // Lines shown, and (see _searchMultipv) the width of the search behind them.
     this.multipv = 1;
-    // Lines actually searched. Always the shown lines: Explorer row evals come
-    // from their own worker (explorerEvalEngine), so the main line keeps the
-    // full-strength single-PV search instead of being widened to every row.
-    this.searchedMultipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
     // Engine compute seam: browser Stockfish (WASM Worker) only. No server
@@ -85,7 +82,7 @@ class EngineWidget {
       return;
     }
     await this._restartForCurrentBoard();
-    this._startPolling();
+    this._watch();
   }
 
   bind() {
@@ -128,14 +125,14 @@ class EngineWidget {
     this.el.hidden = false;
     this.el.classList.add("is-visible");
     await this._restartForCurrentBoard();
-    this._startPolling();
+    this._watch();
   }
 
   async close() {
     if (!this.open) return;
     this.exitPreview();
     this.open = false;
-    this._stopPolling();
+    this._unwatch();
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
     setTimeout(() => {
@@ -148,8 +145,17 @@ class EngineWidget {
     }
   }
 
+  // Lines the search must cover. The card shows `this.multipv` rows. Build's Explorer row
+  // evals come from their own worker, so there the search is exactly the lines shown. On
+  // Analyze, though, the coach's engine review reads the best ALTERNATIVE in the position
+  // before a move — that gap is what "only move" and the Brilliant/Great verdict turn on —
+  // and it reads it from this same search (onWidgetSnapshot). So while that review is on,
+  // ask for the second line up front: the coach would otherwise widen the same position a
+  // moment later, and the store restarts the lane wider, throwing the narrow search away
+  // (measured per stepped position at depth 16: 295k nodes as one search, 361k as two).
   _searchMultipv() {
-    return activeViewName() === "analyze" ? Math.max(2, this.multipv) : this.multipv;
+    const coach = activeViewName() === "analyze" ? getAnalyzeSession()?.positionCoach : null;
+    return coach?.enabled ? Math.max(2, this.multipv) : this.multipv;
   }
 
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
@@ -162,15 +168,14 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.update({ fen, multipv: this._searchMultipv() });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
       // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
       // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
       // provider.serialize() orders engine commands, not these UI continuations.
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._renderSnapshot(snapshot);
-      this._startPolling();
+      this._watch();
     } catch (error) {
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._showError(error.message);
@@ -184,8 +189,7 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.open({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.open({ fen, multipv: this._searchMultipv() });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
       // while open() was in flight (see onBoardChanged).
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
@@ -208,8 +212,7 @@ class EngineWidget {
     const engine = this.engine;
     const fen = this.lastFen || this.currentFen();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.update({ fen, multipv: this._searchMultipv() });
       // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
       // board changed, or the line count was clicked again (this.multipv !== clamped). See
       // onBoardChanged.
@@ -222,7 +225,7 @@ class EngineWidget {
         return;
       }
       this._renderSnapshot(snapshot);
-      this._startPolling();
+      this._watch();
     } catch (error) {
       if (!this.open || engine !== this.engine || this.multipv !== clamped) return;
       this._showError(error.message);
@@ -313,6 +316,12 @@ class EngineWidget {
   _renderLinesReadout() {
     if (!this.linesReadout) return;
     this.linesReadout.textContent = `${this.multipv}`;
+    // On Analyze the coach's review reads the best alternative, so the search covers one
+    // line more than the card shows. The count stays the lines shown; the tooltip says so.
+    const extra = this._searchMultipv() > this.multipv;
+    this.linesReadout.title = extra
+      ? `${this.multipv} shown, plus the coach's best alternative`
+      : "Lines shown";
     if (this.linesDownBtn) this.linesDownBtn.disabled = this.multipv <= this.minMultipv;
     if (this.linesUpBtn) this.linesUpBtn.disabled = this.multipv >= this.maxMultipv;
   }
@@ -409,30 +418,41 @@ class EngineWidget {
     if (this.lastSnapshot && this.lastSnapshot.fen === this.lastFen) this._renderSnapshot(this.lastSnapshot);
   }
 
-  _startPolling() {
-    // Never poll a closed panel. openForCurrent()/onDepthSettingChanged() call this right after
-    // awaiting _restartForCurrentBoard(), so the user may have closed the widget mid-await — guard
-    // here to cover every call site at once (a stray 450ms interval on a hidden panel otherwise).
+  // Paint every update the search produces, as it produces it: the panel used to sample
+  // the search on a 450 ms timer, so a fresh position sat on "Calculating…" for up to half
+  // a second after the engine's first line already existed, and intermediate depths were
+  // skipped. Paints are coalesced to one per animation frame — the engine emits several
+  // depths inside one frame at low depths, and repainting for each makes the row flicker.
+  // The subscription stays on the provider instance it was made for.
+  _watch() {
+    this._unwatch();
+    this._renderLinesReadout(); // the readout's tooltip names the coached extra line
     if (!this.open) return;
-    this._stopPolling();
-    this.pollTimer = setInterval(async () => {
-      try {
-        const engine = this.engine;
-        const fen = this.lastFen;
-        const snapshot = await engine.snapshot();
-        if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
-        this._renderSnapshot(snapshot);
-      } catch (_) {
-        // Ignore transient polling errors.
-      }
-    }, 450);
+    const engine = this.engine;
+    const fen = this.lastFen;
+    let frame = 0;
+    let latest = null;
+    const paint = () => {
+      frame = 0;
+      const snapshot = latest;
+      latest = null;
+      if (!snapshot || !this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._renderSnapshot(snapshot);
+    };
+    engine.watch((snapshot) => {
+      latest = snapshot;
+      frame ||= requestAnimationFrame(paint);
+    });
+    this.unwatch = () => {
+      engine.watch(null);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }
 
-  _stopPolling() {
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
+  _unwatch() {
+    const off = this.unwatch;
+    this.unwatch = null;
+    if (off) off();
   }
 
   _renderSnapshot(snapshot) {
@@ -450,7 +470,7 @@ class EngineWidget {
     }
     const pvs = Array.isArray(snapshot.pvs) ? snapshot.pvs : [];
     if (!pvs.length && this._renderGameOver(snapshot.fen || this.lastFen)) {
-      this._stopPolling();
+      this._unwatch();
       return;
     }
     const depthText = `${snapshot.current_depth || 0} / ${snapshot.max_depth || "?"}`;
@@ -475,9 +495,9 @@ class EngineWidget {
     explorerEvalEngine.repaint();
     // Keep the coach's one-line rationale in sync with this (deeper) search.
     getAnalyzeSession()?.positionCoach.onWidgetSnapshot(snapshot);
-    // Once the engine reaches max depth it stops; no point polling further
-    // until the position changes (open/update restart polling).
-    if (snapshot.running === false) this._stopPolling();
+    // Once the engine reaches max depth it stops; nothing more will arrive until the
+    // position changes (open/update subscribe again).
+    if (snapshot.running === false) this._unwatch();
   }
 
   // One line per row, cut off at the panel edge. Clicking a row plays it out on the

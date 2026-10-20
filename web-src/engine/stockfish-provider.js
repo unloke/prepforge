@@ -129,6 +129,9 @@ export function createStockfishWasmProvider({
   let generation = 0;
   // Event-driven waiters for waitForSearchComplete — woken on worker UCI lines, not timers.
   let searchWaiters = [];
+  // Subscriber told about every depth the search reaches (see watch), so a consumer
+  // renders lines as they arrive instead of sampling the state on a timer.
+  let onChange = null;
 
   function notifySearchWaiters() {
     if (!searchWaiters.length) return;
@@ -265,6 +268,7 @@ export function createStockfishWasmProvider({
       startupGuard?.done();
       startupGuard = null;
       notifySearchWaiters();
+      onChange?.();
       return;
     }
     if (line.startsWith("info ") && line.includes(" pv ")) {
@@ -329,6 +333,7 @@ export function createStockfishWasmProvider({
       pv_san: uciToSan(state.fen, pv),
     };
     notifySearchWaiters();
+    onChange?.();
   }
 
   async function ensureWorker() {
@@ -550,6 +555,9 @@ export function createStockfishWasmProvider({
     snapshot() {
       return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })) };
     },
+    // Replace (or, with null, remove) the change listener. The store's capture is the
+    // only consumer; the provider calls it after every parsed depth and at bestmove.
+    watch(fn) { onChange = fn || null; },
     // Resolve when the in-flight search finishes (worker `info`/`bestmove` driven).
     // A 1s cancel poll is the only timer — Chromium clamps hidden-tab timers to ≥1s anyway,
     // so this avoids the old 90ms poll loop that made background Analyze ~10× slower.

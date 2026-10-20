@@ -58,7 +58,6 @@ export function createPositionAnalysisStore({
   analyzeFn = analyzeGamePositions,
   getMaia = null,
   lanes: laneCount = 2,
-  pollMs = 100,
   idleCloseMs = 60000,
   cacheSize = 600,
   maxNodes = ANALYSIS_MAX_NODES,
@@ -70,7 +69,7 @@ export function createPositionAnalysisStore({
 } = {}) {
   const entries = new Map();
   const lanes = Array.from({ length: Math.max(1, laneCount) }, (_, id) => ({
-    id, provider: null, depth: 0, entry: null, multipv: 0, timer: null, idleTimer: null, startedFor: null,
+    id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null,
   }));
   let clock = 0;
   let generation = 0;
@@ -130,9 +129,10 @@ export function createPositionAnalysisStore({
     return { session_id: "position-store", fen, running: searching || !!entry.want, current_depth: 0, max_depth: depth, side_to_move: sideOf(fen), pvs: [] };
   }
 
-  function stopTimer(lane) {
-    clearInterval(lane.timer);
-    lane.timer = null;
+  // Detach the lane's provider subscription: the search pushes each depth it reaches.
+  function unwatch(lane) {
+    lane.unwatch?.();
+    lane.unwatch = null;
   }
 
   function armIdle(lane) {
@@ -167,7 +167,7 @@ export function createPositionAnalysisStore({
 
   function finish(lane, { error = null } = {}) {
     const entry = lane.entry;
-    stopTimer(lane);
+    unwatch(lane);
     lane.entry = null;
     lane.startedFor = null;
     if (entry) {
@@ -231,15 +231,21 @@ export function createPositionAnalysisStore({
     clearTimeout(lane.idleTimer);
     lane.idleTimer = null;
     if (lane.entry && lane.entry !== entry) keepPartial(lane.entry);
-    stopTimer(lane);
+    unwatch(lane);
     if (lane.provider && lane.depth !== depth) {
       const old = lane.provider;
       lane.provider = null;
       Promise.resolve(old.close()).catch(() => {});
     }
     if (!lane.provider) {
-      lane.provider = createProvider({ maxDepth: depth, maxMultipv: 5, maxNodes });
       lane.fresh = true;
+      // The provider reports every depth it reaches; the lane captures each one, so a
+      // line appears at the depth the engine actually reached instead of at the next
+      // sample of a timer. Deferred to a microtask so the capture (which may finish the
+      // lane and start another search) never runs inside the worker's message handler.
+      const laneProvider = createProvider({ maxDepth: depth, maxMultipv: 5, maxNodes });
+      laneProvider.watch?.(() => queueMicrotask(() => capture(lane)));
+      lane.provider = laneProvider;
     }
     lane.depth = depth;
     lane.entry = entry;
@@ -265,7 +271,6 @@ export function createPositionAnalysisStore({
     }
     if (epoch !== generation || lane.startedFor !== token || lane.provider !== provider) return;
     capture(lane);
-    if (lane.entry === entry && lane.startedFor === token) lane.timer = setInterval(() => capture(lane), pollMs);
   }
 
   // Give each waiting position a lane, newest request first. Idle lanes go first,
@@ -328,6 +333,13 @@ export function createPositionAnalysisStore({
           };
           if (!check()) entry.listeners.add(check);
         });
+      },
+      // Call `fn` on every update to this position (the store emits on each captured
+      // depth) until released. A panel renders pushes instead of polling.
+      listen(fn) {
+        const check = () => !released && epoch === generation && fn();
+        entry.listeners.add(check);
+        return () => entry.listeners.delete(check);
       },
       release() {
         if (released) return;
@@ -435,17 +447,37 @@ export function createPositionAnalysisStore({
         },
       });
     },
-    // EngineProvider-compatible handle for polling consumers (the Engine panel).
-    // close() only drops this consumer's hold on the position.
+    // EngineProvider-compatible handle for the Engine panel. close() only drops this
+    // consumer's hold on the position. watch(fn) subscribes to every store update for the
+    // held position, so the panel renders each depth as it arrives instead of sampling.
     createHandle({ maxDepth = 16 } = {}) {
       let lease = null;
+      let onChange = null;
+      let detach = null;
+      const attach = () => {
+        detach?.();
+        detach = lease && onChange ? lease.listen(() => onChange(lease.snapshot())) : null;
+      };
       const select = async ({ fen, multipv = 1 }) => {
         const next = acquire(fen, { depth: maxDepth, multipv });
         lease?.release();
         lease = next;
+        attach();
         return next.snapshot();
       };
-      return { open: select, update: select, snapshot: () => lease?.snapshot(), close: async () => { lease?.release(); lease = null; } };
+      return {
+        open: select,
+        update: select,
+        snapshot: () => lease?.snapshot(),
+        // Replace (or, with null, remove) the change listener on the held position.
+        watch(fn) { onChange = fn; attach(); },
+        close: async () => {
+          detach?.();
+          detach = null;
+          lease?.release();
+          lease = null;
+        },
+      };
     },
     stats() {
       return { entries: entries.size, lanes: lanes.map((l) => ({ busy: !!l.entry, warm: !!l.provider, depth: l.depth })) };
@@ -455,7 +487,7 @@ export function createPositionAnalysisStore({
       for (const lane of lanes) {
         lane.unregisterIdle?.();
         lane.unregisterIdle = null;
-        stopTimer(lane);
+        unwatch(lane);
         clearTimeout(lane.idleTimer);
         lane.entry = null;
         if (lane.provider) Promise.resolve(lane.provider.close()).catch(() => {});
@@ -475,7 +507,7 @@ export function createPositionAnalysisStore({
     // Keep leases attached while replacing all engine-derived state. In particular,
     // first-use detection must not orphan the board request that triggered it.
     for (const lane of lanes) {
-      stopTimer(lane);
+      unwatch(lane);
       clearTimeout(lane.idleTimer);
       lane.unregisterIdle?.();
       lane.unregisterIdle = null;

@@ -13,15 +13,20 @@ function fakeProvider(options) {
   let snap = null;
   const worker = {
     options,
+    // The real provider pushes every depth it reaches; the store captures on it.
+    watch(fn) { worker.onChange = fn || null; },
     opens: 0,
     updates: 0,
     close: vi.fn(async () => {}),
     open: vi.fn(async ({ fen, multipv }) => { worker.opens += 1; snap = { session_id: "s", fen, multipv, pvs: [], current_depth: 0, max_depth: options.maxDepth, running: true }; }),
     update: vi.fn(async ({ fen, multipv }) => { worker.updates += 1; snap = { session_id: "s", fen, multipv, pvs: [], current_depth: 0, max_depth: options.maxDepth, running: true }; }),
     snapshot: () => snap,
-    progress: (depth) => { snap = { ...snap, current_depth: depth, pvs: Array.from({ length: snap.multipv }, (_, i) => ({ score_cp: 20 - i, mate_in: null, pv_uci: ["a1a2"], pv_san: ["Ka2"] })) }; },
-    finish: (depth = options.maxDepth) => { worker.progress(depth); snap = { ...snap, running: false }; },
-    fail: (message = "worker died") => { snap = { ...snap, error: message, running: false }; },
+    progress: (depth) => {
+      snap = { ...snap, current_depth: depth, pvs: Array.from({ length: snap.multipv }, (_, i) => ({ score_cp: 20 - i, mate_in: null, pv_uci: ["a1a2"], pv_san: ["Ka2"] })) };
+      worker.onChange?.();
+    },
+    finish: (depth = options.maxDepth) => { worker.progress(depth); snap = { ...snap, running: false }; worker.onChange?.(); },
+    fail: (message = "worker died") => { snap = { ...snap, error: message, running: false }; worker.onChange?.(); },
     get fen() { return snap && snap.fen; },
   };
   workers.push(worker);
@@ -32,7 +37,7 @@ const laneFor = (fen) => workers.find((w) => w.fen === fen && w.snapshot().runni
 beforeEach(() => {
   vi.useFakeTimers();
   workers = [];
-  store = createPositionAnalysisStore({ createProvider: fakeProvider, lanes: 2, pollMs: 50, idleCloseMs: 1000 });
+  store = createPositionAnalysisStore({ createProvider: fakeProvider, lanes: 2, idleCloseMs: 1000 });
 });
 afterEach(() => { store.clear(); vi.useRealTimers(); });
 
@@ -102,6 +107,26 @@ describe("interactive lanes", () => {
     expect(coach.snapshot()).toMatchObject({ current_depth: 16, running: false });
     expect(coach.snapshot().pvs).toHaveLength(2);
     expect(workers[0].close).not.toHaveBeenCalled();
+  });
+
+  it("the handle pushes every depth the search reaches instead of being polled", async () => {
+    const seen = [];
+    const handle = store.createHandle({ maxDepth: 16 });
+    handle.watch((snap) => seen.push(snap.current_depth));
+    await handle.open({ fen: A, multipv: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+    for (const depth of [2, 4, 6]) {
+      workers[0].progress(depth);
+      await vi.advanceTimersByTimeAsync(0);
+    }
+    // Every depth the engine reported reached the consumer — no timer sampled them away.
+    expect(seen).toEqual([2, 4, 6]);
+    // Detaching stops the pushes.
+    handle.watch(null);
+    workers[0].progress(8);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toEqual([2, 4, 6]);
+    expect(vi.getTimerCount()).toBe(0); // no polling interval anywhere
   });
 
   it("stepping through many positions reuses warm workers instead of booting one per ply", async () => {

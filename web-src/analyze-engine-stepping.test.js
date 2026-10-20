@@ -9,7 +9,8 @@ const source = appSource();
 function widgetHarness() {
   const deps = { html,
     setEngineBestArrow: vi.fn(), localGameOver: () => null,
-    activeViewName: () => "analyze",
+    activeViewName: () => "analyze", effectiveStockfishDepth: () => 16,
+    createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, getAnalyzeSession: () => null, formatEngineEval,
   };
   const widgetSource = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
@@ -51,6 +52,45 @@ describe("Analyze engine stepping", () => {
     widget._renderEvalBar({ score_cp: 40 });
     expect(widget.evalHead.textContent).toBe("+0.40");
     expect(widget.evalHead.dataset.pending).toBeUndefined();
+  });
+
+  it("searches exactly the lines it shows, and paints each depth the engine reaches", async () => {
+    const { widget } = widgetHarness();
+    // The card's Line −/+ is the whole contract with the engine: at 1 line it asks
+    // Stockfish for MultiPV 1 on every view, Analyze included (a second line nobody
+    // renders used to double the nodes of every search).
+    const sent = [];
+    let push = null;
+    const engine = {
+      depth: 16,
+      open: vi.fn(async (req) => { sent.push(["open", req.multipv]); return { session_id: "s", fen: req.fen, pvs: [], running: true }; }),
+      update: vi.fn(async (req) => { sent.push(["update", req.multipv]); return { session_id: "s", fen: req.fen, pvs: [], running: true }; }),
+      watch: vi.fn((fn) => { push = fn; }),
+      snapshot: () => null,
+    };
+    widget.engine = engine;
+    widget.engineDepth = 16;
+    widget.el = { hidden: true, classList: { add() {}, remove() {}, contains: () => false } };
+    widget.lastFen = "current w - - 0 1";
+    await widget.openForCurrent();
+    await widget._setMultipv(3);
+    expect(sent).toEqual([["open", 1], ["update", 3]]);
+    expect(widget.multipv).toBe(3);
+    // The subscription is the paint path — no sampler. Each depth the engine reports
+    // repaints the rows; the depth readout follows it.
+    expect(typeof push).toBe("function");
+    widget._renderSnapshot = vi.fn();
+    const snap = { session_id: "s", fen: "current w - - 0 1", current_depth: 7, max_depth: 16, pvs: [{ score_cp: 30, pv_uci: ["e2e4"], pv_san: ["e4"] }] };
+    // One frame per paint (jsdom-less test: run the frame callback immediately).
+    const frame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = (fn) => { fn(); return 1; };
+    globalThis.cancelAnimationFrame = () => {};
+    try {
+      push(snap);
+    } finally {
+      globalThis.requestAnimationFrame = frame;
+    }
+    expect(widget._renderSnapshot).toHaveBeenCalledWith(snap);
   });
 
   it("does not paint another FEN's score or arrow", () => {
