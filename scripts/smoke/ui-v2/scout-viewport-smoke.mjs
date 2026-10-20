@@ -256,6 +256,13 @@ async function runViewport(vp) {
 
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  if (overflow > 0) {
+    const wide = await page.evaluate(() => [...document.querySelectorAll("body *")]
+      .filter((el) => el.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5)
+      .slice(0, 6)
+      .map((el) => `${el.tagName.toLowerCase()}#${el.id}.${String(el.className).split(" ").slice(0, 2).join(".")} right=${Math.round(el.getBoundingClientRect().right)}`));
+    console.log(`[scout-smoke] overflow sources: ${wide.join(" | ")}`);
+  }
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);
