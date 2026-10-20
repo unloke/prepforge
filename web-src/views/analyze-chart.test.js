@@ -506,3 +506,27 @@ describe("eval chart helpers", () => {
     ).toContain("· 0-1");
   });
 });
+
+// The phone report stacks chart, board, coach and score sheet, so each one
+// shares the screen's gutter and the eval figure leads its row. The chart used
+// to run edge to edge, where the first ply's cursor drew a dashed line on the
+// screen's own border (measured at x 0-3 of a 390px screen).
+describe("Analyze on a phone", () => {
+  const phone = CHART_STYLES.slice(CHART_STYLES.lastIndexOf("@media (max-width: 760px)"));
+
+  it("sets the game graph on the page gutter", () => {
+    expect(phone).toMatch(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*margin: 0 var\(--phone-gutter\)/);
+  });
+
+  it("gives the eval figure the row's ink and its largest size", () => {
+    const rule = phone.match(/#analysis-eval-card \.eval-now \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule[0]).toMatch(/font-size:\s*18px/);
+    expect(rule[0]).toMatch(/color:\s*var\(--text\)/);
+  });
+
+  it("makes the score sheet rows a thumb target", () => {
+    expect(phone).toMatch(/#analysis-results \.moves-grid \.mtree-line\.is-main \{ min-height: 32px; \}/);
+    expect(phone).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{[^}]*font-size: 14px/);
+  });
+});

@@ -1195,12 +1195,16 @@
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
 
   /* Game graph on top, at a fixed height so the board never moves. It is the
-     move scrubber; the score sheet below the coach is the other way in. */
-  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; }
-  #analysis-eval-card .eval-chart { height: 84px; border-radius: 0; touch-action: pan-y; }
+     move scrubber; the score sheet below the coach is the other way in.
+     It sits on the phone gutter so its ends line up with the eval row and the
+     coach under it — edge to edge, the first ply's cursor drew a dashed line
+     on the screen's own border, which read as a stray edge on the card. */
+  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; margin: 0 var(--phone-gutter); }
+  #analysis-eval-card .eval-chart { height: 84px; border-radius: 8px; touch-action: pan-y; }
   /* The score sheet takes the rest of the screen under the coach: a phone
      cannot reach the report sheet's moves without it, and the band the coach
-     does not need is already here. */
+     does not need is already here. It is the sheet a thumb taps to walk the
+     game, so its rows take the gutter and 32px of pitch instead of 21. */
   #analysis-results:not([hidden]) > .moves-grid {
     display: block;
     order: 3;
@@ -1208,23 +1212,34 @@
     min-height: 0;
     max-height: none;
     margin: 0;
-    padding: 4px 12px 8px;
+    padding: 4px var(--phone-gutter) 8px;
     border-radius: 0;
     background: var(--bg);
+    font-size: 14px;
     overflow-y: auto;
   }
+  #analysis-results .moves-grid .mtree-line.is-main { min-height: 32px; }
+  #analysis-results .moves-grid .mtree-line.is-main > .mtree-num { font-size: 13px; }
+  #analysis-results .moves-grid .mtree-line.is-main > .mtree-move {
+    min-height: 32px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
 
-  /* Under the board: eval, win meter, Report, Engine; then the best line. */
+  /* Under the board: eval, win meter, Report, Engine; then the best line.
+     The eval is the one figure the chart answers with, so it is the row's
+     largest item and takes the ink; the word "Evaluation" and the move label
+     are the quiet meta beside it. */
   #analysis-eval-card > .ev-head {
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 44px;
-    padding: 0 12px 0 14px;
+    height: 52px;
+    padding: 0 var(--phone-gutter);
     background: var(--bg);
   }
-  #analysis-eval-card .ev-title { color: var(--muted); }
-  #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
+  #analysis-eval-card .ev-title { color: var(--muted); font-weight: 600; }
+  #analysis-eval-card .eval-now { min-width: 62px; color: var(--text); font-size: 18px; font-weight: 650; }
   #analysis-eval-card .ev-meter { flex: none; width: 64px; }
   #analysis-eval-card .ev-move {
     display: block;
@@ -1239,7 +1254,7 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
+  #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 14px; }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
     display: inline-flex;
@@ -1252,8 +1267,8 @@
     background: var(--panel-soft);
     color: var(--text);
     font: inherit;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 650;
   }
   #analysis-engine-slot { display: block; padding: 0 12px 4px 10px; }
   #analysis-engine-slot > .engine-window:not([hidden]) { display: block; }
