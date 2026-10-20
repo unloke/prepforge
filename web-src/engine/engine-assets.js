@@ -21,7 +21,7 @@ export function createEngineAssetManager({
     const url = urlFor(net);
     if (!entries.has(url)) entries.set(url, {
       state: { net, phase: "idle", loaded: 0, total: builds[net].bytes, error: null },
-      listeners: new Set(), promise: null,
+      listeners: new Set(), promise: null, generation: 0, abort: null,
     });
     return entries.get(url);
   }
@@ -37,7 +37,24 @@ export function createEngineAssetManager({
       if (folder && !folders.has(folder)) await cache.delete(key);
     }
   }
+  // A net this device no longer runs keeps no bytes: the load in flight is
+  // stopped, the entry starts over, and its cached file is gone. A load that was
+  // already running cannot write behind the delete (see `live` below).
+  async function remove(net) {
+    const entry = entryFor(net);
+    entry.generation++;
+    entry.abort?.();
+    entry.abort = null;
+    entry.promise = null;
+    emit(entry, { phase: "idle", loaded: 0, error: null });
+    try {
+      const cache = await cacheStorage()?.open(CACHE_NAME);
+      await cache?.delete(urlFor(net));
+    } catch { /* denied, private mode or already evicted */ }
+  }
   async function load(entry, url) {
+    const generation = entry.generation;
+    const live = () => entry.generation === generation;
     let cache, response;
     try {
       cache = await cacheStorage()?.open(CACHE_NAME);
@@ -47,6 +64,7 @@ export function createEngineAssetManager({
     emit(entry, { phase: cached ? "compile" : "download" });
     if (!response) response = await fetchAsset(url);
     if (!response.ok) throw new Error(`HTTP ${response.status} loading ${url}`);
+    if (!live()) throw new Error(`net ${entry.state.net} removed`);
 
     // Cache.put consumes its stream concurrently. Await each write so a slower
     // cache consumer cannot accumulate an entire second net in a tee/clone queue.
@@ -66,17 +84,21 @@ export function createEngineAssetManager({
     }
     const reader = response.body?.getReader();
     let stopped = false;
+    // remove() fails the stream a consumer is reading: the read that is waiting
+    // rejects at once, so the load ends here instead of after the whole net.
+    let failStream = null;
     const counted = new ReadableStream({
       async pull(controller) {
+        failStream = (reason) => { stopped = true; try { controller.error(reason); } catch { /* already closed */ } };
         try {
           const chunk = reader ? await reader.read() : { done: true };
-          if (stopped) return;
+          if (stopped || !live()) return;
           if (chunk.done) {
             // Responses without streaming bodies still use exactly one byte read.
             if (!reader) {
               const bytes = new Uint8Array(await response.arrayBuffer());
               if (writer) await Promise.race([writer.write(bytes), stored]).catch(() => {});
-              if (stopped) return;
+              if (stopped || !live()) return;
               controller.enqueue(bytes);
               emit(entry, { loaded: bytes.byteLength });
             }
@@ -86,7 +108,7 @@ export function createEngineAssetManager({
           } else {
             emit(entry, { loaded: entry.state.loaded + chunk.value.byteLength });
             if (writer) await Promise.race([writer.write(chunk.value), stored]).catch(() => {});
-            if (stopped) return;
+            if (stopped || !live()) return;
             controller.enqueue(chunk.value);
           }
         } catch (error) {
@@ -100,6 +122,7 @@ export function createEngineAssetManager({
         return reader?.cancel(reason);
       },
     });
+    entry.abort = () => { stopped = true; failStream?.(new Error(`net ${entry.state.net} removed`)); void counted.cancel().catch(() => {}); };
     const input = new Response(counted, { headers: { "Content-Type": "application/wasm" } });
     // MIME is normalized above, so an actual compile error is never retried as a
     // second download. Older engines without streaming compile consume bytes once.
@@ -122,13 +145,17 @@ export function createEngineAssetManager({
     engineAssetState(net) { return { ...entryFor(net).state }; },
     loadEngineModule(net) {
       const entry = entryFor(net);
+      const generation = entry.generation;
       entry.promise ||= Promise.resolve().then(() => load(entry, urlFor(net))).catch(cause => {
         const error = new EngineAssetError(cause);
-        emit(entry, { phase: "error", error });
+        // A load stopped by remove() is not this net's failure: the entry is
+        // already back to idle, and the next yes downloads again.
+        if (entry.generation === generation) emit(entry, { phase: "error", error });
         throw error;
       });
       return entry.promise;
     },
+    removeEngineAsset: remove,
     subscribeEngineAsset(net, fn) {
       const entry = entryFor(net);
       entry.listeners.add(fn);
@@ -138,4 +165,4 @@ export function createEngineAssetManager({
   };
 }
 
-export const { loadEngineModule, subscribeEngineAsset, engineAssetState } = createEngineAssetManager();
+export const { loadEngineModule, removeEngineAsset, subscribeEngineAsset, engineAssetState } = createEngineAssetManager();

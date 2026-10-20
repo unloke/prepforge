@@ -11,7 +11,7 @@ function fixture(options = {}) {
     match: vi.fn(async key => saved.has(key) ? new Response(saved.get(key)) : undefined),
     put: vi.fn(async (key, response) => { saved.set(key, await response.arrayBuffer()); }),
     keys: vi.fn(async () => [...saved.keys()].map(key => ({ url: new URL(key, "https://test.invalid").href }))),
-    delete: vi.fn(async key => saved.delete(new URL(key.url).pathname)),
+    delete: vi.fn(async key => saved.delete(typeof key === "string" ? key : new URL(key.url).pathname)),
   };
   const module = {};
   const wasm = {
@@ -171,5 +171,43 @@ describe("shared engine assets", () => {
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(states.at(-1).phase).toBe("error");
     expect(f.cache.delete).not.toHaveBeenCalled();
+  });
+
+  // A device that steps down from the full net keeps none of its 94 MB: the
+  // cached file goes and the entry starts over, so a later yes downloads again.
+  it("deletes a net's cached bytes and forgets its module", async () => {
+    const f = fixture();
+    await f.loadEngineModule("big");
+    await tick();
+    expect(f.saved.has(url("big"))).toBe(true);
+    await f.removeEngineAsset("big");
+    expect(f.cache.delete).toHaveBeenCalledWith(url("big"));
+    expect(f.saved.has(url("big"))).toBe(false);
+    expect(f.engineAssetState("big")).toMatchObject({ phase: "idle", loaded: 0 });
+    const again = f.loadEngineModule("big");
+    expect(await again).toBe(f.module);
+    expect(f.fetchAsset).toHaveBeenCalledTimes(2);
+    expect(f.wasm.compileStreaming).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops an in-flight download before deleting, so nothing is written behind it", async () => {
+    const gates = [];
+    const f = fixture({ fetchAsset: async () => new Response(new ReadableStream({
+      start(controller) { gates.push(() => { controller.enqueue(bytes); controller.close(); }); },
+    }, { highWaterMark: 0 })) });
+    const pending = f.loadEngineModule("big").catch(error => error);
+    await tick();
+    expect(f.saved.has(url("big"))).toBe(false);
+    await f.removeEngineAsset("big");
+    expect(await pending).toBeInstanceOf(EngineAssetError);
+    expect(f.saved.has(url("big"))).toBe(false);
+    expect(f.cache.delete).toHaveBeenCalledWith(url("big"));
+    expect(f.engineAssetState("big")).toMatchObject({ phase: "idle", loaded: 0 });
+    // The next load is a real download, not the stopped one.
+    const next = f.loadEngineModule("big");
+    await tick();
+    gates[1]();
+    expect(await next).toBe(f.module);
+    expect(f.wasm.compileStreaming).toHaveBeenCalledTimes(2);
   });
 });

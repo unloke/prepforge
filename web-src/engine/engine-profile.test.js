@@ -3,35 +3,7 @@ import { createEngineProfileManager, reserveEngineMemory, stepDownProfile, PROFI
 import { EngineAssetError } from "./engine-assets.js";
 import { createComputeBudget } from "./compute-budget.js";
 
-const STEPS = [["lite", 1], ["big", 1], ["big", 2], ["big", 3]];
-function fixture({ throughput = (_net, n) => n, Memory = class { constructor(options) { this.options = options; } },
-  prepare, search, ...options } = {}) {
-  const data = new Map();
-  const storage = { getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v), removeItem: k => data.delete(k) };
-  const engines = [];
-  const modules = { lite: {}, big: {} };
-  const loadModule = vi.fn(async net => modules[net]);
-  const reserveMemory = vi.fn(net => reserveEngineMemory(net, Memory));
-  const createEngine = vi.fn(async opts => {
-    const index = engines.length;
-    const engine = { net: opts.net, closed: false,
-      prepare: vi.fn(async () => prepare?.(index, opts)), open: vi.fn(async () => {}),
-      waitForSearchComplete: vi.fn(async () => {
-        await search?.(index, opts);
-        const n = engines.filter(e => !e.closed).length;
-        return { nodes: opts.maxNodes * throughput(opts.net, n) / n };
-      }),
-      close: vi.fn(async () => { engine.closed = true; }),
-    };
-    engines.push(engine);
-    return engine;
-  });
-  let t = 0;
-  const manager = createEngineProfileManager({ storage: () => storage, createEngine, reserveMemory, loadModule,
-    assetState: () => ({ phase: "ready" }), subscribeAsset: () => () => {}, beginSession: () => () => {},
-    probeBudget: async () => () => {}, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }), now: () => (t += 1000), ...options });
-  return { ...manager, data, storage, engines, createEngine, reserveMemory, loadModule, modules };
-}
+import { fixture, STEPS, PROBE } from "./engine-profile.fixture.js";
 
 describe("device engine profile", () => {
   it.each(["idle", "download", "compile", "error"])("uses lite x1 while the recommended full net is %s", phase => {
@@ -103,6 +75,8 @@ describe("device engine profile", () => {
     const f = fixture({ Memory });
     expect(await f.detectEngineProfile()).toMatchObject({ net: "lite", workers: 1 });
     expect(f.loadModule.mock.calls).toEqual([["lite"]]);
+    // A device that could not reserve the full heap is never asked about it.
+    expect(f.fullEngineChoice()).toBeNull();
     const loadModule = vi.fn();
     const next = createEngineProfileManager({ storage: () => f.storage, loadModule, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
     next.engineStarted();
@@ -566,7 +540,8 @@ describe("every device gets its own measured setup", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
-    const phone = fixture({ device: () => PHONE });
+    // A device that stored nothing of its own starts from the floor.
+    const phone = fixture({ device: () => PHONE, consent: null });
     expect(phone.engineProfile()).toEqual({ net: "lite", workers: 1, source: "fallback" });
     expect(phone.data.has(PROFILE_KEY)).toBe(false);
   });

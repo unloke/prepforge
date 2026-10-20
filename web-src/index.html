@@ -733,10 +733,17 @@
               </div>
               <div class="set-row"><span>Mode</span><b>Browser only</b></div>
               <div class="set-row"><span>Engine</span><b id="settings-stockfish-version">checking…</b></div>
+              <div class="pf-row" id="settings-full-row" hidden>
+                <span class="pf-row-text" id="settings-full-label"><span class="pf-row-label">Full engine</span></span>
+                <span class="pf-row-actions">
+                  <button type="button" class="btn sm" id="settings-full-download" data-testid="settings-full-download">Download (94 MB)</button>
+                  <button type="button" class="btn sm ghost" id="settings-full-keep" data-testid="settings-full-keep">Keep lite</button>
+                </span>
+              </div>
               <div class="pf-row">
                 <span class="pf-row-text"><span class="pf-row-label" id="settings-net-label">Net</span></span>
                 <div class="seg" role="group" aria-labelledby="settings-net-label" id="settings-net-seg">
-                  <button type="button" class="seg-btn" data-net="big" title="Stronger. 99 MB download, about 450 MB of memory per worker">Full</button>
+                  <button type="button" class="seg-btn" data-net="big" title="Stronger. 94 MB download, about 450 MB of memory per worker">Full</button>
                   <button type="button" class="seg-btn" data-net="lite" title="7 MB download, little memory">Lite</button>
                 </div>
               </div>

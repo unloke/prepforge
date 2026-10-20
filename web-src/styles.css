@@ -1053,6 +1053,13 @@ h2 {
   color: var(--text);
 }
 
+.pf-row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .pf-switch {
   position: relative;
   width: 38px;
