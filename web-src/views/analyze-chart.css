@@ -410,7 +410,11 @@
   /* Empty until a number paints it: a mid-width fill reads as a real 50/50. */
   transform: scaleX(0);
   background: var(--eval-side-white);
-  transition: transform var(--dur-slow) var(--ease-out);
+  /* Stepping the game is the app's most repeated gesture here, so the bar lands
+     inside that budget instead of trailing its own number by a third of a
+     second. The live engine repaints far faster than this and still jumps (see
+     .is-engine below). */
+  transition: transform var(--dur-fast) var(--ease-out);
 }
 /* No number, no win share: an empty track the width of the card reads as a
    bar that is stuck. The row keeps its label and its action; the middle stays

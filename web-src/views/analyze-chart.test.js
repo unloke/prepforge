@@ -217,6 +217,15 @@ describe("evaluation win meter", () => {
     expect(ALL_STYLES).toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\)/);
     expect(ALL_STYLES).not.toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\.5\)/);
   });
+
+  it("lands its new share within the stepping budget", () => {
+    // Arrow-stepping is the repeated action here: a 300ms slide left the bar
+    // trailing its own number by a third of a second on every keypress.
+    const rule = /\.ev-meter > i \{([^}]*)\}/.exec(ALL_STYLES)[1];
+    expect(rule).toMatch(/transition:\s*transform var\(--dur-fast\)/);
+    // The live engine still jumps: it repaints many times a second.
+    expect(ALL_STYLES).toMatch(/#analysis-eval-card\.is-engine \.ev-meter > i \{\s*transition: none;/);
+  });
 });
 
 describe("class bars", () => {
