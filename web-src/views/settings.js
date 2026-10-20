@@ -1,7 +1,8 @@
 import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
-  engineSetupState, subscribeEngineSetup, prepareFullEngine, engineWorkerChoices } from "../engine/engine-profile.js";
+  engineSetupState, subscribeEngineSetup, engineWorkerChoices } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
+import { renderFullEngineChoice, bindFullEngineChoice } from "./settings-full-engine.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
 import "./settings.css";
@@ -179,6 +180,9 @@ export function createSettingsView({
         : setup.phase === "probe" ? 0.5 + setup.fraction / 2 : 0.5;
       bar.firstElementChild.style.setProperty("--progress", String(Math.max(0.03, share)));
     }
+    // The full net is this device's choice: the question until it answers, then
+    // one action that brings its 94 MB back after a step down.
+    renderFullEngineChoice();
   }
 
   async function renderStockfishVersion() {
@@ -620,12 +624,13 @@ export function createSettingsView({
     document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         setEngineProfile({ net: btn.dataset.net, workers: engineProfile().workers });
-        if (btn.dataset.net === "big") void prepareFullEngine().catch(() => {});
       });
     });
     document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
       btn.addEventListener("click", () => setEngineProfile({ net: engineProfile().net, workers: Number(btn.dataset.workers) }));
     });
+    bindFullEngineChoice();
+
     document.getElementById("settings-detect")?.addEventListener("click", () => {
       void detectEngineProfile().catch(() => {});
     });

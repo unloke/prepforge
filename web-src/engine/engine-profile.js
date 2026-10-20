@@ -4,7 +4,7 @@
 // to the settings API and never arrive from another device. Each device therefore
 // keeps its own setup: the store here, and the ladder that measured it. Depth and
 // Maia strength are user settings; those sync through /api/settings.
-import { loadEngineModule, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
+import { loadEngineModule, removeEngineAsset, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
 export const CRASH_KEY = "prepforge.engine-starting";
@@ -70,6 +70,7 @@ export function createEngineProfileManager({
   beginSession = () => stockfishBudget.beginSession(),
   reserveMemory = reserveEngineMemory,
   loadModule = loadEngineModule,
+  removeAsset = removeEngineAsset,
   assetState = engineAssetState,
   subscribeAsset = subscribeEngineAsset,
   page = globalThis.document,
@@ -78,6 +79,13 @@ export function createEngineProfileManager({
   scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
 } = {}) {
   let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null, proven = null;
+  // This device's answer on the 94 MB full net: null until it answers, "yes"
+  // after a download, "no" after "keep lite" or a step down. It is a decision,
+  // not a measurement, so it outlives a new engine build.
+  let consent = null;
+  // Whether this device reserved the full net's heap (a probe step that ran
+  // without loading a byte): the device that is offered the choice at all.
+  let bigFits = false;
   let probing = null, revision = 0, autoSetupDone = false;
   const listeners = new Set();
   const usableListeners = new Set(), setupListeners = new Set();
@@ -143,12 +151,14 @@ export function createEngineProfileManager({
       const changed = profile.net !== FALLBACK.net || profile.workers !== FALLBACK.workers;
       broken = true;
       profile = { ...FALLBACK };
+      consent = null;
+      bigFits = false;
       if (changed) emit();
       return null;
     }
   }
   function persist() {
-    access(s => s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, probe: probeId })));
+    access(s => s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, consent, bigFits, probe: probeId })));
   }
   function emit() {
     for (const fn of [...listeners]) { try { fn({ ...profile }); } catch { /* consumer error */ } }
@@ -164,16 +174,29 @@ export function createEngineProfileManager({
       if (fresh && valid(saved.detected)) detected = saved.detected;
       if (fresh) measurements = saved.measurements || null;
       if (fresh && validProven(saved.proven)) proven = saved.proven;
+      // The answer is this device's own decision and outlives a new engine
+      // build; whether the net fits was measured, so a new build measures again.
+      if (saved?.consent === "yes" || saved?.consent === "no") consent = saved.consent;
+      if (fresh) bigFits = saved.bigFits === true;
       const crash = JSON.parse(s.getItem(CRASH_KEY) || "null");
+      const hadBig = saved?.profile?.net === "big" || crash?.net === "big";
       if (valid(crash)) {
         profile = stepDownProfile(crash);
         detected = profile;
         // The steps below the one that died completed; the one that died and
         // everything above it did not. Settings offers only the completed ones.
         proven = heldBelow(crash);
-        s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, probe: probeId }));
+        if (crash.net === "big") {
+          // A crash inside the full net's heap: the first step still held big,
+          // so the net fits; from lite it does not.
+          bigFits = crash.workers > 1;
+          if (profile.net !== "big") consent = "no";
+        }
+        s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, consent, bigFits, probe: probeId }));
         s.removeItem(CRASH_KEY);
       }
+      // A device that steps down to lite does not keep the full net's 94 MB.
+      if (hadBig && profile.net !== "big") void removeAsset("big");
     });
   }
   // The most engines this device has shown it can hold on each net; 0 means the
@@ -184,7 +207,10 @@ export function createEngineProfileManager({
     const core = maxWorkers(device());
     if (!proven) return { lite: core, big: core };
     // A device that held n big heaps holds n lite heaps: the lite heap is smaller.
-    return { lite: Math.min(core, Math.max(proven.lite, proven.big, 1)), big: Math.min(core, proven.big) };
+    // A full heap this device reserved but never measured counts once it is the
+    // user's answer: the first full worker is what the yes starts.
+    const reserved = bigFits && consent === "yes" ? 1 : 0;
+    return { lite: Math.min(core, Math.max(proven.lite, proven.big, 1)), big: Math.min(core, Math.max(proven.big, reserved)) };
   }
   // What this device can actually run: the measured net, or the signal bound before
   // its first Detect. A net the ladder never held is the one that failed.
@@ -193,12 +219,34 @@ export function createEngineProfileManager({
     const limit = choices()[profile.net];
     return limit > 0 ? fitWorkers({ ...profile }, limit) : { ...FALLBACK };
   }
+  // The full net's 94 MB are this user's to accept, once per device: "ask" while
+  // the device has not answered, "download" once it has said no (Settings keeps
+  // one action for it), null while the net is here or the device cannot hold it.
+  function fullNetChoice() {
+    load();
+    const phase = assetState("big").phase;
+    if (!bigFits || ["ready", "download", "compile"].includes(phase)) return null;
+    return consent === null ? "ask" : "download";
+  }
+  // The selection itself. Choosing the full net is this device's yes: it is the
+  // one thing that fetches the 94 MB. Leaving it deletes them.
   function change(next) {
+    if (next.net === "big") consent = "yes";
     const limit = choices()[next.net];
     // A net the ladder never held is not a choice: the device stays on the floor.
     next = limit > 0 ? fitWorkers(next, limit) : { ...FALLBACK };
+    const left = profile.net === "big" && next.net !== "big";
     revision++;
     profile = next;
+    // Only the user picking the full net fetches it: Detect's own choice is a
+    // measured step whose bytes the probe already loaded.
+    if (next.net === "big" && next.source === "user") void prepareFull().catch(() => {});
+    else if (left) {
+      // Off the full net: its 94 MB leave the disk, and coming back is the
+      // download, which asks the same question again.
+      consent = "no";
+      void removeAsset("big");
+    }
     persist();
     emit();
     return current();
@@ -316,9 +364,12 @@ export function createEngineProfileManager({
     const abort = () => { if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError"); };
     abort();
     // Steps in ladder order: each one learns the net's module plus two timed rounds.
+    // The full net's steps run only on this device's yes: its 94 MB are never
+    // fetched to find out what the ladder would have said without them.
+    const measured = consent === "yes";
     const steps = [["lite", 1]];
-    for (let n = 1; n <= maxWorkers(device()); n++) steps.push(["big", n]);
-    const units = steps.length * 3;
+    if (measured) for (let n = 1; n <= maxWorkers(device()); n++) steps.push(["big", n]);
+    const units = steps.length * 3 + (measured ? 0 : 1);
     let done = 0;
     const progress = (stage, step = 0, workers = null) => {
       done = stage === "complete" || stage === "fallback" ? units : Math.max(done, step);
@@ -362,6 +413,21 @@ export function createEngineProfileManager({
       abort();
       let step = 0;
       let net = null;
+      if (!measured) {
+        // Without a yes the full net is only ever reserved, never fetched: the
+        // device learns whether it could hold the net, and the answer waits for
+        // the user. A held reservation is address space, not resident memory.
+        // The mark makes a tab killed by the reservation step down next load.
+        progress("speed", 0);
+        mark = guard({ net: "big", workers: 1 }, { sticky: true });
+        try {
+          reserveMemory("big");
+          bigFits = true;
+        } catch { bigFits = false; }
+        mark.done();
+        mark = null;
+        step = 1;
+      }
       for (const [nextNet, n] of steps) {
         if (nextNet !== net) {
           await close(); // Never hold both nets, even during big's reservation.
@@ -411,6 +477,7 @@ export function createEngineProfileManager({
         // Every completed step was held by this device, whether or not it wins:
         // Settings may offer it, and the faster one stays the chosen profile.
         recordProven(held, net, n);
+        if (net === "big") bigFits = true;
         if (n > 1 && scaling[n - 1] - scaling[n - 2] < MIN_GAIN * scaling[0]) break;
         candidate = attempt;
         Object.assign(measurements, { nodes: r.nodes, searchMs: r.ms, loadMs, nodesPerSecond: scaling[n - 1] });
@@ -440,9 +507,24 @@ export function createEngineProfileManager({
       signal?.removeEventListener("abort", close);
     }
   }
+  // The full net's bytes, fetched only after this device said yes (see
+  // allowFullEngine; the probe and Detect call this too).
   function prepareFull() {
     watchAssets();
     return loadModule("big");
+  }
+  // The device's answer on the 94 MB net, from Settings or the engine card. A
+  // yes turns the full net on for this device and fetches it; a no keeps lite
+  // and remembers the answer, so the question is asked once per device.
+  async function decide(full) {
+    load();
+    const was = consent;
+    consent = full ? "yes" : "no";
+    if (full) return change({ net: "big", workers: Math.max(1, proven?.big || 0), source: "user" });
+    if (profile.net === "big") return change({ net: "lite", workers: profile.workers, source: "user" });
+    persist();
+    if (was !== consent) emit();
+    return current();
   }
   // A return visit has the chosen net's bytes in Cache Storage: compiling them takes about a
   // second, so a run waits for that instead of starting on lite. A download is never waited for.
@@ -487,12 +569,12 @@ export function createEngineProfileManager({
       started = true;
       load();
       if (device().connection?.saveData || broken) return;
-      // Only a net this device is known to hold is fetched ahead of a run. The full
-      // net is 94 MB and, on a device that cannot reserve its heap, it would sit in
-      // Cache Storage forever for nothing; Detect reserves first and learns what fits.
+      // Only a net this device is known to hold is fetched ahead of a run, and
+      // the full net only after its yes. Detect reserves the full heap first and
+      // learns whether the device could hold it, which is what the choice reads.
       const known = detected || (profile.source === "user" ? profile : null);
       if (!known) { void detect().catch(() => {}); return; }
-      if (known.net !== "big") return;
+      if (known.net !== "big" || consent !== "yes") return;
       void prepareFull().then(() => {
         if (!detected && profile.source !== "user") return detect();
       }).catch(() => {});
@@ -500,6 +582,10 @@ export function createEngineProfileManager({
     engineMeasurements() { load(); return measurements ? { ...measurements } : null; },
     // The workers each net can use on this device; Settings disables the rest.
     engineWorkerChoices: choices,
+    // "ask" | "download" | null: whether this device still has to answer for the
+    // full net's 94 MB, and how Settings offers it (see fullNetChoice).
+    fullEngineChoice: fullNetChoice,
+    chooseFullEngine: decide,
     // A device with no setup of its own sets itself up; see autoSetup.
     setupOnFirstVisit: autoSetup,
     setEngineProfile(p) { load(); if (!valid(p)) throw new RangeError("Choose big/lite and 1–3 workers"); return change({ net: p.net, workers: p.workers, source: "user" }); },
@@ -515,7 +601,7 @@ export function createEngineProfileManager({
 const manager = createEngineProfileManager();
 export const { engineProfile, engineMeasurements, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
-  readyIfCached,
+  readyIfCached, fullEngineChoice, chooseFullEngine,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;
 stockfishBudget.configure(usableEngineProfile().workers);
 subscribeUsableEngineProfile(p => stockfishBudget.configure(p.workers));

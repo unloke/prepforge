@@ -1053,6 +1053,13 @@ h2 {
   color: var(--text);
 }
 
+.pf-row-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .pf-switch {
   position: relative;
   width: 38px;
@@ -5900,4 +5907,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .pgn-file-row {
   margin-top: 6px;
+}
+
+/* The full net's question, in the engine card's own rows. */
+.engine-consent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 6px 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+}
+.engine-consent-actions {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
 }

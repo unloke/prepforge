@@ -13,6 +13,9 @@ function widgetHarness({ coachOn = false } = {}) {
     createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval,
     getAnalyzeSession: () => (coachOn ? { positionCoach: { enabled: true, onWidgetSnapshot: vi.fn() } } : null),
+    // This device has already answered for the full net: nothing to ask here.
+    fullEngineChoice: () => null, chooseFullEngine: vi.fn(),
+    subscribeEngineSetup: () => () => {}, engineConsentHtml: () => html``,
   };
   const widgetSource = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
