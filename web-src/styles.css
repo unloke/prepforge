@@ -4035,23 +4035,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow-wrap: anywhere;
 }
 
-/* Opening explorer: a Move / Games / W-D-L table. Its name is a caption on
-   the data, not a peer of the controls: it takes the line under the database
-   picker and the Engine switch instead of squeezing them apart and pushing
-   the ⓘ onto a row of its own (which happened at 1024, where the name is
-   longer than the space left beside it). */
-.explorer-opening {
-  flex: 1 1 100%;
-  order: 3;
-  margin-top: -2px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-s);
-  font-style: italic;
-  color: var(--muted);
-}
+/* Opening explorer: a Move / Games / W-D-L table. The opening's name is a
+   caption on the data, and the rows are readable without it (the panel head
+   names the repertoire and the trail names the line), so it lives in the ⓘ
+   tooltip and its popover instead of taking a line of the dock's height. */
 
 .explorer-rows {
   display: grid;

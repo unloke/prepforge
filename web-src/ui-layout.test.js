@@ -297,19 +297,19 @@ describe("workspace chrome layout", () => {
   });
 
   it("keeps the dock chrome to one tools row above the panel", () => {
-    // Database seg + opening + score chip + info popover + scan share one row;
-    // the old multi-line chrome (separate label, explorer-head, scope line,
-    // coverage head + standing hint) is gone.
+    // The database seg, the ⓘ and Scan share one row; the old multi-line
+    // chrome is gone, and the opening's name is a caption in the ⓘ tooltip.
     expect(html).toContain('id="build-dock-tools"');
     expect(html).toContain('id="inspector-dbs"');
     expect(html).toContain('id="inspector-info"');
-    expect(html).not.toContain("build-inspector-label");
+    // The opening's name is a caption on the data, so it lives in the ⓘ
+    // tooltip rather than on a line of its own above the rows.
+    expect(html).not.toMatch(/id="explorer-opening"|id="build-inspector-label"/);
     expect(html).not.toContain("explorer-scope");
     expect(html).not.toContain("coverage-head");
     expect(html).not.toContain("coverage-hint");
     expect(html).not.toContain("Master games — strong-player games");
     expect(html).not.toContain("How much of real human play");
-    expect(app).toContain("inspectorScopeText");
     expect(app).toContain("onInspectorInfo");
     expect(app).toContain("inspector-info-pop");
     expect(css).toContain(".inspector-info-pop");

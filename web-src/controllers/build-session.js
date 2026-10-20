@@ -246,6 +246,10 @@ async function selectBuildNode(nodeId) {
 }
 let explorerTimer = null;
 let explorerSeq = 0;
+// The opening the Explorer's rows belong to. It is a caption on the data, so
+// it rides the inspector's ⓘ tooltip and its popover: as a line of its own it
+// spent a row of the dock's short height saying what the rows already imply.
+let explorerOpeningName = "";
 
 // ---- Inspector dock: fold + drag-to-resize ---------------------------------
 // The seam between the move tree and the inspector is a drag handle; the height
@@ -520,15 +524,16 @@ function inspectorScopeText() {
   if (buildDockTab === "coverage") {
     return "Share of human play at your rating that reaches a move your prepared mainline does not answer, within the horizon. Pruned or unmodelled lines count as unchecked.";
   }
-  if (explorerDb !== "lichess") return "Master games.";
+  if (explorerDb !== "lichess") {
+    return explorerOpeningName ? `${explorerOpeningName}. Master games.` : "Master games.";
+  }
   const rating = effectiveMaiaRating();
   const buckets =
     explorerModule && typeof explorerModule.ratingBucketsFor === "function"
       ? explorerModule.ratingBucketsFor(rating)
       : null;
-  return buckets && buckets.length
-    ? `Players near ~${rating} (pool ${buckets.join(", ")}).`
-    : `Players near ~${rating}.`;
+  const pool = buckets && buckets.length ? `Players near ~${rating} (pool ${buckets.join(", ")}).` : `Players near ~${rating}.`;
+  return explorerOpeningName ? `${explorerOpeningName}. ${pool}` : pool;
 }
 
 function paintInspectorScope() {
@@ -601,12 +606,11 @@ async function refreshExplorerPanel() {
   // so the previous position is not still searched at full depth meanwhile.
   delete rows.dataset.fen;
   void explorerEvalEngine.sync();
-  const openingEl = document.getElementById("explorer-opening");
   if (keepRows) {
     rows.classList.add("is-stale");
     rows.setAttribute("aria-busy", "true");
   } else {
-    if (openingEl) openingEl.textContent = "";
+    explorerOpeningName = "";
     rows.classList.remove("is-stale");
     rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   }
@@ -625,7 +629,7 @@ async function refreshExplorerPanel() {
     if (seq !== explorerSeq || db !== explorerDb) return;
     rows.classList.remove("is-stale");
     rows.removeAttribute("aria-busy");
-    if (openingEl) openingEl.textContent = "";
+    explorerOpeningName = "";
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
@@ -654,8 +658,8 @@ function renderExplorerScope() {
 function renderExplorerRows(stats, fen) {
   const rows = document.getElementById("explorer-rows");
   if (!rows) return;
-  const openingEl = document.getElementById("explorer-opening");
-  if (openingEl) openingEl.textContent = stats.opening || "";
+  explorerOpeningName = stats.opening || "";
+  paintInspectorScope();
   rows.dataset.fen = fen || "";
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
