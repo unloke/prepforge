@@ -16,11 +16,11 @@ revision before the change) with pre-existing rows: PostgreSQL when
 TEST_POSTGRES_URL is set (the CI ``postgres`` job provides it), plus a SQLite
 path for local runs.
 
-The upgrade stops at the revision this module guards (``f3a9c1e7b2d4``): later
-migrations deliberately change this table's key shape (d5a7e9f1b3c6 makes the
-digest the whole key, stored as 32 raw bytes), and that migration carries its
-own test. Each test then upgrades on to head, so the chain itself still has to
-run over real rows.
+The schema assertions run at the revision this module guards
+(``f3a9c1e7b2d4``), because a later migration (b9e1f3a5c7d0) reshapes the key —
+the digest alone, as 32 raw bytes — and that final shape is pinned by
+``tests/test_compact_domain_storage.py``. Each test then upgrades on to head,
+so the chain still has to run over real rows.
 """
 from __future__ import annotations
 
