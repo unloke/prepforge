@@ -48,8 +48,9 @@ import { applyTheme } from "./theme.js";
 import { activateModal, showConfirmModal, showInputModal } from "./core/modals.js";
 import { hooks } from "./core/hooks.js";
 import { PIECE_SETS, PIECE_STYLE_KEY, boardAfterMove, boardInfo, isPromotionMove, legalMoveFor,
-  legalTargetsFrom, optimisticBoardMove, parseFenBoard, pieceLabel, pieceSvg, playSound,
+  legalTargetsFrom, optimisticBoardMove, parseFenBoard, pieceLabel, pieceSvg,
   renderAnnotations, renderPieceStylePicker, renderPrefsToggles, resolveBoardMove } from "./board/ui.js";
+import { installSoundUnlock, moveCue, playSound } from "./core/sound.js";
 import { engineWidget, setEngineBestArrow, setEngineOn, syncEngineForView, engineWantedIn,
   applyServerEngineGating, paintEngineBanners, syncAnalysisEvalCard, analysisStore, sanLineFromUci,
   EXPLORER_EVAL_MAX_LINES } from "./core/engine.js";
@@ -234,7 +235,7 @@ const savedPvSan = new WeakMap();
 
 const BoardController = createBoardController({
   pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom,
+  pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom,
 });
 
 
@@ -1913,6 +1914,7 @@ async function init() {
   const libraryRows = document.getElementById("dashboard-repertoires");
   if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
+  installSoundUnlock();
   // The account entry and the Analyze entry points are needed before the first
   // paint (the chip, the auth gate, the PGN drawer), so both binds happen here.
   accountEntry = createAccountEntry({

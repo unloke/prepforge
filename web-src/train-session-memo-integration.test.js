@@ -51,6 +51,7 @@ function harness(overrides = {}) {
     presentSmartPrompt: present, finishSmartSession: vi.fn(async () => {}),
     refreshRepertoireHead: vi.fn(async () => {}), refreshDashboardRepertoires: vi.fn(async () => {}),
     refreshTrainSessionPreview: vi.fn(async () => {}),
+    playSound: vi.fn(),
   };
   deps.setSmartPanelsHidden = compile("function setSmartPanelsHidden(", deps);
   deps.renderSmartSummaryStats = vi.fn();
