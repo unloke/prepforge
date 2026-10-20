@@ -317,7 +317,13 @@ describe("workspace chrome layout", () => {
     // into its own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
+    // The tree sizes to its moves (shrinkable, with a floor: a long line
+    // scrolls inside rather than growing the panel) and the panel's leftover
+    // height closes the panel after the foot, not between a short line and the
+    // inspector, where it was a 400px hole.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
+    expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
+    expect(css).toMatch(/#build-sidebar \.panel-body::after \{[^}]*flex:\s*1 1 auto/);
   });
 
   it("captions the board with the position, not the repertoire", () => {
@@ -395,9 +401,10 @@ describe("workspace chrome layout", () => {
     expect(buildHead).toContain('id="build-menu"');
     expect(buildHead).toContain('id="build-rep-name"');
     expect(buildHead).not.toContain('id="build-rep-stats"');
-    // The head does not wrap: one title line, one row of actions.
+    // The head does not wrap: one title line, one row of actions. The name is
+    // the panel's title, one step above the 13px ledger under it.
     expect(ruleBody("#build-rep-header")).toMatch(/min-height:\s*52px/);
-    expect(ruleBody("#build-rep-header .rep-name")).toMatch(/font-size:\s*15px/);
+    expect(ruleBody("#build-rep-header .rep-name")).toMatch(/font-size:\s*17px/);
     // The totals are the panel's last line (after the dock), not a head strip.
     const panelBody = build.slice(build.indexOf("<div class=\"panel-body\""), build.indexOf("</aside>", build.indexOf('id="build-inspector"')));
     expect(panelBody.indexOf('id="build-rep-stats"')).toBeGreaterThan(panelBody.indexOf('id="build-inspector"'));

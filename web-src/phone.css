@@ -405,7 +405,6 @@
      cause ("not cross-origin isolated") is already in the fix sentence, so
      the phone keeps the status and what to do, tighter. */
   #view-build .engine-banner { gap: 0; padding: 6px 12px 8px; margin: 0; }
-  #view-build .engine-banner .engine-banner-why { display: none; }
   #view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) { font-size: 13px; line-height: 1.4; }
   /* The scroller under the board. */
   :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) {

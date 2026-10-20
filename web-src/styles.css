@@ -2907,9 +2907,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* The shared .panel-head and .engine-banner keep their rule for Analyze and
    Train; in this panel the head and the line sheet carry their own ground. */
 #view-build .panel-head { border-bottom: 0; }
-/* The banner's tint is its edge; in this panel it needs no rule under it. */
-#view-build .engine-banner { border: 0; border-radius: 0; }
+/* The banner's tint is its edge; in this panel it needs no rule under it. It
+   is a diagnostic, not a pane: it never shrinks under a long tree (a squeezed
+   grid clipped its own sentence mid-line). */
+#view-build .engine-banner { border: 0; border-radius: 0; flex: none; }
 #view-build .engine-banner p { max-width: 62ch; }
+/* The action names the cause and the fix in one sentence ("Open PrepForge in
+   Chrome or Edge — a browser that keeps COOP/COEP isolation"), so the line
+   above it repeated it in technical words. Build keeps the title and the
+   sentence you act on; Analyze and Train keep the full explanation. It is the
+   only running text in this panel, so it reads at prose size. */
+#view-build .engine-banner .engine-banner-why { display: none; }
+#view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) {
+  font-size: 16px;
+  line-height: 1.45;
+}
 
 /* Motion in the panel, on the same rules as the rest of the app: the fork bar
    and the Explorer rows arrive after a move or a fetch, so they enter with a
@@ -3027,12 +3039,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 
 .tree-wrap {
-  /* Sized by its moves, which the inspector gives way to (the dock does not
-     grow): a short tree leaves the leftover height to the Explorer instead of
-     sitting empty above it. But a tree taller than the panel cannot be allowed
-     to grow past it: it shrinks to the space left and scrolls inside, so the
-     panel keeps its card shape and the page never scrolls. */
-  flex: 1 1 auto;
+  /* Sized by its moves. The panel's leftover height goes after the tree and
+     the dock, where it is the workspace's own rest; letting the tree grow
+     instead put a 400px hole between a short line and the reference table
+     under it. A tree taller than the panel shrinks to the space left and
+     scrolls inside, so the panel keeps its card shape and the page never
+     scrolls. */
+  flex: 0 1 auto;
   min-height: 90px;
   padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
   overflow: auto;
@@ -3041,6 +3054,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   line-height: 1.75;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
+/* The panel's leftover height is the foot's: one flexible block after the
+   totals, so head, trail, fork, line, inspector and foot stack from the top
+   and the empty ground closes the panel instead of splitting it. */
+#build-sidebar .panel-body::after {
+  content: "";
+  flex: 1 1 auto;
+  min-height: 0;
+}
 
 .dock {
   position: relative;
@@ -3978,9 +3999,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow-wrap: anywhere;
 }
 
-/* Opening explorer: a Move / Games / W-D-L table. */
+/* Opening explorer: a Move / Games / W-D-L table. Its name is a caption on
+   the data, not a peer of the controls: it takes the line under the database
+   picker and the Engine switch instead of squeezing them apart and pushing
+   the ⓘ onto a row of its own (which happened at 1024, where the name is
+   longer than the space left beside it). */
 .explorer-opening {
-  flex: 0 1 auto;
+  flex: 1 1 100%;
+  order: 3;
+  margin-top: -2px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4313,6 +4340,17 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--accent);
   color: var(--accent-ink);
   box-shadow: var(--shadow-1);
+}
+
+/* Build's selected move is calm: a soft accent fill and a 2px accent bar at
+   the move's own left edge, so the tree still has one "here" without a
+   saturated pill competing with the Generate button for the eye. Analyze's
+   move grid keeps the filled cell (its rows are tiles, and the fill is what
+   makes a cell read as current there). */
+#view-build .mtree-move.is-current {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* A faint trail marking the line that leads to the current move (Analyze's
@@ -5699,7 +5737,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 52px;
   padding: 10px 10px 10px var(--build-pad, 14px);
 }
-#build-rep-header .rep-name { font-size: 15px; font-weight: 650; }
+#build-rep-header .rep-name { font-size: 17px; font-weight: 650; flex: 1 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 13px; }
 
 /* The tree's totals: the last line of the panel, on the panel's own ground.
@@ -5769,11 +5807,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .study { --board-share: 0.56; }
 }
 
-/* Explorer database toggle: the chosen database reads at a glance (accent
-   text + underline), not just a slightly different chip shade. */
+/* Explorer database toggle: the chosen database is a plate on the segment
+   track with full-ink text. It used to add accent text, a 1px ring and an
+   accent underline, which put three more accents in a dock that already has
+   the tab's underline — the accent belongs to the current move and the one
+   action, not to every selected chip. */
 .explorer-db.is-active {
-  color: var(--accent-strong);
-  box-shadow: var(--shadow-1), 0 0 0 1px var(--line), inset 0 -2px 0 var(--accent-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 650;
 }
 
 .pgn-file-row {
