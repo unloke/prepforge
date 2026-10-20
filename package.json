@@ -22,7 +22,7 @@
     "smoke:prod-engine": "node scripts/prod-engine-smoke.mjs"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
+    "@axe-core/playwright": "^4.14.0",
     "eslint": "10.11.0",
     "fake-indexeddb": "^6.2.5",
     "globals": "16.4.0",
