@@ -882,19 +882,21 @@
      The prompt over the board, the session card under it. Modes lead while
      setting up and drop to the bar's edge during a session. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
+  /* The screen's name, at the size the shell uses for one: the coach icon is
+     a mark, not a picture, so it is small and in ink. */
   #view-train .train-coach {
     order: 0;
     flex: none;
     height: auto;
-    min-height: 60px;
+    min-height: 56px;
     margin: 0;
-    padding: 8px var(--phone-gutter);
-    gap: 12px;
+    padding: 6px var(--phone-gutter);
+    gap: 10px;
     border: 0;
     background: var(--bg);
   }
-  #view-train .train-coach-icon { width: 36px; height: 36px; flex: none; }
-  #view-train .train-coach-title { font-size: 17px; font-weight: 700; }
+  #view-train .train-coach-icon { width: 28px; height: 28px; flex: none; }
+  #view-train .train-coach-title { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
   #view-train .train-sidebar > .panel-head {
@@ -902,13 +904,30 @@
     flex: none;
     min-height: 0;
     margin: 0;
-    padding: 10px 12px 0;
+    padding: 12px var(--phone-gutter) 0;
     border: 0;
     background: var(--bg);
   }
-  #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
-  #view-train #train-modes .seg-btn { flex: 1 1 0; min-width: 0; min-height: 44px; height: 44px; padding: 0 4px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
-  #view-train #train-modes .seg-btn.is-active { background: var(--line-strong); color: var(--text); }
+  /* The modes sit on the page ground, where the recessed track was the same
+     tone as the ground and disappeared: the track is the panel fill and the
+     chosen mode takes the recessed step. */
+  #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 3px; border: 0; border-radius: 11px; background: var(--panel); }
+  #view-train #train-modes .seg-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 550;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); font-weight: 650; }
   #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
   /* A 38x22 switch is the right size to look at and the wrong size to hit. The
      tap area grows to the 44px a thumb needs without moving the switch. */
@@ -959,6 +978,14 @@
   }
   #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   #view-train .train-start-row .btn { flex: 1 1 140px; min-height: 46px; border-radius: 12px; }
+  /* Setting up is reading the card, not playing: on a short phone the
+     full-width board left the panel 146px and pushed Start under the thumb
+     bar (measured at 430x740: Start's top at 785 under a 740px screen). The
+     setup card is 285px, so the board yields exactly that; on a tall phone
+     (390x844) the sum still leaves it full width. */
+  #view-train:has(.train-sidebar[data-session-state="setup"]) .board-stack {
+    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - 400px));
+  }
 
   /* Session card: progress, then one row each for stats and up next. */
   #view-train .train-progress-panel { display: flex; flex-direction: column; gap: 10px; }

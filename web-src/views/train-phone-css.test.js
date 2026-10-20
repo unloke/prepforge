@@ -43,3 +43,13 @@ it("every Train control is a thumb-sized target on a phone", () => {
   // hit-testing the switch's centre at 390px.
   expect(hit[0]).toMatch(/inset: -12px/);
 });
+
+// Setting up is a card to read, so Start must be on screen with it. At
+// 430x740 the full-width board left the panel 146px and pushed Start's top to
+// 785 under a 740px screen: the board yielded its full width there.
+it("keeps the setup card and Start on screen at 430x740", () => {
+  const rule = phone.match(/#view-train:has\(\.train-sidebar\[data-session-state="setup"\]\) \.board-stack \{[^}]*\}/);
+  expect(rule, "the setup board cap").not.toBeNull();
+  expect(rule[0]).toMatch(/width:\s*min\(100vw/);
+  expect(rule[0]).toMatch(/-\s*400px/);
+});
