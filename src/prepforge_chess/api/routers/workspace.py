@@ -237,6 +237,21 @@ def _weekly_recap(
     }
 
 
+_LISTING_HEALTH_FIELDS = ("trainable", "untrained", "weak", "due", "mastered", "mastery_pct", "computed_at")
+
+
+def _listing_health(health: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The cached badge reduced to what a Library row draws, plus its provenance.
+
+    ``computed_at`` says how fresh the cached counts are (the ``due`` count is
+    recomputed live, so the two can differ). ``revision``, ``learning`` and
+    ``shallow_lines`` are drawn nowhere.
+    """
+    if health is None:
+        return None
+    return {key: health[key] for key in _LISTING_HEALTH_FIELDS if key in health}
+
+
 @router.get("/repertoires")
 def list_repertoires(
     user: User = Depends(current_user),
@@ -261,14 +276,14 @@ def list_repertoires(
                 "id": row["id"],
                 "name": row["name"],
                 "color": row["color"],
-                "root_fen": row["root_fen"],
-                "notes": row["notes"],
-                "tags": row["tags"],
+                # Cached coverage badge (None until first opened/trained); not recomputed here.
+                # Only the counts the rows draw (trainable / untrained / weak / due /
+                # mastered / mastery_pct): this listing is fetched several times per
+                # boot, so its cache bookkeeping (computed_at, revision) stays here.
+                "health": _listing_health(row["health"]),
                 "is_active": row["is_active"],
                 "team_id": row["team_id"],
                 "visibility": row["visibility"],
-                # Cached coverage badge (None until first opened/trained); not recomputed here.
-                "health": row["health"],
             }
             for row in repo.list_owner_repertoire_listings(owner_user_id=owner)
         ],
@@ -277,7 +292,6 @@ def list_repertoires(
                 "id": item["id"],
                 "name": item["name"],
                 "color": item["color"],
-                "root_fen": item["root_fen"],
                 "team_id": item["team_id"],
             }
             for item in shared

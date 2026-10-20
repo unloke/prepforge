@@ -75,13 +75,10 @@ export function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
-    // Boot race: an owner-scoped view entered while the session was still being read
-    // painted a neutral loading state (the Teams flash). Auth is known now, so load
-    // it for real — a guest gets the sign-in state, a member gets their teams.
-    onAuthKnown: () => {
-      const ready = live("appReadyPromise");
-      if (ready) void ready.then(() => live("loadTeams")().catch(() => {}));
-    },
+    // No auth-known hook here: restoreWorkspaceLocation switches to the URL's
+    // view after the session is read (and switchView reloads Teams), so a Teams
+    // load deferred on an unread session is retried there. Doing it here as well
+    // ran a second /api/teams on every signed-in boot, on every route.
     onOwnerChanged: () => {
       setHandoffOwner(currentOwnerId());
       clearCoverage();
