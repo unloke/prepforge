@@ -232,10 +232,11 @@ class PositionCoach {
     const now = performance.now();
     const rapid = now - this.lastUpdateAt < COACH_RAPID_STEP_MS;
     this.lastUpdateAt = now;
-    // The before-read needs both lines, the after-read only its top one (see _eval).
-    const cached = (position, lines) => this.evalCache.get(`${this.engineDepth}|${lines}|${position}`) ||
+    // Both reads are one line wide. The position before the move gets its best ALTERNATIVE
+    // only when a verdict actually turns on it — see _run.
+    const cached = (position) => this.evalCache.get(`${this.engineDepth}|1|${position}`) ||
       savedPositionEvalRead(position, this.engineDepth);
-    if (!rapid && cached(this.ctx.prevFen, 2) && (localGameOver(fen) || cached(fen, 1))) {
+    if (!rapid && cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
       void this._run(fen);
       return true; // cached verdict lands before the next browser paint
     }
@@ -259,11 +260,11 @@ class PositionCoach {
       // A move that ends the game leaves no position for the
       // engine to search, so the "after" read is synthesized instead.
       const over = localGameOver(fen);
-      // The position BEFORE the move (best line + best alternative) and AFTER it, read
-      // at once: the store gives each its own warm lane. Only the before-read needs the
-      // second line (see _eval); the after-read's single line only supplies its top move.
+      // Both positions are read one line wide: the top move is all either needs on its
+      // own. The second line of the position BEFORE the move (its best alternative) is the
+      // one fact a single line can't carry, and only a few verdicts read it — see below.
       const [before, after] = await Promise.all([
-        this._eval(prevFen, token, 2),
+        this._eval(prevFen, token, 1),
         over ? null : this._eval(fen, token, 1),
       ]);
       if (token !== this.token || fen !== this.fen) return;
@@ -278,6 +279,14 @@ class PositionCoach {
         top = after.lines[0] || {};
       }
       const prevMove = previousAnalysisMove();
+      // The best alternative decides only three things: the "only move"/Great wording, and
+      // the only_move_gap behind a Brilliant. All three need the played move to BE the
+      // engine's top choice — so only that move ever reads the second line. A move with a
+      // saved GRADE is skipped even then: Analyze already decided it, and the alternative
+      // would only re-word a settled answer, not worth a search of its own.
+      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
+      const wide = !saved?.classification && before.lines[0].uci === ctx.lastUci ? await this._eval(prevFen, token, 2) : null;
+      if (token !== this.token || fen !== this.fen) return;
       const features = c.buildMoveFeatures({
         ply: ctx.ply ?? null,
         moveNumber: Number(prevFen.split(" ")[5]) || null,
@@ -289,11 +298,10 @@ class PositionCoach {
         prevFenBefore: prevMove ? prevMove.fenBefore : null,
         fenBefore: prevFen,
         fenAfter: fen,
-        beforeEval: { lines: before.lines },
+        beforeEval: { lines: wide && wide.lines.length > 1 ? wide.lines : before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       features.opponentRead = opponentRead;
-      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       // The saved grade is authoritative for Great both ways: the board badge and the move
       // list show it, so the coach neither drops a saved Great nor calls a saved ✓ move Great
       // off its shallower live read.
@@ -464,15 +472,16 @@ class PositionCoach {
   }
 
   // Run (or reuse a cached) engine read of `fen`, White-POV. `lines` is how many lines the
-  // caller reads: 2 for the position before a move (the second line is the best
-  // alternative and decides "only move" / Brilliant), 1 everywhere else. The Engine card
-  // searches exactly the lines it shows, so its snapshot only ever answers a 1-line need.
-  async _eval(fen, token, lines = 2) {
+  // caller reads: 2 for the position before a move that needs its best ALTERNATIVE to
+  // decide "only move" / Brilliant, 1 everywhere else — including that same position when
+  // the played move isn't the top choice. The Engine card searches exactly the lines it
+  // shows, so its snapshot only ever answers a 1-line need.
+  async _eval(fen, token, lines = 1) {
     if (!fen) return null;
     const cacheKey = `${this.engineDepth}|${lines}|${fen}`;
     const cached = this.evalCache.get(cacheKey);
     if (cached) return cached;
-    const saved = savedPositionEvalRead(fen, this.engineDepth);
+    const saved = lines <= 1 ? savedPositionEvalRead(fen, this.engineDepth) : null;
     if (saved) {
       this.evalCache.set(cacheKey, saved);
       return saved;
@@ -500,7 +509,7 @@ class PositionCoach {
   // Cache a snapshot of `fen` (if it is for that position and deep enough) as a
   // coach read; returns the read or null. It is filed under every read width it can
   // answer, so the deep 1-line snapshot the Engine card produces still serves a 1-line
-  // after-read without ever standing in for the 2-line before-read.
+  // after-read without ever standing in for the 2-line alternative read.
   _remember(fen, snap, minDepth) {
     if (!snap || snap.fen !== fen || (snap.current_depth || 0) < minDepth) return null;
     const lines = (snap.pvs || [])
