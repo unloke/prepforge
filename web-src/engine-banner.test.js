@@ -28,6 +28,15 @@ describe("engineUnavailableBanner", () => {
     expect(String(html)).toContain("engine-banner-action");
   });
 
+  it("keeps the action's whole sentence in its tooltip", () => {
+    // Build prints the action on one line and cuts it with an ellipsis, so the
+    // tail ("there is no server fallback") is only reachable here.
+    const model = engineUnavailableBanner({ available: false, isolated: false });
+    const markup = String(engineBannerHtml(model));
+    const tag = markup.match(/<p class="engine-banner-action"[^>]*>/)[0];
+    expect(tag).toContain(`title="${model.action}"`);
+  });
+
   it("uses a start-failed why when isolated but still unavailable", () => {
     const model = engineUnavailableBanner({ available: false, isolated: true });
     expect(model.visible).toBe(true);

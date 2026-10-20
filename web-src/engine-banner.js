@@ -35,7 +35,10 @@ export function engineUnavailableBanner({
 
 export function engineBannerHtml(model) {
   if (!model || !model.visible) return "";
+  // The action carries its whole sentence in a tooltip: Build shows it on one
+  // line, where the tail ("there is no server fallback") is cut off by the
+  // panel's width. Analyze reads it in full and never sees the tooltip.
   return (
-    html`<div class="engine-banner-title">${model.title}</div><p class="engine-banner-why">${model.why}</p><p class="engine-banner-action">${model.action}</p>`
+    html`<div class="engine-banner-title">${model.title}</div><p class="engine-banner-why">${model.why}</p><p class="engine-banner-action" title="${model.action}">${model.action}</p>`
   );
 }

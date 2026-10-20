@@ -2907,16 +2907,32 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    is a diagnostic, not a pane: it never shrinks under a long tree (a squeezed
    grid clipped its own sentence mid-line). */
 #view-build .engine-banner { border: 0; border-radius: 0; flex: none; }
-#view-build .engine-banner p { max-width: 62ch; }
-/* The action names the cause and the fix in one sentence ("Open PrepForge in
-   Chrome or Edge — a browser that keeps COOP/COEP isolation"), so the line
-   above it repeated it in technical words. Build keeps the title and the
-   sentence you act on; Analyze and Train keep the full explanation. It is the
-   only running text in this panel, so it reads at prose size. */
+/* One line. The same state at 16px over two or three lines cost the panel
+   86px of its height on every session without a browser engine, which is a
+   state and not the work; the action's whole sentence is in its tooltip, and
+   Analyze still prints it in full. */
+#view-build .engine-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  padding: 5px var(--build-pad, 14px) 6px;
+  white-space: nowrap;
+}
 #view-build .engine-banner .engine-banner-why { display: none; }
+#view-build .engine-banner .engine-banner-title { flex: none; }
+#view-build .engine-banner .engine-banner-action {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
 #view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) {
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: var(--fs-s);
+  line-height: 1.4;
 }
 
 /* Motion in the panel, on the same rules as the rest of the app: the fork bar
