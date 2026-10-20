@@ -17,4 +17,13 @@ describe("shared chrome type", () => {
     expect(base).toBeGreaterThanOrEqual(12);
     expect(phoneSize).toBe(base);
   });
+
+  it("keeps the note under the ⓘ at the body size", () => {
+    // The note is read, not glimpsed, so it sits at the same floor as the
+    // page's other running text.
+    const pop = parseFloat(/\.pf-info-pop \{[^}]*font-size:\s*([\d.]+)px/.exec(css)[1]);
+    const inline = parseFloat(/\.pf-info-inline \{[^}]*font-size:\s*([\d.]+)px/.exec(css)[1]);
+    expect(pop).toBeGreaterThanOrEqual(13);
+    expect(inline).toBeGreaterThanOrEqual(13);
+  });
 });

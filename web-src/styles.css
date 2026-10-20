@@ -1188,7 +1188,7 @@ h2 {
 .pf-info-inline {
   width: 20px;
   height: 20px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .pf-info-pop {
@@ -1197,7 +1197,9 @@ h2 {
   border-radius: var(--radius-card);
   background: var(--panel-soft);
   color: var(--muted);
-  font-size: 12px;
+  /* The note is read, not glimpsed: it is set at the body floor like the rest
+     of the page, not a shade under it. */
+  font-size: 13px;
   line-height: 1.5;
   /* The note opens where the eye already is: it settles under the button
      instead of appearing flat. @starting-style keeps the closed state
