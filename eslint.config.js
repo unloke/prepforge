@@ -72,7 +72,7 @@ const OVER_CEILING = [
   ["web-src/scout.test.js", 1717],
   ["web-src/train-lucky-db.js", 505],
   ["web-src/train-lucky-db.test.js", 554],
-  ["web-src/ui-layout.test.js", 681],
+  ["web-src/ui-layout.test.js", 683],
   ["web-src/views/analyze.js", 806],
   ["web-src/views/dashboard.js", 803],
   ["web-src/views/scout.js", 2002],
