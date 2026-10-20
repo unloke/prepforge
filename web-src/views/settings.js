@@ -559,6 +559,9 @@ export function createSettingsView({
     const nav = document.querySelector(".settings-nav");
     if (!nav || nav.dataset.navBound === "1") return;
     nav.dataset.navBound = "1";
+    // The static markup paints Account as the open section; this puts its id
+    // into the heading too, so the two agree from the first frame.
+    markActiveSection((nav.querySelector(".settings-nav-link.is-active")?.getAttribute("href") || "").slice(1) || "set-account");
     // A clicked link stays the active marker while its smooth scroll settles: a
     // short page cannot always bring the target to the spy line, so the spy
     // would otherwise hand the marker to a taller neighbour mid-scroll.
