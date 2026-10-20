@@ -171,7 +171,9 @@ async function runViewport(vp) {
   const engineStatus = await page.locator("#settings-browser-engine-status").textContent().catch(() => "");
   check(engineStatus === "available", `browser Stockfish should read available, got "${engineStatus}"`);
   const sfVersion = await page.locator("#settings-stockfish-version").textContent().catch(() => "");
-  check(/Stockfish .+ lite \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
+  // The card reports the net this device measured for itself, which the fresh
+  // fixture device sets up on its own; both builds are valid.
+  check(/Stockfish .+ (lite|full) \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
 

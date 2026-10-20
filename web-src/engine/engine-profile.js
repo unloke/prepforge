@@ -1,8 +1,9 @@
 // Device-local engine choice. This localStorage record is the only place a
 // hardware-sized value lives — net, workers, the probe's result and its
 // measurements describe the device that produced them, so they are never posted
-// to the settings API and never arrive from another device. Depth and Maia
-// strength are user settings; those sync through /api/settings.
+// to the settings API and never arrive from another device. Each device therefore
+// keeps its own setup: the store here, and the ladder that measured it. Depth and
+// Maia strength are user settings; those sync through /api/settings.
 import { loadEngineModule, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
@@ -17,23 +18,36 @@ const MAX_WORKERS = 3;
 const valid = p => p && ["big", "lite"].includes(p.net) && Number.isInteger(p.workers) && p.workers >= 1 && p.workers <= MAX_WORKERS;
 // What this device can hold, applied to any profile that is loaded or written.
 const fitWorkers = (p, limit) => ({ ...p, workers: Math.min(p.workers, limit) });
+// Workers this device completed on each net in its last Detect ({lite, big}).
+const validProven = p => !!p && ["lite", "big"].every(net => Number.isInteger(p[net]) && p[net] >= 0 && p[net] <= MAX_WORKERS);
 
-// A crash at big 1 means even one big heap does not fit, so drop to the smallest lite pool.
+// Ladder order: each step adds one heap, so the count only ever grows.
+// The step the device holds below a crashed one; lite x1 is the floor.
+const LADDER = [["lite", 1], ["big", 1], ["big", 2], ["big", 3]];
 export function stepDownProfile(p) {
   return p.net === "big" && p.workers > 1
     ? { net: "big", workers: p.workers - 1, source: "fallback" }
     : { net: "lite", workers: p.net === "big" ? 1 : Math.max(1, p.workers - 1), source: "fallback" };
 }
+// The workers each net held before `step`: every ladder step below it completed.
+export function heldBelow({ net, workers }) {
+  const held = { lite: 0, big: 0 };
+  for (const [n, w] of LADDER) {
+    if (n === net && w === workers) break;
+    held[n] = Math.max(held[n], w);
+  }
+  return held;
+}
 
-// How many engines this device can HOLD. Every worker reserves its net's whole heap
-// (384 MiB for big, 256 MiB for lite), so the memory signal is what bounds the count.
-// deviceMemory is the only memory signal a browser exposes (Chromium); WebKit reports
-// none, so a device that reports no memory gets ONE engine — the phone-safe bound.
-// Cores alone may not lift that: an iPhone reports 6 cores while it cannot hold
-// several 384 MiB heaps, and stacking three of them is what ran a phone out of memory.
-// Within the bound the probe still measures whether each extra worker adds throughput.
+// How many engines this device could HOLD. Every worker reserves its net's whole
+// heap (384 MiB for big, 256 MiB for lite), so a memory signal bounds the count.
+// deviceMemory is the only memory signal a browser exposes (Chromium); WebKit
+// reports none, and "no signal" is not "assume small": the ceiling stays open and
+// Detect proves each step by reserving that step's heap, stopping at the first
+// step that fails or stops paying off. Cores bound the count on every device,
+// because a probe cannot use more workers than the CPU can run.
 export function maxWorkers({ hardwareConcurrency, deviceMemory } = {}) {
-  const byMemory = deviceMemory > 0 ? (deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : MAX_WORKERS) : 1;
+  const byMemory = deviceMemory > 0 ? (deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : MAX_WORKERS) : MAX_WORKERS;
   const cores = hardwareConcurrency > 0 ? hardwareConcurrency : 1;
   return Math.max(1, Math.min(MAX_WORKERS, byMemory, cores));
 }
@@ -44,7 +58,7 @@ export const MIN_GAIN = 0.5;
 // One position for every round: speed differs by position, so a new one per round would skew the gain.
 const FEN = "r1bq1rk1/ppp2ppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 4 6";
 // A detected profile is measured on one build; a new engine build or probe is measured again.
-const PROBE_ID = `3:${globalThis.__STOCKFISH__?.big?.id}`;
+const PROBE_ID = `4:${globalThis.__STOCKFISH__?.big?.id}`;
 
 // Inject only browser boundaries for deterministic tests; production owns one manager.
 export function createEngineProfileManager({
@@ -61,9 +75,10 @@ export function createEngineProfileManager({
   page = globalThis.document,
   lifecycle = globalThis.window,
   createEngine = async opts => (await import("./stockfish-provider.js")).createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }),
+  scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
 } = {}) {
-  let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null;
-  let probing = null, revision = 0;
+  let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null, proven = null;
+  let probing = null, revision = 0, autoSetupDone = false;
   const listeners = new Set();
   const usableListeners = new Set(), setupListeners = new Set();
   let activeRuns = 0, heldUsable = null, publishPending = null, started = false, watching = false;
@@ -113,9 +128,11 @@ export function createEngineProfileManager({
   const pending = new Map();
   let pageHidden = false;
   function syncCrashMark() {
-    const attempt = [...pending.values()].at(-1);
+    const entry = [...pending.values()].at(-1);
     access(s => {
-      if (attempt && !pageHidden && page?.visibilityState !== "hidden") s.setItem(CRASH_KEY, JSON.stringify(attempt));
+      // A probe step is a deliberate heap reservation: it stays armed in a hidden
+      // tab too, so an OOM kill there still tells the next load which step died.
+      if (entry && (entry.sticky || (!pageHidden && page?.visibilityState !== "hidden"))) s.setItem(CRASH_KEY, JSON.stringify(entry.attempt));
       else s.removeItem(CRASH_KEY);
     });
   }
@@ -131,7 +148,7 @@ export function createEngineProfileManager({
     }
   }
   function persist() {
-    access(s => s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, probe: probeId })));
+    access(s => s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, probe: probeId })));
   }
   function emit() {
     for (const fn of [...listeners]) { try { fn({ ...profile }); } catch { /* consumer error */ } }
@@ -146,38 +163,66 @@ export function createEngineProfileManager({
       if (valid(saved?.profile) && (saved.profile.source === "user" || fresh)) profile = saved.profile;
       if (fresh && valid(saved.detected)) detected = saved.detected;
       if (fresh) measurements = saved.measurements || null;
+      if (fresh && validProven(saved.proven)) proven = saved.proven;
       const crash = JSON.parse(s.getItem(CRASH_KEY) || "null");
       if (valid(crash)) {
         profile = stepDownProfile(crash);
         detected = profile;
-        s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, probe: probeId }));
+        // The steps below the one that died completed; the one that died and
+        // everything above it did not. Settings offers only the completed ones.
+        proven = heldBelow(crash);
+        s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, probe: probeId }));
         s.removeItem(CRASH_KEY);
       }
     });
   }
-  // The profile every reader sees, bounded by what this device can hold: a stored
-  // record (or a choice made before the device reported less memory) can never make
-  // the engine start with more heaps than the hardware takes.
-  function current() { load(); return fitWorkers({ ...profile }, maxWorkers(device())); }
+  // The most engines this device has shown it can hold on each net; 0 means the
+  // ladder never got as far as that net's first step. Before the first Detect only
+  // a real signal bounds it. Lite x1 is the floor every device starts from.
+  function choices() {
+    load();
+    const core = maxWorkers(device());
+    if (!proven) return { lite: core, big: core };
+    // A device that held n big heaps holds n lite heaps: the lite heap is smaller.
+    return { lite: Math.min(core, Math.max(proven.lite, proven.big, 1)), big: Math.min(core, proven.big) };
+  }
+  // What this device can actually run: the measured net, or the signal bound before
+  // its first Detect. A net the ladder never held is the one that failed.
+  function current() {
+    load();
+    const limit = choices()[profile.net];
+    return limit > 0 ? fitWorkers({ ...profile }, limit) : { ...FALLBACK };
+  }
   function change(next) {
-    next = fitWorkers(next, maxWorkers(device()));
+    const limit = choices()[next.net];
+    // A net the ladder never held is not a choice: the device stays on the floor.
+    next = limit > 0 ? fitWorkers(next, limit) : { ...FALLBACK };
     revision++;
     profile = next;
     persist();
     emit();
     return current();
   }
+  // The ladder's own record: the workers each net held, so Settings can offer
+  // exactly those.
+  const recordProven = (run, net, workers) => { run[net] = Math.max(run[net] || 0, workers); };
   function failure(attempt) {
     load();
     if (profile.net !== attempt.net || profile.workers !== attempt.workers) return current();
     const next = stepDownProfile(attempt);
     if (next.net === profile.net && next.workers === profile.workers) return current();
+    if (proven) {
+      proven = { lite: 0, big: 0, ...proven };
+      proven[next.net] = Math.min(proven[next.net] || 0, next.workers);
+    }
     detected = next;
     return change(detected);
   }
   // A foreground run leaves evidence only while it owns engines. Background
   // eviction on iOS is not a crash; re-arm when a still-active run returns.
-  function guard(attempt = current()) {
+  // A probe step is different: it reserves a heap on purpose, so `sticky` keeps
+  // its mark even while the page is hidden.
+  function guard(attempt = current(), { sticky = false } = {}) {
     const token = {};
     if (!pending.size) {
       pageHidden = page?.visibilityState === "hidden";
@@ -185,7 +230,7 @@ export function createEngineProfileManager({
       lifecycle?.addEventListener("pagehide", hide);
       lifecycle?.addEventListener("pageshow", visibility);
     }
-    pending.set(token, attempt);
+    pending.set(token, { attempt, sticky });
     syncCrashMark();
     function done() {
       if (!pending.has(token)) return;
@@ -272,8 +317,10 @@ export function createEngineProfileManager({
   async function probeOnce(signal, onDemand, modules, epoch) {
     const abort = () => { if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError"); };
     abort();
-    // Steps: lite 1, then big 1..max; each is a load and two timed rounds.
-    const units = (1 + maxWorkers(device())) * 3;
+    // Steps in ladder order: each one learns the net's module plus two timed rounds.
+    const steps = [["lite", 1]];
+    for (let n = 1; n <= maxWorkers(device()); n++) steps.push(["big", n]);
+    const units = steps.length * 3;
     let done = 0;
     const progress = (stage, step = 0, workers = null) => {
       done = stage === "complete" || stage === "fallback" ? units : Math.max(done, step);
@@ -289,6 +336,7 @@ export function createEngineProfileManager({
     const hardware = device();
     measurements = { scaling: { lite: [], big: [] }, hardwareConcurrency: hardware.hardwareConcurrency ?? null,
       deviceMemory: hardware.deviceMemory ?? null };
+    const held = { lite: 0, big: 0 };
     // Every engine searches the same node budget at once; throughput = total nodes / wall time.
     async function round() {
       const start = now();
@@ -309,47 +357,55 @@ export function createEngineProfileManager({
       resume = await probeBudget({ signal, onDemand });
       abort();
       let step = 0;
-      for (const net of ["lite", "big"]) {
-        await close(); // Never hold both nets, even during big's reservation.
-        abort();
+      let net = null;
+      for (const [nextNet, n] of steps) {
+        if (nextNet !== net) {
+          await close(); // Never hold both nets, even during big's reservation.
+          net = nextNet;
+          abort();
+        }
         const wasmModule = modules[net];
         const scaling = measurements.scaling[net];
-        for (let n = 1; n <= (net === "lite" ? 1 : maxWorkers(hardware)); n++) {
-          abort();
-          const attempt = { net, workers: n, source: "detected" };
-          mark = guard(attempt);
-          const stage = net === "lite" ? "loading" : n === 1 ? "speed" : "workers";
-          progress(stage, step, n);
-          const loadingAt = now();
-          // Keep the existing workers alive while reserving the next heap, then
-          // inject it: dropping a reservation would depend on GC before allocation.
-          let wasmMemory = reserveMemory(net);
-          const engine = await createEngine({ net, wasmModule, wasmMemory, maxDepth: 60, maxNodes: PROBE_NODES });
-          wasmMemory = null;
-          engines.push(engine);
-          abort();
-          await engine.prepare();
-          const loadMs = now() - loadingAt;
-          abort();
-          // Faster of two rounds: a fresh module's first search runs on baseline code while
-          // the optimizing tier compiles (big 1 read 289k nodes/s, then 370-418k), and one
-          // round alone swung big 3 between 817k and 1103k.
-          progress(stage, step + 1, n);
-          const first = await round();
-          abort();
-          progress(stage, step + 2, n);
-          const second = await round();
-          step += 3;
-          const r = first.nodes / first.ms > second.nodes / second.ms ? first : second;
-          abort();
-          mark.done();
-          mark = null;
-          scaling.push(r.nodes * 1000 / r.ms);
-          if (n > 1 && scaling[n - 1] - scaling[n - 2] < MIN_GAIN * scaling[0]) break;
-          candidate = attempt;
-          Object.assign(measurements, { nodes: r.nodes, searchMs: r.ms, loadMs, nodesPerSecond: scaling[n - 1] });
-        }
+        abort();
+        const attempt = { net, workers: n, source: "detected" };
+        // Armed before the heap is reserved: if this step kills the tab, the next
+        // load starts below it instead of retrying what died.
+        mark = guard(attempt, { sticky: true });
+        const stage = net === "lite" ? "loading" : n === 1 ? "speed" : "workers";
+        progress(stage, step, n);
+        const loadingAt = now();
+        // Keep the existing workers alive while reserving the next heap, then
+        // inject it: dropping a reservation would depend on GC before allocation.
+        let wasmMemory = reserveMemory(net);
+        const engine = await createEngine({ net, wasmModule, wasmMemory, maxDepth: 60, maxNodes: PROBE_NODES });
+        wasmMemory = null;
+        engines.push(engine);
+        abort();
+        await engine.prepare();
+        const loadMs = now() - loadingAt;
+        abort();
+        // Faster of two rounds: a fresh module's first search runs on baseline code while
+        // the optimizing tier compiles (big 1 read 289k nodes/s, then 370-418k), and one
+        // round alone swung big 3 between 817k and 1103k.
+        progress(stage, step + 1, n);
+        const first = await round();
+        abort();
+        progress(stage, step + 2, n);
+        const second = await round();
+        step += 3;
+        const r = first.nodes / first.ms > second.nodes / second.ms ? first : second;
+        abort();
+        mark.done();
+        mark = null;
+        scaling.push(r.nodes * 1000 / r.ms);
+        // Every completed step was held by this device, whether or not it wins:
+        // Settings may offer it, and the faster one stays the chosen profile.
+        recordProven(held, net, n);
+        if (n > 1 && scaling[n - 1] - scaling[n - 2] < MIN_GAIN * scaling[0]) break;
+        candidate = attempt;
+        Object.assign(measurements, { nodes: r.nodes, searchMs: r.ms, loadMs, nodesPerSecond: scaling[n - 1] });
       }
+      proven = held;
       abort();
       await close();
       abort();
@@ -361,6 +417,8 @@ export function createEngineProfileManager({
       if (signal?.aborted || error.name === "AbortError") throw new DOMException("Detection stopped", "AbortError");
       if (error instanceof EngineAssetError) throw error;
       measurements = { ...measurements, error: error.message };
+      // The steps that completed before this failure are what this device holds.
+      proven = held;
       await close();
       abort();
       publishDetection(candidate, epoch);
@@ -392,6 +450,20 @@ export function createEngineProfileManager({
     if (phase === "compile" || phase === "ready") await ready.catch(() => {});
     else ready.catch(() => {});
   }
+  // A device that has never set itself up runs Detect on its own, once, idle after
+  // the first screen is up. A saved setup — detected, chosen by the user, or
+  // recovered from a crash record — is a setup; nothing runs again unasked.
+  function autoSetup() {
+    if (autoSetupDone) return;
+    autoSetupDone = true;
+    load();
+    if (broken || detected || profile.source !== "fallback") return;
+    if (device().connection?.saveData) return;
+    scheduleIdle(() => {
+      if (detected || profile.source !== "fallback" || probing) return;
+      void detect().catch(() => {});
+    });
+  }
   return {
     engineProfile: current,
     usableEngineProfile: usable,
@@ -410,8 +482,10 @@ export function createEngineProfileManager({
       }).catch(() => {});
     },
     engineMeasurements() { load(); return measurements ? { ...measurements } : null; },
-    // The most engines this device can hold; Settings disables the rest.
-    engineWorkerLimit() { return maxWorkers(device()); },
+    // The workers each net can use on this device; Settings disables the rest.
+    engineWorkerChoices: choices,
+    // A device with no setup of its own sets itself up; see autoSetup.
+    setupOnFirstVisit: autoSetup,
     setEngineProfile(p) { load(); if (!valid(p)) throw new RangeError("Choose big/lite and 1–3 workers"); return change({ net: p.net, workers: p.workers, source: "user" }); },
     resetEngineProfile() { load(); return change(detected || { ...FALLBACK }); },
     detectEngineProfile: detect,
@@ -423,7 +497,7 @@ export function createEngineProfileManager({
 }
 
 const manager = createEngineProfileManager();
-export const { engineProfile, engineMeasurements, engineWorkerLimit, setEngineProfile, resetEngineProfile, detectEngineProfile,
+export const { engineProfile, engineMeasurements, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
   readyIfCached,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;
