@@ -257,11 +257,20 @@ async function runViewport(vp) {
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 0) {
-    const wide = await page.evaluate(() => [...document.querySelectorAll("body *")]
-      .filter((el) => el.getBoundingClientRect().right > document.documentElement.clientWidth + 0.5)
-      .slice(0, 6)
-      .map((el) => `${el.tagName.toLowerCase()}#${el.id}.${String(el.className).split(" ").slice(0, 2).join(".")} right=${Math.round(el.getBoundingClientRect().right)}`));
-    console.log(`[scout-smoke] overflow sources: ${wide.join(" | ")}`);
+    const sources = await page.evaluate(() => {
+      const html = document.documentElement;
+      const label = (el) => `${el.tagName.toLowerCase()}#${el.id}.${String(el.className).split(" ").slice(0, 2).join(".")}`;
+      const scrollers = [...document.querySelectorAll("body *")]
+        .filter((el) => el.scrollWidth > el.clientWidth + 1)
+        .slice(0, 6)
+        .map((el) => `${label(el)} scroll=${el.scrollWidth}/${el.clientWidth}`);
+      const wide = [...document.querySelectorAll("body *")]
+        .filter((el) => el.getBoundingClientRect().right > html.clientWidth + 0.5)
+        .slice(0, 6)
+        .map((el) => `${label(el)} right=${Math.round(el.getBoundingClientRect().right)}`);
+      return { inner: innerWidth, html: [html.scrollWidth, html.clientWidth], body: [document.body.scrollWidth, document.body.clientWidth], scrollers, wide };
+    });
+    console.log(`[scout-smoke] overflow sources: ${JSON.stringify(sources)}`);
   }
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
