@@ -70,7 +70,7 @@ describe("PositionCoach async continuation ownership", () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     const appState = { explainContext: { prevFen: fen, lastUci: "e2e4" } };
     const start = source.indexOf("function paintMaiaCoachFromRead(");
-    const end = source.indexOf("\nasync function maiaPhaseCoach", start);
+    const end = source.indexOf("function refreshAnalysisExplain(", start);
     const run = new Function("loadPhaseCoach", "effectiveMaiaRating", "paintMaiaCoachLine", "appState",
       `${source.slice(start, end)}; return paintMaiaCoachFromRead;`)(() => gate.promise, () => 1500, paint, appState);
     const read = { predictions: [{ move_uci: "e2e4", probability: 0.6 }] };

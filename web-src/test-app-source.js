@@ -20,6 +20,7 @@ const FILES = [
   "./controllers/sync.js",
   "./controllers/build-session.js",
   "./controllers/analyze-session.js",
+  "./views/teams-controller.js",
 ];
 
 export function appSource() {
