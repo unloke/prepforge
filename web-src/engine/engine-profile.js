@@ -291,8 +291,6 @@ export function createEngineProfileManager({
     probing = Promise.resolve().then(async () => {
       try {
         if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError");
-        // Asset preparation never occupies the idle compute window or a heap.
-        const modules = await Promise.all([loadModule("lite"), loadModule("big")]);
         for (;;) {
           const controller = new AbortController();
           const abort = () => controller.abort();
@@ -301,7 +299,7 @@ export function createEngineProfileManager({
           let yielded = false;
           try {
             return await probeOnce(controller.signal, () => { yielded = true; controller.abort(); },
-              { lite: modules[0], big: modules[1] }, epoch);
+              loadModule, epoch);
           } catch (error) {
             if (!yielded || signal?.aborted) throw error;
             setupState({ phase: "waiting", label: "Waiting for engine…" });
@@ -314,7 +312,7 @@ export function createEngineProfileManager({
     });
     return probing;
   }
-  async function probeOnce(signal, onDemand, modules, epoch) {
+  async function probeOnce(signal, onDemand, loadModule, epoch) {
     const abort = () => { if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError"); };
     abort();
     // Steps in ladder order: each one learns the net's module plus two timed rounds.
@@ -333,6 +331,12 @@ export function createEngineProfileManager({
     let resume;
     let mark;
     let candidate = { ...FALLBACK };
+    // Each net's module is loaded once per Detect, when a step first reaches it.
+    const modules = new Map();
+    const moduleFor = net => {
+      if (!modules.has(net)) modules.set(net, loadModule(net));
+      return modules.get(net);
+    };
     const hardware = device();
     measurements = { scaling: { lite: [], big: [] }, hardwareConcurrency: hardware.hardwareConcurrency ?? null,
       deviceMemory: hardware.deviceMemory ?? null };
@@ -364,7 +368,6 @@ export function createEngineProfileManager({
           net = nextNet;
           abort();
         }
-        const wasmModule = modules[net];
         const scaling = measurements.scaling[net];
         abort();
         const attempt = { net, workers: n, source: "detected" };
@@ -372,11 +375,18 @@ export function createEngineProfileManager({
         // load starts below it instead of retrying what died.
         mark = guard(attempt, { sticky: true });
         const stage = net === "lite" ? "loading" : n === 1 ? "speed" : "workers";
-        progress(stage, step, n);
         const loadingAt = now();
+        // Reserve the heap BEFORE the net's bytes. A device that cannot hold this net
+        // must not download and cache it — 94 MB for the full net — on the way to
+        // finding that out; the reservation is what fails, and it fails first. A held
+        // reservation is address space, not resident memory.
         // Keep the existing workers alive while reserving the next heap, then
         // inject it: dropping a reservation would depend on GC before allocation.
+        progress("loading", step, n);
         let wasmMemory = reserveMemory(net);
+        const wasmModule = await moduleFor(net);
+        abort();
+        progress(stage, step, n);
         const engine = await createEngine({ net, wasmModule, wasmMemory, maxDepth: 60, maxNodes: PROBE_NODES });
         wasmMemory = null;
         engines.push(engine);
@@ -476,7 +486,13 @@ export function createEngineProfileManager({
       if (started) return;
       started = true;
       load();
-      if (device().connection?.saveData || broken || (detected?.net === "lite" && profile.source !== "user")) return;
+      if (device().connection?.saveData || broken) return;
+      // Only a net this device is known to hold is fetched ahead of a run. The full
+      // net is 94 MB and, on a device that cannot reserve its heap, it would sit in
+      // Cache Storage forever for nothing; Detect reserves first and learns what fits.
+      const known = detected || (profile.source === "user" ? profile : null);
+      if (!known) { void detect().catch(() => {}); return; }
+      if (known.net !== "big") return;
       void prepareFull().then(() => {
         if (!detected && profile.source !== "user") return detect();
       }).catch(() => {});

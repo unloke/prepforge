@@ -85,37 +85,38 @@ describe("device engine profile", () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it("prepares full only on the first engine start of the page", async () => {
+  it("detects on first engine start, and prepares full only for a device already holding it", async () => {
     const f = fixture();
-    expect(f.loadModule).not.toHaveBeenCalled();
     f.engineStarted(); f.engineStarted();
     await vi.waitFor(() => expect(f.engineProfile().source).toBe("detected"));
-    expect(f.loadModule.mock.calls[0]).toEqual(["big"]);
+    expect(f.loadModule.mock.calls).toEqual([["lite"], ["big"]]);
+    const g = fixture();
+    await g.detectEngineProfile();
+    g.loadModule.mockClear(); g.engineStarted();
+    await vi.waitFor(() => expect(g.loadModule).toHaveBeenCalledWith("big"));
+    expect(g.loadModule.mock.calls).toEqual([["big"]]);
     expect(f.engines).toHaveLength(4);
   });
-
-  it("saveData skips automatic preparation but explicit Full and Detect still work", async () => {
-    const f = fixture({ device: () => ({ connection: { saveData: true }, hardwareConcurrency: 1 }) });
-    f.engineStarted();
-    await Promise.resolve();
-    expect(f.loadModule).not.toHaveBeenCalled();
-    await f.prepareFullEngine();
-    expect(f.loadModule).toHaveBeenCalledWith("big");
-    await f.detectEngineProfile();
-    expect(f.engineProfile()).toMatchObject({ net: "big", workers: 1 });
-  });
-
-  it("remembers a failed big-one reservation and does not automatically prepare it on return", async () => {
-    const f = fixture({ Memory: class { constructor(descriptor) {
-      if (descriptor.initial === globalThis.__STOCKFISH__.big.initialHeapPages) throw new RangeError("no address space");
-    } } });
-    await f.detectEngineProfile();
-    expect(f.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
+  it("never fetches a net whose heap this device cannot reserve, and does not retry it", async () => {
+    // Detect measures lite first; the 94 MB full net is never downloaded or cached.
+    const Memory = class { constructor(d) { if (d.maximum === globalThis.__STOCKFISH__.big.maxHeapPages) throw new RangeError("no address space"); } };
+    const f = fixture({ Memory });
+    expect(await f.detectEngineProfile()).toMatchObject({ net: "lite", workers: 1 });
+    expect(f.loadModule.mock.calls).toEqual([["lite"]]);
     const loadModule = vi.fn();
     const next = createEngineProfileManager({ storage: () => f.storage, loadModule, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
     next.engineStarted();
     expect(next.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
     expect(loadModule).not.toHaveBeenCalled();
+  });
+
+  it("saveData skips automatic preparation but explicit Full and Detect still work", async () => {
+    const f = fixture({ device: () => ({ connection: { saveData: true }, hardwareConcurrency: 1 }) });
+    f.engineStarted(); await Promise.resolve();
+    expect(f.loadModule).not.toHaveBeenCalled();
+    await f.prepareFullEngine();
+    expect(f.loadModule).toHaveBeenCalledWith("big");
+    expect(await f.detectEngineProfile()).toMatchObject({ net: "big", workers: 1 });
   });
 
   it("replays asset bytes and compilation to a subscriber joining background preparation", async () => {
@@ -218,14 +219,15 @@ describe("device engine profile", () => {
   it.each(["lite", "big"])("does not replace a user profile when the %s asset fails", async failedNet => {
     const error = new EngineAssetError(new Error("download aborted"));
     const f = fixture({ loadModule: async net => {
-      expect(f.data.has(CRASH_KEY)).toBe(false);
       if (net === failedNet) throw error;
       return {};
     } });
     f.setEngineProfile({ net: "big", workers: 3 });
     await expect(f.detectEngineProfile()).rejects.toBe(error);
     expect(f.engineProfile()).toMatchObject({ net: "big", workers: 3, source: "user" });
-    expect(f.reserveMemory).not.toHaveBeenCalled();
+    // The heap is reserved before the bytes are asked for, but a failed download
+    // leaves no record: the next load re-probes instead of stepping down.
+    expect(f.reserveMemory).toHaveBeenCalled();
     expect(f.data.has(CRASH_KEY)).toBe(false);
   });
 
