@@ -15,8 +15,8 @@ function fakeNode(tag) {
 }
 function render(...args) {
   const start = source.indexOf("function renderAnnotations(");
-  const end = source.indexOf("\nfunction squareCenter(", start);
-  const sqStart = end + 1;
+  const end = source.indexOf("export function squareCenter(", start);
+  const sqStart = end + "export ".length;
   const sqEnd = source.indexOf("\n}\n", sqStart) + 3;
   const document = { createElementNS: (_ns, tag) => fakeNode(tag) };
   const fn = new Function("document", "buildArrowPath", "buildArrowHeadPath", "endsUnder", "files",

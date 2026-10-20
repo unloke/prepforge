@@ -110,7 +110,7 @@ it('recovery rechecks server confirmation after reload when local cleanup failed
 it('workspace restores local work before remote settings or dashboard resolve',async()=>{
   const settings=deferred(),dashboard=deferred();const appState={buildPending:[],buildPendingDeletes:[]};
   const restoreOutbox=vi.fn();const recovery=vi.fn(async()=>{});
-  const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsActions:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
+  const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsController:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
     getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
   const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();await Promise.resolve();expect(recovery).toHaveBeenCalledOnce();
   settings.resolve();dashboard.resolve();await pending;

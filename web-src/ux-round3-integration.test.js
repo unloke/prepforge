@@ -45,7 +45,7 @@ function harness(realBoard = false) {
   deps.notices.failJob = vi.fn();
   const helper = body("function invalidateAnalysisSource(");
   const inputStart = source.indexOf('pgnInput.addEventListener("input",');
-  const inputBinding = source.slice(inputStart, source.indexOf("\n    });", inputStart) + 8);
+  const inputBinding = source.slice(inputStart, source.indexOf("\n  });", inputStart) + 6);
   const functions = [...(realBoard ? ["async function showAnalysisPly("] : []), "async function recallAnalysis(", "async function renderAnalysis(",
     "async function syncPgnFromTree(",
     "async function finishAnalyzeCheckpoint(", "async function loadPgnIntoAnalyze(", "async function runAnalysis(", "async function retryAnalyzeSave("].map(body).join("\n");

@@ -226,9 +226,11 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
     // on screen (and a delete button click stays on the button, so nothing else
     // repainted the trail either).
     const del = extractByMarker("async function deleteBuildNodeLocal(nodeId) {");
-    const parentSelect = del.indexOf("await selectBuildNode(parentId);");
+    // Parent selection and the view-heads repaint both go through hooks.build
+    // (the shell creates them after build-entry.js binds).
+    const parentSelect = del.indexOf("await hooks.build.selectBuildNode(parentId);");
     expect(parentSelect).toBeGreaterThan(-1);
-    expect(del.indexOf("syncViewHeads()", parentSelect)).toBeGreaterThan(parentSelect);
+    expect(del.indexOf("hooks.build.syncViewHeads()", parentSelect)).toBeGreaterThan(parentSelect);
   });
 });
 

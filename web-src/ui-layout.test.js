@@ -8,6 +8,9 @@ const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = appSource();
+// app.js on its own: assertions about startup order are about the shell, not
+// the modules it now imports.
+const shell = readFileSync(join(root, "app.js"), "utf8");
 const coverageController = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
@@ -354,7 +357,9 @@ describe("workspace chrome layout", () => {
     // Every Explorer render (and unfolding) refits; coverage repaints refit too.
     expect(session).toMatch(/requestAnimationFrame\(\(\) => fitBuildDock\(\)\)/);
     expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
-    expect(app).toContain("onPaint: () => buildSession?.fitBuildDock()");
+    // Coverage repaints refit the dock through coverage-entry.js, which takes
+    // the fit as a dep.
+    expect(app).toContain("fitDock: () => buildSession?.fitBuildDock()");
     // A height the user dragged is not overwritten by the next repaint.
     expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
     expect(session).toMatch(/if \(dock\.dataset\.dockPinned\) return;/);
@@ -541,22 +546,31 @@ describe("workspace chrome layout", () => {
     // (auth/Lichess/settings/Maia) paints into the current view and must never
     // call switchView — so a signed-in first open with delayed hydration stays
     // on the URL route instead of self-navigating to Settings.
-    const startup = app.slice(app.indexOf("async function init()"));
-    expect(app).toContain("async function restoreWorkspaceLocation()");
+    const startup = shell.slice(shell.indexOf("async function init()"));
+    expect(shell).toContain("async function restoreWorkspaceLocation()");
     expect(startup).toContain("restoreWorkspaceLocation()");
-    const restore = app.slice(app.indexOf("async function restoreWorkspaceLocation()"));
     // (A page the user picked mid-boot is kept instead: their own navigation,
     // not hydration; see navigatedDuringBoot.)
     // Execution coverage is in workspace-restore-behavior.test.js.
     expect(startup).not.toMatch(/switchView\(\s*["']settings["']\s*\)/);
+    // The whole function body, brace-matched: a fixed character window slides
+    // into whatever function happens to follow it when the file is split.
+    const bodyOf = (name) => {
+      const start = app.indexOf(`function ${name}(`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      let depth = 0;
+      for (let i = app.indexOf("{", start); i < app.length; i += 1) {
+        if (app[i] === "{") depth += 1;
+        else if (app[i] === "}" && --depth === 0) return app.slice(start, i + 1);
+      }
+      return app.slice(start);
+    };
     for (const name of [
       "loadSignedInWorkspace",
       "refreshAutoMaiaRating",
       "applySettingsPayload",
     ]) {
-      const idx = app.indexOf(`function ${name}`);
-      expect(idx).toBeGreaterThanOrEqual(0);
-      expect(app.slice(idx, idx + 2500)).not.toMatch(/switchView\s*\(/);
+      expect(bodyOf(name)).not.toMatch(/switchView\s*\(/);
     }
     // Controller-owned hydration is injected (not app.js): assert on account.js.
     expect(account).not.toMatch(/refreshAuthStatus[\s\S]{0,800}?switchView/);

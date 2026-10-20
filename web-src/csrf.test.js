@@ -74,7 +74,10 @@ describe("headersWithCsrf", () => {
     const { dirname, join } = await import("node:path");
     const root = dirname(fileURLToPath(import.meta.url));
     const app = appSource();
-    expect(app).toContain('import { createCsrfTokenSource, headersWithCsrf, readCsrfCookie, CSRF_HEADER } from "./csrf.js"');
+    // The api wrapper (core/api.js) owns the CSRF bootstrap and reads the
+    // cookie synchronously where the unload path needs it.
+    expect(app).toContain('import { createCsrfTokenSource, headersWithCsrf } from "../csrf.js"');
+    expect(app).toContain('import { readCsrfCookie, CSRF_HEADER } from "./csrf.js"');
     for (const site of ["beaconFlushBuild", "beaconFlushTrain"]) {
       expect(app).toContain(`function ${site}(`);
     }

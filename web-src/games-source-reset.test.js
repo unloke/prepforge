@@ -94,7 +94,7 @@ it("a failed Check clears the delayed progress status before painting the error"
 it("every Games source change clears the stale ledger", () => {
   const composer = source.slice(source.indexOf("function openGamesComposer("), source.indexOf("function paintGamesSource("));
   expect(composer).toContain("writeGamesSelection(sel);\n      clearGamesResults();");
-  const tray = source.slice(source.indexOf("function bindGamesSource("), source.indexOf("// Scout source: the SAME shared"));
+  const tray = source.slice(source.indexOf("function bindGamesSource("), source.indexOf("let replayModule"));
   // One clear for the external-username unpick, one for the linked account.
   expect(tray.match(/clearGamesResults\(\);/g)).toHaveLength(2);
 });

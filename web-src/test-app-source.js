@@ -5,6 +5,13 @@ import { readFileSync } from "node:fs";
 
 const FILES = [
   "./app.js",
+  "./core/state.js",
+  "./core/api.js",
+  "./core/prefs.js",
+  "./core/modals.js",
+  "./core/engine.js",
+  "./coach/coach-loader.js",
+  "./board/ui.js",
   "./controllers/engine-widget.js",
   "./notices.js",
   "./board/board-controller.js",
@@ -13,6 +20,24 @@ const FILES = [
   "./controllers/sync.js",
   "./controllers/build-session.js",
   "./controllers/analyze-session.js",
+  "./views/teams-controller.js",
+  "./views/games-controller.js",
+  "./views/scout-controller.js",
+  "./views/settings-controller.js",
+  "./account-entry.js",
+  "./build-entry.js",
+  "./palette.js",
+  "./train-entry.js",
+  "./analyze-book-state.js",
+  "./views/analyze-loader.js",
+  "./shared-viewer.js",
+  "./coverage-entry.js",
+  "./library-entry.js",
+  "./e2e-hooks.js",
+  "./phone-entry.js",
+  "./undo.js",
+  "./controllers/analyze-entry.js",
+  "./views/shared/source-store.js",
 ];
 
 export function appSource() {

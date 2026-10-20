@@ -6,10 +6,8 @@ import { formatEngineEval } from "../engine-eval.js";
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
 
-import {
-  _buildGenReady, buildDockTab, buildView, coverageView, explorerClient, explorerDb,
-  explorerModule,
-} from "../app.js";
+import { _buildGenReady, buildView, coverageView } from "../app.js";
+import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
 import { rebaseBuildOps } from "../build-revision.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";

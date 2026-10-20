@@ -137,7 +137,7 @@ describe("teams paints nothing owner-scoped until auth is known (C2)", () => {
   });
 
   it("app.signedIn is only meaningful once auth is known", () => {
-    const state = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    const state = readFileSync(new URL("./core/state.js", import.meta.url), "utf8");
     expect(state).toMatch(/authKnown: false/);
     // The account controller settles the flag on the first session read, and the
     // Teams list honours it.
