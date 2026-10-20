@@ -786,27 +786,31 @@
     flex: none;
     display: flex;
     align-items: center;
-    column-gap: 4px;
-    min-height: 52px;
-    margin: 0 0 12px;
-    padding: 2px 4px;
+    column-gap: 8px;
+    min-height: 56px;
+    margin: 0 0 var(--phone-gap);
+    padding: 0;
     border: 0;
     background: var(--bg);
   }
+  /* The repertoire's name is this screen's title: it takes the shell's title
+     size and ink, at the same left edge as the board under it. */
   #build-rep-header .rep-name {
     flex: 1 1 0;
     min-width: 0;
     height: 24px;
-    font-size: 17px;
-    font-weight: 700;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   #build-rep-header .rep-color-sub { display: none; }
-  #build-rep-header .phone-back { color: var(--accent-strong); }
-  #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-  #build-rep-header #build-menu { grid-column: 3; }
+  #build-rep-header .phone-back { margin-left: -8px; color: var(--text); }
+  #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  #build-rep-header #build-menu { grid-column: 3; margin-right: -8px; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
   /* Under the board one pane at a time (the line tree, Explorer or Coverage)
@@ -870,13 +874,26 @@
      only way back along the line: both get a real target. The move tokens
      stay dense like a score sheet, but their rows get a gap so neighbours do
      not fuse. */
-  #view-build .fork-chip { min-height: 40px; padding: 0 14px; }
+  #view-build .fork-chip { min-height: 44px; padding: 0 14px; }
   #view-build .fork-chip small { font-size: var(--fs-s); }
-  #view-build .mtree-crumb { min-height: 32px; padding: 0 6px; }
-  #view-build .mtree-collapse { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
-  #view-build .build-empty { padding: 24px 16px; }
-  #view-build .build-empty .row { flex-wrap: wrap; justify-content: center; gap: 8px; }
-  #view-build .build-empty .btn { min-height: 40px; height: 40px; }
+  #view-build .mtree-crumb { min-height: 44px; padding: 0 6px; }
+  #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
+  /* The empty answer is a card under the board. Three buttons side by side
+     clipped "New repertoire" at 390px, so the one action gets the row and the
+     two alternatives share the row under it. It is padded to fit the panel a
+     740px screen leaves (188px measured): the shared 48px padding put the
+     action row under the thumb bar. */
+  #view-build .build-empty { padding: 10px 20px; gap: 2px; }
+  #view-build .build-empty .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: stretch;
+    justify-content: stretch;
+    gap: 8px;
+  }
+  #view-build .build-empty .btn { min-height: 44px; height: 44px; padding: 0 12px; border-radius: 12px; font-size: 15px; }
+  #view-build .build-empty .btn.primary { flex: 1 1 100%; }
+  #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; border: 0; background: var(--surface-3); }
 
   /* ---- Train -------------------------------------------------------------
      The prompt over the board, the session card under it. Modes lead while

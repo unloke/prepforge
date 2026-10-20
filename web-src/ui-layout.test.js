@@ -215,7 +215,7 @@ describe("workspace chrome layout", () => {
     expect(rule).toMatch(/align-items:\s*center/);
     expect(rule).not.toMatch(/flex-wrap:\s*wrap/);
     // The header is the board's top neighbour on a phone: it owns the gap.
-    expect(rule).toMatch(/margin:\s*0 0 12px/);
+    expect(rule).toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
     // The save chip lives beside the inspector tools here, not in the far-off
     // board bar.
     expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
@@ -229,9 +229,9 @@ describe("workspace chrome layout", () => {
     // Measured at 390: chips 27px, crumbs 21px, the collapse toggle 13px. The
     // chip is the action the thumb reaches for on this screen, and the trail
     // is the only way back along the line.
-    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 40px;/);
-    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 32px;/);
-    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 32px;[^}]*min-height: 32px;/);
+    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 44px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 44px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
     // One line naming the action, not a paragraph about coverage: that was
     // standing explanation (AGENTS.md) and the ⓘ already carries the detail.
     expect(coverageController).toContain("Press Scan to check this line.");
