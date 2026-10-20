@@ -367,13 +367,19 @@
    card's grid (display: contents), so its depth readout and line stepper sit
    in the header and its lines run under the chart instead of a second row.
    The win meter is the one part that gives up width: it is a bar, and a bar
-   stays readable at 64px while a clipped readout does not. */
+   stays readable at 64px while a clipped readout does not.
+   On a narrow card the two readouts lose their words rather than the row
+   losing the Engine button: the card is 361px at 982x614 and the five items
+   need 381 with "Depth" and "Lines" in front of them. Each figure already
+   carries a title tooltip, and the pair reads as "16/16  − 3 +" beside the
+   meter — the same shape the floating engine panel uses. */
 #analysis-eval-card {
   display: grid;
   grid-template-columns: auto minmax(64px, 1fr) auto auto auto;
   align-items: center;
   column-gap: 10px;
   row-gap: 8px;
+  container-type: inline-size;
 }
 #analysis-eval-card > :not(.ev-head):not(.engine-slot),
 #analysis-engine-slot .engine-window-body { grid-column: 1 / -1; }
@@ -476,6 +482,13 @@
   color: var(--muted);
 }
 #analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
+/* A narrow card keeps the figures and drops the two words: at 982x614 the card
+   is 361px and the five items need 381 with them, which pushed the Engine
+   button past the card's edge. Each figure carries its own title tooltip. */
+@container (max-width: 400px) {
+  #analysis-engine-slot .engine-head-depth::before,
+  #analysis-engine-slot .engine-lines::before { content: none; }
+}
 /* The line stepper is a control: it keeps its own edge (the engine slot is
    real interface, marked data-ui). */
 #analysis-engine-slot[data-ui] .engine-step {

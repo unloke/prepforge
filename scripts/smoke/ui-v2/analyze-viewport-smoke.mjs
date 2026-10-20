@@ -102,12 +102,13 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
-// Phones keep the game sources in the Games sheet once a game is loaded;
-// raise it when its button is on screen and the sheet is down.
+// Recent analyses now starts collapsed, so recalling a saved game from it
+// means opening it first. Phones raise the sources as a sheet; a wide panel
+// has them inline.
 async function openGamesSheet(page) {
   const button = page.locator('#view-analyze [data-sheet-open="analyze-open"]');
-  if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true" &&
-    !(await page.locator("#history-drawer").isVisible())) await button.click();
+  if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
 }
 
 async function runViewport(vp) {
@@ -276,10 +277,19 @@ async function runViewport(vp) {
   check(board === 64, `analysis board should render 64 squares, got ${board}`);
   const coachText = await page.locator('[data-testid="coach-prose"]').textContent().catch(() => "");
   check(/Make a move/.test(coachText || ""), `coach should show its idle line, got "${coachText.slice(0, 40)}"`);
-  // Recent analyses ship open and load on entry (signed in) — never an empty open drawer.
+  // Recent analyses ships closed (it is where a game comes from, not another
+  // result) and loads the moment it is opened; it never opens empty.
   await page.waitForTimeout(200);
-  const historyRows = await page.locator("#history-drawer:not([hidden]) .history-item").count();
-  check(historyRows === 2, `recent analyses should list the 2 fixture games on entry, got ${historyRows}`);
+  const historyClosed = await page.locator("#history-drawer").evaluate((d) => !d.open);
+  check(historyClosed, "recent analyses should start collapsed");
+  await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
+  await page.waitForFunction(
+    () => document.querySelectorAll("#history-drawer .history-item").length === 2,
+    null, { timeout: 10000 },
+  ).catch(() => {});
+  const historyRows = await page.locator("#history-drawer .history-item").count();
+  check(historyRows === 2, `recent analyses should list the 2 fixture games once opened, got ${historyRows}`);
+  await page.locator("#history-drawer").evaluate((d) => { d.open = false; });
   const pgnOpen = await page.locator("#pgn-drawer").evaluate((d) => d.open);
   check(!pgnOpen, "the PGN source drawer should start collapsed (prototype)");
   const toolButtons = await page.evaluate(() =>
