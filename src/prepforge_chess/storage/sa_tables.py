@@ -19,6 +19,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     Table,
     Text,
     UniqueConstraint,
@@ -342,31 +343,23 @@ training_sessions = Table(
 training_progress = Table(
     "training_progress",
     metadata,
-    Column("id", Text, primary_key=True),
-    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_progress_owner_user_id")),
-    Column(
-        "repertoire_id",
-        Text,
-        ForeignKey("repertoires.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "node_id",
-        Text,
-        ForeignKey("opening_nodes.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_progress_owner_user_id"), nullable=False),
+    # Progress is identified by what it is progress on: one row per owner per
+    # node. ``repertoire_id`` follows from the node but is kept because the
+    # scoping reads filter on it.
+    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="CASCADE"), nullable=False),
+    Column("node_id", Text, ForeignKey("opening_nodes.id", ondelete="CASCADE"), nullable=False),
     Column("attempts", Integer, nullable=False),
     Column("correct_attempts", Integer, nullable=False),
     Column("last_reviewed_at", UTCDateTime()),
     Column("spaced_repetition_score", Float, nullable=False),
     Column("due_at", UTCDateTime()),
     Column("is_mastered", Integer, nullable=False),
-    Column("created_at", UTCDateTime(), nullable=False),
-    Column("updated_at", UTCDateTime(), nullable=False),
-    UniqueConstraint("owner_user_id", "repertoire_id", "node_id", name="uq_training_progress_owner"),
-    Index("idx_training_progress_rep_user", "repertoire_id", "owner_user_id"),
+    # The node leads so deleting a node (a cascade lookup by ``node_id``, see
+    # d4e6f8a0b2c3) seeks the primary key instead of scanning the table.
+    PrimaryKeyConstraint("node_id", "owner_user_id"),
     # Dashboard due-review range scan and scheduler sort.
     Index("idx_training_progress_due", "due_at"),
-    Index("idx_training_progress_node", "node_id"),
+    # Account export streams every row of one owner.
+    Index("idx_training_progress_owner", "owner_user_id"),
 )

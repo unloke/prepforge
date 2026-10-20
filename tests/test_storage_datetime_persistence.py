@@ -61,7 +61,7 @@ def test_training_progress_round_trips_aware_datetimes():
         row = conn.execute(select(t.training_progress)).mappings().one()
     assert row["due_at"] == due
     assert row["last_reviewed_at"] == reviewed
-    assert row["updated_at"].utcoffset() == timedelta(0)
+    assert row["due_at"].utcoffset() == timedelta(0)
     engine.dispose()
 
 
@@ -92,7 +92,7 @@ def test_type_rejects_non_aware_inputs(value):
 def test_due_range_uses_due_index():
     from prepforge_chess.storage import sa_tables as t
     engine = initialize_database(":memory:")
-    query = select(t.training_progress.c.id).where(t.training_progress.c.due_at <= datetime.now(timezone.utc))
+    query = select(t.training_progress.c.node_id).where(t.training_progress.c.due_at <= datetime.now(timezone.utc))
     sql = str(query.compile(engine, compile_kwargs={"literal_binds": True}))
     with engine.connect() as conn:
         plan = " ".join(str(row) for row in conn.exec_driver_sql("EXPLAIN QUERY PLAN " + sql))
