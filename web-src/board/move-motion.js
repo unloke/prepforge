@@ -76,7 +76,7 @@ export function slidePiece({ dx, dy, to }, squareOf, caught = null) {
   // frame looked as if the piece was never there.
   const fade = caught.animate(
     [{ opacity: 1, offset: 0 }, { opacity: 1, offset: 0.6 }, { opacity: 0, offset: 1 }],
-    { duration: MOVE_SLIDE_MS, easing: "ease-in" },
+    { duration: MOVE_SLIDE_MS, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
   );
   fade.onfinish = () => caught.remove();
 }

@@ -22,7 +22,9 @@ function rule(selector, from = 0) {
 describe("things that open", () => {
   it("drops a context menu in from its trigger", () => {
     expect(rule(".context-menu")).toMatch(/transition:\s*opacity[\s\S]*translate/);
-    expect(css).toMatch(/@starting-style \{\s*\n\s*\.context-menu:not\(\[hidden\]\) \{\s*\n\s*opacity: 0;\s*\n\s*translate: 0 -4px;/);
+    // Desktop only: on a phone the same element is an action sheet and rises
+    // from the thumb (phone.css), so the two entrances must not stack.
+    expect(css).toMatch(/@media \(min-width: 761px\) \{\s*\n\s*@starting-style \{\s*\n\s*\.context-menu:not\(\[hidden\]\) \{\s*\n\s*opacity: 0;\s*\n\s*translate: 0 -4px;/);
   });
 
   it("brings the command sheet down from its field", () => {
