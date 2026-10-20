@@ -446,20 +446,20 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
-    // Coach copy wraps instead of clipping; the note takes its own height (the
-    // rule beside it is the note, not a reserved box) and scrolls past five
-    // lines. The block's two-line floor is what keeps the chart below still.
+    // Coach copy wraps instead of clipping; the rule beside it is the note, not
+    // a reserved box, and it scrolls past five lines. The block's three-line
+    // floor (the note's own floors are pinned in analyze-chart.test.js) is what
+    // keeps the chart below still.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-prose")).toMatch(/max-height: calc\(1\.5em \* 5/);
-    expect(rule(".coach-card")).toMatch(/min-height: calc\(1\.5em \* 2/);
+    expect(rule(".coach-prose")).toMatch(/max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
+    expect(rule(".coach-card")).toMatch(/min-height: calc\(var\(--coach-line\) \* 3 \+ 34px\)/);
     expect(rule(".coach-card")).not.toMatch(/(^|[^-])height:\s*\d+px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     // The score sheet is sized to its content so the two sides of a move sit
     // next to each other, the way a score sheet prints them; the trailing
     // track keeps a variation row as wide as the sheet.
     expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content\s+minmax\(0,\s*1fr\)/);
-    expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
-    // Superseded legacy Analyze chrome is gone from the eager sheet.
+    expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);    // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
     expect(css).not.toContain(".coach-scroll");
     expect(css).not.toContain(".reveal");

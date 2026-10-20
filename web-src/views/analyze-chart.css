@@ -106,16 +106,24 @@
    panel ground, with the 3px quality rule carrying its tone. It was a filled
    118px band holding a 68px note, so every move left ~50px of empty tone
    between the verdict and the instrument below it (measured at 1440x900).
-   The block keeps a floor of two lines (the common verdict's length) so the
-   instrument below does not jump between moves, but the floor is this box's,
-   not the rule's: a one-line verdict leaves a rest under the text instead of
-   drawing a 76px stroke beside it. A note past five lines scrolls. */
+   The block keeps a floor of three lines: across three games and the three
+   desktop widths (171 plies) a verdict is one line 80 times, two 75, three 14
+   and four twice, so three lines holds the instrument still on every ply at
+   1440 and 1180 and on all but two at 982. The floor is this box's, not the
+   rule's: a one-line verdict leaves a rest under the text instead of drawing a
+   long stroke beside it. A longer note grows the block rather than being cut,
+   and past five lines it scrolls. The line box is a token because the block's
+   floor and the note's own floor are written in the same unit: `em` on the
+   block would resolve against the card's 13px, not the note's 16px. */
 .coach-card {
+  /* The verdict's line box at its desktop size (16px x 1.5). */
+  --coach-line: 24px;
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: calc(1.5em * 2 + 52px);
+  /* head 22 + gap 8 + three note lines + the note's 4px padding */
+  min-height: calc(var(--coach-line) * 3 + 34px);
   padding: 0;
   background: none;
   border: 0;
@@ -150,10 +158,12 @@
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
    never depends on colour alone (the words say it too). The rule runs the
    note's own height; past five lines the note scrolls rather than pushing the
-   score sheet down. */
+   score sheet down. Two lines are reserved in the note's own line box, so a
+   one-line verdict cannot pull the instrument up by 24px between plies. */
 .coach-prose {
   flex: 0 1 auto;
-  max-height: calc(1.5em * 5 + 4px);
+  min-height: calc(var(--coach-line) * 2 + 4px);
+  max-height: calc(var(--coach-line) * 5 + 4px);
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;
@@ -1133,6 +1143,8 @@
     order: 3;
     flex: 0 1 auto;
     display: block;
+    /* The verdict reads at 15px/1.4 here, so the note's line box is 21px. */
+    --coach-line: 21px;
     max-height: 118px;
     height: auto;
     min-height: 0;
