@@ -40,6 +40,10 @@ jobs:
       - name: Ruff
         run: uv run ruff check src tests
       - name: Pytest
+        env:
+          # A missing build here is a failure, not a skip: the tests below must
+          # actually read the served tree in CI.
+          PREPFORGE_REQUIRE_BUILT_SPA: "1"
         run: uv run pytest -q
       - name: Alembic upgrade + drift check
         # `alembic check` diffs the metadata against a migrated DB, so apply

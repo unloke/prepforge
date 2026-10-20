@@ -18,6 +18,7 @@ Pins the config/docs/code triples that silently drift apart:
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -154,7 +155,9 @@ def test_package_data_ships_the_whole_static_tree() -> None:
         for path in package.glob(pattern)
     }
     static = package / "static"
-    if not (static / "index.html").is_file():
+    if not (static / "index.html").is_file() and not os.environ.get(
+        "PREPFORGE_REQUIRE_BUILT_SPA"
+    ):
         pytest.skip("SPA not built; run `npm run build`")
     wanted = {
         path

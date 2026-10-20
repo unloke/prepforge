@@ -8,15 +8,19 @@ asset base must be injectable.
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from prepforge_chess.api import static as static_mod
 
 # The served tree is Vite build output (git-ignored), so a bare clone has none.
-# CI builds it before pytest; a developer runs `npm run build` first.
+# CI builds it before pytest and sets PREPFORGE_REQUIRE_BUILT_SPA=1, where a
+# missing tree is a failure rather than a skip; a developer runs `npm run build`.
 BUILT = (static_mod.STATIC_DIR / "index.html").is_file()
 requires_built_spa = pytest.mark.skipif(
-    not BUILT, reason="SPA not built; run `npm run build`"
+    not BUILT and not os.environ.get("PREPFORGE_REQUIRE_BUILT_SPA"),
+    reason="SPA not built; run `npm run build`",
 )
 
 
