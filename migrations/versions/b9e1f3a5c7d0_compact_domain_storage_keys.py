@@ -66,15 +66,20 @@ def upgrade() -> None:
             )
     else:
         op.drop_constraint("uq_engine_evaluations_identity", "engine_evaluations", type_="unique")
+        # The text column holds the digest's hex spelling; ::bytea would keep its
+        # 64 ASCII bytes, which no new 32-byte key ever matches.
         op.alter_column(
             "engine_evaluations", "fingerprint", type_=sa.LargeBinary(),
-            postgresql_using="fingerprint::bytea",
+            postgresql_using="decode(fingerprint, 'hex')",
         )
         op.create_unique_constraint(
             "uq_engine_evaluations_fingerprint", "engine_evaluations", ["fingerprint"]
         )
 
     # --- training_progress: key on what the progress is progress on ---------
+    # The owner joins the primary key, so it is NOT NULL from here on. A row with
+    # no owner is progress no account can read; it goes.
+    op.execute("DELETE FROM training_progress WHERE owner_user_id IS NULL")
     if sqlite:
         # A primary key cannot be swapped in place, so the table is rebuilt with
         # the final shape and its rows carried over by their own columns.
