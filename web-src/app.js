@@ -7,6 +7,7 @@ import { resetViewScroll } from "./view-scroll.js";
 import { closeSheetOffPhone } from "./phone-layout.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";
+import { pgnHeaderTags } from "./analyze-pgn.js";
 import { createEngineProvider, isBrowserEngineAvailable } from "./engine/stockfish-provider.js";
 import { getSharedMaia3Provider, disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/maia3-provider.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
@@ -48,6 +49,8 @@ import { engineWidget, setEngineBestArrow, setEngineOn, syncEngineForView, engin
   applyServerEngineGating, paintEngineBanners, syncAnalysisEvalCard, analysisStore, sanLineFromUci,
   EXPLORER_EVAL_MAX_LINES } from "./core/engine.js";
 import { _coachReady, loadPhaseCoach, maiaPhaseCoach, preloadCoach } from "./coach/coach-loader.js";
+import { createAccountEntry } from "./account-entry.js";
+import { createAnalyzeEntry, analysisRecallSeq } from "./controllers/analyze-entry.js";
 
 // Teams: loaded with the Teams view, but the shell needs its entry points
 // early (the rail, a ?join= link, a resumed sign-in action).
@@ -84,13 +87,53 @@ function loadTrainResume() {
   return import("./train-resume.js");
 }
 
+// Sign-in + the Lichess identity (account-entry.js) and the Analyze entry
+// points (controllers/analyze-entry.js). Both are imported at boot: the account
+// chip, the auth gate, every owner-scoped action and the PGN drawer use them
+// before any lazy chunk is fetched.
+let accountEntry = null;
+function accountService() {
+  if (!accountEntry) throw new Error("Account controller is not initialized");
+  return accountEntry.accountService();
+}
+const viaAccount = (name) => (...args) => accountEntry[name](...args);
+const getStoredLichessUsername = viaAccount("getStoredLichessUsername");
+const setLichessUsername = viaAccount("setLichessUsername");
+const refreshAuthProviders = viaAccount("refreshAuthProviders");
+const requireSignIn = viaAccount("requireSignIn");
+const openAuthModal = viaAccount("openAuthModal");
+const onAccountChipClick = viaAccount("onAccountChipClick");
+const closeAccountMenu = viaAccount("closeAccountMenu");
+const isAccountMenuOpen = viaAccount("isAccountMenuOpen");
+const refreshAuthStatus = viaAccount("refreshAuthStatus");
+const syncReplayControls = viaAccount("syncReplayControls");
+const warmSyncReplayControls = viaAccount("warmSyncReplayControls");
+const refreshLichessStatus = viaAccount("refreshLichessStatus");
+const startLichessOAuth = viaAccount("startLichessOAuth");
+const startLichessGameWatch = viaAccount("startLichessGameWatch");
+const noteLichessActivity = viaAccount("noteLichessActivity");
+const lichessAccounts = viaAccount("lichessAccounts");
+const orientAnalysisForSelf = viaAccount("orientAnalysisForSelf");
+const analysisSelfSide = viaAccount("analysisSelfSide");
+const orientAnalysisFromPgn = viaAccount("orientAnalysisFromPgn");
+
+let analyzeEntry = null;
+const viaAnalyzeEntry = (name) => (...args) => analyzeEntry[name](...args);
+const syncPgnFromTree = viaAnalyzeEntry("syncPgnFromTree");
+const fetchMyLichessGame = viaAnalyzeEntry("fetchMyLichessGame");
+const loadAnalysisHistory = viaAnalyzeEntry("loadAnalysisHistory");
+const refreshAnalysisHistoryIfOpen = viaAnalyzeEntry("refreshAnalysisHistoryIfOpen");
+const invalidateAnalysisSource = viaAnalyzeEntry("invalidateAnalysisSource");
+const recallAnalysis = viaAnalyzeEntry("recallAnalysis");
+const deleteSavedAnalysis = viaAnalyzeEntry("deleteSavedAnalysis");
+
 // Settings: the view chunk, its readiness gate and the /api/settings actions.
 let settingsController = null;
 let settingsControllerLoading = null;
 function loadSettingsController() {
   settingsControllerLoading ||= import("./views/settings-controller.js").then((mod) => {
     settingsController = mod.createSettingsController({
-      switchView, accountController, refreshLichessStatus, startLichessOAuth,
+      switchView, accountEntry, refreshLichessStatus, startLichessOAuth,
       get analyzeSession() { return analyzeSession; },
       explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
     });
@@ -845,13 +888,6 @@ function syncPageTitle() {
 
 // Analyze head: the loaded game's identity (PGN headers, else the recalled
 // analysis) in the panel head.
-function analyzeHeaderTags(pgnText) {
-  const tags = {};
-  const re = /^\s*\[(\w+)\s+"([^"]*)"\]\s*$/gm;
-  let match;
-  while ((match = re.exec(pgnText)) !== null) tags[match[1]] = match[2];
-  return tags;
-}
 
 function syncAnalyzeHead() {
   const meta = document.getElementById("analysis-game-meta");
@@ -860,7 +896,7 @@ function syncAnalyzeHead() {
   // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
   // the source box must not title an empty board "PrepForge vs Demo".
   const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));
-  const tags = loaded ? analyzeHeaderTags(document.getElementById("pgn-input")?.value || "") : {};
+  const tags = loaded ? pgnHeaderTags(document.getElementById("pgn-input")?.value || "") : {};
   const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
   const white = known(tags.White) || known(analysis?.white);
   const black = known(tags.Black) || known(analysis?.black);
@@ -1154,656 +1190,6 @@ async function promptImportRepertoireFromPgn(pgnText, { defaultName = "Imported 
   } catch (error) {
     setStatusError(error.message);
     throw error;
-  }
-}
-
-let accountController = null;
-
-function initAccountController() {
-  accountController = createAccountController({
-    appState,
-    api,
-    postJson,
-    setStatus,
-    showConfirmModal,
-    refreshAutoMaiaRating,
-    onLichessConnected: startLichessGameWatch,
-    // The Library setup checklist ticks "Link Lichess" from the live accounts.
-    // The Games/Scout source trays resolve "Self" against the same list: painted
-    // before it arrived they read "No sources" while Start still fetched every
-    // linked account, so repaint them from the live list too.
-    onLichessAccountsChanged: () => {
-      dashboardView?.refreshSetup?.();
-      scoutController?.syncSources();
-      paintGamesSource();
-      paintScoutSource();
-      syncFetchMyGameButton();
-    },
-    onOpenSettings: () => {
-      switchView("settings");
-      loadSettings();
-    },
-    onOpenAccount: () => {
-      void openSettingsSection("set-account");
-    },
-    beforeSignOut: flushAllPendingForSignOut,
-    // Boot race: an owner-scoped view entered while the session was still being read
-    // painted a neutral loading state (the Teams flash). Auth is known now, so load
-    // it for real — a guest gets the sign-in state, a member gets their teams.
-    onAuthKnown: () => {
-      if (appReadyPromise) void appReadyPromise.then(() => loadTeams().catch(() => {}));
-    },
-    onOwnerChanged: () => {
-      setHandoffOwner(currentOwnerId());
-      coverageView?.clear();
-      appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
-      appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
-      appState.settingsSaving = null;
-      appState.buildMutationSaving = null;
-      analysisHistorySeq++;
-      teamsController?.invalidateRequests();
-      appState.teamsRequestSeq = (appState.teamsRequestSeq || 0) + 1;
-      appState.teams = [];
-      appState.teamsCache = null;
-      appState.analysisRetryCheckpoint = null;
-      appState.analysisUnsavedCheckpoint = null;
-      hideAnalysisRetrySave();
-      for (const id of ["analysis-history", "teams-list", "teams-shared"]) {
-        const host = document.getElementById(id);
-        if (host) host.innerHTML = "";
-      }
-      hideTeamDetail();
-      dashboardView?.renderSignedOut();
-    },
-  });
-}
-
-function accountService() {
-  if (!accountController) throw new Error("Account controller is not initialized");
-  return accountController;
-}
-
-function getStoredLichessUsername() {
-  return accountService().getStoredLichessUsername();
-}
-
-function setLichessUsername(username) {
-  return accountService().setLichessUsername(username);
-}
-
-// Which sign-in methods the server offers (Google when configured; email/password
-// always). Fetched once; drives which buttons the auth modal shows.
-async function refreshAuthProviders() {
-  return accountService().refreshAuthProviders();
-}
-
-// Owner-scoped actions (create/import a repertoire, teams, analysis) call server endpoints
-// that require an account and return 401 for guests. Guard them up front so a guest gets the
-// sign-in modal instead of filling out a form only to hit a cryptic 401 in the status bar.
-// `reason` is shown inside the modal; `pendingActionId` (allowlisted in
-// auth-gate.js) resumes the action after sign-in — see resumePendingAction.
-function requireSignIn(reason = "Sign in (or create an account) to continue", pendingActionId = null, pendingData = null) {
-  return accountService().requireSignIn(reason, pendingActionId, pendingData);
-}
-
-// The sign-in / create-account modal. Google (when configured) is the primary path;
-// email/password is the always-available fallback. Options ({ notice,
-// pendingAction, resetToken }) pass straight through to the controller.
-function openAuthModal(mode = "login", options = {}) {
-  return accountService().openAuthModal(mode, options);
-}
-
-// Guest → the chip is a single Connect action (straight to OAuth). Signed in → the
-// chip toggles the account menu.
-function onAccountChipClick(anchor = null, options = {}) {
-  return accountService().onAccountChipClick(anchor, options);
-}
-
-function closeAccountMenu(options = {}) {
-  return accountService().closeAccountMenu(options);
-}
-
-function isAccountMenuOpen() {
-  return accountService().isAccountMenuOpen();
-}
-
-// Ask the server whether this browser's session is a real account or a guest, and
-// capture the account's stable username for the user-name button.
-async function refreshAuthStatus() {
-  return accountService().refreshAuthStatus();
-}
-
-function syncReplayControls() {
-  try {
-    accountService().syncReplayControls();
-  } catch (_) {
-    /* controller may not be initialised yet */
-  }
-  paintGamesSource();
-  paintScoutSource();
-}
-
-// Analyze's "Last game": it can only load anything once a Lichess account is
-// linked, so a guest or an unlinked account sees it disabled with the fix in
-// the tooltip rather than a button that silently does nothing. aria-disabled
-// rather than disabled: the click is what opens the connect flow, so it must
-// still fire.
-function syncFetchMyGameButton() {
-  const button = document.getElementById("fetch-my-game");
-  if (!button) return;
-  if (button.dataset.wasDisabled) return;
-  const linked = !!(appState.lichessUsername || lichessAccounts().length);
-  const disabled = !linked || !appState.signedIn;
-  button.classList.toggle("is-unavailable", disabled);
-  button.setAttribute("aria-disabled", String(disabled));
-  button.title = disabled
-    ? "Connect a Lichess account to load your last game"
-    : "Load and analyze your latest Lichess game";
-}
-
-// Pull the server's stored Lichess connection state. This is not a PrepForge sign-out;
-// the browser remains bound to the account.
-async function refreshLichessStatus() {
-  return accountService().refreshLichessStatus();
-}
-
-// Open Lichess sign-in in a popup; the callback page postMessages back, and we
-// also poll status as a fallback if the message is blocked.
-function startLichessOAuth() {
-  return accountService().startLichessOAuth();
-}
-
-// Background watch for "you just finished a game". Design goals (vs the old
-// "latest id != last_seen → pop", which fired for ANY historical game on a fresh
-// app load):
-//   1. Silent baseline: on watch start we record the current latest game id
-//      WITHOUT popping, so opening the app never resurfaces an old game.
-//   2. Recency gate: only auto-pop a game whose true FINISH time (Lichess
-//      lastMoveAt) is within LICHESS_RECENT_WINDOW_MS, so a stale baseline can
-//      never surface an hours-old game. Strict: a game with no usable timestamp
-//      is never auto-popped — it gets a non-intrusive status hint instead.
-//   3. Adaptive cadence: short polling right after activity (focus, tab visible,
-//      navigation) or on Analyze; back off to a low idle frequency otherwise —
-//      instead of a fixed 90s timer that runs even on a hidden tab.
-const LICHESS_RECENT_WINDOW_MS = 6 * 60 * 60 * 1000; // 6h: "recently finished"
-const LICHESS_POLL_ACTIVE_MS = 25 * 1000; // short cadence while active / on Analyze
-const LICHESS_POLL_IDLE_MS = 3 * 60 * 1000; // idle back-off
-const LICHESS_ACTIVE_WINDOW_MS = 3 * 60 * 1000; // how long activity keeps us "active"
-
-function startLichessGameWatch() {
-  stopLichessGameWatch();
-  appState.lichessWatchStartedAt = Date.now();
-  appState.lichessBaselineId = null;
-  appState.lichessLastActivity = Date.now();
-  // Re-check promptly when the user returns to the tab/window (and treat it as
-  // activity so the cadence tightens). Bound once; refs kept for clean removal.
-  appState.lichessOnFocus = () => {
-    noteLichessActivity();
-    checkLatestLichessGame();
-  };
-  appState.lichessOnVisible = () => {
-    if (document.visibilityState === "visible") appState.lichessOnFocus();
-  };
-  window.addEventListener("focus", appState.lichessOnFocus);
-  document.addEventListener("visibilitychange", appState.lichessOnVisible);
-  // Establish the silent baseline shortly after connecting, then start polling.
-  window.setTimeout(async () => {
-    await checkLatestLichessGame({ baselineOnly: true });
-    scheduleLichessPoll();
-  }, 5000);
-}
-
-function stopLichessGameWatch() {
-  if (appState.lichessPollTimer) {
-    window.clearTimeout(appState.lichessPollTimer);
-    appState.lichessPollTimer = null;
-  }
-  if (appState.lichessOnFocus) {
-    window.removeEventListener("focus", appState.lichessOnFocus);
-    appState.lichessOnFocus = null;
-  }
-  if (appState.lichessOnVisible) {
-    document.removeEventListener("visibilitychange", appState.lichessOnVisible);
-    appState.lichessOnVisible = null;
-  }
-  appState.lichessBaselineId = null;
-}
-
-// Record user activity so the poll cadence stays short for a short window after.
-function noteLichessActivity() {
-  appState.lichessLastActivity = Date.now();
-}
-
-// Self-rescheduling poll: short cadence while recently active or on Analyze (where
-// a just-finished game is most relevant), otherwise a low idle frequency. Skips the
-// work entirely while the tab is hidden (the focus/visibility handlers catch up).
-function scheduleLichessPoll() {
-  if (appState.lichessPollTimer) window.clearTimeout(appState.lichessPollTimer);
-  if (!appState.lichessUsername) return;
-  const recentlyActive =
-    Date.now() - (appState.lichessLastActivity || 0) < LICHESS_ACTIVE_WINDOW_MS;
-  const active = recentlyActive || appState.currentView === "analyze";
-  const delay = active ? LICHESS_POLL_ACTIVE_MS : LICHESS_POLL_IDLE_MS;
-  appState.lichessPollTimer = window.setTimeout(async () => {
-    if (document.visibilityState !== "hidden") await checkLatestLichessGame();
-    scheduleLichessPoll();
-  }, delay);
-}
-
-// Tri-state recency: true = finished within the window, false = finished but stale,
-// null = no usable timestamp. We keep null distinct so the caller can degrade to a
-// non-intrusive hint rather than guessing (strict gate — never auto-pop on unknown).
-function finishedRecently(finishedAt) {
-  if (!finishedAt) return null;
-  const t = Date.parse(finishedAt);
-  if (Number.isNaN(t)) return null;
-  return Date.now() - t <= LICHESS_RECENT_WINDOW_MS;
-}
-
-// baselineOnly: record the current latest id without popping (used once at watch
-// start so the pre-existing latest game is never treated as "just finished").
-async function checkLatestLichessGame({ baselineOnly = false } = {}) {
-  if (!appState.lichessUsername) return;
-  let latest;
-  try {
-    // Lightweight NDJSON metadata probe (no move text) — fast, and enough to decide
-    // whether to surface the nudge. The full PGN is fetched only if the user acts on it.
-    latest = await api("/api/lichess/latest?light=1");
-  } catch (_) {
-    return;
-  }
-  if (!latest.has_game) return;
-  if (baselineOnly || appState.lichessBaselineId === null) {
-    // First sighting this session: adopt as baseline, never pop.
-    appState.lichessBaselineId = latest.lichess_id;
-    return;
-  }
-  const isNewerThanBaseline = latest.lichess_id !== appState.lichessBaselineId;
-  // Advance the baseline regardless, so we evaluate each newly-latest game once.
-  appState.lichessBaselineId = latest.lichess_id;
-  if (!isNewerThanBaseline || !latest.is_new) return;
-  const recent = finishedRecently(latest.finished_at);
-  if (recent === true) {
-    showNewGameWidget(latest);
-  } else if (recent === null) {
-    // Passed the baseline + is_new gates but we can't confirm it finished recently.
-    // Strict gate: don't pop the widget — just surface a quiet, dismissible hint.
-    setStatus(
-      `New Lichess game synced: ${latest.white || "?"} vs ${latest.black || "?"}`
-    );
-  }
-  // recent === false: a genuinely older game; stay silent.
-}
-
-// Surface a "you just finished a game" nudge as a notice with an Analyze action.
-function showNewGameWidget(game) {
-  if (appState.newGameWidgetId === game.lichess_id) return;
-  appState.newGameWidgetId = game.lichess_id;
-  const sub =
-    `${game.white || "?"} vs ${game.black || "?"}` +
-    `${game.result ? " · " + game.result : ""}`;
-  // Auto-dismiss after ~45s of being ignored; hover keeps it alive. Closing it
-  // any way marks the game seen so the watcher doesn't re-surface it.
-  notices.show(sub, {
-    key: `newgame-${game.lichess_id}`,
-    title: "You just finished a game!",
-    duration: 45000,
-    onClose: () => {
-      appState.newGameWidgetId = null;
-      markLichessSeen(game.lichess_id);
-    },
-    actions: [
-      {
-        label: "Analyze",
-        primary: true,
-        onClick: async () => {
-          switchView("analyze");
-          // Pull the full PGN now (the probe above skipped move text).
-          let pgn = game.pgn || "";
-          if (!pgn) {
-            try {
-              const full = await api("/api/lichess/latest");
-              pgn = full.pgn || "";
-            } catch (_) {
-              /* fall through with empty pgn */
-            }
-          }
-          document.getElementById("pgn-input").value = pgn;
-          await runAnalysis();
-        },
-      },
-    ],
-  });
-}
-
-async function markLichessSeen(lichessId) {
-  if (!lichessId) return;
-  try {
-    await postJson("/api/lichess/seen", { lichess_id: lichessId });
-  } catch (_) {
-    /* ignore */
-  }
-}
-
-// Linked Lichess identities for one-time per-action selection. `null` = not yet
-// loaded; `[]` = none linked. Identity-changing actions (My last game,
-// Replay compare, new-game watcher) resolve through resolveLichessAccountId():
-// zero → connect flow, one → use it directly, many → compact chooser.
-function lichessAccounts() {
-  const accounts = appState.lichessAccounts;
-  return Array.isArray(accounts) ? accounts : [];
-}
-
-function lichessPrimaryAccount() {
-  const accounts = lichessAccounts();
-  return accounts.find((a) => a.is_primary) || accounts[0] || null;
-}
-
-// One-time account chooser for a single action: compact modal listing linked
-// identities, Primary defaulted/highlighted, closes on select or cancel.
-// Resolves to the chosen account id, or null when cancelled.
-function chooseLichessAccount(actionLabel) {
-  const accounts = lichessAccounts();
-  const primary = lichessPrimaryAccount();
-  return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
-    const rows = accounts
-      .map(
-        (account) => html`
-      <button type="button" class="btn ghost account-choice${account.is_primary ? " is-primary" : ""}" data-account-id="${account.id}">
-        ${account.username}${account.is_primary ? " — Primary" : ""}
-      </button>`,
-      );
-    overlay.innerHTML = html`
-      <div class="modal account-chooser" role="dialog" aria-modal="true" aria-label="${actionLabel}">
-        <div class="modal-title">${actionLabel}</div>
-        <div class="modal-body">
-          <p class="modal-copy">Which Lichess account should this use? Primary is preselected.</p>
-          <div class="account-chooser-list">${rows}</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    activateModal(overlay);
-    const cleanup = () => overlay.remove();
-    const close = (value) => {
-      cleanup();
-      resolve(value);
-    };
-    const primaryBtn = primary && overlay.querySelector(`[data-account-id="${primary.id}"]`);
-    if (primaryBtn) primaryBtn.focus();
-    overlay.addEventListener("click", (event) => {
-      const choice = event.target.closest("[data-account-id]");
-      if (choice) {
-        close(choice.dataset.accountId);
-        return;
-      }
-      if (event.target === overlay || event.target.closest('[data-action="cancel"]')) {
-        close(null);
-      }
-    });
-    document.addEventListener(
-      "keydown",
-      function onKey(event) {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          document.removeEventListener("keydown", onKey);
-          close(null);
-        }
-      },
-      { once: false },
-    );
-  });
-}
-
-// Resolve which linked identity an identity-changing action should read:
-// null = caller must run the connect flow first; otherwise an account id
-// (single account → immediate, multiple → one-time chooser, primary default).
-async function resolveLichessAccountId(actionLabel) {
-  const accounts = lichessAccounts();
-  if (!accounts.length) return null;
-  if (accounts.length === 1) return accounts[0].id;
-  const primary = lichessPrimaryAccount();
-  const chosen = await chooseLichessAccount(actionLabel);
-  return chosen || null;
-}
-
-// "My game" button: pull the newest game across ALL linked Lichess identities
-// ("self") straight into the PGN box — no chooser. account_id is only for
-// explicit single-account callers; the default path aggregates.
-// Point Analyze's board at the user's side of a game they played: match either
-// player name against every linked Lichess identity (plus the account the game
-// came from). Leaves the orientation alone when neither side is recognisably Self.
-function orientAnalysisForSelf(white, black, extraNames = []) {
-  if (!boards.analysis) return;
-  const side = selfSide(white, black, [
-    appState.lichessUsername,
-    ...lichessAccounts().map((a) => a.username),
-    ...extraNames,
-  ]);
-  if (side) boards.analysis.setOrientation(side);
-}
-
-// Which side of the Analyze game is the user ("white" | "black" | null): the PGN box's
-// White/Black tags, else the recalled analysis, matched against linked Lichess names.
-function analysisSelfSide() {
-  const tags = analyzeHeaderTags(document.getElementById("pgn-input")?.value || "");
-  const analysis = appState.analysis || {};
-  return selfSide(tags.White || analysis.white, tags.Black || analysis.black, [
-    appState.lichessUsername,
-    ...lichessAccounts().map((a) => a.username),
-  ]);
-}
-
-// Same, for a PGN the user pasted or dropped: read its White/Black headers.
-// Only re-orients when the pair of names changes, so the debounced re-parse on
-// every keystroke never undoes a manual flip.
-let lastOrientedPgnPlayers = "";
-function orientAnalysisFromPgn(text) {
-  const { white, black } = pgnPlayers(text);
-  const key = `${white}\n${black}`;
-  if (!white && !black) return;
-  if (key === lastOrientedPgnPlayers) return;
-  lastOrientedPgnPlayers = key;
-  orientAnalysisForSelf(white, black);
-}
-
-async function fetchMyLichessGame(accountId = null) {
-  // Your games come from the Lichess account linked to your PrepForge account.
-  if (!requireSignIn("Sign in to load your latest Lichess game", "my-last-game")) return;
-  if (!appState.lichessUsername && !lichessAccounts().length) {
-    setStatus("Connect a Lichess account first");
-    startLichessOAuth();
-    return;
-  }
-  const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
-  setStatus("Fetching your latest game...");
-  const button = document.getElementById("fetch-my-game");
-  // A second click while the fetch is in flight would race two analyses over
-  // the same PGN box; the button says it is working instead.
-  if (button) {
-    button.dataset.wasDisabled = "1";
-    button.disabled = true;
-  }
-  let latest;
-  const done = () => {
-    if (button?.dataset.wasDisabled) {
-      delete button.dataset.wasDisabled;
-      syncFetchMyGameButton();
-    }
-  };
-  try {
-    latest = await api(`/api/lichess/latest${query}`);
-  } catch (error) {
-    done();
-    setStatusError(error.message);
-    return;
-  }
-  if (!latest.has_game) {
-    done();
-  setStatus("No recent games found", { severity: "warning" });
-    return;
-  }
-  document.getElementById("pgn-input").value = latest.pgn || "";
-  // Show the game in the move list right away, then analyze it in the same step —
-  // "My last game" means "review my last game", not "paste it and wait for me".
-  await loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
-  orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
-  lastOrientedPgnPlayers = `${latest.white || ""}\n${latest.black || ""}`;
-  if (latest.lichess_id) markLichessSeen(latest.lichess_id);
-  const source = latest.source_account ? ` · from ${latest.source_account}` : "";
-  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} · analyzing`);
-  try {
-    await runAnalysis();
-  } finally {
-    done();
-  }
-}
-
-// Analyze "History": list previously analyzed games; click to recall a saved
-// report without re-running the engine.
-// A save adds a row to "Recent analyses": refresh the open drawer so it never
-// keeps saying "No saved analyses yet" beside the review just saved.
-function refreshAnalysisHistoryIfOpen() {
-  const drawer = document.getElementById("history-drawer");
-  if (appState.signedIn && drawer && drawer.open) void loadAnalysisHistory();
-}
-
-let analysisHistorySeq = 0;
-async function loadAnalysisHistory() {
-  const seq = ++analysisHistorySeq;
-  const owner = currentOwnerId();
-  const generation = appState.ownerGeneration;
-  const isCurrent = () => seq === analysisHistorySeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
-  const host = document.getElementById("analysis-history");
-  if (!host) return;
-  host.innerHTML = html`<div class="muted hint">Loading…</div>`;
-  const rows = new Map();
-  let cursor = null, loading = false;
-  async function loadPage() {
-    if (loading || !isCurrent()) return;
-    loading = true;
-    const button = host.querySelector("[data-history-more]");
-    if (button) button.disabled = true;
-    try {
-      const payload = await api(`/api/analyses${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`);
-      if (!isCurrent()) return;
-      for (const row of payload.analyses || []) rows.set(row.game_id, row);
-      cursor = payload.next_cursor || null;
-      const scroll = host.scrollTop;
-      host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${a.white || "?"} vs ${a.black || "?"}" title="Delete this analysis" aria-label="Delete analysis of ${a.white || "?"} vs ${a.black || "?"}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
-      )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
-      if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
-      host.scrollTop = scroll;
-      host.querySelectorAll(".hi-open").forEach((open) => {
-        open.addEventListener("click", () => {
-          if (isCurrent()) recallAnalysis(open.closest(".history-item").dataset.gameId, rows.get(open.closest(".history-item").dataset.gameId));
-        });
-      });
-      host.querySelectorAll("[data-history-delete]").forEach((del) => {
-        del.addEventListener("click", () => deleteSavedAnalysis(del));
-      });
-      host.querySelector("[data-history-more]")?.addEventListener("click", loadPage);
-    } catch (error) {
-      if (!isCurrent()) return;
-      if (rows.size) {
-        if (button) button.textContent = "Retry load more";
-        setStatusError(error.message);
-      } else host.innerHTML = html`<div class="empty-state">${error.message}</div>`;
-    } finally {
-      loading = false;
-      if (button && isCurrent()) button.disabled = false;
-    }
-  }
-  await loadPage();
-}
-
-// Delete one saved analysis, with an undo window: the row disappears at once and
-// the DELETE only fires once the window closes, so a misclick costs one notice
-// rather than a lost analysis.
-function deleteSavedAnalysis(delButton) {
-  const gameId = delButton.dataset.historyDelete;
-  const label = delButton.dataset.historyLabel || "this game";
-  if (!gameId || appState.pendingAnalysisDeletes.has(gameId)) return;
-  appState.pendingAnalysisDeletes.add(gameId);
-  const restore = () => {
-    appState.pendingAnalysisDeletes.delete(gameId);
-    void loadAnalysisHistory();
-  };
-  showUndoToast({
-    title: "Analysis deleted",
-    message: `"${label}" removed from your history.`,
-    onUndo: () => {
-      setStatus("Delete undone");
-      restore();
-    },
-    onCommit: () => {
-      api(`/api/analyses/${encodeURIComponent(gameId)}`, { method: "DELETE" })
-        .then(() => appState.pendingAnalysisDeletes.delete(gameId))
-        .catch((error) => {
-          setStatus(`Delete failed — ${error.message}`, { severity: "error" });
-          restore();
-        });
-    },
-  });
-  // Optimistic paint: the row goes now, the server hears about it when the
-  // undo window closes.
-  delButton.closest(".history-item")?.remove();
-  const host = document.getElementById("analysis-history");
-  if (host && !host.querySelector(".history-item")) {
-    host.innerHTML = html`<div class="muted hint">No saved analyses yet.</div>`;
-  }
-}
-
-// All Analyze sources share an order: a recall, paste or new review must not
-// let an older request (including a lazy view load) replace the latest game.
-let analysisRecallSeq = 0;
-
-function invalidateAnalysisSource() {
-  appState.analysisFileSeq = null;
-  clearTimeout(analyzePgnInputTimer);
-  return ++analysisRecallSeq;
-}
-
-async function recallAnalysis(gameId, listItem = null) {
-  const seq = invalidateAnalysisSource();
-  appState.analysisSourcePgn = null;
-  hideAnalysisHandoff();
-  try {
-    const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
-    const view = await ensureAnalyzeView();
-    if (seq !== analysisRecallSeq) return;
-    // The saved result carries no player names; the history row does. Without
-    // them the head fell back to "Analysis board" for a named game.
-    for (const key of ["white", "black", "result"]) {
-      if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
-    }
-    appState.analysis = payload;
-    // Mirror the recalled game into the PGN box for further exploration.
-    // Clear it before rendering: the head reads its tags first, and a leftover
-    // (e.g. the demo PGN) would title the recalled game "PrepForge vs Demo".
-    const pgnInput = document.getElementById("pgn-input");
-    if (pgnInput) pgnInput.value = "";
-    orientAnalysisForSelf(payload.white, payload.black);
-    lastOrientedPgnPlayers = `${payload.white || ""}\n${payload.black || ""}`;
-    resetAnalysisVariations();
-    await showAnalysisPly(0);
-    if (seq !== analysisRecallSeq) return;
-    view.renderAnalysis(payload);
-    syncViewHeads();
-    revealAnalysisResults();
-    // The list sits at the panel's foot; open the new game at its summary.
-    document.querySelector("#analyze-sidebar .panel-scroll")?.scrollTo({ top: 0 });
-    await syncPgnFromTree();
-    if (seq !== analysisRecallSeq) return;
-  } catch (error) {
-    if (seq !== analysisRecallSeq) return;
-    setStatusError(error.message);
   }
 }
 
@@ -2284,7 +1670,7 @@ let moveTreeModule = null;
 let moveTreeRenderer = null;
 // Resolved once init() fully finishes (including restoreWorkspaceLocation).
 // The E2E hooks await this so a seeded view isn't switched away mid-boot.
-let appReadyPromise = null;
+export let appReadyPromise = null;
 
 function preloadAnalyzeView() {
   if (!analyzeModule) {
@@ -2354,47 +1740,6 @@ function renderAnalysisTree(movesArg) {
   void ensureAnalyzeView()
     .then((view) => view.renderAnalysisTree(movesArg))
     .catch(() => {});
-}
-
-// ----- Analyze PGN ↔ move-list two-way sync ------------------------------------
-// The PGN drawer and the move list are two views of one game. Typing legal moves
-// into the PGN box rebuilds the move list (and drives the board); playing moves on
-// the board (or stepping into variations) rewrites the PGN box. The two directions
-// are event-driven and guarded against feedback loops:
-//   • board / move-list → PGN  : syncPgnFromTree() — skipped while the textarea is
-//     focused, so a user mid-edit is never clobbered.
-//   • PGN box → board / list   : loadPgnIntoAnalyze() — fired (debounced) on the
-//     textarea `input` event and called directly by every importer.
-// A plain typed/pasted game carries no engine classifications, so its move list
-// shows neutral dots and an empty eval chart until the user presses Analyze.
-let analyzePgnInputTimer = null;
-// True only while we programmatically rewrite #pgn-input from the tree, so the
-// defensive guard below can tell our own writes from user edits. (Assigning
-// `.value` does not fire `input`, so this is belt-and-suspenders.)
-let analyzePgnWriting = false;
-
-// Board / move-list → PGN box. Serialize the current Analyze tree (analyzed or
-// typed mainline + explored variations) and write it back, preserving the header
-// block. No-op while the textarea is focused (board moves happen with the board
-// focused, so this only fires when it's safe).
-async function syncPgnFromTree() {
-  const input = document.getElementById("pgn-input");
-  if (!input || document.activeElement === input) return;
-  const analysis = appState.analysis;
-  const seq = analysisRecallSeq;
-  const original = input.value;
-  const moves = analysis ? analysis.moves : [];
-  const hasVars = appState.analysisVarNodes && appState.analysisVarNodes.size;
-  if ((!moves || !moves.length) && !hasVars) return;
-  const view = await ensureAnalyzeView();
-  if (seq !== analysisRecallSeq || input.value !== original || document.activeElement === input) return;
-  const next = view.serializeAnalysisPgn(input.value);
-  if (!next) return;
-  if (next !== input.value && document.activeElement !== input) {
-    analyzePgnWriting = true;
-    input.value = next;
-    analyzePgnWriting = false;
-  }
 }
 
 function bindEvalChart() {
@@ -3966,7 +3311,7 @@ function bindEvents() {
       }
       fetchMyLichessGame();
     });
-    syncFetchMyGameButton();
+    accountEntry.syncFetchMyGameButton();
   }
   // Lazy-load the analysis history list the first time its drawer is opened.
   const historyDrawer = document.getElementById("history-drawer");
@@ -4050,23 +3395,7 @@ function bindEvents() {
   // Drag-and-drop: a PGN onto the Analyze box loads it; a PGN/JSON onto the
   // dashboard repertoires card imports it.
   bindDropZone(document.getElementById("pgn-input"), fillPgnInputFromFile);
-  // Live PGN → move-list sync: every edit (debounced) re-parses the box and
-  // rebuilds the move list + board. Invalid/half-typed movetext is ignored
-  // (quiet) so the list never flickers mid-keystroke.
-  const pgnInput = document.getElementById("pgn-input");
-  if (pgnInput) {
-    pgnInput.addEventListener("input", () => {
-      if (analyzePgnWriting) return;
-      invalidateAnalysisSource();
-      syncViewHeads();
-      analyzePgnInputTimer = setTimeout(() => {
-        orientAnalysisFromPgn(pgnInput.value);
-        void loadPgnIntoAnalyze(pgnInput.value, { goToEnd: true, quiet: true }).catch(
-          () => {}
-        );
-      }, 300);
-    });
-  }
+  analyzeEntry.bindAnalyzePgnInput();
   document
     .getElementById("open-engine-widget")
     .addEventListener("click", () => setEngineOn("analyze", !engineWantedIn("analyze")));
@@ -4388,7 +3717,28 @@ async function init() {
   const libraryRows = document.getElementById("dashboard-repertoires");
   if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
-  initAccountController();
+  // The account entry and the Analyze entry points are needed before the first
+  // paint (the chip, the auth gate, the PGN drawer), so both binds happen here.
+  accountEntry = createAccountEntry({
+    switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, loadTeams,
+    clearCoverage: () => coverageView?.clear(),
+    get dashboardView() { return dashboardView; },
+    get scoutController() { return scoutController; },
+    paintGamesSource, paintScoutSource,
+    get teamsController() { return teamsController; },
+    get appReadyPromise() { return appReadyPromise; },
+    get hideTeamDetail() { return hideTeamDetail; },
+    get runAnalysis() { return runAnalysis; },
+    hideAnalysisRetrySave, showUndoToast,
+  });
+  accountEntry.initAccountController();
+  analyzeEntry = createAnalyzeEntry({
+    requireSignIn, startLichessOAuth, syncReplayControls, syncViewHeads,
+    lichessAccounts, showUndoToast, get ensureAnalyzeView() { return ensureAnalyzeView; },
+    orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis, resetAnalysisVariations,
+    showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff,
+  });
+  accountEntry.bindAnalyzeEntry(analyzeEntry);
   // First paint reads the stored theme; it never writes, so opening the app
   // does not fabricate a pref blob.
   applyPref("theme");
@@ -4463,7 +3813,7 @@ async function init() {
   if (parseWorkspaceLocation(window.location.href).view === "dashboard") releaseBootView();
   // "Last game" depends on the linked Lichess account, which refreshAuthStatus
   // just told us about; paint its availability now rather than on first click.
-  syncFetchMyGameButton();
+  accountEntry.syncFetchMyGameButton();
   if (appState.signedIn) {
     await loadSignedInWorkspace();
   } else {
@@ -4727,7 +4077,7 @@ async function loadSignedInWorkspace() {
 // binding, so it is registered once here, after every binding exists.
 hooks.settingsPainted = () => settingsController?.renderThemeControl();
 hooks.strengthPainted = () => settingsController?.renderStrengthControls();
-hooks.authRequired = () => accountController?.handleAuthRequired();
+hooks.authRequired = () => accountEntry?.handleAuthRequired();
 hooks.explorerEvals = explorerEvalEngine;
 hooks.analyzeSession = () => analyzeSession;
 // The one pref change a view has to react to: Coverage only shows in the
@@ -4749,6 +4099,9 @@ appReadyPromise = init()
 
 // Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
 export {
-  _buildGenReady, _coachReady, analysisRecallSeq, analyzeView, buildDockTab, buildView, coverageView,
+  _buildGenReady, _coachReady, analyzeView, buildDockTab, buildView, coverageView,
   explorerClient, explorerDb, explorerModule,
 };
+// The Analyze source counter is read live by the lazily loaded analysis
+// session; re-exported so that module keeps its one import from the shell.
+export { analysisRecallSeq };

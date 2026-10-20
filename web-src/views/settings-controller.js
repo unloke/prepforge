@@ -1,5 +1,6 @@
 import { START_FEN, appState } from "../core/state.js";
 import { activeViewName, api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
+import { hooks } from "../core/hooks.js";
 import { effectiveMaiaRating, pref, setPref } from "../core/prefs.js";
 import { showConfirmModal } from "../core/modals.js";
 import { engineWidget, applyServerEngineGating } from "../core/engine.js";
@@ -10,11 +11,11 @@ import { disposeSharedMaia3Provider, getSharedMaia3Provider } from "../engine/ma
 // every read/write of /api/settings. The shell imports the wrappers because
 // boot loads settings and the palette opens a section.
 
-let switchView, accountController, refreshLichessStatus, startLichessOAuth, analyzeSession;
+let switchView, accountEntry, refreshLichessStatus, startLichessOAuth;
 let explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel;
 
 export function createSettingsController(deps) {
-  ({ switchView, accountController, refreshLichessStatus, startLichessOAuth, analyzeSession,
+  ({ switchView, accountEntry, refreshLichessStatus, startLichessOAuth,
     explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel } = deps);
   // The functions below are module-level and hoisted; the factory only binds
   // the state they share.
@@ -61,9 +62,9 @@ export async function ensureSettingsView() {
       onAccountsChanged: () => {
         void refreshLichessStatus();
       },
-      signOut: () => accountController.signOut(),
-      openAuthModal: (mode, options) => accountController.openAuthModal(mode, options),
-      refreshAuthStatus: () => accountController.refreshAuthStatus(),
+      signOut: () => accountEntry.accountService().signOut(),
+      openAuthModal: (mode, options) => accountEntry.openAuthModal(mode, options),
+      refreshAuthStatus: () => accountEntry.refreshAuthStatus(),
     });
     settingsView.bind();
   }
@@ -110,7 +111,7 @@ let settingsActionsPromise = null;
 function loadSettingsActions() {
   settingsActionsPromise ||= import("../settings-actions.js").then(({ createSettingsActions }) => createSettingsActions({
     appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
-    applyServerEngineGating, setStatusError, getPositionCoach: () => analyzeSession?.positionCoach, engineWidget,
+    applyServerEngineGating, setStatusError, getPositionCoach: () => hooks.analyzeSession?.()?.positionCoach, engineWidget,
     activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
   })).catch((error) => { settingsActionsPromise = null; throw error; });
   return settingsActionsPromise;

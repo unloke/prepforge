@@ -203,3 +203,13 @@ export function treeToMovetext(root) {
   if (top.length === 0) return "";
   return emit(top[0], top.slice(1), true);
 }
+
+// A PGN's header block as a plain object ("[White \"X\"]" -> White: "X"). The
+// Analyze head and the self-orientation read it; a game with no headers is {}.
+export function pgnHeaderTags(pgnText) {
+  const tags = {};
+  const re = /^\s*\[(\w+)\s+"([^"]*)"\]\s*$/gm;
+  let match;
+  while ((match = re.exec(pgnText)) !== null) tags[match[1]] = match[2];
+  return tags;
+}

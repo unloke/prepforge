@@ -24,6 +24,8 @@ const FILES = [
   "./views/games-controller.js",
   "./views/scout-controller.js",
   "./views/settings-controller.js",
+  "./account-entry.js",
+  "./controllers/analyze-entry.js",
   "./views/shared/source-store.js",
 ];
 
