@@ -842,7 +842,7 @@ h2 {
   .src-chip-x {
     width: 40px;
     height: 40px;
-    margin: -8px -10px -8px -2px;
+    margin: -8px -4px -8px -2px;
     font-size: 17px;
   }
   .src-chip { height: auto; min-height: 40px; padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
