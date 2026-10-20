@@ -1821,13 +1821,13 @@ function bindEvents() {
       return;
     }
     const active = document.activeElement;
-    const inEditable =
-      !!active &&
-      (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
-        active.isContentEditable === true);
+    const inEditable = !!active && (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
+      active.isContentEditable === true);
     if (inEditable) return;
     // An engine line on the board: ← → step through it, Esc goes back to the game.
-    if (engineWidget && engineWidget.isPreviewing()) {
+    // The preview belongs to a board, so it answers only on the view that owns it.
+    const view = activeViewName();
+    if (engineWidget && engineWidget.isPreviewing() && (view === "analyze" || view === "build")) {
       const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
       if (action) {
         event.preventDefault();
@@ -1840,25 +1840,27 @@ function bindEvents() {
         return;
       }
     }
-    // Arrow keys navigate the active tab's board. We blur clicked move buttons
-    // on click, so focus returns to the document for these to fire.
-    const inBuild = activeViewName() === "build";
+    // Arrow keys navigate the board of the view that is on screen — and only
+    // there: Analyze and Build each have one; every other view has none, so ← →
+    // must do nothing on it. This handler lives on the document, so it cannot be
+    // released with a view; the view name is the guard instead.
+    const inBuild = view === "build";
+    const stepsBoard = inBuild || view === "analyze";
+    const arrows = event.key === "ArrowLeft" || event.key === "ArrowRight";
     // A control the mouse focused (Engine, the review switch) would otherwise take
-    // the keyboard focus ring on the first arrow press, though the arrows drive the board.
-    if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && focusFromPointer && active && active !== document.body) {
-      active.blur();
-    }
-    if (event.key === "ArrowLeft") {
+    // the focus ring on the first arrow press, though the arrows drive the board.
+    if (stepsBoard && arrows && focusFromPointer && active && active !== document.body) active.blur();
+    if (stepsBoard && event.key === "ArrowLeft") {
       event.preventDefault();
       if (inBuild) buildGoBack();
       else void analysisTreeNav("prev").catch(() => {});
     }
-    if (event.key === "ArrowRight") {
+    if (stepsBoard && event.key === "ArrowRight") {
       event.preventDefault();
       if (inBuild) buildGoForward();
       else void analysisTreeNav("next").catch(() => {});
     }
-    if (event.key === "Home" || event.key === "End") {
+    if (stepsBoard && (event.key === "Home" || event.key === "End")) {
       // Home/End: the ends of the line. A held key repeats keydown, so one
       // hold steps the whole game instead of one move per press.
       event.preventDefault();

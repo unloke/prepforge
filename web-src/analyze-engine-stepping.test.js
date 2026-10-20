@@ -148,7 +148,7 @@ describe("Analyze engine stepping", () => {
 // way the board-bar's first/last buttons do (one key hold steps the whole game).
 describe("Analyze keyboard: Home / End", () => {
   it("routes Home and End to the ends of the line, and to Build's own ends", () => {
-    const i = source.indexOf('if (event.key === "Home" || event.key === "End") {');
+    const i = source.indexOf('if (stepsBoard && (event.key === "Home" || event.key === "End")) {');
     expect(i).toBeGreaterThan(0);
     const block = source.slice(i, i + 420);
     expect(block).toMatch(/analysisTreeNav\(event\.key === "Home" \? "start" : "end"\)/);
