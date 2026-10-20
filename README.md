@@ -15,9 +15,9 @@ The product covers:
   production. Current selector and runtime boundaries: `docs/scout-production-ranking.md`.
 
 Shared core models (`src/prepforge_chess/core/`, `services/`, `storage/`) back both the
-web SPA and the optional CLI demos. Start with `docs/README.md` and
-`docs/ARCHITECTURE.md` for the current implementation. Superseded plans and
-checkpoints are in `docs/archive/`; they are historical context, not current instructions.
+web SPA and the optional CLI demos. Start with `docs/README.md` for the current
+documentation. History — superseded plans, audits and checkpoints — lives on the
+`history` branch.
 
 ## Local development
 
@@ -121,4 +121,4 @@ docker build -t prepforge-chess .
 docker run --rm -p 8000:8000 prepforge-chess
 ```
 
-Roadmap and launch checklist: `docs/ROADMAP.md`.
+Deployment and operations: `docs/DEPLOYMENT.md`.

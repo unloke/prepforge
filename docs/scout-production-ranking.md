@@ -128,5 +128,5 @@ selection is the only ranking path the app runs.
 
 The former `?scoutV13=1` experimental runtime was retired; its code lives under `research/lib/`, unrelated to scoring
 version 10. Its existing shared research dependencies and legacy v12 vocabulary
-module retain their previous status. Historical `archive/` material does not
-constrain current production ranking.
+module retain their previous status. Historical material on the `history` branch
+does not constrain current production ranking.

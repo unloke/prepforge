@@ -1,8 +1,7 @@
 # Browser engine implementation
 
-The migration is implemented. This page describes current source locations;
-the original phased plan and its provisional decisions are
-[archived](archive/history/browser-engine-migration.md).
+The migration is implemented. This page describes current source locations; the
+original phased plan is on the `history` branch.
 
 - Stockfish: `web-src/engine/stockfish-provider.js`; assets and manifest are synced
   by `scripts/sync-stockfish.mjs` from the installed Stockfish package.
