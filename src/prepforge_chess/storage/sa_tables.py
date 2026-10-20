@@ -305,10 +305,10 @@ opening_nodes = Table(
     Column("strategic_idea", Text),
     Column("typical_plan", Text),
     Column("source", Text, nullable=False),
-    Column("created_at", UTCDateTime(), nullable=False),
-    Column("updated_at", UTCDateTime(), nullable=False),
+    # The recursive walk (repertoire_id, parent_id) and the cascade lookup by
+    # id; a bare parent_id index is a prefix duplicate of nothing either query
+    # needs, so it is not here.
     Index("idx_opening_nodes_repertoire_parent", "repertoire_id", "parent_id"),
-    Index("idx_opening_nodes_parent", "parent_id"),
 )
 
 training_sessions = Table(

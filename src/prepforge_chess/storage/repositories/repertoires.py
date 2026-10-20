@@ -15,10 +15,6 @@ from prepforge_chess.storage.repositories.training import TrainingRepository
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
 
 
-# Tree hydration does not use node timestamps. Avoid decoding two per node.
-_NODE_COLUMNS = tuple(c for c in t.opening_nodes.c if c.name not in {"created_at", "updated_at"})
-
-
 class RevisionConflict(RuntimeError):
     def __init__(self, current_revision: Optional[int]):
         super().__init__("This repertoire changed elsewhere. Reload it and re-apply the edit, or keep your draft.")
@@ -128,13 +124,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 group = groups.setdefault(key, {"values": values, "ids": []})
                 group["ids"].append(change["id"])
             for group in groups.values():
-                values = group["values"]
-                values["updated_at"] = datetime.now(timezone.utc)
                 conn.execute(
                     update(t.opening_nodes)
                     .where(t.opening_nodes.c.id.in_(group["ids"]))
                     .where(t.opening_nodes.c.repertoire_id == repertoire_id)
-                    .values(**values)
+                    .values(**group["values"])
                 )
             self._bump_revision(conn, repertoire_id)
 
@@ -146,7 +140,6 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             ).values(
                 arrows_json=_json_dump(arrows) if arrows else None,
                 circles_json=_json_dump(circles) if circles else None,
-                updated_at=datetime.now(timezone.utc),
             ))
             if changed.rowcount != 1:
                 raise ValueError("node not found in repertoire")
@@ -168,8 +161,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             stmt = _insert(conn, t.opening_nodes)
             stmt = stmt.on_conflict_do_update(
                 index_elements=[t.opening_nodes.c.id],
-                set_={name: stmt.excluded[name] for name in rows[0]
-                      if name not in {"id", "created_at"}},
+                set_={name: stmt.excluded[name] for name in rows[0] if name != "id"},
             )
             conn.execute(stmt, rows)
             self._bump_revision(conn, repertoire_id)
@@ -262,7 +254,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 return None
 
             node_rows = conn.execute(
-                select(*_NODE_COLUMNS).where(t.opening_nodes.c.repertoire_id == repertoire_id)
+                select(t.opening_nodes).where(t.opening_nodes.c.repertoire_id == repertoire_id)
             ).mappings().all()
             evals = self._load_evaluations(
                 conn, [row["engine_evaluation_id"] for row in node_rows]
@@ -290,7 +282,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             if not rep_rows:
                 return []
             node_rows = conn.execute(
-                select(*_NODE_COLUMNS).where(
+                select(t.opening_nodes).where(
                     t.opening_nodes.c.repertoire_id.in_(
                         [row["id"] for row in rep_rows]
                     )
@@ -710,7 +702,6 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         self, conn: Connection, node: OpeningNode,
         pos_cache: Optional[Dict[str, int]] = None,
     ) -> Dict[str, Any]:
-        now = datetime.now(timezone.utc)
         if pos_cache is None:
             pos_cache = {}
         arriving = node.move.uci if node.move is not None else None
@@ -737,8 +728,6 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 "strategic_idea": node.strategic_idea,
                 "typical_plan": node.typical_plan,
                 "source": node.source.value,
-                "created_at": now,
-                "updated_at": now,
             }
 
     def _walk_nodes(self, root: OpeningNode) -> Iterable[OpeningNode]:
