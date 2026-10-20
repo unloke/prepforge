@@ -223,9 +223,10 @@ async function runViewport(vp) {
   // Build header: size summary + Generate's applicability rule. The button only
   // applies where a writable repertoire's move of yours is missing, so at 3.e5
   // (where Bf5 already answers for black) it must be OUT of the head — and
-  // reachable from the ⋯ menu's "Move …" entry instead.
-  const repStats = await page.locator("#build-rep-stats").textContent().catch(() => "");
-  check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
+  // reachable from the ⋯ menu's "Move …" entry instead. The size summary is a
+  // caption on the repertoire's name (its tooltip), not a band of the panel.
+  const repStats = await page.locator("#build-rep-name").getAttribute("title").catch(() => "");
+  check(/2 lines · 7 moves/.test(repStats || ""), `the repertoire's name should carry "2 lines · 7 moves", got "${repStats}"`);
   const genAtE5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
   check(genAtE5 === true, `Generate should be hidden at 3.e5 (your Bf5 reply exists), got hidden=${genAtE5}`);
 

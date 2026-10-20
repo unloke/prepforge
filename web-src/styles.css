@@ -5746,9 +5746,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }
 
 /* The head is the panel's title and nothing else: the repertoire's name at the
-   size a title is read at, then its two actions. The counts that used to spend
-   a second line here now close the panel (see .build-foot) — they describe the
-   whole tree, not this moment in it. */
+   size a title is read at, then its two actions. Its size (lines, moves, moves
+   to train) is a caption on that name, in its tooltip: as a band at the panel's
+   foot it spent 38px of every build on a number read once. */
 #build-rep-header {
   min-height: 52px;
   padding: 10px 10px 10px var(--build-pad, 14px);
@@ -5756,16 +5756,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #build-rep-header .rep-name { font-size: 17px; font-weight: 650; flex: 1 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 13px; }
 
-/* The tree's totals: the last line of the panel, on the panel's own ground.
-   A rule above it would be a fifth band; the gap and the quiet ink are
-   enough. */
-.build-foot {
-  flex: none;
-  padding: 9px 14px 11px;
-  font-size: var(--fs-s);
-  line-height: 1.4;
-}
-#build-sidebar:has(#build-empty:not([hidden])) .build-foot { display: none; }
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {

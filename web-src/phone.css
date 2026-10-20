@@ -718,8 +718,6 @@
   #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   #build-rep-header #build-menu { grid-column: 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
-  /* The totals stay the panel's last line on a phone too. */
-  #view-build .build-foot { padding: 8px 12px 10px; font-size: var(--fs-s); }
 
   /* Under the board one pane at a time (the line tree, Explorer or Coverage)
      so stepping through the tree scrolls the tree and nothing else. */
@@ -757,7 +755,6 @@
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
   #build-sidebar > .panel-body > #build-inspector { order: 1; }
-  #build-sidebar > .panel-body > .build-foot { order: 4; }
   #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty),
   #build-sidebar > .panel-body > .shared-banner:not([hidden]) {
     border: 0;
