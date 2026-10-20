@@ -32,6 +32,7 @@ const FILES = [
   "./views/analyze-loader.js",
   "./shared-viewer.js",
   "./coverage-entry.js",
+  "./library-entry.js",
   "./undo.js",
   "./controllers/analyze-entry.js",
   "./views/shared/source-store.js",
