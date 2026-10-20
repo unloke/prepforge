@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { typedSquare } from "../board-navigation.js";
+import { capturedSquare, caughtPiece, slidePiece } from "./move-motion.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
   pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom;
@@ -538,16 +539,19 @@ class BoardController {
       legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
     if (!keepInteraction) this._cancelDrag();
 
-    // Read slide offsets NOW, before any DOM writes, so _animateSlide never
-    // triggers a mid-write forced reflow to measure layout.
-    let preSlide = null;
-    if (fenChanged && this._hadPosition && lastMove && pref("moveAnim")) {
+    // Read the slide's offsets and find the captured piece NOW, before any DOM
+    // writes, so neither needs a forced reflow mid-render.
+    let slide = null;
+    if (fenChanged && this._hadPosition && lastMove) {
       const from = lastMove.slice(0, 2);
       const to = lastMove.slice(2, 4);
       const fromSq = this.squares.get(from);
       const toSq = this.squares.get(to);
       if (fromSq && toSq) {
-        preSlide = { dx: fromSq.offsetLeft - toSq.offsetLeft, dy: fromSq.offsetTop - toSq.offsetTop, to };
+        slide = {
+          dx: fromSq.offsetLeft - toSq.offsetLeft, dy: fromSq.offsetTop - toSq.offsetTop, to,
+          capturedAt: capturedSquare(prevFen, fen, from, to),
+        };
       }
     }
 
@@ -562,10 +566,13 @@ class BoardController {
     this.lastMove = lastMove;
     this.annotationStart = null;
     if (fenChanged) {
+      // The captured piece is still in the old DOM until _renderPieces wipes
+      // it. Copy it detached first and mount it after the render, so it never
+      // stands in for the square's own piece.
+      const caught = slide?.capturedAt ? caughtPiece(this.squares.get(slide.capturedAt)) : null;
       this._renderPieces();
-      if (this._hadPosition && lastMove) {
-        this._feedbackForMove(prevFen, fen, lastMove, preSlide, cue);
-      }
+      if (caught) this.squares.get(slide.capturedAt)?.appendChild(caught);
+      if (this._hadPosition && lastMove) this._feedbackForMove(prevFen, fen, lastMove, slide, caught, cue);
     }
     this._hadPosition = true;
     this._updateClasses();
@@ -588,32 +595,17 @@ class BoardController {
 
   // Slide the moved piece in, pulse the destination, and chirp a sound, all
   // driven off the final rendered position so a quick "skip" never leaves anything stranded.
-  // preSlide is pre-computed {dx, dy, to} read before DOM writes to avoid forced reflow.
   // `cue` is the caller's own sound for this move (a drill's right/wrong, or false
   // to stay quiet); without it the change itself picks the cue.
-  _feedbackForMove(prevFen, fen, lastMove, preSlide, cue) {
+  _feedbackForMove(prevFen, fen, lastMove, slide, caught, cue) {
     const to = lastMove.slice(2, 4);
     if (cue === undefined) cue = moveCue(prevFen, fen, lastMove);
     if (cue) playSound(cue);
-    if (pref("moveAnim") && preSlide) this._animateSlide(preSlide);
+    // One gate for both halves: a slide with nowhere to travel, or the move
+    // animation switched off, still ends with nothing left on the board.
+    if (slide && pref("moveAnim")) slidePiece(slide, (sq) => this.squares.get(sq), caught);
+    else caught?.remove();
     if (pref("lastMovePulse")) this._pulseSquare(to);
-  }
-
-  // preSlide = { dx, dy, to } — offsets already read before DOM writes.
-  _animateSlide({ dx, dy, to }) {
-    const toSq = this.squares.get(to);
-    if (!toSq) return;
-    const piece = toSq.querySelector(".piece");
-    if (!piece) return;
-    piece.style.transition = "none";
-    piece.style.transform = `translate(${dx}px, ${dy}px)`;
-    void piece.offsetWidth; // one reflow to commit the start state before transitioning
-    piece.style.transition = "transform 170ms ease-out";
-    piece.style.transform = "translate(0, 0)";
-    window.setTimeout(() => {
-      piece.style.transition = "";
-      piece.style.transform = "";
-    }, 200);
   }
 
   _pulseSquare(square) {

@@ -630,6 +630,7 @@ h2 {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .sheet {
@@ -641,6 +642,13 @@ h2 {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the command sheet is a real overlay */
+  /* The sheet is pulled up from the edge it lives on, like the Analyze sheet
+     above it, so every bottom sheet in the app arrives the same way. */
+  transition: transform var(--dur) var(--ease-out);
+}
+@starting-style {
+  .sheet-scrim:not([hidden]) { opacity: 0; }
+  .sheet-scrim:not([hidden]) .sheet { transform: translateY(24%); }
 }
 
 .sheet-grab {
@@ -2415,6 +2423,18 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
 }
 
+/* A captured piece, held on its square while the capturing piece travels in:
+   it fades out on the mover's own timing (see _animateSlide), so a capture
+   reads as one piece taking another rather than as one arriving into an
+   already-empty square. Positioned over its square's piece slot. */
+.piece-caught {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 2;
+  will-change: opacity;
+}
+
 /* Board coordinates (toggle: .show-coords on the board) */
 .coord {
   position: absolute;
@@ -3330,17 +3350,26 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Idle has nothing to signal; a ▶ in a circle read as a play button. */
 #train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
 #train-banner[data-state="idle"] .train-coach-icon { display: none; }
-#train-banner.flash { animation: trainFlash var(--dur-slow) var(--ease-out); }
-#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms var(--ease-out); }
-@keyframes trainFlash {
-  0% { transform: scale(0.99); }
-  40% { transform: scale(1.012); }
-  100% { transform: scale(1); }
+/* The judge answers in the direction the answer went: a right move pops its
+   tick, a wrong one gives a single short nudge. Only a verdict moves the mark —
+   a hint and an opponent reply are news, so their line arrives and nothing
+   gestures at you. All of it is once per change, never a loop. */
+#train-banner.flash .train-coach-text { animation: judge-line var(--dur) var(--ease-out) both; }
+#train-banner[data-state="correct"].flash .train-coach-icon { animation: judge-mark var(--dur-slow) var(--ease-emphasis); }
+#train-banner[data-state="wrong"].flash .train-coach-icon { animation: judge-nudge 320ms var(--ease-out); }
+@keyframes judge-mark {
+  from { transform: scale(0.5); }
+  to { transform: none; }
 }
-@keyframes trainWrongFlash {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
-  20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
+@keyframes judge-nudge {
+  0% { transform: translateX(-3px); }
+  35% { transform: translateX(3px); }
+  65% { transform: translateX(-2px); }
+  100% { transform: none; }
+}
+@keyframes judge-line {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
 }
 .train-coach-icon {
   width: 34px;
@@ -4384,6 +4413,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   text-decoration: line-through;
 }
 
+/* The move you just added arrives once, in place, so a line you made is
+   distinguishable from the ones already there. Transform and opacity only: a
+   new token must not shift the tokens around it. */
+.mtree-move.is-added { animation: move-added var(--dur) var(--ease-out) both; }
+@keyframes move-added {
+  from { opacity: 0; transform: translateY(4px) scale(0.94); }
+}
+
 /* Training status, one mark per move: a 2px bar under a move that is DUE
    (amber) or WEAK (red) — the two states that ask you to do something. Every
    other status (learning, mastered, untrained) stays unmarked and says its
@@ -4444,6 +4481,20 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--panel);
   color: var(--text);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
+  /* The menu arrives where it was opened, under the button or at the cursor,
+     rather than switching on. A browser without @starting-style shows it as it
+     is; nothing is ever left hidden waiting for a transition. On a phone the
+     menu is an action sheet and rises from the thumb instead (phone.css), so
+     the entrance below is desktop only and the two never stack. */
+  transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+}
+@media (min-width: 761px) {
+  @starting-style {
+    .context-menu:not([hidden]) {
+      opacity: 0;
+      translate: 0 -4px;
+    }
+  }
 }
 
 .context-section {
@@ -4537,6 +4588,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding-top: min(14vh, 120px);
   background: rgba(20, 18, 14, 0.36);
   backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+/* The dim arrives with the dialog rather than snapping on behind it. */
+@starting-style {
+  .modal-overlay:not([hidden]) { opacity: 0; }
 }
 
 /* Sign-in gate only: top-bar tabs stay clickable above the dim layer so the
@@ -4561,6 +4617,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
   display: grid;
+  /* A dialog opens from the place it will be read: a short settle, no zoom. */
+  transition: transform var(--dur) var(--ease-out);
+}
+@starting-style {
+  .modal-overlay:not([hidden]) .modal { transform: translateY(-6px) scale(0.98); }
 }
 
 .modal-title {
@@ -5003,6 +5064,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   animation: notice-spin 900ms linear infinite;
 }
 @keyframes notice-spin { to { transform: rotate(360deg); } }
+/* A job that has just finished: the spinner becomes its tick in place, so the
+   card settles instead of silently changing meaning. One gesture, not a loop. */
+.notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-emphasis); }
+.notice[data-state="failed"] .notice-icon { animation: notice-land 200ms var(--ease-out); }
+@keyframes notice-land {
+  from { transform: scale(0.6); }
+  to { transform: none; }
+}
 
 .notice-main { grid-column: 2; display: grid; gap: 2px; min-width: 0; }
 .notice-title { font-weight: 600; }
@@ -5623,6 +5692,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: flex-start;
   justify-content: center;
   padding: 12vh 16px 16px;
+  /* The sheet comes down from the top edge it is anchored to, so the eye
+     follows it to the field it wants. */
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+@starting-style {
+  .palette:not([hidden]) { opacity: 0; }
 }
 
 .palette-panel {
@@ -5631,6 +5706,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: var(--radius-card);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
   overflow: hidden;
+  transform-origin: 50% 0;
+  transition: transform var(--dur) var(--ease-out);
+}
+@starting-style {
+  .palette:not([hidden]) .palette-panel { transform: translateY(-8px) scale(0.985); }
 }
 
 .palette-input {
