@@ -909,10 +909,15 @@
 /* ---- Drawers: the report, the PGN source, recent analyses ----------- */
 
 /* The panel is two groups: what the analysis says, then where the game came
-   from. Every gap inside a group is the panel's 14px, so the first drawer
-   takes a larger one; at the same 14px the sources read as another result. */
+   from. The gap between the groups is the body's own 14px; inside the group of
+   folds the gaps are half that, because three collapsed one-line names read as
+   one block of three lines, not as three separate objects. */
+#analyze-sidebar .panel-scroll { gap: 8px; }
+#analyze-sidebar .panel-scroll > .analyze-main { margin-bottom: 6px; }
+#analyze-sidebar .panel-scroll > #analyze-sheet,
+#analyze-sidebar .panel-scroll > #analyze-open { margin: 0; }
 #analyze-sidebar .panel-scroll > #analyze-open > .drawer:first-of-type {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 /* The report is the game's summary, not its instrument: the grade bars, and
