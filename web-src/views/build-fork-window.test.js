@@ -167,6 +167,17 @@ describe("build fork bar — a wide fork is a window, not six rows", () => {
     expect(String(bar.innerHTML)).not.toContain("fork-more");
   });
 
+  it("chooses a shorter window on a phone, where chips are thumb-sized", () => {
+    const { nodes, root } = rootWithFork(30);
+    const { view, bar } = makeHarness({ nodes, currentNodeId: root.id });
+    globalThis.window = { matchMedia: () => ({ matches: true }) };
+    view.renderBuildBranchBar();
+    expect(chipIds(bar.innerHTML)).toHaveLength(6);
+    globalThis.window = { matchMedia: () => ({ matches: false }) };
+    view.renderBuildBranchBar();
+    expect(chipIds(bar.innerHTML)).toHaveLength(8);
+  });
+
   it("opens the whole list on request, inside a capped block", () => {
     const { nodes, root } = rootWithFork(30);
     const { view, bar } = makeHarness({ nodes, currentNodeId: root.id });
