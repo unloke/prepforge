@@ -1,5 +1,6 @@
 import { html } from "./html.js";
 import { MAX_FETCH } from "./generated/shared-constants.js";
+import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
@@ -10,6 +11,8 @@ import { countOf } from "./plural.js";
 import { createBook, ensureBookLoaded, invalidateBook, updateBookline } from "./analyze-book-state.js";
 import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
 import { createLibrary } from "./library-entry.js";
+import { installE2eHooks } from "./e2e-hooks.js";
+import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync, renderSyncChip,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
@@ -257,57 +260,6 @@ function preloadBuildGen() {
   }
   return _buildGenReady;
 }
-
-// Front-end error beacon (stability plan #1): report uncaught errors so we have a
-// server-side window into browser crashes. Best-effort — sendBeacon never throws
-// back into the app, and the endpoint is CSRF-exempt + needs no auth.
-function reportClientError(payload) {
-  try {
-    navigator.sendBeacon(
-      "/api/clientlog",
-      new Blob([JSON.stringify(payload)], { type: "application/json" }),
-    );
-  } catch {
-    /* best-effort, never throw from the reporter itself */
-  }
-}
-window.addEventListener("error", (e) => {
-  reportClientError({
-    kind: "error",
-    message: e.message,
-    src: e.filename,
-    line: e.lineno,
-    col: e.colno,
-    stack: e.error && e.error.stack,
-    ua: navigator.userAgent,
-    coi: !!self.crossOriginIsolated,
-    t: Date.now(),
-  });
-});
-// A deploy renames every hashed chunk, so a tab opened before it fails its next
-// lazy import. Reload once to pick up the new build; the timestamp guard stops a
-// loop when a chunk is genuinely missing (and no storage means no reload).
-window.addEventListener("vite:preloadError", () => {
-  const key = "prepforge.chunk_reload_at";
-  try {
-    if (Date.now() - (Number(sessionStorage.getItem(key)) || 0) < 60_000) return;
-    sessionStorage.setItem(key, String(Date.now()));
-  } catch {
-    return;
-  }
-  location.reload();
-});
-window.addEventListener("unhandledrejection", (e) => {
-  reportClientError({
-    kind: "rejection",
-    message: String((e.reason && e.reason.message) || e.reason),
-    stack: e.reason && e.reason.stack,
-    ua: navigator.userAgent,
-    coi: !!self.crossOriginIsolated,
-    t: Date.now(),
-  });
-});
-
 
 const savedPvSan = new WeakMap();
 
@@ -1495,379 +1447,6 @@ function setBlitzEnabled(on) {
 // installs or runs an engine on the server. Server install endpoints remain in
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
-const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
-const POLISH_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_POLISH_E2E === "1";
-
-function installScoutE2eHook() {
-  if (window.__prepforgeScoutE2e) return;
-  const oauthOpens = [];
-  const nativeOpen = window.open.bind(window);
-  window.open = function scoutE2eOpen(url, target, features) {
-    oauthOpens.push({
-      url: String(url ?? ""),
-      target: String(target ?? ""),
-      features: String(features ?? ""),
-      ts: Date.now(),
-    });
-    try {
-      return nativeOpen(url, target, features);
-    } catch {
-      return null;
-    }
-  };
-  window.__prepforgeScoutE2e = {
-    async mountRefutationScenario(scenarioId) {
-      switchView("replay");
-      const view = await ensureScoutView();
-      view.bindControls();
-      return view.mountE2eRefutationScenario(scenarioId);
-    },
-    getOauthOpens() {
-      return oauthOpens.map((entry) => ({ ...entry }));
-    },
-    resetOauthOpens() {
-      oauthOpens.length = 0;
-    },
-  };
-}
-
-// Polish acceptance hook: deterministic tests seed linked identities and drive
-// the real per-action chooser without OAuth popups. Same gating shape as the
-// Scout hook — build flag + query param — so production pages never expose it.
-function installPolishE2eHook() {
-  if (window.__prepforgePolishE2e) return;
-  window.__prepforgePolishE2e = {
-    whenSettingsReady,
-    async setLichessAccounts(accounts) {
-      appState.lichessAccounts = accounts;
-      const primary = accounts.find((a) => a.is_primary) || accounts[0] || null;
-      appState.lichessUsername = primary ? primary.username : null;
-      try {
-        const view = await whenSettingsReady().catch(() => null);
-        // Seed the connections list directly: the acceptance static server has
-        // no /api/lichess backend, so refreshConnections() would keep the last
-        // state instead of showing the seeded identities.
-        await view?.renderConnections?.();
-        view?.renderMaia3Status?.();
-      } catch (_) {
-        /* settings view may not be loaded yet */
-      }
-      try {
-        syncReplayControls();
-      } catch (_) {
-        /* controller may not be initialised in a bare acceptance page */
-      }
-    },
-    getLichessAccounts() {
-      return lichessAccounts();
-    },
-    async fetchMyLastGame() {
-      await fetchMyLichessGame();
-      return notices.statusText();
-    },
-    async setBoardFen(boardName, fen) {
-      const board = boards[boardName] || null;
-      if (!board) throw new Error(`unknown board: ${boardName}`);
-      const info = await boardInfo(fen);
-      board.setPosition({ fen, legalMoves: info.legal_moves, lastMove: null });
-      return info.legal_moves;
-    },
-  };
-}
-
-// Analyze E2E hook: deterministic tests seed a finished analysis payload
-// (moves + eval graph) without running a browser engine. Same gating shape as
-// the Scout/Polish hooks — E2E build flag + query-param opt-in — so production
-// pages never expose it. Shares the existing E2E build flags so the CI e2e job's
-// build (VITE_ENABLE_SCOUT_E2E=1) carries it.
-const ANALYZE_E2E_BUILD_ENABLED = SCOUT_E2E_BUILD_ENABLED || POLISH_E2E_BUILD_ENABLED;
-
-function installAnalyzeE2eHook() {
-  if (window.__prepforgeAnalyzeE2e) return;
-  window.__prepforgeAnalyzeE2e = {
-    async seedAnalysis(payload) {
-      // Boot races the seed: init()'s restoreWorkspaceLocation() switches to the
-      // default view after this hook is installed. Await boot so the seeded
-      // Analyze view (and its reveal) isn't switched away underneath us.
-      if (appReadyPromise) await appReadyPromise;
-      switchView("analyze");
-      appState.analysis = payload;
-      appState.analysisVarNodes = new Map();
-      appState.analysisVarCounter = 0;
-      appState.analysisCurrentNodeId = "root";
-      appState.analysisTree = null;
-      appState.analysisPly = 0;
-      const view = await ensureAnalyzeView();
-      view.renderAnalysis(payload);
-      revealAnalysisResults();
-      await showAnalysisPly(0);
-      return true;
-    },
-    // The user's Lichess name, so a loaded PGN has a known side ("you") and the coach
-    // reads the other side's moves as the opponent's.
-    setSelfName(name) {
-      appState.lichessUsername = name || null;
-      return true;
-    },
-    getCoachProse: () => (document.getElementById("coach-prose") || {}).textContent || "",
-    getPly: () => appState.analysisPly,
-    getBoardLabel: () =>
-      (document.getElementById("analysis-board-label") || {}).textContent || "",
-  };
-}
-
-if (
-  SCOUT_E2E_BUILD_ENABLED &&
-  new URLSearchParams(location.search).get("scout_e2e") === "1"
-) {
-  installScoutE2eHook();
-}
-
-if (
-  POLISH_E2E_BUILD_ENABLED &&
-  new URLSearchParams(location.search).get("polish_e2e") === "1"
-) {
-  installPolishE2eHook();
-}
-
-if (
-  ANALYZE_E2E_BUILD_ENABLED &&
-  new URLSearchParams(location.search).get("analyze_e2e") === "1"
-) {
-  installAnalyzeE2eHook();
-}
-
-// Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by
-// far the heaviest thing the page holds — tens-to-hundreds of MB of weights + activation
-// arena that ORT never voluntarily releases. Backgrounding a tab only throttles its CPU; it
-// does NOT free that worker/session, so a tab left in the background keeps the whole footprint
-// resident. After the tab has been hidden a while with no Maia work in flight, dispose the
-// shared provider to hand that memory back. It transparently re-inits on the next use, and the
-// IndexedDB weight cache means a re-init skips the ~46 MB download — only the session is rebuilt.
-//
-// The window is deliberately generous (10 min). A re-init still has to rebuild the ORT session
-// (graph-optimizing a 23M-param transformer — seconds, the genuinely slow part), so tearing down
-// after a SHORT hidden spell punished the common dev/study loop of tabbing to an editor and back:
-// every return rebuilt the session and the "loading model" toast read like a fresh download. Only
-// a tab parked in the background for a long stretch — where reclaiming ~1 GB clearly wins — should
-// pay that rebuild cost. (Returning to the foreground cancels the timer, so an active tab never
-// tears down.)
-const MAIA_IDLE_TEARDOWN_MS = 10 * 60 * 1000;
-let maiaIdleTimer = null;
-
-function clearMaiaIdleTeardown() {
-  if (maiaIdleTimer !== null) {
-    clearTimeout(maiaIdleTimer);
-    maiaIdleTimer = null;
-  }
-}
-
-function scheduleMaiaIdleTeardown() {
-  clearMaiaIdleTeardown();
-  maiaIdleTimer = setTimeout(() => {
-    maiaIdleTimer = null;
-    const provider = peekSharedMaia3Provider();
-    if (!provider) return; // nothing live to release
-    // Still working (e.g. a Generate run left in a hidden tab)? Don't abort it — check back later.
-    if (provider.busy) {
-      scheduleMaiaIdleTeardown();
-      return;
-    }
-    disposeSharedMaia3Provider();
-  }, MAIA_IDLE_TEARDOWN_MS);
-}
-
-// Mobile bottom bar: the More button opens a bottom sheet carrying the
-// secondary destinations (Analyze, Scout, Teams, Settings, command palette).
-// Sheet entries mirror the canonical nav buttons so every view keeps its real
-// activation path (URL sync, loaders, transient-overlay cleanup).
-function wireMobileNav() {
-  const sheet = document.getElementById("more-sheet");
-  const moreBtn = document.getElementById("more-nav-btn");
-  if (!sheet || !moreBtn) return;
-  let sheetCleanup = null;
-  const closeSheet = ({ restoreFocus = true } = {}) => {
-    if (sheet.hidden) return;
-    sheet.hidden = true;
-    sheetCleanup?.({ restoreFocus: false });
-    sheetCleanup = null;
-    moreBtn.setAttribute("aria-expanded", "false");
-    if (restoreFocus) moreBtn.focus();
-  };
-  const openSheet = () => {
-    sheet.hidden = false;
-    moreBtn.setAttribute("aria-expanded", "true");
-    const menu = document.getElementById("account-menu");
-    sheetCleanup = activateModal(sheet, { additionalRoots: menu ? [menu] : [] });
-  };
-  moreBtn.addEventListener("click", () => {
-    if (sheet.hidden) openSheet();
-    else closeSheet();
-  });
-  // The sheet belongs to the phone layout: a bar that is gone must not leave it
-  // as a full-width bottom sheet over the desktop board.
-  closeSheetOffPhone(() => closeSheet({ restoreFocus: false }));
-  sheet.addEventListener("click", (event) => {
-    if (event.target === sheet) closeSheet();
-  });
-  sheet.querySelectorAll("[data-nav-mirror]").forEach((item) => {
-    item.addEventListener("click", () => {
-      const [view, section] = item.dataset.navMirror.split(":");
-      closeSheet({ restoreFocus: false });
-      const target = document.querySelector(section
-        ? `.tab[data-view="${view}"][data-replay-section="${section}"]`
-        : `.tab[data-view="${view}"]`);
-      target?.click();
-    });
-  });
-  sheet.querySelectorAll("[data-lib-mirror]").forEach((item) => {
-    item.addEventListener("click", () => {
-      closeSheet({ restoreFocus: false });
-      document.getElementById(item.dataset.libMirror)?.click();
-    });
-  });
-  // Mobile account entry (the rail — and its account row — is hidden ≤ 760px).
-  // Signed in, the account menu opens over the still-open sheet with this item
-  // as its trigger, so Escape returns focus here; a guest gets the auth modal.
-  const accountItem = document.getElementById("sheet-account");
-  if (accountItem) {
-    accountItem.addEventListener("click", () => {
-      if (!appState.signedIn) closeSheet({ restoreFocus: false });
-      onAccountChipClick(null, { trigger: accountItem });
-    });
-  }
-  // Picking an account-menu action finishes the sheet's job too.
-  document.getElementById("account-menu")?.addEventListener("click", (event) => {
-    if (event.target.closest?.('[role="menuitem"]')) closeSheet({ restoreFocus: false });
-  });
-  // Phones have no rail: the sheet carries the light/dark toggle (it stays
-  // open so the switch is visible behind it).
-  document.getElementById("sheet-theme")?.addEventListener("click", toggleTheme);
-  const paletteItem = document.getElementById("sheet-palette");
-  if (paletteItem) {
-    paletteItem.addEventListener("click", () => {
-      closeSheet({ restoreFocus: false });
-      document.getElementById("open-palette")?.click();
-    });
-  }
-  document.addEventListener("keydown", (event) => {
-    // Escape closes the topmost layer only: an account menu opened from the
-    // sheet closes first (the global handler), the sheet on the next Escape.
-    if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
-  });
-  wirePhoneStudyNav();
-  wirePhoneSheets();
-  wireHoldRepeat();
-  mirrorAnalysisLabel();
-}
-
-// Phones hide the board bar's label (the thumb bar has no room), so Analyze's
-// eval row repeats it: which move, and whether it is a variation or engine line.
-function mirrorAnalysisLabel() {
-  const label = document.getElementById("analysis-board-label");
-  const copy = document.getElementById("analysis-ev-move");
-  if (!label || !copy) return;
-  const mirror = () => { copy.textContent = label.textContent; };
-  new MutationObserver(mirror).observe(label, { childList: true, characterData: true, subtree: true });
-  mirror();
-}
-
-// Holding a move arrow steps on repeat, like a held arrow key. The click that
-// ends a hold is dropped so letting go doesn't step once more.
-function wireHoldRepeat() {
-  for (const id of ["analysis-prev", "analysis-next", "build-parent", "build-next"]) {
-    const button = document.getElementById(id);
-    if (!button) continue;
-    let delay = 0;
-    let timer = 0;
-    let repeated = false;
-    const stop = () => {
-      clearTimeout(delay);
-      clearInterval(timer);
-    };
-    button.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return;
-      stop();
-      repeated = false;
-      delay = setTimeout(() => {
-        timer = setInterval(() => {
-          repeated = true;
-          button.click();
-        }, 110);
-      }, 380);
-    });
-    for (const type of ["pointerup", "pointercancel", "pointerleave"]) button.addEventListener(type, stop);
-    button.addEventListener("click", (event) => {
-      if (!event.isTrusted || !repeated) return;
-      repeated = false;
-      event.stopImmediatePropagation();
-    }, true);
-    button.addEventListener("contextmenu", (event) => event.preventDefault());
-  }
-}
-
-// Phone study views (Analyze, Repertoire, Train) hide the tab bar so the board
-// and panel get the height; the views button in the board bar slides it up over
-// the bar. Picking a destination, tapping elsewhere or Escape puts it away.
-function wirePhoneStudyNav() {
-  const tabbar = document.getElementById("app-tabbar");
-  const toggles = [...document.querySelectorAll("[data-phone-nav]")];
-  if (!tabbar || !toggles.length) return;
-  const isOpen = () => document.body.classList.contains("phone-nav-open");
-  const setOpen = (open) => {
-    document.body.classList.toggle("phone-nav-open", open);
-    toggles.forEach((button) => button.setAttribute("aria-expanded", String(open)));
-  };
-  toggles.forEach((button) => button.addEventListener("click", () => setOpen(!isOpen())));
-  tabbar.addEventListener("click", (event) => {
-    if (event.target.closest(".tabbar-item")) setOpen(false);
-  });
-  document.addEventListener("pointerdown", (event) => {
-    if (isOpen() && !event.target.closest?.("#app-tabbar, [data-phone-nav]")) setOpen(false);
-  }, true);
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isOpen()) setOpen(false);
-  });
-}
-
-// Phone sheets (Analyze's report): a [data-sheet-open] button raises the sheet
-// it names over the screen; Done, a tap outside or Escape lowers it. A
-// [data-mirror] button clicks the control its selector names (phones hide some
-// controls and offer them where the thumb is) and lowers any open sheet.
-function wirePhoneSheets() {
-  const close = () => {
-    const open = document.querySelector(".phone-sheet.is-open");
-    if (!open) return;
-    open.classList.remove("is-open");
-    document.querySelector(`[data-sheet-open="${open.id}"]`)?.setAttribute("aria-expanded", "false");
-  };
-  document.addEventListener("click", (event) => {
-    const opener = event.target.closest?.("[data-sheet-open]");
-    if (opener) {
-      const sheet = document.getElementById(opener.dataset.sheetOpen);
-      const wasOpen = sheet?.classList.contains("is-open");
-      close();
-      if (sheet && !wasOpen) {
-        sheet.classList.add("is-open");
-        opener.setAttribute("aria-expanded", "true");
-      }
-      return;
-    }
-    const mirror = event.target.closest?.("[data-mirror]");
-    if (mirror) {
-      close();
-      document.querySelector(mirror.dataset.mirror)?.click();
-      return;
-    }
-    // The dim backdrop is the sheet's ::before, so a tap on it lands above the sheet's top.
-    const sheet = event.target.closest?.(".phone-sheet");
-    if (event.target.closest?.("[data-sheet-close]") || !sheet || event.clientY < sheet.getBoundingClientRect().top) close();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") close();
-  });
-}
-
 function bindEvents() {
   // A mouse click leaves focus on the rail button; the next key press (e.g. →
   // to step the board) then makes it :focus-visible, which expands the rail
@@ -1889,7 +1468,7 @@ function bindEvents() {
       if (button.dataset.view === "teams") loadTeams().catch(() => {});
     });
   });
-  wireMobileNav();
+  bindPhoneChrome({ onAccountChipClick, toggleTheme, isAccountMenuOpen });
 
   // Teams view actions.
   const teamsNewBtn = document.getElementById("teams-new");
@@ -2406,6 +1985,11 @@ async function init() {
   sharedViewer = createSharedViewer({
     requireSignIn, editRepertoire, refreshDashboardRepertoires, switchView, loadTeams,
     hydrateBuild, removeReadOnlyBanner, syncCoverageReadOnlyState, syncViewHeads, openAuthModal,
+  });
+  installE2eHooks({
+    switchView, ensureScoutView, whenSettingsReady, lichessAccounts, syncReplayControls,
+    fetchMyLichessGame, notices, revealAnalysisResults, showAnalysisPly, ensureAnalyzeView,
+    get appReadyPromise() { return appReadyPromise; },
   });
   hooks.build = {
     get view() { return buildView; },
