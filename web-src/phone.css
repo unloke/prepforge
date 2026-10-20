@@ -85,28 +85,28 @@
 
   /* Library: Today as one row, filter chips, the repertoire list, setup
      steps left. */
-  #view-dashboard .lib { gap: 14px; }
-  #view-dashboard .lib-grid { gap: 14px; }
-  /* The phone strip is its own composition: the streak and the action on
-     the first row, the queue on the second. The streak keeps its word - a
-     bare figure in a circle says nothing. */
+  #view-dashboard .lib { gap: var(--phone-gap); }
+  #view-dashboard .lib-grid { gap: var(--phone-gap); }
+  /* The strip answers one question — what to study next — so the queue is the
+     largest line on it and the streak is the quiet meta above. The action
+     keeps the accent and takes a thumb-sized pill. */
   #view-dashboard .today.card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "streak train"
-      "queue queue";
+      "queue  queue";
     align-items: center;
-    gap: 6px 12px;
+    gap: 4px 12px;
     min-height: 64px;
-    padding: 10px 12px 10px 14px;
+    padding: 12px 14px 14px;
     background: var(--panel);
   }
   #view-dashboard .today-streak {
     grid-area: streak;
     flex-direction: row;
     align-items: baseline;
-    gap: 6px;
+    gap: 5px;
     width: auto;
     height: auto;
     padding: 0;
@@ -115,7 +115,9 @@
     background: none;
     line-height: 1.1;
   }
-  #view-dashboard .today-count { font-size: 18px; font-weight: 700; }
+  /* A streak is a fact, not a state: it is read, not warned about, so it keeps
+     the ink and lets the queue carry the emphasis. */
+  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 650; }
   #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
   #view-dashboard .today-unit small { display: none; }
   #view-dashboard .today-note,
@@ -125,14 +127,20 @@
      leave an empty grid cell. */
   #view-dashboard .today-aside { display: none; }
   #view-dashboard .today-body { grid-area: queue; gap: 2px; min-width: 0; }
-  #view-dashboard .today-warning { font-size: 12px; }
+  #view-dashboard .today-warning { font-size: 13px; }
   /* A failed read is one card: the strip's three-column layout would clip it
      into the 40px streak slot, so it spans the full row instead. */
   #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
   #view-dashboard .today > .btn { grid-area: train; }
-  #view-dashboard .today-queue { color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.3; }
+  #view-dashboard .today-queue {
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
   #view-dashboard .today-queue b { font: inherit; }
-  #view-dashboard .today .btn.lg { min-height: 40px; height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14px; }
+  #view-dashboard .today .btn.lg { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   #view-dashboard .lib-list .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }
@@ -147,52 +155,52 @@
   #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
   #view-dashboard .lib-actions #dashboard-import-pgn {
     flex: none;
-    height: 40px;
+    height: 44px;
     padding: 0 12px;
     border-color: transparent;
     background: transparent;
     color: var(--text);
     font-weight: 600;
   }
+  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--surface-3); }
+  /* Five filters must all be visible at 390px: a row that scrolls sideways
+     reads as a cut-off row, so the chips are sized to fit the width instead. */
   #view-dashboard .lib-list .seg {
     display: flex;
-    gap: 8px;
-    /* Capped to the card (which clips): the row scrolls instead of sizing to its chips. */
+    flex-wrap: wrap;
+    gap: 6px;
     max-width: 100%;
     margin: 0;
     padding: 0;
     border: 0;
     background: none;
-    overflow-x: auto;
-    scrollbar-width: none;
   }
-  #view-dashboard .lib-list .seg::-webkit-scrollbar { display: none; }
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
-    flex: none;
-    min-height: 40px;
-    height: 40px;
+    flex: 0 1 auto;
+    min-height: 44px;
+    height: 44px;
     padding: 0 14px;
     border: 0;
-    border-radius: 17px;
+    border-radius: 22px;
     background: var(--surface-3);
     color: var(--text);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 550;
   }
-  #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--bg); }
+  #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--panel); }
   .search-field {
     width: 100%;
-    height: 40px;
+    height: 44px;
     margin: 0;
-    padding: 0 12px;
+    padding: 0 14px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--surface-3);
   }
   .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
-  .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--faint); }
-  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
+  .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
+  .search-field input { height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
   #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -207,6 +215,12 @@
     box-shadow: none;
   }
   #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); }
+  /* The open repertoire is marked with the group's own fill, not a 3px accent
+     bar: inside a rounded grouped list a bar on the first row reads as a clip
+     mark, and the accent belongs to the screen's action. */
+  #view-dashboard .lib-row.is-selected,
+  #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
+  #view-dashboard .lib-row.is-selected::before { content: none; }
   /* The skeleton row is the phone row's flex shape without the ⋯ button. */
   #view-dashboard .lib-row.is-skeleton .lib-opt,
   #view-dashboard .lib-row.is-skeleton { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
@@ -250,13 +264,13 @@
   }
   #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { padding-left: 38px; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
-  #view-dashboard .lib-row .row-menu-btn { flex: none; width: 40px; height: 40px; }
+  #view-dashboard .lib-row .row-menu-btn { flex: none; width: 44px; height: 44px; opacity: 1; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }
   #view-dashboard .steps .card-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 0; margin: 0; padding: 8px 6px 4px 14px; }
   #view-dashboard .steps .card-head h2 { flex: 1; font-size: 15px; }
   #view-dashboard .steps .setup-bar { margin: 0 14px 4px; }
-  #view-dashboard .steps .setup-dismiss { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+  #view-dashboard .steps .setup-dismiss { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
   #view-dashboard .step.is-done { display: none; }
   #view-dashboard .step { min-height: 56px; margin: 0; padding: 8px 14px; gap: 12px; border: 0; }
   /* The phone checklist hides the finished steps, so a step's number points at
@@ -265,11 +279,11 @@
   #view-dashboard .step[data-setup-step] { grid-template-columns: minmax(0, 1fr) auto; }
   #view-dashboard .step[data-setup-step] .step-n { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
-  #view-dashboard .step .btn { min-height: 40px; height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
+  #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
   /* Games and Scout: the same grouped card — where the games come from, one
      choice row, then the action across the card. */
-  #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: 14px; height: auto; }
+  #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: var(--phone-gap); height: auto; }
   #view-replay :is(.games-panel, .scout-panel) > .toolbar {
     display: flex;
     flex-direction: column;

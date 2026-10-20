@@ -18,17 +18,17 @@ function rule(selector) {
   return css.slice(open, css.indexOf("}", open));
 }
 
-it("Library phone controls meet the 40px tap-target floor", () => {
+it("Library phone controls meet the 44px tap-target floor", () => {
   for (const selector of [
     "#view-dashboard .lib-list .seg-btn",
     "#view-dashboard .today .btn.lg",
     "#view-dashboard .step .btn",
+    "#view-dashboard .lib-row .row-menu-btn",
   ]) {
     const body = rule(selector);
-    expect(body, selector).toMatch(/min-height:\s*40px/);
-    expect(body, selector).toMatch(/height:\s*40px/);
+    expect(body, selector).toMatch(/height:\s*44px/);
   }
   const dismiss = rule("#view-dashboard .steps .setup-dismiss");
-  expect(dismiss).toMatch(/width:\s*40px/);
-  expect(dismiss).toMatch(/height:\s*40px/);
+  expect(dismiss).toMatch(/min-width:\s*44px/);
+  expect(dismiss).toMatch(/height:\s*44px/);
 });
