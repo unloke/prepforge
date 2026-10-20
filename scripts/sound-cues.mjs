@@ -50,6 +50,35 @@ function centroid(x) {
   return Math.round(total ? weighted / total : 0);
 }
 
+// BS.1770 K-weighting (the two pre-filter stages a loudness meter uses), then
+// the loudest 400 ms block read as momentary loudness. This is the number the
+// rule about the cues being within 1.5 dB is stated in, so it belongs here.
+const K_BIQUAD = (sampleRate, b, a) => {
+  // direct-form I coefficients normalised by a0, applied in place by runK
+  return { b: b.map((v) => v / a[0]), a: a.slice(1).map((v) => v / a[0]) };
+};
+function runK(x, { b, a }) {
+  const y = new Float64Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const v = b[0] * x[i] + b[1] * x1 + b[2] * x2 - a[0] * y1 - a[1] * y2;
+    x2 = x1; x1 = x[i]; y2 = y1; y1 = v; y[i] = v;
+  }
+  return y;
+}
+// The meter's coefficients for 48 kHz (BS.1770-4 Table 1 and the RLB high-pass).
+const K_STAGE1 = K_BIQUAD(RATE, [1.53512485958697, -2.69169618940638, 1.19839281085285],
+  [1, -1.69065929318241, 0.73248077421585]);
+const K_STAGE2 = K_BIQUAD(RATE, [1, -2, 1], [1, -1.99004745483398, 0.99007225036621]);
+function lufs(x) {
+  const y = runK(runK(x, K_STAGE1), K_STAGE2);
+  let sum = 0;
+  for (const v of y) sum += v * v;
+  // A cue shorter than 400 ms is zero-padded to the meter's window, as a meter does.
+  const n = Math.max(y.length, Math.round(RATE * 0.4));
+  return +(-0.691 + 10 * Math.log10(sum / n + 1e-24)).toFixed(1);
+}
+
 function measure(x) {
   let peak = 0, peakAt = 0, clipped = 0;
   for (let i = 0; i < x.length; i++) {
@@ -85,6 +114,7 @@ function measure(x) {
     peakDb: +(20 * Math.log10(peak || 1e-9)).toFixed(1),
     rmsDb: +(20 * Math.log10(rms || 1e-9)).toFixed(1),
     loudDb: +(20 * Math.log10(loud || 1e-9)).toFixed(1),
+    lufs: lufs(x.subarray(0, last + 1)),
     tailDb: +(20 * Math.log10(tail || 1e-9)).toFixed(1),
     jump: +jump.toFixed(3),
     dc: +(dc / Math.max(1, last + 1)).toFixed(4),
@@ -132,6 +162,26 @@ window.render = async (name) => {
   renderCue(ctx, name, ctx.destination, 0);
   const { samples, ...metrics } = measure((await ctx.startRendering()).getChannelData(0));
   return { metrics, pcm: pcm16(samples) };
+};
+
+// The app starts a cue at an arbitrary moment of the clock. Stacked sine
+// oscillators used to land in a different phase every play (the same tap came
+// out anywhere from 0.46 to 1.23 in peak, 8 dB apart); every cue must now come
+// out the same wherever it starts. Offline, a start is quantised to the render
+// quantum, so one offset inside each of the first few blocks is enough.
+window.stability = async (name) => {
+  const peaks = [];
+  for (const block of [0, 1, 2, 3, 5, 13]) {
+    const when = (block * 128 + 64) / RATE;
+    const ctx = new OfflineAudioContext(1, Math.ceil(RATE * SECONDS), RATE);
+    renderCue(ctx, name, ctx.destination, when);
+    const x = (await ctx.startRendering()).getChannelData(0);
+    let peak = 0;
+    for (const v of x) peak = Math.max(peak, Math.abs(v));
+    peaks.push(peak);
+  }
+  const lo = Math.min(...peaks), hi = Math.max(...peaks);
+  return { peakSpreadDb: +(20 * Math.log10(hi / lo)).toFixed(2) };
 };
 </script>`;
 
@@ -283,10 +333,11 @@ try {
   let bytes = 0;
   for (const cue of cues) {
     const { metrics, pcm } = await page.evaluate((name) => window.render(name), cue);
+    const { peakSpreadDb } = await page.evaluate((name) => window.stability(name), cue);
     const audio = wav(Buffer.from(pcm, "base64"), RATE);
     writeFileSync(join(WAV_DIR, `${cue}.wav`), audio);
     bytes += audio.length;
-    rows.push({ cue, ...metrics, wavBytes: audio.length });
+    rows.push({ cue, ...metrics, peakSpreadDb, wavBytes: audio.length });
   }
 
   console.table(rows);
