@@ -6,12 +6,13 @@ import { appSource } from "./test-app-source.js";
 
 const source = appSource();
 
-function widgetHarness() {
+function widgetHarness({ coachOn = false } = {}) {
   const deps = { html,
     setEngineBestArrow: vi.fn(), localGameOver: () => null,
     activeViewName: () => "analyze", effectiveStockfishDepth: () => 16,
     createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
-    explorerEvalEngine: { repaint: vi.fn() }, getAnalyzeSession: () => null, formatEngineEval,
+    explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval,
+    getAnalyzeSession: () => (coachOn ? { positionCoach: { enabled: true, onWidgetSnapshot: vi.fn() } } : null),
   };
   const widgetSource = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
@@ -55,10 +56,14 @@ describe("Analyze engine stepping", () => {
   });
 
   it("searches exactly the lines it shows, and paints each depth the engine reaches", async () => {
-    const { widget } = widgetHarness();
+    // The Coach's engine review is ON: it no longer widens the card's search — it asks
+    // the shared store for the alternative line itself, under the move that needs one.
+    const { widget } = widgetHarness({ coachOn: true });
     // The card's Line −/+ is the whole contract with the engine: at 1 line it asks
     // Stockfish for MultiPV 1 on every view, Analyze included (a second line nobody
-    // renders used to double the nodes of every search).
+    // renders used to double the nodes of every search). The coach's own reads run
+    // through the same store and ask for the width they need themselves — the card
+    // never widens a search for it.
     const sent = [];
     let push = null;
     const engine = {
@@ -72,10 +77,15 @@ describe("Analyze engine stepping", () => {
     widget.engineDepth = 16;
     widget.el = { hidden: true, classList: { add() {}, remove() {}, contains: () => false } };
     widget.lastFen = "current w - - 0 1";
+    widget.linesReadout = { textContent: "", title: "" };
     await widget.openForCurrent();
+    expect(widget.multipv).toBe(1);
     await widget._setMultipv(3);
     expect(sent).toEqual([["open", 1], ["update", 3]]);
     expect(widget.multipv).toBe(3);
+    // The readout counts only what is shown: with the Coach on there is no extra line.
+    expect(widget.linesReadout.textContent).toBe("3");
+    expect(widget.linesReadout.title).toBe("Lines shown");
     // The subscription is the paint path — no sampler. Each depth the engine reports
     // repaints the rows; the depth readout follows it.
     expect(typeof push).toBe("function");

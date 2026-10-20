@@ -36,7 +36,7 @@ class EngineWidget {
     this.lastSnapshot = null;
     // The engine line shown on the board (see _previewLine), or null.
     this.preview = null;
-    // Lines shown, and (see _searchMultipv) the width of the search behind them.
+    // Lines shown, and the width of the search behind them: always the same number.
     this.multipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
@@ -145,19 +145,6 @@ class EngineWidget {
     }
   }
 
-  // Lines the search must cover. The card shows `this.multipv` rows. Build's Explorer row
-  // evals come from their own worker, so there the search is exactly the lines shown. On
-  // Analyze, though, the coach's engine review reads the best ALTERNATIVE in the position
-  // before a move — that gap is what "only move" and the Brilliant/Great verdict turn on —
-  // and it reads it from this same search (onWidgetSnapshot). So while that review is on,
-  // ask for the second line up front: the coach would otherwise widen the same position a
-  // moment later, and the store restarts the lane wider, throwing the narrow search away
-  // (measured per stepped position at depth 16: 295k nodes as one search, 361k as two).
-  _searchMultipv() {
-    const coach = activeViewName() === "analyze" ? getAnalyzeSession()?.positionCoach : null;
-    return coach?.enabled ? Math.max(2, this.multipv) : this.multipv;
-  }
-
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
   async onBoardChanged() {
     if (!this.open) return;
@@ -168,7 +155,7 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await engine.update({ fen, multipv: this._searchMultipv() });
+      const snapshot = await engine.update({ fen, multipv: this.multipv });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
       // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
       // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
@@ -189,7 +176,7 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      const snapshot = await engine.open({ fen, multipv: this._searchMultipv() });
+      const snapshot = await engine.open({ fen, multipv: this.multipv });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
       // while open() was in flight (see onBoardChanged).
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
@@ -212,7 +199,7 @@ class EngineWidget {
     const engine = this.engine;
     const fen = this.lastFen || this.currentFen();
     try {
-      const snapshot = await engine.update({ fen, multipv: this._searchMultipv() });
+      const snapshot = await engine.update({ fen, multipv: this.multipv });
       // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
       // board changed, or the line count was clicked again (this.multipv !== clamped). See
       // onBoardChanged.
@@ -316,12 +303,7 @@ class EngineWidget {
   _renderLinesReadout() {
     if (!this.linesReadout) return;
     this.linesReadout.textContent = `${this.multipv}`;
-    // On Analyze the coach's review reads the best alternative, so the search covers one
-    // line more than the card shows. The count stays the lines shown; the tooltip says so.
-    const extra = this._searchMultipv() > this.multipv;
-    this.linesReadout.title = extra
-      ? `${this.multipv} shown, plus the coach's best alternative`
-      : "Lines shown";
+    this.linesReadout.title = "Lines shown";
     if (this.linesDownBtn) this.linesDownBtn.disabled = this.multipv <= this.minMultipv;
     if (this.linesUpBtn) this.linesUpBtn.disabled = this.multipv >= this.maxMultipv;
   }
@@ -426,7 +408,6 @@ class EngineWidget {
   // The subscription stays on the provider instance it was made for.
   _watch() {
     this._unwatch();
-    this._renderLinesReadout(); // the readout's tooltip names the coached extra line
     if (!this.open) return;
     const engine = this.engine;
     const fen = this.lastFen;
