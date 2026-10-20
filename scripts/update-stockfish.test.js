@@ -20,10 +20,10 @@ describe("Stockfish release selection", () => {
 
 const sha = "candidate-sha";
 const passed = () => ({ headSha: sha, conclusion: "success",
-  jobs: ["python", "postgres", "js", "stockfish", "e2e"].map(name => ({ name, conclusion: "success" })) });
+  jobs: ["python", "postgres", "js", "stockfish", "e2e", "docker"].map(name => ({ name, conclusion: "success" })) });
 
 describe("Stockfish CI merge gate", () => {
-  it("requires the exact head and all five successful jobs", () => {
+  it("requires the exact head and all six successful jobs", () => {
     expect(() => assertCiPassed(passed(), sha)).not.toThrow();
     expect(() => assertCiPassed({ ...passed(), headSha: "other-sha" }, sha)).toThrow(/CI must pass/);
     expect(() => assertCiPassed({ ...passed(), conclusion: "failure" }, sha)).toThrow(/CI must pass/);
