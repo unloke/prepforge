@@ -8,12 +8,13 @@
 /* ---- Section nav ------------------------------------------------------- */
 
 /* The phone header is hidden on wide screens, so on desktop the page needs a
-   name of its own: the title spans the grid above the index and the cards. */
+   name of its own: the title spans the width above the section strip. */
 @media (min-width: 761px) {
   #view-settings .page-head {
-    display: block;
-    grid-column: 1 / -1;
-    margin: 0 0 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 10px;
   }
   #view-settings .page-head h1 {
     margin: 0;
@@ -25,27 +26,55 @@
   }
 }
 
-.settings-nav { top: 12px; }
+/* The section you are in, named beside the page title: the heading and the
+   strip answer "where am I" with the same word at the same moment. */
+.settings-here {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 600;
+}
+.settings-here::before {
+  content: "/";
+  margin-right: 10px;
+  color: var(--line-strong);
+  font-weight: 400;
+}
+.settings-here span { color: var(--text); }
+
+.settings-nav {
+  width: fit-content;
+  max-width: 100%;
+}
 .settings-nav-link {
-  padding: 6px 10px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
   border-radius: var(--radius);
   color: var(--muted);
+  font-size: 14px;
   font-weight: 550;
+  white-space: nowrap;
   text-decoration: none;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.settings-nav-link:hover { background: var(--surface-3); }
+.settings-nav-link:hover { background: var(--surface-3); color: var(--text); }
 .settings-nav-link:active { transform: scale(0.97); }
-/* The section you are in is a soft accent plate, the same signal the rail
-   uses for the active page. */
+/* The open section is a filled ink plate: the strongest mark on the page, so
+   "where am I" is answered without reading. Weight stays the same between the
+   two states - a heavier label would reflow the strip on every jump. */
 .settings-nav-link.is-active {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  font-weight: 650;
+  background: var(--text);
+  color: var(--panel);
 }
-.settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- Cards + rows ------------------------------------------------------ */
+
+/* A jump to a section lands its title below the sticky strip, not under it. */
+.settings-content > .set { scroll-margin-top: 64px; }
 
 .set {
   padding: 12px 14px;
@@ -239,7 +268,8 @@
    follows the page down. The shared view-enter keyframes do the travel, so
    this reads like the rest of the app. The animation hangs off the active
    view, so it plays again every time the page is opened. */
-#view-settings.is-active .page-head h1 {
+#view-settings.is-active .page-head h1,
+#view-settings.is-active .settings-here {
   animation: view-enter var(--dur) var(--ease-out) both;
 }
 #view-settings.is-active .settings-nav-link {

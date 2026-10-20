@@ -107,3 +107,6 @@ tmp/
 research/**/*.pt
 # Paused LLM coach line; still in use by a local review server, archive when it stops
 /research/sft/
+
+# taste-skill inspector working files
+.taste-skill/

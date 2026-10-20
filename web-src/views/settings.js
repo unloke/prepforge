@@ -500,6 +500,12 @@ export function createSettingsView({
     window.location.reload();
   }
 
+  // One info pop is open at most: opening one closes the rest.
+  function closeInfoPops() {
+    for (const pop of document.querySelectorAll("#view-settings .pf-info-pop")) pop.hidden = true;
+    for (const btn of document.querySelectorAll("#view-settings .pf-info")) btn.setAttribute("aria-expanded", "false");
+  }
+
   function toggleInfoPop(btnId, popId) {
     const btn = document.getElementById(btnId);
     const pop = document.getElementById(popId);
@@ -515,31 +521,37 @@ export function createSettingsView({
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       const open = pop.hidden;
-      for (const other of document.querySelectorAll("#view-settings .pf-info-pop")) {
-        other.hidden = true;
-      }
-      for (const other of document.querySelectorAll("#view-settings .pf-info")) {
-        other.setAttribute("aria-expanded", "false");
-      }
+      closeInfoPops();
       pop.hidden = !open;
       btn.setAttribute("aria-expanded", String(open));
     });
   }
 
-  // Section nav (prototype 180px column): click scrolls the card into view and
-  // marks the link active; a scroll spy keeps the active marker honest while
-  // the user scrolls the long card list by hand. Mobile keeps the nav as a
-  // horizontal chip row (CSS), same behaviour.
+  // Section nav: click scrolls the card into view and marks the link active; a
+  // scroll spy keeps the active marker honest while the user scrolls by hand.
+  // The same id names the section beside the page title, so the heading and the
+  // strip never disagree. On a phone the strip wraps into rows that all fit.
   function markActiveSection(id) {
+    let label = "";
     document.querySelectorAll(".settings-nav .settings-nav-link").forEach((link) => {
-      link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+      const active = link.getAttribute("href") === `#${id}`;
+      link.classList.toggle("is-active", active);
+      // aria-current is the accessible form of the same mark.
+      if (!active) return link.removeAttribute("aria-current");
+      link.setAttribute("aria-current", "true");
+      label = link.textContent.trim();
     });
+    const here = document.getElementById("settings-current");
+    if (here && label) here.textContent = label;
   }
 
   function bindSectionNav() {
     const nav = document.querySelector(".settings-nav");
     if (!nav || nav.dataset.navBound === "1") return;
     nav.dataset.navBound = "1";
+    // The markup paints Account as the open section; this names it in the
+    // heading too, so the two agree from the first frame.
+    markActiveSection((nav.querySelector(".settings-nav-link.is-active")?.getAttribute("href") || "").slice(1) || "set-account");
     // A clicked link stays the active marker while its smooth scroll settles: a
     // short page cannot always bring the target to the spy line, so the spy
     // would otherwise hand the marker to a taller neighbour mid-scroll.
@@ -577,21 +589,20 @@ export function createSettingsView({
           markActiveSection(lockedId);
           return;
         }
-        const probe = window.innerHeight * 0.35;
-        let current = null;
-        for (const section of sections()) {
-          const rect = section.getBoundingClientRect();
-          if (rect.top <= probe && rect.bottom > probe) {
-            current = section.id;
-            break;
-          }
-        }
-        // Past the last section's top (short final card scrolled up), keep the
-        // last id active rather than dropping the marker entirely.
-        if (!current) {
-          const list = sections();
-          const last = list[list.length - 1];
-          if (last && last.getBoundingClientRect().top <= probe) current = last.id;
+        const list = sections();
+        // A window that shows every card at once has no section "in front of
+        // you", only the one you last jumped to: the spy stays out of the
+        // click's way there.
+        if (document.documentElement.scrollHeight - window.innerHeight < window.innerHeight * 0.5) return;
+        // The last card whose top passed the probe line - also the right answer
+        // when the line sits in the gap between two cards. At the bottom of the
+        // page a last card too short to reach the line still counts, once it
+        // sits in the upper half of the screen.
+        const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+        const probe = window.innerHeight * (atEnd ? 0.5 : 0.35);
+        let current = list[0]?.id ?? null;
+        for (const section of list) {
+          if (section.getBoundingClientRect().top <= probe) current = section.id;
         }
         if (current) markActiveSection(current);
       });
@@ -644,12 +655,7 @@ export function createSettingsView({
     toggleInfoPop("connections-info", "connections-info-pop");
     document.getElementById("view-settings")?.addEventListener("click", (event) => {
       if (event.target.closest(".pf-info, .pf-info-pop")) return;
-      for (const other of document.querySelectorAll("#view-settings .pf-info-pop")) {
-        other.hidden = true;
-      }
-      for (const other of document.querySelectorAll("#view-settings .pf-info")) {
-        other.setAttribute("aria-expanded", "false");
-      }
+      closeInfoPops();
     });
 
     const refreshBtn = document.getElementById("settings-refresh");
