@@ -9,11 +9,17 @@ import { analyzeGamePositions, isTerminalPosition } from "./game-analyzer.js";
 //   live  — the interactive Stockfish read (Engine panel, Coach), MultiPV, any depth
 //   game  — the whole-game pass's single-line eval (also seeded from a saved analysis)
 //   maia  — human-model reads per rating, batched into shared forwards
-// Consumers lease a position instead of owning a worker. A small, fixed pool of
-// interactive lanes keeps its Stockfish workers warm and moves them between
-// positions with `update`, so stepping through a game never boots a worker per
-// ply. The whole-game pass keeps its own dedicated pool (full throughput) and
-// only exchanges finished results with the store.
+// Consumers lease a position instead of owning a worker. The interactive lanes
+// keep their Stockfish workers warm and move them between positions with
+// `update`, so stepping through a game never boots a worker per ply. The
+// whole-game pass keeps its own dedicated pool (full throughput) and only
+// exchanges finished results with the store.
+//
+// One lane per engine this device runs. Every lane holds a reserved WASM heap
+// (384 MiB for the full net, 256 MiB for lite), and the device budget hands out
+// exactly that many engines: a lane past the budget never gets one of its own —
+// registering as idle makes the budget reclaim a warm lane's worker, which the
+// next step then boots again, and every boot reserves the heap afresh.
 
 // The halfmove clock affects fifty-move draws; only the fullmove number is irrelevant.
 export function positionKey(fen) {
@@ -60,18 +66,23 @@ export function createPositionAnalysisStore({
   createProvider = createEngineProvider,
   analyzeFn = analyzeGamePositions,
   getMaia = null,
-  lanes: laneCount = 2,
+  lanes: laneCount = null,
   idleCloseMs = 60000,
   cacheSize = 600,
   maxNodes = ANALYSIS_MAX_NODES,
   maiaBatchSize = 16,
+  // The engine budget the lanes share. Injectable for tests; the live flow uses the
+  // page-wide one that also hands out the whole-game pass's workers.
+  budget = stockfishBudget,
   // (fen, uciLine) => sanLine; game-pass results arrive as UCI only.
   sanLine = null,
   // fen => a saved whole-game eval for it (an analysis loaded from the server), or null.
   savedEval = null,
 } = {}) {
   const entries = new Map();
-  const lanes = Array.from({ length: Math.max(1, laneCount) }, (_, id) => ({
+  // One lane per engine this device runs (see the header); a caller that supplies its
+  // own providers states the count itself.
+  const lanes = Array.from({ length: Math.max(1, laneCount ?? budget.snapshot().limit) }, (_, id) => ({
     id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null,
   }));
   let clock = 0;
@@ -164,7 +175,7 @@ export function createPositionAnalysisStore({
       Promise.resolve(provider.close()).catch(() => {});
     };
     lane.idleTimer = setTimeout(reclaim, idleCloseMs);
-    if (createProvider === createEngineProvider) lane.unregisterIdle = stockfishBudget.registerIdle(reclaim);
+    if (createProvider === createEngineProvider) lane.unregisterIdle = budget.registerIdle(reclaim);
   }
 
   // Keep the deeper of an interrupted search and an earlier read.
@@ -527,6 +538,9 @@ export function createPositionAnalysisStore({
     stats() {
       return { entries: entries.size, lanes: lanes.map((l) => ({ busy: !!l.entry, warm: !!l.provider, depth: l.depth })) };
     },
+    get laneCount() {
+      return lanes.length;
+    },
     clear() {
       generation += 1;
       for (const lane of lanes) {
@@ -548,7 +562,20 @@ export function createPositionAnalysisStore({
       maiaQueue.clear();
     },
   };
-  if (createProvider === createEngineProvider) subscribeUsableEngineProfile(() => {
+  if (createProvider === createEngineProvider) subscribeUsableEngineProfile((profile) => {
+    // The device's engine count changed (a Detect, a settings pick): the lanes follow
+    // it, or a device that just stepped down to one worker keeps two lanes fighting
+    // over the single engine it is allowed.
+    while (lanes.length > profile.workers) {
+      const lane = lanes.pop();
+      lane.unregisterIdle?.();
+      unwatch(lane);
+      clearTimeout(lane.idleTimer);
+      if (lane.provider) void lane.provider.close();
+    }
+    for (let id = lanes.length; id < profile.workers; id += 1) {
+      lanes.push({ id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null });
+    }
     // Keep leases attached while replacing all engine-derived state. In particular,
     // first-use detection must not orphan the board request that triggered it.
     for (const lane of lanes) {

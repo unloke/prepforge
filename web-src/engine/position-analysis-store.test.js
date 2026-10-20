@@ -419,3 +419,30 @@ describe("maia channel", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+// A phone runs one engine; every lane reserves a whole WASM heap, and a lane past the
+// budget makes the budget reclaim a warm worker on each step — a fresh heap per ply.
+describe("interactive lanes follow the device's engine budget", () => {
+  const engineStore = (limit) => createPositionAnalysisStore({
+    createProvider: fakeProvider,
+    budget: { limit, snapshot: () => ({ limit }), registerIdle: () => () => {} },
+  });
+
+  it("runs one lane on a device with one engine, however many workers the views ask for", async () => {
+    const s = engineStore(1);
+    expect(s.laneCount).toBe(1);
+    // The Engine card and the Coach both hold the same position: one search, one lane.
+    const engine = s.acquire(A, { depth: 16, multipv: 1 });
+    const coach = s.acquire(A, { depth: 16, multipv: 1 });
+    expect(s.stats().lanes).toHaveLength(1);
+    engine.release();
+    coach.release();
+    s.clear();
+  });
+
+  it("runs one lane per engine on a device with three", () => {
+    const s = engineStore(3);
+    expect(s.laneCount).toBe(3);
+    s.clear();
+  });
+});
