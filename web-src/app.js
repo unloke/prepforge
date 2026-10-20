@@ -42,6 +42,7 @@ import {
   createEngineProvider,
   isBrowserEngineAvailable,
 } from "./engine/stockfish-provider.js";
+import { setupOnFirstVisit } from "./engine/engine-profile.js";
 import {
   getSharedMaia3Provider,
   disposeSharedMaia3Provider,
@@ -7263,6 +7264,10 @@ async function init() {
   handleBillingReturn();
   syncWorkspaceUrl();
   await resumeAfterSignIn(signInReturn);
+  // A signed-in device with no engine setup of its own measures one for itself,
+  // idle after the first screen is up. It must come after the session is known,
+  // so a guest does not download and probe the engine.
+  if (appState.signedIn) setupOnFirstVisit();
 }
 
 function handleOAuthErrorFromUrl() {

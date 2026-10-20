@@ -1,5 +1,5 @@
 import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
-  engineSetupState, subscribeEngineSetup, prepareFullEngine, engineWorkerLimit } from "../engine/engine-profile.js";
+  engineSetupState, subscribeEngineSetup, prepareFullEngine, engineWorkerChoices } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
 // Settings tab rendering (lazy-loaded from app.js).
@@ -144,11 +144,15 @@ export function createSettingsView({
     });
     paint("settings-net-seg", "net", profile.net);
     paint("settings-workers-seg", "workers", profile.workers);
-    // A device that holds one engine (a phone) shows one: offering 2 and 3 would
-    // be asking for a choice the hardware cannot run.
-    const limit = engineWorkerLimit();
+    // Only the steps this device measured are offered: asking for a count it never
+    // ran, or for the net the ladder stopped at, would start heaps Detect could not
+    // hold.
+    const choices = engineWorkerChoices();
+    document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.disabled = choices[btn.dataset.net] < 1;
+    });
     document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
-      btn.disabled = Number(btn.dataset.workers) > limit;
+      btn.disabled = Number(btn.dataset.workers) > choices[profile.net];
     });
     const detectBtn = document.getElementById("settings-detect");
     if (detectBtn) detectBtn.disabled = busy;
