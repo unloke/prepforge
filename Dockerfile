@@ -12,9 +12,6 @@
 # --- SPA build (keyed on the frontend sources and lockfile) --------------------
 FROM node:22-slim AS spa
 
-# The image never runs a browser; keep Playwright from downloading Chromium.
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-
 WORKDIR /app
 # Only what `npm run build` reads: the lockfile installs the pinned Vite/Stockfish/
 # ONNX packages, and the sync scripts vendor the engine files Vite's publicDir copies.
