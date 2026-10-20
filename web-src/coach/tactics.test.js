@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import { detectTactics, describeThreat, describeAnyThreat } from "./tactics.js";
 
-describe("tactics — forks", () => {
+describe("tactics: forks", () => {
   it("sees a knight forking the king and a rook", () => {
     // Black king e8, rook a8; White knight just landed on c7 (Nc7+).
     const m = describeThreat("r3k3/2N5/8/8/8/8/8/4K3 b - - 0 1", "e6c7", "w");
@@ -21,7 +21,7 @@ describe("tactics — forks", () => {
   });
 });
 
-describe("tactics — pins and skewers", () => {
+describe("tactics: pins and skewers", () => {
   it("calls an absolute pin a pin to the king", () => {
     // Bishop g5, knight f6, king d8 behind on the long diagonal.
     const m = describeThreat("3k4/8/5n2/6B1/8/8/8/4K3 b - - 0 1", "h4g5", "w");
@@ -48,7 +48,7 @@ describe("tactics — pins and skewers", () => {
   });
 });
 
-describe("tactics — quiet positions", () => {
+describe("tactics: quiet positions", () => {
   it("reports nothing when there is nothing", () => {
     expect(describeThreat("6k1/8/8/8/8/8/8/4K3 w - - 0 1", "e1e2", "w")).toBeNull();
     expect(describeAnyThreat("6k1/8/8/8/8/8/8/4K3 w - - 0 1", "w")).toBeNull();

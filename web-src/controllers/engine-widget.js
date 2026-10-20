@@ -273,15 +273,15 @@ class EngineWidget {
     setEngineBestArrow(null);
     const text =
       over.kind === "checkmate"
-        ? `Checkmate — ${over.winner === "white" ? "White" : "Black"} wins`
+        ? `Checkmate: ${over.winner === "white" ? "White" : "Black"} wins`
         : over.kind === "stalemate"
-          ? "Stalemate — draw"
+          ? "Stalemate, draw"
           : "Draw";
     if (this.pvsEl) {
       this.pvsEl.innerHTML =
         html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
     }
-    if (this.depthReadout) this.depthReadout.textContent = "—";
+    if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
     this._paintDepth(null, null);
     if (this.evalBarWhite) {
       const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
@@ -296,7 +296,8 @@ class EngineWidget {
     return true;
   }
 
-  // Depth reads as its own number with a progress hairline; the tooltip names it.
+  // Depth reads as its own number: "14/20" says how far the search has come
+  // and how far it can go; the tooltip names it.
   _paintDepth(current, target) {
     const el = this.depthReadout;
     if (!el) return;
@@ -305,8 +306,7 @@ class EngineWidget {
     // Number(null) is 0, so only a real positive ceiling counts as a target.
     const hasCur = Number.isFinite(cur);
     const hasMax = Number.isFinite(max) && max > 0;
-    el.dataset.d = hasCur ? String(cur) : "";
-    el.style.setProperty("--p", hasCur && hasMax ? String(Math.min(1, cur / max)) : "0");
+    el.dataset.d = hasCur ? (hasMax ? `${cur}/${max}` : String(cur)) : "";
     el.title = hasCur ? `Search depth ${cur}${hasMax ? ` of ${max}` : ""}` : "";
   }
 

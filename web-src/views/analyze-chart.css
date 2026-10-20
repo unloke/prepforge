@@ -9,6 +9,70 @@
    classes carry a colour role only: .eval-dot fills with currentColor,
    .eval-cliff strokes with it. */
 
+/* This page's own rules over the shared chrome --------------------- */
+
+/* The panel is a surface on a grey page, not a card floating over it: the
+   tone step already separates it from the board, so it carries no edge and no
+   shadow. Its head is a row of actions, not a titled section, so nothing
+   rules it off from the band below. */
+#analyze-sidebar.panel {
+  border: 0;
+  box-shadow: none; /* taste-skill-ignore: the shared .panel paints a resting shadow */
+}
+#analyze-sidebar .panel-head {
+  border-bottom: 0;
+}
+
+/* One filled action on the panel: once the report is on it, the accent belongs
+   to the handoff below, and running the analysis again is a quiet text action.
+   The phone's own bar keeps its filled button. */
+@media (min-width: 861px) {
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #run-analysis {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+  }
+  #analyze-sidebar:has(#analysis-results:not([hidden])) #run-analysis:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--text);
+  }
+}
+
+/* The board bar's rule is the last line on the phone; the board's own frame
+   and the evaluation row's tone already say where the board ends. */
+#view-analyze .board-bar {
+  border-bottom: 0;
+}
+
+/* The last move's tint. The shared sheet paints it as a gradient over the
+   square's own fill, which paints the square button with a gradient; a flat
+   mix of the tint into the square's colour says the same thing in one
+   colour. The board's own mark vocabulary (the legal ring, the arrow
+   colour) is shared chrome and stays as it is. */
+#view-analyze .square.last-move {
+  background-image: none;
+  background-color: color-mix(in srgb, var(--square-light) 82%, var(--last-move));
+}
+#view-analyze .square.dark.last-move {
+  background-color: color-mix(in srgb, var(--square-dark) 82%, var(--last-move));
+}
+
+/* Captions on this page are read, not decoration: the drawer titles, the
+   history rows and the coach's own link all carry meaning, so they read at
+   the body size rather than at the app's 12px chrome size. */
+#view-analyze .board-sub,
+#analyze-open .drawer > summary,
+#analyze-open .btn.sm,
+#analyze-open .history-item .hi-open,
+#analyze-open .history-item .hi-meta {
+  font-size: 13px;
+}
+/* The coach's own link sits inside the card's own rules, so it needs a
+   selector that reaches past them. */
+.coach-card .coach-bookaction {
+  font-size: 13px;
+}
+
 /* Panel head + coach card ------------------------------------------ */
 
 /* The head is one row: the game's identity, then the actions. The tag line
@@ -27,16 +91,17 @@
 
 /* Fixed height: the coach's comment changes length on every move, and a
    growing card used to shove the chart and move list up and down ("jitter").
-   A longer note scrolls inside its own row; the human picks stay pinned under it. */
+   A longer note scrolls inside its own row; the human picks stay pinned under it.
+   The card is a quiet band of its own tone, not a box with an edge. */
 .coach-card {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 140px;
+  height: 118px;
   padding: 10px 12px;
   background: var(--panel-soft);
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -66,16 +131,18 @@
   display: none;
 }
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
-   never depends on colour alone (the words say it too). */
+   never depends on colour alone (the words say it too). The paragraph takes
+   the room the card has, so the rule runs the height of the card instead of
+   the height of the note. */
 .coach-prose {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;
   padding: 2px 0 2px 11px;
   border-left: 3px solid var(--line);
-  font-size: 13.5px;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--text);
   transition: border-color var(--dur-fast) var(--ease-out);
@@ -121,38 +188,46 @@
   gap: 5px;
   height: 22px;
   padding: 0 8px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 26%, transparent) var(--p), transparent var(--p)),
-    var(--surface-3);
+  background: var(--surface-3);
   color: var(--text);
   font: inherit;
   font-size: var(--fs-xs);
   white-space: nowrap;
   cursor: pointer;
 }
-.hp:hover { border-color: var(--line-strong); }
+.hp:hover { background: var(--line); }
 .hp b { overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
 .hp-pct { color: var(--muted); }
-.hp.is-played { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.hp.is-best b::before { content: "✓ "; color: var(--good-text); }
+/* The move the player actually made sits a step darker than its neighbours. */
+.hp.is-played { background: var(--line); }
+/* The engine's own choice wears a disc, not a tick: a shape that needs no
+   character to read. */
+.hp.is-best::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--good-text);
+}
 .coach-bookline {
   padding-top: 8px;
-  border-top: 1px dashed var(--line);
 }
 .coach-maia[hidden],
 .coach-bookline[hidden] {
   display: none;
 }
+/* The book line is a quiet link in the coach's own row, not a button in a box. */
 .coach-bookaction {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   margin-left: 2px;
-  padding: 1px 8px;
-  border: 1px solid var(--accent);
-  border-radius: 10px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
   background: none;
   color: var(--accent-text);
   font: inherit;
@@ -192,7 +267,7 @@
    nothing below it moves. */
 .res-stack.is-visible > .res-block {
   animation: res-block-enter var(--dur) var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 @keyframes res-block-enter {
   from {
@@ -213,14 +288,15 @@
 .res-block[hidden] {
   display: none;
 }
-/* Evaluation card: game graph + live engine lines, between Coach and moves. */
+/* Evaluation card: game graph + live engine lines, between Coach and moves.
+   It is the instrument, so it sits in a recessed band with no edge of its own. */
 .eval-card {
   flex: none;
   min-width: 0;
   padding: 10px 12px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
-  background: var(--panel);
+  background: var(--surface-3);
   gap: 8px;
 }
 #analyze-sidebar .panel-scroll > * { min-width: 0; }
@@ -291,27 +367,31 @@
 .ev-meter {
   height: 12px;
   min-width: 0;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: 4px;
   background: var(--eval-side-black);
   overflow: hidden;
 }
+/* The track keeps its own edge: the win meter is an eval display, so it is
+   real interface and keeps its line (data-ui). */
+#analysis-eval-meter[data-ui] { border: 1px solid var(--line-strong); }
 .ev-meter > i {
   display: block;
   width: 100%;
   height: 100%;
   transform-origin: left center;
-  transform: scaleX(0.5);
+  /* Empty until a number paints it: a mid-width fill reads as a real 50/50. */
+  transform: scaleX(0);
   background: var(--eval-side-white);
   transition: transform var(--dur-slow) var(--ease-out);
 }
-/* No number yet: an empty track, not a mid-width fill that reads as a real
-   evaluation. */
-.ev-head:not(.has-eval) .ev-meter { opacity: 0.35; }
-.ev-head:not(.has-eval) .ev-meter > i { transform: scaleX(0); }
-/* Search depth as a word plus quiet figures and a hairline of progress. */
+/* No number, no win share: an empty track the width of the card reads as a
+   bar that is stuck. The row keeps its label and its action; the middle stays
+   open until there is a number to fill the track with. */
+.ev-head:not(.has-eval) .ev-meter { display: none; }
+/* Search depth as a word plus quiet figures: "Depth 14/20" says how far the
+   search has come without a progress bar under it. */
 #analysis-engine-slot .engine-head-depth {
-  --p: 0;
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
@@ -331,8 +411,6 @@
   content: attr(data-d);
   font-size: 11px;
   font-weight: 650;
-  background: linear-gradient(var(--accent), var(--accent)) 0 100% / calc(var(--p) * 100%) 2px no-repeat,
-    linear-gradient(var(--line), var(--line)) 0 100% / 100% 2px;
 }
 #analysis-engine-slot .engine-head-depth:not([data-d])::after { content: ""; }
 /* Lines: a word before the stepper, so the count has a name. Only in the
@@ -343,7 +421,9 @@
   color: var(--muted);
 }
 #analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
-#analysis-engine-slot .engine-step {
+/* The line stepper is a control: it keeps its own edge (the engine slot is
+   real interface, marked data-ui). */
+#analysis-engine-slot[data-ui] .engine-step {
   width: 18px;
   height: 18px;
   background: none;
@@ -358,9 +438,9 @@
   gap: 6px;
   height: 24px;
   padding: 0 9px 0 8px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
-  background: var(--panel);
+  background: var(--panel-soft);
   color: var(--muted);
   font: inherit;
   font-size: var(--fs-xs);
@@ -374,12 +454,14 @@
   border-radius: 50%;
   background: var(--line-strong);
 }
-.ev-engine:hover { color: var(--text); }
+.ev-engine:hover { color: var(--text); background: var(--surface-3); }
 .ev-engine:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ev-engine.is-active { border-color: var(--accent); color: var(--text); }
+.ev-engine.is-active { color: var(--text); }
+/* The active engine says so with a bigger disc, not with a ring around it. */
 .ev-engine.is-active::before {
   background: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  width: 8px;
+  height: 8px;
 }
 /* Engine lines: one 22px row each, eval as muted figures, the move list cut
    at the edge (a click unfolds it). */
@@ -441,7 +523,7 @@
 .analysis-job-dock :is(.notice-icon, .notice-title, .notice-track, .notice-close) { display: none; }
 .analysis-job-dock > .notice .notice-main { grid-column: 1; display: block; }
 .analysis-job-dock > .notice .notice-actions { grid-column: 2; }
-.analysis-job-dock > .notice .notice-text { white-space: normal; overflow-wrap: anywhere; }
+.analysis-job-dock > .notice .notice-text { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
 .rb-head {
   display: flex;
   flex-wrap: wrap;
@@ -462,18 +544,23 @@
   display: block;
   width: 100%;
   height: 64px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
   /* The plies run edge to edge: the first/last ply's ring and markers overhang
-     the side borders instead of being clipped. */
+     the field instead of being clipped. */
   overflow: visible;
-  /* Mid-grey field in both themes, so the light (White) and dark (Black)
-     areas each stand out from it instead of melting into the page. */
-  background: color-mix(in srgb, var(--muted) 45%, var(--panel-soft));
+  border-radius: 6px;
+  /* The field is its own fill: a mid tone with the two side tones standing
+     clear of it, so White's area and Black's area each read at a glance.
+     The mix is of the theme's own piece colours, so it follows the theme. */
+  --eval-field: color-mix(in srgb, var(--eval-side-white) 45%, var(--eval-side-black));
+  background: var(--eval-field);
+}
+:root[data-theme="dark"] .eval-chart {
+  /* A darker field in the dark theme: the white area stays the bright one. */
+  --eval-field: color-mix(in srgb, var(--eval-side-white) 30%, var(--eval-side-black));
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
-.eval-chart .eval-area-white { fill: #f4f3ef; stroke: none; }
-.eval-chart .eval-area-black { fill: #25282d; stroke: none; }
+.eval-chart .eval-area-white { fill: var(--eval-side-white); stroke: none; }
+.eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
 .eval-chart .eval-line {
   fill: none;
   stroke: var(--accent-strong);
@@ -481,8 +568,8 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.eval-chart .eval-cliff { stroke-width: 2.5; stroke-linecap: round; stroke: currentColor; }
-.eval-chart .eval-dot { fill: currentColor; stroke: var(--panel); stroke-width: 1.5; }
+.eval-chart .eval-cliff { stroke-width: 1.5; stroke-linecap: round; stroke: currentColor; }
+.eval-chart .eval-dot { fill: currentColor; stroke: none; }
 .eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
 .eval-chart .eval-cursor-dot {
   fill: none;
@@ -536,7 +623,7 @@
   transform: translateX(-50%);
   z-index: 5;
   padding: 4px 8px;
-  border: 1px solid var(--line-strong);
+  border: 0;
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
@@ -551,23 +638,28 @@
   text-overflow: ellipsis;
   pointer-events: none;
 }
+/* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
+#eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
 
 /* Moves: the mainline is a three-column grid (number | White | Black); a
    variation the reader explores interrupts it as a full-width row. Only the
-   direct children of the mainline are grid cells — variation moves keep the
+   direct children of the mainline are grid cells: variation moves keep the
    shared inline tree flow. The list sits inside the scrolling panel, so it
    does not contain overscroll: at its top/bottom the wheel moves the panel
    (or the page when stacked) instead of feeling stuck. */
 .moves-grid {
   max-height: 190px;
   overflow: auto;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
   font-size: 13px;
 }
 .moves-grid .mtree-line.is-main {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
+  /* The two sides of a move belong to each other: sized to their content they
+     sit next to one another, the way a score sheet prints them. */
+  grid-template-columns: 32px max-content max-content;
+  column-gap: 18px;
 }
 .moves-grid .mtree-line.is-main > .mtree-num {
   grid-column: 1;
@@ -581,7 +673,9 @@
 .moves-grid .mtree-line.is-main > .mtree-move {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* The grade belongs to the move beside it: pushed to the far end of the
+     column it sat 190px away, closer to the next move than to its own. */
+  justify-content: flex-start;
   gap: 6px;
   margin: 0;
   padding: 3px 8px;
@@ -591,7 +685,8 @@
 }
 .moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-current { box-shadow: none; }
+/* The move list keeps the shared tree's own tiles: the selected move is filled
+   and raised there too, so Analyze reads like the rest of the app. */
 .moves-grid .mtree-line.is-main > .mtree-var {
   grid-column: 1 / -1;
   margin: 2px 8px;
@@ -628,12 +723,12 @@
   grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  font-size: var(--fs-s);
+  font-size: var(--fs);
 }
 .cbar-track {
   display: flex;
   gap: 1px;
-  height: 16px;
+  height: 20px;
   overflow: hidden;
   border-radius: 3px;
 }
@@ -642,13 +737,15 @@
      squeezed to an unlabelled sliver and the grade never rests on colour. */
   flex-basis: 0;
   min-width: max-content;
-  padding: 0 4px;
+  padding: 0 5px;
   white-space: nowrap;
   border: 0;
+  /* The grade colours are dark in the light theme and light in the dark one,
+     so the ink on them flips with the theme (--accent-ink). */
   color: var(--accent-ink);
-  font-size: 10px;
+  font-size: var(--fs);
   font-weight: 700;
-  line-height: 16px;
+  line-height: 20px;
   text-align: center;
   cursor: pointer;
   transition: filter var(--dur-fast) var(--ease-out);
@@ -656,18 +753,23 @@
 .cbar-seg:hover {
   filter: brightness(1.08);
 }
+.cbar-seg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .cbar-seg-n {
   pointer-events: none;
 }
 .cbar-empty {
   color: var(--label);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
 }
 .seg-brilliant { background: var(--brilliant); }
 .seg-great { background: var(--great); }
-.seg-good { background: var(--good); }
-.seg-inaccuracy { background: var(--inaccuracy); }
-.seg-mistake { background: var(--warn); }
+.seg-good { background: var(--good-text); }
+/* The amber is light in both themes, so it takes dark ink. */
+.seg-inaccuracy { background: var(--inaccuracy); color: #1b1c1e; }
+.seg-mistake { background: var(--warn-text); }
 .seg-blunder { background: var(--danger); }
 .seg-missed { background: var(--missed); }
 
@@ -677,7 +779,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 8px;
   background: var(--panel-soft);
 }
@@ -685,7 +787,8 @@
   display: none;
 }
 
-/* F-03: saved-on-device notice + Retry save. F-04: batch import summary. */
+/* F-03: saved-on-device notice + Retry save. F-04: batch import summary.
+   A notice is a filled tint, not an outlined box. */
 .analysis-retry-save,
 .analysis-import-picker {
   display: flex;
@@ -693,9 +796,9 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+  border: 0;
   border-radius: 8px;
-  background: var(--panel-soft);
+  background: color-mix(in srgb, var(--warn) 14%, var(--panel-soft));
 }
 .analysis-retry-save[hidden],
 .analysis-import-picker[hidden] {
@@ -710,7 +813,6 @@
 .drawer {
   flex: none;
   padding-top: 8px;
-  border-top: 1px solid var(--line);
 }
 .drawer summary {
   display: flex;
@@ -746,6 +848,7 @@
 .analysis-history {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 .history-item {
   display: flex;
@@ -754,7 +857,6 @@
   gap: 8px;
   padding: 6px 4px;
   border: 0;
-  border-bottom: 1px solid var(--line);
   cursor: pointer;
 }
 .history-item .hi-open {
@@ -787,9 +889,6 @@
 .history-item .hi-delete:hover {
   color: var(--danger);
 }
-.history-item:last-child {
-  border-bottom: 0;
-}
 .history-item:hover {
   background: var(--panel-soft);
 }
@@ -818,11 +917,72 @@
    when shown, the handoff (52px), each with the 14px gap. Below that the
    panel scrolls instead. */
 @media (min-width: 861px) {
-  .analyze-main:has(> #analysis-results:not([hidden])) { min-height: 100%; }
+  /* The grade bars and the handoff sit after the results stack, so the stack
+     gives up the room they need: it takes what is left, they stay on screen. */
+  .analyze-main:has(> #analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
   #analysis-results:not([hidden]) { flex: 1 1 0; min-height: 172px; }
   #analysis-results:not([hidden]):has(> .analysis-handoff:not([hidden])) { min-height: 238px; }
   #analysis-results > :not(.moves-grid) { flex: none; }
   #analysis-results .moves-grid { flex: 1 1 0; min-height: 120px; max-height: none; }
+}
+
+/* ---- Motion ------------------------------------------------------------
+   This page is a tool: it moves to answer a touch, and once when a run
+   lands. Feedback is under the hand, the entrances are the results
+   arriving, and nothing that updates every second moves at all. */
+
+.ev-engine,
+.ev-report,
+.coach-bookaction,
+.history-item,
+.history-item .hi-open,
+.history-item .hi-delete {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+/* Press: the control gives a little under the finger. */
+.ev-engine:active,
+.ev-report:active,
+.coach-bookaction:active,
+.history-item .hi-open:active,
+.history-item .hi-delete:active {
+  transform: scale(0.97);
+}
+
+/* The live engine repaints the win share many times a second: a transition
+   would smear it into a blur. It jumps instead. */
+#analysis-eval-card.is-engine .ev-meter > i {
+  transition: none;
+}
+
+/* Reduced motion is fewer and gentler, never less: the blocks still arrive,
+   they just stop travelling, and the figures land at once. */
+@media (prefers-reduced-motion: reduce) {
+  .res-stack {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .res-stack.is-visible > .res-block,
+  .eval-chart.is-entering .eval-line,
+  .eval-chart.is-entering .eval-area,
+  .eval-chart.is-entering .eval-marker {
+    animation: none;
+  }
+  .ev-meter > i {
+    transition: none;
+  }
+  .ev-engine,
+  .ev-report,
+  .coach-bookaction,
+  .history-item,
+  .history-item .hi-open,
+  .history-item .hi-delete {
+    transition: none;
+  }
 }
 
 /* ---- Phone ------------------------------------------------------------
@@ -842,7 +1002,8 @@
   #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: under the engine, in the height the screen has left. */
+  /* Coach: under the engine, in the height the screen has left. It is a band of
+     its own tone, so it needs no rule above it. */
   #analysis-explain {
     order: 3;
     flex: 1 1 0;
@@ -852,10 +1013,8 @@
     margin: 0;
     padding: 8px 14px 10px;
     border: 0;
-    border-top: 1px solid var(--line);
     border-radius: 0;
-    background: var(--bg);
-    box-shadow: none;
+    background: var(--panel-soft);
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -882,9 +1041,13 @@
     left: 3px;
     width: 34px;
     height: 18px;
-    border: 1px solid var(--line-strong);
+    border: 0;
     border-radius: 999px;
     background: var(--panel-soft);
+  }
+  /* The switch is a form control: it keeps its own edge (data-ui). */
+  #analysis-explain .cc-head .pf-switch[data-ui]::before {
+    border: 1px solid var(--line-strong);
   }
   #analysis-explain .cc-head .pf-switch::after {
     content: "";
@@ -922,7 +1085,7 @@
   }
   #analysis-eval-card .ev-title { color: var(--muted); }
   #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
-  #analysis-eval-card .ev-meter { flex: none; width: 86px; }
+  #analysis-eval-card .ev-meter { flex: none; width: 64px; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
@@ -931,19 +1094,22 @@
     color: var(--muted);
     font-size: 13px;
     font-weight: 600;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    /* Two lines beat a clipped word: the row names the position in full. */
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
+  #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
     display: inline-flex;
     flex: none;
     align-items: center;
     height: 32px;
     padding: 0 12px;
-    border: 1px solid var(--line);
+    border: 0;
     border-radius: 999px;
-    background: var(--panel);
+    background: var(--panel-soft);
     color: var(--text);
     font: inherit;
     font-size: 13px;
@@ -972,7 +1138,6 @@
     border: 0;
     border-radius: 12px;
     background: var(--surface-3);
-    box-shadow: none;
   }
   #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
   #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
@@ -987,6 +1152,7 @@
   #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
+  #analyze-open .history-item .hi-open { font-size: 15px; }
   #analyze-open .history-item .hi-meta { font-size: 13px; }
   /* Touch target, and always visible: a phone has no hover to reveal it. */
   #analyze-open .history-item .hi-delete {

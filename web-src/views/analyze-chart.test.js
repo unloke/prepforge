@@ -213,8 +213,29 @@ describe("eval chart sizing", () => {
 describe("evaluation win meter", () => {
   it("draws an empty track, not a mid-width fill, while there is no number", () => {
     // A half-full bar with no figures beside it reads as a real 50/50 eval,
-    // so the fill is held at zero until a number paints it.
-    expect(ALL_STYLES).toMatch(/\.ev-head:not\(\.has-eval\) \.ev-meter > i \{ transform: scaleX\(0\); \}/);
+    // so the fill starts at zero until a number paints it.
+    expect(ALL_STYLES).toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\)/);
+    expect(ALL_STYLES).not.toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\.5\)/);
+  });
+});
+
+describe("class bars", () => {
+  it("keeps every count legible on its grade colour", () => {
+    // The grade colours are dark in the light theme and light in the dark one,
+    // so the ink on them flips with the theme. The amber is light in both, so
+    // it takes dark ink of its own.
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*color: var\(--accent-ink\)/);
+    expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
+  });
+});
+
+describe("coach note", () => {
+  it("sets the note at reading size and gives it the card's height", () => {
+    // The note is running text: 15px, and it takes the room the card has, so
+    // the quiet rule runs the height of the card and not the height of the note.
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*flex: 1 1 auto/);
   });
 });
 
@@ -242,6 +263,14 @@ describe("eval chart theme colours", () => {
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--accent-strong:/);
     expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-m-blunder\s*\{ color: var\(--danger\)/);
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--danger:/);
+  });
+
+  it("fills White's and Black's areas from the theme's own piece colours", () => {
+    // Hardcoded hexes made the dark theme draw a glaring white band; the
+    // tokens carry a dark-theme value for each side.
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-side-white\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-black\s*\{[^}]*fill: var\(--eval-side-black\)/);
+    expect(ALL_STYLES).not.toMatch(/\.eval-area-(white|black)\s*\{[^}]*fill: #/);
   });
 
   it("keeps the main-line stroke width constant when the SVG stretches", () => {

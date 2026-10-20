@@ -429,11 +429,15 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
     // Coach copy wraps instead of clipping; the card has a fixed height so a
-    // longer comment never shifts the chart below it.
+    // longer comment never shifts the chart below it. The height is what the
+    // reading-size note needs: a shorter card would clip the prose, a taller
+    // one would keep an empty band under it.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-card")).toMatch(/height:\s*140px/);
+    expect(rule(".coach-card")).toMatch(/height:\s*118px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
+    // The score sheet is sized to its content so the two sides of a move sit
+    // next to each other, the way a score sheet prints them.
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
     // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
