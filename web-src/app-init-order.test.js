@@ -281,3 +281,25 @@ describe("switchView does not re-read a view it is already on", () => {
     expect(branch).toMatch(/ensureDashboardView\(\)\.catch\(\(\) => \{\}\);/);
   });
 });
+
+// Every signed-in boot used to fetch /api/teams twice: an onAuthKnown hook loaded
+// the Teams view regardless of route, and restoreWorkspaceLocation's switchView
+// loaded it again when the route WAS Teams (3 calls on a Teams deep link). The
+// hook was redundant — restoreWorkspaceLocation always switches to the URL's
+// view once the session is known — so it is gone.
+describe("Teams data is read by the view that needs it, once", () => {
+  it("has no auth-known hook re-loading Teams behind the route", () => {
+    const entry = readFileSync(new URL("./account-entry.js", import.meta.url), "utf8");
+    expect(entry).not.toMatch(/onAuthKnown/);
+    expect(entry).not.toMatch(/live\("loadTeams"\)/);
+    const controller = readFileSync(new URL("./controllers/account.js", import.meta.url), "utf8");
+    // The parameter is gone too, not just left unpassed.
+    expect(controller).not.toMatch(/onAuthKnown/);
+  });
+
+  it("still reloads Teams when the view is entered", () => {
+    const src = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+    // switchView is the one path: a Teams route (boot restore or a click) loads it.
+    expect(src).toMatch(/if \(name === "teams"\) \{[\s\S]{0,400}?loadTeams\(\)/);
+  });
+});
