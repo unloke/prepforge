@@ -11,18 +11,22 @@ import { treeToMovetext } from "../analyze-pgn.js";
 // real interface: they keep their own lines, sizes and borders. The marker is
 // set here, when the module loads with the view, because the markup belongs
 // to the shell — and the empty view is on screen before anything is analysed.
-const INTERFACE_ROOTS = [
-  "#view-analyze .board-stack",
-  "#analysis-moves",
-  "#analysis-eval-meter",
-  "#eval-chart-tooltip",
-  "#analysis-engine-slot",
-  "#explain-engine-toggle",
-];
-INTERFACE_ROOTS.forEach((selector) => {
-  const el = document.querySelector(selector);
-  if (el) el.setAttribute("data-ui", "");
-});
+// The module also loads without a DOM (unit tests import it to reach its
+// functions), where there is nothing to mark.
+if (typeof document !== "undefined") {
+  const INTERFACE_ROOTS = [
+    "#view-analyze .board-stack",
+    "#analysis-moves",
+    "#analysis-eval-meter",
+    "#eval-chart-tooltip",
+    "#analysis-engine-slot",
+    "#explain-engine-toggle",
+  ];
+  INTERFACE_ROOTS.forEach((selector) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute("data-ui", "");
+  });
+}
 
 export function createAnalyzeView({
   appState,
@@ -451,7 +455,7 @@ export function createAnalyzeView({
     const card = document.getElementById("analysis-eval-card");
     if (card && !card.classList.contains("is-engine")) {
       const graph = document.getElementById("analysis-eval-graph");
-      const job = card.querySelector("#analysis-job-dock .notice");
+      const job = document.querySelector("#analysis-job-dock .notice");
       card.hidden = !text && (!graph || graph.hidden) && !job;
     }
   }
