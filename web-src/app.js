@@ -499,7 +499,7 @@ const appState = {
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
   buildBranchChoiceId: null,
-  // ---- Local-first Build sync (docs/local-first-sync-plan.md Phase 1) ----------
+  // ---- Local-first Build sync (Phase 1) --------------------------------------
   // Moves land in the local tree instantly (no per-move round-trip) and flush to
   // the server in debounced batches via POST /api/build/add-moves.
   buildPending: [], // queued { tempId, parentRef, uci, node } awaiting a flush
@@ -4826,7 +4826,7 @@ function renderBuilderTree() {
 }
 
 // ===== Local-first Build sync ================================================
-// docs/local-first-sync-plan.md Phase 1. A played move mutates the local tree
+// Local-first Build sync, Phase 1. A played move mutates the local tree
 // immediately and is queued; a debounced batch flush reconciles with the server,
 // which owns id assignment + flag recomputation. The client never waits on the
 // network to render a move (降延遲) and writes are batched (降消耗).
