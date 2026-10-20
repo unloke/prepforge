@@ -107,7 +107,7 @@ class EvaluationRepository(Repository):
             "wdl_draw": None if wdl is None else wdl[1],
             "wdl_loss": None if wdl is None else wdl[2],
         }
-        values["fingerprint"] = codec.evaluation_fingerprint(
+        values["fingerprint"] = codec.fingerprint_bytes(codec.evaluation_fingerprint(
             engine=values["engine"],
             position_fen=codec.position_key(fen),
             depth=values["depth"],
@@ -120,33 +120,22 @@ class EvaluationRepository(Repository):
             wdl_win=values["wdl_win"],
             wdl_draw=values["wdl_draw"],
             wdl_loss=values["wdl_loss"],
-        )
+        ))
         # Evaluations are immutable snapshots: identical content dedupes onto
         # one row (cache hit below), while a DIFFERENT result carries a
         # different fingerprint and therefore gets its own row. Nothing is ever
         # rewritten, so rows referenced by earlier analyses/classifications can
-        # never change (improvement review D-01).
+        # never change (improvement review D-01). The fingerprint already
+        # commits to position, engine and search limits, so it alone decides.
         stmt = _insert(conn, t.engine_evaluations).values(**values)
         stmt = stmt.on_conflict_do_nothing(
-            index_elements=[
-                "position_id",
-                "engine",
-                "depth",
-                "nodes",
-                "time_ms",
-                "fingerprint",
-            ],
+            index_elements=["fingerprint"],
         ).returning(t.engine_evaluations.c.id)
         ev_id = conn.execute(stmt).scalar_one_or_none()
         if ev_id is None:
             # Identical snapshot already stored — reuse its id.
             ev_id = conn.execute(
                 select(t.engine_evaluations.c.id).where(
-                    t.engine_evaluations.c.position_id == values["position_id"],
-                    t.engine_evaluations.c.engine == values["engine"],
-                    t.engine_evaluations.c.depth == values["depth"],
-                    t.engine_evaluations.c.nodes == values["nodes"],
-                    t.engine_evaluations.c.time_ms == values["time_ms"],
                     t.engine_evaluations.c.fingerprint == values["fingerprint"],
                 )
             ).scalar_one()

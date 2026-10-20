@@ -177,12 +177,14 @@ def evaluation_fingerprint(
     - result: score_cp / mate_in / best_move_uci / PV / WDL
 
     All inputs use their STORED forms (search limits already
-    :func:`encode_search_limit`-ed, PV in :func:`encode_pv` form), so a stored
-    row can be re-fingerprinted bit-for-bit — this is what the migration
-    backfill relies on. Therefore identical content hashes identically on
-    write and on read-back, and any different result (different search or
-    different numbers) hashes differently: evaluation rows become immutable
-    snapshots that still dedupe (see the D-01 improvement review).
+    :func:`encode_search_limit`-ed, PV in :func:`encode_pv` form), so identical
+    content hashes identically on write and on read-back, and any different
+    result (different search or different numbers) hashes differently:
+    evaluation rows become immutable snapshots that still dedupe (D-01).
+
+    Returns the digest as lowercase hex. The column stores its 32 raw bytes
+    (:func:`fingerprint_bytes`); hex is what the older migration backfill and
+    its tests read, so the digest's canonical spelling stays stable.
     """
     payload = {
         "engine": engine,
@@ -200,6 +202,15 @@ def evaluation_fingerprint(
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def fingerprint_bytes(digest: str) -> bytes:
+    """The stored form of an ``evaluation_fingerprint``: its 32 raw bytes.
+
+    The digest is the evaluations' dedupe key, so every byte of it is index
+    payload; the 64-character hex spelling cost twice that for no reader.
+    """
+    return bytes.fromhex(digest)
 
 
 def _color_from_board(board: chess.Board) -> Color:

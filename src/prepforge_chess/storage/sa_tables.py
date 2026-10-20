@@ -4,16 +4,16 @@ Compact persistent representation:
 * games store ``initial_fen`` + ``uci_blob``; PGN/SAN/FEN sequences are derived;
 * moves hold only per-ply annotations that cannot be rebuilt from the UCI blob;
 * positions is a full-FEN catalog (6 fields, unique); never a short hash;
-* engine_evaluations key by (position_id, engine, depth, nodes, time_ms,
-  fingerprint) with unset limits stored as ``codec.UNSET_SEARCH_LIMIT`` so
-  UNIQUE is NULL-safe; rows are immutable evaluation snapshots, because the
-  fingerprint commits to identity AND result, so a different result is always
-  a different row and no snapshot is ever overwritten in place;
+* engine_evaluations key on ``fingerprint`` alone — the 32-byte digest of
+  position, engine, search limits and result (unset limits stored as
+  ``codec.UNSET_SEARCH_LIMIT``). Rows are immutable snapshots: a different
+  result is always a different row and no snapshot is ever overwritten;
 * opening nodes store arriving UCI and reconstruct FEN by walking the tree.
 """
 from __future__ import annotations
 
 from sqlalchemy import (
+    BLOB,
     Column,
     Float,
     ForeignKey,
@@ -198,17 +198,11 @@ engine_evaluations = Table(
     Column("wdl_win", Integer),
     Column("wdl_draw", Integer),
     Column("wdl_loss", Integer),
-    # Snapshot digest of identity + result (codec.evaluation_fingerprint).
-    Column("fingerprint", Text, nullable=False),
-    UniqueConstraint(
-        "position_id",
-        "engine",
-        "depth",
-        "nodes",
-        "time_ms",
-        "fingerprint",
-        name="uq_engine_evaluations_identity",
-    ),
+    # Snapshot digest of identity + result (codec.evaluation_fingerprint), as a
+    # 32-byte BLOB. It already commits to position, engine and every search
+    # limit, so it is also the whole dedupe identity: a unique key repeating
+    # those columns would store them a second time for nothing.
+    Column("fingerprint", BLOB, nullable=False, unique=True),
 )
 
 moves = Table(
