@@ -268,7 +268,12 @@ async function runViewport(vp) {
         .filter((el) => el.getBoundingClientRect().right > html.clientWidth + 0.5)
         .slice(0, 6)
         .map((el) => `${label(el)} right=${Math.round(el.getBoundingClientRect().right)}`);
-      return { inner: innerWidth, html: [html.scrollWidth, html.clientWidth], body: [document.body.scrollWidth, document.body.clientWidth], scrollers, wide };
+      const chips = [...document.querySelectorAll(".src-chip")].slice(0, 3).map((c) => {
+        const cs = getComputedStyle(c);
+        return { white: cs.whiteSpace, display: cs.display, maxWidth: cs.maxWidth, box: [c.clientWidth, c.scrollWidth],
+          kids: [...c.children].map((k) => `${k.tagName.toLowerCase()}.${String(k.className.baseVal ?? k.className)} w=${Math.round(k.getBoundingClientRect().width)} ws=${getComputedStyle(k).whiteSpace}`) };
+      });
+      return { inner: innerWidth, html: [html.scrollWidth, html.clientWidth], body: [document.body.scrollWidth, document.body.clientWidth], scrollers, wide, chips };
     });
     console.log(`[scout-smoke] overflow sources: ${JSON.stringify(sources)}`);
   }
