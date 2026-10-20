@@ -3068,13 +3068,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
 .tree-wrap {
-  /* Sized by its moves. The panel's leftover height goes after the tree and
-     the dock, where it is the workspace's own rest; letting the tree grow
-     instead put a 400px hole between a short line and the reference table
-     under it. A tree taller than the panel shrinks to the space left and
-     scrolls inside, so the panel keeps its card shape and the page never
-     scrolls. */
-  flex: 0 1 auto;
+  /* The workspace, so the panel's leftover height is the tree's: the tree
+     fills down to the inspector, which pins to the panel's foot as the
+     console does. Left to a trailing spacer, the leftover showed up as ground
+     under the dock, which read as a broken card rather than as an open line. */
+  flex: 1 1 auto;
   min-height: 90px;
   padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
   overflow: auto;
@@ -3083,14 +3081,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   line-height: 1.75;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
-/* The panel's leftover height is the foot's: one flexible block after the
-   totals, so head, trail, fork, line, inspector and foot stack from the top
-   and the empty ground closes the panel instead of splitting it. */
-#build-sidebar .panel-body::after {
-  content: "";
-  flex: 1 1 auto;
-  min-height: 0;
-}
 
 .dock {
   position: relative;

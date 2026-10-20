@@ -320,13 +320,13 @@ describe("workspace chrome layout", () => {
     // into its own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    // The tree sizes to its moves (shrinkable, with a floor: a long line
-    // scrolls inside rather than growing the panel) and the panel's leftover
-    // height closes the panel after the foot, not between a short line and the
-    // inspector, where it was a 400px hole.
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
+    // The tree is the workspace and takes the panel's leftover height, so the
+    // inspector pins to the panel's foot instead of leaving ground under it; a
+    // long line still scrolls inside the tree, above the dock, with a floor so
+    // the dock can never squeeze it away.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
     expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
-    expect(css).toMatch(/#build-sidebar \.panel-body::after \{[^}]*flex:\s*1 1 auto/);
+    expect(css).not.toContain("#build-sidebar .panel-body::after");
   });
 
   it("captions the board with the position, not the repertoire", () => {
