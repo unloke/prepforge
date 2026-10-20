@@ -100,6 +100,10 @@ class BoardController {
         betterArrow: this.betterArrow,
         branchArrows: this.branchArrows,
         branchPick: this.branchPick,
+        // The marks the user drew on the real position; the preview's own
+        // positions would otherwise clear them on the way back.
+        arrows: this.arrows.slice(),
+        circles: [...this.highlights],
       };
     }
     this._preview.onEnd = onEnd;
@@ -138,7 +142,7 @@ class BoardController {
       this.betterArrow = saved.betterArrow;
       this.branchArrows = saved.branchArrows;
       this.branchPick = saved.branchPick;
-      this._renderArrows();
+      this.setAnnotations(saved.arrows, saved.circles);
     }
     if (saved.onEnd) saved.onEnd({ restored: restore });
   }

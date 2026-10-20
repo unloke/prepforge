@@ -218,4 +218,15 @@ describe("a move made on the board", () => {
     expect(board.arrows).toEqual(["e2e4"]);
     expect([...board.highlights]).toEqual(["d4"]);
   });
+
+  it("puts them back when an engine preview ends", () => {
+    mount({ onMove: () => {} });
+    board.setAnnotations(["e2e4"], ["d4"]);
+    board.beginPreview();
+    // The preview walks the engine's line, which is not this position.
+    board.showPreview({ fen: AFTER_E4, lastMove: "e2e4" });
+    board.endPreview();
+    expect(board.arrows).toEqual(["e2e4"]);
+    expect([...board.highlights]).toEqual(["d4"]);
+  });
 });
