@@ -103,10 +103,12 @@
   color: var(--text);
 }
 .ahi-game:empty { display: none; }
+/* One line in this slot either way, so the name and the instruction take the
+   same size: the strip does not change shape when a game arrives. */
 .ahi-hint,
 .ahi-status {
   color: var(--muted);
-  font-size: var(--fs-s);
+  font-size: 14px;
 }
 .ahi-status:empty { display: none; }
 /* The head says one thing: a named game, or (for a line played by hand, which
