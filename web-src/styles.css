@@ -2415,6 +2415,18 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.25));
 }
 
+/* A captured piece, held on its square while the capturing piece travels in:
+   it fades out on the mover's own timing (see _animateSlide), so a capture
+   reads as one piece taking another rather than as one arriving into an
+   already-empty square. Positioned over its square's piece slot. */
+.piece-caught {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 2;
+  will-change: opacity;
+}
+
 /* Board coordinates (toggle: .show-coords on the board) */
 .coord {
   position: absolute;
