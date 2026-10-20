@@ -2896,8 +2896,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   --fs-xs: 13px;
   --fs-s: 13px;
 }
-#view-build :is(.mtree-num, .mtree-collapse, .build-sync),
-#view-build .engine-banner :is(.engine-banner-why, .engine-banner-action) {
+#view-build :is(.mtree-num, .mtree-collapse, .build-sync) {
   font-size: var(--fs-s);
 }
 /* The shared .panel-head and .engine-banner keep their rule for Analyze and
@@ -2907,10 +2906,10 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    is a diagnostic, not a pane: it never shrinks under a long tree (a squeezed
    grid clipped its own sentence mid-line). */
 #view-build .engine-banner { border: 0; border-radius: 0; flex: none; }
-/* One line. The same state at 16px over two or three lines cost the panel
-   86px of its height on every session without a browser engine, which is a
-   state and not the work; the action's whole sentence is in its tooltip, and
-   Analyze still prints it in full. */
+/* One line, in the short form. The same state at 16px over two or three lines
+   cost the panel 86px of its height on every session without a browser engine,
+   which is a state and not the work; the full fix is in the tooltip, where a
+   cut sentence belongs. */
 #view-build .engine-banner {
   display: flex;
   flex-wrap: wrap;
@@ -2919,21 +2918,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   padding: 5px var(--build-pad, 14px) 6px;
   white-space: nowrap;
 }
-#view-build .engine-banner .engine-banner-why { display: none; }
-#view-build .engine-banner .engine-banner-title { flex: none; }
-#view-build .engine-banner .engine-banner-action {
-  flex: 1 1 0;
-  min-width: 0;
-  margin: 0;
-  max-width: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--muted);
-}
-#view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) {
+#view-build .engine-banner :is(.engine-banner-why, .engine-banner-action) { display: none; }
+#view-build .engine-banner :is(.engine-banner-title, .engine-banner-brief) {
   font-size: var(--fs-s);
   line-height: 1.4;
 }
+#view-build .engine-banner .engine-banner-title { flex: none; }
+#view-build .engine-banner .engine-banner-brief { display: inline; min-width: 0; color: var(--muted); }
+/* Analyze keeps the full sentence; the short form is Build's alone. */
+.engine-banner-brief { display: none; }
 
 /* Motion in the panel, on the same rules as the rest of the app: the fork bar
    and the Explorer rows arrive after a move or a fetch, so they enter with a

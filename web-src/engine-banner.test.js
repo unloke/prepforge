@@ -28,13 +28,18 @@ describe("engineUnavailableBanner", () => {
     expect(String(html)).toContain("engine-banner-action");
   });
 
-  it("keeps the action's whole sentence in its tooltip", () => {
-    // Build prints the action on one line and cuts it with an ellipsis, so the
-    // tail ("there is no server fallback") is only reachable here.
+  it("carries a short form that fits one line, with the full fix in a tooltip", () => {
+    // Build prints one line beside the board; the action's full sentence is
+    // three lines wide at 1024, so it lives in the tooltip instead.
     const model = engineUnavailableBanner({ available: false, isolated: false });
+    expect(model.brief).toBe("Open in Chrome or Edge");
+    expect(model.brief.length).toBeLessThan(30);
     const markup = String(engineBannerHtml(model));
-    const tag = markup.match(/<p class="engine-banner-action"[^>]*>/)[0];
-    expect(tag).toContain(`title="${model.action}"`);
+    expect(markup).toContain('class="engine-banner-brief"');
+    expect(markup).toContain(`title="${model.action}"`);
+    expect(markup).toContain(model.brief);
+    // A failed start names its own fix.
+    expect(engineUnavailableBanner({ available: false, isolated: true }).brief).toMatch(/Reload/);
   });
 
   it("uses a start-failed why when isolated but still unavailable", () => {
