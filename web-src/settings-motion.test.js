@@ -58,13 +58,15 @@ describe("settings motion", () => {
     expect(css).toMatch(/\.pf-knob \{[^}]*transition:[^}]*scale/);
   });
 
-  it("sets the page title at the same size on every width", () => {
-    // The phone header sets 32px for every page, so the desktop title keeps
-    // the same size: one type size for the title at every width.
+  it("keeps the desktop title at its size, independent of the phone's", () => {
+    // The phone header is the shell's title row (22px); the desktop Settings
+    // page has no rail title above it, so its h1 is the page's display size.
+    // The two are different jobs and must not be tied together.
     const desktop = parseFloat(
       /#view-settings \.page-head h1 \{[^}]*font-size:\s*([\d.]+)px/.exec(settings)[1],
     );
     const phoneSize = parseFloat(/\.page-head h1 \{[^}]*font-size:\s*([\d.]+)px/.exec(phone)[1]);
-    expect(desktop).toBe(phoneSize);
+    expect(desktop).toBe(32);
+    expect(phoneSize).toBeLessThanOrEqual(22);
   });
 });

@@ -30,6 +30,9 @@
     --phone-reserve: max(180px, 32dvh);
     --phone-gutter: 16px;
     --phone-radius: 14px;
+    /* The gap between blocks on a phone. Items inside one block sit closer
+       than this, so a group reads as one unit. */
+    --phone-gap: 20px;
   }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* iOS zooms the page into any field set below 16px. */
@@ -53,26 +56,32 @@
     border: 0;
     border-radius: var(--phone-radius);
   }
+  /* The header is a title row, not a hero: the page's own content is what the
+     screen is about, so the name sits at the app-title size (22px) instead of
+     a 32px display size that out-shouts the list under it. */
   .page-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 52px;
+    gap: 12px;
+    min-height: 56px;
+    margin: 0 0 var(--phone-gap);
   }
-  .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .page-head h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
   .page-head-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 0;
     border-radius: 50%;
     background: var(--surface-3);
-    color: var(--accent-strong);
+    color: var(--text);
   }
-  .page-head-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  .page-head-btn:active { background: var(--line-strong); }
+  .page-head-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
   /* Library: Today as one row, filter chips, the repertoire list, setup
      steps left. */
@@ -989,8 +998,19 @@
   .notice-stop { height: 34px; padding: 0 12px; font-size: 13px; }
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
-  /* The tab bar. */
-  .tabbar { height: calc(56px + env(safe-area-inset-bottom)); }
-  .tabbar .tabbar-item { min-height: 0; height: 56px; gap: 3px; font-size: 12px; font-weight: 600; }
+  /* The tab bar is chrome: it is the same white as the cards and sits on the
+     page ground, told apart by a tone step rather than a shadow. */
+  .tabbar { height: calc(56px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); box-shadow: none; }
+  .tabbar .tabbar-item {
+    min-height: 0;
+    height: 56px;
+    gap: 3px;
+    color: var(--label);
+    font-size: 12px;
+    font-weight: 500;
+  }
   .tabbar .tabbar-item svg { width: 22px; height: 22px; }
+  /* The open destination is ink, not the accent: the accent belongs to the one
+     action on the screen. */
+  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
 }
