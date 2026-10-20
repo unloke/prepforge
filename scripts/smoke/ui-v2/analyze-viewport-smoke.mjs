@@ -331,8 +331,18 @@ async function runViewport(vp) {
   });
   console.log(`[analyze-smoke] engine button: ${JSON.stringify(engineSpot)}`);
   await page.locator("#open-engine-widget").click();
-  // A device that has not answered for the 94 MB full net is asked first: the
-  // smoke keeps lite, which is the answer that costs nothing.
+  // The full net's question is a row above the lines and never blocks them: the
+  // first real line must appear with the question still waiting for an answer.
+  await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  const askedWhileSearching = await page.evaluate(() => {
+    const row = document.getElementById("engine-window-consent");
+    const line = document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)");
+    return { asked: !!row && !row.hidden, line: !!line, rowAboveLine: !!row && !!line && row.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING };
+  });
+  check(askedWhileSearching.line, "the engine card must show a line while the full-net question waits");
+  check(!askedWhileSearching.asked || askedWhileSearching.rowAboveLine,
+    `the full-net question must sit above the lines, not replace them: ${JSON.stringify(askedWhileSearching)}`);
+  // Answer it after the lines are there: the search must not stop or restart.
   await page.locator('[data-testid="engine-full-choice"] [data-choice="no"]').click({ timeout: 2000 }).catch(() => {});
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await page.evaluate(async () => {
