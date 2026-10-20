@@ -630,6 +630,7 @@ h2 {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .sheet {
@@ -641,6 +642,13 @@ h2 {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the command sheet is a real overlay */
+  /* The sheet is pulled up from the edge it lives on, like the Analyze sheet
+     above it, so every bottom sheet in the app arrives the same way. */
+  transition: transform var(--dur) var(--ease-out);
+}
+@starting-style {
+  .sheet-scrim:not([hidden]) { opacity: 0; }
+  .sheet-scrim:not([hidden]) .sheet { transform: translateY(24%); }
 }
 
 .sheet-grab {
@@ -4455,6 +4463,16 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--panel);
   color: var(--text);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
+  /* The menu arrives where it was opened, under the button or at the cursor,
+     rather than switching on. A browser without @starting-style shows it as it
+     is; nothing is ever left hidden waiting for a transition. */
+  transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
+}
+@starting-style {
+  .context-menu:not([hidden]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
 }
 
 .context-section {
@@ -4548,6 +4566,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding-top: min(14vh, 120px);
   background: rgba(20, 18, 14, 0.36);
   backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+/* The dim arrives with the dialog rather than snapping on behind it. */
+@starting-style {
+  .modal-overlay:not([hidden]) { opacity: 0; }
 }
 
 /* Sign-in gate only: top-bar tabs stay clickable above the dim layer so the
@@ -4572,6 +4595,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
   display: grid;
+  /* A dialog opens from the place it will be read: a short settle, no zoom. */
+  transition: transform var(--dur) var(--ease-out);
+}
+@starting-style {
+  .modal-overlay:not([hidden]) .modal { transform: translateY(-6px) scale(0.98); }
 }
 
 .modal-title {
@@ -5634,6 +5662,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: flex-start;
   justify-content: center;
   padding: 12vh 16px 16px;
+  /* The sheet comes down from the top edge it is anchored to, so the eye
+     follows it to the field it wants. */
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+@starting-style {
+  .palette:not([hidden]) { opacity: 0; }
 }
 
 .palette-panel {
@@ -5642,6 +5676,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: var(--radius-card);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
   overflow: hidden;
+  transform-origin: 50% 0;
+  transition: transform var(--dur) var(--ease-out);
+}
+@starting-style {
+  .palette:not([hidden]) .palette-panel { transform: translateY(-8px) scale(0.985); }
 }
 
 .palette-input {
