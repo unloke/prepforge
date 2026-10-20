@@ -25,14 +25,17 @@
 
 /* One filled action on the panel: once the report is on it, the accent belongs
    to the handoff below, and running the analysis again is a quiet text action.
-   The phone's own bar keeps its filled button. */
+   The demotion holds only while that handoff is there: a reader who already
+   has a repertoire never sees it, and demoting the head's action then would
+   leave the panel with no filled action at all. The phone's own bar keeps its
+   filled button. */
 @media (min-width: 861px) {
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #run-analysis {
+  #analyze-sidebar:has(#analysis-results:not([hidden])):has(#analysis-handoff:not([hidden])) #run-analysis {
     background: transparent;
     border-color: transparent;
     color: var(--muted);
   }
-  #analyze-sidebar:has(#analysis-results:not([hidden])) #run-analysis:hover:not(:disabled) {
+  #analyze-sidebar:has(#analysis-results:not([hidden])):has(#analysis-handoff:not([hidden])) #run-analysis:hover:not(:disabled) {
     background: var(--surface-3);
     color: var(--text);
   }
@@ -548,18 +551,21 @@
      the field instead of being clipped. */
   overflow: visible;
   border-radius: 6px;
-  /* The field is its own fill: a mid tone with the two side tones standing
-     clear of it, so White's area and Black's area each read at a glance.
-     The mix is of the theme's own piece colours, so it follows the theme. */
-  --eval-field: color-mix(in srgb, var(--eval-side-white) 45%, var(--eval-side-black));
+  /* The field is a quiet step off the card, not a slab of its own tone: at a
+     mid grey it had more weight than either area, and the curve (2.2:1 against
+     it) was the least legible thing in the chart. Quiet, the white and black
+     wedges carry "who is ahead" and the curve reads at 5.9:1. */
+  --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-black));
+  --eval-area-white: var(--panel);
   background: var(--eval-field);
 }
 :root[data-theme="dark"] .eval-chart {
-  /* A darker field in the dark theme: the white area stays the bright one. */
-  --eval-field: color-mix(in srgb, var(--eval-side-white) 30%, var(--eval-side-black));
+  /* The same step the other way: the field comes up out of the dark card. */
+  --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-white));
+  --eval-area-white: var(--eval-side-white);
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
-.eval-chart .eval-area-white { fill: var(--eval-side-white); stroke: none; }
+.eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
 .eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
 .eval-chart .eval-line {
   fill: none;

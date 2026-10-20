@@ -239,6 +239,22 @@ describe("coach note", () => {
   });
 });
 
+describe("the panel's one filled action", () => {
+  it("demotes the head's Analyze only while the handoff is on the panel", () => {
+    // The accent moves to "New repertoire from this game" once the report is
+    // up, but that handoff is hidden for a reader who already has a
+    // repertoire. Demoting the head's action regardless left the panel with
+    // no accent anywhere (measured: transparent, at rest).
+    const rule = ALL_STYLES.match(
+      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\):has\(#analysis-handoff:not\(\[hidden\]\)\) #run-analysis \{([^}]+)\}/,
+    )?.[1] || "";
+    expect(rule).toMatch(/background:\s*transparent/);
+    expect(ALL_STYLES).not.toMatch(
+      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\) #run-analysis \{/,
+    );
+  });
+});
+
 describe("eval chart theme colours", () => {
   it("renders no hardcoded colours — every hue comes from CSS classes", () => {
     const { chart, view } = setup();
@@ -267,10 +283,25 @@ describe("eval chart theme colours", () => {
 
   it("fills White's and Black's areas from the theme's own piece colours", () => {
     // Hardcoded hexes made the dark theme draw a glaring white band; the
-    // tokens carry a dark-theme value for each side.
-    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-side-white\)/);
+    // tokens carry a dark-theme value for each side. White's wedge is the
+    // panel tone (the light one in the dark theme), so it stands clear of the
+    // field the way the dark wedge does.
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-area-white\)/);
     expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-black\s*\{[^}]*fill: var\(--eval-side-black\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \{[^}]*--eval-area-white: var\(--panel\)/);
+    expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-area-white: var\(--eval-side-white\)/);
     expect(ALL_STYLES).not.toMatch(/\.eval-area-(white|black)\s*\{[^}]*fill: #/);
+  });
+
+  it("keeps the field a quiet step off the card, not a tone of its own", () => {
+    // A mid-grey field outweighed both areas: the curve read at 2.2:1 against
+    // it while the wedges read at 3.4–3.9. Mixed mostly out of the card's own
+    // tone the field recedes, and the curve leads.
+    const field = ALL_STYLES.match(/\.eval-chart \{[^}]*--eval-field: ([^;]+);/)?.[1] || "";
+    expect(field).toContain("var(--panel) 84%");
+    const dark = ALL_STYLES.match(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-field: ([^;]+);/)?.[1] || "";
+    expect(dark).toContain("var(--panel) 84%");
+    expect(dark).toContain("var(--eval-side-white)");
   });
 
   it("keeps the main-line stroke width constant when the SVG stretches", () => {
