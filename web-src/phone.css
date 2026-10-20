@@ -398,7 +398,7 @@
   :is(#analyze-sidebar, #build-sidebar, #view-train .train-sidebar),
   #analyze-sidebar > .panel-head,
   #analyze-actions { display: contents; }
-  #analyze-sidebar > .panel-head .game-id,
+  #analyze-sidebar > .panel-head .analyze-head-id,
   #fetch-my-game { display: none; }
   .study .engine-banner { order: 0; flex: none; }
   /* A diagnostic does not get a fifth of the screen above the board. The
@@ -454,7 +454,7 @@
   .study .board-bar .bb-views { order: 1; }
   .study .board-bar .bb-sheet { order: 2; }
   .study .board-bar [id$="-flip"] { order: 3; }
-  .study .board-bar :is(.board-label, .board-sub, .pv-exit) {
+  .study .board-bar :is(.board-label, .pv-exit) {
     grid-area: 1 / -4 / 2 / -3;
     justify-self: center;
     min-width: 0;
@@ -466,12 +466,12 @@
   .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
   /* Analyze keeps its label: the middle track names the move on show (a phone
      has no panel head). Build has no label to spare. */
-  #view-build .board-bar :is(.board-label, .board-sub) { display: none; }
+  #view-build .board-bar .board-label { display: none; }
   /* Analyze's middle track holds the Analyze pill, which is the one thing a
-     phone puts there (see #run-analysis below). The game's identity is
-     already in the Report sheet's history; on a phone the board bar is too
-     narrow to carry it beside the pill without covering it. */
-  #view-analyze .board-bar :is(.board-label, .board-sub) { display: none; }
+     phone puts there (see #run-analysis below). The game's identity is in the
+     Report sheet's history; on a phone the board bar is too narrow to carry it
+     beside the pill without covering it. */
+  #view-analyze .board-bar .board-label { display: none; }
   .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
   /* The last two tracks. The pill is absolute in the free middle, so the
      arrows must be placed: auto-placement would fill that track first. */

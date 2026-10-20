@@ -63,7 +63,6 @@
 /* Captions on this page are read, not decoration: the drawer titles, the
    history rows and the coach's own link all carry meaning, so they read at
    the body size rather than at the app's 12px chrome size. */
-#view-analyze .board-sub,
 #analyze-open .drawer > summary,
 #analyze-open .btn.sm,
 #analyze-open .history-item .hi-open,
@@ -78,19 +77,33 @@
 
 /* Panel head + coach card ------------------------------------------ */
 
-/* The head is one row: the game's identity, then the actions. The tag line
-   (result · event · date) rides under the board beside the move, as .board-sub. */
-.game-id {
+/* The head is one row: the game on the board, then the actions. Before, it was
+   the actions on empty ground, so the panel opened with a title bar that had no
+   title. The name is the page's first fact, so it takes the ink; the empty state
+   stands in its place until there is a game, and goes the moment app.js writes
+   the game's line into #analysis-game-meta. */
+.analyze-head-id {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
+  align-items: baseline;
   min-width: 0;
 }
-.game-id > * {
+.analyze-head-id > * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ahi-game {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+}
+.ahi-game:empty { display: none; }
+.ahi-hint {
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+.ahi-game:not(:empty) + .ahi-hint { display: none; }
 
 /* Fixed height: the coach's comment changes length on every move, and a
    growing card used to shove the chart and move list up and down ("jitter").
