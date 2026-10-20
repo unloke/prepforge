@@ -565,6 +565,9 @@
   text-align: right;
 }
 #analysis-engine-slot .engine-pv.is-top .engine-pv-eval { color: var(--text); }
+/* The pass's one line of status has no eval to show, so it takes the whole row
+   instead of the 44px eval column (where "Analyze is still running" is cut off). */
+#analysis-engine-slot .engine-pv.is-waiting { grid-template-columns: minmax(0, 1fr); }
 #analysis-engine-slot .engine-pv-line { min-width: 0; line-height: 22px; text-overflow: ellipsis; }
 #analysis-engine-slot .engine-pv.is-expanded .engine-pv-line { overflow-wrap: anywhere; }
 
@@ -1255,7 +1258,9 @@
   #analysis-engine-slot { display: block; padding: 0 12px 4px 10px; }
   #analysis-engine-slot > .engine-window:not([hidden]) { display: block; }
   #analysis-engine-slot .engine-window-head,
-  #analysis-engine-slot .engine-pv:not(.is-top) { display: none; }
+  #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting) { display: none; }
+  /* The status line is the card's whole content while the pass runs: it stays. */
+  #analysis-engine-slot .engine-pv.is-waiting { display: grid; height: 28px; min-height: 28px; }
   #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 28px; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #analysis-job-dock:empty { display: none; }

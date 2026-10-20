@@ -5273,6 +5273,22 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .engine-pv.is-pending { cursor: default; }
 .engine-pv.is-pending .engine-pv-eval { color: var(--muted); background: none; border-color: var(--line-soft); }
 .engine-pv.is-pending .engine-pv-line { color: var(--muted); font-style: italic; }
+/* The whole-game pass has the workers and has not reached this position yet:
+   one quiet line, the size of a real row, with no eval slot to fill in. */
+.engine-pv.is-waiting { grid-template-columns: 1fr; cursor: default; }
+.engine-pv.is-waiting .engine-pv-line { color: var(--muted); font-style: italic; }
+/* A line the full-game analysis produced, not a search this card ran. It leads
+   the row so a narrow card clips the tail of the line, never the mark. */
+.engine-window-pvs.is-analysis-read .engine-pv.is-top .engine-pv-line::before {
+  content: "Analysis";
+  margin-right: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .engine-pv.is-final { cursor: default; }
 .engine-pv.is-final .engine-pv-line { font-weight: 650; }
 

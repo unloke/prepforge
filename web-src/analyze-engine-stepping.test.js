@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { formatEngineEval } from "./engine-eval.js";
 import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
+import { createPassFeed } from "./controllers/engine-pass-feed.js";
 
 const source = appSource();
 
@@ -16,7 +17,9 @@ function widgetHarness({ coachOn = false } = {}) {
     // This device has already answered for the full net: nothing to ask here.
     fullEngineChoice: () => null, chooseFullEngine: vi.fn(),
     subscribeEngineSetup: () => () => {}, subscribeEngineProfile: () => () => {},
-    engineConsentHtml: () => html``,
+    engineConsentHtml: () => html``, createPassFeed,
+    // No whole-game pass: the card always searches for itself.
+    analysisStore: async () => ({ passing: false, onPassChange: () => () => {}, passRead: () => null }),
   };
   const widgetSource = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
@@ -33,7 +36,7 @@ function widgetHarness({ coachOn = false } = {}) {
     style: { setProperty() {} },
     title: "",
   };
-  widget.pvsEl = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
+  widget.pvsEl = { dataset: {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
   return { widget, arrow: deps.setEngineBestArrow };
 }
 
