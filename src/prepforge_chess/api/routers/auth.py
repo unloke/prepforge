@@ -16,7 +16,7 @@ import smtplib
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -102,13 +102,32 @@ def _enforce_session_cap(db: Session, settings: Settings, user_id: str) -> None:
         db.delete(stale)
 
 
+def _purge_spent_reset_tokens(db: Session) -> None:
+    """Delete reset links that can no longer be redeemed — used, or expired with
+    a grace day so a clock-skewed client is never cut off early. A spent token
+    row is otherwise unreachable forever: redemption rejects it, and minting a
+    new link never touches it. Does NOT commit (the caller owns the transaction)."""
+    db.execute(
+        delete(PasswordResetToken)
+        .where(
+            or_(
+                PasswordResetToken.used_at.is_not(None),
+                PasswordResetToken.expires_at < datetime.now(timezone.utc) - timedelta(days=1),
+            )
+        )
+        .execution_options(synchronize_session=False)
+    )
+
+
 def _open_session(db: Session, response: Response, settings: Settings, user: User) -> None:
     token = new_session_token()
     db.add(AuthSession(token_hash=hash_session_token(token), user_id=user.id))
     db.flush()
     _enforce_session_cap(db, settings, user.id)
-    # Opportunistic global cleanup of long-idle sessions (no scheduler needed).
+    # Opportunistic global cleanup (no scheduler needed): long-idle sessions and
+    # reset links nobody can redeem any more.
     _purge_expired(db, settings)
+    _purge_spent_reset_tokens(db)
     db.commit()
     set_session_cookie(response, settings, token)
 

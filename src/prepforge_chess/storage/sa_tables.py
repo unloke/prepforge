@@ -4,21 +4,22 @@ Compact persistent representation:
 * games store ``initial_fen`` + ``uci_blob``; PGN/SAN/FEN sequences are derived;
 * moves hold only per-ply annotations that cannot be rebuilt from the UCI blob;
 * positions is a full-FEN catalog (6 fields, unique); never a short hash;
-* engine_evaluations key by (position_id, engine, depth, nodes, time_ms,
-  fingerprint) with unset limits stored as ``codec.UNSET_SEARCH_LIMIT`` so
-  UNIQUE is NULL-safe; rows are immutable evaluation snapshots, because the
-  fingerprint commits to identity AND result, so a different result is always
-  a different row and no snapshot is ever overwritten in place;
+* engine_evaluations key on ``fingerprint`` alone — the 32-byte digest of
+  position, engine, search limits and result (unset limits stored as
+  ``codec.UNSET_SEARCH_LIMIT``). Rows are immutable snapshots: a different
+  result is always a different row and no snapshot is ever overwritten;
 * opening nodes store arriving UCI and reconstruct FEN by walking the tree.
 """
 from __future__ import annotations
 
 from sqlalchemy import (
+    BLOB,
     Column,
     Float,
     ForeignKey,
     Index,
     Integer,
+    PrimaryKeyConstraint,
     Table,
     Text,
     UniqueConstraint,
@@ -198,17 +199,11 @@ engine_evaluations = Table(
     Column("wdl_win", Integer),
     Column("wdl_draw", Integer),
     Column("wdl_loss", Integer),
-    # Snapshot digest of identity + result (codec.evaluation_fingerprint).
-    Column("fingerprint", Text, nullable=False),
-    UniqueConstraint(
-        "position_id",
-        "engine",
-        "depth",
-        "nodes",
-        "time_ms",
-        "fingerprint",
-        name="uq_engine_evaluations_identity",
-    ),
+    # Snapshot digest of identity + result (codec.evaluation_fingerprint), as a
+    # 32-byte BLOB. It already commits to position, engine and every search
+    # limit, so it is also the whole dedupe identity: a unique key repeating
+    # those columns would store them a second time for nothing.
+    Column("fingerprint", BLOB, nullable=False, unique=True),
 )
 
 moves = Table(
@@ -216,7 +211,8 @@ moves = Table(
     metadata,
     Column("game_id", Text, ForeignKey("games.id", ondelete="CASCADE"), primary_key=True),
     Column("ply", Integer, primary_key=True),
-    Column("uci", Text, nullable=False),
+    # The arriving move is games.uci_blob[ply-1]; only what cannot be rebuilt
+    # from it is here.
     Column("engine_eval_before_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("engine_eval_after_id", Integer, ForeignKey("engine_evaluations.id")),
     Column("best_move_uci", Text),
@@ -226,8 +222,6 @@ moves = Table(
     # to generated_comment and rewrites it on every run (A-04).
     Column("comment", Text),
     Column("generated_comment", Text),
-    # {algorithm_version, engine, depth, analysis} for the generated block.
-    Column("generated_meta_json", Text),
     Column("tags_json", Text),
     Column("source", Text, nullable=False),
     Index("idx_moves_game_ply", "game_id", "ply"),
@@ -312,10 +306,10 @@ opening_nodes = Table(
     Column("strategic_idea", Text),
     Column("typical_plan", Text),
     Column("source", Text, nullable=False),
-    Column("created_at", UTCDateTime(), nullable=False),
-    Column("updated_at", UTCDateTime(), nullable=False),
+    # The recursive walk (repertoire_id, parent_id) and the cascade lookup by
+    # id; a bare parent_id index is a prefix duplicate of nothing either query
+    # needs, so it is not here.
     Index("idx_opening_nodes_repertoire_parent", "repertoire_id", "parent_id"),
-    Index("idx_opening_nodes_parent", "parent_id"),
 )
 
 training_sessions = Table(
@@ -350,31 +344,23 @@ training_sessions = Table(
 training_progress = Table(
     "training_progress",
     metadata,
-    Column("id", Text, primary_key=True),
-    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_progress_owner_user_id")),
-    Column(
-        "repertoire_id",
-        Text,
-        ForeignKey("repertoires.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "node_id",
-        Text,
-        ForeignKey("opening_nodes.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_progress_owner_user_id"), nullable=False),
+    # Progress is identified by what it is progress on: one row per owner per
+    # node. ``repertoire_id`` follows from the node but is kept because the
+    # scoping reads filter on it.
+    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="CASCADE"), nullable=False),
+    Column("node_id", Text, ForeignKey("opening_nodes.id", ondelete="CASCADE"), nullable=False),
     Column("attempts", Integer, nullable=False),
     Column("correct_attempts", Integer, nullable=False),
     Column("last_reviewed_at", UTCDateTime()),
     Column("spaced_repetition_score", Float, nullable=False),
     Column("due_at", UTCDateTime()),
     Column("is_mastered", Integer, nullable=False),
-    Column("created_at", UTCDateTime(), nullable=False),
-    Column("updated_at", UTCDateTime(), nullable=False),
-    UniqueConstraint("owner_user_id", "repertoire_id", "node_id", name="uq_training_progress_owner"),
-    Index("idx_training_progress_rep_user", "repertoire_id", "owner_user_id"),
+    # The node leads so deleting a node (a cascade lookup by ``node_id``, see
+    # d4e6f8a0b2c3) seeks the primary key instead of scanning the table.
+    PrimaryKeyConstraint("node_id", "owner_user_id"),
     # Dashboard due-review range scan and scheduler sort.
     Index("idx_training_progress_due", "due_at"),
-    Index("idx_training_progress_node", "node_id"),
+    # Account export streams every row of one owner.
+    Index("idx_training_progress_owner", "owner_user_id"),
 )
