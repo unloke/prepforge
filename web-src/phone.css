@@ -214,7 +214,7 @@
     background: none;
     box-shadow: none;
   }
-  #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); }
+  #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
   /* The open repertoire is marked with the group's own fill, not a 3px accent
      bar: inside a rounded grouped list a bar on the first row reads as a clip
      mark, and the accent belongs to the screen's action. */
@@ -334,7 +334,7 @@
     min-height: 56px;
     margin: 0;
     padding: 6px 0;
-    box-shadow: inset 0 1px 0 var(--line);
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped card */
     color: var(--text);
     font-size: 16px;
   }
