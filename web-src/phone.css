@@ -306,7 +306,36 @@
   /* Settings: one grouped list per section, like the iOS Settings app. Every
      row is 48px, actions are tinted text, sliders get the row's full width. */
   #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
-  #view-settings .settings-nav { display: none; }
+  /* The section strip stays on a phone: it is the only way to reach a section
+     there. One sticky row that scrolls sideways inside itself, so it costs one
+     thumb's height and never pushes a card off the screen; the open section's
+     chip is scrolled into view (settings.js), so the current section is always
+     visible even when its chip starts off the edge. */
+  #view-settings .settings-nav {
+    position: sticky;
+    top: 0;
+    width: auto;
+    gap: 4px;
+    margin: 0 0 10px;
+    padding: 6px;
+    border-radius: 0;
+    background: var(--bg);
+  }
+  #view-settings .settings-nav-link {
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--panel);
+    font-size: 15px;
+  }
+  #view-settings .settings-nav-link.is-active { background: var(--text); color: var(--panel); }
+  /* A jump lands the card below the sticky strip. */
+  #view-settings .settings-content > .set { scroll-margin-top: 68px; }
+  /* The heading names the open section on the title's line, so the block
+     costs one line and says what "Settings" does not. */
+  #view-settings .page-head { display: flex; align-items: baseline; gap: 8px; }
+  #view-settings .settings-here { margin: 0; font-size: 17px; }
+  #view-settings .settings-here::before { margin-right: 8px; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }
   /* A long section title plus its info and action buttons (Maia3: "Download",

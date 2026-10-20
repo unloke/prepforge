@@ -975,26 +975,34 @@ h2 {
 }
 /* Settings */
 
-/* Settings — Opus prototype composition: section nav + card column. The grid is
-   here; cards, rows, sliders, status pills and connection rows live in
-   views/settings.css (lazy chunk, imported by the lazy settings view module). */
+/* Settings — a section strip over the cards. The strip is here; cards, rows,
+   sliders, status pills and connection rows live in views/settings.css (lazy
+   chunk, imported by the lazy settings view module). */
 .workspace:has(> .view.is-active#view-settings) {
   max-width: none;
   padding: 16px;
 }
 .settings {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
+  display: block;
 }
+/* The six sections are one strip under the title at every width: it is the
+   page's only navigation, so it keeps a surface of its own instead of reading
+   as six loose grey words on the ground. It stays at the top while the cards
+   scroll, so a jump to any section is always one tap away. */
 .settings-nav {
   position: sticky;
-  top: 0;
+  top: 8px;
+  z-index: 3;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  margin: 0 0 12px;
+  padding: 4px;
+  overflow-x: auto; /* one row when it fits, wraps below 761px (phone.css) */
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  scrollbar-width: none;
 }
+.settings-nav::-webkit-scrollbar { display: none; }
 .settings-content {
   display: flex;
   flex-direction: column;
@@ -1015,11 +1023,6 @@ h2 {
     break-inside: avoid;
     margin-bottom: 12px;
   }
-}
-@media (max-width: 1020px) {
-  .settings { grid-template-columns: minmax(0, 1fr); }
-  /* Prototype: one horizontally scrolling strip of section links. */
-  .settings-nav { position: static; flex-direction: row; gap: 1px; overflow-x: auto; scrollbar-width: none; }
 }
 @media (max-width: 760px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -2998,7 +3001,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   align-items: center;
   gap: 1px;
   padding: 6px var(--build-pad, 12px);
-  overflow-x: auto;
+  overflow-x: auto; /* one row when it fits, wraps below 761px (phone.css) */
   white-space: nowrap;
   font-size: var(--fs-s);
   scrollbar-width: none;

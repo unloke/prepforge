@@ -526,14 +526,33 @@ export function createSettingsView({
     });
   }
 
-  // Section nav (prototype 180px column): click scrolls the card into view and
-  // marks the link active; a scroll spy keeps the active marker honest while
-  // the user scrolls the long card list by hand. Mobile keeps the nav as a
-  // horizontal chip row (CSS), same behaviour.
+  // Section nav: click scrolls the card into view and marks the link active; a
+  // scroll spy keeps the active marker honest while the user scrolls the long
+  // card list by hand. The same id names the section beside the page title, so
+  // the heading and the strip never disagree. On a phone the strip is the only
+  // way to reach a section, and CSS keeps it as one sideways-scrolling row.
   function markActiveSection(id) {
+    let label = "";
     document.querySelectorAll(".settings-nav .settings-nav-link").forEach((link) => {
-      link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+      const active = link.getAttribute("href") === `#${id}`;
+      link.classList.toggle("is-active", active);
+      // aria-current is the accessible form of the same mark.
+      if (active) {
+        link.setAttribute("aria-current", "true");
+        label = link.textContent.trim();
+      } else {
+        link.removeAttribute("aria-current");
+      }
     });
+    const here = document.getElementById("settings-current");
+    if (here && label) here.textContent = label;
+    // The strip scrolls sideways on a phone: an active chip that starts off
+    // the edge would answer "where am I" with an invisible mark.
+    const nav = document.querySelector(".settings-nav");
+    const active = nav?.querySelector(".settings-nav-link.is-active");
+    if (nav && active && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
+    }
   }
 
   function bindSectionNav() {
