@@ -25,7 +25,7 @@ import { buildAddId, buildDeleteId } from "./sync-queue.js";
 import { clearCheckpoint, loadCheckpoint } from "./analyze-checkpoint.js";
 import { loadReturnState, setHandoffOwner } from "./handoff-context.js";
 import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
-import { bindCommandPalette, closePalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
+import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
   isBuildReadOnly,
   deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
@@ -1707,6 +1707,8 @@ function bindEvents() {
   if (trainFresh) {
     trainFresh.addEventListener("click", () => startTraining(appState.trainMode, { fresh: true }));
   }
+  createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
+    requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky, toggleTheme });
   bindCommandPalette();
   window.addEventListener("popstate", () => {
     void handleWorkspacePopstate();
