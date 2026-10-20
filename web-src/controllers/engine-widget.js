@@ -4,16 +4,17 @@ import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } 
 import { formatEngineEval } from "../engine-eval.js";
 import { fullEngineChoice, chooseFullEngine, subscribeEngineProfile, subscribeEngineSetup } from "../engine/engine-profile.js";
 import { engineConsentHtml } from "./engine-consent.js";
+import { createPassFeed } from "./engine-pass-feed.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
   boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-  activeBoardController, explorerEvalEngine, getAnalyzeSession;
+  activeBoardController, explorerEvalEngine, getAnalyzeSession, analysisStore;
 
 export function createEngineWidget(deps) {
   ({
     effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
     boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-    activeBoardController, explorerEvalEngine, getAnalyzeSession,
+    activeBoardController, explorerEvalEngine, getAnalyzeSession, analysisStore,
   } = deps);
   const widget = new EngineWidget();
   widget.bind();
@@ -50,6 +51,9 @@ class EngineWidget {
     this.engineDepth = null;
     this.consentEl = null;
     this.unwatchChoice = null;
+    // While a full-game pass holds the workers, this reads the pass's own results
+    // for the board instead of searching (see engine-pass-feed.js).
+    this.passFeed = null;
   }
 
   // Build the provider on demand at the current Settings depth. If the depth changed
@@ -164,12 +168,15 @@ class EngineWidget {
   async openForCurrent() {
     // The engine widget runs its own lightweight Stockfish session and is
     // intentionally *not* gated on heavy Analyze/Build jobs — the user can keep
-    // probing positions while a long job runs in the background.
+    // probing positions while a long job runs in the background. A full-game pass
+    // is the exception: it holds every worker, so the card reads its results
+    // instead of queueing behind it (see _passFeed).
     this.open = true;
     this.el.hidden = false;
     this.el.classList.add("is-visible");
     this._watchChoice();
     this._paintChoice();
+    void this._passFeed().attach();
     await this._restartForCurrentBoard();
     this._watch();
   }
@@ -180,6 +187,7 @@ class EngineWidget {
     this.open = false;
     this._unwatch();
     this._unwatchChoice();
+    this.passFeed?.detach();
     if (this.consentEl) {
       this.consentEl.hidden = true;
       this.consentEl.innerHTML = "";
@@ -196,6 +204,8 @@ class EngineWidget {
     }
   }
 
+  _passFeed() { return (this.passFeed ||= createPassFeed({ host: this, store: analysisStore })); }
+
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
   async onBoardChanged() {
     if (!this.open) return;
@@ -205,6 +215,8 @@ class EngineWidget {
     const engine = this.engine;
     this.lastFen = fen;
     this._clearAnalysisView();
+    // A running pass owns every worker: read what it has for this position.
+    if (await this._passFeed().read()) return;
     try {
       const snapshot = await engine.update({ fen, multipv: this.multipv });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
@@ -226,6 +238,8 @@ class EngineWidget {
     const fen = this.currentFen();
     this.lastFen = fen;
     this._clearAnalysisView();
+    // A card that opens mid-pass reads the pass's result for this position.
+    if (await this._passFeed().read()) return;
     try {
       const snapshot = await engine.open({ fen, multipv: this.multipv });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
@@ -323,7 +337,7 @@ class EngineWidget {
         html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
     }
     if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
-    this._paintDepth(null, null);
+    this._paintDepth(0, 0);
     if (this.evalBarWhite) {
       const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
       this.evalBarWhite.style.transform = `scaleY(${share})`;
@@ -342,13 +356,15 @@ class EngineWidget {
   _paintDepth(current, target) {
     const el = this.depthReadout;
     if (!el) return;
+    // Number(null) is 0, so "no depth at all" must be checked before converting.
+    const hasCur = current !== null && current !== undefined && Number.isFinite(Number(current));
     const cur = Number(current);
     const max = Number(target);
-    // Number(null) is 0, so only a real positive ceiling counts as a target.
-    const hasCur = Number.isFinite(cur);
+    // Only a real positive ceiling counts as a target.
     const hasMax = Number.isFinite(max) && max > 0;
     el.dataset.d = hasCur ? (hasMax ? `${cur}/${max}` : String(cur)) : "";
     el.title = hasCur ? `Search depth ${cur}${hasMax ? ` of ${max}` : ""}` : "";
+    el.hidden = !hasCur;
   }
 
   _renderLinesReadout() {

@@ -57,6 +57,7 @@ export function loadEngineWidget() {
       effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
       boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
       activeBoardController, explorerEvalEngine, getAnalyzeSession: () => hooks.analyzeSession?.() || null,
+      analysisStore,
     });
     return loadedEngineWidget;
   }).catch((error) => {

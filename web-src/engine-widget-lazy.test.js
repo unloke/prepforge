@@ -28,6 +28,7 @@ function harness() {
     boards: {}, START_FEN: "start", setEngineBestArrow: vi.fn(), setStatusError: vi.fn(),
     setEngineOn: vi.fn(), activeBoardController: vi.fn(), explorerEvalEngine: {}, hooks,
     pref: () => wanted, setPref: vi.fn(),
+    analysisStore: vi.fn(),
   };
   const facade = new Function(...Object.keys(deps), `${facadeSource}
     return { engineWidget, setSession(value) { hooks.analyzeSession = value ? () => value : null; } };`)(...Object.values(deps));

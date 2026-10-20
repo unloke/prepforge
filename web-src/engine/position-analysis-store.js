@@ -29,6 +29,9 @@ function gameSnapshot(fen, game) {
   const ev = game.eval;
   return {
     session_id: "game-analysis",
+    // The pass's own read, not a live search: the Engine panel names it rather
+    // than passing it off as its own.
+    source: "analysis",
     fen,
     running: false,
     complete: true,
@@ -73,6 +76,16 @@ export function createPositionAnalysisStore({
   }));
   let clock = 0;
   let generation = 0;
+  // Whole-game passes in flight. A pass holds every worker, so the Engine card
+  // reads what it has saved for its position instead of searching (see passRead).
+  let passing = 0;
+  const passListeners = new Set();
+
+  function notifyPass() {
+    for (const fn of [...passListeners]) {
+      try { fn(); } catch (_) { /* a consumer's bug never stalls the store */ }
+    }
+  }
 
   function entryFor(fen) {
     const key = positionKey(fen);
@@ -368,6 +381,7 @@ export function createPositionAnalysisStore({
     entry.game = { eval: ev, target: Math.max(target || 0, ev.depth || 0) };
     if (entry.want && satisfied(entry, entry.want.depth, entry.want.multipv)) entry.want = null;
     emit(entry);
+    notifyPass();
   }
 
   // A finished read (live or game) good enough for the whole-game pass at `depth`.
@@ -425,13 +439,44 @@ export function createPositionAnalysisStore({
     publishGame,
     reusableGameEval,
     maiaRead,
+    // What the whole-game pass has saved for `fen` — or null while it has not
+    // reached that position. Reads only: no lease, no want, no worker. The Engine
+    // card uses it to show the pass's own eval instead of competing for a worker
+    // the pass holds.
+    passRead(fen) {
+      const entry = entries.get(positionKey(fen));
+      return entry && entry.game ? { ...gameSnapshot(fen, entry.game), complete: false } : null;
+    },
+    // A whole-game pass started (1) or ended (0). Consumers read `passing` through
+    // onPassChange to know the engine is taken and follow each saved position.
+    passStart() {
+      passing += 1;
+      notifyPass();
+      let ended = false;
+      return () => {
+        if (ended) return;
+        ended = true;
+        passing -= 1;
+        notifyPass();
+      };
+    },
+    get passing() {
+      return passing > 0;
+    },
+    onPassChange(fn) {
+      passListeners.add(fn);
+      return () => passListeners.delete(fn);
+    },
     // Whole-game pass: dedicated workers at full concurrency; positions the store can
     // already answer at this depth are reused, and every finished eval is published.
     // multipv > 1 (the brilliant check's best-other-move read) runs on the same
     // dedicated pool but neither reuses nor publishes: the game channel is single-line.
+    // Only a single-line pass holds the workers for the Engine card: a MultiPV check
+    // sidesteps the budget (batch) and is not what leaves the card waiting.
     analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes }) {
       const single = multipv <= 1;
-      return analyzeFn({
+      const endPass = single ? store.passStart() : () => {};
+      return Promise.resolve(analyzeFn({
         positions,
         depth,
         maxNodes: cap,
@@ -445,7 +490,7 @@ export function createPositionAnalysisStore({
           if (single) publishGame(fen, ev, depth);
           if (typeof onResult === "function") onResult(fen, ev);
         },
-      });
+      })).finally(endPass);
     },
     // EngineProvider-compatible handle for the Engine panel. close() only drops this
     // consumer's hold on the position. watch(fn) subscribes to every store update for the

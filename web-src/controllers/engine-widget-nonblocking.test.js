@@ -2,6 +2,7 @@ import { html } from "../html.js";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { engineConsentHtml } from "./engine-consent.js";
+import { createPassFeed } from "./engine-pass-feed.js";
 
 // The full net's 94 MB question is a row above the lines, never a replacement for
 // them: while it waits for an answer the lite search keeps running, and answering
@@ -10,6 +11,7 @@ const widgetSource = readFileSync(new URL("./engine-widget.js", import.meta.url)
 
 function stubEl() {
   const listeners = {};
+  const classes = new Set();
   return {
     hidden: true,
     innerHTML: "",
@@ -17,13 +19,39 @@ function stubEl() {
     dataset: {},
     title: "",
     disabled: false,
-    classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+    classList: {
+      add(c) { classes.add(c); }, remove(c) { classes.delete(c); },
+      toggle() {}, contains(c) { return classes.has(c); },
+    },
     addEventListener(type, fn) { listeners[type] = fn; },
     fire(type, event) { listeners[type]?.(event); },
   };
 }
 
-function harness({ choice = "ask" } = {}) {
+// The card's view of the position store. No pass unless a test starts one; a
+// test can publish what the pass has saved and start/end one.
+function fakeStore() {
+  const listeners = new Set();
+  let passing = 0;
+  const saved = new Map();
+  return {
+    saved,
+    startPass() { passing += 1; for (const fn of [...listeners]) fn(); },
+    endPass() { passing -= 1; for (const fn of [...listeners]) fn(); },
+    get passing() { return passing > 0; },
+    onPassChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    passRead(fen) {
+      const read = saved.get(fen);
+      return read ? { session_id: "game-analysis", source: "analysis", fen, running: false, complete: false, ...read } : null;
+    },
+  };
+}
+
+function noPassStore() {
+  return fakeStore();
+}
+
+function harness({ choice = "ask", store = noPassStore() } = {}) {
   let choiceNow = choice;
   const subscribers = new Set();
   const deps = {
@@ -37,7 +65,8 @@ function harness({ choice = "ask" } = {}) {
     chooseFullEngine: vi.fn(async (full) => { choiceNow = full ? null : "download"; }),
     subscribeEngineSetup: (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); },
     subscribeEngineProfile: (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); },
-    engineConsentHtml,
+    engineConsentHtml, createPassFeed,
+    analysisStore: async () => store,
   };
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
   const Widget = new Function(...Object.keys(deps), `return (${code.trim()});`)(...Object.values(deps));
@@ -59,7 +88,7 @@ function harness({ choice = "ask" } = {}) {
   widget.currentFen = () => "board w - - 0 1";
   // The device's setup/answer changed elsewhere (a probe finished, Settings answered).
   const emit = (next) => { if (next !== undefined) choiceNow = next; for (const fn of [...subscribers]) fn({ phase: "ready" }); };
-  return { widget, row, sent, emit };
+  return { widget, row, sent, emit, store };
 }
 
 describe("the full-net question never blocks the engine card", () => {
@@ -117,5 +146,64 @@ describe("the full-net question never blocks the engine card", () => {
     // The search that was running is untouched by the question appearing.
     expect(sent).toEqual([["open", "board w - - 0 1"]]);
     expect(widget.engine.close).not.toHaveBeenCalled();
+  });
+});
+
+// The whole-game pass holds every worker. The card never competes with it: it
+// shows what the pass has saved for the position on the board, and says the pass
+// is still running when it has not reached that position yet.
+describe("a running whole-game pass owns the engine card's numbers", () => {
+  it("shows the pass's saved eval and depth, and starts no search", async () => {
+    const store = fakeStore();
+    const { widget, sent } = harness({ store });
+    await widget.openForCurrent();
+    await vi.waitFor(() => expect(widget.passFeed).toBeTruthy());
+    sent.length = 0;
+    store.saved.set("next p - - 0 1", {
+      current_depth: 20, max_depth: 20, side_to_move: "white",
+      pvs: [{ score_cp: 42, mate_in: null, pv_uci: ["e2e4"], pv_san: ["e4"] }],
+    });
+    widget.currentFen = () => "next p - - 0 1";
+    store.startPass();
+    await widget.onBoardChanged();
+    // The saved line and its depth, marked as the analysis's own...
+    expect(String(widget.pvsEl.innerHTML)).toContain("e4");
+    expect(widget.pvsEl.classList.contains("is-analysis-read")).toBe(true);
+    expect(widget.depthReadout.textContent).toBe("20 / 20");
+    // ...and no search was asked for: the pass has the workers.
+    expect(sent).toEqual([]);
+  });
+
+  it("says Analyze is still running for a position the pass has not reached, and starts no search", async () => {
+    const store = fakeStore();
+    const { widget, sent } = harness({ store });
+    await widget.openForCurrent();
+    await vi.waitFor(() => expect(widget.passFeed).toBeTruthy());
+    sent.length = 0;
+    widget.currentFen = () => "unreached p - - 0 1";
+    store.startPass();
+    await widget.onBoardChanged();
+    expect(String(widget.pvsEl.innerHTML)).toContain("Analyze is still running");
+    expect(String(widget.pvsEl.innerHTML)).not.toContain("Calculating…");
+    // No depth, no eval: there is no number for this position yet.
+    expect(widget.depthReadout.hidden).toBe(true);
+    expect(widget.depthReadout.textContent).toBe("");
+    expect(widget.evalHead.dataset.pending).toBeUndefined();
+    expect(sent).toEqual([]);
+  });
+
+  it("searches for itself again when the pass ends, and the status line is gone", async () => {
+    const store = fakeStore();
+    const { widget, sent } = harness({ store });
+    await widget.openForCurrent();
+    await vi.waitFor(() => expect(widget.passFeed).toBeTruthy());
+    widget.currentFen = () => "unreached p - - 0 1";
+    store.startPass();
+    await widget.onBoardChanged();
+    expect(String(widget.pvsEl.innerHTML)).toContain("Analyze is still running");
+    sent.length = 0;
+    store.endPass();
+    await vi.waitFor(() => expect(String(widget.pvsEl.innerHTML)).not.toContain("Analyze is still running"));
+    await vi.waitFor(() => expect(sent).toEqual([["open", "unreached p - - 0 1"]]));
   });
 });
