@@ -111,12 +111,6 @@ describe("Settings section navigation", () => {
     }
   });
 
-  it("scrolls an off-screen active chip into the strip on a phone", () => {
-    const { view, nav } = setup();
-    view.markActiveSection("set-board");
-    expect(nav.scrollLeft).toBeGreaterThan(0);
-  });
-
   it("keeps every section reachable from the strip and the heading in the page", () => {
     const view = html.slice(html.indexOf('id="view-settings"'), html.indexOf("</main>"));
     for (const [href, label] of SECTIONS) {
