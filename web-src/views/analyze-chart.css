@@ -21,6 +21,10 @@
 }
 #analyze-sidebar .panel-head {
   border-bottom: 0;
+  /* The head is the first line of the panel's column, so it starts on the
+     body's left edge (14px) instead of the shared 12/10px. Measured before:
+     the game's name at x=922 and every block under it at x=924. */
+  padding-inline: 14px;
 }
 
 /* One filled action on the panel: once the report is on it, the accent belongs

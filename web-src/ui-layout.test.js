@@ -380,10 +380,10 @@ describe("workspace chrome layout", () => {
     expect(boardBar).not.toContain('id="analysis-game-meta"');
     expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
     expect(analyzeCss).toContain(".analyze-head-id {");
-    // An icon action, not a word button, keeps the row compact; the icon must
-    // survive .panel-head's rule that hides icons in word buttons.
-    expect(view).toContain('class="btn icon sm" id="fetch-my-game"');
-    expect(css).toContain(".panel-head .btn:not(.icon) > .bi");
+    // Both actions say what they do. "Last game" was a bare download glyph in
+    // a strip with room for its name; the phone's Games sheet mirrors it.
+    expect(view).toContain('class="btn sm" id="fetch-my-game"');
+    expect(view).toMatch(/id="fetch-my-game"[^>]*>.*?<span class="bl">Last game<\/span>/);
     // Build's head names its primary action in words; the counts move to a
     // second line so the repertoire name keeps its ending.
     const build = html.slice(html.indexOf('id="view-build"'));
