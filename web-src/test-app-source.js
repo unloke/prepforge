@@ -21,6 +21,8 @@ const FILES = [
   "./controllers/build-session.js",
   "./controllers/analyze-session.js",
   "./views/teams-controller.js",
+  "./views/games-controller.js",
+  "./views/shared/source-store.js",
 ];
 
 export function appSource() {
