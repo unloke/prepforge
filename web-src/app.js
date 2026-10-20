@@ -1330,10 +1330,8 @@ function captureBuildContext() {
   return () => repertoireId === appState.build?.repertoire_id && seq === buildLoadSeq && owner === currentOwnerId();
 }
 
-// The player's calendar day in their own timezone (not UTC) — the server keys
-// the daily training streak off this so a late-evening session counts for the
-// day the player actually lived it.
-
+// Right pops its tick, wrong nudges, a hint only brings its line in.
+const BANNER_MOTION = new Set(["correct", "wrong", "move"]);
 function setTrainBanner(state, title, sub) {
   const banner = document.getElementById("train-banner");
   if (!banner) return;
@@ -1344,11 +1342,10 @@ function setTrainBanner(state, title, sub) {
   titleEl.title = title || "";
   subEl.textContent = sub || "";
   subEl.title = sub || "";
-  if (state === "correct" || state === "wrong") {
-    banner.classList.remove("flash");
-    void banner.offsetWidth;
-    banner.classList.add("flash");
-  }
+  banner.classList.remove("flash");
+  if (!BANNER_MOTION.has(state)) return;
+  banner.querySelector(".train-coach-text").addEventListener("animationend", () => banner.classList.remove("flash"), { once: true });
+  requestAnimationFrame(() => banner.classList.add("flash"));
 }
 
 const PLAY_COLOR_KEY = "prepforge.play_color";

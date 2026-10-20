@@ -3319,17 +3319,26 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Idle has nothing to signal; a ▶ in a circle read as a play button. */
 #train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
 #train-banner[data-state="idle"] .train-coach-icon { display: none; }
-#train-banner.flash { animation: trainFlash var(--dur-slow) var(--ease-out); }
-#train-banner[data-state="wrong"].flash { animation: trainWrongFlash 760ms var(--ease-out); }
-@keyframes trainFlash {
-  0% { transform: scale(0.99); }
-  40% { transform: scale(1.012); }
-  100% { transform: scale(1); }
+/* The judge answers in the direction the answer went: a right move pops its
+   tick, a wrong one gives a single short nudge. Only a verdict moves the mark —
+   a hint and an opponent reply are news, so their line arrives and nothing
+   gestures at you. All of it is once per change, never a loop. */
+#train-banner.flash .train-coach-text { animation: judge-line var(--dur) var(--ease-out) both; }
+#train-banner[data-state="correct"].flash .train-coach-icon { animation: judge-mark var(--dur-slow) var(--ease-emphasis); }
+#train-banner[data-state="wrong"].flash .train-coach-icon { animation: judge-nudge 320ms var(--ease-out); }
+@keyframes judge-mark {
+  from { transform: scale(0.5); }
+  to { transform: none; }
 }
-@keyframes trainWrongFlash {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
-  20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
-  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent); }
+@keyframes judge-nudge {
+  0% { transform: translateX(-3px); }
+  35% { transform: translateX(3px); }
+  65% { transform: translateX(-2px); }
+  100% { transform: none; }
+}
+@keyframes judge-line {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
 }
 .train-coach-icon {
   width: 34px;
