@@ -39,10 +39,26 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".skip-link");
     expect(css).toContain(".skip-link:focus-visible");
     const link = ruleBody(".skip-link");
-    expect(link).toMatch(/position:\s*absolute/);
-    expect(link).toMatch(/top:\s*-48px/);
+    // Fixed, not absolute: the link is parked above the viewport, so it must
+    // not be part of the page flow, and it must not read as a label sitting
+    // above the page's first heading.
+    expect(link).toMatch(/position:\s*fixed/);
+    expect(link).toMatch(/transform:\s*translateY\(/);
     const focused = css.match(/\.skip-link:focus-visible\s*\{([^}]+)\}/)?.[1] || "";
-    expect(focused).toMatch(/top:\s*8px/);
+    expect(focused).toMatch(/transform:\s*translateY\(0\)/);
+  });
+
+  it("draws the brand mark as the app's own knight, not as a text glyph", () => {
+    const mark = html.match(/<span class="brand-mark"[^>]*>([\s\S]*?)<\/span>/)?.[1] || "";
+    expect(mark).toContain("<svg");
+    // A glyph reads differently on every platform; the piece set's own path
+    // does not.
+    expect(html).not.toContain("♞");
+    const path = mark.match(/d="(M16 34c1-10[^"]+)"/)?.[1] || "";
+    expect(path).not.toBe("");
+    const knight = app.match(/classic:\s*\{[\s\S]*?n:\s*html`([^`]+)`/)?.[1] || "";
+    expect(knight).toContain(path);
+    expect(ruleBody(".brand-mark")).toMatch(/width:\s*26px/);
   });
 
   it("sizes study boards off the viewport with a full-width workspace", () => {
@@ -487,8 +503,17 @@ describe("workspace chrome layout", () => {
       expect(view).toContain(`id="set-${id}"`);
     }
     expect(view).toContain('id="piece-style-picker"');
-    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*760px\)/);
+    // The card column takes the window's width. A fixed 860px column left a
+    // third of a wide screen empty beside the cards.
+    expect(css).toMatch(/\.settings\s*\{[^}]*grid-template-columns:\s*180px\s+minmax\(0,\s*1fr\)/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.settings\s*\{[^}]*minmax\(0,\s*1fr\)/);
+    // A wide window gets two card columns, so the six cards fit on one screen
+    // instead of running 1.6 screens down a single column.
+    expect(css).toMatch(/@media\s*\(min-width:\s*1200px\)[\s\S]*?\.settings-content\s*\{[^}]*column-count:\s*2/);
+    expect(css).toMatch(/\.settings-content\s*>\s*\.set\s*\{[^}]*break-inside:\s*avoid/);
+    // The desktop page names itself: the phone header is hidden on wide
+    // screens, so without this the Settings view has no heading at all.
+    expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*block/);
     expect(settingsCss).toContain(".set-row");
     expect(settingsCss).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.

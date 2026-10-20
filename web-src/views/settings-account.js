@@ -99,7 +99,7 @@ export function createAccountSection({
         "Download a copy",
         html`<button type="button" class="btn sm" data-acct="export">Download</button>`,
         "Profile, games (PGN), repertoires and training history in one JSON file.",
-      )}<details class="acct-danger-zone"><summary>Delete account</summary><div class="acct-danger"><p class="muted small">Removes the account and everything it owns. Copies other people already made of your shared repertoires stay theirs. This cannot be undone.</p><button type="button" class="btn sm danger" data-acct="delete">Delete account…</button></div></details>`;
+      )}<details class="acct-danger-zone"><summary>Delete account</summary><div class="acct-danger"><button type="button" class="btn sm danger" data-acct="delete" title="Removes the account and everything it owns. Copies other people already made of your shared repertoires stay theirs. This cannot be undone.">Delete account…</button></div></details>`;
     // Unit tests (and any host without the data slot) get everything in one place.
     if (data) data.innerHTML = dataHtml;
     else el.innerHTML += dataHtml;

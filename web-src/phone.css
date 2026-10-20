@@ -52,7 +52,6 @@
   .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings) .card {
     border: 0;
     border-radius: var(--phone-radius);
-    box-shadow: none;
   }
   .page-head {
     display: flex;
@@ -181,11 +180,10 @@
     border: 0;
     border-radius: 10px;
     background: var(--surface-3);
-    box-shadow: none;
   }
-  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
   .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--faint); }
-  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
   #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -314,27 +312,23 @@
   /* A long section title plus its info and action buttons (Maia3: "Download",
      "Reset cache") overflowed 320px; the buttons wrap under the title instead. */
   #view-settings .set h2 { flex-wrap: wrap; gap: 4px 2px; }
+  /* The section title is a heading, not a stamped label: sentence case, ink,
+     and separated from the rows by space. */
   #view-settings .set h2 {
     min-height: 44px;
     margin: 0;
-    padding: 6px 0 0;
-    border-bottom: 1px solid var(--line);
-    color: var(--muted);
-    font-size: 13px;
+    padding: 14px 0 4px;
+    color: var(--text);
+    font-size: 15px;
     font-weight: 650;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
   }
   #view-settings :is(.set-row, .pf-row, .acct-row, .conn-row) {
     flex-wrap: nowrap;
     min-height: 48px;
     padding: 6px 0;
-    border-top: 0;
-    border-bottom: 1px solid var(--line);
+    border: 0;
     font-size: 16px;
   }
-  #view-settings .set > :last-child,
-  #view-settings .set > :last-child > :last-child { border-bottom: 0; }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
   /* Settings is a thumb target: its row buttons keep the quiet ghost look but
      take a 40px box (they were 36px, and "Edit" only 34x36). */
@@ -344,7 +338,6 @@
     padding: 0 8px;
     border: 0;
     background: none;
-    box-shadow: none;
     color: var(--accent-strong);
     font-size: 15px;
     font-weight: 600;
@@ -352,15 +345,15 @@
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
   /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
   #view-settings .set .seg-btn { min-height: 40px; height: 40px; padding: 0 12px; }
-  #view-settings .status-pill { font-size: 12px; }
+  #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
   #view-settings .acct-id { gap: 12px; padding: 12px 0; flex-wrap: nowrap; }
   #view-settings .acct-signout { align-self: center; margin: 0; }
   #view-settings .acct-block { margin-top: 0; }
-  #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; color: var(--muted); font-size: 13px; font-weight: 650; }
   #view-settings .acct-block > .btn { margin: 4px 0; }
-  #view-settings #settings-account-data { padding-top: 0; border-top: 0; }
+  #view-settings #settings-account-data { padding-top: 0; }
   #view-settings .acct-danger-zone { margin: 0; padding: 12px 0; }
   #view-settings .acct-danger-zone > summary { font-size: 15px; }
   /* Sliders: the label on its own line, the control under it full width. */
@@ -590,9 +583,8 @@
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
     height: 64px;
     padding-bottom: 0;
-    border: 1px solid var(--line);
     border-radius: 16px 16px 0 0;
-    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
     transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
     visibility: hidden;
     transition: transform var(--dur) var(--ease-out), visibility 0s linear var(--dur);
@@ -616,7 +608,7 @@
     padding: 6px var(--phone-gutter) calc(20px + env(safe-area-inset-bottom));
     border-radius: 18px 18px 0 0;
     background: var(--panel);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a bottom sheet is a real overlay */
     overflow-y: auto;
     overscroll-behavior: contain;
     animation: phone-sheet-up var(--dur) var(--ease-out);
@@ -684,13 +676,13 @@
     font-size: 16px;
     text-align: left;
   }
-  .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); }
+  .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   .sheet-row svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--accent-strong); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .sheet-row:active { background: var(--line); }
 
   /* ---- Repertoire ------------------------------------------------------
-     Header (back, name, size, ⋯) over the board; under it the Explorer —
-     the next moves, yours dotted, a tap adds one — then the line tree. */
+     Header (back, name, size, ⋯) over the board; under it the Explorer with
+     the next moves, yours dotted, a tap adds one, then the line tree. */
   #view-build { --phone-reserve: max(244px, 40dvh); }
   /* Header (back, name, size, ⋯) over the board. It is the board's top
      neighbour here (the board bar is the thumb bar below), and it is flow
@@ -742,8 +734,8 @@
   #build-rep-header #build-menu { grid-column: 3; grid-row: 1 / 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
-  /* Under the board one pane at a time — the line tree, Explorer or Coverage
-     — so stepping through the tree scrolls the tree and nothing else. */
+  /* Under the board one pane at a time (the line tree, Explorer or Coverage)
+     so stepping through the tree scrolls the tree and nothing else. */
   #build-panes {
     position: sticky;
     top: -10px;
@@ -917,7 +909,7 @@
     padding: 6px 0;
     border: 0;
     border-radius: 16px;
-    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
   .context-menu button {
@@ -929,7 +921,7 @@
   /* Groups split by a rule instead of a caption, so Delete stays in view. */
   .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
   .context-menu .context-section { display: none; }
-  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); }
+  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
   .sheet-scrim { background: rgba(0, 0, 0, 0.45); }
@@ -951,7 +943,7 @@
     font-size: 16px;
     font-weight: 500;
   }
-  .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); }
+  .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   .sheet-item .ic { width: 22px; height: 22px; color: var(--accent-strong); }
   .sheet-item:active { background: var(--surface-3); }
 
@@ -982,6 +974,6 @@
 
   /* The tab bar. */
   .tabbar { height: calc(56px + env(safe-area-inset-bottom)); }
-  .tabbar .tabbar-item { min-height: 0; height: 56px; gap: 3px; font-size: 11px; font-weight: 600; }
+  .tabbar .tabbar-item { min-height: 0; height: 56px; gap: 3px; font-size: 12px; font-weight: 600; }
   .tabbar .tabbar-item svg { width: 22px; height: 22px; }
 }

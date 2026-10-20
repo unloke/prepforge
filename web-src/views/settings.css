@@ -7,6 +7,24 @@
 
 /* ---- Section nav ------------------------------------------------------- */
 
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own: the title spans the grid above the index and the cards. */
+@media (min-width: 761px) {
+  #view-settings .page-head {
+    display: block;
+    grid-column: 1 / -1;
+    margin: 0 0 2px;
+  }
+  #view-settings .page-head h1 {
+    margin: 0;
+    /* The phone header sets 32px for every page, so the desktop title keeps
+       the same size: one type size for the title at every width. */
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
 .settings-nav { top: 12px; }
 .settings-nav-link {
   padding: 6px 10px;
@@ -14,12 +32,16 @@
   color: var(--muted);
   font-weight: 550;
   text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .settings-nav-link:hover { background: var(--surface-3); }
+.settings-nav-link:active { transform: scale(0.97); }
+/* The section you are in is a soft accent plate, the same signal the rail
+   uses for the active page. */
 .settings-nav-link.is-active {
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 650;
 }
 .settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
@@ -37,14 +59,16 @@
 }
 .set .spacer { flex: 1; }
 .set .pf-info-pop { margin: 0 0 6px; }
+/* Rows are separated by space, not by a rule: a settings card is a list of
+   label/value pairs, and the label column plus the value edge already say
+   where one row ends. */
 .set-row,
 .set .pf-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
 }
 .set-row > span:first-child,
 .set .pf-row-text {
@@ -69,9 +93,10 @@
   padding: 4px 10px 4px 4px;
   min-height: 34px;
 }
-/* The chosen set needs to read as chosen: accent ring + weight, not a faint tint. */
+/* The chosen set needs to read as chosen: a soft accent plate + weight, not a
+   ring drawn around the pieces. */
 #piece-style-picker .piece-style-option.is-active {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--accent-soft);
   font-weight: 650;
 }
 .piece-style-preview { display: flex; border-radius: 4px; overflow: hidden; }
@@ -85,14 +110,14 @@
 .set .note:empty,
 .set .note[hidden],
 .set .faint:empty { display: none; }
-.settings-error { font-family: var(--mono); word-break: break-word; }
+.settings-error { word-break: break-word; }
 
 .status-pill {
   padding: 1px 8px;
   border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 700;
 }
 .status-pill.ok { background: var(--good-soft); color: var(--good-text); }
@@ -128,7 +153,6 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 0;
-  border-top: 1px solid var(--line);
 }
 .conn-name {
   display: flex;
@@ -148,20 +172,21 @@
   min-width: 28px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .conn-menu-btn:hover,
 .conn-menu-btn[aria-expanded="true"] {
-  border-color: var(--line);
   background: var(--surface-3);
   color: var(--text);
 }
+.conn-menu-btn:active { transform: scale(0.92); }
 .conn-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .conn-menu {
   position: absolute;
@@ -172,12 +197,22 @@
   gap: 2px;
   min-width: 132px;
   padding: 4px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--panel);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
+  /* The menu opens where the eye already is: it settles under the button
+     instead of appearing flat. @starting-style keeps the closed state hidden,
+     so a browser without it shows the menu as it is. */
+  translate: 0 0;
+  transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
 .conn-menu[hidden] { display: none; }
+@starting-style {
+  .conn-menu:not([hidden]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
 .conn-menu-item {
   display: block;
   width: 100%;
@@ -191,10 +226,40 @@
   text-align: left;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .conn-menu-item:hover { background: var(--surface-3); }
 .conn-menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .conn-menu-item.is-danger { color: var(--danger-strong); }
+
+/* ---- Motion ------------------------------------------------------------ */
+
+/* The page arrives in reading order: the title, then the index of sections,
+   then the cards one after another, so the eye lands on the first card and
+   follows the page down. The shared view-enter keyframes do the travel, so
+   this reads like the rest of the app. The animation hangs off the active
+   view, so it plays again every time the page is opened. */
+#view-settings.is-active .page-head h1 {
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+#view-settings.is-active .settings-nav-link {
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+#view-settings.is-active .settings-nav-link:nth-child(1) { animation-delay: 50ms; }
+#view-settings.is-active .settings-nav-link:nth-child(2) { animation-delay: 100ms; }
+#view-settings.is-active .settings-nav-link:nth-child(3) { animation-delay: 150ms; }
+#view-settings.is-active .settings-nav-link:nth-child(4) { animation-delay: 200ms; }
+#view-settings.is-active .settings-nav-link:nth-child(5) { animation-delay: 250ms; }
+#view-settings.is-active .settings-nav-link:nth-child(6) { animation-delay: 300ms; }
+#view-settings.is-active .settings-content > .set {
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+#view-settings.is-active .settings-content > .set:nth-child(1) { animation-delay: 60ms; }
+#view-settings.is-active .settings-content > .set:nth-child(2) { animation-delay: 120ms; }
+#view-settings.is-active .settings-content > .set:nth-child(3) { animation-delay: 180ms; }
+#view-settings.is-active .settings-content > .set:nth-child(4) { animation-delay: 240ms; }
+#view-settings.is-active .settings-content > .set:nth-child(5) { animation-delay: 300ms; }
+#view-settings.is-active .settings-content > .set:nth-child(6) { animation-delay: 360ms; }
 
 /* ---- Responsive -------------------------------------------------------- */
 
@@ -219,7 +284,7 @@
     content: "";
     position: absolute;
     inset: 9px 0;
-    border: 1px solid var(--line-strong);
+    border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
     border-radius: 999px;
     background: var(--panel-soft);
     transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
@@ -240,8 +305,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 0 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 6px 0 4px;
 }
 .acct-avatar {
   flex: none;
@@ -276,10 +340,10 @@
 .acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
 .acct-tag {
   padding: 1px 8px;
-  border: 1px solid var(--line);
   border-radius: 10px;
+  background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 650;
 }
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
@@ -298,7 +362,7 @@
 .acct-row > .btn { flex: none; white-space: nowrap; }
 .acct-block { margin-top: 14px; }
 .acct-block:empty { display: none; }
-#settings-account-data { padding-top: 10px; border-top: 1px solid var(--line); }
+#settings-account-data { padding-top: 4px; }
 .acct-block-head {
   display: flex;
   align-items: center;
@@ -316,14 +380,12 @@
   padding: 4px 0 2px;
 }
 .conn-site {
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px 7px;
+  border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--fs);
+  font-weight: 600;
 }
 /* The linked username is a link into Lichess: it reads as text but takes a
    thumb-sized box on a phone. */
@@ -338,10 +400,29 @@
 .acct-danger-zone { margin-top: 14px; }
 .acct-danger-zone > summary {
   width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
   font-size: var(--fs-s);
   cursor: pointer;
+  list-style: none;
+  transition: color var(--dur-fast) var(--ease-out);
 }
+.acct-danger-zone > summary::-webkit-details-marker { display: none; }
+/* The native disclosure triangle is replaced by a drawn arrow that turns when
+   the zone opens. */
+.acct-danger-zone > summary::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.acct-danger-zone[open] > summary::before { transform: rotate(90deg); }
 .acct-danger-zone > summary:hover { color: var(--danger-strong); }
 .acct-danger-zone[open] > summary { color: var(--danger-strong); }
 .acct-danger {
@@ -351,8 +432,8 @@
   gap: 12px;
   margin-top: 8px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
   border-radius: var(--radius);
+  background: var(--danger-soft);
 }
 .acct-danger p { margin: 0; }
 .acct-danger .btn { white-space: nowrap; flex: none; }
@@ -363,8 +444,7 @@
   .acct-danger { flex-direction: column; align-items: flex-start; }
 }
 
-/* Device probe: a track under the Detect row; the fill eases between steps and a soft
-   sheen keeps it alive through the long big-net download. */
+/* Device probe: a track under the Detect row; the fill eases between steps. */
 .profile-progress {
   position: relative;
   height: 6px;
@@ -376,23 +456,14 @@
 .profile-progress[hidden] { display: none; }
 .profile-progress-fill {
   position: relative;
-  width: 0;
+  width: 100%;
   height: 100%;
-  overflow: hidden;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent-line), var(--accent));
-  transition: width 700ms var(--ease-out);
+  background: var(--accent);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform 700ms var(--ease-out);
 }
-.profile-progress-fill::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
-  transform: translateX(-100%);
-  animation: profile-sheen 1.6s ease-in-out infinite;
-}
-@keyframes profile-sheen { to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) {
   .profile-progress-fill { transition: none; }
-  .profile-progress-fill::after { animation: none; }
 }

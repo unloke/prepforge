@@ -167,7 +167,7 @@ export function createSettingsView({
       // so it never runs backwards between them. A small floor keeps a fresh start visible.
       const share = setup.phase === "download" || setup.phase === "compile" ? setup.fraction / 2
         : setup.phase === "probe" ? 0.5 + setup.fraction / 2 : 0.5;
-      bar.firstElementChild.style.width = `${Math.round(100 * Math.max(0.03, share))}%`;
+      bar.firstElementChild.style.setProperty("--progress", String(Math.max(0.03, share)));
     }
   }
 
