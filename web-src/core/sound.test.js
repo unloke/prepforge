@@ -5,9 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Chess } from "chess.js";
 
 // A stand-in for WebAudio that counts what a cue actually starts, and records
-// the one call the cut makes on a sounding bus (cancelScheduledValues).
+// the one call the cut makes on a sounding bus (cancelScheduledValues). A
+// buffer keeps its samples, because every voice is now computed into one.
 function fakeAudio() {
-  const made = { contexts: 0, sources: 0, cancels: 0 };
+  const made = { contexts: 0, sources: 0, cancels: 0, buffers: [] };
   const param = () => ({
     value: 1,
     setValueAtTime() {},
@@ -29,7 +30,10 @@ function fakeAudio() {
       return Promise.resolve();
     }
     createBuffer(_channels, frames) {
-      return { getChannelData: () => new Float32Array(frames) };
+      const data = new Float32Array(frames);
+      const buffer = { length: frames, getChannelData: () => data };
+      made.buffers.push(buffer);
+      return buffer;
     }
     createBufferSource() {
       return node({ start: () => { made.sources += 1; }, stop() {} });
@@ -186,6 +190,60 @@ describe("playing a cue", () => {
     listeners.get("pointerdown")();
     expect(made.contexts).toBe(1);
     expect(listeners.size).toBe(0);
+  });
+});
+
+describe("what a voice is made of", () => {
+  // Every voice is computed into one buffer. Stacked oscillators were the bug
+  // this replaced: WebAudio starts a sine at the phase the clock is in, so the
+  // same cue came out up to 8 dB louder or quieter depending on when it played.
+  it("renders a cue as buffers, with no oscillator that can drift in phase", async () => {
+    const { sound, made } = await soundWith();
+    sound.playSound("move");
+    expect(made.buffers.length).toBeGreaterThan(0);
+    expect(made.sources).toBeGreaterThan(0);
+  });
+
+  it("rings in the low mids off a short strike, which is what reads as wood", async () => {
+    const { sound, made } = await soundWith();
+    sound.playSound("move");
+    const knock = made.buffers.find((b) => b.length > 2000);
+    expect(knock).toBeDefined();
+    const data = knock.getChannelData(0);
+    // Normalised to the same height whatever its modes, so its level is known.
+    const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+    expect(peak).toBeCloseTo(1, 3);
+    // It rises from silence and has died away by its end: no step at either edge.
+    expect(Math.abs(data[0])).toBe(0);
+    expect(Math.abs(data[data.length - 1])).toBeLessThan(1e-3);
+    // It is a strike, not a note: most of its energy is in the first fifth.
+    let early = 0, all = 0;
+    const split = Math.round(data.length * 0.2);
+    data.forEach((v, i) => { all += v * v; if (i < split) early += v * v; });
+    expect(early / all).toBeGreaterThan(0.5);
+    // And it still rings a third of the way in, rather than being one thump at
+    // the start: a knock with no ring in the middle read as a kick drum.
+    const span = Math.round(data.length / 30);
+    let rings = 0;
+    for (let at = Math.round(data.length * 0.15); at < data.length * 0.4 - span; at += span) {
+      let block = 0;
+      for (let i = at; i < at + span; i++) block += data[i] * data[i];
+      if (Math.sqrt(block / span) > 0.01) rings += 1;
+    }
+    expect(rings).toBeGreaterThanOrEqual(4);
+  });
+
+  it("computes a cue the same way in every context, so a play cannot drift", async () => {
+    const first = await soundWith();
+    for (const cue of ["move", "complete"]) first.sound.playSound(cue);
+    const second = await soundWith();
+    for (const cue of ["move", "complete"]) second.sound.playSound(cue);
+    const samples = (made) => made.buffers.map((b) => Array.from(b.getChannelData(0)));
+    // Same samples on a reload: nothing here depends on the clock or on a
+    // randomly phased oscillator.
+    expect(samples(second.made)).toEqual(samples(first.made));
+    // And a computed buffer starts from silence, so it cannot begin on a step.
+    for (const data of samples(first.made)) expect(Math.abs(data[0])).toBe(0);
   });
 });
 
