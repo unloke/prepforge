@@ -8,6 +8,9 @@ const root = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(root, "styles.css"), "utf8");
 const html = readFileSync(join(root, "index.html"), "utf8");
 const app = appSource();
+// app.js on its own: assertions about startup order are about the shell, not
+// the modules it now imports.
+const shell = readFileSync(join(root, "app.js"), "utf8");
 const coverageController = readFileSync(join(root, "controllers", "coverage.js"), "utf8");
 const account = readFileSync(join(root, "controllers", "account.js"), "utf8");
 const replayView = readFileSync(join(root, "views", "replay.js"), "utf8");
@@ -529,10 +532,9 @@ describe("workspace chrome layout", () => {
     // (auth/Lichess/settings/Maia) paints into the current view and must never
     // call switchView — so a signed-in first open with delayed hydration stays
     // on the URL route instead of self-navigating to Settings.
-    const startup = app.slice(app.indexOf("async function init()"));
-    expect(app).toContain("async function restoreWorkspaceLocation()");
+    const startup = shell.slice(shell.indexOf("async function init()"));
+    expect(shell).toContain("async function restoreWorkspaceLocation()");
     expect(startup).toContain("restoreWorkspaceLocation()");
-    const restore = app.slice(app.indexOf("async function restoreWorkspaceLocation()"));
     // (A page the user picked mid-boot is kept instead: their own navigation,
     // not hydration; see navigatedDuringBoot.)
     // Execution coverage is in workspace-restore-behavior.test.js.

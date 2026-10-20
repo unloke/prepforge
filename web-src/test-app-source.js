@@ -23,6 +23,7 @@ const FILES = [
   "./views/teams-controller.js",
   "./views/games-controller.js",
   "./views/scout-controller.js",
+  "./views/settings-controller.js",
   "./views/shared/source-store.js",
 ];
 

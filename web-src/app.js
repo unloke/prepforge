@@ -84,6 +84,32 @@ function loadTrainResume() {
   return import("./train-resume.js");
 }
 
+// Settings: the view chunk, its readiness gate and the /api/settings actions.
+let settingsController = null;
+let settingsControllerLoading = null;
+function loadSettingsController() {
+  settingsControllerLoading ||= import("./views/settings-controller.js").then((mod) => {
+    settingsController = mod.createSettingsController({
+      switchView, accountController, refreshLichessStatus, startLichessOAuth,
+      get analyzeSession() { return analyzeSession; },
+      explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
+    });
+    return settingsController;
+  }).catch((error) => {
+    settingsControllerLoading = null;
+    throw error;
+  });
+  return settingsControllerLoading;
+}
+const viaSettings = (name) => (...args) => (settingsController
+  ? settingsController[name](...args)
+  : loadSettingsController().then((loaded) => loaded[name](...args)));
+const preloadSettingsView = viaSettings("preloadSettingsView");
+const loadSettings = viaSettings("loadSettings");
+const whenSettingsReady = viaSettings("whenSettingsReady");
+const openSettingsSection = viaSettings("openSettingsSection");
+const applySettingsPayload = viaSettings("applySettingsPayload");
+
 // Scout: the report, its source tray and the Start guard. Loaded on first use;
 // the shell paints the tray and wires Start at boot, so those wait for it.
 let scoutController = null;
@@ -3291,113 +3317,6 @@ function setBlitzEnabled(on) {
   } catch (_) { /* private mode: the toggle just won't persist */ }
 }
 
-// ----- Settings tab — lazy view chunk -----------------------------------------
-let settingsModulePromise = null;
-let settingsView = null;
-
-function preloadSettingsView() {
-  if (!settingsModulePromise) {
-    settingsModulePromise = import("./views/settings.js").catch((err) => {
-      settingsModulePromise = null;
-      throw err;
-    });
-  }
-  return settingsModulePromise;
-}
-
-async function ensureSettingsView() {
-  const mod = await preloadSettingsView();
-  if (!settingsView) {
-    settingsView = mod.createSettingsView({
-      appState,
-      setStatus,
-      saveSettings,
-      loadSettings,
-      pref,
-      setPref,
-      effectiveMaiaRating,
-      getSharedMaia3Provider,
-      disposeSharedMaia3Provider,
-      showConfirmModal,
-      startFen: START_FEN,
-      api,
-      postJson,
-      startLichessOAuth,
-      onAccountsChanged: () => {
-        void refreshLichessStatus();
-      },
-      signOut: () => accountController.signOut(),
-      openAuthModal: (mode, options) => accountController.openAuthModal(mode, options),
-      refreshAuthStatus: () => accountController.refreshAuthStatus(),
-    });
-    settingsView.bind();
-  }
-  return settingsView;
-}
-
-// Every in-flight loadSettings() (a tab click can start two). whenSettingsReady()
-// waits until none remain, i.e. the Settings view is bound and fully rendered.
-const settingsLoads = new Set();
-
-function loadSettings() {
-  const load = loadSettingsOnce().finally(() => settingsLoads.delete(load));
-  settingsLoads.add(load);
-  return load;
-}
-
-async function whenSettingsReady() {
-  const view = await ensureSettingsView();
-  while (settingsLoads.size) await Promise.allSettled([...settingsLoads]);
-  return view;
-}
-
-// Open Settings through its tab (same path as a rail click) and jump to a
-// section once the view is ready — no fixed delay.
-async function openSettingsSection(sectionId) {
-  const tab = document.querySelector('.tab[data-view="settings"]');
-  if (tab) tab.click();
-  else switchView("settings");
-  await whenSettingsReady();
-  const link = document.querySelector(`.settings-nav-link[href="#${sectionId}"]`);
-  if (link) {
-    link.click();
-    return;
-  }
-  // A block inside a card (Chess accounts lives in Account): mark the card's
-  // nav link, then bring the block itself into view.
-  const target = document.getElementById(sectionId);
-  const card = target?.closest(".card[id]");
-  if (card) document.querySelector(`.settings-nav-link[href="#${card.id}"]`)?.click();
-  target?.scrollIntoView({ block: "start" });
-}
-
-let settingsActionsPromise = null;
-function loadSettingsActions() {
-  settingsActionsPromise ||= import("./settings-actions.js").then(({ createSettingsActions }) => createSettingsActions({
-    appState, currentOwnerId, ensureSettingsView, api, applySettingsPayload,
-    applyServerEngineGating, setStatusError, getPositionCoach: () => analyzeSession?.positionCoach, engineWidget,
-    activeViewName, explorerEvalEngine, explorerDrawerOpen, refreshExplorerPanel,
-  })).catch((error) => { settingsActionsPromise = null; throw error; });
-  return settingsActionsPromise;
-}
-
-async function loadSettingsOnce() {
-  return (await loadSettingsActions()).loadSettingsOnce();
-}
-
-// Fold a /api/settings payload into state: the blob itself, the server-engine flag,
-// and the pinned Maia rating (null = AUTO). Shared by init, loadSettings and saves.
-function applySettingsPayload(payload) {
-  appState.settings = payload;
-  appState.maiaRatingPinned = Number.isFinite(payload.maia_rating) ? payload.maia_rating : null;
-  settingsView?.renderStrengthControls();
-}
-
-// Persist a partial settings patch ({stockfish_depth} / {maia_rating}) and re-render.
-async function saveSettings(patch) {
-  return (await loadSettingsActions()).saveSettings(patch);
-}
-
 // Apply one button's gated state: disable + greyed style + explanatory title,
 // or restore its original title when enabled.
 
@@ -4764,9 +4683,9 @@ async function loadSignedInWorkspace() {
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
   const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
-  const settingsReady = loadSettingsActions().then((actions) => {
-    if (isCurrent()) return actions.loadSettingsOnce({ render: false });
-  }).catch((error) => { if (isCurrent()) setStatusError(error.message); });
+  const settingsReady = loadSettingsController().then((settings) =>
+    isCurrent() ? settings.loadSettingsOnce({ render: false }) : null
+  ).catch((error) => { if (isCurrent()) setStatusError(error.message); });
   const dashboardReady = loadDashboard();
   try {
     const stored = getStoredLichessUsername();
@@ -4806,8 +4725,8 @@ async function loadSignedInWorkspace() {
 // The seams the core modules use to reach the views and the lazily loaded
 // sessions they must not import: each one is a live read of the shell's own
 // binding, so it is registered once here, after every binding exists.
-hooks.settingsPainted = () => settingsView?.renderThemeControl?.();
-hooks.strengthPainted = () => settingsView?.renderStrengthControls?.();
+hooks.settingsPainted = () => settingsController?.renderThemeControl();
+hooks.strengthPainted = () => settingsController?.renderStrengthControls();
 hooks.authRequired = () => accountController?.handleAuthRequired();
 hooks.explorerEvals = explorerEvalEngine;
 hooks.analyzeSession = () => analyzeSession;
