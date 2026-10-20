@@ -847,6 +847,13 @@
 
 /* ---- Drawers: PGN source + recent analyses ---------------------------- */
 
+/* The panel is two groups: what the analysis says, then where the game came
+   from. Every gap inside a group is the panel's 14px, so the first drawer
+   takes a larger one; at the same 14px the sources read as another result. */
+#analyze-sidebar .panel-scroll > #analyze-open > .drawer:first-of-type {
+  margin-top: 8px;
+}
+
 .drawer {
   flex: none;
   padding-top: 8px;
