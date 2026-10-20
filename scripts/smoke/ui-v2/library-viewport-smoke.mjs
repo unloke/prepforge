@@ -1,5 +1,5 @@
 // Library viewport smoke (ui-v2 page internals, 2026-09-27 integration round).
-// Serves the committed static/ tree, intercepts /api/* with real-shape
+// Serves the built static/ tree, intercepts /api/* with real-shape
 // fixtures, and at 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console/page errors
 //   - Library table + preview render from the fixture data

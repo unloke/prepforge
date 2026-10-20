@@ -15,7 +15,7 @@ _spec = importlib.util.spec_from_file_location(
 fetch_mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fetch_mod)
 _engines = json.loads((
-    Path(__file__).parents[1] / "src/prepforge_chess/web/static/engine/stockfish.manifest.json"
+    Path(__file__).parents[1] / "web-src/public/engine/stockfish.manifest.json"
 ).read_text(encoding="utf-8"))["engines"]
 _big = _engines["big"]["files"]["wasm"]["source"]
 _lite = _engines["lite"]["files"]["wasm"]["source"]

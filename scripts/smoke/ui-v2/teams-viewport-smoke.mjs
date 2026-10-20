@@ -1,5 +1,5 @@
 // Teams viewport smoke — fixture-backed (same stack as the games/scout smokes).
-// Serves the committed static/ tree, intercepts /api/* with real-shape team
+// Serves the built static/ tree, intercepts /api/* with real-shape team
 // payloads (a two-member team + one shared repertoire + a live invite), and at
 // 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console errors

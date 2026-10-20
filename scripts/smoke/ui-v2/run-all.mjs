@@ -9,7 +9,7 @@
 // fixture + Playwright setup — no new test framework.
 //
 // Usage: npm run smoke:ui-v2   (or: node scripts/smoke/ui-v2/run-all.mjs)
-// Requires `npm run build` first — the smokes serve the committed/built
+// Requires `npm run build` first — the smokes serve the built
 // src/prepforge_chess/web/static tree.
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";

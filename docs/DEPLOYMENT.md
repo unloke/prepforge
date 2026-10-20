@@ -114,19 +114,19 @@ ignores Stockfish; this is its only update path. Equal or older versions do noth
 invalid registry responses fail the run.
 
 For a newer version, the workflow pins `package.json` and the lockfile, runs
-`npm run sync-engine` and `npm run build`, and commits the resulting production
-static tree. That includes the patched glue, hashed folders, manifest, and SPA
-with its baked engine identities. WASM remains ignored. Docker already reads the
-manifest's package version and verifies the downloaded WASM hashes, so neither
-Docker nor Python needs a version edit. The changed engine identity invalidates
-device probes; saved analysis identities stay as recorded.
+`npm run sync-engine`, and commits the regenerated `web-src/public/engine/`
+manifest (the only engine file in git). The image builds the SPA itself, with its
+baked engine identities, from that manifest. Docker reads the manifest's package
+version and verifies the downloaded WASM hashes, so neither Docker nor Python
+needs a version edit. The changed engine identity invalidates device probes; saved
+analysis identities stay as recorded.
 
 One serialized workflow maintains `automation/stockfish`, updating the same open
 PR even across releases. It waits for that head's ordinary `ci.yml` PR run and
 requires **every** job to succeed, explicitly including `python`, `postgres`,
 `js`, `stockfish` (real-browser UCI smoke), and `e2e`. It then requests a squash
 merge with an exact-head guard and no administrator bypass. Main's normal Render
-Docker deployment ships the committed SPA and fetches the matching WASM.
+Docker deployment builds the SPA and fetches the matching WASM.
 
 #### One-time GitHub setup
 

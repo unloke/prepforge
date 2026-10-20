@@ -4,7 +4,7 @@ import { runInNewContext } from "node:vm";
 import { join, resolve } from "node:path";
 import { capSharedHeap, injectSharedHeap, discoverStockfishBuild, stockfishBuild, stockfishIdentity, syncStockfish, MAX_HEAP_PAGES } from "./sync-stockfish.mjs";
 const root = resolve(import.meta.dirname, "..");
-const manifest = JSON.parse(readFileSync(join(root, "src/prepforge_chess/web/static/engine/stockfish.manifest.json"), "utf8"));
+const manifest = JSON.parse(readFileSync(join(root, "web-src/public/engine/stockfish.manifest.json"), "utf8"));
 describe("Stockfish package synchronization", () => {
   it.each(["big", "lite"])("discovers and bundles the %s threaded pair with net identity", net => {
     const suffix = net === "lite" ? "-lite" : "";

@@ -1,6 +1,6 @@
 // Bundle-size regression gate. Run after `npm run build` (CI's `js` job).
 //
-// The deploy build is committed and served from Render's free tier with no CDN,
+// The deploy build is served from Render's free tier with no CDN,
 // so the main entry chunk's size directly sets first-load cost. This fails the
 // build if the main `assets/index-*.js` grows past a budget, catching an
 // accidental heavy import before it ships. Raise LIMITS intentionally (with the

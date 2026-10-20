@@ -12,6 +12,13 @@ import pytest
 
 from prepforge_chess.api import static as static_mod
 
+# The served tree is Vite build output (git-ignored), so a bare clone has none.
+# CI builds it before pytest; a developer runs `npm run build` first.
+BUILT = (static_mod.STATIC_DIR / "index.html").is_file()
+requires_built_spa = pytest.mark.skipif(
+    not BUILT, reason="SPA not built; run `npm run build`"
+)
+
 
 def _an_asset() -> str:
     """A real hashed asset under static/assets, as a /static-relative path."""
@@ -20,6 +27,7 @@ def _an_asset() -> str:
     return f"assets/{js.name}"
 
 
+@requires_built_spa
 def test_index_served_with_isolation_headers(client):
     resp = client.get("/")
     assert resp.status_code == 200
@@ -33,6 +41,7 @@ def test_index_served_with_isolation_headers(client):
     assert resp.headers["cache-control"] == "no-cache"
 
 
+@requires_built_spa
 def test_hashed_asset_served_immutable_with_corp(client):
     resp = client.get(f"/static/{_an_asset()}")
     assert resp.status_code == 200
@@ -171,6 +180,7 @@ def test_document_csp_has_no_script_hash_when_env_unset(monkeypatch):
     assert "sha256-" not in csp
 
 
+@requires_built_spa
 def test_index_csp_allows_weight_cdn_and_inline_bootstrap(client, monkeypatch):
     # End-to-end on the served shell: connect-src must reach the HF weight CDN (the
     # worker fetches the ONNX cross-origin) and the inline bootstrap must be hashed in.
@@ -182,6 +192,7 @@ def test_index_csp_allows_weight_cdn_and_inline_bootstrap(client, monkeypatch):
     assert "sha256-" in csp
 
 
+@requires_built_spa
 def test_worker_script_csp_allows_weight_cdn(client):
     # The ONNX fetch happens INSIDE the Maia worker, governed by the CSP on the
     # worker script's OWN response (the middleware default) — it must reach the CDN.

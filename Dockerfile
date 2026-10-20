@@ -4,10 +4,31 @@
 # run in the browser (WASM). So this image carries NO Stockfish/Maia binaries and
 # installs the ".[server]" extra (FastAPI, SQLAlchemy, Alembic, psycopg) only.
 #
-# The built SPA (Vite output) is committed under src/prepforge_chess/web/static, so
-# COPY src ships it — no Node build stage is required in the image. Rebuild assets
-# with `npm run build` before building this image if web-src/ changed. The Stockfish
-# wasm files are the exception (the big net is 99 MB): fetched from npm below.
+# The SPA is build output, not source: the `spa` stage below runs the same
+# `npm run build` a developer runs, and the Python image copies its static/ tree.
+# The Stockfish wasm is not copied from there: it is fetched below, from the npm
+# package the committed manifest names, because only the manifest is in git.
+
+# --- SPA build (keyed on the frontend sources and lockfile) --------------------
+FROM node:22-slim AS spa
+
+# The image never runs a browser; keep Playwright from downloading Chromium.
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+
+WORKDIR /app
+# Only what `npm run build` reads: the lockfile installs the pinned Vite/Stockfish/
+# ONNX packages, and the sync scripts vendor the engine files Vite's publicDir copies.
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY vite.config.js ./
+COPY scripts/sync-stockfish.mjs scripts/sync-ort.mjs ./scripts/
+COPY web-src ./web-src
+# sync-engine writes the Stockfish wasm from node_modules; stripping it here keeps
+# the ~99 MB big net out of the copy — the image gets it from the verified fetch
+# below instead, so it never travels twice.
+RUN npm run build \
+    && rm -f src/prepforge_chess/web/static/engine/*/stockfish.wasm
+
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -18,8 +39,8 @@ WORKDIR /app
 # --- Dependency layer (cached across app/asset changes) -----------------------
 # Install the heavy third-party deps against a STUB package so this slow layer is
 # keyed on pyproject.toml alone. Without the stub, "COPY src" — which holds the
-# frequently-rebuilt JS bundle under web/static — would invalidate this layer and
-# force a full reinstall of fastapi/sqlalchemy/psycopg/cryptography on every deploy.
+# frequently-rebuilt SPA under web/static — would invalidate this layer and force a
+# full reinstall of fastapi/sqlalchemy/psycopg/cryptography on every deploy.
 COPY pyproject.toml README.md ./
 RUN mkdir -p src/prepforge_chess \
     && touch src/prepforge_chess/__init__.py \
@@ -27,16 +48,17 @@ RUN mkdir -p src/prepforge_chess \
     && python -m pip install --no-cache-dir ".[server]"
 
 # --- Stockfish wasm (keyed on the engine manifest, so deploys reuse this layer) ---
-COPY scripts/fetch_stockfish_wasm.py src/prepforge_chess/web/static/engine/stockfish.manifest.json /tmp/engine/
+# The manifest is the committed record: it names the package version and the sha256
+# of each wasm, so an engine bump refetches here and an app change does not.
+COPY scripts/fetch_stockfish_wasm.py web-src/public/engine/stockfish.manifest.json /tmp/engine/
 RUN python /tmp/engine/fetch_stockfish_wasm.py /tmp/engine/stockfish.manifest.json /tmp/engine/out
 
 # --- Application layer (rebuilt only when src/ or migrations change) -----------
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY src ./src
-# Reinstall ONLY the package (deps already satisfied above) so the real modules
-# and committed static assets replace the stub. --force-reinstall is required
-# because the version is unchanged, so pip would otherwise treat it as installed.
+# The built SPA and the fetched wasm complete the static tree the package ships.
+COPY --from=spa /app/src/prepforge_chess/web/static ./src/prepforge_chess/web/static
 RUN cp -r /tmp/engine/out/. src/prepforge_chess/web/static/engine/ \
     && python -m pip install --no-cache-dir --no-deps --force-reinstall ".[server]"
 
