@@ -39,8 +39,6 @@ describe("a move added to a repertoire", () => {
 
   it("stays inside the 300ms ceiling for a one-off arrival", () => {
     expect(css).toMatch(/\.mtree-move\.is-added \{ animation: move-added var\(--dur\) var\(--ease-out\)/);
-    const durs = { "--dur-fast": 150, "--dur": 220, "--dur-slow": 300 };
-    for (const [name, ms] of Object.entries(durs)) expect(ms).toBeLessThanOrEqual(300);
   });
 
   it("is collapsed by the global reduced-motion rule", () => {
