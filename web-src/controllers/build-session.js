@@ -1019,6 +1019,7 @@ async function onBuildBoardMove(moveUci) {
   }
 
   const node = buildProvisionalNode(parent, moveUci, after);
+  appState.buildJustAddedId = node.id;
   queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");

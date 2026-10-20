@@ -4403,6 +4403,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   text-decoration: line-through;
 }
 
+/* The move you just added arrives once, in place, so a line you made is
+   distinguishable from the ones already there. Transform and opacity only: a
+   new token must not shift the tokens around it. */
+.mtree-move.is-added { animation: move-added var(--dur) var(--ease-out) both; }
+@keyframes move-added {
+  from { opacity: 0; transform: translateY(4px) scale(0.94); }
+}
+
 /* Training status, one mark per move: a 2px bar under a move that is DUE
    (amber) or WEAK (red) — the two states that ask you to do something. Every
    other status (learning, mastered, untrained) stays unmarked and says its

@@ -238,6 +238,9 @@ export function createBuildView({
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
         if (b.move_side !== appState.build.color) classes.push("is-opp");
+        // The move this session just made: one rise, once, so a line the user
+        // added is distinguishable from the seventy already there.
+        if (b.id === appState.buildJustAddedId) classes.push("is-added");
         // One quiet mark per move and one sentence behind it. The tree used to
         // carry four signals at once — a mastery bar, a "prepared" underline,
         // the accent fill on every move of the path, and a bold mainline — so
@@ -258,6 +261,13 @@ export function createBuildView({
     });
     renderTreeMeta();
     container.innerHTML = treeHtml;
+    // The arrival is over once the token has landed: drop the flag now so no
+    // later render replays it, and drop the class on animationend so nothing
+    // is left carrying an entrance that already happened.
+    appState.buildJustAddedId = null;
+    container.querySelectorAll(".mtree-move.is-added").forEach((el) => {
+      el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
+    });
     container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
       toggle.addEventListener("click", (event) => {
         event.stopPropagation();

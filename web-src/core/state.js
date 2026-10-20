@@ -31,6 +31,9 @@ export const appState = {
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
   buildBranchChoiceId: null,
+  // The node a move just created, so the tree can show it arriving once. Cleared
+  // on the next add (or on a fresh tree), never persisted: it is a cue, not state.
+  buildJustAddedId: null,
   // ---- Local-first Build sync (Phase 1) --------------------------------------
   // Moves land in the local tree instantly (no per-move round-trip) and flush to
   // the server in debounced batches via POST /api/build/add-moves.
