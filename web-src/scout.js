@@ -1301,7 +1301,7 @@ export function fensAlongLine(ucis) {
 }
 
 // One final budgeted set selection, shared by live and fallback reports. With a recorded
-// path-guard run (`pathGuard`, feature-flagged) the guarded selection is replayed instead.
+// path-guard run (`pathGuard`) the guarded selection is replayed instead.
 export function rankGamePlan(
   lines,
   baselineScorePct,

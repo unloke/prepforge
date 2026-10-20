@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { selectPreparationRoutes, routeKey } from "./scout-preparation-value.js";
 import {
   AUDIT_NODE_BUDGET,
@@ -266,5 +267,18 @@ describe("report rows", () => {
     const { sectionData } = build();
     expect(Array.isArray(sectionData.gamePlanSource)).toBe(true);
     expect(sectionData.gamePlanSource.length).toBeGreaterThan(0);
+  });
+});
+
+describe("scout ships one ranking path", () => {
+  const view = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8");
+
+  it("has no URL switch back to the control-only selection", () => {
+    expect(view).not.toMatch(/scoutPathGuardEnabled|["']scoutPathGuard["']/);
+  });
+
+  it("creates the guard engine for every prefilter run", () => {
+    expect(view).toMatch(/const guardEngine = createPathGuardEngine\(/);
+    expect(view).not.toMatch(/guardEngine \? /);
   });
 });

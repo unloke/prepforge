@@ -111,11 +111,6 @@ const PATH_GUARD_DEBOUNCE_MS = 300;
 // A replay that no longer matches its recorded run re-runs the guard at most this often per scope.
 const PATH_GUARD_MAX_RERUNS = 3;
 
-/** Path guard prototype (research/scout-v11): on by default for testing; ?scoutPathGuard=0 shows v10. */
-export function scoutPathGuardEnabled(search = typeof location === "undefined" ? "" : location.search) {
-  return new URLSearchParams(search).get("scoutPathGuard") !== "0";
-}
-
 function scoutErrorHtml(title, message, action = null) {
   return html`<div class="scout-error" role="alert">
     <p class="scout-error-title">${title}</p>
@@ -649,13 +644,11 @@ export function createScoutView(deps) {
 
   // Re-runs the guard after the selector input changed (for example once Maia lands).
   function schedulePathGuard() {
-    if (!scoutPathGuardEnabled()) return;
     pathGuard.schedule();
   }
 
   // The recorded guard run for one colour, replayed by the report without engine reads.
   function pathGuardOption(oppColor) {
-    if (!scoutPathGuardEnabled()) return null;
     const rec = scoutState?.pathGuard?.[oppColor];
     if (!rec) return null;
     return {
@@ -724,7 +717,7 @@ export function createScoutView(deps) {
   }
 
   async function rerunPathGuard(gen) {
-    if (!scoutPathGuardEnabled() || !scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== pathGuard.generation || scoutState.prefilterEnrichState !== PREFILTER_READY) return;
     const isCurrent = () => gen === pathGuard.generation && Boolean(scoutState);
     const engine = createPathGuardEngine({ shouldCancel: () => !isCurrent() });
@@ -941,7 +934,7 @@ export function createScoutView(deps) {
     // The path guard reads each colour's lines before they are published, so the first
     // engine-ranked plan on screen is already the guarded one.
     const guardCurrent = () => gen === prefilterEnrich.generation && Boolean(scoutState);
-    const guardEngine = scoutPathGuardEnabled() ? createPathGuardEngine({ shouldCancel: () => !guardCurrent() }) : null;
+    const guardEngine = createPathGuardEngine({ shouldCancel: () => !guardCurrent() });
     try {
       for (const oppColor of ["white", "black"]) {
         if (gen !== prefilterEnrich.generation) return;
@@ -976,12 +969,10 @@ export function createScoutView(deps) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
           const rankedLines = result.ranked.map(entry => entry.line);
-          if (guardEngine) {
-            setEngineProgress({ phase: "path", done: 0, total: 0 });
-            const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
-              { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
-            if (!done) return;
-          }
+          setEngineProgress({ phase: "path", done: 0, total: 0 });
+          const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
+            { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
+          if (!done) return;
           scoutState.prefilterPools[oppColor] = result.pool;
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] = rankedLines;
@@ -1003,7 +994,7 @@ export function createScoutView(deps) {
         scoutState.prefilterScopeKey = scopeKey;
       }
     } finally {
-      if (guardEngine) await guardEngine.close();
+      await guardEngine.close();
       prefilterEnrich.settled(gen);
       if (gen === prefilterEnrich.generation && scoutState) {
         renderScoutReport();

@@ -1153,7 +1153,7 @@ function scoutLineRowHtml(
   const engineFlag = line.hasEngineMistake || line.refutation
     ? html`<i class="scout-err-marker eng" title="Engine-backed refutation available"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.6 20h18.8L12 4Z"/><path d="M12 10v4.2"/><path d="M12 17.4v.01"/></svg></i>`
     : "";
-  // Path guard (flagged prototype): a kept line whose earlier position fails the leaf gate.
+  // Path guard: a kept line whose earlier position fails the leaf gate.
   const pathFlag = line.pathStatus === "risk"
     ? html`<i class="scout-err-marker path-risk" title="Your side is worse than −0.75 at an earlier move of this line (depth 8)">!</i>`
     : "";
@@ -1379,7 +1379,7 @@ export function buildScoutSectionReport(
     // The section's own W/D/L, so anything quoting a colour (share text) reads the
     // same set as the header instead of the all-speed profile stats.
     colorWdl,
-    // The selector's input, kept so the flagged path guard can run on exactly these lines.
+    // The selector's input, kept so the path guard can run on exactly these lines.
     gamePlanSource,
     gradedLines: graded,
     weaknessTargets: prepTargets,

@@ -105,9 +105,9 @@ runtime <= 125% and p95 <= 150% of OLD. Results on one
 in-sample corpus do not establish predictive quality; chronological held-out
 validation is required before making that claim.
 
-## Path guard prototype (on by default for testing; `?scoutPathGuard=0` shows v10)
+## Path guard
 
-v10 gates only the leaf. The prototype (`web-src/scout-path-guard.js`, from
+v10 gates only the leaf. The guard (`web-src/scout-path-guard.js`, from
 `research/scout-v11`) also checks every position after a preparing-side move in a
 shown line, with the same rule (CP < -75 or an adverse mate). Each line is read deepest
 first with one `ucinewgame`: a depth-6 screen, confirmed at depth 8 when it is within
@@ -123,7 +123,8 @@ published, on the input a render would select from. The first engine-ranked plan
 is therefore the guarded one. Rows new to a re-ranked plan fade in.
 Each render replays the recorded verdict trace without engine reads. If the input
 changes, the replay falls back to cached position verdicts and the pass runs again (at most three times).
-The research verdict was FAIL (-34.5% masked rows, against a 40% target); this default is for testing, not a release decision.
+The research verdict was FAIL (-34.5% masked rows, against a 40% target); the guarded
+selection is the only ranking path the app runs.
 
 The former `?scoutV13=1` experimental runtime was retired; its code lives under `research/lib/`, unrelated to scoring
 version 10. Its existing shared research dependencies and legacy v12 vocabulary
