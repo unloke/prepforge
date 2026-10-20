@@ -357,7 +357,9 @@ describe("workspace chrome layout", () => {
     // Every Explorer render (and unfolding) refits; coverage repaints refit too.
     expect(session).toMatch(/requestAnimationFrame\(\(\) => fitBuildDock\(\)\)/);
     expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
-    expect(app).toContain("onPaint: () => buildSession?.fitBuildDock()");
+    // Coverage repaints refit the dock through coverage-entry.js, which takes
+    // the fit as a dep.
+    expect(app).toContain("fitDock: () => buildSession?.fitBuildDock()");
     // A height the user dragged is not overwritten by the next repaint.
     expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
     expect(session).toMatch(/if \(dock\.dataset\.dockPinned\) return;/);

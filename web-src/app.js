@@ -8,6 +8,8 @@ import { closeSheetOffPhone } from "./phone-layout.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";
 import { createBook, ensureBookLoaded, invalidateBook, updateBookline } from "./analyze-book-state.js";
+import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
+import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync, renderSyncChip,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
@@ -95,6 +97,11 @@ const createTeam = viaTeams("createTeam");
 const copySharedRepertoire = viaTeams("copySharedRepertoire");
 const loadSharedRepertoires = viaTeams("loadSharedRepertoires");
 const shareRepertoireWithTeam = viaTeams("shareRepertoireWithTeam");
+
+// Coverage (Build inspector) and the shared-repertoire viewer: bound in init,
+// owned by coverage-entry.js and shared-viewer.js.
+let coverageEntry = null;
+let sharedViewer = null;
 
 function loadTrainResume() {
   return import("./train-resume.js");
@@ -955,7 +962,7 @@ function removeReadOnlyBanner() {
 }
 
 function syncCoverageReadOnlyState() {
-  coverageView?.sync();
+  coverageEntry?.coverageView?.sync();
 }
 
 async function trainRepertoire(repertoireId, options = {}) {
@@ -1600,182 +1607,6 @@ function setBlitzEnabled(on) {
 // installs or runs an engine on the server. Server install endpoints remain in
 // server.py for a future admin mode (gated by PREPFORGE_SERVER_ENGINE_ENABLED).
 
-// ----- Shared repertoire viewer (read-only Build) -------------------------------
-// A share URL (/?shared=<token>) opens the Build view as a guest-readable,
-// mutation-free viewer of someone else's repertoire. "Copy to my account" forks
-// it server-side; signing in reloads the page with the token still in the URL,
-// so the viewer (and the Copy button) come right back.
-
-async function maybeOpenSharedView() {
-  let token = null;
-  try {
-    token = new URLSearchParams(window.location.search).get("shared");
-  } catch (_) {
-    return false;
-  }
-  if (!token) return false;
-  try {
-    const payload = await api(`/api/shared/${encodeURIComponent(token)}`);
-    appState.sharedToken = token;
-    await hydrateBuild(payload, payload.selected_node_id);
-    renderSharedBanner(payload);
-    switchView("build");
-    syncCoverageReadOnlyState();
-    return true;
-  } catch (error) {
-    setStatus(`Share link problem: ${error.message}`, { severity: "error" });
-    return false;
-  }
-}
-
-// A join URL (/?join=<code>) redeems a team invite. Mirrors the shared viewer:
-// signed-out visitors are nudged to sign in (the ?join= survives the reload), then
-// we preview the team and let them confirm before joining. Idempotent server-side.
-async function maybeHandleJoinLink() {
-  let code = null;
-  try {
-    code = new URLSearchParams(window.location.search).get("join");
-  } catch (_) {
-    return false;
-  }
-  if (!code) return false;
-  if (!appState.signedIn) {
-    openAuthModal("login", { notice: "Sign in (or create an account) to join the team" });
-    return false; // ?join= stays in the URL; we resume after the sign-in reload
-  }
-  let preview;
-  try {
-    preview = await api(`/api/teams/join/${encodeURIComponent(code)}`);
-  } catch (error) {
-    setStatus(`Invite link problem: ${error.message}`, { severity: "error" });
-    clearJoinParam();
-    return false;
-  }
-  const members = `${preview.member_count} member${preview.member_count === 1 ? "" : "s"}`;
-  const confirmed = await showConfirmModal({
-    title: preview.already_member ? `Open ${preview.name}?` : `Join ${preview.name}?`,
-    body: preview.already_member
-      ? "You're already a member of this team."
-      : `Join "${preview.name}" (${members})? You'll get read-only access to repertoires shared with the team.`,
-    okLabel: preview.already_member ? "Open" : "Join",
-    cancelLabel: "Cancel",
-  });
-  clearJoinParam();
-  if (!confirmed) return false;
-  let result;
-  try {
-    result = await postJson(`/api/teams/join/${encodeURIComponent(code)}`, {});
-  } catch (error) {
-    setStatus(`Couldn't join: ${error.message}`, { severity: "error" });
-    return false;
-  }
-  const team = result.team;
-  setStatus(result.joined ? `Joined ${team.name}` : `You're already in ${team.name}`);
-  appState.selectedTeamId = team.id;
-  switchView("teams");
-  await loadTeams();
-  return true;
-}
-
-function clearJoinParam() {
-  try {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("join");
-    window.history.replaceState(null, "", url.pathname + url.search);
-  } catch (_) {
-    /* cosmetic */
-  }
-}
-
-// The shared/read-only banner is a static host in the Opus panel (index.html).
-// Both states only change its text and visibility — no element is created,
-// prepended, or re-rendered here, so the shared state renders in exactly the
-// same panel composition as the writable one.
-function renderReadOnlyBanner(payload) {
-  const banner = document.getElementById("shared-banner");
-  if (!banner) return;
-  const title = document.getElementById("shared-banner-title");
-  if (title) title.textContent = `Read-only · ${payload.name} · shared with you`;
-  banner.hidden = false;
-  syncViewHeads();
-}
-
-function renderSharedBanner(payload) {
-  renderReadOnlyBanner(payload);
-}
-
-async function forkReadableRepertoire() {
-  const viaToken = !!appState.sharedToken;
-  const viaTeam = appState.build && appState.build.writable === false;
-  if (!viaToken && !viaTeam) return;
-  if (!requireSignIn("Sign in (or create an account) to copy this repertoire")) return;
-  try {
-    const result = viaToken
-      ? await postJson(
-          `/api/shared/${encodeURIComponent(appState.sharedToken)}/fork`,
-          {},
-        )
-      : await postJson("/api/repertoires/fork", {
-          repertoire_id: appState.build.repertoire_id,
-        });
-    appState.sharedToken = null;
-    removeReadOnlyBanner();
-    if (viaToken) {
-      try {
-        window.history.replaceState(null, "", window.location.pathname);
-      } catch (_) {
-        /* cosmetic */
-      }
-    }
-    await editRepertoire(result.repertoire_id);
-    await refreshDashboardRepertoires();
-    setStatus(`Copied "${result.name}" to your account — it's yours now`);
-  } catch (error) {
-    setStatusError(error.message);
-  }
-}
-
-// ----- Coverage workbench (Build inspector) ------------------------------------
-let coverageView = null;
-let coverageViewReady = null;
-
-function ensureCoverageView() {
-  if (!coverageViewReady) {
-    coverageViewReady = import("./controllers/coverage.js").then(({ createCoverageController }) => {
-      coverageView = createCoverageController({
-        getContext: () => ({ build: appState.build, ownerId: currentOwnerId(),
-          ownerGeneration: appState.ownerGeneration, rating: effectiveMaiaRating(),
-          selectedNodeId: appState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
-        getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode, getBoard: () => boards.build,
-        previewReplies: previewCoverageReplies, getJob: () => notices,
-        onError: (error) => setStatusError(error.message),
-        // The inspector sizes to its content, so every repaint is a new height.
-        onPaint: () => buildSession?.fitBuildDock(),
-      });
-      return coverageView;
-    }).catch((error) => { coverageViewReady = null; throw error; });
-  }
-  return coverageViewReady;
-}
-
-async function runCoverageScanUI() {
-  try { await (await ensureCoverageView()).scan(); }
-  catch (error) { setStatusError(error.message); }
-}
-
-async function previewCoverageReplies(gaps, options) {
-  const owner = currentOwnerId(), generation = appState.ownerGeneration;
-  const mod = await import("./controllers/coverage-replies.js");
-  if (owner !== currentOwnerId() || generation !== appState.ownerGeneration || !options.isValid()) return;
-  return mod.previewCoverageReplies(gaps, options, {
-    isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage: BROWSER_ENGINE_UNAVAILABLE,
-    notices, hardFlushBuild, captureBuildContext, getBuild: () => appState.build,
-    effectiveMaiaRating, effectiveStockfishDepth, getGenerator: () => _buildGenReady || preloadBuildGen(),
-    getProvider: getSharedMaia3Provider, showConfirmModal, postJson, classifySyncError,
-    hydrateBuild, trainRepertoire,
-  });
-}
-
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
 const POLISH_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_POLISH_E2E === "1";
 
@@ -2255,7 +2086,7 @@ function bindEvents() {
   // the lazy controller loads is still the one it scans with.
   const coverageRun = document.getElementById("coverage-run");
   if (coverageRun) coverageRun.addEventListener("click", runCoverageScanUI);
-  const invalidateCoverage = () => { coverageView?.invalidate(); };
+  const invalidateCoverage = () => { coverageEntry?.coverageView?.invalidate(); };
   document.querySelectorAll("#coverage-scope [data-scope]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (btn.classList.contains("is-active")) return;
@@ -2651,7 +2482,7 @@ async function init() {
   // paint (the chip, the auth gate, the PGN drawer), so both binds happen here.
   accountEntry = createAccountEntry({
     switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, loadTeams,
-    clearCoverage: () => coverageView?.clear(),
+    clearCoverage: () => coverageEntry?.coverageView?.clear(),
     get dashboardView() { return dashboardView; },
     get scoutController() { return scoutController; },
     paintGamesSource, paintScoutSource,
@@ -2675,13 +2506,22 @@ async function init() {
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
     selectNode: selectAnalysisNode, reveal: revealAnalysisResults,
   });
+  coverageEntry = createCoverage({
+    selectBuildNode, hardFlushBuild, captureBuildContext, hydrateBuild, trainRepertoire,
+    preloadBuildGen, fitDock: () => buildSession?.fitBuildDock(),
+  });
+  sharedViewer = createSharedViewer({
+    requireSignIn, editRepertoire, refreshDashboardRepertoires, switchView, loadTeams,
+    hydrateBuild, removeReadOnlyBanner, syncCoverageReadOnlyState, syncViewHeads, openAuthModal,
+  });
   hooks.build = {
     get view() { return buildView; },
     selectBuildNode, scheduleBuildFlush, setBuildSync,
     get session() { return buildSession; },
-    get coverageView() { return coverageView; },
+    get coverageView() { return coverageEntry?.coverageView; },
     ensureBuildView, paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
-    ensureCoverageView, paintGenerateVisibility, syncViewHeads,
+    ensureCoverageView: () => coverageEntry.ensureCoverageView(),
+    paintGenerateVisibility, syncViewHeads,
   };
   // First paint reads the stored theme; it never writes, so opening the app
   // does not fabricate a pref blob.
@@ -2779,9 +2619,9 @@ async function init() {
   releaseBootView();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
   // workspace state loaded — and works for signed-out visitors too.
-  await maybeOpenSharedView();
+  await sharedViewer.maybeOpenSharedView();
   // A join URL (/?join=<code>) redeems a team invite (requires sign-in).
-  await maybeHandleJoinLink();
+  await sharedViewer.maybeHandleJoinLink();
   // A password-reset link (/?reset_password=<token>) opens the reset form, and a
   // Stripe return (/?billing=success|cancelled) reports the outcome once.
   accountService().openResetFromUrl();
@@ -3042,7 +2882,10 @@ appReadyPromise = init()
   });
 
 // Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
-export { _buildGenReady, _coachReady, buildView, coverageView };
+export { _buildGenReady, _coachReady, buildView };
+// The Coverage panel is created by coverage-entry.js; re-exported so the Build
+// editor keeps its one import from the shell.
+export { coverageView } from "./coverage-entry.js";
 // The Analyze view is created by views/analyze-loader.js; re-exported so the
 // analysis session keeps its one import from the shell.
 export { analyzeView } from "./views/analyze-loader.js";
