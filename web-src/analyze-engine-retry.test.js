@@ -54,6 +54,7 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     refreshAnalysisHistoryIfOpen: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
     renderAnalysis: vi.fn(), activeViewName: () => "analyze", revealAnalysisResults: vi.fn(), updateAnalysisHandoff: vi.fn(),
     isAuthError: () => false, setStatusError: vi.fn(), showAnalysisRetrySave: vi.fn(),
+    setCoachProse: vi.fn(),
   };
   const run = new Function(...Object.keys(deps), `${code}\nreturn runAnalysis;`)(...Object.values(deps));
   return { run, deps, manager, data, searches, button };

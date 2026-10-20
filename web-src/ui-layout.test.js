@@ -429,11 +429,16 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
     // Coach copy wraps instead of clipping; the card has a fixed height so a
-    // longer comment never shifts the chart below it.
+    // longer comment never shifts the chart below it. The height is what the
+    // reading-size note needs: a shorter card would clip the prose, a taller
+    // one would keep an empty band under it.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-card")).toMatch(/height:\s*140px/);
+    expect(rule(".coach-card")).toMatch(/height:\s*118px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
+    // The score sheet is sized to its content so the two sides of a move sit
+    // next to each other, the way a score sheet prints them; the trailing
+    // track keeps a variation row as wide as the sheet.
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content\s+minmax\(0,\s*1fr\)/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
     // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
@@ -467,6 +472,13 @@ describe("workspace chrome layout", () => {
     // last two tracks explicitly; auto-placement would put Prev under the pill.
     expect(phoneCss).toMatch(/:is\(#analysis-prev, #build-parent, #train-hint\) \{ order: 5; grid-column: -3 \/ -2; \}/);
     expect(phoneCss).toMatch(/:is\(#analysis-next, #build-next, #train-skip\) \{ order: 6; grid-column: -2 \/ -1; \}/);
+    // The pill owns the bar's middle: the move label and the game's identity
+    // would paint under it, so the phone hides both.
+    expect(phoneCss).toMatch(/#view-analyze \.board-bar :is\(\.board-label, \.board-sub\) \{ display: none; \}/);
+    // The coach takes its note's height and the rest of the screen goes to the
+    // score sheet, so a one-line verdict does not leave a band of empty tone.
+    expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);
+    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{[^}]*flex: 1 1 0;/);
     expect(app).toContain("function wirePhoneSheets()");
   });
 

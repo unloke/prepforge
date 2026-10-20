@@ -36,6 +36,7 @@ function harness(realBoard = false) {
     isBrowserEngineAvailable: () => true, notices: { isBusy: () => false }, requireSignIn: () => true,
     postJson: vi.fn(async () => { throw new Error("stop before engine"); }), engineLifecycleMark: vi.fn(),
     isAuthError: () => false, hideAnalysisResults: vi.fn(), loadCheckpoint: () => null, currentOwnerId: () => "owner",
+    setCoachProse: vi.fn(),
     evalMapFrom: () => new Map(), clearCheckpoint: vi.fn(async () => true), markCheckpointSaved: vi.fn(), refreshAnalyzeRecovery: vi.fn(), hideAnalysisRetrySave: vi.fn(),
     refreshAnalysisHistoryIfOpen: vi.fn(), updateAnalysisHandoff: vi.fn(async () => {}), showAnalysisRetrySave: vi.fn(),
     boardInfo: vi.fn(async () => ({ legal_moves: [] })), boards: { analysis: { setPosition: vi.fn(), setMoveBadge: vi.fn() } },
