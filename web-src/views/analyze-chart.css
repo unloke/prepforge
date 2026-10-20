@@ -106,15 +106,16 @@
    panel ground, with the 3px quality rule carrying its tone. It was a filled
    118px band holding a 68px note, so every move left ~50px of empty tone
    between the verdict and the instrument below it (measured at 1440x900).
-   The room is reserved in the text's own measure instead: three lines are
-   always there (the common note is three lines, so the chart below does not
-   move between ordinary moves), and a longer note grows the block until it
-   scrolls at five. */
+   The block keeps a floor of two lines (the common verdict's length) so the
+   instrument below does not jump between moves, but the floor is this box's,
+   not the rule's: a one-line verdict leaves a rest under the text instead of
+   drawing a 76px stroke beside it. A note past five lines scrolls. */
 .coach-card {
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: calc(1.5em * 2 + 52px);
   padding: 0;
   background: none;
   border: 0;
@@ -147,12 +148,11 @@
   display: none;
 }
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
-   never depends on colour alone (the words say it too). Three lines are
-   reserved (min-height), so the chart below holds still between ordinary
-   moves; past five it scrolls rather than push the score sheet down. */
+   never depends on colour alone (the words say it too). The rule runs the
+   note's own height; past five lines the note scrolls rather than pushing the
+   score sheet down. */
 .coach-prose {
   flex: 0 1 auto;
-  min-height: calc(1.5em * 3 + 4px);
   max-height: calc(1.5em * 5 + 4px);
   overflow-y: auto;
   scrollbar-width: thin;

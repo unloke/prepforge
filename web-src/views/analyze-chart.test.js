@@ -241,13 +241,12 @@ describe("class bars", () => {
 
 describe("coach note", () => {
   it("sets the note at reading size and sizes the block to the note", () => {
-    // The note is running text at 15px on a phone. It used to take the card's
-    // whole height, which meant a filled 118px band around a 68px note; it now
-    // reserves three lines (so the chart below holds still between ordinary
-    // moves) and grows with the text up to five, then scrolls.
+    // The note is running text at 15px on a phone. It takes its own height, so
+    // the rule beside it runs the note and not a reserved box, and a note past
+    // five lines scrolls instead of pushing the score sheet down.
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: calc\(1\.5em \* 3/);
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(1\.5em \* 5/);
+    expect(ALL_STYLES).not.toMatch(/\.coach-prose \{[^}]*min-height: calc\(1\.5em/);
   });
 });
 
