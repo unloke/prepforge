@@ -15,11 +15,16 @@ function effectiveLines(source) {
 }
 
 describe("app.js is the shell", () => {
-  it("stays under the size ceiling", () => {
-    // 3600 code lines: the shell was 7,300 before the split and is ~2,000 now.
-    // The headroom is for wiring a new view (its loader, its nav entry, its
-    // boot call) — a view's own code belongs in its module.
-    expect(effectiveLines(app)).toBeLessThan(3600);
+  it("matches the size recorded in the eslint override", () => {
+    // eslint.config.js carries this file's ceiling (a file still over 500 may
+    // not grow). If app.js shrinks, lower that number here and there together:
+    // this test is what keeps the override from quietly becoming generous.
+    const config = readFileSync(new URL("../eslint.config.js", import.meta.url), "utf8");
+    const recorded = Number(config.match(/"web-src\/app\.js", (\d+)/)[1]);
+    // eslint's own count is the authority (it parses comments properly); a
+    // rough count here only has to agree that the file is not creeping up.
+    expect(effectiveLines(app)).toBeLessThanOrEqual(recorded);
+    expect(effectiveLines(app)).toBeGreaterThan(recorded * 0.95);
   });
 
   it("has no view implementation in it", () => {
