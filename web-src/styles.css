@@ -3012,6 +3012,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .fork-head b { font-weight: 600; color: var(--muted); }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* The full list is an explicit request, so it may be long — but it scrolls
+   inside a capped block. A thirty-move fork opened whole pushed the move tree
+   to its 90px floor at 1024 and left the line you are building off screen; at
+   four rows the tree keeps its place while you read the list. */
+.fork-chips.is-all {
+  max-height: 118px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .fork-chip {
   display: inline-flex;
   align-items: baseline;
@@ -3033,6 +3042,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
 .fork-chip:hover { border-color: var(--accent); }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+/* "Show all" is a disclosure, not a move: it sits at the head's right edge,
+   in the secondary ink, so it never reads as a fourth option. */
+.fork-more {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.fork-more:hover { text-decoration: underline; }
+.fork-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
 .tree-wrap {
   /* Sized by its moves. The panel's leftover height goes after the tree and

@@ -14,6 +14,32 @@ const MASTERY_WORDS = {
   untrained: "Not trained yet",
 };
 
+// A fork in a wide repertoire can hold thirty continuations (a generated tree
+// leaves one chip per reply). Painted whole it took six rows of the panel and
+// pushed the move tree to its 90px floor at 1024x768. The bar now paints a
+// window of chips that always contains the pick (↑/↓ slides the window with
+// it), says how many are left, and opens the full list on request — inside a
+// capped, scrolling block, so even then the tree keeps its floor.
+const FORK_WINDOW = 8;
+const FORK_WINDOW_PHONE = 6;
+
+function forkWindowSize() {
+  try {
+    return window.matchMedia?.("(max-width: 760px)")?.matches ? FORK_WINDOW_PHONE : FORK_WINDOW;
+  } catch {
+    return FORK_WINDOW;
+  }
+}
+
+// The slice to paint: the pick stays inside, and the window only slides far
+// enough for it (the first option keeps the left edge until the pick passes the
+// middle of the window).
+function forkWindow(list, pickedIndex, size) {
+  if (list.length <= size) return list;
+  const start = Math.max(0, Math.min(pickedIndex - Math.floor(size / 2), list.length - size));
+  return list.slice(start, start + size);
+}
+
 export function createBuildView({
   appState,
   boards,
@@ -123,6 +149,11 @@ export function createBuildView({
     return html`<nav class="crumbs" aria-label="Position">${start}${inner}</nav>`;
   }
 
+  // Which fork is showing its whole list. Opening it is a request for this
+  // position only: stepping to another line closes it again, because the reason
+  // to look at all thirty moves is the position you are standing on.
+  let forkExpandedFor = null;
+
   function renderBuildBranchBar() {
     const bar = document.getElementById("build-branchbar");
     if (!bar) return;
@@ -130,17 +161,22 @@ export function createBuildView({
     if (!ctx) {
       bar.hidden = true;
       bar.innerHTML = "";
+      forkExpandedFor = null;
       if (boards.build) boards.build.setBranchArrows([]);
       return;
     }
-    const picked = ctx.options.find((n) => n.id === ctx.choiceId);
-    const chips = ctx.options
+    const picked = ctx.options.find((n) => n.id === ctx.choiceId) || ctx.options[0];
+    const pickedIndex = ctx.options.indexOf(picked);
+    const size = forkWindowSize();
+    const expanded = forkExpandedFor === appState.buildCurrentNodeId && ctx.options.length > size;
+    const shown = expanded ? ctx.options : forkWindow(ctx.options, pickedIndex, size);
+    const chips = shown
       .map((n) => {
         const isWhite = n.move_side === "white";
         const num = `${n.move_number}${isWhite ? "." : "…"}`;
         const cls = [
           "fork-chip",
-          n.id === ctx.choiceId ? "is-active" : "",
+          n.id === picked.id ? "is-active" : "",
           n.is_mainline ? "is-main" : "",
         ]
           .filter(Boolean)
@@ -160,11 +196,25 @@ export function createBuildView({
           html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="${title}"><span class="mtree-num">${num}</span>${n.san}${share}</button>`
         );
       });
+    // Over the window, "Show all" opens the whole list (and caps it again).
+    const more =
+      ctx.options.length > size
+        ? html`<button class="fork-more" type="button" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "Show fewer" : "Show all"}</button>`
+        : "";
     bar.hidden = false;
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
-      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span></div><div class="fork-chips">${chips}</div>`;
+      html`<div class="fork-head" title="↑/↓ pick · → play · ← back"><b>Next move</b><span class="count">${countOf(ctx.options.length, "option")}</span>${more}</div><div class="fork-chips${expanded ? " is-all" : ""}">${chips}</div>`;
+    // The disclosure: opens the whole list for this position, closes it again.
+    const moreBtn = bar.querySelector(".fork-more");
+    if (moreBtn) {
+      moreBtn.addEventListener("click", () => {
+        forkExpandedFor = expanded ? null : appState.buildCurrentNodeId;
+        renderBuildBranchBar();
+        document.querySelector("#build-branchbar .fork-more")?.focus();
+      });
+    }
     bar.querySelectorAll(".fork-chip[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", () => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});

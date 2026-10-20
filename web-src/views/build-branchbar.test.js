@@ -40,6 +40,7 @@ function makeHarness({ nodes, currentNodeId, ownNodes = 0 }) {
     hidden: true,
     get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     setAttribute: vi.fn(),
+    querySelector: vi.fn(() => null),
     querySelectorAll: vi.fn(() => []),
   };
   const meta = {
