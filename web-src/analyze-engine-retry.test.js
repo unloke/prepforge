@@ -15,6 +15,9 @@ const positions = [
 function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === positions[1], cancel = false, save } = {}) {
   const data = new Map();
   const manager = createEngineProfileManager({ assetState: () => ({ phase: "ready" }), beginSession: () => () => {},
+    // A real desktop reports both signals; the no-memory-signal (phone-safe) case
+    // has its own test in engine-profile.test.js.
+    device: () => ({ hardwareConcurrency: 8, deviceMemory: 8 }),
     subscribeAsset: () => () => {}, storage: () => ({ getItem: k => data.get(k) ?? null,
     setItem: (k, v) => data.set(k, v), removeItem: k => data.delete(k) }) });
   manager.setEngineProfile({ net: "big", workers: 2 });

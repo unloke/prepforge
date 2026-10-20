@@ -1,4 +1,8 @@
-// Device-local engine choice. Depth remains a synced account setting.
+// Device-local engine choice. This localStorage record is the only place a
+// hardware-sized value lives — net, workers, the probe's result and its
+// measurements describe the device that produced them, so they are never posted
+// to the settings API and never arrive from another device. Depth and Maia
+// strength are user settings; those sync through /api/settings.
 import { loadEngineModule, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
@@ -9,7 +13,10 @@ export function reserveEngineMemory(net, Memory = WebAssembly.Memory) {
   return new Memory({ initial, maximum, shared: true });
 }
 const FALLBACK = { net: "lite", workers: 1, source: "fallback" };
-const valid = p => p && ["big", "lite"].includes(p.net) && Number.isInteger(p.workers) && p.workers >= 1 && p.workers <= 3;
+const MAX_WORKERS = 3;
+const valid = p => p && ["big", "lite"].includes(p.net) && Number.isInteger(p.workers) && p.workers >= 1 && p.workers <= MAX_WORKERS;
+// What this device can hold, applied to any profile that is loaded or written.
+const fitWorkers = (p, limit) => ({ ...p, workers: Math.min(p.workers, limit) });
 
 // A crash at big 1 means even one big heap does not fit, so drop to the smallest lite pool.
 export function stepDownProfile(p) {
@@ -18,12 +25,17 @@ export function stepDownProfile(p) {
     : { net: "lite", workers: p.net === "big" ? 1 : Math.max(1, p.workers - 1), source: "fallback" };
 }
 
-// Upper bound on the workers worth trying. Cores and deviceMemory (Chromium only) say what
-// cannot work, not what does: the probe measures whether each extra worker adds throughput.
+// How many engines this device can HOLD. Every worker reserves its net's whole heap
+// (384 MiB for big, 256 MiB for lite), so the memory signal is what bounds the count.
+// deviceMemory is the only memory signal a browser exposes (Chromium); WebKit reports
+// none, so a device that reports no memory gets ONE engine — the phone-safe bound.
+// Cores alone may not lift that: an iPhone reports 6 cores while it cannot hold
+// several 384 MiB heaps, and stacking three of them is what ran a phone out of memory.
+// Within the bound the probe still measures whether each extra worker adds throughput.
 export function maxWorkers({ hardwareConcurrency, deviceMemory } = {}) {
-  let n = Math.min(3, hardwareConcurrency > 0 ? hardwareConcurrency : 3);
-  if (deviceMemory > 0) n = Math.min(n, deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : 3);
-  return n;
+  const byMemory = deviceMemory > 0 ? (deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : MAX_WORKERS) : 1;
+  const cores = hardwareConcurrency > 0 ? hardwareConcurrency : 1;
+  return Math.max(1, Math.min(MAX_WORKERS, byMemory, cores));
 }
 
 // An extra worker is kept when it adds at least half of one worker's speed. Below that it
@@ -143,8 +155,12 @@ export function createEngineProfileManager({
       }
     });
   }
-  function current() { load(); return { ...profile }; }
+  // The profile every reader sees, bounded by what this device can hold: a stored
+  // record (or a choice made before the device reported less memory) can never make
+  // the engine start with more heaps than the hardware takes.
+  function current() { load(); return fitWorkers({ ...profile }, maxWorkers(device())); }
   function change(next) {
+    next = fitWorkers(next, maxWorkers(device()));
     revision++;
     profile = next;
     persist();
@@ -394,6 +410,8 @@ export function createEngineProfileManager({
       }).catch(() => {});
     },
     engineMeasurements() { load(); return measurements ? { ...measurements } : null; },
+    // The most engines this device can hold; Settings disables the rest.
+    engineWorkerLimit() { return maxWorkers(device()); },
     setEngineProfile(p) { load(); if (!valid(p)) throw new RangeError("Choose big/lite and 1–3 workers"); return change({ net: p.net, workers: p.workers, source: "user" }); },
     resetEngineProfile() { load(); return change(detected || { ...FALLBACK }); },
     detectEngineProfile: detect,
@@ -405,7 +423,7 @@ export function createEngineProfileManager({
 }
 
 const manager = createEngineProfileManager();
-export const { engineProfile, engineMeasurements, setEngineProfile, resetEngineProfile, detectEngineProfile,
+export const { engineProfile, engineMeasurements, engineWorkerLimit, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
   readyIfCached,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;

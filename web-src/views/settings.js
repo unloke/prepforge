@@ -1,5 +1,5 @@
 import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
-  engineSetupState, subscribeEngineSetup, prepareFullEngine } from "../engine/engine-profile.js";
+  engineSetupState, subscribeEngineSetup, prepareFullEngine, engineWorkerLimit } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
 // Settings tab rendering (lazy-loaded from app.js).
@@ -144,6 +144,12 @@ export function createSettingsView({
     });
     paint("settings-net-seg", "net", profile.net);
     paint("settings-workers-seg", "workers", profile.workers);
+    // A device that holds one engine (a phone) shows one: offering 2 and 3 would
+    // be asking for a choice the hardware cannot run.
+    const limit = engineWorkerLimit();
+    document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.disabled = Number(btn.dataset.workers) > limit;
+    });
     const detectBtn = document.getElementById("settings-detect");
     if (detectBtn) detectBtn.disabled = busy;
     const status = document.getElementById("settings-profile-status");
