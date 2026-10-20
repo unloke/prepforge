@@ -5,6 +5,11 @@ import { effectiveStockfishDepth, pref } from "./core/prefs.js";
 import { isBrowserEngineAvailable, createEngineProvider } from "./engine/stockfish-provider.js";
 import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/engine.js";
 import { hooks } from "./core/hooks.js";
+import { showUndoToast } from "./undo.js";
+
+// The sync controller and the Build session are created by the shell after this
+// module binds; both arrive through hooks.build. selectBuildNode and
+// scheduleBuildFlush are the shell's lazy wrappers, so they come as getters too.
 
 // Repertoire: the opening Explorer panel and its row-eval worker, the inspector
 // (Explorer / Coverage), the move tree and the local-first Build queue (temp
@@ -378,3 +383,176 @@ export function buildProvisionalNode(parent, uci, after) {
   };
 }
 
+// Re-insert still-pending provisional nodes onto the freshly hydrated tree (which
+// dropped them when it rebuilt buildNodeById from the server payload). Insertion
+// order preserves parent-before-child, so a tmp parent re-inserted earlier in the
+// loop is already present for its child.
+export function reapplyPendingBuildNodes(pending, idMap) {
+  if (!pending.length) return;
+  for (const entry of pending) {
+    const node = entry.node;
+    // Idempotent: hydrateBuild and the flush reconcile both call this for the
+    // same queue, and re-inserting a node would duplicate it in the tree.
+    if (!node || appState.buildNodeById.has(node.id)) continue;
+    const realParent = idMap[entry.parentRef] || entry.parentRef;
+    entry.parentRef = realParent;
+    node.parent_id = realParent;
+    const parent = appState.buildNodeById.get(realParent);
+    if (parent) node.depth = (parent.depth || 0) + 1;
+    // Dedupe: the server may have already materialised this child (e.g. the same
+    // line existed). If so, adopt the real id and drop the provisional.
+    const dup = appState.build.nodes.find(
+      (n) => n.parent_id === realParent && n.uci === node.uci && n.id !== node.id
+    );
+    if (dup) {
+      appState.buildIdMap[node.id] = dup.id;
+      continue;
+    }
+    appState.build.nodes.push(node);
+    appState.buildNodeById.set(node.id, node);
+  }
+  renderBuilderTree();
+}
+
+// Collect a subtree (the flat list keys children by parent_id) and remove it
+// from the local tree. Returns the removed ids; rendering is the caller's job.
+export function pruneLocalBuildSubtree(rootId) {
+  const doomed = new Set([rootId]);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const n of appState.build.nodes) {
+      if (!doomed.has(n.id) && doomed.has(n.parent_id)) {
+        doomed.add(n.id);
+        grew = true;
+      }
+    }
+  }
+  appState.build.nodes = appState.build.nodes.filter((n) => !doomed.has(n.id));
+  for (const id of doomed) appState.buildNodeById.delete(id);
+  return doomed;
+}
+
+// Re-prune subtrees whose delete is still queued after a hydrate resurrected
+// them (the server hasn't seen the delete yet). Mirrors reapplyPendingBuildNodes
+// for the delete half of the local-first queue.
+export function reapplyPendingBuildDeletes() {
+  // Undo-window prunes count too: the server still has those subtrees, so a
+  // hydrate resurrects them just like queued-but-unflushed deletes.
+  const ids = [
+    ...appState.buildPendingDeletes.filter((entry) =>
+      buildOpMatchesRepertoire(entry, appState.build.repertoire_id),
+    ),
+    ...appState.buildUndoDeletes,
+  ];
+  if (!appState.build || !ids.length) return;
+  let pruned = false;
+  for (const id of ids) {
+    const resolved = resolveBuildId(id);
+    const node = appState.buildNodeById.get(resolved);
+    if (!node) continue;
+    const parentId = node.parent_id;
+    const doomed = pruneLocalBuildSubtree(resolved);
+    pruned = true;
+    if (doomed.has(appState.buildCurrentNodeId) && appState.buildNodeById.has(parentId)) {
+      hooks.build.selectBuildNode(parentId);
+    }
+  }
+  if (pruned) renderBuilderTree();
+}
+
+// Local-first delete (no confirmation by design — pruning lines is a routine
+// Build edit, and the flush model makes it cheap): drop the subtree from the
+// client tree immediately, cancel any pending adds inside it, and queue the
+// subtree root for the debounced delete flush. A node that never reached the
+// server (its add is still pending) is cancelled outright — no server op at all.
+export async function deleteBuildNodeLocal(nodeId) {
+  const node = appState.buildNodeById.get(nodeId);
+  if (!node || !appState.build) return;
+  if (!node.parent_id) {
+    setStatus("Can't delete the starting position");
+    return;
+  }
+  const repId = appState.build.repertoire_id;
+  const parentId = node.parent_id;
+  const prevSelection = appState.buildCurrentNodeId;
+  const prevBranchChoice = appState.buildBranchChoiceId;
+  const nodesBefore = appState.build.nodes;
+  const doomed = pruneLocalBuildSubtree(nodeId);
+  const removedNodes = nodesBefore.filter((n) => doomed.has(n.id));
+  // Park pending adds inside the subtree with the undo entry. If the root itself
+  // was one of them the server never saw it, so no delete needs to flush for it;
+  // descendants of a real root are deleted server-side by the subtree delete anyway.
+  const rootWasLocalOnly = appState.buildPending.some((m) => m.tempId === nodeId);
+  const parkedAdds = appState.buildPending.filter((m) => doomed.has(m.tempId));
+  appState.buildPending = appState.buildPending.filter((m) => !doomed.has(m.tempId));
+  if (appState.buildBranchChoiceId && doomed.has(appState.buildBranchChoiceId)) {
+    appState.buildBranchChoiceId = null;
+  }
+  if (doomed.has(appState.buildCurrentNodeId)) {
+    await hooks.build.selectBuildNode(parentId);
+  } else {
+    renderBuilderTree();
+  }
+  hooks.build.syncViewHeads();
+  // The delete doesn't queue for the server until the undo window closes; until
+  // then it lives in buildUndoDeletes so a reconcile re-hydrate re-prunes it.
+  appState.buildUndoDeletes.add(nodeId);
+  // Keyed by the deleted move's slot so a replay of the SAME move can commit this
+  // delete first (see onBuildBoardMove). The slot is freed in both settle paths.
+  const undoMoveKey = `${parentId}:${node.uci}`;
+  const extra = doomed.size > 1 ? ` (+${doomed.size - 1} after it)` : "";
+  // One notice only: the inline Undo card beside the tree (no extra status
+  // toast), so nothing lands on top of the Explorer.
+  const undoCommit = showUndoToast({
+    host: document.getElementById("build-undo"),
+    title: "Move deleted",
+    message: `${node.san || "Move"}${extra} removed`,
+    onCommit: () => {
+      appState.buildUndoCommitByMove.delete(undoMoveKey);
+      appState.buildUndoDeletes.delete(nodeId);
+      if (!appState.build || appState.build.repertoire_id !== repId) return;
+      if (!rootWasLocalOnly) queueBuildDelete(nodeId);
+      if (appState.buildPending.length || appState.buildPendingDeletes.length) {
+        hooks.build.setBuildSync("dirty");
+        hooks.build.scheduleBuildFlush();
+      }
+    },
+    onUndo: async () => {
+      appState.buildUndoCommitByMove.delete(undoMoveKey);
+      appState.buildUndoDeletes.delete(nodeId);
+      if (!appState.build || appState.build.repertoire_id !== repId) return;
+      for (const n of removedNodes) {
+        if (!appState.buildNodeById.has(n.id)) {
+          appState.build.nodes.push(n);
+          appState.buildNodeById.set(n.id, n);
+        }
+      }
+      for (const m of parkedAdds) {
+        // The parent may have reconciled tmp -> real while the add was parked.
+        m.parentRef = resolveBuildId(m.parentRef);
+        m.node.parent_id = m.parentRef;
+        appState.buildPending.push(m);
+      }
+      if (
+        !appState.buildBranchChoiceId &&
+        prevBranchChoice &&
+        appState.buildNodeById.has(prevBranchChoice)
+      ) {
+        appState.buildBranchChoiceId = prevBranchChoice;
+      }
+      if (prevSelection && appState.buildNodeById.has(prevSelection)) {
+        await hooks.build.selectBuildNode(prevSelection);
+      } else {
+        renderBuilderTree();
+      }
+      hooks.build.syncViewHeads();
+      if (parkedAdds.length) {
+        hooks.build.setBuildSync("dirty");
+        hooks.build.scheduleBuildFlush();
+      }
+      setStatus(`Restored ${node.san || "move"}`);
+    },
+  });
+  appState.buildUndoCommitByMove.set(undoMoveKey, undoCommit);
+}
