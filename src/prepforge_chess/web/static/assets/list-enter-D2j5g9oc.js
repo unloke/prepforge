@@ -1,1 +1,0 @@
-function e(e){e?.children&&[...e.children].forEach((e,t)=>{e.style.setProperty(`--i`,String(Math.min(t,8)))})}export{e as t};

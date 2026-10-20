@@ -1,5 +1,5 @@
 // Repertoire workspace (Build) viewport smoke — fixture-backed.
-// Serves the committed static/ tree, intercepts /api/* with real-shape fixtures
+// Serves the built static/ tree, intercepts /api/* with real-shape fixtures
 // (signed-in account + one repertoire with a real e5/Bf5/Nc6-style fork), and at
 // 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console/page errors

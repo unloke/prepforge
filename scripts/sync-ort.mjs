@@ -3,8 +3,7 @@
 // web-src/public/engine/ort/ so Vite serves them at /static/engine/ort/*. Runs
 // before every build/dev (see package.json `sync-engine`). web-src/public/engine
 // is gitignored (regenerated from the pinned npm package); Vite copies public/
-// into the committed static dir at build time so the Docker image (pip install .,
-// no Node) still ships the runtime.
+// into the static dir at build time, so the image's Node stage ships the runtime.
 //
 // The `onnxruntime-web/webgpu` entry (ort.webgpu.bundle.min.mjs) loads the
 // `.asyncify` variant by name, and maia3-smoke/worker set

@@ -1,8 +1,8 @@
 """Put the Stockfish wasm files the manifest names into a static engine tree.
 
-The wasm files are not in git (the big net is 99 MB). The Docker image has no Node, so this
-reads the npm tarball of the manifest's package version, keeps only the named wasm files and
-checks each against the manifest's sha256.
+The wasm files are not in git (the big net is 99 MB). The Python image stage has no Node, so
+this reads the npm tarball of the manifest's package version, keeps only the named wasm files
+and checks each against the manifest's sha256.
 
     python fetch_stockfish_wasm.py <stockfish.manifest.json> <engine dir> [tarball url or path]
 """

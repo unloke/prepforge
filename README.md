@@ -49,8 +49,14 @@ py -3.11 -m venv .venv
 ```powershell
 npm ci
 npm test -- --run
-npm run build    # emits SPA into src/prepforge_chess/web/static/
+npm run build    # builds the SPA into src/prepforge_chess/web/static/ (git-ignored)
 ```
+
+The served SPA is build output, not source: the tree under
+`src/prepforge_chess/web/static/` is ignored by git and every reader of it — the
+local server, the browser smokes, `tests/test_api_static.py` — needs `npm run build`
+once (and again after any `web-src/` change). The Docker image builds it in a Node
+stage; CI builds it before the jobs that serve it.
 
 Open http://127.0.0.1:8000 after starting uvicorn (API docs at `/docs` in dev).
 

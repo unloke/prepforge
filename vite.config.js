@@ -44,8 +44,8 @@ function publicMjsPlugin() {
   };
 }
 
-// Keeps two kinds of large, redundant binaries out of the committed static/ deploy
-// image. Both would otherwise bloat the image with bytes the runtime never serves.
+// Keeps two kinds of large, redundant binaries out of the built static/ deploy
+// tree. Both would otherwise bloat the image with bytes the runtime never serves.
 //
 //  1. ONNX weights: web-src/public/maia3/ holds the git-ignored binaries (fp16
 //     ~46 MB, fp32 ~91 MB) next to the tracked manifest. Vite's publicDir copy is
@@ -115,8 +115,9 @@ function harnessInputs() {
 // and every other asset under "/static/*". So Vite builds into the package's
 // static dir and prefixes built asset URLs with /static/.
 //
-// Build artifacts are committed (the deploy image runs `pip install .` with no
-// Node), so a build must be run and committed when web-src/ changes.
+// That dir is build output: git ignores it. Docker runs this build in a Node
+// stage, CI runs it before the tests and smokes, and a developer runs it before
+// starting the local server.
 export default defineConfig({
   root: "web-src",
   base: "/static/",
@@ -129,9 +130,9 @@ export default defineConfig({
       new URL("./src/prepforge_chess/web/static", import.meta.url),
     ),
     emptyOutDir: true,
-    // Source maps are OFF for the committed deploy build: they added ~1.6 MB of
-    // .map files to the wheel (index ~1 MB, maia3-worker ~0.5 MB), were served as
-    // public static assets, and effectively published the original source. Opt in
+    // Source maps are OFF for the deploy build: they would add ~1.6 MB of .map
+    // files to the image and wheel (index ~1 MB, maia3-worker ~0.5 MB), be served
+    // as public static assets, and effectively publish the original source. Opt in
     // for a local debugging build with `VITE_SOURCEMAP=1 npm run build`. The dev
     // server (`npm run dev`) always has source maps regardless of this flag.
     sourcemap: process.env.VITE_SOURCEMAP === "1",

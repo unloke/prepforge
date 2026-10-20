@@ -1,3 +1,2 @@
-# Vite preserves HTML line endings, so checkout must match the generated deploy asset.
+# Vite preserves HTML line endings into the generated deploy shell.
 web-src/index.html text eol=lf
-src/prepforge_chess/web/static/index.html text eol=lf

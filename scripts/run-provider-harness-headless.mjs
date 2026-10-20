@@ -17,8 +17,8 @@
 //   npm run gate:cross-origin       (or: node scripts/run-provider-harness-headless.mjs)
 // The diagnostic pages are opt-in (vite harnessInputs); if the built static/ doesn't
 // have them, this script first runs a build with MAIA3_HARNESS=1 set in the child env.
-// On exit it ALWAYS restores the default deploy build so the committed static/ can't be
-// staged with diagnostics (opt out with KEEP_HARNESS_BUILD=1 for iterative debugging).
+// On exit it ALWAYS restores the default deploy build so a later image/CI build can't
+// pick up diagnostics (opt out with KEEP_HARNESS_BUILD=1 for iterative debugging).
 // Override the browser with CHROME_PATH=... if auto-detection misses it.
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -101,7 +101,7 @@ let twoOrigin = null;
 let chrome = null;
 let userDataDir = null;
 // The gate always builds (or runs against) a HARNESS-shaped static/. Restore the deploy
-// shape on exit unconditionally so the committed static/ can't be staged with diagnostic
+// shape on exit unconditionally so the static/ tree can't be left with diagnostic
 // pages / the worker chunk — opt out with KEEP_HARNESS_BUILD=1 for iterative debugging.
 const restoreDeployBuild = process.env.KEEP_HARNESS_BUILD !== "1";
 
@@ -251,8 +251,8 @@ main()
     // give child processes a moment to die before the event loop drains
     await sleep(200);
     // Always restore the deploy-shaped static/ (the gate ran against a HARNESS build either
-    // way) so the committed static/ never carries diagnostic pages / the worker chunk into
-    // production. Opt out with KEEP_HARNESS_BUILD=1 (handled where restoreDeployBuild is set).
+    // way) so the static/ tree never carries diagnostic pages / the worker chunk into an
+    // image or CI job. Opt out with KEEP_HARNESS_BUILD=1 (handled where restoreDeployBuild is set).
     if (restoreDeployBuild) {
       try {
         console.log("→ restoring default deploy build (no diagnostics) ...");
@@ -260,7 +260,7 @@ main()
       } catch (err) {
         console.error(
           `\n⚠ FAILED to restore the deploy build (${err.message}). static/ still holds a ` +
-            `HARNESS build — run \`npm run build\` before staging src/prepforge_chess/web/static/.`,
+            `HARNESS build — run \`npm run build\` before the next image or CI build.`,
         );
       }
     }

@@ -8,7 +8,7 @@ updates:
       time: "09:00"
       timezone: America/Phoenix
     open-pull-requests-limit: 10
-    # Engine updates must regenerate the manifest and committed SPA together.
+    # Engine updates must regenerate the committed engine manifest.
     ignore:
       - dependency-name: stockfish
     labels:

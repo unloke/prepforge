@@ -1,5 +1,5 @@
 // Settings viewport smoke — fixture-backed (same stack as the teams smokes).
-// Serves the committed static/ tree, intercepts /api/*, and at
+// Serves the built static/ tree, intercepts /api/*, and at
 // 1440x900 / 1180x900 / 390x844 / 320x660 checks:
 //   - no horizontal overflow, no console errors
 //   - section nav (prototype 180px): lists all sections, marks the active one,
