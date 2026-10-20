@@ -5920,6 +5920,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-bottom: 1px solid var(--line-soft);
   font-size: 12.5px;
 }
+/* The full-net question sits above the lines, in flow: the search below it keeps
+   its rows and its height, so the card never blanks while it waits for an answer. */
+.engine-window.is-docked .engine-window-consent { padding: 4px 6px 2px 0; }
+.engine-window.is-docked .engine-window-consent:not([hidden]) + .engine-window-body .engine-window-pvs { padding-top: 2px; }
 .engine-consent-actions {
   display: inline-flex;
   gap: 6px;

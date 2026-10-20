@@ -382,7 +382,8 @@
   container-type: inline-size;
 }
 #analysis-eval-card > :not(.ev-head):not(.engine-slot),
-#analysis-engine-slot .engine-window-body { grid-column: 1 / -1; }
+#analysis-engine-slot .engine-window-body,
+#analysis-engine-slot .engine-window-consent { grid-column: 1 / -1; }
 #analysis-eval-card .ev-head { display: contents; }
 .ev-title { grid-area: 1 / 1; font-size: var(--fs-s); }
 .ev-head.has-eval .ev-title { display: none; }
