@@ -546,7 +546,7 @@ describe("workspace chrome layout", () => {
     expect(css).toMatch(/\.settings-content\s*>\s*\.set\s*\{[^}]*break-inside:\s*avoid/);
     // The desktop page names itself: the phone header is hidden on wide
     // screens, so without this the Settings view has no heading at all.
-    expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*block/);
+    expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*flex/);
     expect(settingsCss).toContain(".set-row");
     expect(settingsCss).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.

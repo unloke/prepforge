@@ -31,6 +31,7 @@ function fakeNav() {
       textContent: label,
       offsetLeft: index * 80,
       offsetWidth: 80,
+      addEventListener: () => {},
       getAttribute: (name) => (name === "href" ? href : attrs[name] ?? null),
       setAttribute: (name, value) => { attrs[name] = String(value); },
       removeAttribute: (name) => { delete attrs[name]; },
@@ -41,13 +42,14 @@ function fakeNav() {
       attrs,
     };
   });
-  const nav = {
-    scrollWidth: 480,
-    clientWidth: 320,
-    scrollLeft: 0,
-    querySelector: (sel) => (sel === ".settings-nav-link.is-active" ? links.find((l) => l.classList.contains("is-active")) ?? null : null),
-    querySelectorAll: (sel) => (sel === ".settings-nav-link" ? links : []),
-  };
+    const nav = {
+      scrollWidth: 480,
+      clientWidth: 320,
+      scrollLeft: 0,
+      dataset: {},
+      querySelector: (sel) => (sel === ".settings-nav-link.is-active" ? links.find((l) => l.classList.contains("is-active")) ?? null : null),
+      querySelectorAll: (sel) => (sel === ".settings-nav-link" ? links : []),
+    };
   return { nav, links, here };
 }
 
@@ -140,6 +142,30 @@ describe("Settings section navigation", () => {
 
   it("lands a jumped-to card below the sticky strip", () => {
     expect(css).toMatch(/\.settings-content > \.set \{ scroll-margin-top: 64px; \}/);
-    expect(phoneCss).toMatch(/#view-settings \.settings-content > \.set \{ scroll-margin-top: 68px; \}/);
+    expect(phoneCss).toMatch(/#view-settings \.settings-content > \.set \{ scroll-margin-top: 112px; \}/);
+  });
+
+  it("leaves the click's marker alone when every card fits on screen", async () => {
+    // At 1440x900 the six cards fit with no room to scroll: the spy has no
+    // section "in front of you", so a click's marker must not be overwritten
+    // on the scroll event that a smooth-scroll still fires.
+    const { view, links } = setup();
+    globalThis.window = { innerHeight: 900, scrollY: 0 };
+    globalThis.document.documentElement = { scrollHeight: 900 };
+    const listeners = [];
+    globalThis.document.addEventListener = (name, fn) => { if (name === "scroll") listeners.push(fn); };
+    globalThis.requestAnimationFrame = (fn) => fn();
+    const cards = SECTIONS.map(([href]) => ({
+      id: href.slice(1),
+      getBoundingClientRect: () => ({ top: 100, bottom: 200 }),
+    }));
+    globalThis.document.querySelectorAll = (sel) =>
+      sel === "#view-settings .card[id]" ? cards : (sel === ".settings-nav .settings-nav-link" ? links : []);
+    view.bindSectionNav();
+    view.markActiveSection("set-board");
+    listeners.forEach((fn) => fn());
+    expect(links.find((link) => link.classList.contains("is-active")).label).toBe("Board");
+    delete globalThis.window;
+    delete globalThis.requestAnimationFrame;
   });
 });

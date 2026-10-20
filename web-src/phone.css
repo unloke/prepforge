@@ -307,35 +307,36 @@
      row is 48px, actions are tinted text, sliders get the row's full width. */
   #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
   /* The section strip stays on a phone: it is the only way to reach a section
-     there. One sticky row that scrolls sideways inside itself, so it costs one
-     thumb's height and never pushes a card off the screen; the open section's
-     chip is scrolled into view (settings.js), so the current section is always
-     visible even when its chip starts off the edge. */
+     there. It wraps into two rows so all six are on screen at once - a
+     sideways-scrolling row left "Playing strength" and "Board" off the edge,
+     which is not a tap away - and holds while the cards scroll. */
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
     width: auto;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
     margin: 0 0 10px;
-    padding: 6px;
+    padding: 6px 0 8px;
     border-radius: 0;
     background: var(--bg);
   }
   #view-settings .settings-nav-link {
-    min-height: 44px;
-    padding: 0 14px;
-    border-radius: 999px;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 12px;
+    border-radius: 10px;
     background: var(--panel);
     font-size: 15px;
   }
   #view-settings .settings-nav-link.is-active { background: var(--text); color: var(--panel); }
-  /* A jump lands the card below the sticky strip. */
-  #view-settings .settings-content > .set { scroll-margin-top: 68px; }
-  /* The heading names the open section on the title's line, so the block
-     costs one line and says what "Settings" does not. */
-  #view-settings .page-head { display: flex; align-items: baseline; gap: 8px; }
+  /* The heading names the open section on the title's line. */
+  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
   #view-settings .settings-here::before { margin-right: 8px; }
+  /* A jump lands the card below the two-row sticky strip. */
+  #view-settings .settings-content > .set { scroll-margin-top: 112px; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }
   /* A long section title plus its info and action buttons (Maia3: "Download",

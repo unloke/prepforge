@@ -596,21 +596,26 @@ export function createSettingsView({
           markActiveSection(lockedId);
           return;
         }
+        const list = sections();
+        const scrollRoom = document.documentElement.scrollHeight - window.innerHeight;
+        // A window wide enough to show every card at once has no section "in
+        // front of you", only the one you last jumped to: the spy stays out of
+        // the click's way there.
+        if (scrollRoom < window.innerHeight * 0.5) return;
+        // The section under the probe line, or the one that just passed it when
+        // the probe sits in a gap between cards.
         const probe = window.innerHeight * 0.35;
-        let current = null;
-        for (const section of sections()) {
-          const rect = section.getBoundingClientRect();
-          if (rect.top <= probe && rect.bottom > probe) {
-            current = section.id;
-            break;
-          }
+        let current = list[0]?.id ?? null;
+        for (const section of list) {
+          if (section.getBoundingClientRect().top <= probe) current = section.id;
         }
-        // Past the last section's top (short final card scrolled up), keep the
-        // last id active rather than dropping the marker entirely.
-        if (!current) {
-          const list = sections();
-          const last = list[list.length - 1];
-          if (last && last.getBoundingClientRect().top <= probe) current = last.id;
+        // At the bottom of the page, a last card too short to reach the line is
+        // still what you are looking at.
+        const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+        if (atEnd) {
+          for (const section of list) {
+            if (section.getBoundingClientRect().top <= window.innerHeight * 0.5) current = section.id;
+          }
         }
         if (current) markActiveSection(current);
       });
