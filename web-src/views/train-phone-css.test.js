@@ -25,3 +25,21 @@ it("the result card takes the room the session card had", () => {
   // The finished position is not a live board: it does not hold the strip.
   expect(phone).toMatch(/\.study:has\(\[data-session-state="summary"\]\) \.board-stack \{ display: none/);
 });
+
+// Every Train control a thumb reaches is at least 44px tall on a phone. The
+// mode tabs were 32, the mode name 17, New session 36, and the blitz switch
+// 20. The switch keeps its look and grows an invisible tap area.
+it("every Train control is a thumb-sized target on a phone", () => {
+  for (const selector of [
+    /#view-train #train-modes \.seg-btn \{[^}]*min-height: 44px/,
+    /#view-train \.prog-head \{ min-height: 44px/,
+    /#view-train #train-mode-name \{[^}]*min-height: 44px/,
+    /#view-train #train-fresh \{ min-height: 44px/,
+  ]) expect(css.match(selector), selector.source).not.toBeNull();
+  const hit = css.match(/#view-train #train-blitz-toggle::after \{[^}]*\}/);
+  expect(hit, "blitz switch tap area").not.toBeNull();
+  expect(hit[0]).toMatch(/inset: -\d+px -\d+px/);
+  // 20px tall + 11px each side reached 42, two short of a thumb. Measured by
+  // hit-testing the switch's centre at 390px.
+  expect(hit[0]).toMatch(/inset: -12px/);
+});

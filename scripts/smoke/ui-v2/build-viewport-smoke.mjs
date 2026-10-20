@@ -1,5 +1,5 @@
 // Repertoire workspace (Build) viewport smoke — fixture-backed.
-// Serves the committed static/ tree, intercepts /api/* with real-shape fixtures
+// Serves the built static/ tree, intercepts /api/* with real-shape fixtures
 // (signed-in account + one repertoire with a real e5/Bf5/Nc6-style fork), and at
 // 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console/page errors
@@ -223,9 +223,10 @@ async function runViewport(vp) {
   // Build header: size summary + Generate's applicability rule. The button only
   // applies where a writable repertoire's move of yours is missing, so at 3.e5
   // (where Bf5 already answers for black) it must be OUT of the head — and
-  // reachable from the ⋯ menu's "Move …" entry instead.
-  const repStats = await page.locator("#build-rep-stats").textContent().catch(() => "");
-  check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
+  // reachable from the ⋯ menu's "Move …" entry instead. The size summary is a
+  // caption on the repertoire's name (its tooltip), not a band of the panel.
+  const repStats = await page.locator("#build-rep-name").getAttribute("title").catch(() => "");
+  check(/2 lines · 7 moves/.test(repStats || ""), `the repertoire's name should carry "2 lines · 7 moves", got "${repStats}"`);
   const genAtE5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
   check(genAtE5 === true, `Generate should be hidden at 3.e5 (your Bf5 reply exists), got hidden=${genAtE5}`);
 
@@ -286,7 +287,7 @@ async function runViewport(vp) {
   const chips = await page.locator("#build-branchbar .fork-chip").count();
   check(chips === 2, `fork bar should have 2 chips, got ${chips}`);
   const count = await page.locator("#build-branchbar .count").textContent().catch(() => "");
-  check(count === "2", `fork count should be 2, got "${count}"`);
+  check(count === "2 options", `fork count should read "2 options", got "${count}"`);
   const bf5Chip = page.locator('#build-branchbar .fork-chip', { hasText: "Bf5" });
   const share = await bf5Chip.locator("small").textContent().catch(() => "");
   check(share === "48%", `Bf5 chip should show the real 48% practical share, got "${share}"`);
@@ -346,10 +347,24 @@ async function runViewport(vp) {
     check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
     check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
     check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
-    // The tree is the other half of the seam: it must give up what the dock
-    // took, or the dock grew out of the panel instead of out of the tree.
+    // The tree is the other half of the seam: the dock grows out of the panel,
+    // never past it. On a short line the tree already sits at its floor
+    // (min-height), so what the drag takes comes from the panel's rest — the
+    // check is that the panel itself never overflows and the page never scrolls.
     const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
-    check(startTree - endTree > growBy * 0.7 || endTree <= 90, `the move tree should shrink as the dock grows, got ${startTree} → ${endTree}`);
+    const panelFit = await page.evaluate(() => {
+      const panel = document.querySelector("#build-sidebar > .panel-body");
+      return {
+        overflow: panel.scrollHeight - panel.clientHeight,
+        page: document.documentElement.scrollHeight - innerHeight,
+      };
+    });
+    check(
+      startTree - endTree > growBy * 0.7 || endTree <= 110,
+      `the move tree should give up what the dock took, or already be at its floor, got ${startTree} → ${endTree}`,
+    );
+    check(panelFit.overflow <= 1, `the dragged dock overflowed the panel by ${panelFit.overflow}px`);
+    check(panelFit.page <= 0, `the dragged dock scrolled the page by ${panelFit.page}px`);
     const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);
     check(cursorOnHandle === "row-resize", `the handle should carry a resize cursor, got "${cursorOnHandle}"`);
 

@@ -153,10 +153,12 @@ class PositionCoach {
     this.enabled = true;
     this.timer = null;
     this.token = 0;
-    // `${depth}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}], depth }
-    // (White-POV). Cached so stepping forward (this position was last turn's "after")
-    // costs one new search, not two. The depth is part of the key so a Settings depth
-    // change can't serve a shallower read for a position seen at the old depth.
+    // `${depth}|${lines}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}],
+    // depth } (White-POV), one entry per read width: the before-move check needs two
+    // lines, the after-move one needs one, and a narrower search can't answer a wider
+    // question. Cached so stepping forward (this position was last turn's "after") costs
+    // one new search, not two. The depth is part of the key so a Settings depth change
+    // can't serve a shallower read for a position seen at the old depth.
     this.evalCache = new Map();
   }
 
@@ -230,7 +232,9 @@ class PositionCoach {
     const now = performance.now();
     const rapid = now - this.lastUpdateAt < COACH_RAPID_STEP_MS;
     this.lastUpdateAt = now;
-    const cached = (position) => this.evalCache.get(`${this.engineDepth}|${position}`) ||
+    // Both reads are one line wide. The position before the move gets its best ALTERNATIVE
+    // only when a verdict actually turns on it — see _run.
+    const cached = (position) => this.evalCache.get(`${this.engineDepth}|1|${position}`) ||
       savedPositionEvalRead(position, this.engineDepth);
     if (!rapid && cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
       void this._run(fen);
@@ -256,11 +260,12 @@ class PositionCoach {
       // A move that ends the game leaves no position for the
       // engine to search, so the "after" read is synthesized instead.
       const over = localGameOver(fen);
-      // The position BEFORE the move (best line + best alternative) and AFTER it, read
-      // at once: the store gives each its own warm lane.
+      // Both positions are read one line wide: the top move is all either needs on its
+      // own. The second line of the position BEFORE the move (its best alternative) is the
+      // one fact a single line can't carry, and only a few verdicts read it — see below.
       const [before, after] = await Promise.all([
-        this._eval(prevFen, token),
-        over ? null : this._eval(fen, token),
+        this._eval(prevFen, token, 1),
+        over ? null : this._eval(fen, token, 1),
       ]);
       if (token !== this.token || fen !== this.fen) return;
       if (!before || !before.lines.length) return;
@@ -274,6 +279,14 @@ class PositionCoach {
         top = after.lines[0] || {};
       }
       const prevMove = previousAnalysisMove();
+      // The best alternative decides only three things: the "only move"/Great wording, and
+      // the only_move_gap behind a Brilliant. All three need the played move to BE the
+      // engine's top choice — so only that move ever reads the second line. A move with a
+      // saved GRADE is skipped even then: Analyze already decided it, and the alternative
+      // would only re-word a settled answer, not worth a search of its own.
+      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
+      const wide = !saved?.classification && before.lines[0].uci === ctx.lastUci ? await this._eval(prevFen, token, 2) : null;
+      if (token !== this.token || fen !== this.fen) return;
       const features = c.buildMoveFeatures({
         ply: ctx.ply ?? null,
         moveNumber: Number(prevFen.split(" ")[5]) || null,
@@ -285,17 +298,16 @@ class PositionCoach {
         prevFenBefore: prevMove ? prevMove.fenBefore : null,
         fenBefore: prevFen,
         fenAfter: fen,
-        beforeEval: { lines: before.lines },
+        beforeEval: { lines: wide && wide.lines.length > 1 ? wide.lines : before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       features.opponentRead = opponentRead;
-      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       // The saved grade is authoritative for Great both ways: the board badge and the move
       // list show it, so the coach neither drops a saved Great nor calls a saved ✓ move Great
       // off its shallower live read.
       if (saved && saved.classification === "great") c.markGreat(features);
       else if (saved && features.classification?.code === "great") {
-        features.classification = { code: "best", label: "Best move", glyph: "✓", tone: "good" };
+        features.classification = { code: "best", label: "Best move", tone: "good" };
       }
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       if (!opponentRead) offerLiveBetterArrow(features, saved, fen);
@@ -424,7 +436,9 @@ class PositionCoach {
     } catch (_) {
       return null; // illegal/unparseable natural move → trap un-evaluable
     }
-    const read = await this._eval(humanFen, token);
+    // Only the top line is read here, so ask for one: a wider search would cost the
+    // user a slower Brilliant verdict for a score it never looks at.
+    const read = await this._eval(humanFen, token, 1);
     if (token !== this.token || fen !== this.fen || !read || !read.lines.length) return null;
     const line = read.lines[0];
     const humanWc = c.moverWinChanceAfter({ cp: line.cp ?? null, mate: line.mate ?? null }, features.mover);
@@ -457,27 +471,33 @@ class PositionCoach {
     }
   }
 
-  // Run (or reuse a cached) MultiPV-2 read of `fen`, White-POV, on a short budget.
-  async _eval(fen, token) {
+  // Run (or reuse a cached) engine read of `fen`, White-POV. `lines` is how many lines the
+  // caller reads: 2 for the position before a move that needs its best ALTERNATIVE to
+  // decide "only move" / Brilliant, 1 everywhere else — including that same position when
+  // the played move isn't the top choice. The Engine card searches exactly the lines it
+  // shows, so its snapshot only ever answers a 1-line need.
+  async _eval(fen, token, lines = 1) {
     if (!fen) return null;
-    const key = `${this.engineDepth}|${fen}`;
-    const cached = this.evalCache.get(key);
+    const cacheKey = `${this.engineDepth}|${lines}|${fen}`;
+    const cached = this.evalCache.get(cacheKey);
     if (cached) return cached;
-    const saved = savedPositionEvalRead(fen, this.engineDepth);
+    const saved = lines <= 1 ? savedPositionEvalRead(fen, this.engineDepth) : null;
     if (saved) {
-      this.evalCache.set(key, saved);
+      this.evalCache.set(cacheKey, saved);
       return saved;
     }
     const store = await analysisStore();
     // Two tries: a worker that dies mid-search gets one fresh lane before the coach gives up.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       if (token !== this.token) return null;
-      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: 2 });
+      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: lines });
       this.leases.add(lease);
       // No wall-clock deadline: a busy machine is slower, not wrong. Only a newer move
       // (cancel releases the lease, resolving null) or an engine failure ends the wait.
       // An interrupted search keeps its depth in the store, so stepping back is instant.
-      const snap = await lease.until((s) => s.pvs?.[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14));
+      const snap = await lease.until(
+        (s) => s.pvs?.length >= lines && s.pvs[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14),
+      );
       this.leases.delete(lease);
       lease.release();
       if (token !== this.token || !snap) return null;
@@ -487,7 +507,9 @@ class PositionCoach {
   }
 
   // Cache a snapshot of `fen` (if it is for that position and deep enough) as a
-  // coach read; returns the read or null.
+  // coach read; returns the read or null. It is filed under every read width it can
+  // answer, so the deep 1-line snapshot the Engine card produces still serves a 1-line
+  // after-read without ever standing in for the 2-line alternative read.
   _remember(fen, snap, minDepth) {
     if (!snap || snap.fen !== fen || (snap.current_depth || 0) < minDepth) return null;
     const lines = (snap.pvs || [])
@@ -502,10 +524,11 @@ class PositionCoach {
       }));
     if (!lines.length) return null;
     const result = { fen, depth: snap.current_depth || 0, lines };
-    const key = `${this.engineDepth}|${fen}`;
-    const existing = this.evalCache.get(key);
-    if (existing && existing.depth > result.depth) return existing;
-    this.evalCache.set(key, result);
+    for (let need = lines.length; need >= 1; need -= 1) {
+      const key = `${this.engineDepth}|${need}|${fen}`;
+      const existing = this.evalCache.get(key);
+      if (!existing || existing.depth <= result.depth) this.evalCache.set(key, result);
+    }
     if (this.evalCache.size > 50) this.evalCache.delete(this.evalCache.keys().next().value);
     return result;
   }
@@ -644,7 +667,7 @@ function paintMaiaCoachLine(model) {
       .map((p) => {
         const notes = [p.played ? "played" : "", p.best ? "engine's choice" : ""].filter(Boolean).join(", ");
         return (
-          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" style="--p:${Math.min(100, Math.max(0, p.pct))}%" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
+          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
         );
       })}`;
   paintPhaseChip(model.phase, model.title);
@@ -766,7 +789,7 @@ async function runAnalysis(options = {}) {
   // classifies + stores the browser's evals (/api/analyze/prepare and
   // classify-save are owner-scoped). Live engine + coach on the board work
   // signed out.
-  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game", {
+  if (!requireSignIn("Sign in to run a full-game review. It is saved to your library.", "analyze-game", {
     pgn, mode: importMode, selectIndex,
   })) return;
   const seq = invalidateAnalysisSource();
@@ -1129,13 +1152,19 @@ async function runAnalysis(options = {}) {
       if (current) {
         appState.analysisSourcePgn = null;
         hideAnalysisHandoff();
+        // The coach must not go on reading a game that was stopped.
+        setCoachProse("The analysis stopped.", "warn", "error");
       }
       notices.cancelJob(error.message || "Analysis stopped");
     } else if (isAuthError(error)) {
-      if (current) accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
+      if (current) accountService().handleAuthRequired("Sign in to run a full-game review. It is saved to your library.");
       notices.failJob("Sign in required");
     } else {
-      if (current) setStatusError(error.message);
+      if (current) {
+        setStatusError(error.message);
+        // The coach must not go on reading a game that could not be read.
+        setCoachProse(`The analysis failed: ${error.message}`, "danger", "error");
+      }
       notices.failJob(error.message);
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
@@ -1166,7 +1195,7 @@ function renderImportPicker(summary, mode) {
   }
   const games = summary.games || [];
   const label = (g) =>
-    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"} — ${g.status}${g.error ? ` (${g.error})` : ""}`;
+    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"}, ${g.status}${g.error ? ` (${g.error})` : ""}`;
   host.hidden = false;
   host.innerHTML =
     html`<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span><select id="analysis-import-select" aria-label="Choose analyzed game">${games
@@ -1181,7 +1210,7 @@ function renderImportPicker(summary, mode) {
     });
   }
   setStatus(
-    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed — analyzing game ${summary.selected_index + 1}.`,
+    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed. Analyzing game ${summary.selected_index + 1}.`,
   );
 }
 
@@ -1276,7 +1305,7 @@ async function retryAnalyzeSave() {
     if (ownerId !== currentOwnerId()) return;
     if (checkpoint.serverSaved) { setStatusError(error.message); return; }
     if (isAuthError(error)) {
-      accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
+      accountService().handleAuthRequired("Sign in to save. The analysis stays on this device until you do.");
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
@@ -1333,11 +1362,11 @@ async function onCreateRepertoireFromGameClick() {
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
-    setStatus(`Repertoire “${payload.name}” created — edit it in Repertoire`, { severity: "success" });
+    setStatus(`Repertoire “${payload.name}” created. Edit it in Repertoire.`, { severity: "success" });
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
-    setStatusError(error.message || "Could not create repertoire — try again");
+    setStatusError(error.message || "Could not create repertoire. Try again.");
     if (btn) btn.disabled = false;
   }
 }

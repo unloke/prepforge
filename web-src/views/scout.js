@@ -111,15 +111,12 @@ const PATH_GUARD_DEBOUNCE_MS = 300;
 // A replay that no longer matches its recorded run re-runs the guard at most this often per scope.
 const PATH_GUARD_MAX_RERUNS = 3;
 
-/** Path guard prototype (research/scout-v11): on by default for testing; ?scoutPathGuard=0 shows v10. */
-export function scoutPathGuardEnabled(search = typeof location === "undefined" ? "" : location.search) {
-  return new URLSearchParams(search).get("scoutPathGuard") !== "0";
-}
-
-function scoutErrorHtml(message, action = null) {
-  return html`<div class="scout-error" role="alert"><span>${message}</span>${action
-    ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`
-    : ""}</div>`;
+function scoutErrorHtml(title, message, action = null) {
+  return html`<div class="scout-error" role="alert">
+    <p class="scout-error-title">${title}</p>
+    <p class="scout-error-body">${message}</p>
+    ${action ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>` : ""}
+  </div>`;
 }
 
 // Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
@@ -221,10 +218,11 @@ export function createScoutView(deps) {
     delete side.dataset.color;
   }
 
-  // Phone layout stacks the detail after the plan: bring it into view on select.
+  // Below 1020px the detail stacks under the plan; bring it into view on select.
+  // At 768-1020 it sat ~1,400px down and opening a row showed nothing.
   function revealScoutDetail() {
     const side = getSideEl();
-    if (!side || side.hidden || !window.matchMedia?.("(max-width: 760px)").matches) return;
+    if (!side || side.hidden || !window.matchMedia?.("(max-width: 1020px)").matches) return;
     side.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }
 
@@ -646,13 +644,11 @@ export function createScoutView(deps) {
 
   // Re-runs the guard after the selector input changed (for example once Maia lands).
   function schedulePathGuard() {
-    if (!scoutPathGuardEnabled()) return;
     pathGuard.schedule();
   }
 
   // The recorded guard run for one colour, replayed by the report without engine reads.
   function pathGuardOption(oppColor) {
-    if (!scoutPathGuardEnabled()) return null;
     const rec = scoutState?.pathGuard?.[oppColor];
     if (!rec) return null;
     return {
@@ -721,7 +717,7 @@ export function createScoutView(deps) {
   }
 
   async function rerunPathGuard(gen) {
-    if (!scoutPathGuardEnabled() || !scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== pathGuard.generation || scoutState.prefilterEnrichState !== PREFILTER_READY) return;
     const isCurrent = () => gen === pathGuard.generation && Boolean(scoutState);
     const engine = createPathGuardEngine({ shouldCancel: () => !isCurrent() });
@@ -938,7 +934,7 @@ export function createScoutView(deps) {
     // The path guard reads each colour's lines before they are published, so the first
     // engine-ranked plan on screen is already the guarded one.
     const guardCurrent = () => gen === prefilterEnrich.generation && Boolean(scoutState);
-    const guardEngine = scoutPathGuardEnabled() ? createPathGuardEngine({ shouldCancel: () => !guardCurrent() }) : null;
+    const guardEngine = createPathGuardEngine({ shouldCancel: () => !guardCurrent() });
     try {
       for (const oppColor of ["white", "black"]) {
         if (gen !== prefilterEnrich.generation) return;
@@ -973,12 +969,10 @@ export function createScoutView(deps) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
           const rankedLines = result.ranked.map(entry => entry.line);
-          if (guardEngine) {
-            setEngineProgress({ phase: "path", done: 0, total: 0 });
-            const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
-              { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
-            if (!done) return;
-          }
+          setEngineProgress({ phase: "path", done: 0, total: 0 });
+          const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
+            { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
+          if (!done) return;
           scoutState.prefilterPools[oppColor] = result.pool;
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] = rankedLines;
@@ -1000,7 +994,7 @@ export function createScoutView(deps) {
         scoutState.prefilterScopeKey = scopeKey;
       }
     } finally {
-      if (guardEngine) await guardEngine.close();
+      await guardEngine.close();
       prefilterEnrich.settled(gen);
       if (gen === prefilterEnrich.generation && scoutState) {
         renderScoutReport();
@@ -1929,9 +1923,9 @@ export function createScoutView(deps) {
     if (!failed.length) return null;
     if (failed.length === 1) {
       const [username, status] = failed[0];
-      return `Couldn't load ${username}. ${status.error || "Try again."}`;
+      return status.error ? `${username}: ${status.error}` : `${username} could not be read. Try again.`;
     }
-    return `Couldn't load ${failed.length} sources. Retry the failed ones.`;
+    return `${failed.length} sources could not be read. Retry the ones that failed.`;
   }
 
   function showScoutEmptyState(session, message) {
@@ -1940,7 +1934,7 @@ export function createScoutView(deps) {
     const failedUsers = Object.entries(session.sourceStatus || {})
       .filter(([, status]) => status.status === "failed")
       .map(([username]) => username);
-    if (results) results.innerHTML = scoutErrorHtml(message, failedUsers.length > 0);
+    if (results) results.innerHTML = scoutErrorHtml(failedUsers.length ? "Couldn't scout this player" : "No games to scout", message, failedUsers.length > 0);
     results?.querySelector?.("#scout-retry-failed")?.addEventListener("click", () => {
       if (!failedUsers.length) return;
       results.classList.add("is-streaming");
@@ -2224,7 +2218,7 @@ export function createScoutView(deps) {
       const message = scoutFetchErrorMessage(error) || error.message || "Scout failed";
       scoutState = null;
       scoutSession = null;
-      if (results) results.innerHTML = scoutErrorHtml(message);
+      if (results) results.innerHTML = scoutErrorHtml("Scout stopped", message);
       if (profile) profile.hidden = true;
     } finally {
       initGuard.finish(initToken);

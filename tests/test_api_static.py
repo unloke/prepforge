@@ -8,9 +8,20 @@ asset base must be injectable.
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from prepforge_chess.api import static as static_mod
+
+# The served tree is Vite build output (git-ignored), so a bare clone has none.
+# CI builds it before pytest and sets PREPFORGE_REQUIRE_BUILT_SPA=1, where a
+# missing tree is a failure rather than a skip; a developer runs `npm run build`.
+BUILT = (static_mod.STATIC_DIR / "index.html").is_file()
+requires_built_spa = pytest.mark.skipif(
+    not BUILT and not os.environ.get("PREPFORGE_REQUIRE_BUILT_SPA"),
+    reason="SPA not built; run `npm run build`",
+)
 
 
 def _an_asset() -> str:
@@ -20,6 +31,7 @@ def _an_asset() -> str:
     return f"assets/{js.name}"
 
 
+@requires_built_spa
 def test_index_served_with_isolation_headers(client):
     resp = client.get("/")
     assert resp.status_code == 200
@@ -33,6 +45,7 @@ def test_index_served_with_isolation_headers(client):
     assert resp.headers["cache-control"] == "no-cache"
 
 
+@requires_built_spa
 def test_hashed_asset_served_immutable_with_corp(client):
     resp = client.get(f"/static/{_an_asset()}")
     assert resp.status_code == 200
@@ -99,8 +112,88 @@ def test_static_middleware_removes_all_set_cookie_headers():
 
 def test_traversal_outside_static_is_rejected():
     # httpx/starlette normalize ".." in the URL, so exercise the guard directly.
-    resp = static_mod._serve_asset("../../pyproject.toml")
+    from starlette.requests import Request
+
+    request = Request({"type": "http", "method": "GET", "headers": [], "path": "/static/x"})
+    resp = static_mod._serve_asset(request, "../../pyproject.toml")
     assert resp.status_code == 404
+
+
+@requires_built_spa
+def test_index_answers_conditional_request_with_304(client):
+    first = client.get("/")
+    etag = first.headers["etag"]
+    assert etag
+    # no-cache means "revalidate", not "re-download": the second load must be a
+    # header-only round trip (the shell is ~71 KB of markup).
+    again = client.get("/", headers={"If-None-Match": etag})
+    assert again.status_code == 304
+    assert again.content == b""
+    assert again.headers["etag"] == etag
+    # A shared cache reading Vary only from the 304 must still know it varies.
+    assert again.headers["vary"] == "Accept-Encoding"
+    assert again.headers["cache-control"] == "no-cache"
+    # The isolation headers the document needs ride along.
+    assert again.headers["cross-origin-opener-policy"] == "same-origin"
+    assert again.headers["cross-origin-embedder-policy"] == "require-corp"
+
+
+@requires_built_spa
+def test_index_304_honours_if_modified_since(client):
+    first = client.get("/")
+    again = client.get("/", headers={"If-Modified-Since": first.headers["last-modified"]})
+    assert again.status_code == 304
+    # A date older than the file is a stale copy: send the body.
+    stale = client.get("/", headers={"If-Modified-Since": "Wed, 21 Oct 2015 07:28:00 GMT"})
+    assert stale.status_code == 200
+
+
+@requires_built_spa
+def test_index_etag_changes_with_the_injected_asset_base(client, monkeypatch):
+    # The injected globals are env-derived: a restart with a different base serves
+    # different markup for an unchanged file, so the ETag must move with it.
+    monkeypatch.delenv(static_mod.MAIA3_ASSET_BASE_ENV, raising=False)
+    plain = client.get("/").headers["etag"]
+    monkeypatch.setenv(static_mod.MAIA3_ASSET_BASE_ENV, "https://cdn.example.com/maia3/")
+    assert client.get("/").headers["etag"] != plain
+    # ...and the old validator no longer matches, so the client gets the new body.
+    assert client.get("/", headers={"If-None-Match": plain}).status_code == 200
+
+
+@requires_built_spa
+def test_revalidating_static_file_answers_304(client):
+    # The Maia3 manifest loads on every page load (the engine reads it to resolve
+    # the weight base) and is not content-hashed, so it revalidates every time.
+    resp = client.get("/static/maia3/maia3.manifest.json")
+    if resp.status_code == 404:
+        pytest.skip("built tree has no maia3 manifest")
+    etag = resp.headers["etag"]
+    again = client.get("/static/maia3/maia3.manifest.json", headers={"If-None-Match": etag})
+    assert again.status_code == 304
+    assert again.content == b""
+    assert again.headers["cache-control"] == "no-cache"
+    assert again.headers["cross-origin-resource-policy"] == "same-origin"
+
+
+@requires_built_spa
+def test_range_request_still_streams_a_ranged_body(client):
+    # A Range read is not a cache revalidation: it must keep returning bytes.
+    asset = static_mod.STATIC_DIR / _an_asset()
+    etag = static_mod._file_etag(asset.stat())
+    resp = client.get(
+        f"/static/{_an_asset()}",
+        headers={"If-None-Match": etag, "Range": "bytes=0-99"},
+    )
+    assert resp.status_code == 206
+    assert len(resp.content) == 100
+
+
+@requires_built_spa
+def test_hashed_asset_still_answers_304(client):
+    # Immutable assets rarely re-ask, but a forced revalidation must not resend them.
+    resp = client.get(f"/static/{_an_asset()}")
+    again = client.get(f"/static/{_an_asset()}", headers={"If-None-Match": resp.headers["etag"]})
+    assert again.status_code == 304
 
 
 def test_asset_base_injection_when_env_set(monkeypatch):
@@ -171,6 +264,7 @@ def test_document_csp_has_no_script_hash_when_env_unset(monkeypatch):
     assert "sha256-" not in csp
 
 
+@requires_built_spa
 def test_index_csp_allows_weight_cdn_and_inline_bootstrap(client, monkeypatch):
     # End-to-end on the served shell: connect-src must reach the HF weight CDN (the
     # worker fetches the ONNX cross-origin) and the inline bootstrap must be hashed in.
@@ -182,6 +276,7 @@ def test_index_csp_allows_weight_cdn_and_inline_bootstrap(client, monkeypatch):
     assert "sha256-" in csp
 
 
+@requires_built_spa
 def test_worker_script_csp_allows_weight_cdn(client):
     # The ONNX fetch happens INSIDE the Maia worker, governed by the CSP on the
     # worker script's OWN response (the middleware default) — it must reach the CDN.

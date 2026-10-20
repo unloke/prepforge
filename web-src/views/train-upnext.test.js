@@ -129,7 +129,9 @@ describe("train up-next preview", () => {
     view.renderSmartProgress({ total_cards: 2, card_index: 0, kind: "due", targets_total: 1, target_index: 0 });
     const html = String(elements["train-upnext"].innerHTML);
     expect((html.match(/un-line/g) || []).length).toBe(1);
-    expect(html).toContain(">Start<");
+    // "Start" was the Start button's word in a row that has no button.
+    expect(html).toContain(">First move<");
+    expect(html).not.toContain(">Start<");
   });
 
   it("lineTail keeps the move number of a black move", () => {

@@ -1,5 +1,5 @@
 // Settings viewport smoke — fixture-backed (same stack as the teams smokes).
-// Serves the committed static/ tree, intercepts /api/*, and at
+// Serves the built static/ tree, intercepts /api/*, and at
 // 1440x900 / 1180x900 / 390x844 / 320x660 checks:
 //   - no horizontal overflow, no console errors
 //   - section nav (prototype 180px): lists all sections, marks the active one,
@@ -171,7 +171,9 @@ async function runViewport(vp) {
   const engineStatus = await page.locator("#settings-browser-engine-status").textContent().catch(() => "");
   check(engineStatus === "available", `browser Stockfish should read available, got "${engineStatus}"`);
   const sfVersion = await page.locator("#settings-stockfish-version").textContent().catch(() => "");
-  check(/Stockfish .+ lite \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
+  // The card reports the net this device measured for itself, which the fresh
+  // fixture device sets up on its own; both builds are valid.
+  check(/Stockfish .+ (lite|full) \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
 

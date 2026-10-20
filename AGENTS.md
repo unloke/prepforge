@@ -3,7 +3,7 @@
 ## Current Context
 
 - Start from the user's current task, the implementation, and `docs/README.md`.
-- `docs/archive/` and `archive/` contain historical material, not current agent instructions or locked product decisions.
+- History — `docs/archive/`, `archive/`, dated audits and finished reports — lives on the `history` branch, not in this tree. It is not current agent instructions or locked product decisions.
 - Revalidate dated reports against current code. Do not resume a completed migration or apply an old research freeze to new product work.
 - Keep regression tests for present behavior. Research-only historical tests have separate opt-in discovery; old expected values are not permanent product requirements.
 

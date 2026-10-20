@@ -42,7 +42,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
           permission-actions: write
-      - name: Pin release and regenerate engine and SPA
+      - name: Pin release and regenerate the engine manifest
         if: steps.release.outputs.version != ''
         env:
           STOCKFISH_VERSION: ${{ steps.release.outputs.version }}
@@ -50,7 +50,6 @@ jobs:
           npm ci
           npm install --save-exact "stockfish@$STOCKFISH_VERSION"
           npm run sync-engine
-          npm run build
       - name: Create or refresh update PR
         if: steps.release.outputs.version != ''
         id: pr
@@ -62,12 +61,12 @@ jobs:
           add-paths: |
             package.json
             package-lock.json
-            src/prepforge_chess/web/static
-            :!src/prepforge_chess/web/static/engine/*/stockfish.wasm
+            web-src/public/engine/stockfish.manifest.json
           commit-message: "chore(deps): update Stockfish to ${{ steps.release.outputs.version }}"
           title: "chore(deps): update Stockfish to ${{ steps.release.outputs.version }}"
           body: |
-            Pins the npm release and regenerates the engine glue, hashed manifest, and production SPA.
+            Pins the npm release and regenerates the engine manifest (hashes, heap caps, identities).
+            The SPA is no longer committed: the image and CI build it from this manifest.
             WASM stays out of git; Docker fetches it using the manifest version and SHA-256.
 
             The updater waits for every CI job, including browser Stockfish smoke, then squash merges the tested head.

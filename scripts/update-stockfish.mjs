@@ -18,7 +18,7 @@ export function newerStockfishVersion(current, latest) {
 }
 
 export function assertCiPassed(result, sha) {
-  const required = ["python", "postgres", "js", "stockfish", "e2e"];
+  const required = ["python", "postgres", "js", "stockfish", "e2e", "docker"];
   if (result.headSha !== sha || result.conclusion !== "success"
     || !required.every(name => result.jobs?.some(job => job.name === name))
     || !result.jobs.every(job => job.conclusion === "success")) {

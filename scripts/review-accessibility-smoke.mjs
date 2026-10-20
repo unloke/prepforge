@@ -83,7 +83,7 @@ try{
   assert.equal(results.palette.analyze.length, 1);
   assert.equal(results.palette.gameEnter, 'view-replay');
   await page.locator('#open-palette').click();await page.locator('#palette-input').fill('settings');await page.locator('#palette-input').press('Enter');
-  await page.locator('#engine-info').waitFor({state:'visible'});await page.locator('#engine-info').click();
+  await page.locator('#engine-info').waitFor({state:'visible'});await page.evaluate(()=>document.activeElement?.blur());await page.mouse.move(700,400);await page.locator('#engine-info').click();
   results.info=await page.locator('#engine-info').evaluate(el=>({expanded:el.getAttribute('aria-expanded'),controls:el.getAttribute('aria-controls'),hidden:document.getElementById('engine-info-pop').hidden}));
   await page.keyboard.press('Escape');
   results.info.afterEscape=await page.locator('#engine-info-pop').evaluate(el=>el.hidden);

@@ -9,7 +9,7 @@
 // fixture + Playwright setup — no new test framework.
 //
 // Usage: npm run smoke:ui-v2   (or: node scripts/smoke/ui-v2/run-all.mjs)
-// Requires `npm run build` first — the smokes serve the committed/built
+// Requires `npm run build` first — the smokes serve the built
 // src/prepforge_chess/web/static tree.
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -35,30 +35,40 @@ const SUITE = [
   ["States", "states-smoke.mjs"],
 ];
 
+// Each smoke serves its own port, so a few run side by side; output is held
+// per smoke and printed in suite order so the log stays readable.
+const CONCURRENCY = 3;
+
 function runOne([label, file]) {
   return new Promise((resolve) => {
     const started = Date.now();
-    process.stdout.write(`\n[ui-v2-smoke] ${label} (${file}) …\n`);
-    const child = spawn(process.execPath, [join(DIR, file)], {
-      stdio: "inherit",
-      env: process.env,
-    });
+    let log = "";
+    const child = spawn(process.execPath, [join(DIR, file)], { env: process.env });
+    child.stdout.on("data", (chunk) => { log += chunk; });
+    child.stderr.on("data", (chunk) => { log += chunk; });
     const timer = setTimeout(() => {
-      process.stdout.write(`[ui-v2-smoke] ${label} timed out after ${SMOKE_TIMEOUT_MS / 60_000} min
-`);
+      log += `[ui-v2-smoke] ${label} timed out after ${SMOKE_TIMEOUT_MS / 60_000} min\n`;
       child.kill();
     }, SMOKE_TIMEOUT_MS);
-    child.on("exit", (code) => {
+    const done = (ok) => {
       clearTimeout(timer);
-      resolve({ label, file, ok: code === 0, ms: Date.now() - started });
-    });
-    child.on("error", () => resolve({ label, file, ok: false, ms: Date.now() - started }));
+      resolve({ label, file, ok, ms: Date.now() - started, log });
+    };
+    child.on("exit", (code) => done(code === 0));
+    child.on("error", () => done(false));
   });
 }
 
-const results = [];
-for (const entry of SUITE) {
-  results.push(await runOne(entry));
+const results = new Array(SUITE.length);
+let next = 0;
+await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
+  while (next < SUITE.length) {
+    const i = next++;
+    results[i] = await runOne(SUITE[i]);
+  }
+}));
+for (const r of results) {
+  process.stdout.write(`\n[ui-v2-smoke] ${r.label} (${r.file})\n${r.log}`);
 }
 
 const failed = results.filter((r) => !r.ok);

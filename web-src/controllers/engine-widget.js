@@ -2,16 +2,19 @@ import { html } from "../html.js";
 import { localGameOver } from "../chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "../pv-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
+import { fullEngineChoice, chooseFullEngine, subscribeEngineProfile, subscribeEngineSetup } from "../engine/engine-profile.js";
+import { engineConsentHtml } from "./engine-consent.js";
+import { createPassFeed } from "./engine-pass-feed.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
   boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-  activeBoardController, explorerEvalEngine, getAnalyzeSession;
+  activeBoardController, explorerEvalEngine, getAnalyzeSession, analysisStore;
 
 export function createEngineWidget(deps) {
   ({
     effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
     boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-    activeBoardController, explorerEvalEngine, getAnalyzeSession,
+    activeBoardController, explorerEvalEngine, getAnalyzeSession, analysisStore,
   } = deps);
   const widget = new EngineWidget();
   widget.bind();
@@ -31,16 +34,13 @@ class EngineWidget {
     this.depthReadout = null;
     this.closeBtn = null;
     this.open = false;
-    this.pollTimer = null;
+    this.unwatch = null;
     this.lastFen = null;
     this.lastSnapshot = null;
     // The engine line shown on the board (see _previewLine), or null.
     this.preview = null;
+    // Lines shown, and the width of the search behind them: always the same number.
     this.multipv = 1;
-    // Lines actually searched. Always the shown lines: Explorer row evals come
-    // from their own worker (explorerEvalEngine), so the main line keeps the
-    // full-strength single-PV search instead of being widened to every row.
-    this.searchedMultipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
     // Engine compute seam: browser Stockfish (WASM Worker) only. No server
@@ -49,6 +49,11 @@ class EngineWidget {
     // depth changes — so the slider in Settings actually steers the widget.
     this.engine = null;
     this.engineDepth = null;
+    this.consentEl = null;
+    this.unwatchChoice = null;
+    // While a full-game pass holds the workers, this reads the pass's own results
+    // for the board instead of searching (see engine-pass-feed.js).
+    this.passFeed = null;
   }
 
   // Build the provider on demand at the current Settings depth. If the depth changed
@@ -85,13 +90,14 @@ class EngineWidget {
       return;
     }
     await this._restartForCurrentBoard();
-    this._startPolling();
+    this._watch();
   }
 
   bind() {
     this.el = document.getElementById("engine-window");
     if (!this.el) return;
     this.pvsEl = document.getElementById("engine-window-pvs");
+    this.consentEl = document.getElementById("engine-window-consent");
     this.evalBarWhite = document.getElementById("engine-eval-bar-white");
     this.evalBarText = document.getElementById("engine-eval-bar-text");
     this.evalHead = document.getElementById("engine-head-eval");
@@ -120,22 +126,72 @@ class EngineWidget {
     return appState.analysisBoardFen || START_FEN;
   }
 
+  // The full net's 94 MB wait for this device's yes. The question is one row above
+  // the lines; the lite search runs and paints underneath it the whole time.
+  _paintChoice() {
+    if (!this.consentEl) return;
+    const ask = fullEngineChoice() === "ask";
+    this.consentEl.hidden = !ask;
+    this.consentEl.innerHTML = ask ? engineConsentHtml() : "";
+  }
+
+  // Follows the answer while the card is open: a first visit's probe finishes after
+  // the panel opened, and the answer can also come from Settings. Nothing here
+  // touches the running search — only the row appears or goes.
+  _watchChoice() {
+    if (this.unwatchChoice) return;
+    const paint = () => { if (this.open) this._paintChoice(); };
+    // The question appears when the probe measures the net and goes when the
+    // answer lands, so it follows both the device's setup and its answer.
+    const offSetup = subscribeEngineSetup(paint);
+    const offProfile = subscribeEngineProfile(paint);
+    this.unwatchChoice = () => { offSetup(); offProfile(); };
+  }
+
+  _unwatchChoice() {
+    this.unwatchChoice?.();
+    this.unwatchChoice = null;
+  }
+
+  // The answer never stops the lite search: a yes fetches the net in the background
+  // and the usable profile moves every engine onto it once it is ready; a no just
+  // takes the row away.
+  async _answerFull(full) {
+    try {
+      await chooseFullEngine(full);
+    } catch {
+      /* the card keeps its place; the next open asks again */
+    }
+    if (this.open) this._paintChoice();
+  }
+
   async openForCurrent() {
     // The engine widget runs its own lightweight Stockfish session and is
     // intentionally *not* gated on heavy Analyze/Build jobs — the user can keep
-    // probing positions while a long job runs in the background.
+    // probing positions while a long job runs in the background. A full-game pass
+    // is the exception: it holds every worker, so the card reads its results
+    // instead of queueing behind it (see _passFeed).
     this.open = true;
     this.el.hidden = false;
     this.el.classList.add("is-visible");
+    this._watchChoice();
+    this._paintChoice();
+    void this._passFeed().attach();
     await this._restartForCurrentBoard();
-    this._startPolling();
+    this._watch();
   }
 
   async close() {
     if (!this.open) return;
     this.exitPreview();
     this.open = false;
-    this._stopPolling();
+    this._unwatch();
+    this._unwatchChoice();
+    this.passFeed?.detach();
+    if (this.consentEl) {
+      this.consentEl.hidden = true;
+      this.consentEl.innerHTML = "";
+    }
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
     setTimeout(() => {
@@ -148,9 +204,7 @@ class EngineWidget {
     }
   }
 
-  _searchMultipv() {
-    return activeViewName() === "analyze" ? Math.max(2, this.multipv) : this.multipv;
-  }
+  _passFeed() { return (this.passFeed ||= createPassFeed({ host: this, store: analysisStore })); }
 
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
   async onBoardChanged() {
@@ -161,16 +215,17 @@ class EngineWidget {
     const engine = this.engine;
     this.lastFen = fen;
     this._clearAnalysisView();
+    // A running pass owns every worker: read what it has for this position.
+    if (await this._passFeed().read()) return;
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.update({ fen, multipv: this.multipv });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
       // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
       // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
       // provider.serialize() orders engine commands, not these UI continuations.
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._renderSnapshot(snapshot);
-      this._startPolling();
+      this._watch();
     } catch (error) {
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._showError(error.message);
@@ -183,9 +238,10 @@ class EngineWidget {
     const fen = this.currentFen();
     this.lastFen = fen;
     this._clearAnalysisView();
+    // A card that opens mid-pass reads the pass's result for this position.
+    if (await this._passFeed().read()) return;
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.open({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.open({ fen, multipv: this.multipv });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
       // while open() was in flight (see onBoardChanged).
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
@@ -208,8 +264,7 @@ class EngineWidget {
     const engine = this.engine;
     const fen = this.lastFen || this.currentFen();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.update({ fen, multipv: this.multipv });
       // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
       // board changed, or the line count was clicked again (this.multipv !== clamped). See
       // onBoardChanged.
@@ -222,7 +277,7 @@ class EngineWidget {
         return;
       }
       this._renderSnapshot(snapshot);
-      this._startPolling();
+      this._watch();
     } catch (error) {
       if (!this.open || engine !== this.engine || this.multipv !== clamped) return;
       this._showError(error.message);
@@ -273,16 +328,16 @@ class EngineWidget {
     setEngineBestArrow(null);
     const text =
       over.kind === "checkmate"
-        ? `Checkmate — ${over.winner === "white" ? "White" : "Black"} wins`
+        ? `Checkmate: ${over.winner === "white" ? "White" : "Black"} wins`
         : over.kind === "stalemate"
-          ? "Stalemate — draw"
+          ? "Stalemate, draw"
           : "Draw";
     if (this.pvsEl) {
       this.pvsEl.innerHTML =
         html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
     }
-    if (this.depthReadout) this.depthReadout.textContent = "—";
-    this._paintDepth(null, null);
+    if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
+    this._paintDepth(0, 0);
     if (this.evalBarWhite) {
       const share = over.winner === "white" ? 1 : over.winner === "black" ? 0 : 0.5;
       this.evalBarWhite.style.transform = `scaleY(${share})`;
@@ -296,23 +351,26 @@ class EngineWidget {
     return true;
   }
 
-  // Depth reads as its own number with a progress hairline; the tooltip names it.
+  // Depth reads as its own number: "14/20" says how far the search has come
+  // and how far it can go; the tooltip names it.
   _paintDepth(current, target) {
     const el = this.depthReadout;
     if (!el) return;
+    // Number(null) is 0, so "no depth at all" must be checked before converting.
+    const hasCur = current !== null && current !== undefined && Number.isFinite(Number(current));
     const cur = Number(current);
     const max = Number(target);
-    // Number(null) is 0, so only a real positive ceiling counts as a target.
-    const hasCur = Number.isFinite(cur);
+    // Only a real positive ceiling counts as a target.
     const hasMax = Number.isFinite(max) && max > 0;
-    el.dataset.d = hasCur ? String(cur) : "";
-    el.style.setProperty("--p", hasCur && hasMax ? String(Math.min(1, cur / max)) : "0");
+    el.dataset.d = hasCur ? (hasMax ? `${cur}/${max}` : String(cur)) : "";
     el.title = hasCur ? `Search depth ${cur}${hasMax ? ` of ${max}` : ""}` : "";
+    el.hidden = !hasCur;
   }
 
   _renderLinesReadout() {
     if (!this.linesReadout) return;
     this.linesReadout.textContent = `${this.multipv}`;
+    this.linesReadout.title = "Lines shown";
     if (this.linesDownBtn) this.linesDownBtn.disabled = this.multipv <= this.minMultipv;
     if (this.linesUpBtn) this.linesUpBtn.disabled = this.multipv >= this.maxMultipv;
   }
@@ -329,6 +387,11 @@ class EngineWidget {
       if (!row) return;
       const move = event.target.closest(".pv-move[data-ply]");
       this._previewLine(Number(row.dataset.line), move ? Number(move.dataset.ply) + 1 : null);
+    });
+    // The question's two answers; it sits above the lines and never replaces them.
+    this.consentEl?.addEventListener("click", (event) => {
+      const choice = event.target.closest("[data-choice]");
+      if (choice) void this._answerFull(choice.dataset.choice === "yes");
     });
     // The rows are real controls, so Enter/Space must work too.
     this.pvsEl.addEventListener("keydown", (event) => {
@@ -409,30 +472,40 @@ class EngineWidget {
     if (this.lastSnapshot && this.lastSnapshot.fen === this.lastFen) this._renderSnapshot(this.lastSnapshot);
   }
 
-  _startPolling() {
-    // Never poll a closed panel. openForCurrent()/onDepthSettingChanged() call this right after
-    // awaiting _restartForCurrentBoard(), so the user may have closed the widget mid-await — guard
-    // here to cover every call site at once (a stray 450ms interval on a hidden panel otherwise).
+  // Paint every update the search produces, as it produces it: the panel used to sample
+  // the search on a 450 ms timer, so a fresh position sat on "Calculating…" for up to half
+  // a second after the engine's first line already existed, and intermediate depths were
+  // skipped. Paints are coalesced to one per animation frame — the engine emits several
+  // depths inside one frame at low depths, and repainting for each makes the row flicker.
+  // The subscription stays on the provider instance it was made for.
+  _watch() {
+    this._unwatch();
     if (!this.open) return;
-    this._stopPolling();
-    this.pollTimer = setInterval(async () => {
-      try {
-        const engine = this.engine;
-        const fen = this.lastFen;
-        const snapshot = await engine.snapshot();
-        if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
-        this._renderSnapshot(snapshot);
-      } catch (_) {
-        // Ignore transient polling errors.
-      }
-    }, 450);
+    const engine = this.engine;
+    const fen = this.lastFen;
+    let frame = 0;
+    let latest = null;
+    const paint = () => {
+      frame = 0;
+      const snapshot = latest;
+      latest = null;
+      if (!snapshot || !this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._renderSnapshot(snapshot);
+    };
+    engine.watch((snapshot) => {
+      latest = snapshot;
+      frame ||= requestAnimationFrame(paint);
+    });
+    this.unwatch = () => {
+      engine.watch(null);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }
 
-  _stopPolling() {
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
+  _unwatch() {
+    const off = this.unwatch;
+    this.unwatch = null;
+    if (off) off();
   }
 
   _renderSnapshot(snapshot) {
@@ -450,7 +523,7 @@ class EngineWidget {
     }
     const pvs = Array.isArray(snapshot.pvs) ? snapshot.pvs : [];
     if (!pvs.length && this._renderGameOver(snapshot.fen || this.lastFen)) {
-      this._stopPolling();
+      this._unwatch();
       return;
     }
     const depthText = `${snapshot.current_depth || 0} / ${snapshot.max_depth || "?"}`;
@@ -475,9 +548,9 @@ class EngineWidget {
     explorerEvalEngine.repaint();
     // Keep the coach's one-line rationale in sync with this (deeper) search.
     getAnalyzeSession()?.positionCoach.onWidgetSnapshot(snapshot);
-    // Once the engine reaches max depth it stops; no point polling further
-    // until the position changes (open/update restart polling).
-    if (snapshot.running === false) this._stopPolling();
+    // Once the engine reaches max depth it stops; nothing more will arrive until the
+    // position changes (open/update subscribe again).
+    if (snapshot.running === false) this._unwatch();
   }
 
   // One line per row, cut off at the panel edge. Clicking a row plays it out on the

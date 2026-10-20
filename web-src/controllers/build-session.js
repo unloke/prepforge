@@ -6,10 +6,8 @@ import { formatEngineEval } from "../engine-eval.js";
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
 
-import {
-  _buildGenReady, buildDockTab, buildView, coverageView, explorerClient, explorerDb,
-  explorerModule,
-} from "../app.js";
+import { _buildGenReady, buildView, coverageView } from "../app.js";
+import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
 import { rebaseBuildOps } from "../build-revision.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
@@ -51,7 +49,7 @@ export function createBuildSession(deps) {
   initBuildDockLayout();
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
-    closeNodeContextMenu, createRepertoirePrompt, generateFromCurrentNode, hydrateBuild,
+    closeNodeContextMenu, createRepertoirePrompt, fitBuildDock, generateFromCurrentNode, hydrateBuild,
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
     paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
@@ -233,9 +231,12 @@ async function selectBuildNode(nodeId) {
     lastMove: node.uci,
   });
   boards.build.setAnnotations(node.arrows || [], node.circles || []);
+  // The board caption is the position, not the repertoire: the panel head above
+  // already names the repertoire and its side, and repeating it here spent the
+  // caption on the one thing on screen the reader already knows.
   const label =
     node.depth === 0
-      ? `${appState.build.name} · ${appState.build.color}`
+      ? "Start"
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
@@ -245,6 +246,10 @@ async function selectBuildNode(nodeId) {
 }
 let explorerTimer = null;
 let explorerSeq = 0;
+// The opening the Explorer's rows belong to. It is a caption on the data, so
+// it rides the inspector's ⓘ tooltip and its popover: as a line of its own it
+// spent a row of the dock's short height saying what the rows already imply.
+let explorerOpeningName = "";
 
 // ---- Inspector dock: fold + drag-to-resize ---------------------------------
 // The seam between the move tree and the inspector is a drag handle; the height
@@ -252,7 +257,9 @@ let explorerSeq = 0;
 // layout convenience, so it lives in localStorage, never in synced prefs.
 const BUILD_DOCK_HEIGHT_KEY = "pf.buildDock.height";
 const BUILD_DOCK_FOLDED_KEY = "pf.buildDock.folded";
-const BUILD_DOCK_MIN = 150; // tabs + tools row + a couple of Explorer rows
+// Tabs + tools row + a couple of Explorer rows. Below this the dock is a tab
+// strip and the fold is the honest state, so it is the drag floor.
+const BUILD_DOCK_MIN = 150;
 const BUILD_DOCK_TREE_MIN = 90; // matches .tree-wrap min-height
 
 function readDockStore(key) {
@@ -285,9 +292,44 @@ function buildDockMaxHeight() {
   return Math.max(BUILD_DOCK_MIN, panel.clientHeight - others - BUILD_DOCK_TREE_MIN);
 }
 
-function applyBuildDockHeight(px) {
+// The dock's natural height: its own contents, capped by the tree's minimum.
+// The panel is a stack of head, trail, next move, line, inspector; when the
+// inspector is left to "the rest" (a 278px floor over 113px of Explorer rows)
+// the leftover shows up as a hole in one of the two panes. Sizing the dock to
+// its content gives every spare pixel to the tree, which is the workspace.
+function fitBuildDock() {
+  const dock = document.getElementById("build-inspector");
+  if (!dock) return;
+  // A height the user dragged is theirs: a repaint must not undo it.
+  if (dock.dataset.dockPinned) return;
+  const max = buildDockMaxHeight();
+  const was = dock.style.minHeight;
+  const basis = dock.style.flexBasis;
+  // Measure at the ceiling so a long Explorer is not reported as a short one.
+  dock.style.minHeight = `${max}px`;
+  dock.style.flexBasis = `${max}px`;
+  // A drawer is a block, so it never shrinks below its own content. The body's
+  // own height says nothing (it is the flex remainder), so its padding is added
+  // back to the drawers; the tab strip above it is what the dock adds.
+  const body = dock.querySelector(".dock-body");
+  const style = body && getComputedStyle(body);
+  const wanted = body
+    ? [...body.children].filter((c) => !c.hidden).reduce((sum, c) => sum + c.scrollHeight, 0)
+      + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+      + (dock.offsetHeight - body.offsetHeight)
+    : dock.scrollHeight;
+  dock.style.minHeight = was;
+  dock.style.flexBasis = basis;
+  applyBuildDockHeight(Math.min(max, Math.max(BUILD_DOCK_MIN, wanted)));
+}
+
+// `pinned` is a height the user asked for: the dock keeps it while the window
+// changes. Without it the dock follows its content, and a taller Explorer on a
+// wider position grows it again (the rows are what the height is for).
+function applyBuildDockHeight(px, { pinned = false } = {}) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
+  dock.dataset.dockPinned = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
   // Basis and floor together: the dock neither grows past what the tree does
   // not need nor gets squashed under a long one (rule: .dock min-height 0).
@@ -312,6 +354,7 @@ function setBuildDockFolded(folded, { remember = true } = {}) {
   if (was === folded) return;
   // Folding parks the Explorer fetch and the row-eval worker; unfolding catches up.
   if (!folded && buildDockTab === "explorer") refreshExplorerPanel();
+  if (!folded) fitBuildDock();
   void explorerEvalEngine.sync();
 }
 
@@ -321,7 +364,7 @@ function initBuildDockLayout() {
   const fold = document.getElementById("build-dock-fold");
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
-  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored);
+  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
@@ -346,7 +389,7 @@ function initBuildDockLayout() {
           return;
         }
         if (buildDockFolded()) setBuildDockFolded(false);
-        drag.height = applyBuildDockHeight(drag.want);
+        drag.height = applyBuildDockHeight(drag.want, { pinned: true });
       });
     }
   };
@@ -380,6 +423,9 @@ function initBuildDockLayout() {
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   });
+  // The panel's height ceiling depends on the window, so a resize refits an
+  // unpinned dock (a pinned one keeps the height the user chose).
+  window.addEventListener("resize", () => fitBuildDock());
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
   resizer.addEventListener("keydown", (event) => {
     // Up/Down are the fork picker's keys elsewhere in Build; on the focused
@@ -400,7 +446,7 @@ function initBuildDockLayout() {
       if (delta > 0) setBuildDockFolded(false);
       return;
     }
-    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta);
+    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta, { pinned: true });
     if (height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, height);
   });
 }
@@ -478,15 +524,16 @@ function inspectorScopeText() {
   if (buildDockTab === "coverage") {
     return "Share of human play at your rating that reaches a move your prepared mainline does not answer, within the horizon. Pruned or unmodelled lines count as unchecked.";
   }
-  if (explorerDb !== "lichess") return "Master games.";
+  if (explorerDb !== "lichess") {
+    return explorerOpeningName ? `${explorerOpeningName}. Master games.` : "Master games.";
+  }
   const rating = effectiveMaiaRating();
   const buckets =
     explorerModule && typeof explorerModule.ratingBucketsFor === "function"
       ? explorerModule.ratingBucketsFor(rating)
       : null;
-  return buckets && buckets.length
-    ? `Players near ~${rating} (pool ${buckets.join(", ")}).`
-    : `Players near ~${rating}.`;
+  const pool = buckets && buckets.length ? `Players near ~${rating} (pool ${buckets.join(", ")}).` : `Players near ~${rating}.`;
+  return explorerOpeningName ? `${explorerOpeningName}. ${pool}` : pool;
 }
 
 function paintInspectorScope() {
@@ -559,12 +606,11 @@ async function refreshExplorerPanel() {
   // so the previous position is not still searched at full depth meanwhile.
   delete rows.dataset.fen;
   void explorerEvalEngine.sync();
-  const openingEl = document.getElementById("explorer-opening");
   if (keepRows) {
     rows.classList.add("is-stale");
     rows.setAttribute("aria-busy", "true");
   } else {
-    if (openingEl) openingEl.textContent = "";
+    explorerOpeningName = "";
     rows.classList.remove("is-stale");
     rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   }
@@ -583,7 +629,7 @@ async function refreshExplorerPanel() {
     if (seq !== explorerSeq || db !== explorerDb) return;
     rows.classList.remove("is-stale");
     rows.removeAttribute("aria-busy");
-    if (openingEl) openingEl.textContent = "";
+    explorerOpeningName = "";
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
@@ -612,8 +658,8 @@ function renderExplorerScope() {
 function renderExplorerRows(stats, fen) {
   const rows = document.getElementById("explorer-rows");
   if (!rows) return;
-  const openingEl = document.getElementById("explorer-opening");
-  if (openingEl) openingEl.textContent = stats.opening || "";
+  explorerOpeningName = stats.opening || "";
+  paintInspectorScope();
   rows.dataset.fen = fen || "";
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
@@ -642,7 +688,7 @@ function renderExplorerRows(stats, fen) {
         const seg = (cls, label, value) =>
           html`<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
         return html`
-    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}">
+    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}" style="--i:${stats.moves.indexOf(m)}">
       <button type="button" class="explorer-pick" data-explorer-pick aria-label="${action} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
@@ -662,6 +708,11 @@ function renderExplorerRows(stats, fen) {
   });
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
+  // The row count is the dock's height: a position with more replies gets a
+  // taller inspector instead of an inner scrollbar inside a fixed one. The rows
+  // paint on the next frame (their animation sets the height), so the fit is
+  // read after that paint rather than against the empty host.
+  requestAnimationFrame(() => fitBuildDock());
 }
 
 // Explorer bars are always full width: the W/D/B split is what a row is read
@@ -972,6 +1023,7 @@ async function onBuildBoardMove(moveUci) {
   }
 
   const node = buildProvisionalNode(parent, moveUci, after);
+  appState.buildJustAddedId = node.id;
   queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");
@@ -1536,53 +1588,43 @@ function openNodeContextMenu(event, nodeId) {
   const node = appState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
-  const sections = [
-    {
-      title: "Position",
-      items: [
-        ["generate", "Generate from here"],
-      ],
-    },
-    {
-      title: "Branch",
-      items: [
-        ["set_mainline", node.is_mainline ? "Mainline (active)" : "Set as mainline"],
-        ["mark_prepared", node.is_prepared ? "Unmark prepared" : "Mark prepared"],
-        ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
-      ],
-    },
-    {
-      title: "Annotate",
-      items: [
-        ["add_comment", "Comment..."],
-        ["add_tag", "Tag..."],
-      ],
-    },
-    {
-      title: "Copy / Export",
-      items: [
-        ["copy_fen", "Copy FEN"],
-        ["copy_line_pgn", "Copy line PGN"],
-        ["export_branch_pgn", "Export branch PGN"],
-      ],
-    },
-    {
-      title: "Danger",
-      items: [["delete", "Delete this move"]],
-    },
+  // Only what the page can act on and then show. Each entry here changes
+  // something the tree or the board then displays: the moves under this
+  // position, which child is its mainline, the note the tree dots, the text on
+  // the clipboard, or the move's own presence. Three entries went: "Mark
+  // prepared" (nothing in the tree draws it, and the server already marks your
+  // own moves; unmarking one only made Coverage call that line unknown), "Tag…"
+  // (no view reads a tag, and the comment is the note the tree does show) and
+  // "Export branch PGN" (the same serialization "Copy line PGN" puts on the
+  // clipboard). On the starting position Delete would be refused after the
+  // click, so it is not offered.
+  const groups = [
+    [["generate", "Generate from here"]],
+    [
+      ...(node.is_mainline || !node.parent_id ? [] : [["set_mainline", "Set as mainline"]]),
+      ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
+    ],
+    [["add_comment", node.comment ? "Edit comment…" : "Add comment…"]],
+    [
+      ["copy_fen", "Copy FEN"],
+      ["copy_line_pgn", "Copy line PGN"],
+    ],
+    ...(node.parent_id ? [[["delete", "Delete this move"]]] : []),
   ];
   const safeId = nodeId;
+  // Groups are told apart by a gap and a seam, not by five 10px uppercase
+  // captions: the items say what they do, and a caption over a one-item group
+  // ("Position", "Danger") is a second label for the same thing.
   menu.innerHTML =
-    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${sections
-    .map(
-      (section) =>
-        html`<div class="context-section">${section.title}</div>${section.items
-          .map(
-            ([action, label]) =>
-              html`<button type="button" data-action="${action}" data-node-id="${safeId}">${label}</button>`
-          )
-          }`
-    )}`;
+    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${groups
+    .map((items, groupIndex) =>
+      items.map(([action, label], i) =>
+        html`<button type="button" role="menuitem" data-action="${action}" data-node-id="${safeId}"${groupIndex > 0 && i === 0 ? html` class="menu-sep-before"` : ""}>${label}</button>`
+      )
+    )
+    }`;
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Move actions");
   menu.hidden = false;
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();
@@ -1595,6 +1637,25 @@ function openNodeContextMenu(event, nodeId) {
       handleNodeContextAction(button.dataset.action, button.dataset.nodeId)
     );
   });
+  // Same keyboard behaviour as the repertoire's ⋯ menu: arrows walk the items,
+  // Home/End jump, Escape or Tab leaves. The menu opens on the pointer's
+  // position, so its first item takes focus.
+  const buttons = [...menu.querySelectorAll("button")];
+  menu.onkeydown = (event) => {
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const index = buttons.indexOf(document.activeElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+      buttons[next]?.focus();
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      if (event.key === "Escape") event.preventDefault();
+      event.stopPropagation();
+      closeNodeContextMenu();
+    }
+  };
+  buttons[0]?.focus();
 }
 
 async function handleNodeContextAction(action, nodeId) {
@@ -1632,10 +1693,6 @@ async function handleNodeContextAction(action, nodeId) {
       await generateFromCurrentNode();
       return;
     }
-    if (action === "export_branch_pgn") {
-      await exportBuild("pgn", nodeId);
-      return;
-    }
     if (action === "copy_fen") {
       await navigator.clipboard.writeText(node.fen);
       setStatus("FEN copied");
@@ -1662,18 +1719,6 @@ async function handleNodeContextAction(action, nodeId) {
       });
       if (!result) return;
       value = result.comment;
-    } else if (action === "add_tag") {
-      const result = await showInputModal({
-        title: "Add tag",
-        okLabel: "Add",
-        fields: [{ name: "tag", label: "Tag name", default: "" }],
-      });
-      if (!result) return;
-      value = (result.tag || "").trim();
-      if (!value) {
-        setStatus("Tag is empty");
-        return;
-      }
     }
     const payload = await postJson("/api/build/action", {
       repertoire_id: appState.build.repertoire_id,
@@ -1689,7 +1734,9 @@ async function handleNodeContextAction(action, nodeId) {
 }
 
 function closeNodeContextMenu() {
-  document.getElementById("node-context-menu").hidden = true;
+  const menu = document.getElementById("node-context-menu");
+  menu.hidden = true;
+  menu.onkeydown = null;
   markNodeMenuTarget(null);
 }
 
@@ -1703,37 +1750,25 @@ function markNodeMenuTarget(nodeId) {
   });
 }
 
-async function exportBuild(format, nodeId = null) {
+// "Export PGN" in the repertoire's ⋯: the whole tree with its variations.
+// The per-move menu's one line export is a clipboard copy, not a download.
+async function exportBuild() {
   if (!appState.build) {
     setStatus("Open a repertoire first");
     return;
   }
   const repertoireId = appState.build.repertoire_id;
   const ownerId = currentOwnerId();
-  // Export reads server-side tree state (and may scope to a node id) — sync first.
+  // Export reads server-side tree state — sync first.
   try {
     await hardFlushBuild();
   } catch (error) {
     setStatusError(error.message);
     return;
   }
-  if (ownerId !== currentOwnerId()) return;
-  if (nodeId) nodeId = resolveBuildId(nodeId);
-  // Full tree-with-variations PGN for top-level "Export PGN" calls
-  if (format === "pgn" && !nodeId) {
-    const payload = await api(
-      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
-    );
-    if (ownerId !== currentOwnerId()) return;
-    downloadText(payload.filename, payload.mime, payload.content);
-    setStatus(`Downloaded ${payload.filename}`);
-    return;
-  }
-  const payload = await postJson("/api/build/export", {
-    repertoire_id: repertoireId,
-    format,
-    node_id: nodeId,
-  });
+  const payload = await api(
+    `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
+  );
   if (ownerId !== currentOwnerId()) return;
   downloadText(payload.filename, payload.mime, payload.content);
   setStatus(`Downloaded ${payload.filename}`);

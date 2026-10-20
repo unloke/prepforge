@@ -267,7 +267,7 @@ describe("computeBrilliantAssessments (first + second pass together)", () => {
     expect("trap_gap" in out[0]).toBe(false);
   });
 
-  it("does NOT assess a Brilliant-ineligible move (winDelta over the cap) — the cheap gate spares a Maia forward", async () => {
+  it("does NOT assess a Brilliant-ineligible move (winDelta over the cap): the cheap gate spares a Maia forward", async () => {
     let assessCalls = 0;
     const provider = {
       moveAssessment: async () => {

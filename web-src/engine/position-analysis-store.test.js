@@ -13,15 +13,20 @@ function fakeProvider(options) {
   let snap = null;
   const worker = {
     options,
+    // The real provider pushes every depth it reaches; the store captures on it.
+    watch(fn) { worker.onChange = fn || null; },
     opens: 0,
     updates: 0,
     close: vi.fn(async () => {}),
     open: vi.fn(async ({ fen, multipv }) => { worker.opens += 1; snap = { session_id: "s", fen, multipv, pvs: [], current_depth: 0, max_depth: options.maxDepth, running: true }; }),
     update: vi.fn(async ({ fen, multipv }) => { worker.updates += 1; snap = { session_id: "s", fen, multipv, pvs: [], current_depth: 0, max_depth: options.maxDepth, running: true }; }),
     snapshot: () => snap,
-    progress: (depth) => { snap = { ...snap, current_depth: depth, pvs: Array.from({ length: snap.multipv }, (_, i) => ({ score_cp: 20 - i, mate_in: null, pv_uci: ["a1a2"], pv_san: ["Ka2"] })) }; },
-    finish: (depth = options.maxDepth) => { worker.progress(depth); snap = { ...snap, running: false }; },
-    fail: (message = "worker died") => { snap = { ...snap, error: message, running: false }; },
+    progress: (depth) => {
+      snap = { ...snap, current_depth: depth, pvs: Array.from({ length: snap.multipv }, (_, i) => ({ score_cp: 20 - i, mate_in: null, pv_uci: ["a1a2"], pv_san: ["Ka2"] })) };
+      worker.onChange?.();
+    },
+    finish: (depth = options.maxDepth) => { worker.progress(depth); snap = { ...snap, running: false }; worker.onChange?.(); },
+    fail: (message = "worker died") => { snap = { ...snap, error: message, running: false }; worker.onChange?.(); },
     get fen() { return snap && snap.fen; },
   };
   workers.push(worker);
@@ -32,7 +37,7 @@ const laneFor = (fen) => workers.find((w) => w.fen === fen && w.snapshot().runni
 beforeEach(() => {
   vi.useFakeTimers();
   workers = [];
-  store = createPositionAnalysisStore({ createProvider: fakeProvider, lanes: 2, pollMs: 50, idleCloseMs: 1000 });
+  store = createPositionAnalysisStore({ createProvider: fakeProvider, lanes: 2, idleCloseMs: 1000 });
 });
 afterEach(() => { store.clear(); vi.useRealTimers(); });
 
@@ -102,6 +107,26 @@ describe("interactive lanes", () => {
     expect(coach.snapshot()).toMatchObject({ current_depth: 16, running: false });
     expect(coach.snapshot().pvs).toHaveLength(2);
     expect(workers[0].close).not.toHaveBeenCalled();
+  });
+
+  it("the handle pushes every depth the search reaches instead of being polled", async () => {
+    const seen = [];
+    const handle = store.createHandle({ maxDepth: 16 });
+    handle.watch((snap) => seen.push(snap.current_depth));
+    await handle.open({ fen: A, multipv: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+    for (const depth of [2, 4, 6]) {
+      workers[0].progress(depth);
+      await vi.advanceTimersByTimeAsync(0);
+    }
+    // Every depth the engine reported reached the consumer — no timer sampled them away.
+    expect(seen).toEqual([2, 4, 6]);
+    // Detaching stops the pushes.
+    handle.watch(null);
+    workers[0].progress(8);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen).toEqual([2, 4, 6]);
+    expect(vi.getTimerCount()).toBe(0); // no polling interval anywhere
   });
 
   it("stepping through many positions reuses warm workers instead of booting one per ply", async () => {
@@ -267,8 +292,7 @@ describe("game channel", () => {
     expect(store.reusableGameEval(A, 16).score_cp).toBe(35);
   });
 
-  it("the whole-game pass reuses finished reads and publishes each result as it lands", async () => {
-    const lease = store.acquire(A, { depth: 16, multipv: 2 });
+  it("the whole-game pass reuses finished reads and publishes each result as it lands", async () => {    const lease = store.acquire(A, { depth: 16, multipv: 2 });
     await vi.advanceTimersByTimeAsync(0);
     workers[0].finish(16);
     await vi.advanceTimersByTimeAsync(60);
@@ -297,6 +321,46 @@ describe("game channel", () => {
     expect(after.snapshot().pvs[0].score_cp).toBe(1);
     after.release();
     s2.clear();
+  });
+
+  it("a running pass reads back what it has saved, and says nothing for a position it has not reached", async () => {
+    // A two-position pass the test controls: the first result lands, then the
+    // probe reads both positions while the pass is still running.
+    let release;
+    const atGate = new Promise((resolve) => { release = resolve; });
+    const s = createPositionAnalysisStore({ createProvider: fakeProvider, analyzeFn: async ({ positions, onResult }) => {
+      onResult(positions[0], { score_cp: 21, mate_in: null, pv: ["a1a2"], depth: 18 });
+      await atGate;
+      return new Map();
+    } });
+    const pass = s.analyzeGame({ positions: [A, B], depth: 18 });
+    expect(s.passing).toBe(true);
+    // The saved position reads back as the pass's own result, at its real depth.
+    expect(s.passRead(A)).toMatchObject({ source: "analysis", running: false, current_depth: 18, pvs: [{ score_cp: 21 }] });
+    // The one it has not reached has nothing — not an empty search, no worker.
+    expect(s.passRead(B)).toBeNull();
+    release();
+    await pass;
+    expect(s.passing).toBe(false);
+    expect(workers).toHaveLength(0);
+    s.clear();
+  });
+
+  it("a MultiPV follow-up read is not a pass: the card keeps its worker", async () => {
+    const s = createPositionAnalysisStore({
+      createProvider: fakeProvider,
+      analyzeFn: async ({ onResult }) => { onResult(A, { score_cp: 5, mate_in: null, pv: ["a1a2"], depth: 16 }); return new Map(); },
+    });
+    const seen = [];
+    s.onPassChange(() => seen.push(s.passing));
+    // The brilliant check's best-other-move read runs on the same pool but is not
+    // a full-game pass: it must not send the card to the game channel.
+    await s.analyzeGame({ positions: [A], depth: 16, multipv: 3 });
+    expect(s.passing).toBe(false);
+    expect(seen).toEqual([]);
+    // The game channel stays single-line: a MultiPV read publishes nothing.
+    expect(s.passRead(A)).toBeNull();
+    s.clear();
   });
 });
 

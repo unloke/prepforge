@@ -3,6 +3,7 @@ import { html } from "../html.js";
 
 import { Chess } from "chess.js";
 import { buildArrowPath } from "../board-arrows.js";
+import { staggerRows } from "../list-enter.js";
 import { nounOf } from "../plural.js";
 import "./replay.css";
 
@@ -17,6 +18,18 @@ const REPLAY_KINDS = {
 };
 
 const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+// One ledger, one header row: the loading rows, the result rows and every
+// empty state draw the same columns, so the page keeps its shape whether or
+// not a Check has run.
+const LEDGER_HEAD = html`<div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>`;
+
+// The ledger with nothing in it: the card, its columns, and one message
+// centred in the table body. An empty Games page used to be two lines of text
+// floating on the page ground with no sign of the table they were about.
+function replayEmptyLedger(body, { headHtml = "" } = {}) {
+  return html`${headHtml}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}<div class="ledger-empty">${body}</div></div></section></div>`;
+}
 
 // An opponent who leaves the repertoire within the first couple of moves didn't play a
 // "novelty" — they simply chose a different opening. Same bucket (filter, Add reply),
@@ -200,6 +213,7 @@ export function createReplayView({
   onTrainMiss,
   onBuildReply,
   onAnalyze,
+  onRetry,
   onError = (error) => console.error(error),
 }) {
   // The focus board renders through app.js's FEN/piece-SVG helpers so it keeps
@@ -208,6 +222,9 @@ export function createReplayView({
   const renderers = boardRenderers && boardRenderers.parseFenBoard && boardRenderers.pieceSvg ? boardRenderers : null;
   // Index of the row the user just clicked; the next render reveals its detail.
   let pendingRevealIndex = null;
+  // The last payload painted. A row click re-renders the same payload, so the
+  // entrance runs once per Check result and never on selection.
+  let lastPayload = null;
   function renderReplaySummary(payload) {
     const el = document.getElementById("replay-summary");
     if (!el) return;
@@ -392,7 +409,24 @@ export function createReplayView({
     // The focus card mirrors the board-plus-text shape it is replaced by, so
     // the triage does not jump when the first rows land.
     const focus = html`<section class="focus card is-skeleton" aria-hidden="true"><div class="focus-top"><div class="focus-board"><div class="scout-miniboard skeleton-board"></div></div><div class="focus-info"><span class="skeleton-bar skeleton-thin" style="width:38%"></span><span class="skeleton-bar" style="width:62%"></span><span class="skeleton-bar" style="width:80%"></span><span class="skeleton-bar" style="width:44%"></span><span class="skeleton-bar skeleton-chip" style="width:64px"></span></div></div><span class="skeleton-bar skeleton-thin" style="width:70%"></span></section>`;
-    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows}</div></section>${focus}</div>`;
+    return html`<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}${rows}</div></section>${focus}</div>`;
+  }
+
+  // The Check failed: the ledger could not be filled, so the page says what
+  // failed and offers the same action again. It used to fall back to the idle
+  // "No games checked yet" card, which reads as if nothing had been tried.
+  function renderReplayError(message) {
+    const container = document.getElementById("replay-results");
+    if (!container) return;
+    const summary = document.getElementById("replay-summary");
+    if (summary) {
+      summary.hidden = true;
+      summary.innerHTML = "";
+    }
+    container.innerHTML = replayEmptyLedger(
+      html`<div class="ledger-error" role="alert" data-testid="replay-error"><h3>Could not check your games</h3><p>${String(message || "Lichess did not respond.")}</p><div class="row"><button type="button" class="btn primary" data-retry-check>Try again</button></div></div>`
+    );
+    container.querySelector?.("[data-retry-check]")?.addEventListener?.("click", () => onRetry());
   }
 
   function renderReplayResults(payload) {
@@ -402,7 +436,10 @@ export function createReplayView({
       `${error.username}: ${error.message}`).join(" · ");
     const warning = sourceErrors ? html`<div class="empty-state" role="alert">${sourceErrors}</div>` : "";
     if (!payload || !payload.games || !payload.games.length) {
-      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No recent games found</h3></div>`;
+      container.innerHTML = replayEmptyLedger(
+        html`<h3>No recent games found</h3><p>Nothing came back from the selected sources. Try a larger sample.</p>`,
+        { headHtml: warning }
+      );
       return;
     }
     const filter = getReplayFilter();
@@ -415,7 +452,10 @@ export function createReplayView({
       const showAll = filter
         ? html`<div class="row"><button type="button" class="btn" data-show-all>Show all</button></div>`
         : "";
-      container.innerHTML = html`${warning}<div class="empty-state big"><h3>No games in this bucket</h3>${showAll}</div>`;
+      container.innerHTML = replayEmptyLedger(
+        html`<h3>No games in this bucket</h3><p>Nothing in this sample ${REPLAY_KINDS[filter]?.label || "matched"}.</p>${showAll}`,
+        { headHtml: warning }
+      );
       container.querySelector?.("[data-show-all]")?.addEventListener?.("click", () => onToggleFilter(filter));
       return;
     }
@@ -434,8 +474,11 @@ export function createReplayView({
     // the keyboard focus on the clicked row, then reveal the detail card.
     const revealIndex = pendingRevealIndex;
     pendingRevealIndex = null;
+    const entered = payload !== lastPayload;
+    lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    if (entered) staggerRows(container.querySelector?.(".ledger-table"));
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);
@@ -465,6 +508,7 @@ export function createReplayView({
 
   return {
     renderReplayResults,
+    renderReplayError,
     renderLedgerSkeleton: replayLedgerSkeleton,
   };
 }

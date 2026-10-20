@@ -7,6 +7,27 @@ import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { treeToMovetext } from "../analyze-pgn.js";
 
+// The board, the move list, the eval display and the engine's controls are
+// real interface: they keep their own lines, sizes and borders. The marker is
+// set here, when the module loads with the view, because the markup belongs
+// to the shell — and the empty view is on screen before anything is analysed.
+// The module also loads without a DOM (unit tests import it to reach its
+// functions), where there is nothing to mark.
+if (typeof document !== "undefined") {
+  const INTERFACE_ROOTS = [
+    "#view-analyze .board-stack",
+    "#analysis-moves",
+    "#analysis-eval-meter",
+    "#eval-chart-tooltip",
+    "#analysis-engine-slot",
+    "#explain-engine-toggle",
+  ];
+  INTERFACE_ROOTS.forEach((selector) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute("data-ui", "");
+  });
+}
+
 export function createAnalyzeView({
   appState,
   START_FEN,
@@ -322,6 +343,17 @@ export function createAnalyzeView({
     return set;
   }
 
+  // Half-moves in the tree, variations included: the head's status line counts
+  // what the board can step through, not just the mainline. Variation nodes
+  // carry ply -1 (they have no place in the score sheet), so count by move.
+  function countTreeMoves(node) {
+    let total = node.san ? 1 : 0;
+    (node.children || []).forEach((child) => {
+      total += countTreeMoves(child);
+    });
+    return total;
+  }
+
   function renderAnalysisTree(movesArg) {
     const container = document.getElementById("analysis-moves");
     if (!container) return;
@@ -329,6 +361,16 @@ export function createAnalyzeView({
     const tree = buildAnalysisTree(moves);
     appState.analysisTree = tree;
     const hasContent = (tree.root.children || []).length > 0;
+    // The head names a game whenever it can (app.js writes the players and
+    // tags into #analysis-game-meta). Moves played on an empty board have no
+    // players, so the head names them as what they are and counts them; the
+    // CSS shows one of the two, never both.
+    const status = document.getElementById("analysis-head-status");
+    if (status) {
+      const plies = countTreeMoves(tree.root);
+      const own = tree.root.children.some((child) => child.isVariation);
+      status.textContent = plies ? `${own ? "Your line" : "This line"} · ${plies} half-move${plies === 1 ? "" : "s"}` : "";
+    }
     if (!hasContent) {
       container.innerHTML =
         html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;
@@ -417,21 +459,25 @@ export function createAnalyzeView({
       pct = pointWinPct(chartPoint);
       side = pct > 52 ? "white" : pct < 48 ? "black" : "even";
     }
-    chip.textContent = text;
+    if (chip.textContent !== text) chip.textContent = text;
     chip.dataset.side = side;
     chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
     const fill = document.querySelector("#analysis-eval-meter > i");
     if (fill) {
-      const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 50;
-      fill.style.transform = `scaleX(${(share / 100).toFixed(4)})`;
+      // No number means no evaluation: the track stays empty. A half-width
+      // fill with no figure beside it reads as a real 50/50 score.
+      const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
+      fill.style.transform = `scaleX(${share.toFixed(4)})`;
     }
     // An empty Evaluation card is an empty grey block: hide it until it has a
-    // number, a game graph or the live engine to show.
+    // number, a game graph or the live engine to show. A job is a fourth thing
+    // it can show: the running graph and the job's own progress and Stop.
     const card = document.getElementById("analysis-eval-card");
     if (card && !card.classList.contains("is-engine")) {
       const graph = document.getElementById("analysis-eval-graph");
-      card.hidden = !text && (!graph || graph.hidden);
+      const job = document.querySelector("#analysis-job-dock .notice");
+      card.hidden = !text && (!graph || graph.hidden) && !job;
     }
   }
 
@@ -442,6 +488,14 @@ export function createAnalyzeView({
   const TEXT_CHANGES = { childList: true, characterData: true, subtree: true };
   watch("engine-head-eval", paintEvalHead, { ...TEXT_CHANGES, attributes: true });
   watch("analysis-eval-card", paintEvalHead, { attributes: true, attributeFilter: ["class"] });
+  // The job dock is inside the card: a job's notice, its count and its Stop
+  // are the card's content while the run lasts.
+  watch("analysis-job-dock", paintEvalHead, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["data-state"],
+  });
 
   function updateChartCaption(point) {
     chartPoint = point || null;
@@ -820,7 +874,7 @@ export function createAnalyzeView({
       dot.setAttribute("cx", String(c.x));
       dot.setAttribute("cy", String(c.y));
       dot.setAttribute("data-ply", String(c.ply));
-      dot.dataset.baseR = "4.5";
+      dot.dataset.baseR = "2.8";
       dot.style.cursor = "pointer";
       dot.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -850,7 +904,7 @@ export function createAnalyzeView({
     ring.setAttribute("cx", "-10");
     ring.setAttribute("cy", "-10");
     ring.setAttribute("visibility", "hidden");
-    ring.dataset.baseR = "6.5";
+    ring.dataset.baseR = "4.5";
     chart.appendChild(ring);
 
     updateEvalChartCursor();
@@ -878,6 +932,10 @@ export function createAnalyzeView({
     if (!host) return;
     const segs = [...host.querySelectorAll(".cbar-seg")];
     if (!segs.length) return;
+    // Reduced motion: the figure is already on the bar, so it stays there.
+    const still = Boolean(
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
     const token = ++countUpToken;
     segs.forEach((seg, i) => {
       const label = seg.querySelector(".cbar-seg-n");
@@ -886,6 +944,7 @@ export function createAnalyzeView({
       if (!m) return;
       const [, glyph, endRaw] = m;
       const end = Number(endRaw) || 0;
+      if (still) return;
       const start = performance.now();
       const dur = 360;
       const delay = Math.min(i, 5) * 45;

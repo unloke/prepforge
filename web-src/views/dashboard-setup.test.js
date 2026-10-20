@@ -158,6 +158,14 @@ describe("dashboard setup checklist", () => {
     expect(String(container.innerHTML)).not.toContain("step-n");
   });
 
+  it("the setup checklist marks its steps, it does not number them", async () => {
+    // The mark column carried a tick for a finished step and a number for the
+    // open one, so one list read as two. A phone shows no number at all.
+    mockDashboard({ repertoires: 1 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
+    await view.loadDashboard();
+    expect(String(steps.innerHTML)).not.toMatch(/class="step-n"[^>]*>[^<]*\d/);
+  });
+
   it("ticks Link Lichess from the linked accounts and re-renders on refreshSetup", async () => {
     mockDashboard({ repertoires: 1 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
     await view.loadDashboard();

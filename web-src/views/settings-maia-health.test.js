@@ -225,4 +225,87 @@ describe("maia3 health status model", () => {
     expect(elements["settings-maia-error"].textContent).toContain("boom (init)");
     peek.mockRestore();
   });
+
+  it("fetches the manifest once per Settings paint, not once per status row", async () => {
+    // renderSettings calls renderBrowserEngineStatus and renderMaiaAnalysis, and
+    // both reach renderMaia3Status — three manifest reads per paint before the
+    // memo, on the cold load AND again on every Settings entry.
+    const elements = makeDom();
+    const settings = await import("./settings.js");
+    const view = settings.createSettingsView({
+      appState: { lichessAccounts: [] },
+      setStatus: vi.fn(),
+      setStatusError: vi.fn(),
+      saveSettings: vi.fn(),
+      loadSettings: vi.fn(),
+      pref: (name) => (name === "maiaAnalysis" ? false : "system"),
+      setPref: vi.fn(),
+      effectiveMaiaRating: () => 1500,
+      maiaFallbackRating: 1500,
+      getSharedMaia3Provider: () => ({ predictions: async () => [] }),
+      disposeSharedMaia3Provider: vi.fn(),
+      showConfirmModal: vi.fn(),
+      startFen: "startpos",
+      api: async () => ({}),
+      postJson: async () => ({}),
+    });
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        asset_base: "/static/maia3/",
+        backend_artifact: { wasm: "maia3-x.onnx" },
+        artifacts: { fp16: { file: "maia3-x.onnx", bytes: 46 * 1024 * 1024 } },
+      }),
+    });
+    const weights = await import("../engine/maia3-weight-cache.js");
+    const spy = vi.spyOn(weights, "getCachedWeights").mockResolvedValue(null);
+    // One paint: every caller shares the in-flight (then settled) promise.
+    await Promise.all([view.renderMaia3Status(), view.renderMaia3Status(), view.renderMaia3Status()]);
+    await view.renderMaia3Status();
+    const manifestReads = () => globalThis.fetch.mock.calls.filter(([url]) => String(url).includes("maia3.manifest.json"));
+    expect(manifestReads()).toHaveLength(1);
+    // A later repaint reuses the resolved manifest rather than re-reading it.
+    await view.renderMaia3Status();
+    expect(manifestReads()).toHaveLength(1);
+    expect(elements["settings-maia-model"].textContent).toBe("Cache missing");
+    spy.mockRestore();
+  });
+
+  it("retries the manifest after a failed read", async () => {
+    // A failed read must not pin the memo, or every later paint reports
+    // "manifest is not reachable" for the rest of the session.
+    const elements = makeDom();
+    const settings = await import("./settings.js");
+    const view = settings.createSettingsView({
+      appState: { lichessAccounts: [] },
+      setStatus: vi.fn(),
+      setStatusError: vi.fn(),
+      saveSettings: vi.fn(),
+      loadSettings: vi.fn(),
+      pref: () => false,
+      setPref: vi.fn(),
+      effectiveMaiaRating: () => 1500,
+      maiaFallbackRating: 1500,
+      getSharedMaia3Provider: () => ({ predictions: async () => [] }),
+      disposeSharedMaia3Provider: vi.fn(),
+      showConfirmModal: vi.fn(),
+      startFen: "startpos",
+      api: async () => ({}),
+      postJson: async () => ({}),
+    });
+    globalThis.fetch.mockRejectedValueOnce(new Error("offline"));
+    await view.renderMaia3Status();
+    expect(elements["settings-maia-model"].textContent).toBe("Unavailable");
+    globalThis.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ asset_base: "/static/maia3/", artifacts: { fp16: { file: "x.onnx", bytes: 1 } } }),
+    });
+    const weights = await import("../engine/maia3-weight-cache.js");
+    const spy = vi.spyOn(weights, "getCachedWeights").mockResolvedValue(null);
+    await view.renderMaia3Status();
+    expect(elements["settings-maia-model"].textContent).not.toBe("Unavailable");
+    expect(globalThis.fetch.mock.calls.filter(([url]) => String(url).includes("maia3.manifest.json")))
+      .toHaveLength(2);
+    spy.mockRestore();
+  });
 });

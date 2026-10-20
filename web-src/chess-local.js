@@ -55,6 +55,17 @@ export function localBoardAfterMove(fen, moveUci) {
   };
 }
 
+// True when the side to move in `fen` is in check — the one question the move
+// sound asks, without building the whole board payload. A malformed FEN (or one
+// with no king) answers false rather than throwing into a caller's paint.
+export function fenInCheck(fen) {
+  try {
+    return new Chess(fen).isCheck();
+  } catch (_) {
+    return false;
+  }
+}
+
 // True for the standard start position with White to move (castling and clocks ignored).
 export function isStartFen(fen) {
   const parts = String(fen || "").trim().split(/\s+/);

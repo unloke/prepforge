@@ -1,19 +1,61 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
-// The Teams page is a grid of three cards; with no teams the directory is short
-// and the middle empty card was the tallest, so the row looked ragged. Every
-// card stretches to the row, its own content still sitting at the top.
+// The Teams page is a work surface: the open team's panel takes the height of
+// the view and the two short lists beside it keep their own height at the top.
+// It used to be the other way round — every card was sized by its content, so
+// the page showed three short strips over half a screen of empty ground.
 const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 const view = readFileSync(new URL("./teams.css", import.meta.url), "utf8");
 
-describe("Teams columns share one height", () => {
-  it("stretches each card to the grid row", () => {
-    expect(shared).toMatch(/\.teams > \.card \{ align-self: stretch; \}/);
+// The desktop block that turns Teams into a work surface.
+const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {"));
+
+describe("Teams is a work surface", () => {
+  it("gives the grid the height of the view", () => {
+    const grid = desktop.slice(desktop.indexOf(".teams {"), desktop.indexOf(".teams {") + 200);
+    expect(grid).toMatch(/min-height:\s*100%/);
+    expect(grid).toMatch(/grid-template-rows:\s*minmax\(0,\s*1fr\)/);
   });
 
-  it("keeps each card's content at its top", () => {
-    expect(view).toMatch(/\.teams \.card \{[^}]*\}/);
-    expect(view.match(/\.teams \.card \{[^}]*\}/)[0]).not.toMatch(/display:\s*(flex|grid)/);
+  it("keeps the directory and the incoming shares at their own height", () => {
+    expect(shared).toMatch(/\.teams > \.card\.dir,\s*\n\s*\.teams > \.card\.incoming \{ align-self: start; \}/);
+  });
+
+  it("lets the open team's panel fill the card", () => {
+    expect(shared).toMatch(/\.teams > \.team-detail:not\(\[hidden\]\) \{ display: flex; flex-direction: column; \}/);
+    expect(shared).toMatch(/\[data-team-panel\] \{ flex: 1 1 auto; min-height: 0; overflow: auto; \}/);
+  });
+
+  it("centres the empty state in the card it fills", () => {
+    const empty = view.slice(view.indexOf(".teams .team-empty {"), view.indexOf(".teams .team-empty {") + 200);
+    expect(empty).toMatch(/justify-content:\s*center/);
+  });
+
+  it("keeps the side cards' content at the top", () => {
+    const card = view.match(/\.teams \.card \{[^}]*\}/);
+    expect(card).toBeTruthy();
+    expect(card[0]).not.toMatch(/display:\s*(flex|grid)/);
+  });
+
+  it("leaves the line under a head to the row beneath it", () => {
+    // The head's own rule landed on the first row's rule, drawing two lines
+    // in the same place.
+    const head = view.match(/\.teams \.card-head \{[^}]*\}/);
+    expect(head).toBeTruthy();
+    expect(head[0]).not.toMatch(/border-bottom/);
+    // The row under it brings the line, as a table rule inside the marked
+    // list (the way the replay ledger and the scout lines keep theirs).
+    expect(view).toMatch(/#teams-list\[data-ui\] \.team-row \{ border-top:\s*1px solid var\(--line\); \}/);
+  });
+
+  it("keeps a rule only where an interface fragment owns it", () => {
+    // The tab strip and the invite footer carried lines of their own; each
+    // carries a fill instead, and the active tab's underline is the only rule
+    // left in the strip.
+    expect(view.match(/\.teams \.tabs \{[^}]*\}/)[0]).not.toMatch(/border-bottom/);
+    expect(view.match(/\.team-invite-foot \{[^}]*\}/)[0]).not.toMatch(/border-top/);
+    // The member rows keep theirs, inside the marked list.
+    expect(view).toMatch(/#team-members\[data-ui\] > \.mem-row,\s*\n\s*#team-shared-repertoires\[data-ui\] > \.mem-row \{ border-top:\s*1px solid var\(--line\); \}/);
   });
 });

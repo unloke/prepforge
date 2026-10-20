@@ -3,24 +3,93 @@
    grow the main stylesheet budget. Ledger card + focus card side by side;
    the ledger scrolls, the focus card stays in view. */
 
+/* Type floor: nothing a player has to read in the ledger or the detail sits
+   below 13px. The badges, the date/account line and the reason list were
+   11–12px, a caption size for triage text; the toolbar's own controls (the
+   source chip, Sample, Add) were 12px too. The move list is real notation, so
+   it keeps column alignment — with tabular figures in the text face, the same
+   way Lichess sets a move list (the mono face read as code, not chess). */
+#view-replay { --fs-s: 13px; --fs-xs: 13px; }
+#view-replay :is(.lr, .players small, .acct, .kind-badge, .dep-note,
+  .sum-chip, .queued, .src-label, .inline-field, .lr.head, .card-head h2, .faint) {
+  font-size: 13px;
+}
+#view-replay .kind-badge { padding: 1px 6px; }
+#view-replay .inline-field select { font-size: 13px; }
+#view-replay .queued { color: var(--muted); }/* "No repertoire" is a real outcome, not a disabled control: the shared
+   `--none` grey lands at 3.5:1 on its own tint. */
+#view-replay .kind-badge.t-none { color: var(--muted); }
+#view-replay .sum-chip.t-none { color: var(--muted); }
+
 .triage {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.8fr);
+  /* The detail column is as wide as the board inside it, and the board yields
+     to the window height so a 1366×768 laptop still ends the detail inside
+     the card instead of scrolling the move list out of view. One measure for
+     both, so the board, the sentences and the move rows share both edges. */
+  --focus-w: clamp(260px, calc(100dvh - 412px), 520px);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, calc(var(--focus-w) + 24px));
   gap: 12px;
 }
 .ledger,
 .focus { min-height: 0; padding: 0; }
+/* Surfaces by tone: the cards are one step off the page ground with no
+   outline. The outline plus the ground's own tint made two nested rectangles
+   that read as a frame around the table rather than a surface. */
+#view-replay :is(.ledger, .focus) { border: 0; background: var(--panel); }
+#view-replay .focus { background: var(--panel-soft); }
 .ledger { display: flex; flex-direction: column; overflow: hidden; }
+/* The ledger header: title and count on one baseline, with the count reading
+   as the title's continuation ("Games to review 4 games · me_user") instead of
+   an 11px note pinned to the far end of a 740px card. */
 .ledger .card-head {
   justify-content: flex-start;
+  gap: 8px;
   margin: 0;
   padding: 10px 12px;
   background: var(--panel-soft);
 }
 .ledger .card-head h2 { font-size: 13.5px; }
+.ledger .card-head .faint { color: var(--muted); }
 .ledger-table { flex: 1; overflow: auto; }
+/* Empty, idle and error states live inside the ledger so the page keeps its
+   shape before the first Check: the columns are already there, the message
+   sits where the rows will be. The card sizes to its content — a table with
+   no rows should not paint 800px of white under the message. */
+#view-replay .ledger:has(.ledger-empty) { align-self: start; }
+#view-replay .ledger:has(.ledger-empty) .ledger-table { overflow: visible; }
+/* Nothing to detail yet: the ledger takes the whole triage instead of leaving
+   half the page as bare ground beside an empty card. */
+#view-replay .triage:has(.ledger-empty) { grid-template-columns: minmax(0, 1fr); }
+#view-replay .ledger-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+#view-replay .ledger-empty h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
+#view-replay .ledger-empty p { max-width: 460px; margin: 0; text-wrap: pretty; }
+#view-replay .ledger-empty .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+#view-replay .ledger-error { display: contents; }
+/* A Check result arrives row by row instead of as one block: the shared
+   `.list-enter` stagger, slowed to 60ms here because the ledger is the whole
+   point of the page. The re-render a row click causes does not re-arm it. */
+#view-replay .ledger-table.list-enter > * {
+  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
+}
+/* The detail card's contents are replaced by a row click; a short fade says
+   "this is the other game" without the travel a page switch uses. */
+#view-replay .focus { animation: focus-swap var(--dur-fast) var(--ease-out) both; }
+@keyframes focus-swap {
+  from { opacity: 0; }
+}
 
 .lr {
   display: grid;
@@ -36,6 +105,7 @@
   font-size: var(--fs-s);
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
 /* Games ledger column header — the shared `.col-head` treatment (styles.css)
    plus this row's sticky positioning. */
@@ -48,7 +118,17 @@
   cursor: default;
 }
 .lr:not(.head):hover { background: var(--panel-soft); }
-.ledger-table[data-ui] .lr.is-open { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+/* Press: the row darkens one step under the finger. No scale — the deck of
+   rows would jump. */
+.lr:not(.head):active { background: var(--surface-3); }
+/* The open row is a filled row with a 3px accent bar: the old inset edge read
+   as a line under the row rather than a state. The bar is drawn as a border so
+   it cannot be mistaken for a divider. */
+.ledger-table[data-ui] .lr.is-open {
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+}
 .lr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .players { display: flex; flex-direction: column; min-width: 0; }
 .pl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -58,10 +138,11 @@
 /* Result and Departure are numbers and move numbers: right-aligned with
    tabular figures, and the header above them is right-aligned the same way. */
 .res { font-weight: 700; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+/* A ledger, not a win/loss chart: the result column keeps the row's ink and
+   the outcome is carried by the Preparation badge. Green/red on every row put
+   six accent-coloured numbers on a ten-row sample and made the eye land on the
+   score instead of on what left prep. */
 .lr-date { white-space: nowrap; }
-.res.r-win { color: var(--good-text); }
-.res.r-loss { color: var(--danger); }
-.res.r-draw { color: var(--muted); }
 .lr.head > :nth-child(3),
 .lr.head > :nth-child(5) { text-align: right; }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -98,19 +179,26 @@
 /* Board above, detail text below, at every width: the board takes the card's
    full width instead of sharing it with the text. */
 .focus-top { display: flex; flex-direction: column; gap: 12px; }
-.focus-board { position: relative; width: 100%; max-width: 520px; aspect-ratio: 1; }
+/* The board fills the card's width; the card itself is sized from the window
+   height in `.triage`. */
+.focus-board { position: relative; width: 100%; max-width: var(--focus-w); aspect-ratio: 1; }
 .focus-board .scout-miniboard { position: relative; box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; }
 .focus-info { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
-.focus-info h2 { font-size: 15px; word-break: break-word; }
+/* The detail is the one part of the page that is prose, not a table: it gets
+   the reading step (15px) while the ledger stays at the dense 13px. */
+.focus-info h2 { font-size: 16px; word-break: break-word; }
 .focus-line { display: flex; align-items: center; gap: 8px; margin: 0; }
 .focus-result { font-weight: 700; font-variant-numeric: tabular-nums; }
 .focus-result.r-win { color: var(--good-text); }
 .focus-result.r-loss { color: var(--danger-strong); }
 .focus-result.r-draw { color: var(--muted); }
-.reasons { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 16px; color: var(--text); font-size: var(--fs-s); }
+/* The reasons are the only running prose on the page and the only thing a
+   player reads word by word, so they take the reading step (15px); the two
+   sentences tell what left prep and how to fix it. */
+#view-replay .reasons { display: flex; flex-direction: column; gap: 6px; max-width: 68ch; margin: 0; padding-left: 16px; color: var(--text); font-size: 16px; line-height: 1.5; }
 .reasons strong { color: var(--text); }
 .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
-.moveline { display: grid; gap: 2px; font: 12px/1.5 var(--mono); }
+.moveline { display: grid; gap: 2px; font: 13px/1.55 var(--font); font-variant-numeric: tabular-nums; }
 .move-pair {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
@@ -128,7 +216,7 @@
 .moveline[data-ui] .move-pair.is-departure { background: var(--danger-soft); box-shadow: inset 2px 0 0 var(--danger); }
 .moveline[data-ui] .move-pair.is-departure.t-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
 .moveline[data-ui] .move-pair.is-departure.t-good { background: var(--good-soft); box-shadow: inset 2px 0 0 var(--good); }
-.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font: 650 var(--fs-s)/1.4 var(--font); }
+.dep-note { grid-column: 1 / -1; justify-self: start; color: var(--muted); font-weight: 650; }
 @media (prefers-reduced-motion: no-preference) {
   .move-pair.is-departure { animation: departure-mark var(--dur) var(--ease-out) both; }
   @keyframes departure-mark {
@@ -163,6 +251,8 @@
   .triage { grid-template-columns: minmax(0, 1fr); }
   .ledger-table,
   .focus { overflow: visible; }
+  /* One column and a scrolling page: the board is the card's width. */
+  .focus-board { max-width: none; }
 }
 /* ≤760: ledger first (reachable at the top, like the desktop column order),
    two-line rows, no column header. */
@@ -180,6 +270,9 @@
   .lr > :nth-child(3) { grid-area: res; text-align: right; }
   .lr > :nth-child(5) { grid-area: dep; }
   .actions .btn { min-height: 44px; }
+  /* The triage is a flex column here, so the empty card's start alignment
+     would shrink it to the message's width. */
+  #view-replay .ledger:has(.ledger-empty) { align-self: stretch; }
   /* The outcome filters are the only way to narrow the ledger on a phone;
      the shared 26px chip is below a reliable touch target. */
   .games-panel .sum-chip { height: 40px; padding: 0 14px; border-radius: 20px; }

@@ -22,3 +22,28 @@ it("the phone stylesheet keeps the compact row geometry", () => {
   // Belt and braces: the chip bump must not have replaced the row rules.
   expect(phone).toMatch(/\.lr \{[\s\S]*?grid-template-columns: 1fr auto/);
 });
+
+it("keeps every readable line in the ledger and detail at 13px or more", () => {
+  // The triage text (badges, date line, reasons, move list) was 11–12px.
+  expect(css).toMatch(/#view-replay :is\([^)]*\.kind-badge[^)]*\) \{\s*font-size: 13px;/);
+  expect(css).toMatch(/\.moveline \{[^}]*font: 13px/);
+  expect(css).not.toMatch(/font: 12px\/1\.5 var\(--mono\)/);
+});
+
+it("draws the outcome grey at a readable contrast", () => {
+  // "No repertoire" sat at 3.5:1 in --none on its own tint.
+  expect(css).toMatch(/\.kind-badge\.t-none \{ color: var\(--muted\)/);
+  expect(css).toMatch(/\.sum-chip\.t-none \{ color: var\(--muted\)/);
+});
+
+it("marks the open row with a bar and a fill, not a resting shadow", () => {
+  expect(css).toMatch(/\.lr\.is-open \{[^}]*border-left: 3px solid var\(--accent\)/);
+  expect(css).not.toMatch(/\.lr\.is-open \{[^}]*box-shadow/);
+});
+
+it("keeps the ledger result column in the row's ink", () => {
+  // A win/loss/draw tint on every row made the score the loudest thing in a
+  // table whose job is to show what left preparation.
+  expect(css).not.toMatch(/\.res\.r-(win|loss|draw)/);
+  expect(css).toMatch(/\.res \{[^}]*font-variant-numeric: tabular-nums/);
+});

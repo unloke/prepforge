@@ -69,7 +69,9 @@ describe("Evaluation head", () => {
     view.updateEvalChartCursor();
     expect(ids["analysis-chart-caption"].textContent).toBe("");
     expect(head.classList.contains("has-eval")).toBe(false);
-    expect(fill.style.transform).toBe("scaleX(0.5000)");
+    // An empty track, not a half-width fill: a mid-width bar with no figure
+    // beside it reads as a real 50/50 score.
+    expect(fill.style.transform).toBe("scaleX(0.0000)");
   });
 
   it("never substitutes a saved score while the live engine starts", () => {

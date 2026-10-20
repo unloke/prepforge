@@ -1,6 +1,6 @@
-// Scout path guard (feature-flagged prototype, research/scout-v11). v10 selection plus a
-// bounded check that no position after a preparing-side move in a shown line is below
-// the existing leaf gate. No browser dependencies: the engine is supplied by the caller.
+// Scout path guard: the control selection plus a bounded check that no position after a
+// preparing-side move in a shown line is below the existing leaf gate. No browser
+// dependencies: the engine is supplied by the caller.
 import {
   preparationValue,
   routeKey,

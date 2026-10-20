@@ -36,6 +36,7 @@ function harness(realBoard = false) {
     isBrowserEngineAvailable: () => true, notices: { isBusy: () => false }, requireSignIn: () => true,
     postJson: vi.fn(async () => { throw new Error("stop before engine"); }), engineLifecycleMark: vi.fn(),
     isAuthError: () => false, hideAnalysisResults: vi.fn(), loadCheckpoint: () => null, currentOwnerId: () => "owner",
+    setCoachProse: vi.fn(),
     evalMapFrom: () => new Map(), clearCheckpoint: vi.fn(async () => true), markCheckpointSaved: vi.fn(), refreshAnalyzeRecovery: vi.fn(), hideAnalysisRetrySave: vi.fn(),
     refreshAnalysisHistoryIfOpen: vi.fn(), updateAnalysisHandoff: vi.fn(async () => {}), showAnalysisRetrySave: vi.fn(),
     boardInfo: vi.fn(async () => ({ legal_moves: [] })), boards: { analysis: { setPosition: vi.fn(), setMoveBadge: vi.fn() } },
@@ -44,7 +45,7 @@ function harness(realBoard = false) {
   deps.notices.failJob = vi.fn();
   const helper = body("function invalidateAnalysisSource(");
   const inputStart = source.indexOf('pgnInput.addEventListener("input",');
-  const inputBinding = source.slice(inputStart, source.indexOf("\n    });", inputStart) + 8);
+  const inputBinding = source.slice(inputStart, source.indexOf("\n  });", inputStart) + 6);
   const functions = [...(realBoard ? ["async function showAnalysisPly("] : []), "async function recallAnalysis(", "async function renderAnalysis(",
     "async function syncPgnFromTree(",
     "async function finishAnalyzeCheckpoint(", "async function loadPgnIntoAnalyze(", "async function runAnalysis(", "async function retryAnalyzeSave("].map(body).join("\n");

@@ -114,19 +114,20 @@ ignores Stockfish; this is its only update path. Equal or older versions do noth
 invalid registry responses fail the run.
 
 For a newer version, the workflow pins `package.json` and the lockfile, runs
-`npm run sync-engine` and `npm run build`, and commits the resulting production
-static tree. That includes the patched glue, hashed folders, manifest, and SPA
-with its baked engine identities. WASM remains ignored. Docker already reads the
-manifest's package version and verifies the downloaded WASM hashes, so neither
-Docker nor Python needs a version edit. The changed engine identity invalidates
-device probes; saved analysis identities stay as recorded.
+`npm run sync-engine`, and commits the regenerated `web-src/public/engine/`
+manifest (the only engine file in git). The image builds the SPA itself, with its
+baked engine identities, from that manifest. Docker reads the manifest's package
+version and verifies the downloaded WASM hashes, so neither Docker nor Python
+needs a version edit. The changed engine identity invalidates device probes; saved
+analysis identities stay as recorded.
 
 One serialized workflow maintains `automation/stockfish`, updating the same open
 PR even across releases. It waits for that head's ordinary `ci.yml` PR run and
 requires **every** job to succeed, explicitly including `python`, `postgres`,
-`js`, `stockfish` (real-browser UCI smoke), and `e2e`. It then requests a squash
-merge with an exact-head guard and no administrator bypass. Main's normal Render
-Docker deployment ships the committed SPA and fetches the matching WASM.
+`js`, `stockfish` (real-browser UCI smoke), `e2e`, and `docker` (the production
+image build). It then requests a squash merge with an exact-head guard and no
+administrator bypass. Main's normal Render
+Docker deployment builds the SPA and fetches the matching WASM.
 
 #### One-time GitHub setup
 
@@ -144,7 +145,7 @@ Docker deployment ships the committed SPA and fetches the matching WASM.
    waits for CI and requests the merge itself.
 3. Main's branch protection/rules must allow this App to merge without human
    approval. Configure required checks `python`, `postgres`, `js`, `stockfish`,
-   and `e2e`, with **Require branches to be up to date before merging**. Do not
+   `e2e`, and `docker`, with **Require branches to be up to date before merging**. Do not
    impose a required review, code-owner approval, or other manual gate on these
    PRs; permit the App if pushes are restricted. The workflow never bypasses
    rules. These hosted settings cannot be determined from the workflow files.
@@ -250,6 +251,10 @@ Use clientlog volume to decide engine graceful-failure priority (stability plan 
 **Python 3.11** is required for server work (CI and production match). Use a project
 venv so Windows' default Python 3.8 does not shadow the install.
 
+`npm run build` writes the SPA (git-ignored) into
+`src/prepforge_chess/web/static/`; the local server, the browser smokes and the
+static-serving tests read that tree, so run it after every `web-src/` change.
+
 ### Option A — uv (recommended)
 
 ```powershell
@@ -323,8 +328,9 @@ docker build -t prepforge-chess .
 docker run --rm -p 8000:8000 prepforge-chess
 ```
 
-Then open http://127.0.0.1:8000 — with no `DATABASE_URL` set, the app falls back to a
-local SQLite file under `data/`.
+The image builds the SPA in a Node stage, so no local `npm run build` is needed
+before it. Then open http://127.0.0.1:8000 — with no `DATABASE_URL` set, the app
+falls back to a local SQLite file under `data/`.
 
 ## Manual GitHub upload
 

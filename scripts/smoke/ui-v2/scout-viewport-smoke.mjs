@@ -256,6 +256,27 @@ async function runViewport(vp) {
 
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  if (overflow > 0) {
+    const sources = await page.evaluate(() => {
+      const html = document.documentElement;
+      const label = (el) => `${el.tagName.toLowerCase()}#${el.id}.${String(el.className).split(" ").slice(0, 2).join(".")}`;
+      const scrollers = [...document.querySelectorAll("body *")]
+        .filter((el) => el.scrollWidth > el.clientWidth + 1)
+        .slice(0, 6)
+        .map((el) => `${label(el)} scroll=${el.scrollWidth}/${el.clientWidth}`);
+      const wide = [...document.querySelectorAll("body *")]
+        .filter((el) => el.getBoundingClientRect().right > html.clientWidth + 0.5)
+        .slice(0, 6)
+        .map((el) => `${label(el)} right=${Math.round(el.getBoundingClientRect().right)}`);
+      const chips = [...document.querySelectorAll(".src-chip")].slice(0, 3).map((c) => {
+        const cs = getComputedStyle(c);
+        return { white: cs.whiteSpace, display: cs.display, maxWidth: cs.maxWidth, box: [c.clientWidth, c.scrollWidth],
+          kids: [...c.children].map((k) => `${k.tagName.toLowerCase()}.${String(k.className.baseVal ?? k.className)} w=${Math.round(k.getBoundingClientRect().width)} ws=${getComputedStyle(k).whiteSpace}`) };
+      });
+      return { inner: innerWidth, html: [html.scrollWidth, html.clientWidth], body: [document.body.scrollWidth, document.body.clientWidth], scrollers, wide, chips };
+    });
+    console.log(`[scout-smoke] overflow sources: ${JSON.stringify(sources)}`);
+  }
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);

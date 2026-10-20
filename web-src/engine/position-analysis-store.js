@@ -29,6 +29,9 @@ function gameSnapshot(fen, game) {
   const ev = game.eval;
   return {
     session_id: "game-analysis",
+    // The pass's own read, not a live search: the Engine panel names it rather
+    // than passing it off as its own.
+    source: "analysis",
     fen,
     running: false,
     complete: true,
@@ -58,7 +61,6 @@ export function createPositionAnalysisStore({
   analyzeFn = analyzeGamePositions,
   getMaia = null,
   lanes: laneCount = 2,
-  pollMs = 100,
   idleCloseMs = 60000,
   cacheSize = 600,
   maxNodes = ANALYSIS_MAX_NODES,
@@ -70,10 +72,20 @@ export function createPositionAnalysisStore({
 } = {}) {
   const entries = new Map();
   const lanes = Array.from({ length: Math.max(1, laneCount) }, (_, id) => ({
-    id, provider: null, depth: 0, entry: null, multipv: 0, timer: null, idleTimer: null, startedFor: null,
+    id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null,
   }));
   let clock = 0;
   let generation = 0;
+  // Whole-game passes in flight. A pass holds every worker, so the Engine card
+  // reads what it has saved for its position instead of searching (see passRead).
+  let passing = 0;
+  const passListeners = new Set();
+
+  function notifyPass() {
+    for (const fn of [...passListeners]) {
+      try { fn(); } catch (_) { /* a consumer's bug never stalls the store */ }
+    }
+  }
 
   function entryFor(fen) {
     const key = positionKey(fen);
@@ -130,9 +142,10 @@ export function createPositionAnalysisStore({
     return { session_id: "position-store", fen, running: searching || !!entry.want, current_depth: 0, max_depth: depth, side_to_move: sideOf(fen), pvs: [] };
   }
 
-  function stopTimer(lane) {
-    clearInterval(lane.timer);
-    lane.timer = null;
+  // Detach the lane's provider subscription: the search pushes each depth it reaches.
+  function unwatch(lane) {
+    lane.unwatch?.();
+    lane.unwatch = null;
   }
 
   function armIdle(lane) {
@@ -167,7 +180,7 @@ export function createPositionAnalysisStore({
 
   function finish(lane, { error = null } = {}) {
     const entry = lane.entry;
-    stopTimer(lane);
+    unwatch(lane);
     lane.entry = null;
     lane.startedFor = null;
     if (entry) {
@@ -231,15 +244,21 @@ export function createPositionAnalysisStore({
     clearTimeout(lane.idleTimer);
     lane.idleTimer = null;
     if (lane.entry && lane.entry !== entry) keepPartial(lane.entry);
-    stopTimer(lane);
+    unwatch(lane);
     if (lane.provider && lane.depth !== depth) {
       const old = lane.provider;
       lane.provider = null;
       Promise.resolve(old.close()).catch(() => {});
     }
     if (!lane.provider) {
-      lane.provider = createProvider({ maxDepth: depth, maxMultipv: 5, maxNodes });
       lane.fresh = true;
+      // The provider reports every depth it reaches; the lane captures each one, so a
+      // line appears at the depth the engine actually reached instead of at the next
+      // sample of a timer. Deferred to a microtask so the capture (which may finish the
+      // lane and start another search) never runs inside the worker's message handler.
+      const laneProvider = createProvider({ maxDepth: depth, maxMultipv: 5, maxNodes });
+      laneProvider.watch?.(() => queueMicrotask(() => capture(lane)));
+      lane.provider = laneProvider;
     }
     lane.depth = depth;
     lane.entry = entry;
@@ -265,7 +284,6 @@ export function createPositionAnalysisStore({
     }
     if (epoch !== generation || lane.startedFor !== token || lane.provider !== provider) return;
     capture(lane);
-    if (lane.entry === entry && lane.startedFor === token) lane.timer = setInterval(() => capture(lane), pollMs);
   }
 
   // Give each waiting position a lane, newest request first. Idle lanes go first,
@@ -329,6 +347,13 @@ export function createPositionAnalysisStore({
           if (!check()) entry.listeners.add(check);
         });
       },
+      // Call `fn` on every update to this position (the store emits on each captured
+      // depth) until released. A panel renders pushes instead of polling.
+      listen(fn) {
+        const check = () => !released && epoch === generation && fn();
+        entry.listeners.add(check);
+        return () => entry.listeners.delete(check);
+      },
       release() {
         if (released) return;
         released = true;
@@ -356,6 +381,7 @@ export function createPositionAnalysisStore({
     entry.game = { eval: ev, target: Math.max(target || 0, ev.depth || 0) };
     if (entry.want && satisfied(entry, entry.want.depth, entry.want.multipv)) entry.want = null;
     emit(entry);
+    notifyPass();
   }
 
   // A finished read (live or game) good enough for the whole-game pass at `depth`.
@@ -413,13 +439,44 @@ export function createPositionAnalysisStore({
     publishGame,
     reusableGameEval,
     maiaRead,
+    // What the whole-game pass has saved for `fen` — or null while it has not
+    // reached that position. Reads only: no lease, no want, no worker. The Engine
+    // card uses it to show the pass's own eval instead of competing for a worker
+    // the pass holds.
+    passRead(fen) {
+      const entry = entries.get(positionKey(fen));
+      return entry && entry.game ? { ...gameSnapshot(fen, entry.game), complete: false } : null;
+    },
+    // A whole-game pass started (1) or ended (0). Consumers read `passing` through
+    // onPassChange to know the engine is taken and follow each saved position.
+    passStart() {
+      passing += 1;
+      notifyPass();
+      let ended = false;
+      return () => {
+        if (ended) return;
+        ended = true;
+        passing -= 1;
+        notifyPass();
+      };
+    },
+    get passing() {
+      return passing > 0;
+    },
+    onPassChange(fn) {
+      passListeners.add(fn);
+      return () => passListeners.delete(fn);
+    },
     // Whole-game pass: dedicated workers at full concurrency; positions the store can
     // already answer at this depth are reused, and every finished eval is published.
     // multipv > 1 (the brilliant check's best-other-move read) runs on the same
     // dedicated pool but neither reuses nor publishes: the game channel is single-line.
+    // Only a single-line pass holds the workers for the Engine card: a MultiPV check
+    // sidesteps the budget (batch) and is not what leaves the card waiting.
     analyzeGame({ positions, depth, multipv = 1, onProgress, shouldCancel, concurrency, onResult, engineRun, maxNodes: cap = maxNodes }) {
       const single = multipv <= 1;
-      return analyzeFn({
+      const endPass = single ? store.passStart() : () => {};
+      return Promise.resolve(analyzeFn({
         positions,
         depth,
         maxNodes: cap,
@@ -433,19 +490,39 @@ export function createPositionAnalysisStore({
           if (single) publishGame(fen, ev, depth);
           if (typeof onResult === "function") onResult(fen, ev);
         },
-      });
+      })).finally(endPass);
     },
-    // EngineProvider-compatible handle for polling consumers (the Engine panel).
-    // close() only drops this consumer's hold on the position.
+    // EngineProvider-compatible handle for the Engine panel. close() only drops this
+    // consumer's hold on the position. watch(fn) subscribes to every store update for the
+    // held position, so the panel renders each depth as it arrives instead of sampling.
     createHandle({ maxDepth = 16 } = {}) {
       let lease = null;
+      let onChange = null;
+      let detach = null;
+      const attach = () => {
+        detach?.();
+        detach = lease && onChange ? lease.listen(() => onChange(lease.snapshot())) : null;
+      };
       const select = async ({ fen, multipv = 1 }) => {
         const next = acquire(fen, { depth: maxDepth, multipv });
         lease?.release();
         lease = next;
+        attach();
         return next.snapshot();
       };
-      return { open: select, update: select, snapshot: () => lease?.snapshot(), close: async () => { lease?.release(); lease = null; } };
+      return {
+        open: select,
+        update: select,
+        snapshot: () => lease?.snapshot(),
+        // Replace (or, with null, remove) the change listener on the held position.
+        watch(fn) { onChange = fn; attach(); },
+        close: async () => {
+          detach?.();
+          detach = null;
+          lease?.release();
+          lease = null;
+        },
+      };
     },
     stats() {
       return { entries: entries.size, lanes: lanes.map((l) => ({ busy: !!l.entry, warm: !!l.provider, depth: l.depth })) };
@@ -455,7 +532,7 @@ export function createPositionAnalysisStore({
       for (const lane of lanes) {
         lane.unregisterIdle?.();
         lane.unregisterIdle = null;
-        stopTimer(lane);
+        unwatch(lane);
         clearTimeout(lane.idleTimer);
         lane.entry = null;
         if (lane.provider) Promise.resolve(lane.provider.close()).catch(() => {});
@@ -475,7 +552,7 @@ export function createPositionAnalysisStore({
     // Keep leases attached while replacing all engine-derived state. In particular,
     // first-use detection must not orphan the board request that triggered it.
     for (const lane of lanes) {
-      stopTimer(lane);
+      unwatch(lane);
       clearTimeout(lane.idleTimer);
       lane.unregisterIdle?.();
       lane.unregisterIdle = null;

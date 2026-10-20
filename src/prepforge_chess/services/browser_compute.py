@@ -44,7 +44,6 @@ from prepforge_chess.core.chess_core import ChessCore
 
 from prepforge_chess.services.analysis_metadata import (
     build_analysis_quality,
-    generated_analysis_metadata,
 )
 
 # Bounded shapes for the untrusted per-position payload (D-03).
@@ -274,10 +273,8 @@ def classify_precomputed_game(
         # A-04: the explanation is GENERATED content owned by this run. It is
         # stored apart from the original/user comment and REPLACED (never
         # appended) on re-analysis, so re-running can't accumulate duplicates.
-        # The meta records who wrote it (versioned), so the generated block is
-        # identifiable without text matching.
+        # The versioned provenance of the run lives once in AnalysisResult.quality.
         move.generated_comment = comment
-        move.generated_meta = generated_analysis_metadata(engine_name, depth)
 
     critical = [
         move.ply

@@ -33,9 +33,17 @@ jobs:
         run: uv sync --extra server --extra dev
       - name: Install JS deps (cross-language classification contract)
         run: npm ci
+      # The static tree is build output now. test_api_static.py reads the served
+      # shell and its hashed assets, so build it before pytest.
+      - name: Build SPA (static serving tests read it)
+        run: npm run build
       - name: Ruff
         run: uv run ruff check src tests
       - name: Pytest
+        env:
+          # A missing build here is a failure, not a skip: the tests below must
+          # actually read the served tree in CI.
+          PREPFORGE_REQUIRE_BUILT_SPA: "1"
         run: uv run pytest -q
       - name: Alembic upgrade + drift check
         # `alembic check` diffs the metadata against a migrated DB, so apply
@@ -116,8 +124,6 @@ jobs:
         run: npm test -- --run
       - name: Build SPA
         run: npm run build
-      - name: Committed production output freshness
-        run: node scripts/check-static-freshness.mjs
       - name: Bundle-size gate
         run: node scripts/check-bundle-size.mjs
       # UI v2 viewport + states smoke (scripts/smoke/ui-v2/run-all.mjs) serves
@@ -197,3 +203,24 @@ jobs:
           tests/e2e/test_train_keyboard_smoke.py
           tests/e2e/test_analyze_board_smoke.py
           -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        # The SPA is no longer committed, so the image must build it itself: this
+        # proves the Node stage produces the tree the Python image serves.
+        run: docker build -t prepforge-chess:ci .
+      - name: Served shell, hashed bundle and fetched wasm are in the image
+        run: |
+          docker run --rm --entrypoint sh prepforge-chess:ci -c '
+            set -eu
+            cd /app/src/prepforge_chess/web/static
+            test -f index.html
+            grep -q "/static/assets/index-" index.html
+            for f in assets/index-*.js assets/index-*.css; do test -f "$f"; done
+            test -f maia3/maia3.manifest.json
+            test -n "$(find engine -name stockfish.wasm -size +1k)"
+            test -f engine/ort/ort-wasm-simd-threaded.asyncify.wasm
+          '

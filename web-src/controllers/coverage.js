@@ -16,7 +16,7 @@ function formatMass(value) {
 // state and its gaps. The controls are the source of truth for scope/horizon.
 export function createCoverageController({
   getContext, getProvider, selectNode, getBoard,
-  previewReplies, getJob, onError,
+  previewReplies, getJob, onError, onPaint = () => {},
 }) {
   let result = null;
   let identity = null;
@@ -131,7 +131,7 @@ export function createCoverageController({
       const path = gap.pathSans.join(" ") || "Start";
       const state = gap.kind === "missing_reply" ? "No reply" : "Missing branch";
       const check = readOnly ? "" : html`<label class="coverage-gap-select"><input type="checkbox" class="coverage-gap-check" data-index="${i}" aria-label="Select ${path + " " + gap.moveSan}" /></label>`;
-      return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}">${check}
+      return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}" style="--i:${i}">${check}
         <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${path}</span><span class="coverage-gap-line"><b class="coverage-gap-move">${gap.moveSan}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
     })}`;
     return markup;
@@ -169,9 +169,12 @@ export function createCoverageController({
         body = html`${body}<div class="coverage-live" role="status">${result.unknownMass > 0 ? "No gaps in checked positions" : "No gaps"}</div>`;
       } else body = html`${body}${gapRows(c.readOnly)}`;
     } else {
-      body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Scan to find the moves your opponents play that this repertoire misses.</p>`;
+      // The empty state names the action, not the feature: what a scan is for
+      // lives in the ⓘ beside it.
+      body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Press Scan to check this line.</p>`;
     }
     el.innerHTML = body;
+    onPaint();
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];
     const selectAll = el.querySelector("#coverage-selectall");
     const complete = el.querySelector("#coverage-complete");

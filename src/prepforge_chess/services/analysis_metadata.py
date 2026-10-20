@@ -1,20 +1,10 @@
 """Pure output metadata shared by engine-driven and browser-compute analysis."""
 from typing import Any, Dict, List, Optional
 
-from prepforge_chess.core.models import Game, utc_now
+from prepforge_chess.core.models import Game
 
 EXPLANATION_ALGORITHM_VERSION = "explain-v1"
 CLASSIFICATION_ALGORITHM_VERSION = "classify-v1"
-
-
-def generated_analysis_metadata(engine_name: str, depth: Optional[int]) -> Dict[str, Any]:
-    return {
-        "algorithm_version": EXPLANATION_ALGORITHM_VERSION,
-        "classification_version": CLASSIFICATION_ALGORITHM_VERSION,
-        "engine": engine_name,
-        "depth": depth,
-        "analyzed_at": utc_now().isoformat(),
-    }
 
 
 def build_analysis_quality(

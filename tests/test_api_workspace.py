@@ -95,6 +95,25 @@ def test_new_user_sees_empty_owner_scoped_workspace(client):
     assert reps.json() == {"repertoires": [], "shared": []}
 
 
+def test_repertoire_listing_carries_only_what_a_row_draws(client):
+    """The listing is the most-fetched API response (several times per boot), so
+    it ships the row's fields and nothing else. root_fen/notes/tags were never
+    read by the app; the health badge keeps its counts but not its cache
+    bookkeeping (computed_at/revision) or the two undrawn categories."""
+    _register(client, "trim@example.com", display_name="Trim")
+    client.post(
+        "/api/repertoires/create",
+        json={"name": "KP", "color": "white"},
+        headers=csrf_headers(client),
+    )
+    rep = client.get("/api/repertoires").json()["repertoires"][0]
+    assert set(rep) == {"id", "name", "color", "health", "is_active", "team_id", "visibility"}
+    health = rep["health"]
+    if health is not None:
+        assert set(health) == {"trainable", "untrained", "weak", "due", "mastered", "mastery_pct", "computed_at"}
+        assert "revision" not in health and "learning" not in health and "shallow_lines" not in health
+
+
 def test_dashboard_recap_counts_this_weeks_reviews(client):
     """The recap counts progress rows touched in the last 7 days; the week-start
     snapshot keeps deltas at zero until mastery actually moves."""

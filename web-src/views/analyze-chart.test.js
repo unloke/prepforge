@@ -213,8 +213,79 @@ describe("eval chart sizing", () => {
 describe("evaluation win meter", () => {
   it("draws an empty track, not a mid-width fill, while there is no number", () => {
     // A half-full bar with no figures beside it reads as a real 50/50 eval,
-    // so the fill is held at zero until a number paints it.
-    expect(ALL_STYLES).toMatch(/\.ev-head:not\(\.has-eval\) \.ev-meter > i \{ transform: scaleX\(0\); \}/);
+    // so the fill starts at zero until a number paints it.
+    expect(ALL_STYLES).toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\)/);
+    expect(ALL_STYLES).not.toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\.5\)/);
+  });
+
+  it("lands its new share within the stepping budget", () => {
+    // Arrow-stepping is the repeated action here: a 300ms slide left the bar
+    // trailing its own number by a third of a second on every keypress.
+    const rule = /\.ev-meter > i \{([^}]*)\}/.exec(ALL_STYLES)[1];
+    expect(rule).toMatch(/transition:\s*transform var\(--dur-fast\)/);
+    // The live engine still jumps: it repaints many times a second.
+    expect(ALL_STYLES).toMatch(/#analysis-eval-card\.is-engine \.ev-meter > i \{\s*transition: none;/);
+  });
+});
+
+describe("class bars", () => {
+  it("keeps every count legible on its grade colour", () => {
+    // The grade colours are dark in the light theme and light in the dark one,
+    // so the ink on them flips with the theme. The amber is light in both, so
+    // it takes dark ink of its own.
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*color: var\(--accent-ink\)/);
+    expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
+  });
+
+  it("gives a grade glyph a text-safe colour, not the fill", () => {
+    // --brilliant fills a dot or a bar; as 13px text it is 4:1 on the panel,
+    // under AA ("!!" measured at 4:1 in the grade tally). The same applies to
+    // the amber, which is 2.9:1 against white — hence its own text token.
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-brilliant \.mtree-glyph \{ color: var\(--brilliant-text\)/);
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-inaccuracy \.mtree-glyph \{ color: var\(--inaccuracy-text\)/);
+    expect(STYLES).toMatch(/--inaccuracy-text:/);
+  });
+});
+
+describe("coach note", () => {
+  it("sets the note at reading size and sizes the block to the note", () => {
+    // The note is running text at 15px on a phone. It takes its own height, so
+    // the rule beside it runs the note and not a reserved box, and a note past
+    // five lines scrolls instead of pushing the score sheet down.
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(1\.5em \* 5/);
+    expect(ALL_STYLES).not.toMatch(/\.coach-prose \{[^}]*min-height: calc\(1\.5em/);
+  });
+});
+
+describe("the panel's one filled action", () => {
+  it("keeps Analyze the accent and puts the handoff behind the report fold", () => {
+    // The accent used to move to "New repertoire from this game" whenever that
+    // handoff was on the panel — two filled blue actions in one column, the
+    // second one always open under an already-run report. The handoff now
+    // lives inside the report fold, so the two are never on screen together
+    // and the head's Analyze keeps the accent unconditionally.
+    expect(ALL_STYLES).not.toMatch(/#run-analysis \{[^}]*background:\s*transparent/);
+    expect(ALL_STYLES).not.toMatch(
+      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\)[^{]*#run-analysis \{/,
+    );
+  });
+});
+
+describe("score sheet ink", () => {
+  it("paints the selected move in the accent's ink, glyph included", () => {
+    // The mainline ink rule and the grade-glyph rules both out-ranked the
+    // shared tree's .is-current colour, so on this grid the selected move read
+    // --text on the accent fill (2.9:1 at 1440x900) and its glyph came out in
+    // --text on the same fill. Both now take the accent's ink.
+    const row = CHART_STYLES.match(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \{([^}]+)\}/,
+    )?.[1] || "";
+    expect(row).toMatch(/color:\s*var\(--accent-ink\)/);
+    expect(CHART_STYLES).toMatch(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
+    );
   });
 });
 
@@ -242,6 +313,29 @@ describe("eval chart theme colours", () => {
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--accent-strong:/);
     expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-m-blunder\s*\{ color: var\(--danger\)/);
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--danger:/);
+  });
+
+  it("fills White's and Black's areas from the theme's own piece colours", () => {
+    // Hardcoded hexes made the dark theme draw a glaring white band; the
+    // tokens carry a dark-theme value for each side. White's wedge is the
+    // panel tone (the light one in the dark theme), so it stands clear of the
+    // field the way the dark wedge does.
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-area-white\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-black\s*\{[^}]*fill: var\(--eval-side-black\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \{[^}]*--eval-area-white: var\(--panel\)/);
+    expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-area-white: var\(--eval-side-white\)/);
+    expect(ALL_STYLES).not.toMatch(/\.eval-area-(white|black)\s*\{[^}]*fill: #/);
+  });
+
+  it("keeps the field a quiet step off the card, not a tone of its own", () => {
+    // A mid-grey field outweighed both areas: the curve read at 2.2:1 against
+    // it while the wedges read at 3.4–3.9. Mixed mostly out of the card's own
+    // tone the field recedes, and the curve leads.
+    const field = ALL_STYLES.match(/\.eval-chart \{[^}]*--eval-field: ([^;]+);/)?.[1] || "";
+    expect(field).toContain("var(--panel) 84%");
+    const dark = ALL_STYLES.match(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-field: ([^;]+);/)?.[1] || "";
+    expect(dark).toContain("var(--panel) 84%");
+    expect(dark).toContain("var(--eval-side-white)");
   });
 
   it("keeps the main-line stroke width constant when the SVG stretches", () => {

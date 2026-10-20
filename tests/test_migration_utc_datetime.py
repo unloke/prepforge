@@ -92,15 +92,18 @@ def test_datetime_upgrade(tmp_path, seeded):
                             stored = conn.exec_driver_sql(f'SELECT "{column}" FROM "{name}"').scalar_one()
                             assert stored.endswith(".123456+00:00")
                 for column, value in values[name].items():
-                    if not column.endswith("_at"):
+                    # The seed describes the oldest revision in the chain; later
+                    # migrations drop columns (training_progress.id and its two
+                    # timestamps), so only assert what still exists at head.
+                    if not column.endswith("_at") and column in row:
                         assert row[column] == value
         indexes = {index["name"] for index in inspect(conn).get_indexes("training_progress")}
         assert "idx_training_progress_due" in indexes
         plan = str(conn.exec_driver_sql(
-            "EXPLAIN QUERY PLAN SELECT id FROM training_progress WHERE due_at <= ?",
+            "EXPLAIN QUERY PLAN SELECT node_id FROM training_progress WHERE due_at <= ?",
             ("2026-01-02 00:00:00.000000",),
         ).all())
         assert "idx_training_progress_due (due_at<?)" in plan
         if seeded:
-            assert conn.scalars(select(t.training_progress.c.id).where(t.training_progress.c.due_at <= expected)).all() == ["progress"]
+            assert conn.scalars(select(t.training_progress.c.node_id).where(t.training_progress.c.due_at <= expected)).all() == ["node"]
     engine.dispose()

@@ -102,12 +102,13 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
-// Phones keep the game sources in the Games sheet once a game is loaded;
-// raise it when its button is on screen and the sheet is down.
+// Recent analyses now starts collapsed, so recalling a saved game from it
+// means opening it first. Phones raise the sources as a sheet; a wide panel
+// has them inline.
 async function openGamesSheet(page) {
   const button = page.locator('#view-analyze [data-sheet-open="analyze-open"]');
-  if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true" &&
-    !(await page.locator("#history-drawer").isVisible())) await button.click();
+  if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
 }
 
 async function runViewport(vp) {
@@ -132,11 +133,28 @@ async function runViewport(vp) {
             const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
             return !top || !(top === el || el.contains(top));
           });
+        // Text is not a control, so the hit-test above misses a label painted
+        // under the pill: compare boxes instead.
+        const overText = [...document.querySelectorAll("#view-analyze .board-bar *")]
+          .filter((el) => el !== document.getElementById("run-analysis") &&
+            !el.contains(document.getElementById("run-analysis")) &&
+            !document.getElementById("run-analysis").contains(el) && el.textContent.trim())
+          .filter((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width && r.height &&
+              Math.min(pill.right, r.right) - Math.max(pill.left, r.left) > 0.5 &&
+              Math.min(pill.bottom, r.bottom) - Math.max(pill.top, r.top) > 0.5;
+          })
+          .map((el) => el.id || el.className);
+        // A phone has no room for the game's identity beside the pill.
+        const gameInfo = document.getElementById("analysis-game-meta");
+        const gameInfoVisible = !!gameInfo && gameInfo.getBoundingClientRect().width > 0 &&
+          getComputedStyle(gameInfo).display !== "none";
         return { inBar: pill.width > 0 && pill.top >= bar.top - 1 && pill.bottom <= bar.bottom + 1 && pill.left >= bar.left && pill.right <= bar.right,
-          lastGame: !!document.querySelector('#analyze-open [data-mirror="#fetch-my-game"]'), covered, pill: pill.toJSON() };
+          lastGame: !!document.querySelector('#analyze-open [data-mirror="#fetch-my-game"]'), covered, overText, gameInfoVisible, pill: pill.toJSON() };
       });
-      check(phone.inBar && phone.lastGame && phone.covered.length === 0,
-        `${state}: Analyze must sit in the thumb bar with every control tappable and Last game in the sheet: ${JSON.stringify(phone)}`);
+      check(phone.inBar && phone.lastGame && phone.covered.length === 0 && phone.overText.length === 0 && !phone.gameInfoVisible,
+        `${state}: Analyze must sit in the thumb bar with every control and every word tappable, and no game-info block: ${JSON.stringify(phone)}`);
       return phone.pill;
     }
     const layout = await page.evaluate(() => {
@@ -259,10 +277,19 @@ async function runViewport(vp) {
   check(board === 64, `analysis board should render 64 squares, got ${board}`);
   const coachText = await page.locator('[data-testid="coach-prose"]').textContent().catch(() => "");
   check(/Make a move/.test(coachText || ""), `coach should show its idle line, got "${coachText.slice(0, 40)}"`);
-  // Recent analyses ship open and load on entry (signed in) — never an empty open drawer.
+  // Recent analyses ships closed (it is where a game comes from, not another
+  // result) and loads the moment it is opened; it never opens empty.
   await page.waitForTimeout(200);
-  const historyRows = await page.locator("#history-drawer:not([hidden]) .history-item").count();
-  check(historyRows === 2, `recent analyses should list the 2 fixture games on entry, got ${historyRows}`);
+  const historyClosed = await page.locator("#history-drawer").evaluate((d) => !d.open);
+  check(historyClosed, "recent analyses should start collapsed");
+  await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
+  await page.waitForFunction(
+    () => document.querySelectorAll("#history-drawer .history-item").length === 2,
+    null, { timeout: 10000 },
+  ).catch(() => {});
+  const historyRows = await page.locator("#history-drawer .history-item").count();
+  check(historyRows === 2, `recent analyses should list the 2 fixture games once opened, got ${historyRows}`);
+  await page.locator("#history-drawer").evaluate((d) => { d.open = false; });
   const pgnOpen = await page.locator("#pgn-drawer").evaluate((d) => d.open);
   check(!pgnOpen, "the PGN source drawer should start collapsed (prototype)");
   const toolButtons = await page.evaluate(() =>
@@ -304,6 +331,19 @@ async function runViewport(vp) {
   });
   console.log(`[analyze-smoke] engine button: ${JSON.stringify(engineSpot)}`);
   await page.locator("#open-engine-widget").click();
+  // The full net's question is a row above the lines and never blocks them: the
+  // first real line must appear with the question still waiting for an answer.
+  await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  const askedWhileSearching = await page.evaluate(() => {
+    const row = document.getElementById("engine-window-consent");
+    const line = document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)");
+    return { asked: !!row && !row.hidden, line: !!line, rowAboveLine: !!row && !!line && row.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING };
+  });
+  check(askedWhileSearching.line, "the engine card must show a line while the full-net question waits");
+  check(!askedWhileSearching.asked || askedWhileSearching.rowAboveLine,
+    `the full-net question must sit above the lines, not replace them: ${JSON.stringify(askedWhileSearching)}`);
+  // Answer it after the lines are there: the search must not stop or restart.
+  await page.locator('[data-testid="engine-full-choice"] [data-choice="no"]').click({ timeout: 2000 }).catch(() => {});
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await page.evaluate(async () => {
     for (const id of ["analysis-next", "analysis-next", "analysis-prev", "analysis-next", "analysis-prev", "analysis-next"]) {
@@ -360,15 +400,17 @@ async function runViewport(vp) {
       sameRow: Math.abs(white.top - black.top) < 2,
       order: num.right <= white.left + 1 && white.right <= black.left + 1,
       // The panel head is actions only: the game's players name the board caption
-      // under the board (phones show that caption in the thumb bar). This PGN
-      // has no player tags, so the caption names the game by its half-move count.
+      // under the board (a phone has no room for them beside the Analyze pill,
+      // so they stay in the markup for the Report sheet's copy). This PGN has
+      // no player tags, so the caption names the game by its half-move count.
       panelHead: /\d+ half-moves?/.test(document.querySelector("#analysis-game-meta").textContent),
       glyphs: document.querySelectorAll("#analysis-moves .mtree-glyph").length,
       noEvalBar: !document.getElementById("analysis-evalbar"),
       panelNextToBoard: window.innerWidth > 860 ? panel.left >= boardBox.right : panel.top >= boardBox.bottom,
     };
   });
-  // Phones hide the move grid; the eval chart steps through the game instead.
+  // Phones lay the score sheet under the coach and the eval chart above the
+  // board; the sheet may scroll, the screen may not.
   if (vp.width > 760) check(layout.sameRow && layout.order, `move grid should lay number | White | Black in one row: ${JSON.stringify(layout)}`);
   await checkPanelHead("results");
   check(layout.panelHead, "the board caption should carry the game's players");
@@ -398,6 +440,45 @@ async function runViewport(vp) {
   if (vp.width > 760) {
     check(variation.fullWidth, "a variation should span the full grid width");
     check(variation.blackAligned, "Black moves should stay in one column around a variation");
+  }
+  if (vp.width <= 760) {
+    // The phone's screen is one column: chart, board, eval row, coach, score
+    // sheet, thumb bar. The coach takes its note's height, and the sheet takes
+    // the rest, so no dead tone sits under a one-line verdict.
+    const stack = await page.evaluate(() => {
+      const box = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 ? { top: Math.round(r.top), bottom: Math.round(r.bottom) } : null;
+      };
+      const coach = document.querySelector("#analysis-explain");
+      const prose = document.getElementById("coach-prose");
+      const moves = document.querySelector("#analysis-moves");
+      const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
+      return {
+        chart: box("#analysis-eval-graph:not([hidden])"),
+        board: box("#analysis-board"),
+        coach: box("#analysis-explain"),
+        proseBottom: Math.round(prose.getBoundingClientRect().bottom),
+        moves: box("#analysis-moves"),
+        barTop: Math.round(bar.top),
+        coachDead: Math.round(coach.getBoundingClientRect().bottom - prose.getBoundingClientRect().bottom),
+        movesScrolls: moves.scrollHeight > moves.clientHeight + 1 ||
+          getComputedStyle(moves).overflowY === "auto",
+        pageScrolls: document.getElementById("view-analyze").scrollHeight >
+          document.getElementById("view-analyze").clientHeight + 1,
+      };
+    });
+    const inOrder = stack.chart.bottom <= stack.board.top + 1 &&
+      stack.board.bottom <= stack.coach.top + 1 &&
+      stack.coach.bottom <= stack.moves.top + 1 &&
+      stack.moves.bottom <= stack.barTop + 1;
+    check(inOrder, `phone stack must be chart, board, coach, score sheet, thumb bar: ${JSON.stringify(stack)}`);
+    // A one-line verdict leaves at most a line of breathing room, not a band.
+    check(stack.coachDead <= 40, `the coach band must not keep an empty band under its note: ${stack.coachDead}px`);
+    check(stack.movesScrolls, "the phone's score sheet must take the remaining height and scroll");
+    check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
   await page.evaluate(() => document.getElementById("analysis-start").click());
   await page.waitForTimeout(200);

@@ -24,7 +24,7 @@ import { join, extname } from "node:path";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
-const PORT = Number(process.env.STATES_SMOKE_PORT || 8801);
+const PORT = Number(process.env.STATES_SMOKE_PORT || 8811);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",

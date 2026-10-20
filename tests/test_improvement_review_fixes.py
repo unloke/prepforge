@@ -301,7 +301,6 @@ def test_listing_due_counts_track_the_clock_not_the_cache(client):
     with db.make_engine().begin() as conn:
         conn.execute(
             t.training_progress.insert().values(
-                id="tp-due-test",
                 owner_user_id=owner,
                 repertoire_id=rep_id,
                 node_id=node_id,
@@ -311,8 +310,6 @@ def test_listing_due_counts_track_the_clock_not_the_cache(client):
                 spaced_repetition_score=1.0,
                 due_at=now + timedelta(hours=6),
                 is_mastered=0,
-                created_at=now,
-                updated_at=now,
             )
         )
     listing = client.get("/api/repertoires").json()["repertoires"]
@@ -734,7 +731,6 @@ def _insert_progress(rep_id: str, owner: str, node_id: str, **overrides) -> None
 
     now = datetime.now(timezone.utc)
     values = {
-        "id": "tp-{0}".format(node_id),
         "owner_user_id": owner,
         "repertoire_id": rep_id,
         "node_id": node_id,
@@ -744,8 +740,6 @@ def _insert_progress(rep_id: str, owner: str, node_id: str, **overrides) -> None
         "spaced_repetition_score": 1.0,
         "due_at": (now - timedelta(minutes=1)),
         "is_mastered": 0,
-        "created_at": now,
-        "updated_at": now,
     }
     values.update(overrides)
     with db.make_engine().begin() as conn:
@@ -890,7 +884,6 @@ def test_listing_due_count_respects_weak_before_due_precedence(client):
         rep_id,
         owner,
         node_id,
-        id="tp-weak",
         attempts=4,
         correct_attempts=1,
         spaced_repetition_score=1.0,
@@ -905,7 +898,10 @@ def test_listing_due_count_respects_weak_before_due_precedence(client):
     with db.make_engine().begin() as conn:
         conn.execute(
             update(t.training_progress)
-            .where(t.training_progress.c.id == "tp-weak")
+            .where(
+                t.training_progress.c.owner_user_id == owner,
+                t.training_progress.c.node_id == node_id,
+            )
             .values(spaced_repetition_score=6.0)
         )
     assert _due_listing(client, rep_id)["health"]["due"] == 1

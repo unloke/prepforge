@@ -169,7 +169,9 @@ describe("Move counts (P2-4)", () => {
   it("uses the same 'to train' wording on the Library row and the Repertoire header", () => {
     expect(dashboard).toContain("to train`");
     expect(dashboard).not.toContain("trainable move");
-    expect(app).toContain("` · ${train} to train`");
+    // The Repertoire's count is a caption on the repertoire's name, and it
+    // says "to train" exactly as the Library row does.
+    expect(app).toContain('${train} to train.`');
   });
 });
 
@@ -226,9 +228,11 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
     // on screen (and a delete button click stays on the button, so nothing else
     // repainted the trail either).
     const del = extractByMarker("async function deleteBuildNodeLocal(nodeId) {");
-    const parentSelect = del.indexOf("await selectBuildNode(parentId);");
+    // Parent selection and the view-heads repaint both go through hooks.build
+    // (the shell creates them after build-entry.js binds).
+    const parentSelect = del.indexOf("await hooks.build.selectBuildNode(parentId);");
     expect(parentSelect).toBeGreaterThan(-1);
-    expect(del.indexOf("syncViewHeads()", parentSelect)).toBeGreaterThan(parentSelect);
+    expect(del.indexOf("hooks.build.syncViewHeads()", parentSelect)).toBeGreaterThan(parentSelect);
   });
 });
 
@@ -261,7 +265,32 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
 });
 
 describe("Selected tree move keeps contrast (P3-10)", () => {
-  it("overrides the opponent-move grey on the selected pill", () => {
+  it("overrides the opponent-move grey on the selected move", () => {
+    // Analyze's filled cell sets a light ink on the accent.
     expect(css).toMatch(/\.mtree-move\.is-current\.is-opp,[\s\S]{0,80}\{\s*color: var\(--accent-ink\)/);
+    // Build's calmer selected move is --accent-strong on --accent-soft, the
+    // same pair the fork chip's active state uses, so the opponent grey (and a
+    // disabled move's fade) still never reaches the selected token.
+    expect(css).toMatch(/#view-build \.mtree-move\.is-current \{[^}]*background: var\(--accent-soft\);[^}]*color: var\(--accent-strong\)/);
+  });
+});
+
+describe("Next-move count names itself (2026-10-19 critique)", () => {
+  it("reads \"2 options\", not a bare number after the label", () => {
+    // A lone count beside "Next move" read as "the next move is 2".
+    const view = readFileSync(join(root, "views", "build.js"), "utf8");
+    expect(view).toMatch(/<b>Next move<\/b><span class="count">\$\{countOf\(ctx\.options\.length, "option"\)\}/);
+    expect(view).toContain('import { countOf } from "../plural.js";');
+  });
+
+  it("groups the node menu by seams, not by uppercase captions", () => {
+    // Five 10px uppercase captions, two of them over a single item, labelled
+    // what the item already said.
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    expect(session).not.toMatch(/class="context-section">\$\{section\.title\}/);
+    const menu = session.slice(session.indexOf("function openNodeContextMenu("));
+    const markup = menu.slice(menu.indexOf("menu.innerHTML"), menu.indexOf("menu.hidden = false"));
+    expect(markup).toMatch(/class="menu-sep-before"/);
+    expect(markup).not.toMatch(/context-section|Position|Danger/);
   });
 });

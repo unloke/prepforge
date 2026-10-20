@@ -65,7 +65,8 @@ describe("per-net provider identity", () => {
   it("starts lite at the user's depth while the recommended full asset is not ready", async () => {
     const data = new Map();
     const manager = createEngineProfileManager({ storage: () => ({ getItem: k => data.get(k) ?? null,
-      setItem: (k, v) => data.set(k, v) }), assetState: () => ({ phase: "download" }) });
+      setItem: (k, v) => data.set(k, v) }), assetState: () => ({ phase: "download" }),
+    device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
     manager.setEngineProfile({ net: "big", workers: 3 });
     expect(manager.engineProfile()).toMatchObject({ net: "big", workers: 3 });
     const originalUsable = usableEngineProfile.getMockImplementation();
@@ -284,8 +285,23 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(snap.pvs[0].pv_uci).toEqual(["e2e4", "e7e5"]);
   });
 
-  it("restricts the root moves with searchmoves when given candidates", async () => {
+  it("tells its watcher about every depth it reaches, not just the last one", async () => {
     const { provider, fake } = makeProvider();
+    const depths = [];
+    provider.watch(() => depths.push(provider.snapshot().current_depth));
+    await provider.open({ fen: FEN_A, multipv: 1 });
+    fake.emit("info depth 3 score cp 10 pv e2e4");
+    fake.emit("info depth 4 score cp 12 pv e2e4");
+    fake.emit("info depth 5 score cp 14 pv e2e4");
+    fake.emit("bestmove e2e4");
+    // Each depth wakes the consumer as it arrives, so a panel can deepen its rows in place.
+    expect(depths).toEqual([3, 4, 5, 5]);
+    provider.watch(null);
+    fake.emit("info depth 6 score cp 16 pv e2e4");
+    expect(depths).toEqual([3, 4, 5, 5]);
+  });
+
+  it("restricts the root moves with searchmoves when given candidates", async () => {    const { provider, fake } = makeProvider();
     await provider.open({ fen: FEN_A, multipv: 3, searchmoves: ["e2e4", "d2d4", "bogus", "g1f3"] });
     expect(fake.posted).toContain("setoption name MultiPV value 3");
     expect(fake.posted).toContain("go depth 18 searchmoves e2e4 d2d4 g1f3");

@@ -1,13 +1,14 @@
 import { html } from "../html.js";
 import { typedSquare } from "../board-navigation.js";
+import { capturedSquare, caughtPiece, positionKey, slidePiece } from "./move-motion.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom;
+  pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom;
 
 export function createBoardController(deps) {
   ({
     pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-    pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom,
+    pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom,
   } = deps);
   return BoardController;
 }
@@ -24,6 +25,8 @@ class BoardController {
     this.lastMove = null;
     this.dragFrom = null;
     this.ghost = null;
+    this._draggedMove = null;   // the move a drag released, so it lands without a slide
+    this._soundedKey = null;    // the move whose sound was already played
     this.engineArrow = null;
     this.betterArrow = null;
     this.branchArrows = [];
@@ -97,6 +100,10 @@ class BoardController {
         betterArrow: this.betterArrow,
         branchArrows: this.branchArrows,
         branchPick: this.branchPick,
+        // The marks the user drew on the real position; the preview's own
+        // positions would otherwise clear them on the way back.
+        arrows: this.arrows.slice(),
+        circles: [...this.highlights],
       };
     }
     this._preview.onEnd = onEnd;
@@ -135,7 +142,7 @@ class BoardController {
       this.betterArrow = saved.betterArrow;
       this.branchArrows = saved.branchArrows;
       this.branchPick = saved.branchPick;
-      this._renderArrows();
+      this.setAnnotations(saved.arrows, saved.circles);
     }
     if (saved.onEnd) saved.onEnd({ restored: restore });
   }
@@ -454,6 +461,7 @@ class BoardController {
     }
     if (!target || target === from) return;
     if (isPromotionMove(from, target, this.legalMoves)) {
+      this._draggedMove = `${from}${target}`;
       this._setSelected(null);
       const board = this;
       const moves = this.legalMoves;
@@ -468,6 +476,7 @@ class BoardController {
     }
     const move = legalMoveFor(from, target, this.legalMoves);
     if (move) {
+      this._draggedMove = move;
       this._setSelected(null);
       this.play(move);
     }
@@ -524,10 +533,13 @@ class BoardController {
     if (this.onAnnotate) this.onAnnotate(this.arrows.slice(), [...this.highlights]);
   }
 
-  setPosition({ fen, legalMoves = [], lastMove = null }) {
+  setPosition({ fen, legalMoves = [], lastMove = null, cue }) {
     // A real position arriving mid-preview ends the preview (see beginPreview).
     if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
     const fenChanged = this.fen !== fen;
+    // The position itself, without the clocks: a confirmed render that differs
+    // only in halfmove/fullmove is the same position arriving twice, not a move.
+    const positionChanged = positionKey(this.fen) !== positionKey(fen);
     const prevFen = this.fen;
     // A same-position refresh (an autosave landing, a panel re-render) must not
     // yank a piece out of the user's hand: keep the drag and selection alive
@@ -538,16 +550,19 @@ class BoardController {
       legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
     if (!keepInteraction) this._cancelDrag();
 
-    // Read slide offsets NOW, before any DOM writes, so _animateSlide never
-    // triggers a mid-write forced reflow to measure layout.
-    let preSlide = null;
-    if (fenChanged && this._hadPosition && lastMove && pref("moveAnim")) {
+    // Read the slide's offsets and find the captured piece NOW, before any DOM
+    // writes, so neither needs a forced reflow mid-render.
+    let slide = null;
+    if (fenChanged && this._hadPosition && lastMove) {
       const from = lastMove.slice(0, 2);
       const to = lastMove.slice(2, 4);
       const fromSq = this.squares.get(from);
       const toSq = this.squares.get(to);
       if (fromSq && toSq) {
-        preSlide = { dx: fromSq.offsetLeft - toSq.offsetLeft, dy: fromSq.offsetTop - toSq.offsetTop, to };
+        slide = {
+          dx: fromSq.offsetLeft - toSq.offsetLeft, dy: fromSq.offsetTop - toSq.offsetTop, to,
+          capturedAt: capturedSquare(prevFen, fen, from, to),
+        };
       }
     }
 
@@ -561,10 +576,33 @@ class BoardController {
     if (fenChanged || this.lastMove !== lastMove) this.moveBadge = null;
     this.lastMove = lastMove;
     this.annotationStart = null;
+    // The arrows and circles belong to the position they were drawn on. A
+    // position change drops them; a same-position refresh (an autosave, a
+    // re-render) keeps them. The paint below does the work, and nothing is
+    // notified: the drawn marks were already saved to the node they belong to.
+    if (positionChanged) {
+      this.arrows = [];
+      this.highlights = new Set();
+    }
     if (fenChanged) {
+      // The captured piece is still in the old DOM until _renderPieces wipes
+      // it. Copy it detached first and mount it after the render, so it never
+      // stands in for the square's own piece.
+      const caught = slide?.capturedAt ? caughtPiece(this.squares.get(slide.capturedAt)) : null;
       this._renderPieces();
+      if (caught) this.squares.get(slide.capturedAt)?.appendChild(caught);
       if (this._hadPosition && lastMove) {
-        this._feedbackForMove(prevFen, fen, lastMove, preSlide);
+        // A drag left the piece under the pointer on its target: the slide would
+        // replay the drop backwards. The mark covers one position change only.
+        const dragged = this._draggedMove && lastMove.startsWith(this._draggedMove);
+        if (dragged) slide = null;
+        this._draggedMove = null;
+        // The sound belongs to the move, not to a position change: the optimistic
+        // render and the confirmed one are the same move, and it sounds once.
+        // Two different moves never share a `lastMove`, so a real move still sounds.
+        const heard = lastMove === this._soundedKey;
+        this._soundedKey = lastMove;
+        this._feedbackForMove(prevFen, fen, lastMove, slide, caught, cue, heard);
       }
     }
     this._hadPosition = true;
@@ -588,38 +626,19 @@ class BoardController {
 
   // Slide the moved piece in, pulse the destination, and chirp a sound, all
   // driven off the final rendered position so a quick "skip" never leaves anything stranded.
-  // preSlide is pre-computed {dx, dy, to} read before DOM writes to avoid forced reflow.
-  _feedbackForMove(prevFen, fen, lastMove, preSlide) {
+  // `cue` is the caller's own sound for this move (a drill's right/wrong, or false
+  // to stay quiet); without it the change itself picks the cue. One move is one
+  // sound: a caller may render the same move twice (an optimistic landing, then
+  // the confirmed position), and the second render of it stays quiet.
+  _feedbackForMove(prevFen, fen, lastMove, slide, caught, cue, heard) {
     const to = lastMove.slice(2, 4);
-    const wasCapture = (() => {
-      try {
-        const before = parseFenBoard(prevFen);
-        const after = parseFenBoard(fen);
-        return Object.keys(before).length > Object.keys(after).length;
-      } catch (_) {
-        return false;
-      }
-    })();
-    playSound(wasCapture ? "capture" : "move");
-    if (pref("moveAnim") && preSlide) this._animateSlide(preSlide);
+    if (cue === undefined) cue = moveCue(prevFen, fen, lastMove);
+    if (cue && !heard) playSound(cue);
+    // One gate for both halves: a slide with nowhere to travel, or the move
+    // animation switched off, still ends with nothing left on the board.
+    if (slide && pref("moveAnim")) slidePiece(slide, (sq) => this.squares.get(sq), caught);
+    else caught?.remove();
     if (pref("lastMovePulse")) this._pulseSquare(to);
-  }
-
-  // preSlide = { dx, dy, to } — offsets already read before DOM writes.
-  _animateSlide({ dx, dy, to }) {
-    const toSq = this.squares.get(to);
-    if (!toSq) return;
-    const piece = toSq.querySelector(".piece");
-    if (!piece) return;
-    piece.style.transition = "none";
-    piece.style.transform = `translate(${dx}px, ${dy}px)`;
-    void piece.offsetWidth; // one reflow to commit the start state before transitioning
-    piece.style.transition = "transform 170ms ease-out";
-    piece.style.transform = "translate(0, 0)";
-    window.setTimeout(() => {
-      piece.style.transition = "";
-      piece.style.transform = "";
-    }, 200);
   }
 
   _pulseSquare(square) {
