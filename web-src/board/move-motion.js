@@ -12,6 +12,15 @@ export function prefersReducedMotion() {
   return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 }
 
+// The position a FEN names, without its clocks. The board's own moves are
+// computed locally (chess.js) and the confirmed position comes from the server
+// (python-chess), which disagree on the halfmove and en-passant fields; the same
+// position then arrives twice with two different strings. Everything that asks
+// "did the position change?" (the drawn marks, one move's one sound) asks this.
+export function positionKey(fen) {
+  return String(fen || "").split(" ").slice(0, 4).join(" ");
+}
+
 // The square the captured piece stood on, or null when the move took nothing.
 // Read from the two positions rather than from the move, so it is right for an
 // ordinary capture and for en passant, and stays silent when the board jumped
