@@ -2,6 +2,8 @@ import { html } from "../html.js";
 import { localGameOver } from "../chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "../pv-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
+import { fullEngineChoice, chooseFullEngine, subscribeEngineSetup } from "../engine/engine-profile.js";
+import { engineConsentHtml } from "./engine-consent.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
   boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
@@ -46,6 +48,7 @@ class EngineWidget {
     // depth changes — so the slider in Settings actually steers the widget.
     this.engine = null;
     this.engineDepth = null;
+    this.unwatchChoice = null;
   }
 
   // Build the provider on demand at the current Settings depth. If the depth changed
@@ -117,6 +120,52 @@ class EngineWidget {
     return appState.analysisBoardFen || START_FEN;
   }
 
+  // The full net's 94 MB wait for this device's yes; the card asks here, where
+  // the engine is first needed, and the search starts as soon as it answers.
+  _asking() {
+    return !!this.pvsEl?.querySelector(".engine-consent");
+  }
+
+  async _askFull() {
+    const choice = fullEngineChoice();
+    if (!choice) return;
+    this._unwatch();
+    try { await this.engine?.close(); } catch { /* best-effort */ }
+    this._clearAnalysisView();
+    if (this.pvsEl) this.pvsEl.innerHTML = engineConsentHtml(choice);
+  }
+
+  // Follows the choice while the card is open: a first visit's probe finishes
+  // after the panel opened, so the question takes a card that has not shown a
+  // line yet (a lite search already running is left alone), and an answer given
+  // elsewhere starts the search here too.
+  _watchChoice() {
+    this.unwatchChoice ||= subscribeEngineSetup(() => {
+      if (!this.open) this._unwatchChoice();
+      else if (fullEngineChoice()) { if (!this._asking() && !this.lastSnapshot) void this._askFull(); }
+      else if (this._asking()) void this._restartForCurrentBoard().then(() => this._watch());
+    });
+  }
+
+  _unwatchChoice() {
+    this.unwatchChoice?.();
+    this.unwatchChoice = null;
+  }
+
+  async _answerFull(full) {
+    this._unwatch();
+    if (this.pvsEl) this.pvsEl.innerHTML = this._pendingRows(0);
+    try {
+      await chooseFullEngine(full);
+    } catch {
+      /* the card keeps its place; the next open asks again */
+    }
+    if (this.open) {
+      await this._restartForCurrentBoard();
+      this._watch();
+    }
+  }
+
   async openForCurrent() {
     // The engine widget runs its own lightweight Stockfish session and is
     // intentionally *not* gated on heavy Analyze/Build jobs — the user can keep
@@ -124,6 +173,13 @@ class EngineWidget {
     this.open = true;
     this.el.hidden = false;
     this.el.classList.add("is-visible");
+    this._watchChoice();
+    // The question is blocking only for the net it asks about: lite keeps
+    // running underneath until the user answers.
+    if (fullEngineChoice()) {
+      await this._askFull();
+      return;
+    }
     await this._restartForCurrentBoard();
     this._watch();
   }
@@ -133,6 +189,7 @@ class EngineWidget {
     this.exitPreview();
     this.open = false;
     this._unwatch();
+    this._unwatchChoice();
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
     setTimeout(() => {
@@ -316,6 +373,11 @@ class EngineWidget {
     // ◀ ▶ / ← → step through it, and "Exit line" (or Esc) returns. The game, the
     // analysis tree and repertoires are never touched.
     this.pvsEl.addEventListener("click", (event) => {
+      const choice = event.target.closest(".engine-consent [data-choice]");
+      if (choice) {
+        void this._answerFull(choice.dataset.choice === "yes");
+        return;
+      }
       const row = event.target.closest(".engine-pv[data-line]");
       if (!row) return;
       const move = event.target.closest(".pv-move[data-ply]");
