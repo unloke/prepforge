@@ -30,7 +30,7 @@ export const PREF_LABELS = {
   lastMovePulse: "Last-move pulse",
   flipAnim: "Flip animation",
   moveAnim: "Move animation",
-  sounds: "Move / capture sounds",
+  sounds: "Sound effects",
   bestArrow: "Engine best-move arrow",
 };
 

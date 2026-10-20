@@ -35,128 +35,6 @@ export function activePieceSet() {
   return PIECE_SETS[appState.pieceStyle] || PIECE_SETS.berlin;
 }
 
-// Tiny synthesized SFX so we don't ship audio assets. type: move | capture | check.
-// move/capture mimic a wooden piece hitting the board: a short filtered noise
-// "click" plus a low body "thump". Capture layers a second, harder knock so it
-// reads as two pieces colliding.
-let _audioCtx = null;
-
-// The noise burst for a knock of this length, made once: filling it sample by
-// sample on every move cost more than the rest of the sound.
-const _knockNoiseBuffers = new Map();
-function _knockNoise(ctx, dur) {
-  let buffer = _knockNoiseBuffers.get(dur);
-  if (buffer) return buffer;
-  const frames = Math.max(1, Math.floor(ctx.sampleRate * dur));
-  buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < frames; i++) {
-    const t = i / frames;
-    // Sharp attack, quick exponential-ish decay so it sounds like a tap.
-    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
-  }
-  _knockNoiseBuffers.set(dur, buffer);
-  return buffer;
-}
-
-// One wooden knock = noise burst through a bandpass (the contact click) +
-// a fast pitch-dropping sine (the low body). Returns nothing; best-effort.
-function _woodKnock(ctx, when, opts) {
-  const { dur, noiseFreq, noiseQ, noiseGain, bodyFreq, bodyGain } = opts;
-
-  const noise = ctx.createBufferSource();
-  noise.buffer = _knockNoise(ctx, dur);
-  const bp = ctx.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.frequency.value = noiseFreq;
-  bp.Q.value = noiseQ;
-  const nGain = ctx.createGain();
-  nGain.gain.value = noiseGain;
-  noise.connect(bp);
-  bp.connect(nGain);
-  nGain.connect(ctx.destination);
-
-  const osc = ctx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(bodyFreq, when);
-  osc.frequency.exponentialRampToValueAtTime(bodyFreq * 0.5, when + dur);
-  const oGain = ctx.createGain();
-  oGain.gain.setValueAtTime(0.0001, when);
-  oGain.gain.exponentialRampToValueAtTime(bodyGain, when + 0.004);
-  oGain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-  osc.connect(oGain);
-  oGain.connect(ctx.destination);
-
-  noise.start(when);
-  noise.stop(when + dur + 0.02);
-  osc.start(when);
-  osc.stop(when + dur + 0.02);
-}
-
-export function playSound(type) {
-  if (!pref("sounds")) return;
-  try {
-    if (!_audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      _audioCtx = new AC();
-    }
-    const ctx = _audioCtx;
-    if (ctx.state === "suspended") ctx.resume();
-    const now = ctx.currentTime;
-
-    if (type === "check") {
-      // Keep a clear tonal alert for check, not a wood knock.
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(1320, now + 0.12);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.006);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
-      osc.start(now);
-      osc.stop(now + 0.16);
-      return;
-    }
-
-    if (type === "capture") {
-      // Two hard knocks: pieces colliding, then settling on the square.
-      _woodKnock(ctx, now, {
-        dur: 0.05,
-        noiseFreq: 2400,
-        noiseQ: 0.7,
-        noiseGain: 0.55,
-        bodyFreq: 240,
-        bodyGain: 0.5,
-      });
-      _woodKnock(ctx, now + 0.045, {
-        dur: 0.08,
-        noiseFreq: 1500,
-        noiseQ: 0.9,
-        noiseGain: 0.4,
-        bodyFreq: 170,
-        bodyGain: 0.42,
-      });
-      return;
-    }
-
-    // Plain move: one soft wooden tap.
-    _woodKnock(ctx, now, {
-      dur: 0.07,
-      noiseFreq: 2600,
-      noiseQ: 1.1,
-      noiseGain: 0.32,
-      bodyFreq: 250,
-      bodyGain: 0.3,
-    });
-  } catch (_) {
-    // audio is best-effort
-  }
-}
-
 export function parseFenBoard(fen) {
   const squares = {};
   fen.split(" ")[0].split("/").forEach((rankText, rankIndex) => {
@@ -475,11 +353,13 @@ export async function boardInfo(fen) {
 // or sound. The board is locked (no legal moves) until that authoritative
 // render lands, so a second drop can't race the in-flight request. Best-effort:
 // a failed local apply just leaves the pre-move position for the server to fix.
-export async function optimisticBoardMove(board, fenBefore, moveUci) {
+// `cue` goes to the board's own feedback: a graded answer passes false because
+// its right/wrong cue covers the move.
+export async function optimisticBoardMove(board, fenBefore, moveUci, cue) {
   if (!board || !fenBefore || !moveUci) return false;
   try {
     const after = await boardAfterMove(fenBefore, moveUci);
-    board.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: moveUci });
+    board.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: moveUci, cue });
     return true;
   } catch (_) {
     return false;

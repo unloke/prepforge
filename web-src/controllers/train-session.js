@@ -1453,8 +1453,9 @@ async function submitTrainingMove(playedUci) {
   const training = appState.training;
   const superseded = () => appState.training !== training || appState.smart;
   // Land the dragged move on the board right away; the server response below
-  // decides whether it advances (correct) or resets (wrong).
-  await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
+  // decides whether it advances (correct) or resets (wrong), and its right/wrong
+  // cue covers the move, so the landing itself stays quiet.
+  await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
   // An answer after a hint advances the line but is graded as a miss.
   const hinted = appState.trainHintLevel > 0;
   let result;
@@ -1502,6 +1503,7 @@ async function submitTrainingMove(playedUci) {
         fen: after.board.fen,
         legalMoves: [],
         lastMove: playedUci,
+        cue: false, // the answer's own cue, played below
       });
     } catch (_) {
       // Keep SAN-only feedback even if the preview move cannot be rendered.
@@ -1515,7 +1517,7 @@ async function submitTrainingMove(playedUci) {
       playedSan ? `Not ${playedSan}` : "Not the prepared move",
       sub
     );
-    playSound("capture");
+    playSound("wrong");
     if (appState.training) appState.training.prompt = result.prompt;
     await sleep(1450);
     if (superseded()) return;
@@ -1539,12 +1541,15 @@ async function submitTrainingMove(playedUci) {
   appState.trainBusy = true;
   boards.train.setEngineArrow(null);
 
-  // 1) Land the player's own move on the board (board animates + sounds).
+  // 1) Land the player's own move on the board (board animates), then the
+  // answer's cue.
   boards.train.setPosition({
     fen: result.fen_after_player || prompt.fen_before,
     legalMoves: [],
     lastMove: result.played_uci,
+    cue: false,
   });
+  playSound("right");
   setTrainBanner("correct", hinted ? "Correct, with a hint" : "Correct", result.played_san ? `You played ${result.played_san}` : "");
 
   // 2) After a beat, let the opponent reply as its own animated step.
@@ -1620,20 +1625,20 @@ async function submitReviewMove(playedUci) {
       after = null;
     }
     if (after) {
-      boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci });
+      boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
     }
     review.recovered += 1;
     // The trail mirrors the first-try counters; recovery answers are not graded.
     await renderTrainStats();
     setTrainBanner("correct", "Recovered", "Mistake fixed");
-    playSound("move");
+    playSound("right");
     await sleep(640);
     appState.trainBusy = false;
     review.index += 1;
     showReviewItem();
   } else {
     setTrainBanner("wrong", "Still not it", "Try again");
-    playSound("capture");
+    playSound("wrong");
   }
 }
 
@@ -1668,8 +1673,10 @@ function finishTrainingSession() {
   celebrate();
 }
 
-// Lightweight confetti burst, no library, just falling coloured chips.
+// Lightweight confetti burst, no library, just falling coloured chips, and the
+// cue that says the run is over.
 function celebrate() {
+  playSound("complete");
   const host = document.getElementById("view-train");
   if (!host) return;
   const colors = ["#d18b3f", "#4a8964", "#b9722a", "#c4524d", "#e6c34a"];
@@ -2196,7 +2203,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const prompt = smart.prompt;
   const attempt = smart.attempt;
   // Land the dragged move immediately; a blitz timeout has no real move to show.
-  if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
+  // The graded cue below covers the landing, so it stays quiet.
+  if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
   // Grade locally — the prompt carries the answer (it's the player's own
   // repertoire). Only the first attempt writes spaced repetition; it lands on
   // the server in the next debounced /smart/sync batch, not per move.
@@ -2233,12 +2241,13 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
         fen: after.board.fen,
         legalMoves: [],
         lastMove: playedUci,
+        cue: false, // the answer's own cue, played below
       });
     } catch (_) {
       // Wrong-move preview is cosmetic (a blitz timeout has no move to show);
       // grading already happened above.
     }
-    playSound("capture");
+    playSound("wrong");
     if (attempt === 1) {
       // First miss: auto-hint and a free retry, no reveal.
       // The blitz retry is deliberately untimed — the clock tests recall,
@@ -2333,11 +2342,16 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // straight into the next prompt (same-card prompts skip the run-in because
   // the board is already on the position).
   const target = prompt.target;
+  // A "new" card is a demonstration, not an answer: it keeps the board's own
+  // move sound, and only a real recall gets the success cue.
+  const demonstrating = prompt.kind === "new";
   boards.train.setPosition({
     fen: target.fen_after || prompt.fen_before,
     legalMoves: [],
     lastMove: playedUci,
+    cue: demonstrating ? undefined : false,
   });
+  if (!demonstrating) playSound("right");
   const praise =
     attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned" : hinted ? "Correct, with a hint" : "Correct";
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
@@ -2488,6 +2502,7 @@ async function finishSmartSession() {
       fen: finalFen,
       legalMoves: [],
       lastMove: finalReply ? finalReply.uci : lastTarget.uci,
+      cue: false, // the completion cue covers the last move
     });
   }
   // The phone's thumb bar gives the label one narrow track: a line that fits.

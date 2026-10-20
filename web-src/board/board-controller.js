@@ -2,12 +2,12 @@ import { html } from "../html.js";
 import { typedSquare } from "../board-navigation.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-  pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom;
+  pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom;
 
 export function createBoardController(deps) {
   ({
     pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
-    pieceSvg, parseFenBoard, playSound, pieceLabel, legalTargetsFrom,
+    pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom,
   } = deps);
   return BoardController;
 }
@@ -524,7 +524,7 @@ class BoardController {
     if (this.onAnnotate) this.onAnnotate(this.arrows.slice(), [...this.highlights]);
   }
 
-  setPosition({ fen, legalMoves = [], lastMove = null }) {
+  setPosition({ fen, legalMoves = [], lastMove = null, cue }) {
     // A real position arriving mid-preview ends the preview (see beginPreview).
     if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
     const fenChanged = this.fen !== fen;
@@ -564,7 +564,7 @@ class BoardController {
     if (fenChanged) {
       this._renderPieces();
       if (this._hadPosition && lastMove) {
-        this._feedbackForMove(prevFen, fen, lastMove, preSlide);
+        this._feedbackForMove(prevFen, fen, lastMove, preSlide, cue);
       }
     }
     this._hadPosition = true;
@@ -589,18 +589,12 @@ class BoardController {
   // Slide the moved piece in, pulse the destination, and chirp a sound, all
   // driven off the final rendered position so a quick "skip" never leaves anything stranded.
   // preSlide is pre-computed {dx, dy, to} read before DOM writes to avoid forced reflow.
-  _feedbackForMove(prevFen, fen, lastMove, preSlide) {
+  // `cue` is the caller's own sound for this move (a drill's right/wrong, or false
+  // to stay quiet); without it the change itself picks the cue.
+  _feedbackForMove(prevFen, fen, lastMove, preSlide, cue) {
     const to = lastMove.slice(2, 4);
-    const wasCapture = (() => {
-      try {
-        const before = parseFenBoard(prevFen);
-        const after = parseFenBoard(fen);
-        return Object.keys(before).length > Object.keys(after).length;
-      } catch (_) {
-        return false;
-      }
-    })();
-    playSound(wasCapture ? "capture" : "move");
+    if (cue === undefined) cue = moveCue(prevFen, fen, lastMove);
+    if (cue) playSound(cue);
     if (pref("moveAnim") && preSlide) this._animateSlide(preSlide);
     if (pref("lastMovePulse")) this._pulseSquare(to);
   }
