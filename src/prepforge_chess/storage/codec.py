@@ -282,8 +282,6 @@ def rebuild_moves(
         record.classification = classification
         record.comment = note.get("comment")
         record.generated_comment = note.get("generated_comment")
-        generated_meta = note.get("generated_meta")
-        record.generated_meta = dict(generated_meta) if generated_meta else None
         record.tags = list(note.get("tags") or [])
         record.engine_eval_before = note.get("engine_eval_before")
         record.engine_eval_after = note.get("engine_eval_after")

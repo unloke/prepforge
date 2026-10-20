@@ -226,8 +226,6 @@ moves = Table(
     # to generated_comment and rewrites it on every run (A-04).
     Column("comment", Text),
     Column("generated_comment", Text),
-    # {algorithm_version, engine, depth, analysis} for the generated block.
-    Column("generated_meta_json", Text),
     Column("tags_json", Text),
     Column("source", Text, nullable=False),
     Index("idx_moves_game_ply", "game_id", "ply"),

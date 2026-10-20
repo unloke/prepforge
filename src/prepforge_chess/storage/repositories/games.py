@@ -226,9 +226,6 @@ class GameRepository(EvaluationRepository):
                 "classification": move.classification.value,
                 "comment": move.comment,
                 "generated_comment": move.generated_comment,
-                "generated_meta_json": (
-                    _json_dump(move.generated_meta) if move.generated_meta else None
-                ),
                 "tags_json": _json_dump(move.tags) if move.tags else None,
                 "source": move.source.value,
             }
@@ -255,7 +252,6 @@ class GameRepository(EvaluationRepository):
                         "classification": stmt.excluded.classification,
                         "comment": stmt.excluded.comment,
                         "generated_comment": stmt.excluded.generated_comment,
-                        "generated_meta_json": stmt.excluded.generated_meta_json,
                         "tags_json": stmt.excluded.tags_json,
                         "source": stmt.excluded.source,
                     },
@@ -375,7 +371,6 @@ class GameRepository(EvaluationRepository):
                 "classification": move_row["classification"],
                 "comment": move_row["comment"],
                 "generated_comment": move_row["generated_comment"],
-                "generated_meta": _json_load(move_row["generated_meta_json"], None),
                 "tags": _json_load(move_row["tags_json"], []),
                 "engine_eval_before": evals.get(move_row["engine_eval_before_id"]),
                 "engine_eval_after": evals.get(move_row["engine_eval_after_id"]),
