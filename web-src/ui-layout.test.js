@@ -537,14 +537,24 @@ describe("workspace chrome layout", () => {
     // not hydration; see navigatedDuringBoot.)
     // Execution coverage is in workspace-restore-behavior.test.js.
     expect(startup).not.toMatch(/switchView\(\s*["']settings["']\s*\)/);
+    // The whole function body, brace-matched: a fixed character window slides
+    // into whatever function happens to follow it when the file is split.
+    const bodyOf = (name) => {
+      const start = app.indexOf(`function ${name}(`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      let depth = 0;
+      for (let i = app.indexOf("{", start); i < app.length; i += 1) {
+        if (app[i] === "{") depth += 1;
+        else if (app[i] === "}" && --depth === 0) return app.slice(start, i + 1);
+      }
+      return app.slice(start);
+    };
     for (const name of [
       "loadSignedInWorkspace",
       "refreshAutoMaiaRating",
       "applySettingsPayload",
     ]) {
-      const idx = app.indexOf(`function ${name}`);
-      expect(idx).toBeGreaterThanOrEqual(0);
-      expect(app.slice(idx, idx + 2500)).not.toMatch(/switchView\s*\(/);
+      expect(bodyOf(name)).not.toMatch(/switchView\s*\(/);
     }
     // Controller-owned hydration is injected (not app.js): assert on account.js.
     expect(account).not.toMatch(/refreshAuthStatus[\s\S]{0,800}?switchView/);
