@@ -740,7 +740,8 @@ describe("workspace chrome layout", () => {
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
     expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
     // On a wide panel the sheet is the last flexing row and the only scroller.
-    expect(analyzeCss).toMatch(/@media \(min-width: 861px\) \{[\s\S]*?#analyze-sidebar #analysis-results:not\(\[hidden\]\) > \.moves-grid \{[\s\S]{0,80}?flex: 1 1 auto;[\s\S]{0,80}?min-height: \d+px/);
+    // No minimum: one let the sheet paint over the report fold below it.
+    expect(analyzeCss).toMatch(/@media \(min-width: 861px\) and \(min-height: 700px\) \{[\s\S]*?#analysis-results:not\(\[hidden\]\) > \.moves-grid \{\s*flex: 1 1 auto;\s*min-height: 0;/);
     expect(analyzeCss).not.toMatch(/#analysis-results \.moves-grid \{ flex: 1 1 0/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);

@@ -228,6 +228,15 @@ describe("class bars", () => {
     expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
     expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
   });
+
+  it("gives a grade glyph a text-safe colour, not the fill", () => {
+    // --brilliant fills a dot or a bar; as 13px text it is 4:1 on the panel,
+    // under AA ("!!" measured at 4:1 in the grade tally). The same applies to
+    // the amber, which is 2.9:1 against white — hence its own text token.
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-brilliant \.mtree-glyph \{ color: var\(--brilliant-text\)/);
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-inaccuracy \.mtree-glyph \{ color: var\(--inaccuracy-text\)/);
+    expect(STYLES).toMatch(/--inaccuracy-text:/);
+  });
 });
 
 describe("coach note", () => {
@@ -252,6 +261,22 @@ describe("the panel's one filled action", () => {
     expect(ALL_STYLES).not.toMatch(/#run-analysis \{[^}]*background:\s*transparent/);
     expect(ALL_STYLES).not.toMatch(
       /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\)[^{]*#run-analysis \{/,
+    );
+  });
+});
+
+describe("score sheet ink", () => {
+  it("paints the selected move in the accent's ink, glyph included", () => {
+    // The mainline ink rule and the grade-glyph rules both out-ranked the
+    // shared tree's .is-current colour, so on this grid the selected move read
+    // --text on the accent fill (2.9:1 at 1440x900) and its glyph came out in
+    // --text on the same fill. Both now take the accent's ink.
+    const row = CHART_STYLES.match(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \{([^}]+)\}/,
+    )?.[1] || "";
+    expect(row).toMatch(/color:\s*var\(--accent-ink\)/);
+    expect(CHART_STYLES).toMatch(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
     );
   });
 });

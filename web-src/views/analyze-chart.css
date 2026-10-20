@@ -334,12 +334,17 @@
    was capped at a flat 190px while the fold and the two source drawers sat
    below the fold. Now the column above the score sheet (coach, evaluation, the
    report fold, the sources) is fixed and the score sheet takes what is left,
-   scrolling inside itself. A tall window therefore buys move rows, which is
-   what a reader stepping a game wants; the summary and the sources stay where
-   they are. The sheet keeps a floor, so on a short panel (1024x768 measured)
-   it still shows ten move pairs and the panel scrolls the last stretch to
-   reach the sources instead of the sheet shrinking to four. */
-@media (min-width: 861px) {
+   scrolling inside itself, so a tall window buys move rows — what a reader
+   stepping a game wants.
+   The sheet has no floor: a minimum did keep ten pairs on a short panel, but
+   it also let the sheet paint over the fold below it (measured at 1024x768:
+   the fold's own line sat under move rows and could not be clicked).
+   A short panel (982x614 measured: 578px) has no leftover at all — the coach,
+   the instrument, the fold and the two sources need every pixel — so this
+   only applies where there is room to give: a window at least 700px tall.
+   Below that the panel scrolls as one sheet again and the sheet keeps its own
+   cap, which is the only way a reader still reaches the sources. */
+@media (min-width: 861px) and (min-height: 700px) {
   #analyze-sidebar:has(#analysis-results:not([hidden])) .panel-scroll > .analyze-main {
     flex: 1 1 auto;
     min-height: 0;
@@ -353,7 +358,7 @@
   }
   #analyze-sidebar #analysis-results:not([hidden]) > .moves-grid {
     flex: 1 1 auto;
-    min-height: 230px;
+    min-height: 0;
     max-height: none;
   }
 }
@@ -744,6 +749,15 @@
 }
 .moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
+/* The selected cell's ink. The shared tree paints the current move with
+   --accent-ink, but the mainline ink rule (4 classes) out-ranks it, so on this
+   grid the current move read --text on the accent fill: 2.9:1, and its grade
+   glyph came out in --text too. The cell is a filled pill, so its ink is the
+   accent's (`accent-ink`, white in light and near-black in dark) and the
+   glyph takes the cell's ink instead of its grade colour. Measured after:
+   5.9:1 at 1440x900. */
+.moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
+.moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
 /* The move list keeps the shared tree's own tiles: the selected move is filled
    and raised there too, so Analyze reads like the rest of the app. */
 .moves-grid .mtree-line.is-main > .mtree-var {
@@ -756,18 +770,26 @@
   font-size: var(--fs-s);
   font-weight: 800;
 }
-.mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant); }
+/* The grade glyph takes its move's text-safe colour. It used to take the fill
+   colour (--brilliant), which is a 4.25:1 mark for a dot or a bar but a 4:1
+   word for this glyph — under AA at 13px (measured: "!!" at 4:1). The
+   *-text tokens are the ones the rest of the app uses when a grade colour is
+   read rather than filled. */
+.mtree-move.cls-brilliant .mtree-glyph { color: var(--brilliant-text); }
 .mtree-move.cls-great .mtree-glyph { color: var(--great-text); }
 .mtree-move.cls-excellent .mtree-glyph,
 .mtree-move.cls-best .mtree-glyph,
 .mtree-move.cls-good .mtree-glyph,
 .mtree-move.cls-book .mtree-glyph { color: var(--good-text); }
-.mtree-move.cls-inaccuracy .mtree-glyph { color: var(--inaccuracy); }
+.mtree-move.cls-inaccuracy .mtree-glyph { color: var(--inaccuracy-text); }
 .mtree-move.cls-mistake .mtree-glyph { color: var(--warn-text); }
 .mtree-move.cls-blunder .mtree-glyph { color: var(--danger); }
 .mtree-move.cls-missed_win .mtree-glyph,
 .mtree-move.cls-missed_tactic .mtree-glyph { color: var(--missed); }
-/* On the selected cell the accent fill carries the glyph in the cell's ink. */
+/* On the selected cell the accent fill carries the glyph in the cell's ink.
+   This has to out-rank the grade rules above, which set their own colour on
+   this same property: without it the glyph inherited the accent-blue ink from
+   the cell while the glyph's own rule painted it dark — measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
 /* Per-side classification bars — the at-a-glance "how did each side play"
@@ -823,8 +845,12 @@
   color: var(--label);
   font-size: var(--fs);
 }
-.seg-brilliant { background: var(--brilliant); }
-.seg-great { background: var(--great); }
+/* The bar carries its count as text, so each fill is the grade's text-safe
+   colour: --brilliant at white ink is 4:1 and --great is 4.2:1 (measured:
+   "!! 3" and "!! 7" both under AA). The *-text tokens keep their hue and read
+   at 5.9:1 and 5.5:1 in light, and stay the fill colours in dark. */
+.seg-brilliant { background: var(--brilliant-text); }
+.seg-great { background: var(--great-text); }
 .seg-good { background: var(--good-text); }
 /* The amber is light in both themes, so it takes dark ink. */
 .seg-inaccuracy { background: var(--inaccuracy); color: #1b1c1e; }
