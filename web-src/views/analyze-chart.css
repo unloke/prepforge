@@ -21,6 +21,10 @@
 }
 #analyze-sidebar .panel-head {
   border-bottom: 0;
+  /* The head is the first line of the panel's column, so it starts on the
+     body's left edge (14px) instead of the shared 12/10px. Measured before:
+     the game's name at x=922 and every block under it at x=924. */
+  padding-inline: 14px;
 }
 
 /* One filled action on the panel: once the report is on it, the accent belongs
@@ -63,7 +67,6 @@
 /* Captions on this page are read, not decoration: the drawer titles, the
    history rows and the coach's own link all carry meaning, so they read at
    the body size rather than at the app's 12px chrome size. */
-#view-analyze .board-sub,
 #analyze-open .drawer > summary,
 #analyze-open .btn.sm,
 #analyze-open .history-item .hi-open,
@@ -78,19 +81,40 @@
 
 /* Panel head + coach card ------------------------------------------ */
 
-/* The head is one row: the game's identity, then the actions. The tag line
-   (result · event · date) rides under the board beside the move, as .board-sub. */
-.game-id {
+/* The head is one row: the game on the board, then the actions. Before, it was
+   the actions on empty ground, so the panel opened with a title bar that had no
+   title. The name is the page's first fact, so it takes the ink; the empty state
+   stands in its place until there is a game, and goes the moment app.js writes
+   the game's line into #analysis-game-meta. */
+.analyze-head-id {
   display: flex;
   flex: 1 1 auto;
-  align-items: center;
+  align-items: baseline;
   min-width: 0;
 }
-.game-id > * {
+.analyze-head-id > * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ahi-game {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text);
+}
+.ahi-game:empty { display: none; }
+/* One line in this slot either way, so the name and the instruction take the
+   same size: the strip does not change shape when a game arrives. */
+.ahi-hint,
+.ahi-status {
+  color: var(--muted);
+  font-size: 14px;
+}
+.ahi-status:empty { display: none; }
+/* The head says one thing: a named game, or (for a line played by hand, which
+   has no players) what the board holds, or the instruction when it is empty. */
+.ahi-game:not(:empty) ~ :is(.ahi-status, .ahi-hint),
+.ahi-status:not(:empty) ~ .ahi-hint { display: none; }
 
 /* Fixed height: the coach's comment changes length on every move, and a
    growing card used to shove the chart and move list up and down ("jitter").
@@ -652,7 +676,12 @@
    direct children of the mainline are grid cells: variation moves keep the
    shared inline tree flow. The list sits inside the scrolling panel, so it
    does not contain overscroll: at its top/bottom the wheel moves the panel
-   (or the page when stacked) instead of feeling stuck. */
+   (or the page when stacked) instead of feeling stuck.
+   It is a score sheet: it takes the room its rows need, up to a cap, and
+   scrolls past it. It used to take whatever height the viewport had left, so
+   a three-move game showed 69px of rows on 428px of table (measured at
+   1440x900) — a hole large enough to read as a list that failed to load. The
+   cap keeps a long game from pushing the grade bars and the handoff away. */
 .moves-grid {
   max-height: 190px;
   overflow: auto;
@@ -818,6 +847,13 @@
 
 /* ---- Drawers: PGN source + recent analyses ---------------------------- */
 
+/* The panel is two groups: what the analysis says, then where the game came
+   from. Every gap inside a group is the panel's 14px, so the first drawer
+   takes a larger one; at the same 14px the sources read as another result. */
+#analyze-sidebar .panel-scroll > #analyze-open > .drawer:first-of-type {
+  margin-top: 8px;
+}
+
 .drawer {
   flex: none;
   padding-top: 8px;
@@ -916,23 +952,9 @@
   white-space: nowrap;
 }
 
-/* Desktop: with results showing, the coach, evaluation, move list and grade
-   bars fill the visible panel, the bars pinned to its bottom edge. The move
-   list takes whatever height is left, so engine lines added to the evaluation
-   card shrink the list instead of pushing the bars out of view. The PGN and
-   Recent analyses drawers sit just below: scroll down to reach them. The
-   list's floor is 120px; the results floor adds the class bars (38px) and,
-   when shown, the handoff (52px), each with the 14px gap. Below that the
-   panel scrolls instead. */
-@media (min-width: 861px) {
-  /* The grade bars and the handoff sit after the results stack, so the stack
-     gives up the room they need: it takes what is left, they stay on screen. */
-  .analyze-main:has(> #analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
-  #analysis-results:not([hidden]) { flex: 1 1 0; min-height: 172px; }
-  #analysis-results:not([hidden]):has(> .analysis-handoff:not([hidden])) { min-height: 238px; }
-  #analysis-results > :not(.moves-grid) { flex: none; }
-  #analysis-results .moves-grid { flex: 1 1 0; min-height: 120px; max-height: none; }
-}
+/* No layout rules here used to say "fill the visible panel": the panel now
+   ends where its content does, so the move list takes its rows' height (capped
+   at 190px, then it scrolls) and the grade bars and handoff follow it. */
 
 /* ---- Motion ------------------------------------------------------------
    This page is a tool: it moves to answer a touch, and once when a run

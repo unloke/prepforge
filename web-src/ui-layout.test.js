@@ -373,22 +373,22 @@ describe("workspace chrome layout", () => {
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
     expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
-    // The head is actions only: no title of its own (it repeated the board caption).
+    // The head names the game (or, with none, says how to get one) beside the
+    // two actions: the strip used to be the actions on empty ground.
     expect(view).not.toContain('id="analysis-game-title"');
     expect(view).toContain('class="board-label" id="analysis-board-label"');
-    // It sits in the board bar under the board, not in the panel head: the
-    // head's own block is just the one title line plus the actions.
     const headRow = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
-    expect(headRow).not.toContain("analysis-game-meta");
-    expect(headRow).not.toContain("analysis-game-title");
+    expect(headRow).toContain('id="analysis-game-meta"');
+    expect(headRow).toContain('class="ahi-hint"');
+    expect(headRow).toContain('id="run-analysis"');
     const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
-    expect(boardBar).toContain('class="board-sub" id="analysis-game-meta"');
+    expect(boardBar).not.toContain('id="analysis-game-meta"');
     expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
-    expect(analyzeCss).toContain(".game-id {");
-    // An icon action, not a word button, keeps the row compact; the icon must
-    // survive .panel-head's rule that hides icons in word buttons.
-    expect(view).toContain('class="btn icon sm" id="fetch-my-game"');
-    expect(css).toContain(".panel-head .btn:not(.icon) > .bi");
+    expect(analyzeCss).toContain(".analyze-head-id {");
+    // Both actions say what they do. "Last game" was a bare download glyph in
+    // a strip with room for its name; the phone's Games sheet mirrors it.
+    expect(view).toContain('class="btn sm" id="fetch-my-game"');
+    expect(view).toMatch(/id="fetch-my-game"[^>]*>.*?<span class="bl">Last game<\/span>/);
     // Build's head names its primary action in words; the counts move to a
     // second line so the repertoire name keeps its ending.
     const build = html.slice(html.indexOf('id="view-build"'));
@@ -477,9 +477,11 @@ describe("workspace chrome layout", () => {
     // last two tracks explicitly; auto-placement would put Prev under the pill.
     expect(phoneCss).toMatch(/:is\(#analysis-prev, #build-parent, #train-hint\) \{ order: 5; grid-column: -3 \/ -2; \}/);
     expect(phoneCss).toMatch(/:is\(#analysis-next, #build-next, #train-skip\) \{ order: 6; grid-column: -2 \/ -1; \}/);
-    // The pill owns the bar's middle: the move label and the game's identity
-    // would paint under it, so the phone hides both.
-    expect(phoneCss).toMatch(/#view-analyze \.board-bar :is\(\.board-label, \.board-sub\) \{ display: none; \}/);
+    // The pill owns the bar's middle: the move label would paint under it, so
+    // the phone hides it.
+    expect(phoneCss).toMatch(/#view-analyze \.board-bar \.board-label \{ display: none; \}/);
+    // A phone has no panel head: the game's identity block goes with it.
+    expect(phoneCss).toMatch(/#analyze-sidebar > \.panel-head \.analyze-head-id,\s*\n\s*#fetch-my-game \{ display: none; \}/);
     // The coach takes its note's height and the rest of the screen goes to the
     // score sheet, so a one-line verdict does not leave a band of empty tone.
     expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);
@@ -723,6 +725,14 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
     expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*overflow:\s*hidden/);
+    // The panel ends where its content does; it used to stretch to the
+    // board's height and hold hundreds of px of empty tone under a short game.
+    expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
+    expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
+    // The move list takes its rows' height, not the viewport's leftover; on a
+    // phone the score sheet still fills the screen (its own rule below 761px).
+    expect(analyzeCss).toMatch(/\.moves-grid \{[^}]*max-height: 190px/);
+    expect(analyzeCss).not.toMatch(/#analysis-results \.moves-grid \{ flex: 1 1 0/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
