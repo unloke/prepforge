@@ -2123,11 +2123,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Analyze: one raised panel beside the board (head + scrolling body), so analysis
    output appearing below never moves the game header above it. Its composition
-   (coach card, chart, move grid, class bars, drawers) is views/analyze-chart.css. */
+   (coach card, chart, move grid, class bars, drawers) is views/analyze-chart.css.
+   The panel ends where its content does, like Train's: stretched to the board's
+   height it was a white sheet holding a coach note, two drawers and, under a
+   short game, a move list with 359px of empty tone in it (measured at 1440x900).
+   Long content still caps at the viewport and scrolls inside. */
 #analyze-sidebar {
   gap: 0;
   max-height: var(--study-h);
   overflow: hidden;
+}
+@media (min-width: 861px) {
+  #analyze-sidebar {
+    height: auto;
+    align-self: start;
+  }
 }
 
 .workspace:has(> .view.is-active#view-analyze),

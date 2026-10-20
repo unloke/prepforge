@@ -711,6 +711,14 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
     expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*overflow:\s*hidden/);
+    // The panel ends where its content does; it used to stretch to the
+    // board's height and hold hundreds of px of empty tone under a short game.
+    expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
+    expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
+    // The move list takes its rows' height, not the viewport's leftover; on a
+    // phone the score sheet still fills the screen (its own rule below 761px).
+    expect(analyzeCss).toMatch(/\.moves-grid \{[^}]*max-height: 190px/);
+    expect(analyzeCss).not.toMatch(/#analysis-results \.moves-grid \{ flex: 1 1 0/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
