@@ -29,6 +29,7 @@ const FILES = [
   "./palette.js",
   "./train-entry.js",
   "./analyze-book-state.js",
+  "./views/analyze-loader.js",
   "./undo.js",
   "./controllers/analyze-entry.js",
   "./views/shared/source-store.js",

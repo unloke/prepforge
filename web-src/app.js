@@ -61,6 +61,8 @@ import { engineWidget, setEngineBestArrow, setEngineOn, syncEngineForView, engin
   EXPLORER_EVAL_MAX_LINES } from "./core/engine.js";
 import { _coachReady, loadPhaseCoach, maiaPhaseCoach, preloadCoach } from "./coach/coach-loader.js";
 import { createAccountEntry } from "./account-entry.js";
+import { bindEvalChart, createAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
+  preloadAnalyzeView, renderAnalysisTree, renderAnalysisTreeEmptyState } from "./views/analyze-loader.js";
 import { createAnalyzeEntry, analysisRecallSeq } from "./controllers/analyze-entry.js";
 
 // Teams: loaded with the Teams view, but the shell needs its entry points
@@ -1304,94 +1306,10 @@ const runAnalysis = viaAnalyzeSession("runAnalysis");
 const selectAnalysisNode = viaAnalyzeSession("selectAnalysisNode");
 const showAnalysisPly = viaAnalyzeSession("showAnalysisPly");
 
-let analyzeModule = null;
-let analyzeView = null;
-let moveTreeModule = null;
-let moveTreeRenderer = null;
-// Resolved once init() fully finishes (including restoreWorkspaceLocation).
-// The E2E hooks await this so a seeded view isn't switched away mid-boot.
 export let appReadyPromise = null;
 
-function preloadAnalyzeView() {
-  if (!analyzeModule) {
-    analyzeModule = import("./views/analyze.js").catch((err) => {
-      analyzeModule = null;
-      throw err;
-    });
-  }
-  loadAnalyzeSession().catch(() => {});
-  return analyzeModule;
-}
-
-async function ensureAnalyzeView() {
-  // The Analyze module comes with the view, so its handlers call straight through.
-  const [mod] = await Promise.all([preloadAnalyzeView(), loadAnalyzeSession()]);
-  if (!analyzeView) {
-    analyzeView = mod.createAnalyzeView({
-      appState,
-      START_FEN,
-      showAnalysisPly,
-      selectAnalysisNode,
-      revealAnalysisResults,
-      onEvalChartRendered: () => syncAnalysisEvalCard(),
-    });
-  }
-  return analyzeView;
-}
-
-function preloadMoveTreeRenderer() {
-  if (!moveTreeModule) {
-    moveTreeModule = import("./views/shared/movetree.js").catch((err) => {
-      moveTreeModule = null;
-      throw err;
-    });
-  }
-  return moveTreeModule;
-}
-
-async function ensureMoveTreeRenderer() {
-  const mod = await preloadMoveTreeRenderer();
-  if (!moveTreeRenderer) {
-    moveTreeRenderer = mod.createMoveTreeRenderer();
-  }
-  return moveTreeRenderer;
-}
-
-function analysisTreeHasContent(movesArg) {
-  const moves = movesArg || (appState.analysis ? appState.analysis.moves : []);
-  if (moves && moves.length) return true;
-  return !!(appState.analysisVarNodes && appState.analysisVarNodes.size);
-}
-
-function renderAnalysisTreeEmptyState() {
-  const container = document.getElementById("analysis-moves");
-  if (!container) return;
-  appState.analysisTree = null;
-  container.innerHTML =
-    html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;
-}
-
-function renderAnalysisTree(movesArg) {
-  if (!analysisTreeHasContent(movesArg)) {
-    renderAnalysisTreeEmptyState();
-    return;
-  }
-  if (analyzeView) return analyzeView.renderAnalysisTree(movesArg);
-  void ensureAnalyzeView()
-    .then((view) => view.renderAnalysisTree(movesArg))
-    .catch(() => {});
-}
-
-function bindEvalChart() {
-  // Chart interaction (click / hover tooltip / keyboard) lives with the chart
-  // renderer in views/analyze.js (bound on first render); app.js only keeps the
-  // viewport resize hook that rescales the key-moment markers.
-  // Only a mounted Analyze chart has markers to rescale — a resize on any other
-  // page must not pull the Analyze chunk (and its CSS) in.
-  window.addEventListener("resize", () => {
-    if (analyzeView) analyzeView.rescaleEvalMarkers();
-  });
-}
+// The Analyze view chunk and its move tree (views/analyze-loader.js).
+let analyzeLoader = null;
 
 // The repertoire editor lives in controllers/build-session.js, loaded with the Build view.
 // Once loaded the wrappers below call straight through; before that they wait for it.
@@ -1443,7 +1361,7 @@ async function ensureBuildView() {
     buildView = mod.createBuildView({
       appState,
       boards,
-      getMoveTreeRenderer: () => moveTreeRenderer,
+      getMoveTreeRenderer: () => analyzeLoader.moveTreeRenderer,
       ensureMoveTreeRenderer,
       selectBuildNode,
       openNodeContextMenu,
@@ -2753,6 +2671,10 @@ async function init() {
   accountEntry.bindAnalyzeEntry(analyzeEntry);
   createTrainEntry({ setTrainBanner, updateTrainTurnBadge });
   createBook({ editRepertoire });
+  analyzeLoader = createAnalyzeView({
+    loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
+    selectNode: selectAnalysisNode, reveal: revealAnalysisResults,
+  });
   hooks.build = {
     get view() { return buildView; },
     selectBuildNode, scheduleBuildFlush, setBuildSync,
@@ -3120,7 +3042,10 @@ appReadyPromise = init()
   });
 
 // Lets that app.js reassigns, read live by the lazily loaded controllers/*-session.js.
-export { _buildGenReady, _coachReady, analyzeView, buildView, coverageView };
+export { _buildGenReady, _coachReady, buildView, coverageView };
+// The Analyze view is created by views/analyze-loader.js; re-exported so the
+// analysis session keeps its one import from the shell.
+export { analyzeView } from "./views/analyze-loader.js";
 // The Build state the lazy editor reads (the open inspector tab, the Explorer
 // client) lives in build-entry.js; re-exported so that module keeps its one
 // import from the shell.
