@@ -34,8 +34,13 @@ function createSharedEvaluationProvider(options) {
     handle ||= store.createHandle(options);
     return handle.open(request);
   };
-  return { open: select, update: select, snapshot: () => handle?.snapshot(),
-    close: async () => { seq += 1; await handle?.close(); } };
+  return {
+    open: select, update: select, snapshot: () => handle?.snapshot(),
+    // Push every store update for the held position to `fn` (the Engine panel renders
+    // as each `info depth` lands rather than sampling on a timer).
+    watch: (fn) => handle?.watch?.(fn),
+    close: async () => { seq += 1; await handle?.close(); },
+  };
 }
 import { advanceBuildRevision, queuedBuildRevision, rebaseQueuedBuildRevision, withBuildRevision } from "./build-revision.js";
 import {

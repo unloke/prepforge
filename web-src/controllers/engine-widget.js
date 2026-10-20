@@ -31,7 +31,7 @@ class EngineWidget {
     this.depthReadout = null;
     this.closeBtn = null;
     this.open = false;
-    this.pollTimer = null;
+    this.unwatch = null;
     this.lastFen = null;
     this.lastSnapshot = null;
     // The engine line shown on the board (see _previewLine), or null.
@@ -82,7 +82,7 @@ class EngineWidget {
       return;
     }
     await this._restartForCurrentBoard();
-    this._startPolling();
+    this._watch();
   }
 
   bind() {
@@ -125,14 +125,14 @@ class EngineWidget {
     this.el.hidden = false;
     this.el.classList.add("is-visible");
     await this._restartForCurrentBoard();
-    this._startPolling();
+    this._watch();
   }
 
   async close() {
     if (!this.open) return;
     this.exitPreview();
     this.open = false;
-    this._stopPolling();
+    this._unwatch();
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
     setTimeout(() => {
@@ -175,7 +175,7 @@ class EngineWidget {
       // provider.serialize() orders engine commands, not these UI continuations.
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._renderSnapshot(snapshot);
-      this._startPolling();
+      this._watch();
     } catch (error) {
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
       this._showError(error.message);
@@ -225,7 +225,7 @@ class EngineWidget {
         return;
       }
       this._renderSnapshot(snapshot);
-      this._startPolling();
+      this._watch();
     } catch (error) {
       if (!this.open || engine !== this.engine || this.multipv !== clamped) return;
       this._showError(error.message);
@@ -418,31 +418,41 @@ class EngineWidget {
     if (this.lastSnapshot && this.lastSnapshot.fen === this.lastFen) this._renderSnapshot(this.lastSnapshot);
   }
 
-  _startPolling() {
-    this._renderLinesReadout(); // its tooltip names the coached extra line
-    // Never poll a closed panel. openForCurrent()/onDepthSettingChanged() call this right after
-    // awaiting _restartForCurrentBoard(), so the user may have closed the widget mid-await — guard
-    // here to cover every call site at once (a stray 450ms interval on a hidden panel otherwise).
+  // Paint every update the search produces, as it produces it: the panel used to sample
+  // the search on a 450 ms timer, so a fresh position sat on "Calculating…" for up to half
+  // a second after the engine's first line already existed, and intermediate depths were
+  // skipped. Paints are coalesced to one per animation frame — the engine emits several
+  // depths inside one frame at low depths, and repainting for each makes the row flicker.
+  // The subscription stays on the provider instance it was made for.
+  _watch() {
+    this._unwatch();
+    this._renderLinesReadout(); // the readout's tooltip names the coached extra line
     if (!this.open) return;
-    this._stopPolling();
-    this.pollTimer = setInterval(async () => {
-      try {
-        const engine = this.engine;
-        const fen = this.lastFen;
-        const snapshot = await engine.snapshot();
-        if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
-        this._renderSnapshot(snapshot);
-      } catch (_) {
-        // Ignore transient polling errors.
-      }
-    }, 450);
+    const engine = this.engine;
+    const fen = this.lastFen;
+    let frame = 0;
+    let latest = null;
+    const paint = () => {
+      frame = 0;
+      const snapshot = latest;
+      latest = null;
+      if (!snapshot || !this.open || engine !== this.engine || fen !== this.lastFen) return;
+      this._renderSnapshot(snapshot);
+    };
+    engine.watch((snapshot) => {
+      latest = snapshot;
+      frame ||= requestAnimationFrame(paint);
+    });
+    this.unwatch = () => {
+      engine.watch(null);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }
 
-  _stopPolling() {
-    if (this.pollTimer) {
-      clearInterval(this.pollTimer);
-      this.pollTimer = null;
-    }
+  _unwatch() {
+    const off = this.unwatch;
+    this.unwatch = null;
+    if (off) off();
   }
 
   _renderSnapshot(snapshot) {
@@ -460,7 +470,7 @@ class EngineWidget {
     }
     const pvs = Array.isArray(snapshot.pvs) ? snapshot.pvs : [];
     if (!pvs.length && this._renderGameOver(snapshot.fen || this.lastFen)) {
-      this._stopPolling();
+      this._unwatch();
       return;
     }
     const depthText = `${snapshot.current_depth || 0} / ${snapshot.max_depth || "?"}`;
@@ -485,9 +495,9 @@ class EngineWidget {
     explorerEvalEngine.repaint();
     // Keep the coach's one-line rationale in sync with this (deeper) search.
     getAnalyzeSession()?.positionCoach.onWidgetSnapshot(snapshot);
-    // Once the engine reaches max depth it stops; no point polling further
-    // until the position changes (open/update restart polling).
-    if (snapshot.running === false) this._stopPolling();
+    // Once the engine reaches max depth it stops; nothing more will arrive until the
+    // position changes (open/update subscribe again).
+    if (snapshot.running === false) this._unwatch();
   }
 
   // One line per row, cut off at the panel edge. Clicking a row plays it out on the
