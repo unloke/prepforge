@@ -1,11 +1,9 @@
 import { html } from "./html.js";
-import { MAX_FETCH } from "./generated/shared-constants.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
 import { resetViewScroll } from "./view-scroll.js";
-import { closeSheetOffPhone } from "./phone-layout.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";
 import { createBook, ensureBookLoaded, invalidateBook, updateBookline } from "./analyze-book-state.js";
@@ -14,47 +12,36 @@ import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
-import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync, renderSyncChip,
+import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
 import { pgnHeaderTags } from "./analyze-pgn.js";
-import { createEngineProvider, isBrowserEngineAvailable } from "./engine/stockfish-provider.js";
-import { getSharedMaia3Provider, disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/maia3-provider.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo } from "./chess-local.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { createBoardController } from "./board/board-controller.js";
-import { pgnPlayers, selfSide } from "./analyze-orient.js";
-import { classifySyncError } from "./sync-errors.js";
 import { buildAddId, buildDeleteId } from "./sync-queue.js";
-import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
-import { syncChipVariant } from "./sync-chip.js";
 import { clearCheckpoint, loadCheckpoint } from "./analyze-checkpoint.js";
-import { loadReturnState, rememberHandoff, saveReturnState, setHandoffOwner, takeHandoff } from "./handoff-context.js";
+import { loadReturnState, setHandoffOwner } from "./handoff-context.js";
 import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
-import { createPalette } from "./palette.js";
 import { bindCommandPalette, closePalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
   isBuildReadOnly,
   deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
-  hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, queueBuildDelete, reapplyPendingBuildDeletes,
+  hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
   reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
   setExplorerDb } from "./build-entry.js";
-import { createAccountController } from "./controllers/account.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
-import { openSourceComposer, normalizeSelection, selectionChips, resolveFetchUsernames, sameFetchSources } from "./views/shared/source-composer.js";
-import { readSourceStore, writeSourceStore } from "./views/shared/source-store.js";
-import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
-import { createInviteDialogUi, formatDay, runInviteDialog } from "./views/team-invite.js";
+import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
 import { queuedBuildRevision, rebaseQueuedBuildRevision } from "./build-revision.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
-  api, currentOwnerId, downloadText, engineLifecycleMark, localDateString, localDayOf, postJson,
+  api, currentOwnerId, downloadText, engineLifecycleMark, localDateString, postJson,
   setStatus, setStatusError, sleep } from "./core/api.js";
 import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, maiaAnalysisEnabled,
-  pref, refreshAutoMaiaRating, setPref, syncThemeToggle, toggleTheme,
+  pref, syncThemeToggle, toggleTheme,
   STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "./core/prefs.js";
 import { applyTheme } from "./theme.js";
 import { activateModal, showConfirmModal, showInputModal } from "./core/modals.js";
@@ -90,16 +77,9 @@ function loadTeamsController() {
 const viaTeams = (name) => (...args) => (teamsController
   ? teamsController[name](...args)
   : loadTeamsController().then((loaded) => loaded[name](...args)));
-const teamRoleLabel = viaTeams("teamRoleLabel");
-const preloadTeamsView = viaTeams("ensureTeamsView");
 const loadTeams = viaTeams("loadTeams");
-const renderTeamsList = viaTeams("renderTeamsList");
 const hideTeamDetail = viaTeams("hideTeamDetail");
-const openTeamDetail = viaTeams("openTeamDetail");
-const unshareRepertoireFromTeam = viaTeams("unshareRepertoireFromTeam");
 const createTeam = viaTeams("createTeam");
-const copySharedRepertoire = viaTeams("copySharedRepertoire");
-const loadSharedRepertoires = viaTeams("loadSharedRepertoires");
 const shareRepertoireWithTeam = viaTeams("shareRepertoireWithTeam");
 
 // The Library entry: its chunk, the listing load and PGN import. Bound in init,
@@ -111,7 +91,6 @@ const ensureDashboardView = viaLibrary("ensureDashboardView");
 const loadDashboard = viaLibrary("loadDashboard");
 const defaultRepertoireNameFromPgn = viaLibrary("defaultRepertoireNameFromPgn");
 const importRepertoireFromPgnText = viaLibrary("importRepertoireFromPgnText");
-const promptImportRepertoireFromPgn = viaLibrary("promptImportRepertoireFromPgn");
 
 // Coverage (Build inspector) and the shared-repertoire viewer: bound in init,
 // owned by coverage-entry.js and shared-viewer.js.
@@ -142,10 +121,8 @@ const closeAccountMenu = viaAccount("closeAccountMenu");
 const isAccountMenuOpen = viaAccount("isAccountMenuOpen");
 const refreshAuthStatus = viaAccount("refreshAuthStatus");
 const syncReplayControls = viaAccount("syncReplayControls");
-const warmSyncReplayControls = viaAccount("warmSyncReplayControls");
 const refreshLichessStatus = viaAccount("refreshLichessStatus");
 const startLichessOAuth = viaAccount("startLichessOAuth");
-const startLichessGameWatch = viaAccount("startLichessGameWatch");
 const noteLichessActivity = viaAccount("noteLichessActivity");
 const lichessAccounts = viaAccount("lichessAccounts");
 const orientAnalysisForSelf = viaAccount("orientAnalysisForSelf");
@@ -159,8 +136,6 @@ const fetchMyLichessGame = viaAnalyzeEntry("fetchMyLichessGame");
 const loadAnalysisHistory = viaAnalyzeEntry("loadAnalysisHistory");
 const refreshAnalysisHistoryIfOpen = viaAnalyzeEntry("refreshAnalysisHistoryIfOpen");
 const invalidateAnalysisSource = viaAnalyzeEntry("invalidateAnalysisSource");
-const recallAnalysis = viaAnalyzeEntry("recallAnalysis");
-const deleteSavedAnalysis = viaAnalyzeEntry("deleteSavedAnalysis");
 
 // Settings: the view chunk, its readiness gate and the /api/settings actions.
 let settingsController = null;
@@ -186,7 +161,6 @@ const preloadSettingsView = viaSettings("preloadSettingsView");
 const loadSettings = viaSettings("loadSettings");
 const whenSettingsReady = viaSettings("whenSettingsReady");
 const openSettingsSection = viaSettings("openSettingsSection");
-const applySettingsPayload = viaSettings("applySettingsPayload");
 
 // Scout: the report, its source tray and the Start guard. Loaded on first use;
 // the shell paints the tray and wires Start at boot, so those wait for it.
@@ -210,7 +184,6 @@ const viaScout = (name) => (...args) => (scoutController
   ? scoutController[name](...args)
   : loadScoutController().then((loaded) => loaded[name](...args)));
 const scoutSelection = viaScout("scoutSelection");
-const writeScoutSelection = viaScout("writeScoutSelection");
 const paintScoutSource = viaScout("paintScoutSource");
 const bindScoutSource = viaScout("bindScoutSource");
 const preloadScoutUi = viaScout("preloadScoutUi");
@@ -239,14 +212,8 @@ const viaGames = (name) => (...args) => (gamesController
   : loadGamesController().then((loaded) => loaded[name](...args)));
 const runLichessCompare = viaGames("runLichessCompare");
 const gamesSourceSelection = viaGames("gamesSourceSelection");
-const writeGamesSelection = viaGames("writeGamesSelection");
-const clearGamesResults = viaGames("clearGamesResults");
 const paintGamesSource = viaGames("paintGamesSource");
 const bindGamesSource = viaGames("bindGamesSource");
-const renderReplayResults = viaGames("renderReplayResults");
-const renderLedgerSkeleton = viaGames("renderLedgerSkeleton");
-const renderReplayFailure = viaGames("renderReplayFailure");
-const replayToAnalyze = viaGames("replayToAnalyze");
 const preloadReplayView = viaGames("ensureReplayView");
 
 
@@ -304,7 +271,7 @@ const syncController = createSyncController({
 });
 const {
   scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
-  markTrainPositionDirty, scheduleTrainSync, beaconFlushTrain, flushBuildMoves, flushTrainSync,
+  markTrainPositionDirty, beaconFlushTrain, flushTrainSync,
   persistOutbox, restoreOutbox, flushAllPendingForSignOut,
 } = syncController;
 

@@ -49,7 +49,7 @@ const trustedRaw = {
 
 // Every web-src file still over the 500-line ceiling, at its measured size.
 const OVER_CEILING = [
-  ["web-src/app.js", 1931],
+  ["web-src/app.js", 1884],
   ["web-src/board/board-controller.js", 621],
   ["web-src/coach/brilliant-assess.test.js", 667],
   ["web-src/coach/why/facts.js", 816],
