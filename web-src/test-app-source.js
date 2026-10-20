@@ -5,6 +5,13 @@ import { readFileSync } from "node:fs";
 
 const FILES = [
   "./app.js",
+  "./core/state.js",
+  "./core/api.js",
+  "./core/prefs.js",
+  "./core/modals.js",
+  "./core/engine.js",
+  "./coach/coach-loader.js",
+  "./board/ui.js",
   "./controllers/engine-widget.js",
   "./notices.js",
   "./board/board-controller.js",

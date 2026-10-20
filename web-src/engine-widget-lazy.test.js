@@ -1,9 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
-const source = readFileSync(new URL("./app.js", import.meta.url), "utf8");
-const facadeSource = source.slice(source.indexOf("let loadedEngineWidget ="), source.indexOf("function sanLineFromUci"))
-  .replace('import("./controllers/engine-widget.js")', "importWidget()");
+// The engine widget facade in core/engine.js. The widget chunk is replaced with
+// a controllable import so the test can hold it in flight; everything else the
+// facade reads is bound as a free variable.
+const source = readFileSync(new URL("./core/engine.js", import.meta.url), "utf8");
+const facadeSource = source
+  .slice(source.indexOf("let loadedEngineWidget ="), source.indexOf("// Draw the engine's top move"))
+  .replace('import("../controllers/engine-widget.js")', "importWidget()")
+  .replace(/^export /gm, "");
 
 function harness() {
   let resolveImport, rejectImport;
@@ -15,15 +20,17 @@ function harness() {
     onBoardChanged: vi.fn(), onDepthSettingChanged: vi.fn(), lastSnapshot: { fen: "current" },
   };
   const createEngineWidget = vi.fn(() => widget);
+  const hooks = { analyzeSession: null };
   const deps = {
-    importWidget: vi.fn(() => pending), activeViewName: () => view, engineWantedIn: () => wanted,
+    importWidget: vi.fn(() => pending), activeViewName: () => view,
+    engineWantedIn: () => wanted,
     effectiveStockfishDepth: vi.fn(), createSharedEvaluationProvider: vi.fn(), appState: {},
     boards: {}, START_FEN: "start", setEngineBestArrow: vi.fn(), setStatusError: vi.fn(),
-    setEngineOn: vi.fn(), activeBoardController: vi.fn(), explorerEvalEngine: {},
-    analyzeSession: null,
+    setEngineOn: vi.fn(), activeBoardController: vi.fn(), explorerEvalEngine: {}, hooks,
+    pref: () => wanted, setPref: vi.fn(),
   };
   const facade = new Function(...Object.keys(deps), `${facadeSource}
-    return { engineWidget, setSession(value) { analyzeSession = value; } };`)(...Object.values(deps));
+    return { engineWidget, setSession(value) { hooks.analyzeSession = value ? () => value : null; } };`)(...Object.values(deps));
   return {
     ...facade, widget, deps, createEngineWidget, rejectImport,
     resolveImport: () => resolveImport({ createEngineWidget }),
