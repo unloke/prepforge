@@ -17,7 +17,7 @@ import io
 import json
 import base64
 import zlib
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import chess
@@ -298,10 +298,58 @@ def game_uci_blob(game: Game) -> str:
     return encode_uci_sequence(move.uci for move in game.moves)
 
 
+ANALYSIS_SNAPSHOT_CODEC = "analysis-zlib-base64-v2"
+_ENGINE_EVAL_FIELDS = tuple(f.name for f in fields(EngineEvaluation))
+_ANALYSIS_FIELDS = (
+    "uci", "source", "classification", "engine_eval_before", "engine_eval_after",
+    "best_move_uci", "best_move_eval", "comment", "generated_comment", "tags",
+)
+
+
 def encode_analysis_moves(moves: Sequence[MoveRecord]) -> str:
-    """Self-contained run snapshot; never references mutable game annotations."""
-    raw = json.dumps([asdict(move) for move in moves], separators=(",", ":")).encode("utf-8")
-    return json.dumps({"codec": "zlib-base64-v1", "data": base64.b64encode(zlib.compress(raw)).decode("ascii")}, separators=(",", ":"))
+    """Self-contained run snapshot; never references mutable game annotations.
+
+    Each ply stores only what replaying the run's starting position (the first
+    move's ``fen_before``) cannot rebuild: the arriving UCI, its source and the
+    per-ply annotations. SAN, both FENs, ply and move number come back from
+    :func:`rebuild_moves`. Identical evaluations (one per analysed position, so
+    a move's "after" is the next move's "before") are pooled once and
+    referenced by index instead of being repeated per ply, and
+    ``best_move_eval`` — always the same object as ``engine_eval_before`` —
+    reuses that pool slot.
+    """
+    evals: List[Dict[str, Any]] = []
+    index: Dict[str, int] = {}
+
+    def pool(evaluation: Optional[EngineEvaluation]) -> Optional[int]:
+        if evaluation is None:
+            return None
+        payload = asdict(evaluation)
+        key = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        if key not in index:
+            index[key] = len(evals)
+            evals.append(payload)
+        return index[key]
+
+    rows = []
+    for move in moves:
+        before = pool(move.engine_eval_before)
+        same_best = move.best_move_eval is move.engine_eval_before
+        rows.append([
+            move.uci,
+            move.source.value,
+            move.classification.value,
+            before,
+            pool(move.engine_eval_after),
+            move.best_move_uci,
+            before if same_best else pool(move.best_move_eval),
+            move.comment,
+            move.generated_comment,
+            list(move.tags) or None,
+        ])
+    body = {"i": moves[0].fen_before if moves else STARTING_FEN, "e": evals, "m": rows}
+    raw = json.dumps(body, separators=(",", ":")).encode("utf-8")
+    return json.dumps({"codec": ANALYSIS_SNAPSHOT_CODEC, "data": base64.b64encode(zlib.compress(raw, 9)).decode("ascii")}, separators=(",", ":"))
 
 
 def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
@@ -309,19 +357,21 @@ def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
     # shared annotations to a historical summary; reanalysis creates a snapshot.
     if payload is None:
         return []
-    moves = []
     envelope = json.loads(payload)
-    if envelope["codec"] != "zlib-base64-v1":
+    if envelope["codec"] != ANALYSIS_SNAPSHOT_CODEC:
         raise ValueError("unsupported analysis snapshot codec")
-    for row in json.loads(zlib.decompress(base64.b64decode(envelope["data"], validate=True))):
-        row["side_to_move"] = Color(row["side_to_move"])
-        row["source"] = MoveSource(row["source"])
-        row["classification"] = MoveClassification(row["classification"])
+    body = json.loads(zlib.decompress(base64.b64decode(envelope["data"], validate=True)))
+    evals = [
+        EngineEvaluation(**{key: value for key, value in evaluation.items() if key in _ENGINE_EVAL_FIELDS})
+        for evaluation in body["e"]
+    ]
+    annotations = {}
+    for ply, row in enumerate(body["m"], start=1):
+        note = dict(zip(_ANALYSIS_FIELDS, row))
         for key in ("engine_eval_before", "engine_eval_after", "best_move_eval"):
-            if row.get(key) is not None:
-                row[key] = EngineEvaluation(**row[key])
-        moves.append(MoveRecord(**row))
-    return moves
+            note[key] = evals[note[key]] if note[key] is not None else None
+        annotations[ply] = note
+    return rebuild_moves(body["i"], [note["uci"] for note in annotations.values()], annotations)
 
 
 def move_signature(initial_fen: Optional[str], moves: Iterable[str]) -> str:
