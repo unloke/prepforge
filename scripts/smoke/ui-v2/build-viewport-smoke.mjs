@@ -346,10 +346,24 @@ async function runViewport(vp) {
     check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
     check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
     check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
-    // The tree is the other half of the seam: it must give up what the dock
-    // took, or the dock grew out of the panel instead of out of the tree.
+    // The tree is the other half of the seam: the dock grows out of the panel,
+    // never past it. On a short line the tree already sits at its floor
+    // (min-height), so what the drag takes comes from the panel's rest — the
+    // check is that the panel itself never overflows and the page never scrolls.
     const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
-    check(startTree - endTree > growBy * 0.7 || endTree <= 90, `the move tree should shrink as the dock grows, got ${startTree} → ${endTree}`);
+    const panelFit = await page.evaluate(() => {
+      const panel = document.querySelector("#build-sidebar > .panel-body");
+      return {
+        overflow: panel.scrollHeight - panel.clientHeight,
+        page: document.documentElement.scrollHeight - innerHeight,
+      };
+    });
+    check(
+      startTree - endTree > growBy * 0.7 || endTree <= 110,
+      `the move tree should give up what the dock took, or already be at its floor, got ${startTree} → ${endTree}`,
+    );
+    check(panelFit.overflow <= 1, `the dragged dock overflowed the panel by ${panelFit.overflow}px`);
+    check(panelFit.page <= 0, `the dragged dock scrolled the page by ${panelFit.page}px`);
     const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);
     check(cursorOnHandle === "row-resize", `the handle should carry a resize cursor, got "${cursorOnHandle}"`);
 

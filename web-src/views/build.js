@@ -2,6 +2,18 @@ import { html } from "../html.js";
 import { countOf } from "../plural.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
+// A trained move's status, said the way a person says it. The tree paints only
+// the two that ask for something (due, weak) — a bar under every own move made
+// the list a heatmap nobody could read — and this is what the tooltip and the
+// screen-reader label carry for every status.
+const MASTERY_WORDS = {
+  due: "Due for review",
+  weak: "Weak — missed often",
+  learning: "Learning",
+  mastered: "Mastered",
+  untrained: "Not trained yet",
+};
+
 export function createBuildView({
   appState,
   boards,
@@ -216,10 +228,8 @@ export function createBuildView({
       return;
     }
     const collapsed = appState.buildCollapsed || (appState.buildCollapsed = new Set());
-    const pathIds = new Set(buildPath(appState.buildCurrentNodeId).map((n) => n.id));
     const treeHtml = moveTreeRenderer.renderMoveTree(root, {
       currentId: appState.buildCurrentNodeId,
-      pathIds,
       collapsible: true,
       isCollapsed: (node) => collapsed.has(node.id),
       decorate: (node) => {
@@ -227,11 +237,23 @@ export function createBuildView({
         const classes = [];
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
-        if (b.is_mainline) classes.push("is-main");
         if (b.move_side !== appState.build.color) classes.push("is-opp");
-        if (b.is_prepared) classes.push("is-prep");
-        if (!b.comment) return { classes };
-        return { classes, title: b.comment, suffix: html`<i class="mtree-note" aria-label="Has comment"></i>` };
+        // One quiet mark per move and one sentence behind it. The tree used to
+        // carry four signals at once — a mastery bar, a "prepared" underline,
+        // the accent fill on every move of the path, and a bold mainline — so
+        // every token was decorated and the eye had nowhere to rest. The tree
+        // now paints only the two states that ask for something (due, weak);
+        // every own move names its real status in the tooltip, which is where
+        // detail belongs, and the path is read from the trail above.
+        const status = MASTERY_WORDS[b.mastery] || "";
+        return {
+          classes,
+          title: [status, b.comment, "Right-click for move options"].filter(Boolean).join(" · "),
+          ...(status ? { label: status } : {}),
+          suffix: b.comment
+            ? html`<i class="mtree-note" aria-label="Has a note" title="${String(b.comment)}"></i>`
+            : "",
+        };
       },
     });
     renderTreeMeta();

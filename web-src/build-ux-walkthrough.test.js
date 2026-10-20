@@ -263,8 +263,13 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
 });
 
 describe("Selected tree move keeps contrast (P3-10)", () => {
-  it("overrides the opponent-move grey on the selected pill", () => {
+  it("overrides the opponent-move grey on the selected move", () => {
+    // Analyze's filled cell sets a light ink on the accent.
     expect(css).toMatch(/\.mtree-move\.is-current\.is-opp,[\s\S]{0,80}\{\s*color: var\(--accent-ink\)/);
+    // Build's calmer selected move is --accent-strong on --accent-soft, the
+    // same pair the fork chip's active state uses, so the opponent grey (and a
+    // disabled move's fade) still never reaches the selected token.
+    expect(css).toMatch(/#view-build \.mtree-move\.is-current \{[^}]*background: var\(--accent-soft\);[^}]*color: var\(--accent-strong\)/);
   });
 });
 

@@ -2903,9 +2903,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* The shared .panel-head and .engine-banner keep their rule for Analyze and
    Train; in this panel the head and the line sheet carry their own ground. */
 #view-build .panel-head { border-bottom: 0; }
-/* The banner's tint is its edge; in this panel it needs no rule under it. */
-#view-build .engine-banner { border: 0; border-radius: 0; }
+/* The banner's tint is its edge; in this panel it needs no rule under it. It
+   is a diagnostic, not a pane: it never shrinks under a long tree (a squeezed
+   grid clipped its own sentence mid-line). */
+#view-build .engine-banner { border: 0; border-radius: 0; flex: none; }
 #view-build .engine-banner p { max-width: 62ch; }
+/* The action names the cause and the fix in one sentence ("Open PrepForge in
+   Chrome or Edge — a browser that keeps COOP/COEP isolation"), so the line
+   above it repeated it in technical words. Build keeps the title and the
+   sentence you act on; Analyze and Train keep the full explanation. It is the
+   only running text in this panel, so it reads at prose size. */
+#view-build .engine-banner .engine-banner-why { display: none; }
+#view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) {
+  font-size: 16px;
+  line-height: 1.45;
+}
 
 /* Motion in the panel, on the same rules as the rest of the app: the fork bar
    and the Explorer rows arrive after a move or a fetch, so they enter with a
@@ -2923,14 +2935,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 #build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 #build-branchbar .fork-chip:active { transform: scale(0.97); }
 
+/* One panel, one ground. The trail, the fork, the tree, the dock and the foot
+   used to alternate between --panel and a recessed --surface-3, which read as
+   five stacked strips with the board beside them. They all sit on the panel
+   now and every block hangs from the same 14px left edge; the only other tone
+   step is the dock's, because reference data under the line is a different
+   kind of thing. */
+#build-sidebar { --build-pad: 14px; }
+
 .tree-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding-right: 12px;
-  background: var(--surface-3);
+  background: var(--panel);
 }
 .crumbs {
   flex: 1;
@@ -2938,7 +2957,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   display: flex;
   align-items: center;
   gap: 1px;
-  padding: 6px 12px;
+  padding: 6px var(--build-pad, 12px);
   overflow-x: auto;
   white-space: nowrap;
   font-size: var(--fs-s);
@@ -2981,8 +3000,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 .forkbar {
-  padding: 8px 12px;
-  background: var(--surface-3);
+  padding: 8px var(--build-pad, 12px) 10px;
+  background: var(--panel);
 }
 .fork-head {
   display: flex;
@@ -2991,6 +3010,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   margin-bottom: 6px;
   font-size: var(--fs-s);
 }
+.fork-head b { font-weight: 600; color: var(--muted); }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .fork-chip {
   display: inline-flex;
@@ -3015,21 +3035,29 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .fork-chip.is-active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
 
 .tree-wrap {
-  /* Sized by its moves, which the inspector gives way to (the dock does not
-     grow): a short tree leaves the leftover height to the Explorer instead of
-     sitting empty above it. But a tree taller than the panel cannot be allowed
-     to grow past it: it shrinks to the space left and scrolls inside, so the
-     panel keeps its card shape and the page never scrolls. */
-  flex: 1 1 auto;
+  /* Sized by its moves. The panel's leftover height goes after the tree and
+     the dock, where it is the workspace's own rest; letting the tree grow
+     instead put a 400px hole between a short line and the reference table
+     under it. A tree taller than the panel shrinks to the space left and
+     scrolls inside, so the panel keeps its card shape and the page never
+     scrolls. */
+  flex: 0 1 auto;
   min-height: 90px;
-  padding: 8px 12px 12px;
-  background: var(--surface-3);
+  padding: 4px var(--build-pad, 12px) var(--build-pad, 12px);
   overflow: auto;
   overscroll-behavior: contain;
   font-size: 13px;
   line-height: 1.75;
 }
 .tree-empty { padding: 16px; color: var(--label); text-align: center; }
+/* The panel's leftover height is the foot's: one flexible block after the
+   totals, so head, trail, fork, line, inspector and foot stack from the top
+   and the empty ground closes the panel instead of splitting it. */
+#build-sidebar .panel-body::after {
+  content: "";
+  flex: 1 1 auto;
+  min-height: 0;
+}
 
 .dock {
   position: relative;
@@ -3042,11 +3070,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Reference data under the line: one tone step down from the panel, so it
+     reads as a different kind of thing without a rule or a card. */
+  background: var(--surface-3);
 }
 .dock-tabs {
   display: flex;
   gap: 2px;
-  padding: 0 8px;
+  padding: 0 calc(var(--build-pad, 12px) - 10px);
 }
 .dock-tabs button {
   display: inline-flex;
@@ -3065,7 +3096,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .dock-tabs button.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .dock-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.dock-body { flex: 1; min-height: 0; padding: 8px 12px; overflow: auto; }
+.dock-body { flex: 1; min-height: 0; padding: 8px var(--build-pad, 12px); overflow: auto; }
 /* Drag handle between the move tree and the inspector: the whole seam is the
    grab area, the visible grip is a short pill in the middle. The element is
    zero-height, so the cursor and the touch-action live on both it and its
@@ -3964,9 +3995,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow-wrap: anywhere;
 }
 
-/* Opening explorer: a Move / Games / W-D-L table. */
+/* Opening explorer: a Move / Games / W-D-L table. Its name is a caption on
+   the data, not a peer of the controls: it takes the line under the database
+   picker and the Engine switch instead of squeezing them apart and pushing
+   the ⓘ onto a row of its own (which happened at 1024, where the name is
+   longer than the space left beside it). */
 .explorer-opening {
-  flex: 0 1 auto;
+  flex: 1 1 100%;
+  order: 3;
+  margin-top: -2px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4275,12 +4312,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 5px;
   color: inherit;
   font: inherit;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
+/* The mainline is the line, so it reads at full ink; variations stay one step
+   back. Weight is not the tree's signal (it used to bold every mainline move
+   and every own move at once, which is every move). */
 .mtree-line.is-main > .mtree-move {
   color: var(--text);
 }
@@ -4289,14 +4329,30 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--surface-3);
 }
 
-/* The single selected move — the only strong highlight in the tree. */
+/* The one selected move: a filled pill, and the only strong mark in the tree.
+   The path that leads to it is drawn by the variation rails, so no move on the
+   way here carries a second accent fill. */
 .mtree-move.is-current {
   background: var(--accent);
   color: var(--accent-ink);
   box-shadow: var(--shadow-1);
 }
 
-/* A faint trail marking the line that leads to the current move. */
+/* Build's selected move is calm: a soft accent fill and a 2px accent bar at
+   the move's own left edge, so the tree still has one "here" without a
+   saturated pill competing with the Generate button for the eye. Analyze's
+   move grid keeps the filled cell (its rows are tiles, and the fill is what
+   makes a cell read as current there). */
+#view-build .mtree-move.is-current {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* A faint trail marking the line that leads to the current move (Analyze's
+   game list). Build does not paint it: its trail above the tree already says
+   where you stand, and filling every move on the way here spent the accent on
+   almost the whole tree. */
 .mtree-move.on-path {
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -4308,10 +4364,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-style: italic;
 }
 
-/* Opponent replies read lighter than the moves you own. */
+/* Opponent replies are context, not cards of yours. */
 .mtree-move.is-opp {
   color: var(--muted);
-  font-weight: 500;
 }
 
 .mtree-move.is-disabled {
@@ -4319,37 +4374,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   text-decoration: line-through;
 }
 
-/* Build-only decorations. */
-.mtree-move.is-main {
-  font-weight: 700;
-}
-.mtree-move.is-prep {
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-underline-offset: 2px;
-}
-/* Mastery heatmap: a colored underline on trained own-side moves. */
-.mtree-move.m-mastered {
-  box-shadow: inset 0 -2px 0 var(--k-mastered);
-}
-.mtree-move.m-learning {
-  box-shadow: inset 0 -2px 0 var(--k-learning);
-}
-.mtree-move.m-due {
-  box-shadow: inset 0 -2px 0 var(--k-due);
-}
-.mtree-move.m-weak {
-  box-shadow: inset 0 -2px 0 var(--k-weak);
-}
+/* Training status, one mark per move: a 2px bar under a move that is DUE
+   (amber) or WEAK (red) — the two states that ask you to do something. Every
+   other status (learning, mastered, untrained) stays unmarked and says its
+   name in the move's tooltip, so a calm tree is not a tree without data. */
+.mtree-move.m-due { box-shadow: inset 0 -2px 0 var(--k-due); }
+.mtree-move.m-weak { box-shadow: inset 0 -2px 0 var(--k-weak); }
 /* The selected move keeps full contrast whatever it is decorated with: the
    opponent-move grey (and a disabled move's fade) must not bleed onto the
    accent fill. Dark theme: white on the lighter accent is only ~3:1, so the
    label goes dark instead. */
 .mtree-move.is-current.is-opp,
-.mtree-move.is-current.is-prep,
 .mtree-move.is-current {
   color: var(--accent-ink);
-  text-decoration-color: currentColor;
 }
 .mtree-move.is-current.is-disabled { opacity: 0.8; }
 
@@ -5685,24 +5722,30 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .lib-list .card-head .search-field { margin-left: auto; }
 #view-analyze .panel-head { justify-content: space-between; }
 #view-analyze .panel-actions { margin-left: auto; }
-#build-rep-header .rep-stats {
-  flex: none;
-  font-size: var(--fs-s);
-  white-space: nowrap;
-}
 #build-rep-header #build-generate-node { margin-left: auto; flex: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }
 
-/* The head is two lines: the repertoire and its action, then the counts that
-   describe it. On one line the counts held ~160px of a ~410px panel, so the
-   name lost its ending to an ellipsis ("Caro-Kann: Ad…") while the primary
-   action had to shrink to a bare glyph. The counts are the name's subline,
-   the same shape the phone already uses. */
-@media (min-width: 761px) {
-  #build-rep-header { flex-wrap: wrap; row-gap: 0; }
-  #build-rep-header .rep-name { flex: 1 1 auto; }
-  #build-rep-header .rep-stats { flex: 1 1 100%; order: 3; padding-left: 0; }
+/* The head is the panel's title and nothing else: the repertoire's name at the
+   size a title is read at, then its two actions. The counts that used to spend
+   a second line here now close the panel (see .build-foot) — they describe the
+   whole tree, not this moment in it. */
+#build-rep-header {
+  min-height: 52px;
+  padding: 10px 10px 10px var(--build-pad, 14px);
 }
+#build-rep-header .rep-name { font-size: 17px; font-weight: 650; flex: 1 1 auto; }
+#build-rep-header .rep-color-sub { font-size: 13px; }
+
+/* The tree's totals: the last line of the panel, on the panel's own ground.
+   A rule above it would be a fifth band; the gap and the quiet ink are
+   enough. */
+.build-foot {
+  flex: none;
+  padding: 9px 14px 11px;
+  font-size: var(--fs-s);
+  line-height: 1.4;
+}
+#build-sidebar:has(#build-empty:not([hidden])) .build-foot { display: none; }
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
 @media (max-width: 760px) {
@@ -5760,11 +5803,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .study { --board-share: 0.56; }
 }
 
-/* Explorer database toggle: the chosen database reads at a glance (accent
-   text + underline), not just a slightly different chip shade. */
+/* Explorer database toggle: the chosen database is a plate on the segment
+   track with full-ink text. It used to add accent text, a 1px ring and an
+   accent underline, which put three more accents in a dock that already has
+   the tab's underline — the accent belongs to the current move and the one
+   action, not to every selected chip. */
 .explorer-db.is-active {
-  color: var(--accent-strong);
-  box-shadow: var(--shadow-1), 0 0 0 1px var(--line), inset 0 -2px 0 var(--accent-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-weight: 650;
 }
 
 .pgn-file-row {

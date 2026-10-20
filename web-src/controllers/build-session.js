@@ -1583,23 +1583,28 @@ function openNodeContextMenu(event, nodeId) {
   const node = appState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
+  // Only what the page can act on and then show. Each entry here changes
+  // something the tree or the board then displays: the moves under this
+  // position, which child is its mainline, the note the tree dots, the text on
+  // the clipboard, or the move's own presence. Three entries went: "Mark
+  // prepared" (nothing in the tree draws it, and the server already marks your
+  // own moves; unmarking one only made Coverage call that line unknown), "Tag…"
+  // (no view reads a tag, and the comment is the note the tree does show) and
+  // "Export branch PGN" (the same serialization "Copy line PGN" puts on the
+  // clipboard). On the starting position Delete would be refused after the
+  // click, so it is not offered.
   const groups = [
     [["generate", "Generate from here"]],
     [
-      ["set_mainline", node.is_mainline ? "Mainline (active)" : "Set as mainline"],
-      ["mark_prepared", node.is_prepared ? "Unmark prepared" : "Mark prepared"],
+      ...(node.is_mainline || !node.parent_id ? [] : [["set_mainline", "Set as mainline"]]),
       ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
     ],
-    [
-      ["add_comment", "Comment..."],
-      ["add_tag", "Tag..."],
-    ],
+    [["add_comment", node.comment ? "Edit comment…" : "Add comment…"]],
     [
       ["copy_fen", "Copy FEN"],
       ["copy_line_pgn", "Copy line PGN"],
-      ["export_branch_pgn", "Export branch PGN"],
     ],
-    [["delete", "Delete this move"]],
+    ...(node.parent_id ? [[["delete", "Delete this move"]]] : []),
   ];
   const safeId = nodeId;
   // Groups are told apart by a gap and a seam, not by five 10px uppercase
@@ -1609,10 +1614,12 @@ function openNodeContextMenu(event, nodeId) {
     html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${groups
     .map((items, groupIndex) =>
       items.map(([action, label], i) =>
-        html`<button type="button" data-action="${action}" data-node-id="${safeId}"${groupIndex > 0 && i === 0 ? html` class="menu-sep-before"` : ""}>${label}</button>`
+        html`<button type="button" role="menuitem" data-action="${action}" data-node-id="${safeId}"${groupIndex > 0 && i === 0 ? html` class="menu-sep-before"` : ""}>${label}</button>`
       )
     )
     }`;
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Move actions");
   menu.hidden = false;
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();
@@ -1625,6 +1632,25 @@ function openNodeContextMenu(event, nodeId) {
       handleNodeContextAction(button.dataset.action, button.dataset.nodeId)
     );
   });
+  // Same keyboard behaviour as the repertoire's ⋯ menu: arrows walk the items,
+  // Home/End jump, Escape or Tab leaves. The menu opens on the pointer's
+  // position, so its first item takes focus.
+  const buttons = [...menu.querySelectorAll("button")];
+  menu.onkeydown = (event) => {
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const index = buttons.indexOf(document.activeElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+      buttons[next]?.focus();
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      if (event.key === "Escape") event.preventDefault();
+      event.stopPropagation();
+      closeNodeContextMenu();
+    }
+  };
+  buttons[0]?.focus();
 }
 
 async function handleNodeContextAction(action, nodeId) {
@@ -1662,10 +1688,6 @@ async function handleNodeContextAction(action, nodeId) {
       await generateFromCurrentNode();
       return;
     }
-    if (action === "export_branch_pgn") {
-      await exportBuild("pgn", nodeId);
-      return;
-    }
     if (action === "copy_fen") {
       await navigator.clipboard.writeText(node.fen);
       setStatus("FEN copied");
@@ -1692,18 +1714,6 @@ async function handleNodeContextAction(action, nodeId) {
       });
       if (!result) return;
       value = result.comment;
-    } else if (action === "add_tag") {
-      const result = await showInputModal({
-        title: "Add tag",
-        okLabel: "Add",
-        fields: [{ name: "tag", label: "Tag name", default: "" }],
-      });
-      if (!result) return;
-      value = (result.tag || "").trim();
-      if (!value) {
-        setStatus("Tag is empty");
-        return;
-      }
     }
     const payload = await postJson("/api/build/action", {
       repertoire_id: appState.build.repertoire_id,
@@ -1719,7 +1729,9 @@ async function handleNodeContextAction(action, nodeId) {
 }
 
 function closeNodeContextMenu() {
-  document.getElementById("node-context-menu").hidden = true;
+  const menu = document.getElementById("node-context-menu");
+  menu.hidden = true;
+  menu.onkeydown = null;
   markNodeMenuTarget(null);
 }
 
@@ -1733,37 +1745,25 @@ function markNodeMenuTarget(nodeId) {
   });
 }
 
-async function exportBuild(format, nodeId = null) {
+// "Export PGN" in the repertoire's ⋯: the whole tree with its variations.
+// The per-move menu's one line export is a clipboard copy, not a download.
+async function exportBuild() {
   if (!appState.build) {
     setStatus("Open a repertoire first");
     return;
   }
   const repertoireId = appState.build.repertoire_id;
   const ownerId = currentOwnerId();
-  // Export reads server-side tree state (and may scope to a node id) — sync first.
+  // Export reads server-side tree state — sync first.
   try {
     await hardFlushBuild();
   } catch (error) {
     setStatusError(error.message);
     return;
   }
-  if (ownerId !== currentOwnerId()) return;
-  if (nodeId) nodeId = resolveBuildId(nodeId);
-  // Full tree-with-variations PGN for top-level "Export PGN" calls
-  if (format === "pgn" && !nodeId) {
-    const payload = await api(
-      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
-    );
-    if (ownerId !== currentOwnerId()) return;
-    downloadText(payload.filename, payload.mime, payload.content);
-    setStatus(`Downloaded ${payload.filename}`);
-    return;
-  }
-  const payload = await postJson("/api/build/export", {
-    repertoire_id: repertoireId,
-    format,
-    node_id: nodeId,
-  });
+  const payload = await api(
+    `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
+  );
   if (ownerId !== currentOwnerId()) return;
   downloadText(payload.filename, payload.mime, payload.content);
   setStatus(`Downloaded ${payload.filename}`);

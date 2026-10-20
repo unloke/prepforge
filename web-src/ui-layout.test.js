@@ -208,11 +208,12 @@ describe("workspace chrome layout", () => {
     const phone = phoneCss;
     const header = phone.slice(phone.indexOf("  #build-rep-header {"));
     const rule = header.slice(0, header.indexOf("\n  }"));
-    // Flow layout with centered lines: a grid centered the 44px back button
-    // across both rows while the title sat on the first one, ~9px apart.
+    // Flow layout, one row: the back button, the name and ⋯ are all centred on
+    // the same line now that the size summary has moved to the panel's foot.
     expect(rule).not.toMatch(/display:\s*grid/);
     expect(rule).toMatch(/display:\s*flex/);
-    expect(rule).toMatch(/align-content:\s*center/);
+    expect(rule).toMatch(/align-items:\s*center/);
+    expect(rule).not.toMatch(/flex-wrap:\s*wrap/);
     // The header is the board's top neighbour on a phone: it owns the gap.
     expect(rule).toMatch(/margin:\s*0 0 12px/);
     // The save chip lives beside the inspector tools here, not in the far-off
@@ -319,7 +320,13 @@ describe("workspace chrome layout", () => {
     // into its own scrollbar; a fixed 40% share did both.
     expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
+    // The tree sizes to its moves (shrinkable, with a floor: a long line
+    // scrolls inside rather than growing the panel) and the panel's leftover
+    // height closes the panel after the foot, not between a short line and the
+    // inspector, where it was a 400px hole.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
+    expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
+    expect(css).toMatch(/#build-sidebar \.panel-body::after \{[^}]*flex:\s*1 1 auto/);
   });
 
   it("captions the board with the position, not the repertoire", () => {
@@ -334,13 +341,13 @@ describe("workspace chrome layout", () => {
     // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
     // still hardcodes 9-12px is the one squinting line. The Explorer share, the
     // in-repertoire dot, the crumb separator and the fork chip's number all read
-    // at that floor now; on a phone the header stats, save chip and fork share
+    // at that floor now; on a phone the panel's foot, save chip and fork share
     // take the same token instead of a 12px literal.
     expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*11px/);
     expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
     expect(ruleBody(".crumb-sep")).toMatch(/font-size:\s*var\(--fs-s\)/);
     expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
-    expect(phoneCss).toMatch(/#build-rep-header \.rep-stats \{[^}]*font-size:\s*var\(--fs-s\)/);
+    expect(phoneCss).toMatch(/#view-build \.build-foot \{[^}]*font-size:\s*var\(--fs-s\)/);
     expect(phoneCss).toMatch(/#build-inspector \.build-sync \{[^}]*font-size:\s*var\(--fs-s\)/);
     expect(phoneCss).toMatch(/#view-build \.fork-chip small \{[^}]*font-size:\s*var\(--fs-s\)/);
   });
@@ -389,21 +396,24 @@ describe("workspace chrome layout", () => {
     // a strip with room for its name; the phone's Games sheet mirrors it.
     expect(view).toContain('class="btn sm" id="fetch-my-game"');
     expect(view).toMatch(/id="fetch-my-game"[^>]*>.*?<span class="bl">Last game<\/span>/);
-    // Build's head names its primary action in words; the counts move to a
-    // second line so the repertoire name keeps its ending.
+    // Build's head names its primary action in words and is the panel's title
+    // and nothing else: the name at title size, then its two actions. The size
+    // summary spends no strip of the head; it closes the panel instead.
     const build = html.slice(html.indexOf('id="view-build"'));
     const buildHead = build.slice(build.indexOf('id="build-rep-header"'), build.indexOf("<div class=\"panel-body\""));
     expect(buildHead).toContain('class="btn primary" id="build-generate-node"');
     expect(buildHead).toMatch(/id="build-generate-node"[^>]*><svg[^>]*>.*?<span class="bl">Generate<\/span>/);
     expect(buildHead).toContain('id="build-menu"');
     expect(buildHead).toContain('id="build-rep-name"');
-    expect(buildHead).toContain('id="build-rep-stats"');
-    // The head wraps: the name and action on the first line, the counts filling
-    // their own line, so neither has to be shortened on a narrow sidebar.
-    const buildHeadRules = css.slice(css.indexOf("#build-rep-header .rep-stats {"));
-    expect(buildHeadRules).toMatch(/#build-rep-header \{ flex-wrap: wrap/);
-    expect(buildHeadRules).toMatch(/#build-rep-header \.rep-stats \{ flex: 1 1 100%; order: 3/);
-    expect(buildHeadRules).toMatch(/#build-rep-header \.rep-name \{ flex: 1 1 auto/);
+    expect(buildHead).not.toContain('id="build-rep-stats"');
+    // The head does not wrap: one title line, one row of actions. The name is
+    // the panel's title, one step above the 13px ledger under it.
+    expect(ruleBody("#build-rep-header")).toMatch(/min-height:\s*52px/);
+    expect(ruleBody("#build-rep-header .rep-name")).toMatch(/font-size:\s*17px/);
+    // The totals are the panel's last line (after the dock), not a head strip.
+    const panelBody = build.slice(build.indexOf("<div class=\"panel-body\""), build.indexOf("</aside>", build.indexOf('id="build-inspector"')));
+    expect(panelBody.indexOf('id="build-rep-stats"')).toBeGreaterThan(panelBody.indexOf('id="build-inspector"'));
+    expect(ruleBody(".build-foot")).toMatch(/font-size:\s*var\(--fs-s\)/);
     // The empty panel's one sentence is running text: it reads at prose size in
     // the full ink, not at the dense 13px the move ledger uses.
     const buildEmpty = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-tree-meta"'));
