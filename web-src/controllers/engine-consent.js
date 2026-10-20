@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 
 // The full net is 94 MB, so the engine card asks before fetching it. The
-// question is one row above the lines: the lite search keeps running and
+// question is one row above the card's lines: the lite search keeps running and
 // painting underneath it, and answering never interrupts that search.
 export function engineConsentHtml() {
   return html`<div class="engine-consent" data-testid="engine-full-choice">
