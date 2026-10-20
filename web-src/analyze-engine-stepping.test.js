@@ -9,7 +9,8 @@ const source = appSource();
 function widgetHarness() {
   const deps = { html,
     setEngineBestArrow: vi.fn(), localGameOver: () => null,
-    activeViewName: () => "analyze",
+    activeViewName: () => "analyze", effectiveStockfishDepth: () => 16,
+    createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, getAnalyzeSession: () => null, formatEngineEval,
   };
   const widgetSource = readFileSync(new URL("./controllers/engine-widget.js", import.meta.url), "utf8");
@@ -51,6 +52,29 @@ describe("Analyze engine stepping", () => {
     widget._renderEvalBar({ score_cp: 40 });
     expect(widget.evalHead.textContent).toBe("+0.40");
     expect(widget.evalHead.dataset.pending).toBeUndefined();
+  });
+
+  it("searches exactly the lines it shows, plus the coach's alternative while it is on", async () => {
+    const { widget } = widgetHarness();
+    // The card's Line −/+ is the whole contract with the engine: at 1 line Stockfish is
+    // asked for MultiPV 1 (it used to be forced to MultiPV 2 on Analyze, doubling the
+    // nodes of every search for a line the card never drew) — unless the coach's engine
+    // review is on, which reads the best alternative from this same search.
+    const sent = [];
+    const engine = {
+      open: vi.fn(async (req) => { sent.push(["open", req.multipv]); return { session_id: "s", fen: req.fen, pvs: [], running: true }; }),
+      update: vi.fn(async (req) => { sent.push(["update", req.multipv]); return { session_id: "s", fen: req.fen, pvs: [], running: true }; }),
+      snapshot: () => null,
+    };
+    widget.engine = engine;
+    widget.engineDepth = 16;
+    widget.el = { hidden: true, classList: { add() {}, remove() {}, contains: () => false } };
+    widget.lastFen = "current w - - 0 1";
+    // Reviews off (the harness has no session): the search is the shown lines.
+    await widget.openForCurrent();
+    await widget._setMultipv(3);
+    expect(sent).toEqual([["open", 1], ["update", 3]]);
+    expect(widget.multipv).toBe(3);
   });
 
   it("does not paint another FEN's score or arrow", () => {

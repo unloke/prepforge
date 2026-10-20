@@ -36,11 +36,8 @@ class EngineWidget {
     this.lastSnapshot = null;
     // The engine line shown on the board (see _previewLine), or null.
     this.preview = null;
+    // Lines shown, and (see _searchMultipv) the width of the search behind them.
     this.multipv = 1;
-    // Lines actually searched. Always the shown lines: Explorer row evals come
-    // from their own worker (explorerEvalEngine), so the main line keeps the
-    // full-strength single-PV search instead of being widened to every row.
-    this.searchedMultipv = 1;
     this.maxMultipv = 5;
     this.minMultipv = 1;
     // Engine compute seam: browser Stockfish (WASM Worker) only. No server
@@ -148,8 +145,17 @@ class EngineWidget {
     }
   }
 
+  // Lines the search must cover. The card shows `this.multipv` rows. Build's Explorer row
+  // evals come from their own worker, so there the search is exactly the lines shown. On
+  // Analyze, though, the coach's engine review reads the best ALTERNATIVE in the position
+  // before a move — that gap is what "only move" and the Brilliant/Great verdict turn on —
+  // and it reads it from this same search (onWidgetSnapshot). So while that review is on,
+  // ask for the second line up front: the coach would otherwise widen the same position a
+  // moment later, and the store restarts the lane wider, throwing the narrow search away
+  // (measured per stepped position at depth 16: 295k nodes as one search, 361k as two).
   _searchMultipv() {
-    return activeViewName() === "analyze" ? Math.max(2, this.multipv) : this.multipv;
+    const coach = activeViewName() === "analyze" ? getAnalyzeSession()?.positionCoach : null;
+    return coach?.enabled ? Math.max(2, this.multipv) : this.multipv;
   }
 
   /** Re-analyze whenever the active board changes. No-op if widget closed. */
@@ -162,8 +168,7 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.update({ fen, multipv: this._searchMultipv() });
       // Bail if the world moved while update() was in flight: the panel closed, a NEWER board
       // change set a different lastFen, or a depth change swapped the provider out. Otherwise we'd
       // paint this (now stale) FEN's eval onto the current board, or poll the wrong provider.
@@ -184,8 +189,7 @@ class EngineWidget {
     this.lastFen = fen;
     this._clearAnalysisView();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.open({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.open({ fen, multipv: this._searchMultipv() });
       // Bail if the panel closed, the board moved on, or a depth change swapped the provider
       // while open() was in flight (see onBoardChanged).
       if (!this.open || engine !== this.engine || fen !== this.lastFen) return;
@@ -208,8 +212,7 @@ class EngineWidget {
     const engine = this.engine;
     const fen = this.lastFen || this.currentFen();
     try {
-      this.searchedMultipv = this._searchMultipv();
-      const snapshot = await engine.update({ fen, multipv: this.searchedMultipv });
+      const snapshot = await engine.update({ fen, multipv: this._searchMultipv() });
       // Bail if the world moved while update() was in flight: panel closed, provider swapped, the
       // board changed, or the line count was clicked again (this.multipv !== clamped). See
       // onBoardChanged.
@@ -313,6 +316,12 @@ class EngineWidget {
   _renderLinesReadout() {
     if (!this.linesReadout) return;
     this.linesReadout.textContent = `${this.multipv}`;
+    // On Analyze the coach's review reads the best alternative, so the search covers one
+    // line more than the card shows. The count stays the lines shown; the tooltip says so.
+    const extra = this._searchMultipv() > this.multipv;
+    this.linesReadout.title = extra
+      ? `${this.multipv} shown, plus the coach's best alternative`
+      : "Lines shown";
     if (this.linesDownBtn) this.linesDownBtn.disabled = this.multipv <= this.minMultipv;
     if (this.linesUpBtn) this.linesUpBtn.disabled = this.multipv >= this.maxMultipv;
   }
@@ -410,6 +419,7 @@ class EngineWidget {
   }
 
   _startPolling() {
+    this._renderLinesReadout(); // its tooltip names the coached extra line
     // Never poll a closed panel. openForCurrent()/onDepthSettingChanged() call this right after
     // awaiting _restartForCurrentBoard(), so the user may have closed the widget mid-await — guard
     // here to cover every call site at once (a stray 450ms interval on a hidden panel otherwise).

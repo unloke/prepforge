@@ -153,10 +153,12 @@ class PositionCoach {
     this.enabled = true;
     this.timer = null;
     this.token = 0;
-    // `${depth}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}], depth }
-    // (White-POV). Cached so stepping forward (this position was last turn's "after")
-    // costs one new search, not two. The depth is part of the key so a Settings depth
-    // change can't serve a shallower read for a position seen at the old depth.
+    // `${depth}|${lines}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}],
+    // depth } (White-POV), one entry per read width: the before-move check needs two
+    // lines, the after-move one needs one, and a narrower search can't answer a wider
+    // question. Cached so stepping forward (this position was last turn's "after") costs
+    // one new search, not two. The depth is part of the key so a Settings depth change
+    // can't serve a shallower read for a position seen at the old depth.
     this.evalCache = new Map();
   }
 
@@ -230,9 +232,10 @@ class PositionCoach {
     const now = performance.now();
     const rapid = now - this.lastUpdateAt < COACH_RAPID_STEP_MS;
     this.lastUpdateAt = now;
-    const cached = (position) => this.evalCache.get(`${this.engineDepth}|${position}`) ||
+    // The before-read needs both lines, the after-read only its top one (see _eval).
+    const cached = (position, lines) => this.evalCache.get(`${this.engineDepth}|${lines}|${position}`) ||
       savedPositionEvalRead(position, this.engineDepth);
-    if (!rapid && cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
+    if (!rapid && cached(this.ctx.prevFen, 2) && (localGameOver(fen) || cached(fen, 1))) {
       void this._run(fen);
       return true; // cached verdict lands before the next browser paint
     }
@@ -257,10 +260,11 @@ class PositionCoach {
       // engine to search, so the "after" read is synthesized instead.
       const over = localGameOver(fen);
       // The position BEFORE the move (best line + best alternative) and AFTER it, read
-      // at once: the store gives each its own warm lane.
+      // at once: the store gives each its own warm lane. Only the before-read needs the
+      // second line (see _eval); the after-read's single line only supplies its top move.
       const [before, after] = await Promise.all([
-        this._eval(prevFen, token),
-        over ? null : this._eval(fen, token),
+        this._eval(prevFen, token, 2),
+        over ? null : this._eval(fen, token, 1),
       ]);
       if (token !== this.token || fen !== this.fen) return;
       if (!before || !before.lines.length) return;
@@ -424,7 +428,9 @@ class PositionCoach {
     } catch (_) {
       return null; // illegal/unparseable natural move → trap un-evaluable
     }
-    const read = await this._eval(humanFen, token);
+    // Only the top line is read here, so ask for one: a wider search would cost the
+    // user a slower Brilliant verdict for a score it never looks at.
+    const read = await this._eval(humanFen, token, 1);
     if (token !== this.token || fen !== this.fen || !read || !read.lines.length) return null;
     const line = read.lines[0];
     const humanWc = c.moverWinChanceAfter({ cp: line.cp ?? null, mate: line.mate ?? null }, features.mover);
@@ -457,27 +463,32 @@ class PositionCoach {
     }
   }
 
-  // Run (or reuse a cached) MultiPV-2 read of `fen`, White-POV, on a short budget.
-  async _eval(fen, token) {
+  // Run (or reuse a cached) engine read of `fen`, White-POV. `lines` is how many lines the
+  // caller reads: 2 for the position before a move (the second line is the best
+  // alternative and decides "only move" / Brilliant), 1 everywhere else. The Engine card
+  // searches exactly the lines it shows, so its snapshot only ever answers a 1-line need.
+  async _eval(fen, token, lines = 2) {
     if (!fen) return null;
-    const key = `${this.engineDepth}|${fen}`;
-    const cached = this.evalCache.get(key);
+    const cacheKey = `${this.engineDepth}|${lines}|${fen}`;
+    const cached = this.evalCache.get(cacheKey);
     if (cached) return cached;
     const saved = savedPositionEvalRead(fen, this.engineDepth);
     if (saved) {
-      this.evalCache.set(key, saved);
+      this.evalCache.set(cacheKey, saved);
       return saved;
     }
     const store = await analysisStore();
     // Two tries: a worker that dies mid-search gets one fresh lane before the coach gives up.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       if (token !== this.token) return null;
-      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: 2 });
+      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: lines });
       this.leases.add(lease);
       // No wall-clock deadline: a busy machine is slower, not wrong. Only a newer move
       // (cancel releases the lease, resolving null) or an engine failure ends the wait.
       // An interrupted search keeps its depth in the store, so stepping back is instant.
-      const snap = await lease.until((s) => s.pvs?.[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14));
+      const snap = await lease.until(
+        (s) => s.pvs?.length >= lines && s.pvs[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14),
+      );
       this.leases.delete(lease);
       lease.release();
       if (token !== this.token || !snap) return null;
@@ -487,7 +498,9 @@ class PositionCoach {
   }
 
   // Cache a snapshot of `fen` (if it is for that position and deep enough) as a
-  // coach read; returns the read or null.
+  // coach read; returns the read or null. It is filed under every read width it can
+  // answer, so the deep 1-line snapshot the Engine card produces still serves a 1-line
+  // after-read without ever standing in for the 2-line before-read.
   _remember(fen, snap, minDepth) {
     if (!snap || snap.fen !== fen || (snap.current_depth || 0) < minDepth) return null;
     const lines = (snap.pvs || [])
@@ -502,10 +515,11 @@ class PositionCoach {
       }));
     if (!lines.length) return null;
     const result = { fen, depth: snap.current_depth || 0, lines };
-    const key = `${this.engineDepth}|${fen}`;
-    const existing = this.evalCache.get(key);
-    if (existing && existing.depth > result.depth) return existing;
-    this.evalCache.set(key, result);
+    for (let need = lines.length; need >= 1; need -= 1) {
+      const key = `${this.engineDepth}|${need}|${fen}`;
+      const existing = this.evalCache.get(key);
+      if (!existing || existing.depth <= result.depth) this.evalCache.set(key, result);
+    }
     if (this.evalCache.size > 50) this.evalCache.delete(this.evalCache.keys().next().value);
     return result;
   }
