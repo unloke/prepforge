@@ -14,4 +14,7 @@ export const hooks = {
   explorerEvals: null,
   // The live Analyze session (the engine widget hands it its snapshot).
   analyzeSession: null,
+  // The Build view, its session and the Coverage panel: created lazily by the
+  // shell, read by build-entry.js's tree/queue code.
+  build: null,
 };
