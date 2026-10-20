@@ -18,8 +18,9 @@ const MASTERY_WORDS = {
 // leaves one chip per reply). Painted whole it took six rows of the panel and
 // pushed the move tree to its 90px floor at 1024x768. The bar now paints a
 // window of chips that always contains the pick (↑/↓ slides the window with
-// it), says how many are left, and opens the full list on request — inside a
-// capped, scrolling block, so even then the tree keeps its floor.
+// it) and opens the full list on request — inside a capped, scrolling block,
+// so even then the tree keeps its floor. A phone's chips are wider (a thumb's
+// target), so its window is shorter: two rows above the line, not three.
 const FORK_WINDOW = 8;
 const FORK_WINDOW_PHONE = 6;
 
