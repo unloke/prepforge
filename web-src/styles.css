@@ -3081,7 +3081,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .dock-tabs {
   display: flex;
   gap: 2px;
-  padding: 0 var(--build-pad, 12px);
+  padding: 0 calc(var(--build-pad, 12px) - 10px);
 }
 .dock-tabs button {
   display: inline-flex;
