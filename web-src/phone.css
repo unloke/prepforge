@@ -148,7 +148,8 @@
   #view-dashboard .lib-cols { display: none; }
   /* Import PGN needs its own place on a phone: the page head's + is New
      repertoire, so with the header actions hidden a phone could not add a PGN
-     at all. It sits beside the search field; New repertoire keeps the +. */
+     at all. It takes the pill of the search field beside it, so the two read
+     as one row of controls; New repertoire keeps the +. */
   #view-dashboard .lib-list .seg { grid-column: 1 / -1; }
   #view-dashboard .lib-list .search-field { grid-column: 1; }
   #view-dashboard .lib-actions { grid-column: 2; display: flex; gap: 8px; }
@@ -156,13 +157,15 @@
   #view-dashboard .lib-actions #dashboard-import-pgn {
     flex: none;
     height: 44px;
-    padding: 0 12px;
-    border-color: transparent;
-    background: transparent;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
     color: var(--text);
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 550;
   }
-  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--surface-3); }
+  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
      reads as a cut-off row, so the chips are sized to fit the width instead. */
   #view-dashboard .lib-list .seg {
