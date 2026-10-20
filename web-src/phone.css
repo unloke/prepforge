@@ -496,8 +496,9 @@
   .study .engine-banner { order: 0; flex: none; }
   /* A diagnostic does not get a fifth of the screen above the board. Same one
      line as the desktop panel: the cause and the fix are behind the action's
-     tooltip, which the row itself is. */
-  #view-build .engine-banner { gap: 0 6px; padding: 6px 12px 8px; margin: 0; }
+     tooltip, which the row itself is. It keeps the phone gutter so its words
+     sit on the same edge as the repertoire's name under it. */
+  #view-build .engine-banner { gap: 0 6px; padding: 6px var(--phone-gutter) 8px; margin: 0; }
   #view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) { font-size: 13px; line-height: 1.4; }
   /* The scroller under the board. */
   :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) {
