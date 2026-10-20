@@ -467,6 +467,11 @@
   /* Analyze keeps its label: the middle track names the move on show (a phone
      has no panel head). Build has no label to spare. */
   #view-build .board-bar :is(.board-label, .board-sub) { display: none; }
+  /* Analyze's middle track holds the Analyze pill, which is the one thing a
+     phone puts there (see #run-analysis below). The game's identity is
+     already in the Report sheet's history; on a phone the board bar is too
+     narrow to carry it beside the pill without covering it. */
+  #view-analyze .board-bar :is(.board-label, .board-sub) { display: none; }
   .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
   /* The last two tracks. The pill is absolute in the free middle, so the
      arrows must be placed: auto-placement would fill that track first. */

@@ -1004,12 +1004,15 @@
   #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: under the engine, in the height the screen has left. It is a band of
-     its own tone, so it needs no rule above it. */
+  /* Coach: under the engine, as tall as its note needs and no taller. It is a
+     band of its own tone, so it needs no rule above it. It used to take every
+     pixel the screen had left, which parked a screenful of empty tone under a
+     one-line verdict; the room now belongs to the score sheet below it. */
   #analysis-explain {
     order: 3;
-    flex: 1 1 0;
+    flex: 0 1 auto;
     display: block;
+    max-height: 118px;
     height: auto;
     min-height: 0;
     margin: 0;
@@ -1070,11 +1073,25 @@
   #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
 
-  /* Game graph on top, at a fixed height so the board never moves. It is
-     the move list too: a tap jumps to that move. */
+  /* Game graph on top, at a fixed height so the board never moves. It is the
+     move scrubber; the score sheet below the coach is the other way in. */
   #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; }
   #analysis-eval-card .eval-chart { height: 84px; border-radius: 0; touch-action: pan-y; }
-  #analysis-results > .moves-grid { display: none; }
+  /* The score sheet takes the rest of the screen under the coach: a phone
+     cannot reach the report sheet's moves without it, and the band the coach
+     does not need is already here. */
+  #analysis-results:not([hidden]) > .moves-grid {
+    display: block;
+    order: 3;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    padding: 4px 12px 8px;
+    border-radius: 0;
+    background: var(--bg);
+    overflow-y: auto;
+  }
 
   /* Under the board: eval, win meter, Report, Engine; then the best line. */
   #analysis-eval-card > .ev-head {

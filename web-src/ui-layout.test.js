@@ -472,6 +472,13 @@ describe("workspace chrome layout", () => {
     // last two tracks explicitly; auto-placement would put Prev under the pill.
     expect(phoneCss).toMatch(/:is\(#analysis-prev, #build-parent, #train-hint\) \{ order: 5; grid-column: -3 \/ -2; \}/);
     expect(phoneCss).toMatch(/:is\(#analysis-next, #build-next, #train-skip\) \{ order: 6; grid-column: -2 \/ -1; \}/);
+    // The pill owns the bar's middle: the move label and the game's identity
+    // would paint under it, so the phone hides both.
+    expect(phoneCss).toMatch(/#view-analyze \.board-bar :is\(\.board-label, \.board-sub\) \{ display: none; \}/);
+    // The coach takes its note's height and the rest of the screen goes to the
+    // score sheet, so a one-line verdict does not leave a band of empty tone.
+    expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);
+    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{[^}]*flex: 1 1 0;/);
     expect(app).toContain("function wirePhoneSheets()");
   });
 
