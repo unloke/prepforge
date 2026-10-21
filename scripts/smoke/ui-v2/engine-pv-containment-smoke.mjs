@@ -9,7 +9,7 @@
 // page) until the next unrelated repaint.
 //
 // Runs on the plain production build (`npm run build`, no E2E flags) with real
-// browser Stockfish (lite net; the 94 MB question is answered "Keep lite"), and samples
+// browser Stockfish (a configured lite profile), and samples
 // EVERY animation frame while the search streams:
 //   - documentElement/body scrollWidth-clientWidth and scrollHeight-clientHeight
 //   - #engine-window, #engine-window-pvs, #explorer-engine-slot, #explorer-drawer,
@@ -104,7 +104,7 @@ await new Promise((r) => server.listen(PORT, r));
 
 const { chromium } = await import("playwright");
 let browser;
-for (const channel of ["msedge", "chrome", undefined]) {
+for (const channel of [undefined, "msedge", "chrome"]) {
   try { browser = await chromium.launch({ headless: true, ...(channel ? { channel } : {}) }); break; } catch { /* next */ }
 }
 if (!browser) { console.error("[engine-pv-smoke] no chromium-based browser available"); server.close(); process.exit(2); }
@@ -171,6 +171,11 @@ const VIEWPORTS = [
 
 for (const vp of VIEWPORTS) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  // A configured device runs the real lite engine without first benchmarking
+  // hardware alongside the search. This checks streamed layout, not Detect.
+  await page.addInitScript(() => localStorage.setItem("prepforge.engine-profile", JSON.stringify({
+    profile: { net: "lite", workers: 2, source: "user" }, consent: "no",
+  })));
   const errors = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
@@ -190,9 +195,14 @@ for (const vp of VIEWPORTS) {
     () => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending) .pv-move"),
     null,
     { timeout: 90000 },
-  );
-  // Keep lite: the 94 MB question is a row above the lines, not part of this check.
-  await page.locator('[data-testid="engine-full-choice"] [data-choice="no"]').click({ timeout: 3000 }).catch(() => {});
+  ).catch(async error => {
+    console.error(`[engine-pv-smoke] ${vp.name} startup`, await page.evaluate(() => ({
+      card: document.getElementById("engine-window")?.innerText,
+      profile: localStorage.getItem("prepforge.engine-profile"), isolated: crossOriginIsolated,
+    })), errors);
+    throw error;
+  });
+  console.log(`[engine-pv-smoke] ${vp.name} first PV ready`);
   await page.evaluate(SAMPLER);
 
   // 1. MultiPV 1→5, sampling the raise and the streaming that follows.
@@ -205,6 +215,16 @@ for (const vp of VIEWPORTS) {
   await page.waitForTimeout(2500);
   await selectNode(page, "n10", phone);
   await page.waitForTimeout(2500);
+  // Pending placeholders also count as five rows. Require actual engine output
+  // before accepting containment of the final uncached position.
+  console.log(`[engine-pv-smoke] ${vp.name} final search`, await page.locator("#engine-window").innerText());
+  await page.waitForFunction(() =>
+    document.querySelectorAll("#engine-window-pvs .engine-pv:not(.is-pending) .pv-move").length > 0,
+  null, { timeout: 90000 }).catch(async error => {
+    console.error(`[engine-pv-smoke] ${vp.name} final search failed`,
+      await page.locator("#engine-window").innerText(), errors);
+    throw error;
+  });
 
   // At stacked widths (≤860) the page is the documented scroll owner for Build
   // (styles.css: the sidebar drops its one-screen fit), so a taller inspector is
