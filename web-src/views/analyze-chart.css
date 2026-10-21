@@ -47,6 +47,15 @@
   font-weight: 600;
 }
 
+/* While an engine line is walked on the board the slot is the line, not the
+   game: it reads in the accent, as every board bar's does. The shared sheet
+   paints .board-label that way, and this page's caption is the stronger
+   selector, so it says so here instead of losing the state to specificity
+   (measured: the previewing bar stayed in the ink, #1b1c1e, not #2447a8). */
+#view-analyze .board-bar:has(.pv-exit:not([hidden])) .board-caption {
+  color: var(--accent-text);
+}
+
 /* The last move's tint. The shared sheet paints it as a gradient over the
    square's own fill, which paints the square button with a gradient; a flat
    mix of the tint into the square's colour says the same thing in one
