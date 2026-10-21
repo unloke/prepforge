@@ -431,9 +431,12 @@ async function scenarioErrorRecovery() {
   state.latest = game("e-old", "me_user", "opp_a", "me_user", 60);
   let failLight = false;
   let failLightCalls = 0;
+  let releaseFailure;
+  const failureGate = new Promise(resolve => { releaseFailure = resolve; });
   await page.route("**/api/lichess/latest?light=1", async (route) => {
     if (failLight) {
       failLightCalls += 1;
+      await failureGate;
       return route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ detail: "lichess unavailable" }) });
     }
     state.lightCalls += 1;
@@ -445,15 +448,17 @@ async function scenarioErrorRecovery() {
   });
   await goAnalyze(page);
   await waitForBaseline(state);
-  // One probe fails: the watch must recover, not go quiet for the idle cadence.
+  // Keep the failed response pending until the recovery signal is dispatched.
   failLight = true;
-  await page.waitForTimeout(2200);
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await returnToTab(page);
   await waitUntil(() => failLightCalls > 0, 20_000, "the failing probe");
   failLight = false;
   state.latest = game("e-new", "me_user", "opp_b", "me_user", 0.2);
-  // The failed probe clears the focus throttle, so the very next focus retries.
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  const beforeRecovery = state.lightCalls;
+  // A real return must queue one fresh check even while the 502 is pending.
+  // Request arrival above does not mean the browser has handled its rejection.
+  await returnToTab(page);
+  releaseFailure();
   await page.waitForFunction(
     () => [...document.querySelectorAll("#notices .notice")]
       .some((el) => (el.querySelector(".notice-title") || {}).textContent === "You just finished a game!"),
@@ -461,6 +466,8 @@ async function scenarioErrorRecovery() {
   ).catch(() => {});
   check("E1 a failed probe does not stop the next one surfacing the game", (await nudgeText(page)).includes("You just finished a game!"), await nudgeText(page));
   check("E2 no console errors beyond the deliberate 502", errors.length === 0, errors.slice(0, 3));
+  check('E3 the pending failure is followed by exactly one fresh probe', failLightCalls === 1 && state.lightCalls - beforeRecovery === 1,
+    { failures: failLightCalls, freshProbes: state.lightCalls - beforeRecovery });
   await page.close();
 }
 
