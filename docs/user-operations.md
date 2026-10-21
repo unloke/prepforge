@@ -98,7 +98,7 @@
 
 完成判準：到達摘要，看到第一次答對、失誤（提示後答對也算失誤）與跳過數；結束後不再顯示待走方。
 
-**History 試用版**：在開始畫面按 History（Smart queue 與 Line rehearsal 的 Start 旁、Practice game 的 Start 下排，以及「No moves to train yet」時的 Open Repertoire 旁）或完成摘要按 History，查看這個帳號在此瀏覽器完成的 Smart queue／Blitz 紀錄；進行中的計時 session 不顯示入口。最新一輪以首次作答比例領頭（首次答對／首次作答，示範著法與跳過的手不列入分母，亦不計入答對），下方依時間列出較早的紀錄；每列以 tooltip 提供完整卡數、失誤與跳過數。對話框底部顯示實際保留的筆數（例如「37 saved runs」），上限細節在該行的 tooltip。
+**History 試用版**：在開始畫面按 History（Smart queue 與 Line rehearsal 的 Start 旁、Practice game 的 Start 下排（短手機需向下捲動設定面板），以及「No moves to train yet」時的 Open Repertoire 旁）或完成摘要按 History，查看這個帳號在此瀏覽器完成的 Smart queue／Blitz 紀錄；進行中的計時 session 不顯示入口。最新一輪以首次作答比例領頭（首次答對／首次作答，示範著法與跳過的手不列入分母，亦不計入答對），下方依時間列出較早的紀錄；每列以 tooltip 提供完整卡數、失誤與跳過數。對話框底部顯示實際保留的筆數（例如「37 saved runs」），上限細節在該行的 tooltip。
 
 保留上限（兩個硬上限同時成立）：每個帳號最多保留 **100 筆**，且該帳號的序列化紀錄 VALUE（`{"v":1,"runs":[…]}`，含外框與逗號）最多 **96 KiB ＝ 98,304 位元組 UTF-8**。排序一律依 `finishedAt` 由新到舊，再從最舊的一端移除直到兩個上限都成立；保留的是完成時間最近的紀錄，不是最後寫入的那一筆（系統時鐘回退時也一樣）。沒有例外：若單筆新紀錄自己就超過 byte 上限，或它的完成時間排在已保留整份清單之外，該筆不會寫入，既有紀錄逐 byte 不變，訓練完成流程照常；超過 byte 上限的既有文件整份視為不可用，不會被讀出。
 
