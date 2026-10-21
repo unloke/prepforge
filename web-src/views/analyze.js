@@ -291,12 +291,27 @@ export function createAnalyzeView({
     const moves = analysis?.moves || [];
     const movetext = treeToMovetext(buildAnalysisTree(moves).root);
     if (!movetext) return "";
-    let headers = String(sourcePgn || "")
-      .split(/\r?\n/)
-      .filter((line) => /^\s*\[[^\]]*\]\s*$/.test(line))
-      .join("\n")
-      .trim();
-    if (!headers && analysis?.game_id) {
+    // The FIRST header block only. The movetext this appends is one game's, so a
+    // second game's tags would relabel these moves as that game (the box, the tree
+    // and the checkpoint must name the same game).
+    const lines = String(sourcePgn || "").split(/\r?\n/);
+    const headers = [];
+    let closed = false;
+    for (const line of lines) {
+      if (/^\s*\[[^\]]*\]\s*$/.test(line)) {
+        // A second block is another game's: stop rather than relabel this one.
+        if (closed) break;
+        headers.push(line.trim());
+        continue;
+      }
+      if (line.trim() === "") {
+        if (headers.length) closed = true;
+        continue;
+      }
+      break;
+    }
+    let header = headers.join("\n");
+    if (!header && analysis?.game_id) {
       // A recall has no source PGN. Keep its known tags and starting FEN so
       // copying or re-analyzing it reproduces the same game.
       const safe = (s) => String(s || "?").replace(/["\r\n]/g, "'");
@@ -308,9 +323,9 @@ export function createAnalyzeView({
       if (analysis.lichess_id) tags.push(`[Site "https://lichess.org/${safe(analysis.lichess_id)}"]`);
       const fen = moves[0]?.fen_before;
       if (fen && fen !== START_FEN) tags.push('[SetUp "1"]', `[FEN "${safe(fen)}"]`);
-      headers = tags.join("\n");
+      header = tags.join("\n");
     }
-    return headers ? `${headers}\n\n${movetext}` : movetext;
+    return header ? `${header}\n\n${movetext}` : movetext;
   }
 
   function analysisPathIds(nodeId, tree) {

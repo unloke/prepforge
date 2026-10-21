@@ -206,6 +206,8 @@ export function deleteSavedAnalysis(delButton) {
 
 export function invalidateAnalysisSource() {
   appState.analysisFileSeq = null;
+  // A new source supersedes the batch an import picker may still be listing.
+  appState.analysisMultiPgn = null;
   clearTimeout(analyzePgnInputTimer);
   return ++analysisRecallSeq;
 }

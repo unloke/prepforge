@@ -150,8 +150,11 @@ async function openPage() {
     }
     if (path === "/api/analyze/prepare") {
       state.prepareCalls += 1;
+      // The analyzed game's own PGN: the client re-parses it for its variations
+      // and refuses a run without it.
       return json({
-        game_id: "smoke-game", depth: 4, engine: "stockfish (browser)",
+        game_id: "smoke-game", pgn: `[Event "Rated blitz"]\n[White "me_user"]\n[Black "opp_a"]\n[Result "1-0"]\n\n${MOVETEXT} 1-0`,
+        depth: 4, engine: "stockfish (browser)",
         positions: [...new Set(MOVES.flatMap(m => [m.fen_before, m.fen_after]))],
         moves: MOVES,
         import_summary: { mode: 'single', total_games: 1, imported_count: 1, existing_count: 0, failed_count: 0, selected_index: 0, selected_game_id: 'smoke-game', games: [] },

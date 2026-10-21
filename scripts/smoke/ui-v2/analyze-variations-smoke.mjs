@@ -134,31 +134,62 @@ const gameTwo = (() => {
   });
   return { gameId: "variations-smoke-g2", pgn: G2_PGN, moves, positions: moves.map((m) => m.fen_after) };
 })();
-const gameOne = { gameId: "variations-smoke", pgn: PGN, moves: MAINLINE, positions: FENS };
+// Game 1 with its own header block, so a two-game paste really is two games for the
+// server's splitter (a headerless movetext is one game on its own).
+const G1_PGN = `[Event "G1"]
+[White "Alice"]
+[Black "Bob"]
+[Result "*"]
+
+${PGN} *`;
+const gameOne = { gameId: "variations-smoke", pgn: G1_PGN, moves: MAINLINE, positions: FENS };
 let prepared = gameOne;
+// Every prepare POST, so the two-game switch can be checked on what the client
+// actually sent (the real server splits THAT text into games).
+const preparePosts = [];
 
 await page.route("**/api/analyze/prepare", async (route) => {
   const body = JSON.parse(route.request().postData() || "{}");
-  // Single mode refuses a multi-game paste BEFORE storing anything (the real 400),
-  // so the app's own "Analyze batch" confirmation is what starts the batch path.
-  if (body.mode !== "multi" && String(body.pgn || "").includes('Event "G2"')) {
+  const posted = String(body.pgn || "");
+  const mode = body.mode === "multi" ? "multi" : "single";
+  const selectIndex = Number(body.select_index) || 0;
+  // Split the POSTED text the way python-chess does: a game starts at a header
+  // block that follows a blank line (or the start of the text). A second block
+  // glued straight onto the first is therefore ONE game — the merged box this
+  // smoke exists to catch is one game on the server, which is why
+  // `select_index 1` came back "out of range (1 games)".
+  const blocks = (posted.match(new RegExp(String.raw`(?:^|\n\s*\n)\[Event\s`, "g")) || []).length;
+  const games = blocks > 1 ? [gameOne, gameTwo] : [posted.includes("Carol") ? gameTwo : gameOne];
+  const record = { pgn: posted, mode, selectIndex, games: games.length, status: 200 };
+  preparePosts.push(record);
+  // The real server's own semantics, over the text it was sent: single mode
+  // refuses a multi-game paste BEFORE storing anything (the app then offers the
+  // batch), and a select_index past the end of the POSTED text is a 400 that the
+  // `/games in the PGN/i` recovery does NOT catch.
+  if (mode === "single" && games.length !== 1) {
+    record.status = 400;
     await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({
-      detail: "Found 2 games in the PGN — this flow analyzes one game at a time. Remove the extra games, or use multi-game mode.",
+      detail: `Found ${games.length} games in the PGN — this flow analyzes one game at a time. Remove the extra games, or use multi-game mode.`,
     }) });
     return;
   }
-  prepared = body.mode === "multi" && Number(body.select_index) === 1 ? gameTwo : gameOne;
+  if (selectIndex >= games.length) {
+    record.status = 400;
+    await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({
+      detail: `select_index ${selectIndex} is out of range (${games.length} games).`,
+    }) });
+    return;
+  }
+  prepared = games[selectIndex];
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
     game_id: prepared.gameId, pgn: prepared.pgn, depth: 4, engine: "stockfish (browser)",
     positions: prepared.positions,
     moves: prepared.moves.map((m) => ({ ply: m.ply, san: m.san })), brilliant: { enabled: false },
-    import_summary: body.mode === "multi" ? {
-      mode: "multi", total_games: 2, imported_count: 2, existing_count: 0, failed_count: 0,
-      selected_index: Number(body.select_index) || 0, selected_game_id: prepared.gameId,
-      games: [
-        { index: 0, game_id: gameOne.gameId, status: "imported", white: "Alice", black: "Bob", error: null },
-        { index: 1, game_id: gameTwo.gameId, status: "imported", white: "Carol", black: "Dave", error: null },
-      ],
+    import_summary: mode === "multi" ? {
+      mode: "multi", total_games: games.length, imported_count: games.length, existing_count: 0, failed_count: 0,
+      selected_index: selectIndex, selected_game_id: prepared.gameId,
+      games: games.map((g, index) => ({ index, game_id: g.gameId, status: "imported",
+        white: index === 0 ? "Alice" : "Carol", black: index === 0 ? "Bob" : "Dave", error: null })),
     } : undefined,
   }) });
 });
@@ -375,7 +406,7 @@ const branchFen = fenOf(["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6"]);
 // movetext concatenates legally after game 1's, so a whole-textarea parse would
 // hang its branch off game 1's last move.
 {
-  const multi = `${PGN}
+  const multi = `${G1_PGN}
 
 ${G2_PGN}`;
   await page.locator("#pgn-input").evaluate((el, pgn) => {
@@ -404,16 +435,36 @@ ${G2_PGN}`;
   check(sans.join(" ") === MAINLINE_SANS.join(" ") || sans.length >= MAINLINE_SANS.length,
     `the analyzed game keeps its own mainline: ${JSON.stringify(sans)}`);
   check(sans.includes("Bc4"), `the analyzed game keeps its own branch: ${JSON.stringify(sans)}`);
+  // The box, the move tree and the checkpoint name ONE game after the run: the
+  // paste's other game is not left in the textarea under this game's movetext (that
+  // merged box made the picker's switch a 400 and a single re-run mislabel G1's
+  // moves with G2's tags).
+  const boxAfterRun = await page.locator("#pgn-input").inputValue();
+  check((boxAfterRun.match(/\[Event /g) || []).length === 1,
+    `the box must hold one game's header block after the run: ${JSON.stringify(boxAfterRun.slice(0, 200))}`);
+  check(!boxAfterRun.includes('Event "G2"'),
+    `the box must not keep the other pasted game's tags: ${JSON.stringify(boxAfterRun.slice(0, 200))}`);
+  check(boxAfterRun.includes("Bb5") && !/d4|c4|e6/.test(boxAfterRun),
+    `the box must carry the analyzed game's own moves: ${JSON.stringify(boxAfterRun.slice(0, 240))}`);
   // Each game on its own: select game 2 through the import picker and check that
-  // ONLY its mainline and its own branch are listed.
+  // ONLY its mainline and its own branch are listed. The picker POSTs the batch it
+  // was built from (the server indexes into that), so prepare must accept it.
   const picker = page.locator("#analysis-import-select");
+  check(await picker.count() > 0, "the import picker must list both pasted games");
   if (await picker.count()) {
     await picker.selectOption("1");
+    // The switch is a full run: wait for the box to name game 2 (the run rewrites
+    // it from `prepare.pgn`) and for the button to come back. A failure here is
+    // reported by the checks below, not as a timeout.
     await page.waitForFunction(
-      () => !document.getElementById("analysis-results").hidden,
+      () => document.getElementById("pgn-input").value.includes('Event "G2"') &&
+        !document.getElementById("run-analysis").disabled,
       null, { timeout: 60000 },
-    );
+    ).catch(() => {});
     await page.waitForTimeout(1200);
+    const switchPost = preparePosts.at(-1);
+    check(switchPost.status === 200 && switchPost.selectIndex === 1 && switchPost.games === 2,
+      `the picker's switch must POST a paste the server can index: ${JSON.stringify({ ...switchPost, pgn: switchPost.pgn.slice(0, 60) })}`);
     const g2 = await page.evaluate(() =>
       [...document.querySelectorAll("#analysis-moves .mtree-move")].map((b) => b.querySelector(".mtree-san")?.textContent?.trim()));
     // Its own mainline in order, plus its own branch — nothing from game 1.
@@ -423,6 +474,33 @@ ${G2_PGN}`;
       `game 2 keeps its own branch: ${JSON.stringify(g2)}`);
     check(!g2.includes("Bb5") && !g2.includes("Ba4"),
       `game 2 must not show game 1's moves: ${JSON.stringify(g2)}`);
+    // ...and the box names game 2, not game 1.
+    const boxAfterSwitch = await page.locator("#pgn-input").inputValue();
+    check(boxAfterSwitch.includes('Event "G2"') && !boxAfterSwitch.includes('Event "G1"'),
+      `the box must name game 2 after the switch: ${JSON.stringify(boxAfterSwitch.slice(0, 200))}`);
+    check(!boxAfterSwitch.includes("Bb5") && boxAfterSwitch.includes("c4"),
+      `game 2's tags must carry game 2's moves: ${JSON.stringify(boxAfterSwitch.slice(0, 200))}`);
+    // A single-mode re-run of the box is that one game: the server accepts it and
+    // its tags stay with its own moves.
+    const postsBeforeRerun = preparePosts.length;
+    await page.evaluate(() => document.getElementById("run-analysis").click());
+    await page.waitForFunction(
+      () => !document.getElementById("analysis-results").hidden && !document.getElementById("run-analysis").disabled,
+      null, { timeout: 60000 },
+    ).catch(() => {});
+    await page.waitForTimeout(1200);
+    check(preparePosts.length === postsBeforeRerun + 1,
+      `a re-run must reach prepare exactly once (${postsBeforeRerun} -> ${preparePosts.length})`);
+    const rerun = preparePosts.at(-1);
+    check(rerun.status === 200 && rerun.mode === "single" && rerun.games === 1,
+      `a re-run of the box must POST one game: ${JSON.stringify({ ...rerun, pgn: rerun.pgn.slice(0, 60) })}`);
+    const rerunSans = await page.evaluate(() =>
+      [...document.querySelectorAll("#analysis-moves .mtree-move")].map((b) => b.querySelector(".mtree-san")?.textContent?.trim()));
+    check(!rerunSans.includes("Bb5") && rerunSans.includes("c4") && rerunSans.includes("e6"),
+      `a single re-run keeps game 2's moves: ${JSON.stringify(rerunSans)}`);
+    const rerunBox = await page.locator("#pgn-input").inputValue();
+    check(rerunBox.includes('Event "G2"') && !rerunBox.includes('Event "G1"'),
+      `a single re-run keeps game 2's tags: ${JSON.stringify(rerunBox.slice(0, 200))}`);
   }
 }
 

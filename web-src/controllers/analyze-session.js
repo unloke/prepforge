@@ -800,7 +800,11 @@ async function runAnalysis(options = {}) {
     setStatusError(BROWSER_ENGINE_UNAVAILABLE);
     return;
   }
-  const pgn = document.getElementById("pgn-input").value.trim();
+  // A picker switch names a game inside the batch that is already on screen: the
+  // box holds one game now, so the POST carries the paste the picker's list came
+  // from. Everything else analyzes what the box holds.
+  const batchPgn = options.fromBatch ? appState.analysisMultiPgn : null;
+  const pgn = (batchPgn || document.getElementById("pgn-input").value).trim();
   if (!pgn) {
     setStatus("Paste PGN before analyzing");
     return;
@@ -818,14 +822,24 @@ async function runAnalysis(options = {}) {
   })) return;
   const seq = invalidateAnalysisSource();
   const analysisOwnerId = currentOwnerId();
+  // Keep the batch this run belongs to (a picker switch re-posts it): the
+  // invalidation above dropped it because a new source normally ends it.
+  appState.analysisMultiPgn = batchPgn || (importMode === "multi" ? pgn : null);
   // Keep the game on screen while the engine works: (re)load the source into the move
   // list instead of hiding it behind the "Play on the board" placeholder. Only a source
   // that won't parse here (e.g. a multi-game paste) falls back to hiding the old list.
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
-  const listed = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: seq }).catch(() => false);
+  // A picker switch names a game inside a paste that is not one game: the selected
+  // game's text arrives with `prepare`, and loading the paste first would only show
+  // the other games' moves for the duration of the run.
+  const listed = batchPgn
+    ? false
+    : await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: seq }).catch(() => false);
   if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) return;
-  if (!listed) hideAnalysisResults();
+  // A batch switch keeps the game already on screen (box, list and board all still
+  // name it) until `prepare` names the selected one.
+  if (!listed && !batchPgn) hideAnalysisResults();
   const runButton = document.getElementById("run-analysis");
   runButton.disabled = true;
   // Lifecycle origin for the timing marks below (click → stockfish/maia starts).
@@ -875,6 +889,18 @@ async function runAnalysis(options = {}) {
     }
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
+    // The box, the tree and the checkpoint must all name ONE game. A multi-game
+    // paste keeps the other games in the box after this run, and the next Analyze
+    // then puts this game's moves under another game's tags (single mode) or POSTs a
+    // game count that no longer matches the picker's index (multi: 400). The server
+    // named the analyzed game, so the box becomes exactly its text and the move list
+    // is rebuilt from it.
+    if ((prep.import_summary?.total_games || 0) > 1) {
+      const input = document.getElementById("pgn-input");
+      if (input) input.value = gamePgn;
+      await loadPgnIntoAnalyze(gamePgn, { goToEnd: false, quiet: true, sourceSeq: seq });
+      if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) return;
+    }
     renderImportPicker(prep.import_summary, importMode);
 
     // Phase instrumentation: each pipeline stage reports through one `timed`
@@ -1174,7 +1200,7 @@ async function runAnalysis(options = {}) {
         actions: [{ label: "Open", primary: true, onClick: () => switchView("analyze") }],
       });
     }
-    appState.analysisSourcePgn = pgn;
+    appState.analysisSourcePgn = gamePgn;
     revealAnalysisResults();
     // The source has done its job — fold it away so the report gets the room.
     const pgnDrawer = document.getElementById("pgn-drawer");
@@ -1225,6 +1251,8 @@ function renderImportPicker(summary, mode) {
   if (!summary || mode !== "multi" || summary.total_games <= 1) {
     host.hidden = true;
     host.innerHTML = "";
+    // Nothing to switch between: the batch this picker listed is over.
+    appState.analysisMultiPgn = null;
     return;
   }
   const games = summary.games || [];
@@ -1240,7 +1268,17 @@ function renderImportPicker(summary, mode) {
   const select = host.querySelector("#analysis-import-select");
   if (select) {
     select.addEventListener("change", () => {
-      void runAnalysis({ mode: "multi", selectIndex: Number(select.value) });
+      // The picker names a game in the paste it was built from (`fromBatch`), not a
+      // game in the box: after a run the box holds only the analyzed game. A new
+      // source (a paste, a recall) drops that paste, so a list left on screen must
+      // not POST its index into a box that no longer holds those games.
+      if (!appState.analysisMultiPgn) {
+        host.hidden = true;
+        host.innerHTML = "";
+        setStatus("Paste the games again to switch between them", { severity: "warning" });
+        return;
+      }
+      void runAnalysis({ mode: "multi", selectIndex: Number(select.value), fromBatch: true });
     });
   }
   setStatus(

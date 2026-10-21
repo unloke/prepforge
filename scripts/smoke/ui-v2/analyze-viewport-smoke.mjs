@@ -213,6 +213,9 @@ async function runViewport(vp) {
       contentType: "application/json",
       body: JSON.stringify({
         game_id: "smoke-game",
+        // The analyzed game's own text, as the real server returns it (the client
+        // re-parses this for its variations and refuses a run without it).
+        pgn: DEMO_PGN_MOVETEXT,
         depth: 4,
         engine: "stockfish (browser)",
         positions: DEMO_FENS,

@@ -7,8 +7,13 @@ export const appState = {
   currentView: "dashboard",
   repertoireList: [],
   analysis: null,
-  // Raw PGN from the most recent in-session Analyze run (not history recall).
+  // Raw PGN from the most recent in-session Analyze run (not history recall):
+  // the SELECTED game's own text, never a multi-game paste.
   analysisSourcePgn: null,
+  // The paste a multi-game batch imported, kept while its import picker is on
+  // screen: switching to another imported game re-posts THIS text, because after
+  // a run the box holds only the game that was analyzed. Any new source clears it.
+  analysisMultiPgn: null,
   // The move tree holds a branch the PGN box does not (yet). A focused box is the
   // user's, so serialization waits — except while this is set, because a reload
   // would otherwise drop the branch they just played. Any edit clears it.
