@@ -20,6 +20,10 @@ import { analyzeGamePositions, isTerminalPosition } from "./game-analyzer.js";
 // exactly that many engines: a lane past the budget never gets one of its own —
 // registering as idle makes the budget reclaim a warm lane's worker, which the
 // next step then boots again, and every boot reserves the heap afresh.
+// The lane count is therefore read from `budget.snapshot().limit`, never stated
+// separately: engine-profile.js configures that limit from the same usable
+// profile (net + workers) the lanes belong to, so one number decides both. Reading
+// it any earlier than that `configure` would size the lanes from the fallback.
 
 // The halfmove clock affects fifty-move draws; only the fullmove number is irrelevant.
 export function positionKey(fen) {
@@ -66,7 +70,6 @@ export function createPositionAnalysisStore({
   createProvider = createEngineProvider,
   analyzeFn = analyzeGamePositions,
   getMaia = null,
-  lanes: laneCount = null,
   idleCloseMs = 60000,
   cacheSize = 600,
   maxNodes = ANALYSIS_MAX_NODES,
@@ -80,9 +83,11 @@ export function createPositionAnalysisStore({
   savedEval = null,
 } = {}) {
   const entries = new Map();
-  // One lane per engine this device runs (see the header); a caller that supplies its
-  // own providers states the count itself.
-  const lanes = Array.from({ length: Math.max(1, laneCount ?? budget.snapshot().limit) }, (_, id) => ({
+  // One lane per engine this device runs (see the header). `budget.snapshot().limit`
+  // is the number the budget hands out, and engine-profile.js configures it from the
+  // same usable profile the lanes belong to, so reading it here is what keeps a lane
+  // from existing that can never hold an engine.
+  const lanes = Array.from({ length: Math.max(1, budget.snapshot().limit) }, (_, id) => ({
     id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null,
   }));
   let clock = 0;
@@ -175,7 +180,9 @@ export function createPositionAnalysisStore({
       Promise.resolve(provider.close()).catch(() => {});
     };
     lane.idleTimer = setTimeout(reclaim, idleCloseMs);
-    if (createProvider === createEngineProvider) lane.unregisterIdle = budget.registerIdle(reclaim);
+    // The lane is idle either way; the budget is what decides whether a warm worker
+    // may be reclaimed to make room for a queued one, so it is always told.
+    lane.unregisterIdle = budget.registerIdle(reclaim);
   }
 
   // Keep the deeper of an interrupted search and an earlier read.
@@ -534,12 +541,6 @@ export function createPositionAnalysisStore({
           lease = null;
         },
       };
-    },
-    stats() {
-      return { entries: entries.size, lanes: lanes.map((l) => ({ busy: !!l.entry, warm: !!l.provider, depth: l.depth })) };
-    },
-    get laneCount() {
-      return lanes.length;
     },
     clear() {
       generation += 1;
