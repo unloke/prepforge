@@ -343,17 +343,6 @@ export function createAnalyzeView({
     return set;
   }
 
-  // Half-moves in the tree, variations included: the head's status line counts
-  // what the board can step through, not just the mainline. Variation nodes
-  // carry ply -1 (they have no place in the score sheet), so count by move.
-  function countTreeMoves(node) {
-    let total = node.san ? 1 : 0;
-    (node.children || []).forEach((child) => {
-      total += countTreeMoves(child);
-    });
-    return total;
-  }
-
   function renderAnalysisTree(movesArg) {
     const container = document.getElementById("analysis-moves");
     if (!container) return;
@@ -361,16 +350,6 @@ export function createAnalyzeView({
     const tree = buildAnalysisTree(moves);
     appState.analysisTree = tree;
     const hasContent = (tree.root.children || []).length > 0;
-    // The head names a game whenever it can (app.js writes the players and
-    // tags into #analysis-game-meta). Moves played on an empty board have no
-    // players, so the head names them as what they are and counts them; the
-    // CSS shows one of the two, never both.
-    const status = document.getElementById("analysis-head-status");
-    if (status) {
-      const plies = countTreeMoves(tree.root);
-      const own = tree.root.children.some((child) => child.isVariation);
-      status.textContent = plies ? `${own ? "Your line" : "This line"} · ${plies} half-move${plies === 1 ? "" : "s"}` : "";
-    }
     if (!hasContent) {
       container.innerHTML =
         html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;

@@ -644,6 +644,9 @@ function paintPhaseChip(phase, label) {
   el.hidden = false;
   el.dataset.phase = phase;
   el.textContent = label || phase;
+  // The chip yields its width to the coach's actions on a narrow panel, so the
+  // whole word is the tooltip.
+  el.title = el.textContent;
 }
 
 // What players at this level pick in the position the move was played from (Maia):

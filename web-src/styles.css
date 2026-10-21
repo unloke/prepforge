@@ -5842,7 +5842,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex: none;
 }
 .lib-list .card-head .search-field { margin-left: auto; }
-#view-analyze .panel-head { justify-content: space-between; }
+/* Analyze has no head strip: its actions close the coach's line, so they take
+   the row's leftover width rather than a row of their own. */
 #view-analyze .panel-actions { margin-left: auto; }
 #build-rep-header #build-generate-node { margin-left: auto; flex: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }

@@ -19,19 +19,11 @@
   border: 0;
   box-shadow: none; /* taste-skill-ignore: the shared .panel paints a resting shadow */
 }
-#analyze-sidebar .panel-head {
-  border-bottom: 0;
-  /* The head is the first line of the panel's column, so it starts on the
-     body's left edge (14px) instead of the shared 12/10px. Measured before:
-     the game's name at x=922 and every block under it at x=924. */
-  padding-inline: 14px;
-}
-/* The two actions stay in the head, not on the Coach's line. Tried both at
-   1440, 1180 and 982: on the Coach line the header row grows from 22px to
-   26px (the buttons are the tallest thing in it), and with a two-word phase
-   chip it wraps to 56px at 982, which pushes the evaluation card down — the
-   jump this lane is removing. The head keeps them on its own line, above the
-   verdict, where the row already has the height for a 26px button. */
+/* No head strip: the panel opens on the coach's line, and the two actions sit
+   at the right end of it (the owner's screenshot). The 46px band above the
+   verdict held a game name that now names the board under the board, and the
+   one sentence it stood on with no game ("Paste a PGN, or open your last
+   game.") was a standing explanation, which this app does not do. */
 
 /* One filled action on the panel: the Analyze button. The report's handoff
    now lives behind the report fold, so it is only on screen while that fold is
@@ -83,42 +75,7 @@
   font-size: 13px;
 }
 
-/* Panel head + coach card ------------------------------------------ */
-
-/* The head is one row: the game on the board, then the actions. Before, it was
-   the actions on empty ground, so the panel opened with a title bar that had no
-   title. The name is the page's first fact, so it takes the ink; the empty state
-   stands in its place until there is a game, and goes the moment app.js writes
-   the game's line into #analysis-game-meta. */
-.analyze-head-id {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: baseline;
-  min-width: 0;
-}
-.analyze-head-id > * {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ahi-game {
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--text);
-}
-.ahi-game:empty { display: none; }
-/* One line in this slot either way, so the name and the instruction take the
-   same size: the strip does not change shape when a game arrives. */
-.ahi-hint,
-.ahi-status {
-  color: var(--muted);
-  font-size: 14px;
-}
-.ahi-status:empty { display: none; }
-/* The head says one thing: a named game, or (for a line played by hand, which
-   has no players) what the board holds, or the instruction when it is empty. */
-.ahi-game:not(:empty) ~ :is(.ahi-status, .ahi-hint),
-.ahi-status:not(:empty) ~ .ahi-hint { display: none; }
+/* The coach card ---------------------------------------------------- */
 
 /* The verdict is the panel's own voice, not a card in it: running text on the
    panel ground, with the 3px quality rule carrying its tone. It was a filled
@@ -136,12 +93,21 @@
 .coach-card {
   /* The verdict's line box at its desktop size (16px x 1.5). */
   --coach-line: 24px;
+  /* The coach's own line: its title, the phase chip, the review switch and the
+     two actions. The 26px actions are the tallest thing in it, so the row is a
+     constant 26px — the chip clips before the row wraps (see .cc-head) — and the
+     card's floor is written from this number, not from a guess. */
+  --coach-head: 26px;
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* head 22 + gap 8 + three note lines + the note's 4px padding */
-  min-height: calc(var(--coach-line) * 3 + 34px);
+  /* head 26 + gap 8 + three note lines + the note's 4px padding = 110px. Written
+     as the sum so the head can change without the floor going stale: with the
+     two actions on this line the head is 4px taller than the strip it replaced,
+     and a three-line verdict would otherwise grow the card by 4px and move the
+     instrument below it (measured at 1440 and 982). */
+  min-height: calc(var(--coach-head) + var(--coach-line) * 3 + 12px);
   padding: 0;
   background: none;
   border: 0;
@@ -155,20 +121,32 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* One row, always: the coach's name, the phase, the review switch, then the two
+   actions at the right end. Nothing on this line may take a second line — a
+   wrapped head is 4px taller per line and pushes the verdict, the instrument
+   and the score sheet down with it (measured at 982px before: the two-word
+   "Middlegame" chip wrapped the row and moved the evaluation card 10px). The
+   chip is the one part that yields: it clips with an ellipsis and keeps its
+   word in the tooltip, so a long phase costs a few letters, not the layout. */
 .cc-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
 }
+.cc-head > b { flex: none; }
 .phase-chip {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   padding: 1px 7px;
   border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .phase-chip[hidden] {
   display: none;
@@ -354,9 +332,13 @@
   gap: 14px;
 }
 .analyze-main > * { min-width: 0; }
-/* Wrapped actions keep their height; only the result body may shrink/scroll. */
-#analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
-#analyze-actions { flex-wrap: wrap; }
+/* The two actions ride the coach's line (see .cc-head) and never wrap: they are
+   the only way to get a game, and a second row of them would move the panel.
+   They read as words, not icon + word, exactly as they did in the head strip:
+   the two glyphs added 20px to a row that has none to give, and the words are
+   the labels. The rail's icons already say where the panel is. */
+#analyze-actions { flex-wrap: nowrap; }
+#analyze-actions .btn > .bi { display: none; }
 
 /* Who scrolls. The panel body used to scroll as one sheet, so the score sheet
    was capped at a flat 190px while the fold and the two source drawers sat

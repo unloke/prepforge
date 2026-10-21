@@ -428,9 +428,10 @@
     border-radius: 0;
   }
   :is(#analyze-sidebar, #build-sidebar, #view-train .train-sidebar),
-  #analyze-sidebar > .panel-head,
   #analyze-actions { display: contents; }
-  #analyze-sidebar > .panel-head .analyze-head-id,
+  /* Analyze has no panel head to dissolve (the two actions ride the coach's
+     line); Build's and Train's keep theirs. Last game is a row in the Games
+     sheet here, and the pill in the thumb bar carries Analyze. */
   #fetch-my-game { display: none; }
   .study .engine-banner { order: 0; flex: none; }
   /* A diagnostic does not get a fifth of the screen above the board. Same one
@@ -495,13 +496,12 @@
     white-space: nowrap;
   }
   .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
-  /* Analyze keeps its label: the middle track names the move on show (a phone
-     has no panel head). Build has no label to spare. */
+  /* Build has no label to spare. */
   #view-build .board-bar .board-label { display: none; }
   /* Analyze's middle track holds the Analyze pill, which is the one thing a
-     phone puts there (see #run-analysis below). The game's identity is in the
-     Report sheet's history; on a phone the board bar is too narrow to carry it
-     beside the pill without covering it. */
+     phone puts there (see #run-analysis below). The bar's slot names the game
+     on a wide screen; a phone has no room for it beside the pill without
+     covering it, so the eval row under the board names the position instead. */
   #view-analyze .board-bar .board-label { display: none; }
   .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
   /* The last two tracks. The pill is absolute in the free middle, so the

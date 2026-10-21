@@ -264,8 +264,13 @@ describe("coach note", () => {
     // Across three games at 1440, 1180 and 982 (171 plies) a verdict is one
     // line 80 times, two 75, three 14, four twice: three lines is the floor the
     // block keeps, and a longer note grows it instead of being cut.
+    // The floor is the sum of the head and the note's lines, written from the
+    // same two tokens it is made of: putting the two 26px actions on the head
+    // row makes it 4px taller than the strip it replaced, and a stale constant
+    // would leave the verdict 4px short.
     const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
-    expect(rule).toMatch(/min-height: calc\(var\(--coach-line\) \* 3 \+ 34px\)/);
+    expect(rule).toMatch(/--coach-head: 26px/);
+    expect(rule).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
     expect(rule).not.toMatch(/(^|[^-])height:\s*\d+px/);
   });
 });

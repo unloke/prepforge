@@ -474,28 +474,22 @@ function syncPageTitle() {
   syncViewHeads();
 }
 
-// Analyze: the loaded game's name (PGN headers, else the recalled analysis).
-// It names the board twice — the panel head's line and the bar under the board
-// — so both read the one string, and both are empty when no game is loaded.
+// Analyze: the loaded game's name (PGN headers, else the recalled analysis) in
+// the bar under the board, which is the one place on the page that names it.
+// Empty while no game is loaded, so nothing stands in the bar.
 
-function syncAnalyzeHead() {
-  const name = analysisGameName(appState, document.getElementById("pgn-input")?.value || "");
-  const meta = document.getElementById("analysis-game-meta");
-  if (meta) {
-    meta.textContent = name;
-    meta.title = name;
-  }
-  setBoardCaption(name);
+function syncAnalysisGameName() {
+  setBoardCaption(analysisGameName(appState, document.getElementById("pgn-input")?.value || ""));
 }
 
-// Per-view heads that live inside the pages: Analyze's game identity, the
-// Repertoire header's size summary, and (phones) the More sheet's Library
-// mirror of Import.
+// Per-view chrome that lives inside the pages: Analyze's game on the board, the
+// Repertoire header's size summary, and (phones) the More sheet's Library mirror
+// of Import.
 function syncViewHeads() {
   document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
     item.hidden = appState.currentView !== "dashboard";
   });
-  if (appState.currentView === "analyze") syncAnalyzeHead();
+  if (appState.currentView === "analyze") syncAnalysisGameName();
   // The repertoire's size describes the whole tree, not the position, so it is
   // a caption on the name: as the panel's last band it spent 38px of every
   // build on a number the builder reads once.
