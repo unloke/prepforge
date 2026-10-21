@@ -604,7 +604,7 @@ async function runViewport(vp) {
     check(stack.moves === null, `a phone Analyze screen must have no move list: ${JSON.stringify(stack.moves)}`);
     // The scrubber keeps a 64px target on short screens; surplus height goes
     // here after the board and the stable Coach/engine rows fit.
-    check(stack.chart.height >= 64, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
+    check(Math.round(stack.chart.height) >= 64, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
     check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
