@@ -806,8 +806,15 @@
 
   /* ---- Repertoire ------------------------------------------------------
      Header (back, name, size, ⋯) over the board; under it the Explorer with
-     the next moves, yours dotted, a tap adds one, then the line tree. */
-  #view-build { --phone-reserve: max(244px, 40dvh); }
+     the next moves, yours dotted, a tap adds one, then the line tree.
+     With nothing open the panel is the empty card, and that card is 170px of
+     content in a panel with 10+16px of padding and a 10px gap: 196px of room,
+     or its second action row is cut off by the thumb bar. The reserve was
+     244px, which left the body 156px at 390x660 (measured: the card's bottom at
+     628 under a bar whose top is 604). 304px is the smallest reserve that fits
+     the card whole at 390x660, 430x740 and 390x844, and the board still comes
+     out 300/380/390px wide. */
+  #view-build { --phone-reserve: max(304px, 40dvh); }
   /* Header (back, name, ⋯) over the board: the board's top neighbour here (the
      board bar is the thumb bar below). Flow layout, one line, vertically
      centred; the tree's totals close the panel underneath the dock. */
