@@ -20,6 +20,7 @@ import { describeMove } from "../explain.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 import { clearReturnState, saveReturnState } from "../handoff-context.js";
+import { createAnalysisSelection } from "./analyze-selection.js";
 
 let accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
   boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
@@ -47,6 +48,15 @@ export function createAnalyzeSession(deps) {
   } = deps);
   positionCoach = new PositionCoach();
   positionCoach.bind();
+  // Selection (controllers/analyze-selection.js): one path from a picked node to the
+  // board, caption, Coach context and engine card — mainline and branch alike.
+  ({ analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, showAnalysisPly } =
+    createAnalysisSelection({
+      appState, START_FEN, boardInfo, boards, classBadgeSymbol, setPositionCaption,
+      highlightCurrentMove, persistAnalysisSession, syncViewHeads, syncWorkspaceUrl,
+      refreshAnalysisExplain, engineWidget, analysisVariationLabel, ensureAnalyzeView,
+      boardAfterMove, syncPgnFromTree, setStatusError,
+    }));
   return {
     analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
     onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
@@ -537,6 +547,9 @@ class PositionCoach {
 
 // Created by createAnalyzeSession, once the app state it reads is bound.
 let positionCoach = null;
+// The selection entry points, created by controllers/analyze-selection.js (see
+// createAnalyzeSession). Module-level so the session's own functions can call them.
+let analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, showAnalysisPly;
 
 const COACH_TONES = ["good", "warn", "danger", "info", "brilliant"];
 
@@ -1115,6 +1128,7 @@ async function runAnalysis(options = {}) {
     }
     appState.analysis = payload;
     resetAnalysisVariations();
+    await rebuildAnalysisVariations(pgn);
     await showAnalysisPly(0);
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
     if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
@@ -1298,6 +1312,7 @@ async function retryAnalyzeSave() {
     if (input && checkpoint.pgn) input.value = checkpoint.pgn;
     appState.analysis = payload;
     resetAnalysisVariations();
+    await rebuildAnalysisVariations(checkpoint.pgn || "");
     await showAnalysisPly(0);
     await renderAnalysis(payload, { sourceSeq: seq });
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
@@ -1417,7 +1432,7 @@ function updateEvalChartCursor() {
   void ensureAnalyzeView().then((view) => view.updateEvalChartCursor()).catch(() => {});
 }
 
-// The loaded game and the ply the board shows are one session: a reload that
+// The loaded game and the position the board shows are one session: a reload that
 // keeps only one of them (the PGN box's browser-restored text, say) leaves the
 // move list and the board disagreeing. Save both, keyed like Games' return state.
 function persistAnalysisSession() {
@@ -1427,71 +1442,15 @@ function persistAnalysisSession() {
     clearReturnState("analyze");
     return;
   }
-  saveReturnState("analyze", { pgn, ply: Math.max(0, Number(appState.analysisPly) || 0) });
-}
-
-async function showAnalysisPly(ply) {
-  const analysis = appState.analysis;
-  const seq = analysisRecallSeq;
-  const moves = appState.analysis ? appState.analysis.moves : [];
-  const boundedPly = Math.max(0, Math.min(ply, moves.length));
-  // Which way the board travels: a step back lands on the position before the
-  // move just shown, so that move's piece goes home rather than replaying.
-  const back = boundedPly < appState.analysisPly;
-  appState.analysisPly = boundedPly;
-  syncWorkspaceUrl();
-  appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
-  const move = boundedPly > 0 ? moves[boundedPly - 1] : null;
-  const fen = move ? move.fen_after : moves[0]?.fen_before || appState.analysis?.initialFen || START_FEN;
-  const info = await boardInfo(fen);
-  if (seq !== analysisRecallSeq || analysis !== appState.analysis || appState.analysisCurrentNodeId !== (boundedPly === 0 ? "root" : `m${boundedPly}`)) return;
-  appState.analysisBoardFen = fen;
-  boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
-  // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game sent
-  // from Train) shows none instead of an empty placeholder dot.
-  const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";
-  boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? move.classification : null, badge);
-  // Which position is on the board is a phone fact: its eval row says it, because
-  // the thumb bar has no room and the bar under the board names the game. On a
-  // desktop the board itself shows the position and the moves list marks it.
-  setPositionCaption(
-    move ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}` : "",
-  );
-  highlightCurrentMove();
-  persistAnalysisSession();
-  syncViewHeads();
-  refreshAnalysisExplain({
-    fen,
-    lastUci: move ? move.uci : null,
-    lastSan: move ? move.san : null,
-    prevFen: move ? move.fen_before : null,
-    // Mainline ply (1-based) so the coach can resolve the saved verdict by index rather than
-    // by fen-key. Omitted for the initial position (no move); variations pass no ply.
-    ply: move ? boundedPly : null,
+  saveReturnState("analyze", {
+    pgn,
+    ply: Math.max(0, Number(appState.analysisPly) || 0),
+    // The NODE, not just the ply: an off-mainline position has no mainline ply, so
+    // restoring by ply alone moved a reloaded/returned session to a different
+    // position of the same game (a variation became whichever mainline move shared
+    // its move number). A mainline node restores to the same position either way.
+    node: appState.analysisCurrentNodeId || "root",
   });
-  if (engineWidget) engineWidget.onBoardChanged();
-}
-
-// Tree-aware Analyze navigation (start/prev/next/end). Works for both the analysed
-// mainline and free-exploration variations, because it walks the live node tree by
-// id rather than a flat ply index. `next` follows the mainline child (children[0]).
-async function analysisTreeNav(kind) {
-  const view = await ensureAnalyzeView();
-  const tree =
-    appState.analysisTree ||
-    view.buildAnalysisTree(appState.analysis ? appState.analysis.moves : []);
-  appState.analysisTree = tree;
-  let node = tree.byId.get(appState.analysisCurrentNodeId || "root") || tree.root;
-  if (kind === "start") node = tree.root;
-  else if (kind === "prev") node = node.parent || node;
-  else if (kind === "next") node = (node.children && node.children[0]) || node;
-  else if (kind === "end") {
-    while (node.children && node.children[0]) node = node.children[0];
-  }
-  // Boundary navigation must not redraw the board or rerun the coach, which
-  // clears the engine arrow even though the widget's FEN has not changed.
-  if (node.id === appState.analysisCurrentNodeId) return;
-  await selectAnalysisNode(node.id);
 }
 
 function resetAnalysisVariations() {
@@ -1499,6 +1458,22 @@ function resetAnalysisVariations() {
   appState.analysisVarCounter = 0;
   appState.analysisCurrentNodeId = "root";
   appState.analysisTree = null;
+}
+
+// Re-install the branches a source PGN carries. A finished analysis payload holds
+// the MAINLINE it classified, so assigning it and resetting the variations threw
+// away every branch the user's PGN had — the tree came back flat and the nested
+// lines they loaded to study were gone. The source text is the one place those
+// branches live, so they are parsed from it again.
+async function rebuildAnalysisVariations(pgnText) {
+  const parsed = parsePgn(pgnText);
+  if (!parsed.ok) return false;
+  const view = await ensureAnalyzeView();
+  const { varNodes } = view.adaptParsedTree(parsed.root);
+  appState.analysisVarNodes = varNodes;
+  appState.analysisVarCounter = varNodes.size;
+  appState.analysisTree = null;
+  return true;
 }
 
 // PGN box → board / move list. Parse the text and rebuild the Analyze move tree
@@ -1581,90 +1556,4 @@ function analysisVariationLabel(moveNumber, side, san) {
   const base = `${moveNumber}${side === "black" ? "..." : "."} ${san}`;
   const hasMainline = !!(appState.analysis && appState.analysis.moves && appState.analysis.moves.length);
   return hasMainline ? `${base} · variation` : base;
-}
-
-async function selectAnalysisNode(nodeId) {
-  const tree = appState.analysisTree;
-  const node = tree ? tree.byId.get(nodeId) : null;
-  if (!node) return;
-  if (node.isMainline) {
-    await showAnalysisPly(node.ply);
-    return;
-  }
-  // Variation node: drive the board straight to its resulting position.
-  appState.analysisCurrentNodeId = node.id;
-  appState.analysisPly = -1;
-  const fen = node.fenAfter;
-  const info = await boardInfo(fen);
-  appState.analysisBoardFen = fen;
-  boards.analysis.setPosition({
-    fen,
-    legalMoves: info.legal_moves,
-    lastMove: node.uci,
-  });
-  boards.analysis.setMoveBadge(null, null, "");
-  setPositionCaption(analysisVariationLabel(node.moveNumber, node.side, node.san));
-  highlightCurrentMove();
-  refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
-  if (engineWidget) engineWidget.onBoardChanged();
-}
-
-async function onAnalysisBoardMove(moveUci, fen) {
-  try {
-    const tree = appState.analysisTree;
-    const currentId =
-      appState.analysisCurrentNodeId ||
-      (appState.analysisPly > 0 ? `m${appState.analysisPly}` : "root");
-    const currentNode = tree ? tree.byId.get(currentId) : null;
-    // Replaying the existing continuation (mainline or a known variation) just
-    // steps forward instead of forking a duplicate line.
-    if (currentNode) {
-      const existing = currentNode.children.find((child) => child.uci === moveUci);
-      if (existing) {
-        await selectAnalysisNode(existing.id);
-        return;
-      }
-    }
-    // New move from here → record it as a study variation branching off the
-    // current node.
-    const payload = await boardAfterMove(fen, moveUci);
-    const parts = fen.split(" ");
-    const side = parts[1] === "b" ? "black" : "white";
-    const moveNumber = Number(parts[5]) || 1;
-    const seq = (appState.analysisVarCounter = (appState.analysisVarCounter || 0) + 1);
-    const id = `v${seq}`;
-    appState.analysisVarNodes.set(id, {
-      id,
-      seq,
-      parentId: currentId,
-      uci: moveUci,
-      san: payload.move.san,
-      fenBefore: fen,
-      fenAfter: payload.board.fen,
-      moveNumber,
-      side,
-    });
-    appState.analysisCurrentNodeId = id;
-    appState.analysisPly = -1;
-    appState.analysisBoardFen = payload.board.fen;
-    boards.analysis.setPosition({
-      fen: payload.board.fen,
-      legalMoves: payload.board.legal_moves,
-      lastMove: moveUci,
-    });
-    boards.analysis.setMoveBadge(null, null, "");
-    setPositionCaption(analysisVariationLabel(moveNumber, side, payload.move.san));
-    highlightCurrentMove();
-    refreshAnalysisExplain({
-      fen: payload.board.fen,
-      lastUci: moveUci,
-      lastSan: payload.move.san,
-      prevFen: fen,
-    });
-    if (engineWidget) engineWidget.onBoardChanged();
-    // New branch on the board → mirror it into the PGN box.
-    void syncPgnFromTree().catch(() => {});
-  } catch (error) {
-    setStatusError(error.message);
-  }
 }

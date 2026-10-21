@@ -6,6 +6,7 @@ import { appSource } from "./test-app-source.js";
 import { createPassFeed } from "./controllers/engine-pass-feed.js";
 
 const source = appSource();
+const selectionSource = readFileSync(new URL("./controllers/analyze-selection.js", import.meta.url), "utf8");
 
 function widgetHarness({ coachOn = false } = {}) {
   const deps = { html,
@@ -129,8 +130,9 @@ describe("Analyze engine stepping", () => {
       arrow(null);
       await widget.onBoardChanged();
     });
-    const start = source.indexOf("async function analysisTreeNav(");
-    const code = source.slice(start, source.indexOf("\nfunction resetAnalysisVariations", start));
+    // The navigation rule now lives in its own module (controllers/analyze-selection.js).
+    const start = selectionSource.indexOf("async function analysisTreeNav(");
+    const code = selectionSource.slice(start, selectionSource.indexOf("\n  async function onAnalysisBoardMove", start));
     const nav = new Function("appState", "ensureAnalyzeView", "selectAnalysisNode", `${code}; return analysisTreeNav;`)(appState, async () => ({}), select);
     await nav(kind);
     await nav(kind);

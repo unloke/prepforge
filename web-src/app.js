@@ -368,7 +368,7 @@ async function restoreWorkspaceLocation() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
-  if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply);
+  if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
   if (loc.view === "train" && appState.signedIn) {
     // The URL's repertoire is the queue's. A Train link that names one (the
     // one the Library/Repertoire Train action leaves behind) drills that
@@ -381,9 +381,13 @@ async function restoreWorkspaceLocation() {
 // persistAnalysisSession), so a reload puts the move list and the board back
 // together instead of a PGN box whose game the board never loaded. The URL's
 // ?ply= wins when it names a move: a shared/returned link is about that ply.
-async function restoreAnalyzeSession(urlPly) {
+// A ?node= names an off-mainline branch, which no ply can describe — restoring
+// only the ply turned the user's variation into a mainline move of the same
+// number. The node wins over the ply when both are present.
+async function restoreAnalyzeSession(urlPly, urlNode = null) {
   if (appState.analysis) {
-    if (urlPly) await showAnalysisPly(urlPly);
+    if (urlNode) await selectAnalysisNode(urlNode);
+    else if (urlPly) await showAnalysisPly(urlPly);
     return;
   }
   const saved = loadReturnState("analyze");
@@ -393,6 +397,11 @@ async function restoreAnalyzeSession(urlPly) {
   if (input) input.value = pgn;
   const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
   if (!loaded) return;
+  const node = urlNode || saved?.node;
+  if (node && node !== "root") {
+    await selectAnalysisNode(node);
+    return;
+  }
   const ply = urlPly || saved?.ply;
   if (ply) await showAnalysisPly(ply);
 }
@@ -407,9 +416,12 @@ async function handleWorkspacePopstate() {
     appState.replaySection = loc.replaySection;
   }
   switchView(loc.view, { fromUrl: true });
-  // Back/forward to an Analyze ply puts the board on that move, the same way boot does.
-  if (loc.view === "analyze" && loc.ply && loc.ply !== appState.analysisPly) {
-    await showAnalysisPly(loc.ply);
+  // Back/forward to an Analyze position puts the board there, the same way boot does.
+  // A branch node has no ply, so it is what the URL names when the position is off
+  // the mainline; otherwise the ply does.
+  if (loc.view === "analyze") {
+    if (loc.node && loc.node !== appState.analysisCurrentNodeId) await selectAnalysisNode(loc.node);
+    else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
   if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });

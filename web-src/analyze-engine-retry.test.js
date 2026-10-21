@@ -52,6 +52,7 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     engineIdentity,
     saveCheckpoint: vi.fn(async () => true), finishAnalyzeCheckpoint: vi.fn(async () => {}),
     refreshAnalysisHistoryIfOpen: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(),
+    rebuildAnalysisVariations: vi.fn(async () => true),
     renderAnalysis: vi.fn(), activeViewName: () => "analyze", revealAnalysisResults: vi.fn(), updateAnalysisHandoff: vi.fn(),
     isAuthError: () => false, setStatusError: vi.fn(), showAnalysisRetrySave: vi.fn(),
     setCoachProse: vi.fn(),

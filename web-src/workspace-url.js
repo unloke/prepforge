@@ -48,7 +48,15 @@ function asPly(raw) {
   return Math.floor(ply);
 }
 
-export function formatWorkspaceHash({ view, replaySection, repertoireId, ply } = {}) {
+// An Analyze off-mainline node id (`v<seq>`). A mainline position is named by its
+// ply alone, so the node is only carried when it names a branch — an ordinary
+// `#/analyze?ply=5` link keeps its shape.
+function asAnalysisNode(raw) {
+  const node = String(raw || "").trim();
+  return /^v\d+$/.test(node) ? node : null;
+}
+
+export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, node } = {}) {
   const rawView = String(view || "").toLowerCase();
   // Canonical form: replay + section always serializes to the section alias
   // (#/games or #/scout). Accepting a bare { view: "games"/"scout" } keeps
@@ -67,6 +75,8 @@ export function formatWorkspaceHash({ view, replaySection, repertoireId, ply } =
   if (repertoireId) params.set("rep", String(repertoireId));
   const plyNum = asPly(ply);
   if (plyNum && plyNum > 0) params.set("ply", String(plyNum));
+  const nodeId = asAnalysisNode(node);
+  if (nodeId) params.set("node", nodeId);
   const query = params.toString();
   return query ? `#/${hashView}?${query}` : `#/${hashView}`;
 }
@@ -75,13 +85,14 @@ export function parseWorkspaceHash(hash) {
   const raw = String(hash || "").replace(/^#/, "");
   const trimmed = raw.replace(/^\/+/, "");
   if (!trimmed) {
-    return { view: "dashboard", replaySection: null, repertoireId: null, ply: null };
+    return { view: "dashboard", replaySection: null, repertoireId: null, ply: null, node: null };
   }
   const qIndex = trimmed.indexOf("?");
   const viewPart = qIndex >= 0 ? trimmed.slice(0, qIndex) : trimmed;
   const queryPart = qIndex >= 0 ? trimmed.slice(qIndex + 1) : "";
   const params = new URLSearchParams(queryPart);
   const ply = asPly(params.get("ply"));
+  const node = asAnalysisNode(params.get("node"));
   const rep = params.get("rep");
   const slug = String(viewPart.split("/")[0] || "").toLowerCase();
   if (slug === "games" || slug === "scout" || slug === "replay") {
@@ -90,6 +101,7 @@ export function parseWorkspaceHash(hash) {
       replaySection: asReplaySection(slug === "replay" ? "games" : slug),
       repertoireId: rep ? String(rep) : null,
       ply: ply && ply > 0 ? ply : null,
+      node: null,
     };
   }
   return {
@@ -97,6 +109,7 @@ export function parseWorkspaceHash(hash) {
     replaySection: null,
     repertoireId: rep ? String(rep) : null,
     ply: ply && ply > 0 ? ply : null,
+    node,
   };
 }
 
@@ -146,6 +159,13 @@ export function workspaceLocationFromState(state = {}) {
     ply:
       (state.currentView || state.view) === "analyze"
         ? asPly(state.analysisPly) || null
+        : null,
+    // An off-mainline Analyze position: the ply names a mainline move, so a branch
+    // needs its node id to come back as the same position after a reload, a
+    // shared link or Back/Forward.
+    node:
+      (state.currentView || state.view) === "analyze"
+        ? asAnalysisNode(state.analysisCurrentNodeId)
         : null,
   };
 }
