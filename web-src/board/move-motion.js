@@ -35,6 +35,18 @@ function gap(from, to) {
   );
 }
 
+// How many half-moves the FEN says have been played, from the two clock fields
+// chess.js and python-chess write the same way: the side to move and the
+// fullmove number. (They differ on the halfmove clock and the en-passant square,
+// so those are not read.) A FEN without usable clocks answers null.
+function pliesPlayed(fen) {
+  const fields = String(fen || "").trim().split(/\s+/);
+  const fullmove = Number(fields[5]);
+  if (fields[1] !== "w" && fields[1] !== "b") return null;
+  if (!Number.isInteger(fullmove) || fullmove < 1) return null;
+  return (fullmove - 1) * 2 + (fields[1] === "b" ? 1 : 0);
+}
+
 // What one position change moved, read off the two placements rather than from
 // what the caller says happened.
 //
@@ -106,6 +118,21 @@ export function boardTransition(prevFen, fen) {
   // piece; anything wider is a jump.
   if (!movers.length || movers.length > 2 || gone.length > 1 || restored.length > 1) return null;
   if (sources.length + targets.length > 4) return null;
+  // The two positions must be one move apart. Siblings in a repertoire — d4 and
+  // d3 from the same parent — are alternative moves from the same square, not a
+  // move between those two positions: they carry the SAME side to move and
+  // fullmove, and pairing their like pieces would slide d3's pawn down from d4,
+  // a square no pawn ever left. Read the ply count off the FEN clocks instead of
+  // trusting the placement pairing. The one legitimate wider change is the
+  // two-ply step back (a takeback of both sides' moves): its two movers are of
+  // opposite colours and each travels to its own home. Everything else is a cut.
+  const beforePlies = pliesPlayed(prevFen);
+  const afterPlies = pliesPlayed(fen);
+  if (beforePlies === null || afterPlies === null) return null;
+  const plies = Math.abs(afterPlies - beforePlies);
+  const twoPly = plies === 2 && movers.length === 2 &&
+    colour(before[movers[0].from]) !== colour(before[movers[1].from]);
+  if (plies !== 1 && !twoPly) return null;
   // Board order, so the same pair of positions always yields the same list.
   const place = (square) => FILES.indexOf(square[0]) * 8 + Number(square[1]);
   movers.sort((a, b) => place(a.from) - place(b.from));

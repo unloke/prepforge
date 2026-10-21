@@ -12,6 +12,7 @@
 // the travel home, and a jump is a cut.
 import { readFileSync } from "node:fs";
 
+import { Chess } from "chess.js";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -73,6 +74,21 @@ const BEFORE_PROMO = "8/P6k/8/8/8/8/6K1/8 w - - 0 1";
 const AFTER_PROMO = "Q7/7k/8/8/8/8/6K1/8 b - - 0 1";
 // Three plies away from START: a jump, not one move.
 const JUMPED = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+
+// Real lines, played here so every FEN is complete and legal rather than a
+// hand-written placement. `after("e4", "e5")` is the position after 1.e4 e5.
+function after(...sans) {
+  const chess = new Chess();
+  for (const san of sans) chess.move(san);
+  return chess.fen();
+}
+// 1.e4 e5 2.Nf3 Nc6, then its two alternatives 3.d4 / 3.d3 (same parent) and
+// 3.Bb5 / 3.Bc4 (same parent). Siblings share side to move and fullmove.
+const SIBLING_PARENT = after("e4", "e5", "Nf3", "Nc6");
+const SIBLING_D4 = after("e4", "e5", "Nf3", "Nc6", "d4");
+const SIBLING_D3 = after("e4", "e5", "Nf3", "Nc6", "d3");
+const SIBLING_BB5 = after("e4", "e5", "Nf3", "Nc6", "Bb5");
+const SIBLING_BC4 = after("e4", "e5", "Nf3", "Nc6", "Bc4");
 
 const pair = (from, to) => ({ from, to });
 const squaresOf = (list) => list.map((entry) => entry.square);
@@ -162,6 +178,58 @@ describe("the board's move motion", () => {
     expect(boardTransition(START, "4k3/8/8/8/8/8/8/4K3 w - - 0 1")).toBeNull();
     // The same position twice is not a move at all.
     expect(boardTransition(START, START)).toBeNull();
+    // 1.Nf3 Nf6 2.Ng1 is three plies, but its net change looks like the one
+    // knight move g8->f6. The FEN clocks say three plies, so it is a cut.
+    const knightRoundTrip = after("Nf3", "Nf6", "Ng1");
+    expect(boardTransition(START, knightRoundTrip)).toBeNull();
+    expect(boardTransition(knightRoundTrip, START)).toBeNull();
+  });
+
+  it("is a cut between same-ply siblings, whose like pieces pair wrongly", () => {
+    // 3.d4 and 3.d3 are two answers from the same parent: the parent's d2 pawn
+    // goes to d4 in one and d3 in the other. Read as a change between the two,
+    // the after d3 pawn is nearest to d4, so pairing by piece slides it down a
+    // rank from a square the pawn never stood on. They share turn and fullmove.
+    expect(SIBLING_D4.split(" ").slice(1)).toEqual(SIBLING_D3.split(" ").slice(1));
+    expect(boardTransition(SIBLING_PARENT, SIBLING_D4)).toEqual({
+      movers: [pair("d2", "d4")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_PARENT, SIBLING_D3)).toEqual({
+      movers: [pair("d2", "d3")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_D4, SIBLING_D3)).toBeNull();
+    expect(boardTransition(SIBLING_D3, SIBLING_D4)).toBeNull();
+    // The same shape for 3.Bb5 (Ruy Lopez) and 3.Bc4 (Italian): both bishops
+    // come from f1, and b5->c4 is not a move between the two positions.
+    expect(SIBLING_BB5.split(" ").slice(1)).toEqual(SIBLING_BC4.split(" ").slice(1));
+    expect(boardTransition(SIBLING_PARENT, SIBLING_BB5)).toEqual({
+      movers: [pair("f1", "b5")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_PARENT, SIBLING_BC4)).toEqual({
+      movers: [pair("f1", "c4")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_BB5, SIBLING_BC4)).toBeNull();
+    expect(boardTransition(SIBLING_BC4, SIBLING_BB5)).toBeNull();
+  });
+
+  it("still animates a child after an ordinary undo to its parent", () => {
+    // The guard must not turn a real single move into a cut: from 3.d4 back to
+    // the parent the d-pawn leaves d4, and from the parent into the sibling
+    // child it travels from d2 to d3. Only the direct sibling jump is cut.
+    expect(boardTransition(SIBLING_D4, SIBLING_PARENT)).toEqual({
+      movers: [pair("d4", "d2")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_PARENT, SIBLING_D3)).toEqual({
+      movers: [pair("d2", "d3")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_D4, SIBLING_D3)).toBeNull();
+    // A bishop: b5 home to f1, then f1 out to c4.
+    expect(boardTransition(SIBLING_BB5, SIBLING_PARENT)).toEqual({
+      movers: [pair("b5", "f1")], gone: [], restored: [],
+    });
+    expect(boardTransition(SIBLING_PARENT, SIBLING_BC4)).toEqual({
+      movers: [pair("f1", "c4")], gone: [], restored: [],
+    });
   });
 
   it("animates both pieces of a two-ply jump the way they really went", () => {

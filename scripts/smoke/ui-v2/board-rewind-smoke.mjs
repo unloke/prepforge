@@ -71,7 +71,32 @@ const CASTLE = lineNodes("cas", "Castling", ["e4", "e5", "Nf3", "Nc6", "Bc4", "B
 const PROMOTION = lineNodes("pro", "Promotion", ["a8=Q", "Kg7"], {
   rootFen: "8/P6k/8/8/8/8/6K1/8 w - - 0 1",
 });
-const REPERTOIRES = [EN_PASSANT, CASTLE, PROMOTION];
+// 1.e4 e5 2.Nf3 Nc6 with four alternative third moves from the same parent:
+// 3.d4 / 3.d3 (the same pawn) and 3.Bb5 / 3.Bc4 (the same bishop). A pair of
+// siblings shares side to move and fullmove: a jump between them is not a move,
+// even though the two placements differ by one like piece.
+function siblingsOf(id, name) {
+  const rep = lineNodes(id, name, ["e4", "e5", "Nf3", "Nc6"]);
+  const parent = rep.nodes.at(-1);
+  ["d4", "d3", "Bb5", "Bc4"].forEach((san, index) => {
+    const chess = new Chess(parent.fen);
+    const fenBefore = chess.fen();
+    const move = chess.move(san);
+    rep.nodes.push({
+      id: `${id}b${index + 1}`, parent_id: parent.id, depth: parent.depth + 1, san: move.san,
+      uci: `${move.from}${move.to}${move.promotion || ""}`, fen: chess.fen(),
+      fen_before: fenBefore, fen_after: chess.fen(),
+      move_number: Number(fenBefore.split(" ")[5]) || 1, ply: parent.ply + 1,
+      move_side: move.color === "w" ? "white" : "black",
+      side_to_move: chess.turn() === "w" ? "white" : "black",
+      source: "manual", is_mainline: index === 0, is_enabled: true, is_prepared: false,
+      mastery: null, maia_probability: null, arrows: [], circles: [],
+    });
+  });
+  return rep;
+}
+const SIBLINGS = siblingsOf("sib", "Sibling alternatives");
+const REPERTOIRES = [EN_PASSANT, CASTLE, PROMOTION, SIBLINGS];
 const byId = new Map(REPERTOIRES.map((rep) => [rep.repertoire_id, rep]));
 
 const api = (path) => {
@@ -452,6 +477,69 @@ async function buildJumpCut(page) {
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 7), "build jump");
 }
 
+async function buildSiblingCut(page) {
+  const rep = SIBLINGS;
+  const parent = rep.nodes[4]; // 1.e4 e5 2.Nf3 Nc6
+  const bySan = (san) => rep.nodes.find((node) => node.san === san && node.depth === parent.depth + 1);
+  const d4 = bySan("d4"), d3 = bySan("d3"), bb5 = bySan("Bb5"), bc4 = bySan("Bc4");
+  await openBuild(page, rep.repertoire_id);
+  const size = await squareSizeOf(page, "#build-board");
+  const settle = () => page.waitForTimeout(220);
+  // A jump that must be a cut: the board changes position, nothing slides.
+  const jump = async (node, label) => {
+    await startProbe(page, "#build-board");
+    await clickNode(page, node.id);
+    const { frames } = await stopProbe(page);
+    const travellers = Object.keys(frames[0].snapshot)
+      .filter((square) => travelFrames(frames, square).length > 0);
+    check(travellers.length === 0, `${label}: a same-ply sibling jump must be a cut (${travellers.join(",")})`);
+    checkSettled(await settledDom(page, "#build-board"), node.fen, label);
+  };
+  for (let i = 1; i <= 4; i += 1) {
+    await clickNode(page, rep.nodes[i].id);
+    await settle();
+  }
+  await clickNode(page, d4.id);
+  await settle();
+  checkSettled(await settledDom(page, "#build-board"), d4.fen, "build sibling d4");
+
+  // d4 -> d3 directly: both are the parent's d2 pawn. There is no move between
+  // the two positions, so nothing may slide (least of all d3 down from d4).
+  await jump(d3, "build sibling d4->d3");
+  await jump(d4, "build sibling d3->d4");
+
+  // An ordinary undo first: d4 goes home to d2 ...
+  await startProbe(page, "#build-board");
+  await clickCrumb(page, parent.id);
+  const undo = await stopProbe(page);
+  checkTravel(undo.frames, { movers: [["d4", "d2"]] }, size, "build sibling undo");
+  checkSettled(await settledDom(page, "#build-board"), parent.fen, "build sibling undo");
+  // ... and only then the sibling child: from the parent this is a real move,
+  // so d3 must start at d2, never at d4.
+  await startProbe(page, "#build-board");
+  await clickNode(page, d3.id);
+  const forward = await stopProbe(page);
+  checkTravel(forward.frames, { movers: [["d2", "d3"]] }, size, "build sibling child after undo");
+  checkSettled(await settledDom(page, "#build-board"), d3.fen, "build sibling child after undo");
+
+  // The same shape with bishops: 3.Bb5 and 3.Bc4 both leave f1.
+  await jump(bb5, "build sibling d3->Bb5");
+  await jump(bc4, "build sibling Bb5->Bc4");
+  await jump(bb5, "build sibling Bc4->Bb5");
+
+  // Undo the bishop, then play the other sibling child: f1 -> c4 is the move.
+  await startProbe(page, "#build-board");
+  await clickCrumb(page, parent.id);
+  const bishopUndo = await stopProbe(page);
+  checkTravel(bishopUndo.frames, { movers: [["b5", "f1"]] }, size, "build sibling bishop undo");
+  checkSettled(await settledDom(page, "#build-board"), parent.fen, "build sibling bishop undo");
+  await startProbe(page, "#build-board");
+  await clickNode(page, bc4.id);
+  const bishopForward = await stopProbe(page);
+  checkTravel(bishopForward.frames, { movers: [["f1", "c4"]] }, size, "build sibling bishop child after undo");
+  checkSettled(await settledDom(page, "#build-board"), bc4.fen, "build sibling bishop child after undo");
+}
+
 async function buildFlipThenBack(page) {
   const rep = EN_PASSANT;
   await openBuild(page, rep.repertoire_id);
@@ -637,6 +725,7 @@ const VIEWPORTS = [
     ["build promotion", buildPromotion],
     ["build rapid walk", buildRapidWalk],
     ["build jump", buildJumpCut],
+    ["build sibling cut", buildSiblingCut],
     ["build flip", buildFlipThenBack],
     ["build reduced motion", buildReducedMotion],
     ["analyze", analyzeMainlineAndVariation],
