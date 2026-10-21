@@ -239,10 +239,35 @@ const clickNode = (id) => page.evaluate((nodeId) => {
   button.click();
   return true;
 }, id);
-const waitForPv = () => page.waitForFunction(
-  () => /[a-hKQRBNO]/.test(document.querySelector("#engine-window-pvs .engine-pv:first-child .engine-pv-line")?.textContent || ""),
-  null, { timeout: 40000 },
-).catch(() => {});
+// A pending row says "Calculating…" (which contains letters), so the PV is only
+// ready when the first row has real .pv-move nodes. That also means a row left
+// over from the previous node cannot be mistaken for the new position's answer:
+// the caller waits for a PV that is legal from the position it just selected.
+const hasPvMoves = () => page.evaluate(() =>
+  document.querySelectorAll("#engine-window-pvs .engine-pv:first-child .pv-move").length > 0);
+const waitForPv = async (timeoutMs = 40000) => {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (await hasPvMoves()) return true;
+    await page.waitForTimeout(100);
+  }
+  return false;
+};
+
+// Waits for the engine to answer the position just selected: a PV whose every
+// SAN is legal from that FEN. A slow CI can still be painting the previous
+// node's line, which is exactly what the check below must not read.
+async function waitForLegalPv(fen, timeoutMs = 40000) {
+  const until = Date.now() + timeoutMs;
+  let last = { ok: false, why: "no PV moves rendered" };
+  while (Date.now() < until) {
+    const r = await readout();
+    last = pvIsLegalFrom(fen, r.pvSans);
+    if (last.ok) return { readout: r, pv: last };
+    await page.waitForTimeout(150);
+  }
+  return { readout: await readout(), pv: last };
+}
 
 // A PV is "for" a position when every SAN in it is legal from that position, in order.
 function pvIsLegalFrom(fen, sans) {
@@ -281,16 +306,19 @@ check(["v1", "v2", "v3", "v4", "v5"].every((id) => treeIds.includes(id)),
 
 await page.locator("#open-engine-widget").click();
 await waitForPv();
+// The engine card must actually be open before any PV is read: a card that is
+// still opening has no rows, and a check would then read the wrong thing.
+await page.waitForFunction(() => {
+  const card = document.getElementById("engine-window");
+  return !!card && !card.hidden && getComputedStyle(card).display !== "none";
+}, null, { timeout: 10000 });
 
 const evalByNode = {};
 for (const [nodeId, label] of [["v1", "3. Bc4 (variation)"], ["m5", "3. Bb5 (mainline, same ply)"],
   ["v3", "4. c3 (nested variation)"], ["v5", "4. d3 (nested variation)"]]) {
   check(await clickNode(nodeId), `${label}: node ${nodeId} must be in the move list`);
-  await waitForPv();
-  await page.waitForTimeout(500);
-  const r = await readout();
   const want = NODE_FEN[nodeId];
-  const pv = pvIsLegalFrom(want, r.pvSans);
+  const { readout: r, pv } = await waitForLegalPv(want);
   const board = await boardFen();
   check(r.node === nodeId, `${label}: the move list must mark ${nodeId}, got ${r.node}`);
   check(board === want.split(" ")[0], `${label}: the board must show ${nodeId}'s position (${want.split(" ")[0]}), got ${board}`);
@@ -310,11 +338,8 @@ await page.evaluate(async () => {
   await new Promise((r) => setTimeout(r, 30));
   document.querySelector('#analysis-moves .mtree-move[data-node-id="m3"]')?.click();
 });
-await waitForPv();
-await page.waitForTimeout(900);
 {
-  const r = await readout();
-  const pv = pvIsLegalFrom(NODE_FEN.m3, r.pvSans);
+  const { readout: r, pv } = await waitForLegalPv(NODE_FEN.m3);
   check(r.node === "m3", `a fast branch→mainline burst must settle on the last click, got ${r.node}`);
   check((await boardFen()) === NODE_FEN.m3.split(" ")[0], "a fast burst must leave the last clicked position on the board");
   check(pv.ok, `a fast burst must leave the engine on the last position — ${pv.why}`);

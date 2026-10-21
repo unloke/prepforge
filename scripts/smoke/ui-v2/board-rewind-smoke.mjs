@@ -762,11 +762,18 @@ async function phoneBuildUndo(page) {
   checkTravel(frames, { movers: [["a6", "a7"]] }, size, "phone build undo");
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 1), "phone build undo");
   // The board must be inside the viewport, not merely drawn: a clipped board
-  // would make the motion unobservable even if the DOM were right.
-  const visible = await page.evaluate(() => {
+  // would make the motion unobservable even if the DOM were right. The layout
+  // settles after the undo paints, so wait for the geometry rather than reading
+  // one frame of a scrolling/relayouting panel.
+  const boardInView = () => page.evaluate(() => {
     const board = document.getElementById("build-board").getBoundingClientRect();
     return board.top >= 0 && board.left >= 0 && board.bottom <= innerHeight + 1 && board.right <= innerWidth + 1;
   });
+  const visible = await boardInView().catch(() => false)
+    || await page.waitForFunction(() => {
+      const board = document.getElementById("build-board").getBoundingClientRect();
+      return board.top >= 0 && board.left >= 0 && board.bottom <= innerHeight + 1 && board.right <= innerWidth + 1;
+    }, null, { timeout: 5000 }).then(() => true).catch(() => false);
   check(visible, "phone build: the board is fully inside the viewport");
   await page.locator("#build-board").screenshot({ path: "tmp/round2/evidence/phone-build-undo.png" });
 }
