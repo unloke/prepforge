@@ -30,7 +30,9 @@ export async function checkTrainingHistory(page, check, shot) {
   check((await page.locator('#training-history-title').textContent()) === 'Training history', 'history must name itself');
   check((await page.locator('#training-history-dialog .th-scope').textContent()).includes('this browser'), 'history must say it is stored in this browser');
   const foot = await page.locator('#training-history-dialog .th-foot').textContent();
-  check(/1 of 100 runs kept/.test(foot), `history must state its retention, got "${foot}"`);
+  check(/^1 saved run$/.test(foot.trim()), `history must report the count it actually holds, got "${foot}"`);
+  const footNote = await page.locator('#training-history-dialog .th-foot span').getAttribute('title');
+  check(/^Keeps up to \d+ recent runs within \d+ KiB in this browser$/.test(footNote || ''), `the retention detail belongs in the footer tooltip, got "${footNote}"`);
   const overflow = await page.evaluate(() => {
     const dialog = document.querySelector('#training-history-dialog .modal');
     const box = dialog.getBoundingClientRect();
@@ -50,8 +52,8 @@ export async function checkTrainingHistory(page, check, shot) {
   const reopened = await popup;
   try {
     await reopened.waitForLoadState('domcontentloaded');
-    await reopened.locator('#train-srs-start [data-train-history]').waitFor({ state: 'visible' });
-    await reopened.locator('#train-srs-start [data-train-history]').click();
+    await reopened.locator('#view-train [data-train-history]:visible').first().waitFor({ state: 'visible' });
+    await reopened.locator('#view-train [data-train-history]:visible').first().click();
     await reopened.locator('#training-history-dialog .th-lead').waitFor();
     assert.equal(await reopened.locator('#training-history-dialog .th-lead').count(), 1, 'history must survive opening a new app page');
     await reopened.keyboard.press('Escape');
@@ -64,10 +66,13 @@ export async function checkTrainingHistory(page, check, shot) {
     }, { key: historyKey('u1'), runs: seededRuns });
     assert.ok(seed > 0, 'seed must be written');
     await reopened.reload({ waitUntil: 'domcontentloaded' });
-    await reopened.locator('#train-srs-start [data-train-history]').waitFor({ state: 'visible' });
-    await reopened.locator('#train-srs-start [data-train-history]').click();
+    await reopened.locator('#view-train [data-train-history]:visible').first().waitFor({ state: 'visible' });
+    await reopened.locator('#view-train [data-train-history]:visible').first().click();
     await reopened.locator('#training-history-dialog .th-lead').waitFor();
     const listed = await reopened.locator('#training-history-dialog .th-run').count();
+    assert.ok(listed < 107, `the list must be bounded, got ${listed}`);
+    const manyFoot = (await reopened.locator('#training-history-dialog .th-foot').textContent()).trim();
+    assert.ok(/^\d+ saved runs?$/.test(manyFoot), `the footer must report the saved count, got "${manyFoot}"`);
     assert.ok(listed > 5, `earlier runs must be listed, got ${listed}`);
     const scrolls = await reopened.evaluate(() => {
       const body = document.querySelector('#training-history-dialog .th-body');

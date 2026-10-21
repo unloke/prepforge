@@ -3,6 +3,11 @@
    ink step is the lead figure, and missed answers keep the app's danger tint.
    A real dialog, so the shared .modal overlay shadow is the one elevation. */
 .modal.training-history {
+  /* Meta text: the lead's label, the timestamps, the figure labels, the list
+     heading and the footer. Desktop reads it at the app's 11px extra-small;
+     a phone needs 12px for a subline (app-screens.md §12), so the phone block
+     below raises this one value and every meta line follows. */
+  --th-meta: var(--fs-xs);
   width: min(560px, calc(100vw - 24px));
   max-height: min(78svh, 640px);
   display: flex;
@@ -20,7 +25,7 @@
 }
 .th-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .th-head .modal-title { padding: 0; font-size: 15px; }
-.th-scope { color: var(--label); font-size: var(--fs-xs); }
+.th-scope { color: var(--label); font-size: var(--th-meta); }
 
 .th-body { min-height: 0; overflow-y: auto; padding: 0 16px 4px; }
 
@@ -32,8 +37,8 @@
   background: var(--panel-soft);
 }
 .th-lead-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.th-lead-label { color: var(--label); font-size: var(--fs-xs); font-weight: 600; }
-.th-when { color: var(--label); font-size: var(--fs-xs); white-space: nowrap; }
+.th-lead-label { color: var(--label); font-size: var(--th-meta); font-weight: 600; }
+.th-when { color: var(--label); font-size: var(--th-meta); white-space: nowrap; }
 .th-name {
   margin: 4px 0 0;
   font-size: var(--fs);
@@ -57,7 +62,7 @@
 }
 .th-figure { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; background: var(--panel); }
 .th-figure b { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.th-figure span { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; }
+.th-figure span { color: var(--muted); font-size: var(--th-meta); line-height: 1.3; }
 .th-figure.is-lead b { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
 .th-figure.is-missed b { color: var(--danger); }
 
@@ -68,7 +73,7 @@
   margin: 14px 0 0;
   padding: 0 2px;
   color: var(--label);
-  font-size: var(--fs-xs);
+  font-size: var(--th-meta);
   font-weight: 600;
 }
 .th-runs { margin: 2px 0 0; padding: 0; list-style: none; }
@@ -85,7 +90,7 @@
 .th-run .th-name { margin: 0; font-size: var(--fs); font-weight: 600; }
 .th-run-score { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .th-run-score b { font-size: var(--fs); font-weight: 650; font-variant-numeric: tabular-nums; }
-.th-run-score span { color: var(--label); font-size: var(--fs-xs); white-space: nowrap; }
+.th-run-score span { color: var(--label); font-size: var(--th-meta); white-space: nowrap; }
 
 .th-empty { padding: 26px 12px 30px; text-align: center; }
 .th-empty b { font-size: var(--fs); font-weight: 650; }
@@ -97,12 +102,13 @@
   padding: 10px 16px 12px;
   border-top: 1px solid var(--line-soft);
   color: var(--label);
-  font-size: var(--fs-xs);
+  font-size: var(--th-meta);
   font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 600px) {
-  .modal.training-history { max-height: 82svh; }
+  /* A subline is never under 12px on a phone. */
+  .modal.training-history { --th-meta: 12px; max-height: 82svh; }
   .th-head { padding: 14px 14px 10px; }
   .th-head .btn { min-height: 44px; }
   .th-body { padding: 0 14px 4px; }

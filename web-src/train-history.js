@@ -1,21 +1,26 @@
 // Completed Smart queue / Blitz runs, kept in this browser and scoped to the
-// signed-in owner. One JSON document per account, newest first, bounded to
-// 100 runs and 96 KiB of serialized UTF-8 JSON. Older runs fall off; a run is
-// never dropped for its own long repertoire names (the newest one is kept even
-// if it alone exceeds the byte budget). One record per session generation, so a
-// retry or a re-render after completion adds nothing. Storage failures return
-// false and never throw into training completion.
+// signed-in owner. One JSON document per account, newest first by finish time,
+// with two hard bounds: 100 runs and 96 KiB of the serialized document
+// (wrapper and separators included). A run that does not fit is not saved and
+// the document already on disk is left exactly as it was; training completion
+// carries on either way. One record per session generation, so a retry or a
+// re-render after completion adds nothing. Storage failures return false and
+// never throw into training completion.
 
 const PREFIX = 'pf.trainHistory:';
 
 export const HISTORY_LIMITS = {
   runs: 100,
-  // Bytes of the serialized document for one account ("{v,runs}" JSON), counted
-  // as UTF-8, not the browser's internal UTF-16 units.
+  // UTF-8 bytes of the whole serialized value for one account: the JSON string
+  // stored under the key, not the browser's internal UTF-16 accounting.
   bytes: 96 * 1024,
 };
 
 const encoder = new TextEncoder();
+const utf8 = text => encoder.encode(text).length;
+// `{"v":1,"runs":[]}`: the wrapper every document carries before any record.
+const DOC_BYTES = utf8('{"v":1,"runs":[]}');
+const serialize = runs => JSON.stringify({ v: 1, runs });
 const keyFor = ownerId => `${PREFIX}${encodeURIComponent(ownerId)}`;
 const isCount = value => Number.isInteger(value) && value >= 0;
 
@@ -31,30 +36,36 @@ function isRun(run) {
     [run.cards, run.correct, run.mistakes, run.skipped].every(isCount);
 }
 
-function readRuns(ownerId, storage) {
-  const raw = storage.getItem(keyFor(ownerId));
-  if (!raw) return [];
-  let doc;
-  try { doc = JSON.parse(raw); } catch { return []; }
-  return doc?.v === 1 && Array.isArray(doc.runs)
-    ? doc.runs.filter(isRun).slice(0, HISTORY_LIMITS.runs)
-    : [];
-}
+// Newest first by the run's own finish time: a clock that stepped backwards
+// between two completions must not decide which end of the list is the old one.
+const newestFirst = (a, b) =>
+  Date.parse(b.finishedAt) - Date.parse(a.finishedAt) || a.id.localeCompare(b.id);
 
-// Newest first, count-capped, then byte-capped from the oldest end. The newest
-// record is always kept: a single oversized record beats losing the run the
-// user just finished. Sizes are summed per record (an array's JSON is the join
-// of its records), so the check stays linear.
-const DOC_BYTES = encoder.encode('{"v":1,"runs":[]}').length;
+// One order and one cut, used on the way in and on the way out: sort by
+// finishedAt, keep the newest `runs`, then drop from the oldest end until the
+// serialized value fits `bytes`. Record sizes are summed (an array's JSON is
+// the join of its records), so the check stays linear and the count matches
+// `utf8(serialize(kept))` exactly: one wrapper, one comma between records.
 function bounded(runs) {
-  const kept = runs.slice(0, HISTORY_LIMITS.runs);
-  const sizes = kept.map(run => encoder.encode(JSON.stringify(run)).length);
+  const kept = runs.slice().sort(newestFirst).slice(0, HISTORY_LIMITS.runs);
+  const sizes = kept.map(run => utf8(JSON.stringify(run)));
   let bytes = DOC_BYTES + sizes.reduce((sum, size) => sum + size, 0) + Math.max(0, kept.length - 1);
-  while (kept.length > 1 && bytes > HISTORY_LIMITS.bytes) {
-    bytes -= sizes.pop() + 1;
+  while (kept.length && bytes > HISTORY_LIMITS.bytes) {
+    bytes -= sizes.pop() + (kept.length > 1 ? 1 : 0);
     kept.pop();
   }
   return kept;
+}
+
+function readRuns(ownerId, storage) {
+  const raw = storage.getItem(keyFor(ownerId));
+  if (!raw) return [];
+  // Over the byte bound: no write of ours can produce this document, and
+  // parsing it would hand back a list the bound forbids.
+  if (utf8(raw) > HISTORY_LIMITS.bytes) return [];
+  let doc;
+  try { doc = JSON.parse(raw); } catch { return []; }
+  return doc?.v === 1 && Array.isArray(doc.runs) ? bounded(doc.runs.filter(isRun)) : [];
 }
 
 export function saveSmartRun(ownerId, smart, stats, storage = browserStorage(), now = new Date()) {
@@ -74,7 +85,11 @@ export function saveSmartRun(ownerId, smart, stats, storage = browserStorage(), 
     const previous = readRuns(ownerId, storage);
     // The same generation was already recorded: keep that record's values.
     if (previous.some(existing => existing.id === id)) return true;
-    storage.setItem(keyFor(ownerId), JSON.stringify({ v: 1, runs: bounded([run, ...previous]) }));
+    const kept = bounded([run, ...previous]);
+    // Neither bound is negotiable and the stored document is the user's
+    // history: a run that does not fit is reported, not forced in over it.
+    if (!kept.some(saved => saved.id === id)) return false;
+    storage.setItem(keyFor(ownerId), serialize(kept));
     return true;
   } catch { return false; }
 }
@@ -82,13 +97,5 @@ export function saveSmartRun(ownerId, smart, stats, storage = browserStorage(), 
 export function readTrainingHistory(ownerId, storage = browserStorage()) {
   if (!ownerId) return [];
   if (!storage) throw new Error('Allow site storage to save and view history.');
-  return readRuns(ownerId, storage).sort((a, b) => b.finishedAt.localeCompare(a.finishedAt) || a.id.localeCompare(b.id));
-}
-
-// What this account currently keeps, for the History footer. Bytes are the
-// serialized document's UTF-8 length, the same measure the save path enforces.
-export function trainingHistoryUsage(ownerId, storage = browserStorage()) {
-  if (!ownerId || !storage) return { runs: 0, bytes: 0 };
-  const raw = storage.getItem(keyFor(ownerId));
-  return { runs: readRuns(ownerId, storage).length, bytes: raw ? encoder.encode(raw).length : 0 };
+  return readRuns(ownerId, storage);
 }

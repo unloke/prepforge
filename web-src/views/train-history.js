@@ -1,6 +1,6 @@
 import { html } from '../html.js';
 import { activateModal } from '../core/modals.js';
-import { HISTORY_LIMITS, readTrainingHistory, trainingHistoryUsage } from '../train-history.js';
+import { HISTORY_LIMITS, readTrainingHistory } from '../train-history.js';
 import './train-history.css';
 
 const DATE = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -45,7 +45,7 @@ const row = run => {
   </li>`;
 };
 
-function body(runs, usage) {
+function body(runs) {
   if (!runs.length) {
     return html`<div class="th-empty"><b>No runs saved yet</b>
       <p>Finish a Smart queue or Blitz session and it lands here.</p></div>`;
@@ -55,7 +55,11 @@ function body(runs, usage) {
     <ol class="th-runs">${earlier.map(row)}</ol>` : ''}`;
 }
 
-const storageLine = usage => `${usage.runs} of ${HISTORY_LIMITS.runs} runs kept`;
+// The count that is actually there. When the byte bound is what stopped the
+// list, "N of 100" would promise slots the account can never fill, so the
+// footer states the count and the rule behind it lives in the tooltip.
+const storageLine = count => `${count} saved run${count === 1 ? '' : 's'}`;
+const retentionNote = `Keeps up to ${HISTORY_LIMITS.runs} recent runs within ${Math.round(HISTORY_LIMITS.bytes / 1024)} KiB in this browser`;
 
 export function openTrainingHistory(ownerId) {
   if (!ownerId) return;
@@ -65,9 +69,9 @@ export function openTrainingHistory(ownerId) {
   overlay.className = 'modal-overlay';
   let content, foot;
   try {
-    const usage = trainingHistoryUsage(ownerId);
-    content = body(readTrainingHistory(ownerId), usage);
-    foot = html`<footer class="th-foot"><span title="Older runs drop off as new ones arrive; nothing leaves this browser.">${storageLine(usage)}</span></footer>`;
+    const runs = readTrainingHistory(ownerId);
+    content = body(runs);
+    foot = html`<footer class="th-foot"><span title="${retentionNote}">${storageLine(runs.length)}</span></footer>`;
   } catch {
     content = html`<div class="th-empty is-error" role="alert"><b>History unavailable</b>
       <p>Allow site storage for this site, then reopen History.</p></div>`;
