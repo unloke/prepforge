@@ -26,6 +26,7 @@ import { buildAddId, buildDeleteId } from "./sync-queue.js";
 import { clearCheckpoint, loadCheckpoint } from "./analyze-checkpoint.js";
 import { loadReturnState, setHandoffOwner } from "./handoff-context.js";
 import { activateWorkspaceTab, parseWorkspaceLocation, serializeWorkspaceLocation, trainQueueRepertoireId, workspaceLocationFromState } from "./workspace-url.js";
+import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
   isBuildReadOnly,
@@ -377,35 +378,6 @@ async function restoreWorkspaceLocation() {
   }
 }
 
-// Analyze keeps the loaded game in a session slot (controllers/analyze-session.js
-// persistAnalysisSession), so a reload puts the move list and the board back
-// together instead of a PGN box whose game the board never loaded. The URL's
-// ?ply= wins when it names a move: a shared/returned link is about that ply.
-// A ?node= names an off-mainline branch, which no ply can describe — restoring
-// only the ply turned the user's variation into a mainline move of the same
-// number. The node wins over the ply when both are present.
-async function restoreAnalyzeSession(urlPly, urlNode = null) {
-  if (appState.analysis) {
-    if (urlNode) await selectAnalysisNode(urlNode);
-    else if (urlPly) await showAnalysisPly(urlPly);
-    return;
-  }
-  const saved = loadReturnState("analyze");
-  const pgn = typeof saved?.pgn === "string" ? saved.pgn : "";
-  if (!pgn.trim()) return;
-  const input = document.getElementById("pgn-input");
-  if (input) input.value = pgn;
-  const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => false);
-  if (!loaded) return;
-  const node = urlNode || saved?.node;
-  if (node && node !== "root") {
-    await selectAnalysisNode(node);
-    return;
-  }
-  const ply = urlPly || saved?.ply;
-  if (ply) await showAnalysisPly(ply);
-}
-
 // In-page route changes (back/forward and location.hash) take the same path as
 // boot restore: switch the view, then rebuild Train's queue for the URL's
 // repertoire. Without this, ?rep= only took effect on a full reload. Coming
@@ -417,10 +389,12 @@ async function handleWorkspacePopstate() {
   }
   switchView(loc.view, { fromUrl: true });
   // Back/forward to an Analyze position puts the board there, the same way boot does.
-  // A branch node has no ply, so it is what the URL names when the position is off
-  // the mainline; otherwise the ply does.
+  // A position off the mainline has no ply, so it is what the URL names; otherwise
+  // the ply does. The path is compared against the current position's path, not an
+  // internal id, so a history entry is the same fact on both sides.
   if (loc.view === "analyze") {
-    if (loc.node && loc.node !== appState.analysisCurrentNodeId) await selectAnalysisNode(loc.node);
+    const current = selectedNodePath();
+    if (loc.node && loc.node !== current) await restoreAnalysisNodePath(loc.node);
     else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
   if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
@@ -1119,7 +1093,16 @@ const retryAnalyzeSave = viaAnalyzeSession("retryAnalyzeSave");
 const revealAnalysisResults = viaAnalyzeSession("revealAnalysisResults");
 const runAnalysis = viaAnalyzeSession("runAnalysis");
 const selectAnalysisNode = viaAnalyzeSession("selectAnalysisNode");
+const selectAnalysisNodePath = viaAnalyzeSession("selectAnalysisNodePath");
+const selectedNodePath = viaAnalyzeSession("selectedNodePath");
 const showAnalysisPly = viaAnalyzeSession("showAnalysisPly");
+
+// Restoring the Analyze position a link or session names lives in its own module
+// (controllers/analyze-restore.js); this binds it to the session's entry points.
+const { restoreAnalyzeSession, restoreAnalysisNodePath } = createAnalyzeRestore({
+  appState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
+  selectAnalysisNodePath, setStatus,
+});
 
 export let appReadyPromise = null;
 

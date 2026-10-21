@@ -13,12 +13,19 @@
 // The session owns the state; this module owns the rule that the selected node is
 // the single fact every one of those readers is told about.
 
+import { analysisNodeIdFromPath, analysisPathOf } from "../analyze-node-path.js";
+
 export function createAnalysisSelection(deps) {
   const {
     appState, START_FEN, boardInfo, boards, classBadgeSymbol, setPositionCaption,
     highlightCurrentMove, persistAnalysisSession, syncViewHeads, syncWorkspaceUrl,
     refreshAnalysisExplain, engineWidget, analysisVariationLabel, ensureAnalyzeView,
     boardAfterMove, syncPgnFromTree, setStatusError,
+    // The source epoch: bumped whenever the loaded game/owner changes. A board read
+    // started for one source must not paint after another source was loaded — even
+    // when the analysis object and the selected node id happen to be unchanged (a
+    // recall of the same game, an account switch during a read).
+    analysisSourceSeq = () => 0, currentOwnerId = () => null, ownerGeneration = () => 0,
   } = deps;
 
   // Bumped by every selection intent. A continuation that resolves after a newer
@@ -26,10 +33,33 @@ export function createAnalysisSelection(deps) {
   // never paint over the position the user actually chose.
   let selectionSeq = 0;
 
-  function selectionIsCurrent(token, nodeId, analysis) {
+  // Everything a continuation must still match to be allowed to paint: the
+  // selection it was started for, the node, the analysis object, and the source
+  // epoch (game + owner) it belongs to.
+  function selectionIsCurrent(token, nodeId, analysis, source) {
     return token === selectionSeq &&
       appState.analysisCurrentNodeId === nodeId &&
-      analysis === appState.analysis;
+      analysis === appState.analysis &&
+      source.isCurrent();
+  }
+
+  function captureSource() {
+    const seq = analysisSourceSeq();
+    const owner = currentOwnerId();
+    const generation = ownerGeneration();
+    return {
+      seq,
+      isCurrent: () => seq === analysisSourceSeq() && owner === currentOwnerId() &&
+        generation === ownerGeneration(),
+    };
+  }
+
+  // The persisted/URL identity of the selected node: its root-to-node UCI path.
+  // Read from the node the selection last applied (not the tree map), so a branch
+  // created a moment ago has an identity before the move list re-renders.
+  let appliedNode = null;
+  function selectedNodePath() {
+    return analysisPathOf(appliedNode);
   }
 
   // The mainline node for a ply: the tree's own node when the move list has been
@@ -48,6 +78,9 @@ export function createAnalysisSelection(deps) {
       ply: bounded,
       isMainline: true,
       isVariation: false,
+      // The fallback node's identity without the tree: the mainline's first
+      // `bounded` ucis, in order (same `-` separator as analyze-node-path.js).
+      path: moves.slice(0, bounded).map((m) => m.uci).join("-") || "root",
       san: move ? move.san : null,
       uci: move ? move.uci : null,
       fenBefore: move ? move.fen_before : null,
@@ -81,17 +114,22 @@ export function createAnalysisSelection(deps) {
     const moves = analysis && analysis.moves ? analysis.moves : [];
     const back = selectionMovesBack(appState.analysisCurrentNodeId || "root", node.id);
     const token = (selectionSeq += 1);
+    const source = captureSource();
     const mainline = !!node.isMainline;
     appState.analysisCurrentNodeId = node.id;
     // Mainline plies keep their number (the coach resolves the saved verdict by
     // index); an off-mainline node has none and keeps the -1 sentinel every
     // numeric consumer already understands.
     appState.analysisPly = mainline ? Number(node.ply) || 0 : -1;
-    syncWorkspaceUrl();
+    appliedNode = node;
+    // The URL's identity for this position (workspace-url reads it). A mainline
+    // position is named by its ply alone, so it carries no path and an ordinary
+    // `#/analyze?ply=5` link keeps its shape; only a branch needs one.
+    appState.analysisNodePath = mainline ? null : analysisPathOf(node);
     const move = node.id === "root" ? null : node;
     const fen = move ? move.fenAfter : moves[0]?.fen_before || analysis?.initialFen || START_FEN;
     const info = await boardInfo(fen);
-    if (!selectionIsCurrent(token, node.id, analysis)) return;
+    if (!selectionIsCurrent(token, node.id, analysis, source)) return;
     appState.analysisBoardFen = fen;
     boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
     // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game
@@ -110,6 +148,7 @@ export function createAnalysisSelection(deps) {
     );
     highlightCurrentMove();
     persistAnalysisSession();
+    syncWorkspaceUrl();
     syncViewHeads();
     refreshAnalysisExplain({
       fen,
@@ -135,8 +174,19 @@ export function createAnalysisSelection(deps) {
   async function selectAnalysisNode(nodeId) {
     const tree = appState.analysisTree;
     const node = tree ? tree.byId.get(nodeId) : null;
-    if (!node) return;
+    if (!node) return false;
     await applyAnalysisNode(node);
+    return true;
+  }
+
+  // Restore a persisted selection by its stable identity (the root-to-node UCI
+  // path). A path the current tree no longer has is NOT resolved to some other
+  // node: the caller keeps the position it has and can say the branch is gone.
+  async function selectAnalysisNodePath(path) {
+    const tree = appState.analysisTree;
+    const nodeId = tree ? analysisNodeIdFromPath(path, tree) : null;
+    if (!nodeId) return false;
+    return selectAnalysisNode(nodeId);
   }
 
   // Tree-aware navigation (start/prev/next/end). Works for both the analysed
@@ -149,13 +199,16 @@ export function createAnalysisSelection(deps) {
     // variation (landing on its parent's parent) instead of from the move the user
     // was on.
     const fromId = appState.analysisCurrentNodeId || "root";
+    const analysis = appState.analysis;
+    const source = captureSource();
     const view = await ensureAnalyzeView();
+    // A newer selection (a click, a jump) or a new source supersedes this step.
+    if (!source.isCurrent() || analysis !== appState.analysis) return;
+    if ((appState.analysisCurrentNodeId || "root") !== fromId) return;
     const tree =
       appState.analysisTree ||
       view.buildAnalysisTree(appState.analysis ? appState.analysis.moves : []);
     appState.analysisTree = tree;
-    // A newer selection (a click, a jump) supersedes this step.
-    if ((appState.analysisCurrentNodeId || "root") !== fromId) return;
     let node = tree.byId.get(fromId) || tree.root;
     if (kind === "start") node = tree.root;
     else if (kind === "prev") node = node.parent || node;
@@ -175,8 +228,11 @@ export function createAnalysisSelection(deps) {
       (appState.analysisPly > 0 ? `m${appState.analysisPly}` : "root");
     // The move is played against the position on the board; if the user has already
     // moved on by the time the board confirms it, the branch belongs to a position
-    // nobody is looking at any more.
+    // nobody is looking at any more — and a new source (a reload of another game, an
+    // account switch) makes the whole branch meaningless.
     const token = selectionSeq;
+    const analysis = appState.analysis;
+    const source = captureSource();
     try {
       const tree = appState.analysisTree;
       const currentNode = tree ? tree.byId.get(fromId) : null;
@@ -191,6 +247,7 @@ export function createAnalysisSelection(deps) {
       // current node.
       const payload = await boardAfterMove(fen, moveUci);
       if (token !== selectionSeq || (appState.analysisCurrentNodeId || "root") !== fromId) return;
+      if (!source.isCurrent() || analysis !== appState.analysis) return;
       const parts = fen.split(" ");
       const side = parts[1] === "b" ? "black" : "white";
       const moveNumber = Number(parts[5]) || 1;
@@ -219,8 +276,14 @@ export function createAnalysisSelection(deps) {
         moveNumber,
         side,
         classification: null,
+        // The parent node itself, so the new branch's root-to-node path is
+        // available before the move list re-renders its tree.
+        parent: currentNode || null,
       });
-      // New branch on the board → mirror it into the PGN box.
+      // New branch on the board → mirror it into the PGN box. Mark the box stale
+      // first: the box is the only place a reload can find this branch, so the
+      // serialization must also land while the textarea is focused.
+      appState.analysisPgnStale = true;
       void syncPgnFromTree().catch(() => {});
     } catch (error) {
       setStatusError(error.message);
@@ -231,6 +294,8 @@ export function createAnalysisSelection(deps) {
     analysisTreeNav,
     onAnalysisBoardMove,
     selectAnalysisNode,
+    selectAnalysisNodePath,
+    selectedNodePath,
     showAnalysisPly,
   };
 }

@@ -8,6 +8,7 @@ import {
 } from "../analyze-checkpoint.js";
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
+import { ANALYSIS_ROOT_PATH } from "../analyze-node-path.js";
 import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
 import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
@@ -50,18 +51,23 @@ export function createAnalyzeSession(deps) {
   positionCoach.bind();
   // Selection (controllers/analyze-selection.js): one path from a picked node to the
   // board, caption, Coach context and engine card — mainline and branch alike.
-  ({ analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, showAnalysisPly } =
+  ({ analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, selectAnalysisNodePath,
+    selectedNodePath, showAnalysisPly } =
     createAnalysisSelection({
       appState, START_FEN, boardInfo, boards, classBadgeSymbol, setPositionCaption,
       highlightCurrentMove, persistAnalysisSession, syncViewHeads, syncWorkspaceUrl,
       refreshAnalysisExplain, engineWidget, analysisVariationLabel, ensureAnalyzeView,
       boardAfterMove, syncPgnFromTree, setStatusError,
+      // The source epoch: every await in the selection path re-checks it, so a board
+      // read for a superseded game/owner can never repaint the board.
+      analysisSourceSeq: () => analysisRecallSeq, currentOwnerId,
+      ownerGeneration: () => appState.ownerGeneration,
     }));
   return {
     analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
     onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
     resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
-    selectAnalysisNode, showAnalysisPly,
+    selectAnalysisNode, selectAnalysisNodePath, selectedNodePath, showAnalysisPly,
   };
 }
 
@@ -549,7 +555,8 @@ class PositionCoach {
 let positionCoach = null;
 // The selection entry points, created by controllers/analyze-selection.js (see
 // createAnalyzeSession). Module-level so the session's own functions can call them.
-let analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, showAnalysisPly;
+let analysisTreeNav, onAnalysisBoardMove, selectAnalysisNode, selectAnalysisNodePath,
+  selectedNodePath, showAnalysisPly;
 
 const COACH_TONES = ["good", "warn", "danger", "info", "brilliant"];
 
@@ -858,6 +865,14 @@ async function runAnalysis(options = {}) {
       throw prepError;
     }
     if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) return;
+    // The selected game's own PGN. A multi-game paste is analyzed one game at a
+    // time, and only the server knows where that game's movetext ends: parsing the
+    // whole box would glue the other games onto this one (their branches then hang
+    // off this game's last move). Required, not optional: this is the contract.
+    const gamePgn = prep.pgn;
+    if (typeof gamePgn !== "string" || !gamePgn.trim()) {
+      throw new Error("The server did not return the analyzed game's PGN");
+    }
     const positions = prep.positions || [];
     if (!positions.length) throw new Error("No positions to analyze");
     renderImportPicker(prep.import_summary, importMode);
@@ -1062,7 +1077,8 @@ async function runAnalysis(options = {}) {
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
-      pgn,
+      // The analyzed game alone — what a retry re-parses for its branches.
+      pgn: gamePgn,
     };
     completedCheckpoint = checkpoint;
     const checkpointStored = await saveCheckpoint({
@@ -1128,7 +1144,7 @@ async function runAnalysis(options = {}) {
     }
     appState.analysis = payload;
     resetAnalysisVariations();
-    await rebuildAnalysisVariations(pgn);
+    await rebuildAnalysisVariations(gamePgn);
     await showAnalysisPly(0);
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
     if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
@@ -1308,11 +1324,17 @@ async function retryAnalyzeSave() {
     if (ownerId !== currentOwnerId()) return;
     refreshAnalysisHistoryIfOpen();
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
+    if (!checkpoint.pgn) {
+      // A checkpoint without the analyzed game's PGN cannot rebuild its branches;
+      // the server still owns that text, so say so rather than parse the box.
+      setStatusError("Could not restore this game's lines: reload it and run Analyze again");
+      return;
+    }
     const input = document.getElementById("pgn-input");
-    if (input && checkpoint.pgn) input.value = checkpoint.pgn;
+    if (input) input.value = checkpoint.pgn;
     appState.analysis = payload;
     resetAnalysisVariations();
-    await rebuildAnalysisVariations(checkpoint.pgn || "");
+    await rebuildAnalysisVariations(checkpoint.pgn);
     await showAnalysisPly(0);
     await renderAnalysis(payload, { sourceSeq: seq });
     if (seq !== analysisRecallSeq || ownerId !== currentOwnerId()) return;
@@ -1435,21 +1457,46 @@ function updateEvalChartCursor() {
 // The loaded game and the position the board shows are one session: a reload that
 // keeps only one of them (the PGN box's browser-restored text, say) leaves the
 // move list and the board disagreeing. Save both, keyed like Games' return state.
-function persistAnalysisSession() {
-  const moves = appState.analysis ? appState.analysis.moves || [] : [];
-  const pgn = document.getElementById("pgn-input")?.value || "";
-  if (!moves.length || !pgn.trim()) {
+//
+// Two rules make the saved pair reconstructible:
+//   • the saved text is the CURRENT tree (serialized before saving), so a branch
+//     the user just created is in the PGN a reload parses — an older box text
+//     silently lost it; and
+//   • the position is saved as the node's root-to-node UCI PATH, not `v<seq>`:
+//     creation order and a reloaded PGN's depth-first numbering differ, so a
+//     sequence number could name another branch (or none) after the reload.
+// The caller (controllers/analyze-selection.js) starts this after every applied
+// selection. The serialization is awaited, so a selection made meanwhile can land
+// first: the write below re-checks that the position is still the one it started
+// for, and an older snapshot never overwrites a newer one.
+async function persistAnalysisSession() {
+  const startedAt = selectedNodePath();
+  const analysis = appState.analysis;
+  const moves = analysis ? analysis.moves || [] : [];
+  if (!moves.length && !(appState.analysisVarNodes && appState.analysisVarNodes.size)) {
+    clearReturnState("analyze");
+    return;
+  }
+  // A focused box the user is editing is ahead of this tree (its debounced reload
+  // has not run): the pair would mix their new text with this tree's position, so
+  // leave the previous snapshot alone until the tree follows the box.
+  const input = document.getElementById("pgn-input");
+  if (document.activeElement === input && !appState.analysisPgnStale) return;
+  // Serialize first: the saved PGN must contain every branch the tree has now.
+  await syncPgnFromTree().catch(() => {});
+  if (analysis !== appState.analysis || selectedNodePath() !== startedAt) return;
+  const pgn = input?.value || "";
+  if (!pgn.trim()) {
     clearReturnState("analyze");
     return;
   }
   saveReturnState("analyze", {
     pgn,
     ply: Math.max(0, Number(appState.analysisPly) || 0),
-    // The NODE, not just the ply: an off-mainline position has no mainline ply, so
-    // restoring by ply alone moved a reloaded/returned session to a different
-    // position of the same game (a variation became whichever mainline move shared
-    // its move number). A mainline node restores to the same position either way.
-    node: appState.analysisCurrentNodeId || "root",
+    // The position's stable identity: `root`, or the UCI path that leads to it
+    // (`e2e4-d7d6` for 1... d6, `e2e4-e7e5-g1f3-a7a6` for a branch at move 3).
+    // A mainline position resolves to the same node either way.
+    node: selectedNodePath() || ANALYSIS_ROOT_PATH,
   });
 }
 
@@ -1457,22 +1504,28 @@ function resetAnalysisVariations() {
   appState.analysisVarNodes = new Map();
   appState.analysisVarCounter = 0;
   appState.analysisCurrentNodeId = "root";
+  appState.analysisNodePath = null;
   appState.analysisTree = null;
 }
 
-// Re-install the branches a source PGN carries. A finished analysis payload holds
-// the MAINLINE it classified, so assigning it and resetting the variations threw
-// away every branch the user's PGN had — the tree came back flat and the nested
-// lines they loaded to study were gone. The source text is the one place those
-// branches live, so they are parsed from it again.
-async function rebuildAnalysisVariations(pgnText) {
-  const parsed = parsePgn(pgnText);
+// Re-install the branches the ANALYZED GAME carries. A finished analysis payload
+// holds only the mainline it classified, so assigning it and resetting the
+// variations threw away every branch the game had — the tree came back flat and
+// the nested lines the user loaded to study were gone.
+//
+// The text this parses is one game: the selected game's own PGN as the server
+// parsed it (`prep.pgn`), never the multi-game textarea. Parsing the whole box
+// glued the other games' movetext onto this one (their branches then hung off this
+// game's last move) because the parser strips every header block before it reads.
+async function rebuildAnalysisVariations(gamePgn) {
+  const parsed = parsePgn(gamePgn);
   if (!parsed.ok) return false;
   const view = await ensureAnalyzeView();
   const { varNodes } = view.adaptParsedTree(parsed.root);
   appState.analysisVarNodes = varNodes;
   appState.analysisVarCounter = varNodes.size;
   appState.analysisTree = null;
+  appState.analysisPgnStale = false;
   return true;
 }
 
@@ -1499,6 +1552,7 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sour
         appState.analysisVarNodes = new Map();
         appState.analysisVarCounter = 0;
         appState.analysisCurrentNodeId = "root";
+        appState.analysisNodePath = null;
         appState.analysisTree = null;
         appState.analysisSourcePgn = null;
         view.renderAnalysisTree([]);
@@ -1531,8 +1585,11 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sour
   appState.analysisVarNodes = varNodes;
   appState.analysisVarCounter = varNodes.size;
   appState.analysisCurrentNodeId = "root";
+  appState.analysisNodePath = null;
   appState.analysisTree = null;
   appState.analysisSourcePgn = null;
+  // The box and this tree are one source again.
+  appState.analysisPgnStale = false;
   view.renderAnalysisTree(moves);
   view.renderEvalChart([]);
   view.renderClassificationBars([]);

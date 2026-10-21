@@ -133,7 +133,10 @@ describe("Analyze engine stepping", () => {
     // The navigation rule now lives in its own module (controllers/analyze-selection.js).
     const start = selectionSource.indexOf("async function analysisTreeNav(");
     const code = selectionSource.slice(start, selectionSource.indexOf("\n  async function onAnalysisBoardMove", start));
-    const nav = new Function("appState", "ensureAnalyzeView", "selectAnalysisNode", `${code}; return analysisTreeNav;`)(appState, async () => ({}), select);
+    // The source epoch: unchanged here, so the step is never fenced out.
+    const captureSource = () => ({ isCurrent: () => true });
+    const nav = new Function("appState", "ensureAnalyzeView", "selectAnalysisNode", "captureSource",
+      `${code}; return analysisTreeNav;`)(appState, async () => ({}), select, captureSource);
     await nav(kind);
     await nav(kind);
     expect(select).not.toHaveBeenCalled();

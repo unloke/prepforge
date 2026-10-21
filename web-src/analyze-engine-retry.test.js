@@ -45,7 +45,7 @@ function fixture({ fail = (_net, fen, workers) => workers === 2 && fen === posit
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1, currentOwnerId: () => "owner", appState: {},
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true, engineLifecycleMark: vi.fn(),
     postJson: vi.fn(async path => path === "/api/analyze/prepare"
-      ? { game_id: "game", positions, depth: 12 } : (save ? save() : { moves: [] })),
+      ? { game_id: "game", pgn: "1. e4", positions, depth: 12 } : (save ? save() : { moves: [] })),
     renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
     analysisStore: async () => store, ensureAnalyzeView: async () => ({ liveEvalChart: () => vi.fn() }),
     createEngineAnalysisRun: manager.createEngineAnalysisRun, readyIfCached: manager.readyIfCached,

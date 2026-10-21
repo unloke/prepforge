@@ -15,6 +15,9 @@
 //   - a fast variation→mainline burst settles on the last click
 //   - ArrowLeft walks the branch's parent chain back to the mainline trunk
 //   - a reload restores the branch (?node=), not the mainline ply
+//   - a branch the USER plays (creation order ≠ traversal order) comes back as the
+//     same position after a reload, and the saved PGN carries it
+//   - with two games in the box, the analyzed game keeps only ITS own branches
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -37,6 +40,10 @@ const MAINLINE = (() => {
   });
 })();
 const FENS = MAINLINE.map((m) => m.fen_after);
+// A second game whose movetext CONCATENATES legally after the first, so parsing the
+// whole textarea would glue them into one game and hang G2's branch off G1's last
+// move. The server analyzes one game at a time and returns that game's own PGN.
+const G2_PGN = '[Event "G2"]\n[White "Carol"]\n[Black "Dave"]\n[Result "*"]\n\n1. d4 d5 2. c4 (2. Nf3 Nf6) e6 *';
 const NODE_FEN = {
   m3: fenOf(["e4", "e5", "Nf3"]),
   m4: fenOf(["e4", "e5", "Nf3", "Nc6"]),
@@ -101,21 +108,64 @@ const base = `http://127.0.0.1:${PORT}`;
 
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const consoleErrors = [];
-page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
+// The multi-game check deliberately trips the single-game refusal (a 400), and the
+// browser logs every failed response. That one is expected; anything else is not.
+let expectMultiGameRefusal = false;
+page.on("console", (m) => {
+  if (m.type() !== "error") return;
+  if (expectMultiGameRefusal && /Failed to load resource.*400/.test(m.text())) return;
+  consoleErrors.push(m.text());
+});
 page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
 
 // Server-side pipeline stubs: prepare returns the fixture's REAL FENs (the browser
 // Stockfish evaluates them at depth 4); classify-save mirrors the server contract.
+//
+// Both games of the multi-game paste are served the way the real server does it:
+// one game at a time, with that game's OWN PGN in `prepare.pgn` (never the paste).
+const G2_SANS = ["d4", "d5", "c4", "e6"];
+const gameTwo = (() => {
+  const chess = new Chess();
+  const moves = G2_SANS.map((san, i) => {
+    const fenBefore = chess.fen();
+    const mv = chess.move(san);
+    return { ply: i + 1, move_number: Number(fenBefore.split(" ")[5]), side: mv.color === "w" ? "white" : "black",
+      san: mv.san, uci: `${mv.from}${mv.to}`, fen_before: fenBefore, fen_after: chess.fen() };
+  });
+  return { gameId: "variations-smoke-g2", pgn: G2_PGN, moves, positions: moves.map((m) => m.fen_after) };
+})();
+const gameOne = { gameId: "variations-smoke", pgn: PGN, moves: MAINLINE, positions: FENS };
+let prepared = gameOne;
+
 await page.route("**/api/analyze/prepare", async (route) => {
+  const body = JSON.parse(route.request().postData() || "{}");
+  // Single mode refuses a multi-game paste BEFORE storing anything (the real 400),
+  // so the app's own "Analyze batch" confirmation is what starts the batch path.
+  if (body.mode !== "multi" && String(body.pgn || "").includes('Event "G2"')) {
+    await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({
+      detail: "Found 2 games in the PGN — this flow analyzes one game at a time. Remove the extra games, or use multi-game mode.",
+    }) });
+    return;
+  }
+  prepared = body.mode === "multi" && Number(body.select_index) === 1 ? gameTwo : gameOne;
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-    game_id: "variations-smoke", depth: 4, engine: "stockfish (browser)", positions: FENS,
-    moves: MAINLINE.map((m) => ({ ply: m.ply, san: m.san })), brilliant: { enabled: false },
+    game_id: prepared.gameId, pgn: prepared.pgn, depth: 4, engine: "stockfish (browser)",
+    positions: prepared.positions,
+    moves: prepared.moves.map((m) => ({ ply: m.ply, san: m.san })), brilliant: { enabled: false },
+    import_summary: body.mode === "multi" ? {
+      mode: "multi", total_games: 2, imported_count: 2, existing_count: 0, failed_count: 0,
+      selected_index: Number(body.select_index) || 0, selected_game_id: prepared.gameId,
+      games: [
+        { index: 0, game_id: gameOne.gameId, status: "imported", white: "Alice", black: "Bob", error: null },
+        { index: 1, game_id: gameTwo.gameId, status: "imported", white: "Carol", black: "Dave", error: null },
+      ],
+    } : undefined,
   }) });
 });
 await page.route("**/api/analyze/classify-save", async (route) => {
   const body = JSON.parse(route.request().postData() || "{}");
   const evals = new Map((body.positions || []).map((p) => [p.fen, p]));
-  const moves = MAINLINE.map((m) => {
+  const moves = prepared.moves.map((m) => {
     const after = evals.get(m.fen_after) || {};
     return { ...m, classification: "good", best_move_uci: after.best_move_uci ?? null, score_cp: after.score_cp ?? null, comment: "" };
   });
@@ -126,7 +176,7 @@ await page.route("**/api/analyze/classify-save", async (route) => {
     position_evals[p.fen] = { score_cp: p.score_cp, mate_in: p.mate_in, best_move_uci: p.best_move_uci, pv: p.pv || [], depth: p.depth };
   }
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-    game_id: "variations-smoke", engine: "stockfish (browser)", depth: 4, summary: {},
+    game_id: prepared.gameId, engine: "stockfish (browser)", depth: 4, summary: {},
     position_evals, moves, eval_graph, critical_moments: [],
   }) });
 });
@@ -263,6 +313,117 @@ if (await clickNode("v3")) {
   check(r.node === "v3", `a reload must restore the selected branch v3, got ${r.node} (was ${beforeReload.node})`);
   check((await boardFen()) === NODE_FEN.v3.split(" ")[0], "a reload must restore the branch's position");
   check(r.caption.includes("c3"), `a reload must name the branch's move, got "${r.caption}"`);
+}
+
+// A branch the USER plays. Creation order (1...d6 first, then 2...a6) differs from
+// the depth-first order a reloaded PGN numbers them in, which is what used to make
+// the selected branch come back as the other one (or as nothing). The saved
+// identity is the root-to-node move path, so the position is the same after reload.
+const playMove = async (from, to) => {
+  await page.locator(`#analysis-board [data-square="${from}"]`).click();
+  await page.locator(`#analysis-board [data-square="${to}"]`).click();
+};
+const branchFen = fenOf(["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6"]);
+{
+  // Start from the fixture mainline's position after 1. e4 (m1) and play 1... d6.
+  check(await clickNode("m1"), "the user-branch case needs the mainline move m1 in the list");
+  await page.waitForTimeout(400);
+  await playMove("d7", "d6");
+  await page.waitForTimeout(600);
+  const a = await readout();
+  const aFen = await boardFen();
+  // ...then 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 (m3) and play 2... a6.
+  check(await clickNode("m3"), "the user-branch case needs the mainline move m3 in the list");
+  await page.waitForTimeout(400);
+  await playMove("a7", "a6");
+  await page.waitForTimeout(600);
+  const bNode = (await readout()).node;
+  const bFen = await boardFen();
+  check(aFen !== bFen, "the two user branches must be different positions");
+  check(!!bNode, "the branch just played must be the selected node");
+  // Ordinary browsing: back to the first branch, then to the second.
+  const ids = await page.evaluate(() => [...document.querySelectorAll("#analysis-moves .mtree-var .mtree-move")]
+    .map((b) => b.dataset.nodeId));
+  check(ids.length >= 2, `the move list must show both user branches: ${JSON.stringify(ids)}`);
+  await clickNode(ids[0]);
+  await page.waitForTimeout(300);
+  await clickNode(bNode);
+  await page.waitForTimeout(800);
+  const hashBefore = (await readout()).hash;
+  check(/[?&]node=[a-h][1-8][a-h][1-8]/.test(hashBefore),
+    `the URL must name the branch by its move path, got "${hashBefore}"`);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(3000);
+  const r = await readout();
+  check((await boardFen()) === bFen.split(" ")[0],
+    "a reload must restore the position of the branch the user played (not the other branch)");
+  // The internal node id is a presentation key (creation order live, depth-first
+  // after a re-parse), so a reload may number the same branch differently: the
+  // POSITION and the caption are what must come back — never the other branch.
+  check(!!r.node && r.caption.includes("a6"),
+    `a reload must reselect the branch the user played, got ${r.node} "${r.caption}" (was ${bNode})`);
+  check(r.caption !== a.caption,
+    `a reload must not fall back to the first branch (${a.caption}), got "${r.caption}"`);
+  check(r.hash === hashBefore, `the URL must come back unchanged, got "${r.hash}"`);
+  // The saved PGN carried the branch: reloading re-parsed it into the move list.
+  check((await page.locator("#pgn-input").inputValue()).includes("a6"),
+    "the saved PGN must contain the branch the user played");
+  void branchFen;
+}
+
+// Two games in the box: only the ANALYZED game's branches may appear. Game 2's
+// movetext concatenates legally after game 1's, so a whole-textarea parse would
+// hang its branch off game 1's last move.
+{
+  const multi = `${PGN}
+
+${G2_PGN}`;
+  await page.locator("#pgn-input").evaluate((el, pgn) => {
+    el.value = pgn;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }, multi);
+  await page.waitForTimeout(700);
+  expectMultiGameRefusal = true;
+  await page.evaluate(() => document.getElementById("run-analysis").click());
+  // The single-game flow refuses the paste and offers the batch: take it.
+  await page.waitForSelector('.modal-overlay [data-action="ok"]', { timeout: 15000 });
+  await page.locator('.modal-overlay [data-action="ok"]').click();
+  await page.waitForTimeout(500);
+  expectMultiGameRefusal = false;
+  await page.waitForFunction(
+    () => !document.getElementById("analysis-results").hidden && document.querySelectorAll("#analysis-summary .cbar-row").length > 0,
+    null, { timeout: 60000 },
+  );
+  await page.waitForTimeout(1200);
+  const sans = await page.evaluate(() =>
+    [...document.querySelectorAll("#analysis-moves .mtree-move")].map((b) => b.querySelector(".mtree-san")?.textContent?.trim()));
+  check(!sans.includes("Nf3") || sans.filter((s) => s === "Nf3").length === 1,
+    `the analyzed game's list must not gain the other game's moves: ${JSON.stringify(sans)}`);
+  check(!sans.includes("d4") && !sans.includes("c4") && !sans.includes("e6"),
+    `the other game's moves and branch must not appear: ${JSON.stringify(sans)}`);
+  check(sans.join(" ") === MAINLINE_SANS.join(" ") || sans.length >= MAINLINE_SANS.length,
+    `the analyzed game keeps its own mainline: ${JSON.stringify(sans)}`);
+  check(sans.includes("Bc4"), `the analyzed game keeps its own branch: ${JSON.stringify(sans)}`);
+  // Each game on its own: select game 2 through the import picker and check that
+  // ONLY its mainline and its own branch are listed.
+  const picker = page.locator("#analysis-import-select");
+  if (await picker.count()) {
+    await picker.selectOption("1");
+    await page.waitForFunction(
+      () => !document.getElementById("analysis-results").hidden,
+      null, { timeout: 60000 },
+    );
+    await page.waitForTimeout(1200);
+    const g2 = await page.evaluate(() =>
+      [...document.querySelectorAll("#analysis-moves .mtree-move")].map((b) => b.querySelector(".mtree-san")?.textContent?.trim()));
+    // Its own mainline in order, plus its own branch — nothing from game 1.
+    check(g2.filter((san) => ["d4", "d5", "c4", "e6"].includes(san)).join(" ") === "d4 d5 c4 e6",
+      `game 2's list must carry its own mainline in order: ${JSON.stringify(g2)}`);
+    check(g2.includes("Nf3") && g2.includes("Nf6"),
+      `game 2 keeps its own branch: ${JSON.stringify(g2)}`);
+    check(!g2.includes("Bb5") && !g2.includes("Ba4"),
+      `game 2 must not show game 1's moves: ${JSON.stringify(g2)}`);
+  }
 }
 
 check(consoleErrors.length === 0, `no console errors: ${JSON.stringify(consoleErrors.slice(0, 5))}`);

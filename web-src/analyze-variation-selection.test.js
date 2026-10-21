@@ -266,35 +266,50 @@ describe("Analyze selection follows the selected tree node", () => {
 });
 
 describe("Analyze's session identity survives reload and Back/Forward", () => {
-  it("saves the selected node, not just the mainline ply", () => {
+  it("saves the selected position's stable path, not a creation-order id", async () => {
+    // The saved snapshot is written from the live selection path (a root-to-node
+    // UCI path), after the tree has been serialized into the box — so the PGN a
+    // reload parses contains the branch the path names.
     const sessionSource = readFileSync(new URL("./controllers/analyze-session.js", import.meta.url), "utf8");
-    const start = sessionSource.indexOf("function persistAnalysisSession(");
+    const start = sessionSource.indexOf("async function persistAnalysisSession(");
     const end = sessionSource.indexOf("function resetAnalysisVariations(", start);
-    const fn = new Function("appState", "document", "clearReturnState", "saveReturnState", "START_FEN",
-      `${sessionSource.slice(start, end)} return persistAnalysisSession;`);
     const saveReturnState = vi.fn();
-    const persist = fn(
-      { analysis: { moves: [{ ply: 1 }] }, analysisPly: -1, analysisCurrentNodeId: "v3" },
+    const syncPgnFromTree = vi.fn(async () => {});
+    const selectedNodePath = vi.fn(() => "e2e4-d7d6");
+    const persist = new Function("appState", "document", "clearReturnState", "saveReturnState",
+      "syncPgnFromTree", "selectedNodePath", "ANALYSIS_ROOT_PATH",
+      `${sessionSource.slice(start, end)} return persistAnalysisSession;`)(
+      { analysis: { moves: [{ ply: 1 }] }, analysisPly: -1 },
       { getElementById: () => ({ value: PGN }) },
-      vi.fn(), saveReturnState, START_FEN,
+      vi.fn(), saveReturnState, syncPgnFromTree, selectedNodePath, "root",
     );
-    persist();
-    expect(saveReturnState).toHaveBeenCalledWith("analyze", expect.objectContaining({ node: "v3" }));
+    await persist();
+    // Serialize before saving: the box must carry the branch the path names.
+    expect(syncPgnFromTree).toHaveBeenCalledBefore(saveReturnState);
+    expect(saveReturnState).toHaveBeenCalledWith("analyze", expect.objectContaining({ node: "e2e4-d7d6" }));
   });
 
-  it("carries an off-mainline node in the URL and restores it", () => {
+  it("carries a position path in the URL and restores it; a sequence id is not a path", () => {
     // A mainline position keeps the plain ?ply= link it has always had.
     expect(formatWorkspaceHash({ view: "analyze", ply: 5 })).toBe("#/analyze?ply=5");
-    expect(formatWorkspaceHash({ view: "analyze", node: "v3" })).toBe("#/analyze?node=v3");
-    expect(parseWorkspaceHash("#/analyze?node=v3")).toEqual(
-      expect.objectContaining({ view: "analyze", node: "v3" }),
+    expect(formatWorkspaceHash({ view: "analyze", node: "e2e4-d7d6" })).toBe("#/analyze?node=e2e4-d7d6");
+    expect(parseWorkspaceHash("#/analyze?node=e2e4-d7d6")).toEqual(
+      expect.objectContaining({ view: "analyze", node: "e2e4-d7d6" }),
     );
-    // The state's selected node is what the URL names.
+    // A `v<seq>` id is a creation-order key, not a position: the URL drops it rather
+    // than persist an identity a reload can misread.
+    expect(formatWorkspaceHash({ view: "analyze", node: "v3" })).toBe("#/analyze");
+    expect(parseWorkspaceHash("#/analyze?node=v3").node).toBeNull();
+    // The state's selected position is what the URL names.
     expect(
-      workspaceLocationFromState({ currentView: "analyze", analysisPly: -1, analysisCurrentNodeId: "v3" }).node,
-    ).toBe("v3");
+      workspaceLocationFromState({ currentView: "analyze", analysisPly: -1, analysisNodePath: "e2e4-d7d6" }).node,
+    ).toBe("e2e4-d7d6");
+    // The root and any mainline position are named by ply, so no node is carried.
     expect(
-      workspaceLocationFromState({ currentView: "analyze", analysisPly: 5, analysisCurrentNodeId: "m5" }).node,
+      workspaceLocationFromState({ currentView: "analyze", analysisPly: 5, analysisNodePath: "e2e4-e7e5-g1f3-nc6-bb5" }).node,
+    ).toBeNull();
+    expect(
+      workspaceLocationFromState({ currentView: "analyze", analysisPly: 0, analysisNodePath: "root" }).node,
     ).toBeNull();
   });
 });

@@ -2,6 +2,8 @@
 // applicable, the open repertoire id and analysis ply. Query strings such as
 // ?join= stay untouched so invite links keep working.
 
+import { ANALYSIS_ROOT_PATH, isAnalysisNodePath } from "./analyze-node-path.js";
+
 export const WORKSPACE_VIEWS = [
   "dashboard",
   "analyze",
@@ -48,12 +50,15 @@ function asPly(raw) {
   return Math.floor(ply);
 }
 
-// An Analyze off-mainline node id (`v<seq>`). A mainline position is named by its
-// ply alone, so the node is only carried when it names a branch — an ordinary
-// `#/analyze?ply=5` link keeps its shape.
+// Analyze's selected position. A mainline position is named by its ply alone, so the
+// node is only carried when it names a branch — an ordinary `#/analyze?ply=5` link
+// keeps its shape. The node value is the position's stable identity: `root` or the
+// root-to-node UCI path (`e2e4-d7d6`). A `v<seq>` id is NOT accepted: sequence
+// numbers come from creation order live but from depth-first order after a reload,
+// so a saved number can name a different branch (or none).
 function asAnalysisNode(raw) {
   const node = String(raw || "").trim();
-  return /^v\d+$/.test(node) ? node : null;
+  return isAnalysisNodePath(node) && node !== ANALYSIS_ROOT_PATH ? node : null;
 }
 
 export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, node } = {}) {
@@ -161,11 +166,11 @@ export function workspaceLocationFromState(state = {}) {
         ? asPly(state.analysisPly) || null
         : null,
     // An off-mainline Analyze position: the ply names a mainline move, so a branch
-    // needs its node id to come back as the same position after a reload, a
+    // needs its node path to come back as the same position after a reload, a
     // shared link or Back/Forward.
     node:
       (state.currentView || state.view) === "analyze"
-        ? asAnalysisNode(state.analysisCurrentNodeId)
+        ? asAnalysisNode(state.analysisNodePath)
         : null,
   };
 }

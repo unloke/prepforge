@@ -57,13 +57,15 @@ def _import_pgn_for_analysis(
     *,
     mode: str = "single",
     select_index: int = 0,
-) -> tuple[str, dict[str, Any]]:
+) -> tuple[str, dict[str, Any], str]:
     """Import the pasted PGN with explicit multi-game semantics (F-04).
 
     Parse FIRST, store after — so single mode can reject a multi-game paste
     before anything lands. Each game reports its own outcome (imported /
     already present / failed), a partial success is never dressed up as total
     failure, and the game actually selected for analysis is always named.
+    Returns ``(game_id, import_summary, selected_game_pgn)`` — the last one is the
+    selected game's own text, the only PGN a caller may parse as that game.
     Raises ValueError (→ 400) with a readable message otherwise.
     """
     if not pgn_text.strip():
@@ -109,6 +111,7 @@ def _import_pgn_for_analysis(
                 )
             )
         selected = statuses[select_index]
+    selected_pgn = parsed[selected.index].text or ""
     if selected.status == "failed" or not selected.game_id:
         raise ValueError(
             "Game {0} could not be imported: {1}".format(
@@ -128,7 +131,7 @@ def _import_pgn_for_analysis(
         "selected_game_id": selected.game_id,
         "games": games_summary,
     }
-    return selected.game_id, import_summary
+    return selected.game_id, import_summary, selected_pgn
 
 
 def _brilliant_analyzer_from_client(
@@ -211,9 +214,12 @@ def analyze_prepare(
 
     ``positions`` is every distinct ``fen_before`` plus the final ``fen_after`` — the
     complete set the classifier needs, since ``fen_after(N) == fen_before(N+1)``.
+    ``pgn`` is the SELECTED game's own PGN text: a multi-game paste is analyzed one
+    game at a time, and its other games' movetext must never be parsed as this one
+    (their branches would hang off this game's moves).
     ``import_summary`` names every stored/failed game and which one is analyzed."""
     try:
-        game_id, import_summary = _import_pgn_for_analysis(
+        game_id, import_summary, game_pgn = _import_pgn_for_analysis(
             repo, body.pgn, owner, mode=body.mode, select_index=body.select_index
         )
     except ValueError as exc:
@@ -254,6 +260,9 @@ def analyze_prepare(
 
     return {
         "game_id": game_id,
+        # The analyzed game alone, so the client can re-parse ITS branches without
+        # splitting the paste itself (and without ever parsing the other games).
+        "pgn": game_pgn,
         "import_summary": import_summary,
         "depth": owner_stockfish_depth(repo, owner),
         "positions": positions,

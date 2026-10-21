@@ -126,6 +126,7 @@ function installAnalyzeE2eHook() {
       appState.analysisVarNodes = new Map();
       appState.analysisVarCounter = 0;
       appState.analysisCurrentNodeId = "root";
+      appState.analysisNodePath = null;
       appState.analysisTree = null;
       appState.analysisPly = 0;
       const view = await ensureAnalyzeView();
