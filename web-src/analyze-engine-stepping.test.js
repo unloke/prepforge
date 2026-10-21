@@ -37,7 +37,13 @@ function widgetHarness({ coachOn = false } = {}) {
     style: { setProperty() {} },
     title: "",
   };
-  widget.pvsEl = { dataset: {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
+  widget.pvsEl = {
+    dataset: {},
+    // `_paintPvs` reads the rendered row count to decide when the dock refits.
+    get children() { return (String(this._html ?? "").match(/class="engine-pv(?:\s|")/g) || []); },
+    get innerHTML() { return this._html ?? ""; },
+    set innerHTML(value) { this._html = String(value); },
+  };
   return { widget, arrow: deps.setEngineBestArrow };
 }
 
