@@ -135,7 +135,13 @@
                 <button class="btn icon" id="analysis-next" title="Next" aria-label="Next move">▶</button>
                 <button class="btn icon" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
               </div>
-              <span class="board-label" id="analysis-board-label">Initial position</span>
+              <!-- The bar's one text slot, directly under the board: the game
+                   on the board, named. An engine line being previewed takes the
+                   slot over (and the bar's accent) and gives the name back when
+                   it closes. With no game loaded it stays empty: the board shows
+                   a start position, and a label saying so is a standing
+                   explanation of the obvious. -->
+              <span class="board-label board-caption" id="analysis-board-caption" data-testid="analysis-game-name"></span>
               <button class="pv-exit" id="analysis-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <button class="btn icon bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>

@@ -43,6 +43,18 @@
   border-bottom: 0;
 }
 
+/* Under the board: the game, named. The bar keeps its 40px and its buttons in
+   the same places, so the name takes the slot the current move used to hold and
+   no other geometry changes. It is the page's first fact, so it reads at the
+   body size in the full ink; a name longer than the slot is cut with an
+   ellipsis and its whole text is the tooltip. An engine line being previewed
+   takes the slot over in the accent (see .board-bar:has(.pv-exit)). */
+#view-analyze .board-caption {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* The last move's tint. The shared sheet paints it as a gradient over the
    square's own fill, which paints the square button with a gradient; a flat
    mix of the tint into the square's colour says the same thing in one

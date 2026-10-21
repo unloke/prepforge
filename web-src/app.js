@@ -15,7 +15,8 @@ import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
-import { pgnHeaderTags } from "./analyze-pgn.js";
+import { analysisGameName } from "./analyze-name.js";
+import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo } from "./chess-local.js";
 import { setupOnFirstVisit } from "./engine/engine-profile.js";
@@ -473,28 +474,18 @@ function syncPageTitle() {
   syncViewHeads();
 }
 
-// Analyze head: the loaded game's identity (PGN headers, else the recalled
-// analysis) in the panel head.
+// Analyze: the loaded game's name (PGN headers, else the recalled analysis).
+// It names the board twice — the panel head's line and the bar under the board
+// — so both read the one string, and both are empty when no game is loaded.
 
 function syncAnalyzeHead() {
+  const name = analysisGameName(appState, document.getElementById("pgn-input")?.value || "");
   const meta = document.getElementById("analysis-game-meta");
-  if (!meta) return;
-  const analysis = appState.analysis;
-  // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
-  // the source box must not title an empty board "PrepForge vs Demo".
-  const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));
-  const tags = loaded ? pgnHeaderTags(document.getElementById("pgn-input")?.value || "") : {};
-  const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
-  const white = known(tags.White) || known(analysis?.white);
-  const black = known(tags.Black) || known(analysis?.black);
-  const plies = analysis?.moves?.length || 0;
-  const playersText = white || black ? `${white || "?"} vs ${black || "?"}` : "";
-  const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
-    .filter(Boolean);
-  meta.textContent = [playersText, bits.length ? bits.join(" · ") : plies ? `${plies} half-move${plies === 1 ? "" : "s"}` : ""]
-    .filter(Boolean)
-    .join(" · ");
-  meta.title = meta.textContent;
+  if (meta) {
+    meta.textContent = name;
+    meta.title = name;
+  }
+  setBoardCaption(name);
 }
 
 // Per-view heads that live inside the pages: Analyze's game identity, the

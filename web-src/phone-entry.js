@@ -137,18 +137,6 @@ export function wireMobileNav() {
   wirePhoneStudyNav();
   wirePhoneSheets();
   wireHoldRepeat();
-  mirrorAnalysisLabel();
-}
-
-// Phones hide the board bar's label (the thumb bar has no room), so Analyze's
-// eval row repeats it: which move, and whether it is a variation or engine line.
-export function mirrorAnalysisLabel() {
-  const label = document.getElementById("analysis-board-label");
-  const copy = document.getElementById("analysis-ev-move");
-  if (!label || !copy) return;
-  const mirror = () => { copy.textContent = label.textContent; };
-  new MutationObserver(mirror).observe(label, { childList: true, characterData: true, subtree: true });
-  mirror();
 }
 
 // Holding a move arrow steps on repeat, like a held arrow key. The click that

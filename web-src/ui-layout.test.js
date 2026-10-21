@@ -379,17 +379,20 @@ describe("workspace chrome layout", () => {
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
     expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
-    // The head names the game (or, with none, says how to get one) beside the
-    // two actions: the strip used to be the actions on empty ground.
+    // The board bar names the game, in the slot the current move used to hold:
+    // the move label ("Initial position", "3... a6") is gone, because the board
+    // already shows the position and the moves list marks the move.
     expect(view).not.toContain('id="analysis-game-title"');
-    expect(view).toContain('class="board-label" id="analysis-board-label"');
+    expect(view).not.toContain('id="analysis-board-label"');
+    const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
+    expect(boardBar).toContain('class="board-label board-caption" id="analysis-board-caption"');
+    for (const id of ["analysis-start", "analysis-flip"]) expect(boardBar).toContain(`id="${id}"`);
+    // The panel head names the same game (its line above the verdict), and both
+    // read the one string from app.js.
     const headRow = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
     expect(headRow).toContain('id="analysis-game-meta"');
-    expect(headRow).toContain('class="ahi-hint"');
     expect(headRow).toContain('id="run-analysis"');
-    const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
-    expect(boardBar).not.toContain('id="analysis-game-meta"');
-    expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
+    expect(app).toContain("setBoardCaption(name)");
     expect(analyzeCss).toContain(".analyze-head-id {");
     // Both actions say what they do. "Last game" was a bare download glyph in
     // a strip with room for its name; the phone's Games sheet mirrors it.

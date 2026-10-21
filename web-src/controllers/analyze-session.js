@@ -9,6 +9,7 @@ import {
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
+import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
@@ -1447,9 +1448,12 @@ async function showAnalysisPly(ply) {
   // from Train) shows none instead of an empty placeholder dot.
   const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";
   boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? move.classification : null, badge);
-  document.getElementById("analysis-board-label").textContent = move
-    ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
-    : "Initial position";
+  // Which position is on the board is a phone fact: its eval row says it, because
+  // the thumb bar has no room and the bar under the board names the game. On a
+  // desktop the board itself shows the position and the moves list marks it.
+  setPositionCaption(
+    move ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}` : "",
+  );
   highlightCurrentMove();
   persistAnalysisSession();
   syncViewHeads();
@@ -1596,11 +1600,7 @@ async function selectAnalysisNode(nodeId) {
     lastMove: node.uci,
   });
   boards.analysis.setMoveBadge(null, null, "");
-  document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
-    node.moveNumber,
-    node.side,
-    node.san,
-  );
+  setPositionCaption(analysisVariationLabel(node.moveNumber, node.side, node.san));
   highlightCurrentMove();
   refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
   if (engineWidget) engineWidget.onBoardChanged();
@@ -1650,11 +1650,7 @@ async function onAnalysisBoardMove(moveUci, fen) {
       lastMove: moveUci,
     });
     boards.analysis.setMoveBadge(null, null, "");
-    document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
-      moveNumber,
-      side,
-      payload.move.san,
-    );
+    setPositionCaption(analysisVariationLabel(moveNumber, side, payload.move.san));
     highlightCurrentMove();
     refreshAnalysisExplain({
       fen: payload.board.fen,
