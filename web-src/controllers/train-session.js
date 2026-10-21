@@ -939,12 +939,12 @@ async function loadPlayRepertoirePayload(repertoireId) {
   return api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
 }
 
-function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, state }) {
+function paintPlayPosition({ fen, legalMoves, lastMove, banner, sub, label, state, back = false }) {
   boards.train.setEngineArrow(null);
   boards.train.setPosition({
     fen,
     legalMoves: legalMoves || [],
-    lastMove: lastMove || null,
+    lastMove: lastMove || null, back,
   });
   // Keep the current board position inspectable for acceptance tooling and
   // assistive diagnostics without adding another visible control.
@@ -1382,7 +1382,7 @@ async function takebackPlaySession() {
   paintPlayPosition({
     fen: play.fen,
     legalMoves: yourMove ? info.legal_moves : [],
-    lastMove: undone.lastMove,
+    lastMove: undone.lastMove, back: true, // a takeback: pieces go home, quietly
     banner: yourMove ? "Your move" : "Opponent thinking…",
     sub: yourMove
       ? "Takeback: play again"
@@ -2312,7 +2312,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     boards.train.setPosition({
       fen: prompt.fen_before,
       legalMoves: prompt.legal_moves || [],
-      lastMove: null,
+      lastMove: null, back: true, // the tried move travels home, not again
     });
     if (attempt >= 2) boards.train.setEngineArrow(prompt.expected_uci);
     appState.trainBusy = false;
