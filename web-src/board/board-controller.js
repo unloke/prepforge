@@ -656,19 +656,35 @@ class BoardController {
     });
   }
 
+  // The FEN is the DOM's only authority: every square is reconciled against the
+  // position, never against what an earlier render happened to leave behind.
+  //
+  // A capture mounts a detached copy of the victim (.piece-caught) into the
+  // square the mover lands on, so that square briefly holds TWO .piece elements.
+  // Keying the no-op check on `data-piece` alone, and removing at most one
+  // element, meant the next render took away one of the two and left the other:
+  // once the FEN empties that square, `data-piece` already reads "" and matches
+  // the FEN, so no later render revisited it and a captured piece stayed on the
+  // board for good. A held ←/→ is exactly the overlap — the next position
+  // arrives while the previous capture's clone is still fading.
   _renderPieces() {
     const pieces = parseFenBoard(this.fen);
     this.squares.forEach((square, squareName) => {
       const piece = pieces[squareName];
-      const desired = piece ? piece : "";
-      if (square.dataset.piece === desired) return;
+      const desired = piece || "";
+      const nodes = square.querySelectorAll(".piece");
+      const own = nodes.length - square.querySelectorAll(".piece-caught").length;
+      // Settled means: the cached letter is this square's letter, and it draws
+      // exactly one own piece when the FEN has one and none when it has none.
+      if (square.dataset.piece === desired && nodes.length === own && own === (piece ? 1 : 0)) return;
       square.dataset.piece = desired;
       // Keep the accessible name in lockstep with the rendered piece so
       // keyboard users hear what is on the square, not just its coordinates.
       square.setAttribute("aria-label", piece ? `${pieceLabel(piece)} ${squareName}` : squareName);
-      // Swap only the piece element so coordinate labels survive.
-      const existing = square.querySelector(".piece");
-      if (existing) existing.remove();
+      // Swap every piece element (clones and leftovers included) so coordinate
+      // labels survive; a superseded capture clone goes with the position it was
+      // drawn for.
+      nodes.forEach((node) => node.remove());
       if (piece) square.insertAdjacentHTML("beforeend", pieceSvg(piece));
     });
   }
@@ -678,8 +694,7 @@ class BoardController {
   redrawPieces() {
     this.squares.forEach((square) => {
       square.dataset.piece = "";
-      const existing = square.querySelector(".piece");
-      if (existing) existing.remove();
+      square.querySelectorAll(".piece").forEach((node) => node.remove());
     });
     if (this.fen) this._renderPieces();
   }
