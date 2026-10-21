@@ -52,9 +52,7 @@ export function capturedSquare(prevFen, fen, from, to) {
 // The square's OWN piece is the source, never a capture clone fading out over it
 // from the previous move.
 export function caughtPiece(squareEl) {
-  const source =
-    (squareEl && squareEl.querySelector(".piece:not(.piece-caught)")) ||
-    (squareEl && squareEl.querySelector(".piece"));
+  const source = squareEl?.querySelector(".piece:not(.piece-caught)");
   if (!source) return null;
   const copy = source.cloneNode(true);
   copy.classList.add("piece-caught");

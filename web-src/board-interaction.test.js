@@ -389,5 +389,7 @@ describe("a render that lands while a capture is still animating", () => {
     const copy = caughtPiece(sq);
     expect(copy.className).toContain("piece-caught");
     expect(copy.className).toContain("piece-black");
+    own.remove();
+    expect(caughtPiece(sq)).toBeNull();
   });
 });
