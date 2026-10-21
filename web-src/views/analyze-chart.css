@@ -19,13 +19,11 @@
   border: 0;
   box-shadow: none; /* taste-skill-ignore: the shared .panel paints a resting shadow */
 }
-#analyze-sidebar .panel-head {
-  border-bottom: 0;
-  /* The head is the first line of the panel's column, so it starts on the
-     body's left edge (14px) instead of the shared 12/10px. Measured before:
-     the game's name at x=922 and every block under it at x=924. */
-  padding-inline: 14px;
-}
+/* No head strip: the panel opens on the coach's line, and the two actions sit
+   at the right end of it (the owner's screenshot). The 46px band above the
+   verdict held a game name that now names the board under the board, and the
+   one sentence it stood on with no game ("Paste a PGN, or open your last
+   game.") was a standing explanation, which this app does not do. */
 
 /* One filled action on the panel: the Analyze button. The report's handoff
    now lives behind the report fold, so it is only on screen while that fold is
@@ -35,6 +33,27 @@
    and the evaluation row's tone already say where the board ends. */
 #view-analyze .board-bar {
   border-bottom: 0;
+}
+
+/* Under the board: the game, named. The bar keeps its 40px and its buttons in
+   the same places, so the name takes the slot the current move used to hold and
+   no other geometry changes. It is the page's first fact, so it reads at the
+   body size in the full ink; a name longer than the slot is cut with an
+   ellipsis and its whole text is the tooltip. An engine line being previewed
+   takes the slot over in the accent (see .board-bar:has(.pv-exit)). */
+#view-analyze .board-caption {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* While an engine line is walked on the board the slot is the line, not the
+   game: it reads in the accent, as every board bar's does. The shared sheet
+   paints .board-label that way, and this page's caption is the stronger
+   selector, so it says so here instead of losing the state to specificity
+   (measured: the previewing bar stayed in the ink, #1b1c1e, not #2447a8). */
+#view-analyze .board-bar:has(.pv-exit:not([hidden])) .board-caption {
+  color: var(--accent-text);
 }
 
 /* The last move's tint. The shared sheet paints it as a gradient over the
@@ -65,57 +84,39 @@
   font-size: 13px;
 }
 
-/* Panel head + coach card ------------------------------------------ */
-
-/* The head is one row: the game on the board, then the actions. Before, it was
-   the actions on empty ground, so the panel opened with a title bar that had no
-   title. The name is the page's first fact, so it takes the ink; the empty state
-   stands in its place until there is a game, and goes the moment app.js writes
-   the game's line into #analysis-game-meta. */
-.analyze-head-id {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: baseline;
-  min-width: 0;
-}
-.analyze-head-id > * {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ahi-game {
-  font-size: 14px;
-  font-weight: 650;
-  color: var(--text);
-}
-.ahi-game:empty { display: none; }
-/* One line in this slot either way, so the name and the instruction take the
-   same size: the strip does not change shape when a game arrives. */
-.ahi-hint,
-.ahi-status {
-  color: var(--muted);
-  font-size: 14px;
-}
-.ahi-status:empty { display: none; }
-/* The head says one thing: a named game, or (for a line played by hand, which
-   has no players) what the board holds, or the instruction when it is empty. */
-.ahi-game:not(:empty) ~ :is(.ahi-status, .ahi-hint),
-.ahi-status:not(:empty) ~ .ahi-hint { display: none; }
+/* The coach card ---------------------------------------------------- */
 
 /* The verdict is the panel's own voice, not a card in it: running text on the
    panel ground, with the 3px quality rule carrying its tone. It was a filled
    118px band holding a 68px note, so every move left ~50px of empty tone
    between the verdict and the instrument below it (measured at 1440x900).
-   The block keeps a floor of two lines (the common verdict's length) so the
-   instrument below does not jump between moves, but the floor is this box's,
-   not the rule's: a one-line verdict leaves a rest under the text instead of
-   drawing a 76px stroke beside it. A note past five lines scrolls. */
+   The block keeps a floor of three lines: across three games and the three
+   desktop widths (171 plies) a verdict is one line 80 times, two 75, three 14
+   and four twice, so three lines holds the instrument still on every ply at
+   1440 and 1180 and on all but two at 982. The floor is this box's, not the
+   rule's: a one-line verdict leaves a rest under the text instead of drawing a
+   long stroke beside it. A longer note grows the block rather than being cut,
+   and past five lines it scrolls. The line box is a token because the block's
+   floor and the note's own floor are written in the same unit: `em` on the
+   block would resolve against the card's 13px, not the note's 16px. */
 .coach-card {
+  /* The verdict's line box at its desktop size (16px x 1.5). */
+  --coach-line: 24px;
+  /* The coach's own line: its title, the phase chip, the review switch and the
+     two actions. The 26px actions are the tallest thing in it, so the row is a
+     constant 26px — the chip clips before the row wraps (see .cc-head) — and the
+     card's floor is written from this number, not from a guess. */
+  --coach-head: 26px;
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: calc(1.5em * 2 + 52px);
+  /* head 26 + gap 8 + three note lines + the note's 4px padding = 110px. Written
+     as the sum so the head can change without the floor going stale: with the
+     two actions on this line the head is 4px taller than the strip it replaced,
+     and a three-line verdict would otherwise grow the card by 4px and move the
+     instrument below it (measured at 1440 and 982). */
+  min-height: calc(var(--coach-head) + var(--coach-line) * 3 + 12px);
   padding: 0;
   background: none;
   border: 0;
@@ -129,20 +130,32 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* One row, always: the coach's name, the phase, the review switch, then the two
+   actions at the right end. Nothing on this line may take a second line — a
+   wrapped head is 4px taller per line and pushes the verdict, the instrument
+   and the score sheet down with it (measured at 982px before: the two-word
+   "Middlegame" chip wrapped the row and moved the evaluation card 10px). The
+   chip is the one part that yields: it clips with an ellipsis and keeps its
+   word in the tooltip, so a long phase costs a few letters, not the layout. */
 .cc-head {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
 }
+.cc-head > b { flex: none; }
 .phase-chip {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
   padding: 1px 7px;
   border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .phase-chip[hidden] {
   display: none;
@@ -150,10 +163,12 @@
 /* One short paragraph; a quiet left rule carries the verdict's tone so the read
    never depends on colour alone (the words say it too). The rule runs the
    note's own height; past five lines the note scrolls rather than pushing the
-   score sheet down. */
+   score sheet down. Two lines are reserved in the note's own line box, so a
+   one-line verdict cannot pull the instrument up by 24px between plies. */
 .coach-prose {
   flex: 0 1 auto;
-  max-height: calc(1.5em * 5 + 4px);
+  min-height: calc(var(--coach-line) * 2 + 4px);
+  max-height: calc(var(--coach-line) * 5 + 4px);
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;
@@ -326,9 +341,13 @@
   gap: 14px;
 }
 .analyze-main > * { min-width: 0; }
-/* Wrapped actions keep their height; only the result body may shrink/scroll. */
-#analyze-sidebar .panel-head { flex: none; flex-wrap: wrap; gap: 8px; }
-#analyze-actions { flex-wrap: wrap; }
+/* The two actions ride the coach's line (see .cc-head) and never wrap: they are
+   the only way to get a game, and a second row of them would move the panel.
+   They read as words, not icon + word, exactly as they did in the head strip:
+   the two glyphs added 20px to a row that has none to give, and the words are
+   the labels. The rail's icons already say where the panel is. */
+#analyze-actions { flex-wrap: nowrap; }
+#analyze-actions .btn > .bi { display: none; }
 
 /* Who scrolls. The panel body used to scroll as one sheet, so the score sheet
    was capped at a flat 190px while the fold and the two source drawers sat
@@ -813,6 +832,45 @@
    the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
+/* The report's facts: accuracy, the biggest swing, where the game left prep and
+   the opening. They are the numbers a player reads once and then leaves, so they
+   sit above the grade bars as label-and-figure rows, never as sentences or
+   cards. Two columns with the figures on one left edge, so the block reads down
+   rather than across. */
+.rpt-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.rpt-fact {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  font-size: var(--fs);
+}
+.rpt-fact dt {
+  color: var(--muted);
+}
+.rpt-fact dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+/* Whose game it was. The panel head already names it on a wide panel, so it is
+   the phone's copy of that line — the only place the game is named on a phone,
+   where the head is not drawn. */
+.rpt-identity {
+  display: none;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  overflow-wrap: anywhere;
+}
+
 /* Per-side classification bars — the at-a-glance "how did each side play"
    summary. Segment colours reuse the move-classification palette. */
 .class-bars {
@@ -1110,11 +1168,11 @@
 
 /* ---- Phone ------------------------------------------------------------
    Shell, thumb bar and sheets in phone.css. One screen, no page scroll, and
-   nothing above the board changes height between moves: the game graph and
-   the move strip on top, the board, then the eval row and the engine's best
-   line, and the coach last, scrolling inside whatever height is left. The
-   report and the game sources are sheets; the sources fill the screen under
-   the board while no game is loaded. */
+   nothing above the board changes height between moves: the game graph on top,
+   the board, then the eval row and the engine's best line, and the coach last.
+   A phone has no move list: the graph is how a thumb walks the game. The report
+   and the game sources are sheets; the sources fill the screen under the board
+   while no game is loaded. */
 @media (max-width: 760px) {
   #view-analyze { --phone-reserve: 222px; }
   #analyze-sidebar :is(.panel-scroll, .analyze-main),
@@ -1125,19 +1183,22 @@
   #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: under the engine, as tall as its note needs and no taller. It is a
-     band of its own tone, so it needs no rule above it. It used to take every
-     pixel the screen had left, which parked a screenful of empty tone under a
-     one-line verdict; the room now belongs to the score sheet below it. */
+  /* Coach: under the engine, as tall as its note needs and no taller. It used to
+     take every pixel the screen had left, which parked a screenful of empty tone
+     under a one-line verdict; the room belongs to the game graph above, which is
+     the one block on this screen that uses height. A long note scrolls, so the
+     thumb bar never moves. */
   #analysis-explain {
     order: 3;
     flex: 0 1 auto;
     display: block;
+    /* The verdict reads at 15px/1.4 here, so the note's line box is 21px. */
+    --coach-line: 21px;
     max-height: 118px;
     height: auto;
     min-height: 0;
     margin: 0;
-    padding: 8px 14px 10px;
+    padding: 8px var(--phone-gutter) 10px;
     border: 0;
     border-radius: 0;
     background: var(--panel-soft);
@@ -1194,38 +1255,48 @@
   #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
 
-  /* Game graph on top, at a fixed height so the board never moves. It is the
-     move scrubber; the score sheet below the coach is the other way in. */
-  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; }
-  #analysis-eval-card .eval-chart { height: 84px; border-radius: 0; touch-action: pan-y; }
-  /* The score sheet takes the rest of the screen under the coach: a phone
-     cannot reach the report sheet's moves without it, and the band the coach
-     does not need is already here. */
-  #analysis-results:not([hidden]) > .moves-grid {
-    display: block;
-    order: 3;
-    flex: 1 1 0;
-    min-height: 0;
-    max-height: none;
-    margin: 0;
-    padding: 4px 12px 8px;
-    border-radius: 0;
-    background: var(--bg);
-    overflow-y: auto;
+  /* No score sheet on a phone: the game graph is the only way to walk the game
+     by hand, so it takes the room the move list held and the stack's slack with
+     it. A taller field is an easier ply to hit and it is where the game's shape
+     is read; it stops at a third of the screen, where a curve stops being a
+     graph. It keeps the phone gutter so its ends line up with the eval row and
+     the coach under it — edge to edge, the first ply's cursor drew a dashed line
+     on the screen's own border, which read as a stray edge. */
+  #analysis-results:not([hidden]) > .moves-grid { display: none; }
+  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) {
+    order: 0;
+    flex: 1 1 auto;
+    min-height: 84px;
+    max-height: 34dvh;
+    margin: 0 var(--phone-gutter);
+  }
+  #analysis-eval-card .eval-chart {
+    height: 100%;
+    border-radius: 8px;
+    touch-action: pan-y;
   }
 
-  /* Under the board: eval, win meter, Report, Engine; then the best line. */
+  /* Under the board: eval, win meter, Report, Engine; then the best line.
+     The eval is the one figure the chart answers with, so it is the row's
+     largest item and takes the ink; the word "Evaluation" and the move label
+     are the quiet meta beside it. */
   #analysis-eval-card > .ev-head {
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 44px;
-    padding: 0 12px 0 14px;
+    height: 52px;
+    padding: 0 var(--phone-gutter);
     background: var(--bg);
   }
-  #analysis-eval-card .ev-title { color: var(--muted); }
-  #analysis-eval-card .eval-now { min-width: 62px; font-size: 16px; }
-  #analysis-eval-card .ev-meter { flex: none; width: 64px; }
+  #analysis-eval-card .ev-title { color: var(--muted); font-weight: 600; }
+  #analysis-eval-card .eval-now { min-width: 62px; color: var(--text); font-size: 18px; font-weight: 650; }
+  /* Eval, the position's name, Report, Engine. The win meter is not here: the
+graph above it is the same win-chance series at 277px, so a 64px bar repeating
+the current point cost the row 74px — and with the two pills at their 44px target
+the position's name was squeezed into 43px and wrapped mid-word. The eval's own
+figure ("+0.25") already names the point; the row gives its room back to the
+name. */
+  #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
@@ -1239,23 +1310,31 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 13px; }
+  /* Report and Engine are the two controls in the row a thumb reaches, so they
+     take the same 44px box as every other phone control; the 52px row holds them
+     with 4px to spare. */
+  #analysis-eval-card .ev-engine { flex: none; height: 44px; padding: 0 14px 0 12px; font-size: 14px; }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
     display: inline-flex;
     flex: none;
     align-items: center;
-    height: 32px;
-    padding: 0 12px;
+    height: 44px;
+    padding: 0 14px;
     border: 0;
     border-radius: 999px;
     background: var(--panel-soft);
     color: var(--text);
     font: inherit;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 650;
   }
-  #analysis-engine-slot { display: block; padding: 0 12px 4px 10px; }
+  /* The engine's best line, the job dock and the coach all sit on the phone
+     gutter, the same left edge as the graph and the eval row above them. They
+     were indented 10/12/14px by three rules written at different times, so the
+     screen carried four left edges down one column (measured at 390x844: graph
+     and eval at 16, engine line at 10, dock at 12, coach prose at 14). */
+  #analysis-engine-slot { display: block; padding: 0 var(--phone-gutter) 4px; }
   #analysis-engine-slot > .engine-window:not([hidden]) { display: block; }
   #analysis-engine-slot .engine-window-head,
   #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting) { display: none; }
@@ -1264,9 +1343,9 @@
   #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 28px; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #analysis-job-dock:empty { display: none; }
-  #analysis-job-dock { padding: 0 12px 4px; }
+  #analysis-job-dock { padding: 0 var(--phone-gutter) 4px; }
   .analysis-retry-save:not([hidden]),
-  .analysis-import-picker:not([hidden]) { margin: 0 12px 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
+  .analysis-import-picker:not([hidden]) { margin: 0 var(--phone-gutter) 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
 
   /* Report sheet: move quality and the handoff. Games sheet: where games
      come from. */
@@ -1289,15 +1368,15 @@
     background: var(--surface-3);
   }
   #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
+  /* A phone does not draw the panel head that names the game, so the report
+     carries its own copy of that line under the facts. */
+  #analyze-sheet .rpt-identity { display: block; }
   #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
-  #analyze-open > .drawer > summary {
-    display: flex;
-    align-items: center;
-    min-height: 40px;
-    color: var(--text);
-    font-size: 16px;
-    font-weight: 600;
-  }
+  /* The sheet's rows are the entry points (Last game / Past analyses / Paste a
+     PGN), so a drawer's own summary would be the same action named twice. The
+     row opens the drawer; the drawer shows its content. */
+  #analyze-open > .drawer > summary { display: none; }
+  #analyze-open > .drawer:not([open]) { display: none; }
   #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }

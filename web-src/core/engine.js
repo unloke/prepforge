@@ -124,7 +124,12 @@ export function engineWantedIn(view) {
   return !!key && !!pref(key);
 }
 
-export function syncEngineForView(view = activeViewName()) {
+export function syncEngineForView(view = activeViewName(), { from = null } = {}) {
+  // Leaving the view that owned the engine: the store is a page-wide singleton, so
+  // an idle lane keeps its reserved heap (384 MiB on the full net) for the whole
+  // idle window with nothing left to answer. Free it on the way out; cached reads
+  // stay, so coming back costs one worker boot rather than a re-analysis.
+  if (from && from !== view && ENGINE_VIEW_SLOTS[from]) void analysisStore().then((s) => s.releaseWarm());
   const slot = ENGINE_VIEW_SLOTS[view];
   if (slot && engineWantedIn(view)) {
     dockEngine(slot);

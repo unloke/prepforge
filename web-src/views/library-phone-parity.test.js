@@ -31,9 +31,9 @@ it("Import PGN stays reachable on a phone", () => {
   const newRep = rule("#view-dashboard .lib-actions #dashboard-new-rep");
   expect(newRep).toMatch(/display:\s*none/);
 
-  // A 40px target, like the rest of the phone controls.
+  // A 44px target, like the rest of the phone controls.
   const importBtn = rule("#view-dashboard .lib-actions #dashboard-import-pgn");
-  expect(importBtn).toMatch(/height:\s*40px/);
+  expect(importBtn).toMatch(/height:\s*44px/);
 });
 
 it("the phone Library header is a grid: chips on top, search and import below", () => {

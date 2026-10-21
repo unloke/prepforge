@@ -250,12 +250,28 @@ describe("class bars", () => {
 
 describe("coach note", () => {
   it("sets the note at reading size and sizes the block to the note", () => {
-    // The note is running text at 15px on a phone. It takes its own height, so
-    // the rule beside it runs the note and not a reserved box, and a note past
-    // five lines scrolls instead of pushing the score sheet down.
+    // The note is running text at 15px on a phone. Its rule runs the note and
+    // not a reserved box, and a note past five lines scrolls instead of pushing
+    // the score sheet down. Two lines are reserved inside the note so a one-line
+    // verdict cannot pull the instrument up (measured at 1440: the card is
+    // still between a one-line and a two-line ply without it).
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(1\.5em \* 5/);
-    expect(ALL_STYLES).not.toMatch(/\.coach-prose \{[^}]*min-height: calc\(1\.5em/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: calc\(var\(--coach-line\) \* 2 \+ 4px\)/);
+  });
+
+  it("reserves three lines in the block, so the instrument below holds still", () => {
+    // Across three games at 1440, 1180 and 982 (171 plies) a verdict is one
+    // line 80 times, two 75, three 14, four twice: three lines is the floor the
+    // block keeps, and a longer note grows it instead of being cut.
+    // The floor is the sum of the head and the note's lines, written from the
+    // same two tokens it is made of: putting the two 26px actions on the head
+    // row makes it 4px taller than the strip it replaced, and a stale constant
+    // would leave the verdict 4px short.
+    const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
+    expect(rule).toMatch(/--coach-head: 26px/);
+    expect(rule).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
+    expect(rule).not.toMatch(/(^|[^-])height:\s*\d+px/);
   });
 });
 
@@ -504,5 +520,67 @@ describe("eval chart helpers", () => {
     expect(
       String(view.evalChartTooltipHtml({ ply: 80, san: "Qxf2#", score_cp: -100000, mate_in: null, bounded_score_cp: -1000, classification: "best" })),
     ).toContain("· 0-1");
+  });
+});
+
+// The phone report stacks chart, board, coach and score sheet, so each one
+// shares the screen's gutter and the eval figure leads its row. The chart used
+// to run edge to edge, where the first ply's cursor drew a dashed line on the
+// screen's own border (measured at x 0-3 of a 390px screen).
+describe("Analyze on a phone", () => {
+  const phone = CHART_STYLES.slice(CHART_STYLES.lastIndexOf("@media (max-width: 760px)"));
+
+  it("sets the game graph on the page gutter", () => {
+    expect(phone).toMatch(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*margin: 0 var\(--phone-gutter\)/);
+  });
+
+  it("gives the eval figure the row's ink and its largest size", () => {
+    const rule = phone.match(/#analysis-eval-card \.eval-now \{[^}]*\}/);
+    expect(rule).not.toBeNull();
+    expect(rule[0]).toMatch(/font-size:\s*18px/);
+    expect(rule[0]).toMatch(/color:\s*var\(--text\)/);
+  });
+
+  // A phone has no score sheet: the move list is gone and the graph, which is
+  // the only way to walk the game there, takes the room it held.
+  it("drops the move list and gives its room to the graph", () => {
+    expect(phone).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
+    const graph = phone.match(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*\}/);
+    expect(graph, "the phone graph rule").not.toBeNull();
+    expect(graph[0]).toMatch(/flex: 1 1 auto/);
+    expect(graph[0]).toMatch(/min-height: 84px/);
+    expect(graph[0]).toMatch(/max-height: 34dvh/);
+  });
+
+  // One left edge for the whole column. The engine line, the job dock and the
+  // coach were indented 10/12/14px by three rules written at different times, so
+  // the graph and the eval row sat at 16 while everything under them started
+  // somewhere else (measured at 390x844: 16, 10, 12, 14).
+  it("keeps every band under the board on the phone gutter", () => {
+    for (const selector of ["#analysis-engine-slot", "#analysis-job-dock", "#analysis-explain"]) {
+      const start = phone.indexOf(`${selector} {`);
+      expect(start, selector).toBeGreaterThan(-1);
+      const body = phone.slice(phone.indexOf("{", start), phone.indexOf("}", start));
+      expect(body, selector).toMatch(/padding: [^;]*var\(--phone-gutter\)/);
+    }
+  });
+
+  // Report and Engine are the two controls in the row a thumb reaches; they were
+  // 32px, the one place on a phone a control may not be dense.
+  it("gives the eval row's two pills a 44px target", () => {
+    const engine = phone.match(/#analysis-eval-card \.ev-engine \{[^}]*\}/);
+    expect(engine).not.toBeNull();
+    expect(engine[0]).toMatch(/height: 44px/);
+    const report = phone.match(/#view-analyze:has\(#analysis-results:not\(\[hidden\]\)\) \.ev-report \{[^}]*\}/);
+    expect(report).not.toBeNull();
+    expect(report[0]).toMatch(/height: 44px/);
+  });
+
+  // The win meter repeated the graph above it — the same win-chance series, at
+  // 12px instead of the graph's 277 — and at 64px plus its gap it squeezed the
+  // position's name into 43px, where it wrapped mid-word. The eval figure beside
+  // it already names the point.
+  it("does not repeat the graph's win share in the eval row", () => {
+    expect(phone).toMatch(/#analysis-eval-card \.ev-meter \{ display: none; \}/);
   });
 });

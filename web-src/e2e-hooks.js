@@ -142,7 +142,9 @@ function installAnalyzeE2eHook() {
     },
     getCoachProse: () => (document.getElementById("coach-prose") || {}).textContent || "",
     getPly: () => appState.analysisPly,
+    // The move the board is on, as the phone's eval row names it ("3... a6", a
+    // variation's "12. Qh5 · variation"); empty at the start position.
     getBoardLabel: () =>
-      (document.getElementById("analysis-board-label") || {}).textContent || "",
+      (document.getElementById("analysis-ev-move") || {}).textContent || "",
   };
 }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPositionAnalysisStore, positionKey } from "./position-analysis-store.js";
 import { analyzeGamePositions } from "./game-analyzer.js";
+import { stockfishBudget } from "./compute-budget.js";
 
 const A = "8/8/8/8/8/8/R7/K6k w - - 0 1";
 const B = "8/8/8/8/8/8/R7/K6k b - - 0 1";
@@ -34,12 +35,22 @@ function fakeProvider(options) {
 }
 const laneFor = (fen) => workers.find((w) => w.fen === fen && w.snapshot().running);
 
+// The store's lanes follow the page-wide engine budget, which engine-profile.js
+// configures from the device's usable profile. A test states the device by configuring
+// that budget, exactly as a Detect or a Settings pick does.
+const deviceWithEngines = (workers) => stockfishBudget.configure(workers);
+
 beforeEach(() => {
   vi.useFakeTimers();
   workers = [];
-  store = createPositionAnalysisStore({ createProvider: fakeProvider, lanes: 2, idleCloseMs: 1000 });
+  deviceWithEngines(2);
+  store = createPositionAnalysisStore({ createProvider: fakeProvider, idleCloseMs: 1000 });
 });
-afterEach(() => { store.clear(); vi.useRealTimers(); });
+afterEach(() => {
+  store.clear();
+  deviceWithEngines(1);
+  vi.useRealTimers();
+});
 
 describe("position identity", () => {
   it("ignores fullmove numbers but preserves the draw clock", () => {
@@ -208,6 +219,59 @@ describe("interactive lanes", () => {
     const waiting = lease.until();
     lease.release();
     await expect(waiting).resolves.toBeNull();
+  });
+
+  it("leaving the view frees a warm worker now instead of after the idle window", async () => {
+    // The store is a page-wide singleton, so an idle lane outlives the view that used
+    // it: its whole reserved heap sat for `idleCloseMs` (60 s live) with nothing left
+    // to answer. `releaseWarm` is what the view switch calls on the way out.
+    const lease = store.acquire(A, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    workers[0].finish();
+    await vi.advanceTimersByTimeAsync(60);
+    lease.release();
+    // Idle, and inside the idle window: the worker is still warm.
+    expect(workers[0].close).not.toHaveBeenCalled();
+    store.releaseWarm();
+    expect(workers[0].close).toHaveBeenCalledOnce();
+    // The finished read is cached, so coming back answers from it; a position the
+    // store has no read for boots a NEW worker rather than reviving the closed one.
+    const again = store.acquire(B, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(workers).toHaveLength(2);
+    expect(workers[1].close).not.toHaveBeenCalled();
+    again.release();
+  });
+
+  it("leaving while a search is in flight drops its worker when the search ends", async () => {
+    // releaseWarm cannot touch a lane mid-search (that search is someone's answer), and
+    // nothing comes back to call it again once the search finishes: the finished search
+    // only armed the idle window, so the whole reserved heap sat for `idleCloseMs`
+    // (measured live: 60 s after a leave that happened before the first depth landed).
+    const lease = store.acquire(A, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(workers[0].close).not.toHaveBeenCalled();
+    store.releaseWarm();
+    // Still searching: the worker stays for now.
+    expect(workers[0].close).not.toHaveBeenCalled();
+    workers[0].finish();
+    await vi.advanceTimersByTimeAsync(10);
+    // Finished, and nobody is waiting for it: gone now, not after the idle window.
+    expect(workers[0].close).toHaveBeenCalledOnce();
+    // Its read is kept, so coming back answers from it.
+    expect(lease.satisfied()).toBe(true);
+    lease.release();
+  });
+
+  it("a search someone still holds keeps its worker when warm workers are freed", async () => {
+    // Only IDLE workers are freed: a lane mid-search is answering a lease, and
+    // dropping it would turn a busy position into an error for its reader.
+    const lease = store.acquire(A, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    store.releaseWarm();
+    expect(workers[0].close).not.toHaveBeenCalled();
+    expect(lease.snapshot().running).toBe(true);
+    lease.release();
   });
 
   it("idle warm workers are closed after the idle window", async () => {

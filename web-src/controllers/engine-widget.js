@@ -5,6 +5,7 @@ import { formatEngineEval } from "../engine-eval.js";
 import { fullEngineChoice, chooseFullEngine, subscribeEngineProfile, subscribeEngineSetup } from "../engine/engine-profile.js";
 import { engineConsentHtml } from "./engine-consent.js";
 import { createPassFeed } from "./engine-pass-feed.js";
+import { releasePreviewCaption, setPreviewCaption, takePreviewCaption } from "./preview-caption.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
   boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
@@ -423,12 +424,9 @@ class EngineWidget {
     const data = same ? same.data : pv && board ? buildPvPreview(this.lastFen, pv.pv_uci || []) : null;
     if (!data) return;
     if (this.preview && this.preview.board !== board) this.exitPreview();
-    const view = activeViewName();
-    const labelEl = document.getElementById(view === "build" ? "build-board-label" : "analysis-board-label");
-    const exitBtn = document.getElementById(view === "build" ? "build-pv-exit" : "analysis-pv-exit");
     if (!this.preview) {
       board.beginPreview({ onEnd: ({ restored }) => this._onPreviewEnded(restored) });
-      this.preview = { labelEl, exitBtn, savedLabel: labelEl ? labelEl.textContent : "" };
+      this.preview = { caption: takePreviewCaption(activeViewName()) };
     }
     Object.assign(this.preview, { index, data, pv, board, ply: clampPly(data, ply ?? 1) });
     this._showPreviewPly();
@@ -446,8 +444,7 @@ class EngineWidget {
     const p = this.preview;
     if (!p) return;
     p.board.showPreview(previewPosition(p.data, p.ply));
-    if (p.labelEl) p.labelEl.textContent = previewLabel(p.data, p.ply, p.index);
-    if (p.exitBtn) p.exitBtn.hidden = false;
+    setPreviewCaption(p.caption, previewLabel(p.data, p.ply, p.index));
     this._repaintRows();
   }
 
@@ -463,8 +460,7 @@ class EngineWidget {
     const p = this.preview;
     if (!p) return;
     this.preview = null;
-    if (restored && p.labelEl) p.labelEl.textContent = p.savedLabel;
-    if (p.exitBtn) p.exitBtn.hidden = true;
+    releasePreviewCaption(p.caption, restored);
     this._repaintRows();
   }
 

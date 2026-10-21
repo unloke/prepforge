@@ -5,7 +5,8 @@ import { html } from "../html.js";
 import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
-import { treeToMovetext } from "../analyze-pgn.js";
+import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
+import { renderReportBlock } from "./analyze-report.js";
 
 // The board, the move list, the eval display and the engine's controls are
 // real interface: they keep their own lines, sizes and borders. The marker is
@@ -35,6 +36,13 @@ export function createAnalyzeView({
   selectAnalysisNode,
   revealAnalysisResults,
   onEvalChartRendered = () => {},
+  // The repertoire trees the report's "left prep at" row walks. They arrive from
+  // the shell (analyze-book-state.js) because that cache is the app's, not this
+  // view's; a caller with no book (the unit tests) simply gets no row.
+  bookReps = () => [],
+  // Loading that cache, if a caller has one. Without it the prep row appears
+  // with the first render that happens to follow the coach's own read.
+  ensureBookLoaded = async () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
     createMoveTreeRenderer();
@@ -156,45 +164,16 @@ export function createAnalyzeView({
     else document.getElementById("analysis-explain")?.scrollIntoView({ block: "nearest" });
   }
 
+  // The report block: the game's facts, the grade bars, and (on a phone) whose
+  // game it was. Where it came from is the PGN box's own tag block; the book is
+  // the repertoire cache the coach already walks.
   function renderClassificationBars(moves) {
-    const host = document.getElementById("analysis-summary");
-    if (!host) return;
-    if (!moves || !moves.length) {
-      host.innerHTML = "";
-      return;
-    }
-    const tally = { white: {}, black: {} };
-    moves.forEach((move) => {
-      const side = move.side === "black" ? "black" : "white";
-      const group = CLASS_GROUP_OF[move.classification];
-      if (!group) return;
-      tally[side][group] = (tally[side][group] || 0) + 1;
-    });
-
-    const rowHtml = (side, label) => {
-      const counts = tally[side];
-      const total = CLASS_GROUPS.reduce((sum, g) => sum + (counts[g.key] || 0), 0);
-      const segs = CLASS_GROUPS.filter((g) => counts[g.key] > 0)
-        .map((g, i) => {
-          const n = counts[g.key];
-          return (
-            html`<button class="cbar-seg seg-${g.key}" style="flex:${n};--i:${i}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${classBadgeSymbol(g.members[0])} ${n}</span></button>`
-          );
-        });
-      const track = total ? segs : html`<span class="cbar-empty">no scored moves</span>`;
-      return (
-        html`<div class="cbar-row"><span class="cbar-side">${label}</span><span class="cbar-track">${track}</span></div>`
-      );
-    };
-
-    host.innerHTML =
-      html`<div class="class-bars">${rowHtml("white", "White")}${rowHtml("black", "Black")}</div>`;
-
-    host.querySelectorAll(".cbar-seg").forEach((seg) => {
-      seg.addEventListener("click", () => {
-        jumpToClassGroup(seg.dataset.side, seg.dataset.group);
-        seg.blur();
-      });
+    renderReportBlock(document.getElementById("analysis-summary"), {
+      moves,
+      evalGraph: appState.analysis ? appState.analysis.eval_graph : [],
+      headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
+      reps: bookReps(),
+      onGrade: jumpToClassGroup,
     });
   }
 
@@ -343,17 +322,6 @@ export function createAnalyzeView({
     return set;
   }
 
-  // Half-moves in the tree, variations included: the head's status line counts
-  // what the board can step through, not just the mainline. Variation nodes
-  // carry ply -1 (they have no place in the score sheet), so count by move.
-  function countTreeMoves(node) {
-    let total = node.san ? 1 : 0;
-    (node.children || []).forEach((child) => {
-      total += countTreeMoves(child);
-    });
-    return total;
-  }
-
   function renderAnalysisTree(movesArg) {
     const container = document.getElementById("analysis-moves");
     if (!container) return;
@@ -361,16 +329,6 @@ export function createAnalyzeView({
     const tree = buildAnalysisTree(moves);
     appState.analysisTree = tree;
     const hasContent = (tree.root.children || []).length > 0;
-    // The head names a game whenever it can (app.js writes the players and
-    // tags into #analysis-game-meta). Moves played on an empty board have no
-    // players, so the head names them as what they are and counts them; the
-    // CSS shows one of the two, never both.
-    const status = document.getElementById("analysis-head-status");
-    if (status) {
-      const plies = countTreeMoves(tree.root);
-      const own = tree.root.children.some((child) => child.isVariation);
-      status.textContent = plies ? `${own ? "Your line" : "This line"} · ${plies} half-move${plies === 1 ? "" : "s"}` : "";
-    }
     if (!hasContent) {
       container.innerHTML =
         html`<div class="empty-state">Play on the board, or analyze a PGN.</div>`;
@@ -915,6 +873,14 @@ export function createAnalyzeView({
     renderMovePairs(payload.moves);
     renderEvalChart(payload.eval_graph);
     renderClassificationBars(payload.moves);
+    // The "left prep at" row reads the repertoire trees, which load lazily:
+    // repaint once they land, so the report carries it without holding up the
+    // grade bars.
+    void ensureBookLoaded()
+      .then(() => {
+        if (appState.analysis === payload) renderClassificationBars(payload.moves);
+      })
+      .catch(() => {});
     // Blocks arrive one after another: the chart first, then the grade bars.
     // The staggering is CSS (--i), capped so a long stack never drags.
     const stack = document.getElementById("analysis-results");

@@ -837,15 +837,16 @@ h2 {
 }
 
 /* Phone: the 20px chip × sat between the toolbar's 44px controls and was the
-   only way to drop a source. Give it a 40px target that still looks 24px. */
+   only way to drop a source. The × keeps its 20px look inside a 44px target,
+   and the chip itself is a 44px row like every other phone control. */
 @media (max-width: 760px) {
   .src-chip-x {
-    width: 40px;
-    height: 40px;
-    margin: -8px -4px -8px -2px;
+    width: 44px;
+    height: 44px;
+    margin: -12px -6px -12px -2px;
     font-size: 17px;
   }
-  .src-chip { height: auto; min-height: 40px; padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
+  .src-chip { height: auto; min-height: 44px; padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
 }
 
 .src-composer-overlay {
@@ -5842,7 +5843,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex: none;
 }
 .lib-list .card-head .search-field { margin-left: auto; }
-#view-analyze .panel-head { justify-content: space-between; }
+/* Analyze has no head strip: its actions close the coach's line, so they take
+   the row's leftover width rather than a row of their own. */
 #view-analyze .panel-actions { margin-left: auto; }
 #build-rep-header #build-generate-node { margin-left: auto; flex: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }
