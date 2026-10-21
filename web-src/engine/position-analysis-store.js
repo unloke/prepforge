@@ -170,19 +170,26 @@ export function createPositionAnalysisStore({
     clearTimeout(lane.idleTimer);
     lane.idleTimer = null;
     if (!lane.provider || idleCloseMs <= 0) return;
-    const reclaim = () => {
-      if (lane.entry || !lane.provider) return;
-      clearTimeout(lane.idleTimer);
-      lane.unregisterIdle?.();
-      lane.unregisterIdle = null;
-      const provider = lane.provider;
-      lane.provider = null;
-      Promise.resolve(provider.close()).catch(() => {});
-    };
+    const reclaim = () => releaseWarm(lane);
     lane.idleTimer = setTimeout(reclaim, idleCloseMs);
     // The lane is idle either way; the budget is what decides whether a warm worker
     // may be reclaimed to make room for a queued one, so it is always told.
     lane.unregisterIdle = budget.registerIdle(reclaim);
+  }
+
+  // Drop the lane's warm worker now: it is idle, so nothing is searching for it and
+  // its reserved heap (384 MiB on the full net) is the only thing it costs. A lane
+  // that is mid-search keeps its worker — that search is someone's answer.
+  function releaseWarm(lane) {
+    if (lane.entry || !lane.provider) return;
+    clearTimeout(lane.idleTimer);
+    lane.idleTimer = null;
+    lane.unregisterIdle?.();
+    lane.unregisterIdle = null;
+    const provider = lane.provider;
+    lane.provider = null;
+    lane.fresh = false;
+    Promise.resolve(provider.close()).catch(() => {});
   }
 
   // Keep the deeper of an interrupted search and an earlier read.
@@ -464,6 +471,13 @@ export function createPositionAnalysisStore({
     passRead(fen) {
       const entry = entries.get(positionKey(fen));
       return entry && entry.game ? { ...gameSnapshot(fen, entry.game), complete: false } : null;
+    },
+    // Drop every warm worker now. The store is a page-wide singleton, so a lane a
+    // consumer left idle outlives the view that used it and its reserved heap sits
+    // for `idleCloseMs`; leaving the view is when that heap is worth nothing. Cached
+    // reads stay, so coming back is a re-boot, not a re-analysis.
+    releaseWarm() {
+      for (const lane of lanes) releaseWarm(lane);
     },
     // A whole-game pass started (1) or ended (0). Consumers read `passing` through
     // onPassChange to know the engine is taken and follow each saved position.

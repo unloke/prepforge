@@ -214,6 +214,39 @@ describe("interactive lanes", () => {
     await expect(waiting).resolves.toBeNull();
   });
 
+  it("leaving the view frees a warm worker now instead of after the idle window", async () => {
+    // The store is a page-wide singleton, so an idle lane outlives the view that used
+    // it: its whole reserved heap sat for `idleCloseMs` (60 s live) with nothing left
+    // to answer. `releaseWarm` is what the view switch calls on the way out.
+    const lease = store.acquire(A, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    workers[0].finish();
+    await vi.advanceTimersByTimeAsync(60);
+    lease.release();
+    // Idle, and inside the idle window: the worker is still warm.
+    expect(workers[0].close).not.toHaveBeenCalled();
+    store.releaseWarm();
+    expect(workers[0].close).toHaveBeenCalledOnce();
+    // The finished read is cached, so coming back answers from it; a position the
+    // store has no read for boots a NEW worker rather than reviving the closed one.
+    const again = store.acquire(B, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(workers).toHaveLength(2);
+    expect(workers[1].close).not.toHaveBeenCalled();
+    again.release();
+  });
+
+  it("a search someone still holds keeps its worker when warm workers are freed", async () => {
+    // Only IDLE workers are freed: a lane mid-search is answering a lease, and
+    // dropping it would turn a busy position into an error for its reader.
+    const lease = store.acquire(A, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    store.releaseWarm();
+    expect(workers[0].close).not.toHaveBeenCalled();
+    expect(lease.snapshot().running).toBe(true);
+    lease.release();
+  });
+
   it("idle warm workers are closed after the idle window", async () => {
     const lease = store.acquire(A, { depth: 16 });
     await vi.advanceTimersByTimeAsync(0);
