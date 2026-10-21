@@ -1110,11 +1110,11 @@
 
 /* ---- Phone ------------------------------------------------------------
    Shell, thumb bar and sheets in phone.css. One screen, no page scroll, and
-   nothing above the board changes height between moves: the game graph and
-   the move strip on top, the board, then the eval row and the engine's best
-   line, and the coach last, scrolling inside whatever height is left. The
-   report and the game sources are sheets; the sources fill the screen under
-   the board while no game is loaded. */
+   nothing above the board changes height between moves: the game graph on top,
+   the board, then the eval row and the engine's best line, and the coach last.
+   A phone has no move list: the graph is how a thumb walks the game. The report
+   and the game sources are sheets; the sources fill the screen under the board
+   while no game is loaded. */
 @media (max-width: 760px) {
   #view-analyze { --phone-reserve: 222px; }
   #analyze-sidebar :is(.panel-scroll, .analyze-main),
@@ -1125,10 +1125,11 @@
   #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: under the engine, as tall as its note needs and no taller. It is a
-     band of its own tone, so it needs no rule above it. It used to take every
-     pixel the screen had left, which parked a screenful of empty tone under a
-     one-line verdict; the room now belongs to the score sheet below it. */
+  /* Coach: under the engine, as tall as its note needs and no taller. It used to
+     take every pixel the screen had left, which parked a screenful of empty tone
+     under a one-line verdict; the room belongs to the game graph above, which is
+     the one block on this screen that uses height. A long note scrolls, so the
+     thumb bar never moves. */
   #analysis-explain {
     order: 3;
     flex: 0 1 auto;
@@ -1194,36 +1195,25 @@
   #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
   #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
 
-  /* Game graph on top, at a fixed height so the board never moves. It is the
-     move scrubber; the score sheet below the coach is the other way in.
-     It sits on the phone gutter so its ends line up with the eval row and the
-     coach under it — edge to edge, the first ply's cursor drew a dashed line
-     on the screen's own border, which read as a stray edge on the card. */
-  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) { order: 0; margin: 0 var(--phone-gutter); }
-  #analysis-eval-card .eval-chart { height: 84px; border-radius: 8px; touch-action: pan-y; }
-  /* The score sheet takes the rest of the screen under the coach: a phone
-     cannot reach the report sheet's moves without it, and the band the coach
-     does not need is already here. It is the sheet a thumb taps to walk the
-     game, so its rows take the gutter and 32px of pitch instead of 21. */
-  #analysis-results:not([hidden]) > .moves-grid {
-    display: block;
-    order: 3;
-    flex: 1 1 0;
-    min-height: 0;
-    max-height: none;
-    margin: 0;
-    padding: 4px var(--phone-gutter) 8px;
-    border-radius: 0;
-    background: var(--bg);
-    font-size: 14px;
-    overflow-y: auto;
+  /* No score sheet on a phone: the game graph is the only way to walk the game
+     by hand, so it takes the room the move list held and the stack's slack with
+     it. A taller field is an easier ply to hit and it is where the game's shape
+     is read; it stops at a third of the screen, where a curve stops being a
+     graph. It keeps the phone gutter so its ends line up with the eval row and
+     the coach under it — edge to edge, the first ply's cursor drew a dashed line
+     on the screen's own border, which read as a stray edge. */
+  #analysis-results:not([hidden]) > .moves-grid { display: none; }
+  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) {
+    order: 0;
+    flex: 1 1 auto;
+    min-height: 84px;
+    max-height: 34dvh;
+    margin: 0 var(--phone-gutter);
   }
-  #analysis-results .moves-grid .mtree-line.is-main { min-height: 32px; }
-  #analysis-results .moves-grid .mtree-line.is-main > .mtree-num { font-size: 13px; }
-  #analysis-results .moves-grid .mtree-line.is-main > .mtree-move {
-    min-height: 32px;
-    padding: 4px 8px;
-    border-radius: 6px;
+  #analysis-eval-card .eval-chart {
+    height: 100%;
+    border-radius: 8px;
+    touch-action: pan-y;
   }
 
   /* Under the board: eval, win meter, Report, Engine; then the best line.

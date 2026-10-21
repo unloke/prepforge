@@ -525,8 +525,14 @@ describe("Analyze on a phone", () => {
     expect(rule[0]).toMatch(/color:\s*var\(--text\)/);
   });
 
-  it("makes the score sheet rows a thumb target", () => {
-    expect(phone).toMatch(/#analysis-results \.moves-grid \.mtree-line\.is-main \{ min-height: 32px; \}/);
-    expect(phone).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{[^}]*font-size: 14px/);
+  // A phone has no score sheet: the move list is gone and the graph, which is
+  // the only way to walk the game there, takes the room it held.
+  it("drops the move list and gives its room to the graph", () => {
+    expect(phone).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
+    const graph = phone.match(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*\}/);
+    expect(graph, "the phone graph rule").not.toBeNull();
+    expect(graph[0]).toMatch(/flex: 1 1 auto/);
+    expect(graph[0]).toMatch(/min-height: 84px/);
+    expect(graph[0]).toMatch(/max-height: 34dvh/);
   });
 });

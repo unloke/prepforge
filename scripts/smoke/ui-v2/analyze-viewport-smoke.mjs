@@ -442,15 +442,15 @@ async function runViewport(vp) {
     check(variation.blackAligned, "Black moves should stay in one column around a variation");
   }
   if (vp.width <= 760) {
-    // The phone's screen is one column: chart, board, eval row, coach, score
-    // sheet, thumb bar. The coach takes its note's height, and the sheet takes
-    // the rest, so no dead tone sits under a one-line verdict.
+    // The phone's screen is one column: chart, board, eval row, coach, thumb
+    // bar. A phone has no move list, so the chart is the way to walk the game
+    // and it takes the room the list held.
     const stack = await page.evaluate(() => {
       const box = (sel) => {
         const el = document.querySelector(sel);
         if (!el) return null;
         const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 ? { top: Math.round(r.top), bottom: Math.round(r.bottom) } : null;
+        return r.width > 0 && r.height > 0 ? { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height) } : null;
       };
       const coach = document.querySelector("#analysis-explain");
       const prose = document.getElementById("coach-prose");
@@ -464,20 +464,20 @@ async function runViewport(vp) {
         moves: box("#analysis-moves"),
         barTop: Math.round(bar.top),
         coachDead: Math.round(coach.getBoundingClientRect().bottom - prose.getBoundingClientRect().bottom),
-        movesScrolls: moves.scrollHeight > moves.clientHeight + 1 ||
-          getComputedStyle(moves).overflowY === "auto",
         pageScrolls: document.getElementById("view-analyze").scrollHeight >
           document.getElementById("view-analyze").clientHeight + 1,
       };
     });
     const inOrder = stack.chart.bottom <= stack.board.top + 1 &&
       stack.board.bottom <= stack.coach.top + 1 &&
-      stack.coach.bottom <= stack.moves.top + 1 &&
-      stack.moves.bottom <= stack.barTop + 1;
-    check(inOrder, `phone stack must be chart, board, coach, score sheet, thumb bar: ${JSON.stringify(stack)}`);
+      stack.coach.bottom <= stack.barTop + 1;
+    check(inOrder, `phone stack must be chart, board, coach, thumb bar: ${JSON.stringify(stack)}`);
+    check(stack.moves === null, `a phone Analyze screen must have no move list: ${JSON.stringify(stack.moves)}`);
+    // The graph is the scrubber now: it holds the room the list had (the phone
+    // used to draw an 84px strip and a 32px-pitch sheet).
+    check(stack.chart.height > 84, `the phone graph must take the room the move list had, got ${stack.chart.height}px`);
     // A one-line verdict leaves at most a line of breathing room, not a band.
     check(stack.coachDead <= 40, `the coach band must not keep an empty band under its note: ${stack.coachDead}px`);
-    check(stack.movesScrolls, "the phone's score sheet must take the remaining height and scroll");
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
   await page.evaluate(() => document.getElementById("analysis-start").click());

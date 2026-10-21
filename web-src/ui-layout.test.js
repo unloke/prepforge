@@ -496,10 +496,10 @@ describe("workspace chrome layout", () => {
     expect(phoneCss).toMatch(/#view-analyze \.board-bar \.board-label \{ display: none; \}/);
     // A phone has no panel head: the game's identity block goes with it.
     expect(phoneCss).toMatch(/#analyze-sidebar > \.panel-head \.analyze-head-id,\s*\n\s*#fetch-my-game \{ display: none; \}/);
-    // The coach takes its note's height and the rest of the screen goes to the
-    // score sheet, so a one-line verdict does not leave a band of empty tone.
+    // The coach takes its note's height, and a phone has no score sheet at all:
+    // its room goes to the graph, which is the only way to walk the game there.
     expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);
-    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{[^}]*flex: 1 1 0;/);
+    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
     expect(app).toContain("function wirePhoneSheets()");
   });
 
