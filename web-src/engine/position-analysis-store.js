@@ -74,20 +74,17 @@ export function createPositionAnalysisStore({
   cacheSize = 600,
   maxNodes = ANALYSIS_MAX_NODES,
   maiaBatchSize = 16,
-  // The engine budget the lanes share. Injectable for tests; the live flow uses the
-  // page-wide one that also hands out the whole-game pass's workers.
-  budget = stockfishBudget,
   // (fen, uciLine) => sanLine; game-pass results arrive as UCI only.
   sanLine = null,
   // fen => a saved whole-game eval for it (an analysis loaded from the server), or null.
   savedEval = null,
 } = {}) {
   const entries = new Map();
-  // One lane per engine this device runs (see the header). `budget.snapshot().limit`
+  // One lane per engine this device runs (see the header). `stockfishBudget.snapshot().limit`
   // is the number the budget hands out, and engine-profile.js configures it from the
   // same usable profile the lanes belong to, so reading it here is what keeps a lane
   // from existing that can never hold an engine.
-  const lanes = Array.from({ length: Math.max(1, budget.snapshot().limit) }, (_, id) => ({
+  const lanes = Array.from({ length: Math.max(1, stockfishBudget.snapshot().limit) }, (_, id) => ({
     id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null,
   }));
   let clock = 0;
@@ -174,7 +171,7 @@ export function createPositionAnalysisStore({
     lane.idleTimer = setTimeout(reclaim, idleCloseMs);
     // The lane is idle either way; the budget is what decides whether a warm worker
     // may be reclaimed to make room for a queued one, so it is always told.
-    lane.unregisterIdle = budget.registerIdle(reclaim);
+    lane.unregisterIdle = stockfishBudget.registerIdle(reclaim);
   }
 
   // Drop the lane's warm worker now: it is idle, so nothing is searching for it and
