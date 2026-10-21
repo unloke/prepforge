@@ -1,6 +1,8 @@
 import { html } from "../html.js";
 import { typedSquare } from "../board-navigation.js";
-import { capturedSquare, caughtPiece, positionKey, slidePiece } from "./move-motion.js";
+import {
+  boardTransition, moveMotion, playMoveMotion, positionKey,
+} from "./move-motion.js";
 
 let pref, renderAnnotations, files, isPromotionMove, resolveBoardMove, legalMoveFor,
   pieceSvg, parseFenBoard, playSound, moveCue, pieceLabel, legalTargetsFrom;
@@ -533,10 +535,12 @@ class BoardController {
     if (this.onAnnotate) this.onAnnotate(this.arrows.slice(), [...this.highlights]);
   }
 
-  // `back` says the new position is the one BEFORE `lastMove` (a step back
-  // through a game): the mover travels to the square it came from instead of
-  // replaying the move forward. Nothing is captured on the way back — the piece
-  // returns — so no victim is held.
+  // `back` says this render steps back through existing history rather than
+  // landing a new move: it stays quiet (the undone move's cue already played)
+  // and keeps no pulse. Which way the pieces travel, and which of them move, is
+  // read from the two positions (`boardTransition`), so every board — a
+  // repertoire step, a takeback, an analysis branch — gets the same motion
+  // without its caller having to say which direction the user went.
   setPosition({ fen, legalMoves = [], lastMove = null, cue, back = false }) {
     // A real position arriving mid-preview ends the preview (see beginPreview).
     if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
@@ -551,21 +555,13 @@ class BoardController {
       legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
     if (!keepInteraction) this._cancelDrag();
 
-    // Read the slide's offsets and the captured piece NOW, before any DOM write
-    // (no forced reflow). Forward: `lastMove` arrives from -> to. Back: the move
-    // the step undid travels home.
-    const undone = back ? this.lastMove : null;
-    const mover = undone || lastMove;
-    let slide = null;
-    if (fenChanged && this._hadPosition && mover) {
-      const [from, to] = [mover.slice(0, 2), mover.slice(2, 4)];
-      const fromSq = this.squares.get(from), toSq = this.squares.get(to);
-      if (fromSq && toSq) {
-        const [standing, home] = back ? [toSq, fromSq] : [fromSq, toSq];
-        slide = { dx: standing.offsetLeft - home.offsetLeft, dy: standing.offsetTop - home.offsetTop,
-          to: back ? from : to, capturedAt: back ? null : capturedSquare(prevFen, fen, from, to) };
-      }
-    }
+    // What this change moved, and the travel it needs, read NOW — before any DOM
+    // write (no forced reflow) and off the positions rather than off `lastMove`.
+    // A position change is read as a transition; anything wider than one move
+    // comes back null and is drawn as a cut rather than a slide from a square no
+    // piece ever stood on.
+    const transition = fenChanged && this._hadPosition ? boardTransition(prevFen, fen) : null;
+    const motion = transition ? moveMotion(transition, (square) => this.squares.get(square)) : null;
 
     this.fen = fen;
     this.legalMoves = legalMoves;
@@ -585,29 +581,14 @@ class BoardController {
       this.highlights = new Set();
     }
     if (fenChanged) {
-      // The captured piece is still in the old DOM until _renderPieces wipes it.
-      // Copy it detached first and mount it after the render, so it never stands
-      // in for the square's own piece.
-      const caught = slide?.capturedAt ? caughtPiece(this.squares.get(slide.capturedAt)) : null;
       this._renderPieces();
-      if (caught) this.squares.get(slide.capturedAt)?.appendChild(caught);
-      if (this._hadPosition && (lastMove || undone)) {
-        // A drag left the piece under the pointer on its target: the slide would
-        // replay the drop backwards. The mark covers one position change only.
-        if (this._draggedMove && lastMove && lastMove.startsWith(this._draggedMove)) slide = null;
-        this._draggedMove = null;
-        // A step back is quiet: the undone move's cue played when it was made.
-        if (back) {
-          if (slide && pref("moveAnim")) slidePiece(slide, (sq) => this.squares.get(sq));
-        } else {
-          // The sound belongs to the move, not to a position change: the optimistic
-          // render and the confirmed one are the same move, and it sounds once.
-          // Two different moves never share a `lastMove`, so a real move still sounds.
-          const heard = lastMove === this._soundedKey;
-          this._soundedKey = lastMove;
-          this._feedbackForMove(prevFen, fen, lastMove, slide, caught, cue, heard);
-        }
-      }
+      // A drag left the piece under the pointer on its target: the slide would
+      // replay the drop backwards. The mark covers one position change only.
+      const dragged = Boolean(this._draggedMove && lastMove && lastMove.startsWith(this._draggedMove));
+      this._draggedMove = null;
+      if (motion) playMoveMotion(motion, (sq) => this.squares.get(sq), pref("moveAnim") && !dragged);
+      // A step back is quiet: the undone move's cue played when it was made.
+      if (this._hadPosition && lastMove && !back) this._feedbackForMove(prevFen, fen, lastMove, cue);
     }
     this._hadPosition = true;
     this._updateClasses();
@@ -628,21 +609,22 @@ class BoardController {
     this._syncMoveBadge();
   }
 
-  // Slide the moved piece in, pulse the destination, and chirp a sound, all
-  // driven off the final rendered position so a quick "skip" never leaves anything stranded.
+  // Chirp a sound for the move and pulse its destination, off the final rendered
+  // position (the slide is played by `playMoveMotion`, which also disposes of any
+  // held victim when the animation is off).
   // `cue` is the caller's own sound for this move (a drill's right/wrong, or false
   // to stay quiet); without it the change itself picks the cue. One move is one
   // sound: a caller may render the same move twice (an optimistic landing, then
   // the confirmed position), and the second render of it stays quiet.
-  _feedbackForMove(prevFen, fen, lastMove, slide, caught, cue, heard) {
-    const to = lastMove.slice(2, 4);
+  _feedbackForMove(prevFen, fen, lastMove, cue) {
+    // The sound belongs to the move, not to a position change: the optimistic
+    // render and the confirmed one are the same move, and it sounds once. Two
+    // different moves never share a `lastMove`, so a real move still sounds.
+    const heard = lastMove === this._soundedKey;
+    this._soundedKey = lastMove;
     if (cue === undefined) cue = moveCue(prevFen, fen, lastMove);
     if (cue && !heard) playSound(cue);
-    // One gate for both halves: a slide with nowhere to travel, or the move
-    // animation switched off, still ends with nothing left on the board.
-    if (slide && pref("moveAnim")) slidePiece(slide, (sq) => this.squares.get(sq), caught);
-    else caught?.remove();
-    if (pref("lastMovePulse")) this._pulseSquare(to);
+    if (pref("lastMovePulse")) this._pulseSquare(lastMove.slice(2, 4));
   }
 
   _pulseSquare(square) {

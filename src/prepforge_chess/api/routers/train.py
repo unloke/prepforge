@@ -558,6 +558,31 @@ def hint(
     }
 
 
+@router.get("/session/{session_id}")
+def session_state(
+    session_id: str,
+    owner: str = Depends(current_owner),
+    repo: WorkspaceRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """Read a rehearsal session's authoritative position and current prompt,
+    grading and advancing nothing. This is the reconciliation read for an answer
+    whose result the network lost: the grade may already be committed, so the
+    client adopts this prompt instead of replaying the old answer. Smart sessions
+    store encoded cards, not node ids, and have their own local-first state."""
+    session = _owned_session(repo, session_id, owner)
+    if session.mode is not TrainingMode.ALL_LINES:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
+        )
+    prompt = TrainingService(repo, owner).current_prompt(session_id)
+    return {
+        "session_id": session.id,
+        "current_index": session.current_index,
+        "total_lines": len(session.line_order),
+        "prompt": prompt_to_json(prompt, _CHESS),
+    }
+
+
 class MoveBody(BaseModel):
     session_id: str
     played_uci: str

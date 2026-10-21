@@ -206,6 +206,8 @@ export function deleteSavedAnalysis(delButton) {
 
 export function invalidateAnalysisSource() {
   appState.analysisFileSeq = null;
+  // A new source supersedes the batch an import picker may still be listing.
+  appState.analysisMultiPgn = null;
   clearTimeout(analyzePgnInputTimer);
   return ++analysisRecallSeq;
 }
@@ -265,22 +267,29 @@ let analyzePgnWriting = false;
 
 // Board / move-list → PGN box. Serialize the current Analyze tree (analyzed or
 // typed mainline + explored variations) and write it back, preserving the header
-// block. No-op while the textarea is focused (board moves happen with the board
-// focused, so this only fires when it's safe).
+// block.
+//
+// A focused textarea is the user's: rewriting it mid-edit moves the caret and eats
+// a keystroke. The one exception is a branch that exists only in the tree
+// (`appState.analysisPgnStale`): without it in the box, a reload would lose the
+// branch. The user's own edit clears that flag at once, so text they typed is never
+// replaced.
 export async function syncPgnFromTree() {
   const input = document.getElementById("pgn-input");
-  if (!input || document.activeElement === input) return;
+  if (!input) return;
   const analysis = appState.analysis;
   const seq = analysisRecallSeq;
   const original = input.value;
   const moves = analysis ? analysis.moves : [];
   const hasVars = appState.analysisVarNodes && appState.analysisVarNodes.size;
   if ((!moves || !moves.length) && !hasVars) return;
+  if (document.activeElement === input && !appState.analysisPgnStale) return;
   const view = await ensureAnalyzeView();
-  if (seq !== analysisRecallSeq || input.value !== original || document.activeElement === input) return;
+  if (seq !== analysisRecallSeq || input.value !== original) return;
   const next = view.serializeAnalysisPgn(input.value);
   if (!next) return;
-  if (next !== input.value && document.activeElement !== input) {
+  appState.analysisPgnStale = false;
+  if (next !== input.value) {
     analyzePgnWriting = true;
     input.value = next;
     analyzePgnWriting = false;
@@ -295,6 +304,11 @@ export function bindAnalyzePgnInput() {
   if (!pgnInput) return;
   pgnInput.addEventListener("input", () => {
     if (analyzePgnWriting) return;
+    // The user's text is the source of truth from this instant: the old tree is not
+    // what they are writing any more, and a serialization already in flight must not
+    // write over it. Bumping the source epoch now (not only when the debounced
+    // reload runs) fences those continuations.
+    appState.analysisPgnStale = false;
     invalidateAnalysisSource();
     syncViewHeads();
     analyzePgnInputTimer = setTimeout(() => {

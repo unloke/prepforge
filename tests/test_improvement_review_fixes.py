@@ -645,6 +645,41 @@ def test_multi_mode_reports_per_game_status_and_selection(client):
     assert r4.status_code == 400
 
 
+def test_prepare_returns_the_selected_game_own_pgn(client):
+    """The client re-parses ONE game for its branches: the server names which.
+
+    A multi-game paste whose movetext would concatenate legally: parsing the whole
+    paste glues the games (and hangs game 2's branches off game 1's last move), so
+    ``pgn`` must be the selected game alone, whichever slot was selected.
+    """
+    _register(client, "f4c@example.com")
+    first = _prepare(client, _PGN_TWO, mode="multi", select_index=0).json()
+    second = _prepare(client, _PGN_TWO, mode="multi", select_index=1).json()
+    assert first["pgn"].strip().endswith("1. d4 d5 *")
+    assert "c4" not in first["pgn"]
+    assert second["pgn"].strip().endswith("1. c4 e5 *")
+    assert "d4" not in second["pgn"]
+    # Each game's own mainline skeleton still comes from its own game.
+    assert [m["san"] for m in first["moves"]] == ["d4", "d5"]
+    assert [m["san"] for m in second["moves"]] == ["c4", "e5"]
+
+
+def test_prepare_keeps_the_branches_of_the_selected_game(client):
+    _register(client, "f4d@example.com")
+    pgn = (
+        '[Event "One"]\n\n1. e4 e5 2. Nf3 (2. d4 d5) Nc6 *\n\n'
+        '[Event "Two"]\n\n1. d4 d5 2. c4 (2. Nf3 Nf6) e6 *'
+    )
+    first = _prepare(client, pgn, mode="multi", select_index=0).json()
+    assert "( 2. d4 d5 )" in first["pgn"]
+    assert "Nf6" not in first["pgn"]
+    assert [m["san"] for m in first["moves"]] == ["e4", "e5", "Nf3", "Nc6"]
+    second = _prepare(client, pgn, mode="multi", select_index=1).json()
+    assert "( 2. Nf3 Nf6 )" in second["pgn"]
+    assert "e4" not in second["pgn"]
+    assert [m["san"] for m in second["moves"]] == ["d4", "d5", "c4", "e6"]
+
+
 # ---- F-05: account export / delete ----------------------------------------
 
 

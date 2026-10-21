@@ -24,10 +24,16 @@ const SMOKE_TIMEOUT_MS = 5 * 60_000;
 const SUITE = [
   ["Library", "library-viewport-smoke.mjs"],
   ["Repertoire", "build-viewport-smoke.mjs"],
+  ["Engine PV", "engine-pv-containment-smoke.mjs"],
   ["Train", "train-viewport-smoke.mjs"],
   ["Games", "games-viewport-smoke.mjs"],
   ["Scout", "scout-viewport-smoke.mjs"],
   ["Analyze", "analyze-viewport-smoke.mjs"],
+  // Off-mainline Analyze: a selected variation node (not its mainline cousin of
+  // the same move number) drives the board, caption, Coach and engine — through a
+  // fast reversal and a reload. Production build only, no E2E hooks.
+  ["Analyze variations", "analyze-variations-smoke.mjs"],
+  ["Board rewind", "board-rewind-smoke.mjs"],
   // Last game / "you just finished a game": both entry paths orient the board,
   // the nudge goes when the same game is loaded, and returning to the tab
   // probes once per burst.

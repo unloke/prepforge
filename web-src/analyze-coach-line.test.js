@@ -52,7 +52,7 @@ describe("the Coach line", () => {
     expect(rule(".phase-chip")).toMatch(/white-space: nowrap/);
     expect(rule("#analyze-actions")).toMatch(/flex-wrap: nowrap/);
     expect(rule(".coach-card")).toMatch(/--coach-head: 26px/);
-    expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) var\(--coach-foot\)/);
+    expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
   });
 
   it("keeps both actions readable as words", () => {

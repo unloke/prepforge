@@ -24,12 +24,13 @@ describe("workspace URL codec", () => {
         replaySection: view === "replay" ? "games" : null,
         repertoireId: null,
         ply: null,
+        node: null,
       });
     }
   });
 
   it("round-trips view + repertoire + ply", () => {
-    const loc = { view: "build", replaySection: null, repertoireId: "rep-42", ply: 12 };
+    const loc = { view: "build", replaySection: null, repertoireId: "rep-42", ply: 12, node: null };
     const hash = formatWorkspaceHash(loc);
     expect(hash).toBe("#/build?rep=rep-42&ply=12");
     expect(parseWorkspaceHash(hash)).toEqual(loc);
@@ -47,12 +48,14 @@ describe("workspace URL codec", () => {
       replaySection: null,
       repertoireId: null,
       ply: null,
+      node: null,
     });
     expect(parseWorkspaceHash("#/replay")).toEqual({
       view: "replay",
       replaySection: "games",
       repertoireId: null,
       ply: null,
+      node: null,
     });
   });
 
@@ -63,6 +66,7 @@ describe("workspace URL codec", () => {
       replaySection: null,
       repertoireId: "r1",
       ply: null,
+      node: null,
     });
     const serialized = serializeWorkspaceLocation(
       { view: "settings" },
@@ -100,7 +104,7 @@ describe("workspace URL codec", () => {
   });
 
   it("serialize then parse restores the location", () => {
-    const loc = { view: "train", replaySection: null, repertoireId: "abc", ply: null };
+    const loc = { view: "train", replaySection: null, repertoireId: "abc", ply: null, node: null };
     const href = serializeWorkspaceLocation(loc, "https://x.test/app");
     expect(parseWorkspaceLocation("https://x.test" + href)).toEqual(loc);
   });
@@ -115,14 +119,14 @@ describe("workspace URL codec", () => {
         build: { repertoire_id: "r9" },
         trainingRepertoireId: "r2",
       }),
-    ).toEqual({ view: "analyze", replaySection: null, repertoireId: null, ply: 7 });
+    ).toEqual({ view: "analyze", replaySection: null, repertoireId: null, ply: 7, node: null });
     expect(
       workspaceLocationFromState({
         currentView: "build",
         analysisPly: 7,
         trainingRepertoireId: "r2",
       }),
-    ).toEqual({ view: "build", replaySection: null, repertoireId: "r2", ply: null });
+    ).toEqual({ view: "build", replaySection: null, repertoireId: "r2", ply: null, node: null });
   });
 
   it("keeps Build's open repertoire out of an Analyze link", () => {
@@ -134,7 +138,7 @@ describe("workspace URL codec", () => {
         analysisPly: 3,
         build: { repertoire_id: "rep-77" },
       }),
-    ).toEqual({ view: "analyze", replaySection: null, repertoireId: null, ply: 3 });
+    ).toEqual({ view: "analyze", replaySection: null, repertoireId: null, ply: 3, node: null });
     expect(formatWorkspaceHash({ view: "analyze", ply: 3 })).toBe("#/analyze?ply=3");
   });
 
@@ -143,7 +147,7 @@ describe("workspace URL codec", () => {
     // plain Train link claim a repertoire the queue was not training.
     expect(
       workspaceLocationFromState({ currentView: "train", build: { repertoire_id: "r9" } }),
-    ).toEqual({ view: "train", replaySection: null, repertoireId: null, ply: null });
+    ).toEqual({ view: "train", replaySection: null, repertoireId: null, ply: null, node: null });
     // A mixed queue drills every active repertoire, so it names none.
     expect(
       workspaceLocationFromState({
@@ -193,18 +197,20 @@ describe("games/scout deep links", () => {
       replaySection: "games",
       repertoireId: null,
       ply: null,
+      node: null,
     });
     expect(parseWorkspaceHash("#/scout")).toEqual({
       view: "replay",
       replaySection: "scout",
       repertoireId: null,
       ply: null,
+      node: null,
     });
   });
 
   it("round-trips each section through serialize + parse (refresh/back-forward)", () => {
     for (const replaySection of REPLAY_SECTIONS) {
-      const loc = { view: "replay", replaySection, repertoireId: null, ply: null };
+      const loc = { view: "replay", replaySection, repertoireId: null, ply: null, node: null };
       const href = serializeWorkspaceLocation(loc, "https://x.test/app");
       expect(parseWorkspaceLocation("https://x.test" + href)).toEqual(loc);
     }
@@ -218,10 +224,10 @@ describe("games/scout deep links", () => {
   it("reads the replay section from app state only on the replay view", () => {
     expect(
       workspaceLocationFromState({ currentView: "replay", replaySection: "scout" }),
-    ).toEqual({ view: "replay", replaySection: "scout", repertoireId: null, ply: null });
+    ).toEqual({ view: "replay", replaySection: "scout", repertoireId: null, ply: null, node: null });
     expect(
       workspaceLocationFromState({ currentView: "build", replaySection: "scout" }),
-    ).toEqual({ view: "build", replaySection: null, repertoireId: null, ply: null });
+    ).toEqual({ view: "build", replaySection: null, repertoireId: null, ply: null, node: null });
   });
 
   it.each([
@@ -258,6 +264,7 @@ describe("games/scout deep links", () => {
           replaySection,
           repertoireId: null,
           ply: null,
+          node: null,
         },
         href: expectedHash,
       },

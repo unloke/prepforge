@@ -6,6 +6,7 @@ import { appSource } from "./test-app-source.js";
 import { createPassFeed } from "./controllers/engine-pass-feed.js";
 
 const source = appSource();
+const selectionSource = readFileSync(new URL("./controllers/analyze-selection.js", import.meta.url), "utf8");
 
 function widgetHarness({ coachOn = false } = {}) {
   const deps = { html,
@@ -36,7 +37,13 @@ function widgetHarness({ coachOn = false } = {}) {
     style: { setProperty() {} },
     title: "",
   };
-  widget.pvsEl = { dataset: {}, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
+  widget.pvsEl = {
+    dataset: {},
+    // `_paintPvs` reads the rendered row count to decide when the dock refits.
+    get children() { return (String(this._html ?? "").match(/class="engine-pv(?:\s|")/g) || []); },
+    get innerHTML() { return this._html ?? ""; },
+    set innerHTML(value) { this._html = String(value); },
+  };
   return { widget, arrow: deps.setEngineBestArrow };
 }
 
@@ -129,9 +136,13 @@ describe("Analyze engine stepping", () => {
       arrow(null);
       await widget.onBoardChanged();
     });
-    const start = source.indexOf("async function analysisTreeNav(");
-    const code = source.slice(start, source.indexOf("\nfunction resetAnalysisVariations", start));
-    const nav = new Function("appState", "ensureAnalyzeView", "selectAnalysisNode", `${code}; return analysisTreeNav;`)(appState, async () => ({}), select);
+    // The navigation rule now lives in its own module (controllers/analyze-selection.js).
+    const start = selectionSource.indexOf("async function analysisTreeNav(");
+    const code = selectionSource.slice(start, selectionSource.indexOf("\n  async function onAnalysisBoardMove", start));
+    // The source epoch: unchanged here, so the step is never fenced out.
+    const captureSource = () => ({ isCurrent: () => true });
+    const nav = new Function("appState", "ensureAnalyzeView", "selectAnalysisNode", "captureSource",
+      `${code}; return analysisTreeNav;`)(appState, async () => ({}), select, captureSource);
     await nav(kind);
     await nav(kind);
     expect(select).not.toHaveBeenCalled();

@@ -6,7 +6,12 @@ import { appSource } from "./test-app-source.js";
 const source = appSource();
 const restore = source.slice(source.indexOf("async function restoreWorkspaceLocation()"), source.indexOf("\nfunction setReplaySection("));
 const popstate = source.slice(source.indexOf("async function handleWorkspacePopstate()"), source.indexOf("\nfunction setReplaySection("));
-const analyzeRestore = source.slice(source.indexOf("async function restoreAnalyzeSession("), source.indexOf("\n// In-page route changes"));
+// The Analyze restore rule lives in its own module now (controllers/analyze-restore.js);
+// the same factory source runs here, so the boot path is still the real one.
+const restoreFactory = source
+  .slice(source.indexOf("export function createAnalyzeRestore("),
+    source.indexOf("\n}\n", source.indexOf("export function createAnalyzeRestore(")) + 2)
+  .replace("export ", "");
 
 function runtime(extra = {}) {
   const context = {
@@ -17,7 +22,15 @@ function runtime(extra = {}) {
     switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), startTraining: vi.fn(),
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
-  runInNewContext(`${restore}\n${analyzeRestore}\nglobalThis.run = restoreWorkspaceLocation;`, context);
+  context.ANALYSIS_ROOT_PATH = "root";
+  runInNewContext(`${restore}\n${restoreFactory}\n`
+    + "globalThis.__makeRestore = createAnalyzeRestore;\nglobalThis.run = restoreWorkspaceLocation;", context);
+  Object.assign(context, context.__makeRestore({
+    appState: context.appState, loadReturnState: context.loadReturnState,
+    loadPgnIntoAnalyze: context.loadPgnIntoAnalyze, showAnalysisPly: context.showAnalysisPly,
+    selectAnalysisNodePath: context.selectAnalysisNodePath || (async () => false),
+    setStatus: context.setStatus || vi.fn(),
+  }));
   return context;
 }
 
@@ -67,6 +80,10 @@ function popstateRuntime(extra = {}) {
     trainQueueRepertoireId,
     switchView: vi.fn(),
     startTraining: vi.fn(async () => {}),
+    // The Analyze branch compares the current position's stable path.
+    selectedNodePath: () => null,
+    showAnalysisPly: vi.fn(),
+    restoreAnalysisNodePath: vi.fn(async () => {}),
     ...extra,
   };
   runInNewContext(`${popstate}\nglobalThis.run = handleWorkspacePopstate;`, context);

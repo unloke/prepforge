@@ -455,7 +455,7 @@ describe("workspace chrome layout", () => {
     // The verdict scrolls inside its row; Humans/prep arrivals keep their rows.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(rule(".coach-prose")).toMatch(/min-height: 0/);
-    expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) var\(--coach-foot\)/);
+    expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     // The score sheet is sized to its content so the two sides of a move sit
     // next to each other, the way a score sheet prints them; the trailing

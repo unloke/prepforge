@@ -257,27 +257,33 @@ async function runViewport(vp) {
   await page.waitForTimeout(300);
 
   // Drive a live session through the app's own start path: stub the smart start
-  // POST before clicking Start so the queue comes from our fixture.
-  await page.route("**/api/train/smart/start", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      session_generation: '2026-10-21T07:00:00+00:00', state_version: 1,
-      session_id: "s1", mode: "smart", mixed: true, fresh: true, resumed: false,
-      repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
-      card_index: 0, total_cards: 4,
-      requeue_gap: 3,
-      card_kinds: [
-        { key: "weak", label: "Weak spot", title: "Missed more than answered" },
-        { key: "due", label: "Due review", title: "Spaced repetition says now" },
-        { key: "new", label: "New move", title: "Shown once, then tested" },
-        { key: "polish", label: "Polish", title: "Kept warm with an occasional rep" },
-      ],
-      counts: { weak: 1, due: 1, new: 1, polish: 1 },
-      health: { trainable: 4, mastered: 0, weak: 1, due: 1, learning: 0, untrained: 2, mastery_pct: 0 },
-      cards: CARDS,
-    }),
-  }));
+  // POST before clicking Start so the queue comes from our fixture. The bodies
+  // are kept: "New session" must ask for another queue LIKE the one that
+  // finished (same scope), not fall back to a different one.
+  const startBodies = [];
+  await page.route("**/api/train/smart/start", (route) => {
+    startBodies.push(route.request().postDataJSON());
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session_generation: '2026-10-21T07:00:00+00:00', state_version: 1,
+        session_id: "s1", mode: "smart", mixed: false, fresh: true, resumed: false,
+        repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
+        card_index: 0, total_cards: 4,
+        requeue_gap: 3,
+        card_kinds: [
+          { key: "weak", label: "Weak spot", title: "Missed more than answered" },
+          { key: "due", label: "Due review", title: "Spaced repetition says now" },
+          { key: "new", label: "New move", title: "Shown once, then tested" },
+          { key: "polish", label: "Polish", title: "Kept warm with an occasional rep" },
+        ],
+        counts: { weak: 1, due: 1, new: 1, polish: 1 },
+        health: { trainable: 4, mastered: 0, weak: 1, due: 1, learning: 0, untrained: 2, mastery_pct: 0 },
+        cards: CARDS,
+      }),
+    });
+  });
   await page.evaluate(() => document.getElementById("start-train").click());
   await page.waitForTimeout(1500);
 
@@ -310,6 +316,15 @@ async function runViewport(vp) {
   await page.evaluate(() => document.getElementById("train-summary-new").click());
   await page.waitForTimeout(400);
   check(!(await page.locator("#train-modes").isVisible()), "New session starts the next queue without the mode tabs");
+  // The finished queue is released before its summary paints, so the restart has
+  // to keep the scope it drilled. This fixture queue was drilled for ONE
+  // repertoire, so the restart must ask for that same repertoire — the old code
+  // had already released the live session and widened to every active one.
+  const first = startBodies[0] || {};
+  const restart = startBodies[startBodies.length - 1] || {};
+  check(startBodies.length >= 2, `New session should post a start, got ${JSON.stringify(startBodies)}`);
+  check(restart.fresh === true && restart.mixed === false && restart.repertoire_id === "rep-1",
+    `New session should keep the finished queue's repertoire, got ${JSON.stringify({ first, restart })}`);
   await page.locator("#train-mode-name").click();
   await page.waitForTimeout(300);
   check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isVisible(), "the card's mode name should lead back to the mode tabs");

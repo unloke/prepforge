@@ -94,6 +94,9 @@ def test_prepare_returns_positions_and_move_skeleton(client):
     # 4 plies => 4 fen_before + the final fen_after = 5 distinct positions.
     assert len(body["positions"]) == 5
     assert [m["san"] for m in body["moves"]] == ["e4", "e5", "Nf3", "Nc6"]
+    # The analyzed game's own PGN: the client re-parses exactly this text.
+    assert body["pgn"].strip().endswith("1. e4 e5 2. Nf3 Nc6 *")
+    assert '[White "Alice"]' in body["pgn"]
     # rating echoes the owner's pinned Maia3 strength; a fresh user is unset → AUTO
     # (None), resolved client-side. When pinned it is a positive int.
     assert body["brilliant"]["enabled"] is True

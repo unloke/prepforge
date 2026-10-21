@@ -93,7 +93,7 @@ it("switching accounts during classify-save releases the analysis job without re
     ensureAnalyzeView: async () => ({ liveEvalChart: () => () => {} }),
     engineModule: { analyzeGamePositions: async () => new Map([["fen", { score_cp: 0 }]]) },
     postJson: vi.fn(async (path) => {
-      if (path === "/api/analyze/prepare") return { game_id: "alice-game", positions: ["fen"], depth: 12 };
+      if (path === "/api/analyze/prepare") return { game_id: "alice-game", pgn: "1. e4", positions: ["fen"], depth: 12 };
       owner = "bob";
       appState.analysis = bobAnalysis;
       return { moves: [] };

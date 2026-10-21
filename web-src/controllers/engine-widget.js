@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { hooks } from "../core/hooks.js";
 import { localGameOver } from "../chess-local.js";
 import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "../pv-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
@@ -134,6 +135,7 @@ class EngineWidget {
     const ask = fullEngineChoice() === "ask";
     this.consentEl.hidden = !ask;
     this.consentEl.innerHTML = ask ? engineConsentHtml() : "";
+    this._paintPvs();
   }
 
   // Follows the answer while the card is open: a first visit's probe finishes after
@@ -175,6 +177,7 @@ class EngineWidget {
     this.open = true;
     this.el.hidden = false;
     this.el.classList.add("is-visible");
+    this._paintPvs(this._pendingRows(0)); // rows in the frame the card appears, not after
     this._watchChoice();
     this._paintChoice();
     void this._passFeed().attach();
@@ -285,19 +288,30 @@ class EngineWidget {
     }
   }
 
+  // The lines are the card's only variable height, and the Build inspector is sized to its
+  // drawers (fitBuildDock), which ran only on a Build/Coverage paint: a line arriving in
+  // between left the dock shorter than the drawer holding it — an internal scrollbar until
+  // the next unrelated repaint. Every row paint asks for the fit, keyed on the shape.
+  _paintPvs(markup) {
+    if (!this.pvsEl) return;
+    if (markup !== undefined) this.pvsEl.innerHTML = markup;
+    const key = `${this.pvsEl.children.length}/${this.consentEl?.hidden === false}`;
+    if (key === this.pvsEl.dataset.rows || this.el?.hidden || activeViewName() !== "build") return;
+    this.pvsEl.dataset.rows = key;
+    hooks.build?.session?.fitBuildDock();
+  }
+
   _showError(message) {
     setEngineBestArrow(null);
     setStatusError(message);
-    if (this.pvsEl) {
-      this.pvsEl.innerHTML = html`<div class="empty-state">${message || "Engine error"}</div>`;
-    }
+    this._paintPvs(html`<div class="empty-state">${message || "Engine error"}</div>`);
   }
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
     this.exitPreview();
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
-    if (this.pvsEl) this.pvsEl.innerHTML = this._pendingRows(0);
+    this._paintPvs(this._pendingRows(0));
     if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
     this._paintDepth(0, null);
     if (this.evalBarText) this.evalBarText.textContent = "...";
@@ -333,10 +347,7 @@ class EngineWidget {
         : over.kind === "stalemate"
           ? "Stalemate, draw"
           : "Draw";
-    if (this.pvsEl) {
-      this.pvsEl.innerHTML =
-        html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`;
-    }
+    this._paintPvs(html`<div class="engine-pv is-top is-final"><span class="engine-pv-eval">${over.result}</span><span class="engine-pv-line">${text}</span></div>`);
     if (this.depthReadout) this.depthReadout.textContent = "0 / 0";
     this._paintDepth(0, 0);
     if (this.evalBarWhite) {
@@ -531,8 +542,8 @@ class EngineWidget {
     const sideToMove = snapshot.side_to_move || "white";
     const fullmoveNumber = this._fullmoveFromFen(snapshot.fen) || 1;
     const shown = pvs.slice(0, this.multipv);
-    this.pvsEl.innerHTML =
-      html`${shown.map((pv, index) => this._renderPv(pv, index, sideToMove, fullmoveNumber))}${this._pendingRows(shown.length)}`;
+    const rows = shown.map((pv, index) => this._renderPv(pv, index, sideToMove, fullmoveNumber));
+    this._paintPvs(html`${rows}${this._pendingRows(shown.length)}`);
     if (pvs.length) {
       this._renderEvalBar(pvs[0]);
       const best = (pvs[0].pv_uci || [])[0] || null;

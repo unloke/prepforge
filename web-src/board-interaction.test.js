@@ -393,3 +393,194 @@ describe("a render that lands while a capture is still animating", () => {
     expect(caughtPiece(sq)).toBeNull();
   });
 });
+
+// Every board in the app steps back — a parent node in a repertoire, a practice
+// takeback, an analysis branch — and only Analyze's mainline ever told the board
+// so. Without that hint the old slide replayed the move being undone, forward,
+// from a square the piece had already left, while the piece that really had to
+// travel home was simply re-rendered. The board now reads the direction off the
+// two positions, so all of them travel the same way, and a jump is a cut.
+describe("stepping back on any board", () => {
+  const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+  const AFTER_E4_C6 = "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+  const BEFORE_CAPTURE = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+  const AFTER_CAPTURE = "rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
+  const BEFORE_EP = "rnbqkbnr/pp1ppppp/p7/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3";
+  const AFTER_EP = "rnbqkbnr/pp1ppppp/p2P4/8/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3";
+  const BEFORE_CASTLE = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+  const AFTER_CASTLE = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4";
+  const BEFORE_PROMO = "8/P6k/8/8/8/8/6K1/8 w - - 0 1";
+  const AFTER_PROMO = "Q7/7k/8/8/8/8/6K1/8 b - - 0 1";
+  const THREE_PLIES = "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3";
+
+  // Real geometry: a square is 100px; white has rank 8 on top, black the reverse.
+  function layout(orientation = "white") {
+    for (const [name, sq] of board.squares) {
+      const file = "abcdefgh".indexOf(name[0]);
+      const rank = Number(name[1]);
+      sq.offsetLeft = (orientation === "white" ? file : 7 - file) * 100;
+      sq.offsetTop = (orientation === "white" ? 8 - rank : rank - 1) * 100;
+    }
+  }
+
+  beforeEach(() => {
+    mount({ onMove: () => {} });
+    layout();
+  });
+
+  const own = (name) =>
+    square(name).children.filter((c) => c.className.split(" ").includes("piece") && !c.className.includes("piece-caught"));
+  const caught = (name) => square(name).children.filter((c) => c.className.includes("piece-caught"));
+  // The last transform the square's piece was given, so a piece that is reused
+  // across renders is read at its newest animation.
+  const travelOn = (name) =>
+    own(name)[0]?.animations.filter((a) => a.frames?.[0]?.transform).at(-1)?.frames[0].transform;
+  const fades = () =>
+    [...board.squares.values()]
+      .flatMap((sq) => [sq, ...sq.children])
+      .flatMap((el) => el.animations.filter((a) => a.frames?.[0]?.opacity !== undefined));
+  const slidesOnBoard = () =>
+    [...board.squares.values()]
+      .flatMap((sq) => [sq, ...sq.children])
+      .filter((el) => el.animations.some((a) => a.frames?.[0]?.transform));
+  const pieceAnimations = () =>
+    [...board.squares.values()]
+      .flatMap((sq) => [sq, ...sq.children])
+      .reduce((total, el) => total + el.animations.length, 0);
+  // A build/train/replay step: the caller passes the new position's own last
+  // move and nothing about direction.
+  const step = (fen, lastMove = null, back = false) => board.setPosition({ fen, legalMoves: [], lastMove, back });
+
+  it("sends the undone move home instead of replaying it forward", () => {
+    landOnBoard(AFTER_E4, "e2e4");
+    step(AFTER_E4_C6, "c7c6");
+    const e4Runs = own("e4")[0].animations.length;
+    step(AFTER_E4, "e2e4"); // click the parent node: nothing says "back"
+    // The c-pawn travels c6 -> c7, and the e-pawn that is already home is left
+    // alone: its landed move is not replayed.
+    expect(travelOn("c7")).toBe("translate(0px, 100px)");
+    expect(own("e4")[0].animations.length).toBe(e4Runs);
+  });
+
+  it("takes back two plies with both pieces travelling home", () => {
+    landOnBoard(AFTER_E4, "e2e4");
+    step(AFTER_E4_C6, "c7c6");
+    // Train's takeback: no move to highlight, and it says it is a step back.
+    step(START_FEN, null, true);
+    expect(travelOn("e2")).toBe("translate(0px, -200px)");
+    expect(travelOn("c7")).toBe("translate(0px, 100px)");
+    expect(own("e4")).toHaveLength(0);
+    expect(own("c6")).toHaveLength(0);
+  });
+
+  it("gives the captured piece back instead of holding a ghost", () => {
+    landOnBoard(BEFORE_CAPTURE, null);
+    step(AFTER_CAPTURE, "e4d5");
+    expect(caught("d5")).toHaveLength(1);
+    step(BEFORE_CAPTURE, null);
+    // The taken pawn is back on d5, drawn by the FEN, with the fade-in the step
+    // back earns — not a capture clone, which would fade the wrong way.
+    expect(own("d5")).toHaveLength(1);
+    expect(caught("d5")).toHaveLength(0);
+    expect(own("e4")).toHaveLength(1);
+    expect(travelOn("e4")).toBe("translate(-100px, -100px)");
+    expect(fades()).toHaveLength(1);
+    expect(fades()[0].frames[0].opacity).toBe(0);
+  });
+
+  it("brings an en passant victim back beside the pawn", () => {
+    landOnBoard(BEFORE_EP, null);
+    step(AFTER_EP, "e5d6");
+    expect(own("d6")).toHaveLength(1);
+    expect(caught("d5")).toHaveLength(1);
+    step(BEFORE_EP, null);
+    // The pawn returns to e5 and the victim to d5, not to the square the pawn
+    // left.
+    expect(own("e5")).toHaveLength(1);
+    expect(own("d5")).toHaveLength(1);
+    expect(caught("d5")).toHaveLength(0);
+    expect(own("d6")).toHaveLength(0);
+    expect(travelOn("e5")).toBe("translate(-100px, -100px)");
+  });
+
+  it("moves the rook home with the king when castling is undone", () => {
+    landOnBoard(BEFORE_CASTLE, null);
+    step(AFTER_CASTLE, "e1g1");
+    expect(travelOn("g1")).toBe("translate(-200px, 0px)");
+    expect(travelOn("f1")).toBe("translate(200px, 0px)");
+    step(BEFORE_CASTLE, null);
+    // Both pieces travel: no teleporting rook, in either direction.
+    expect(travelOn("e1")).toBe("translate(200px, 0px)");
+    expect(travelOn("h1")).toBe("translate(-200px, 0px)");
+  });
+
+  it("returns a promoted pawn to the square it came from", () => {
+    landOnBoard(BEFORE_PROMO, null);
+    step(AFTER_PROMO, "a7a8q");
+    expect(own("a8")).toHaveLength(1);
+    step(BEFORE_PROMO, null);
+    expect(own("a7")).toHaveLength(1);
+    expect(own("a8")).toHaveLength(0);
+    expect(travelOn("a7")).toBe("translate(0px, -100px)");
+  });
+
+  it("draws a jump between lines as a cut, not a wrong-origin slide", () => {
+    landOnBoard(AFTER_E4, "e2e4");
+    const before = pieceAnimations();
+    // Three plies away: no single move explains the change.
+    step(THREE_PLIES, "g1f3");
+    expect(pieceAnimations()).toBe(before);
+    expect(fades()).toHaveLength(0);
+  });
+
+  it("keeps the settled DOM equal to the FEN through a rapid walk", () => {
+    for (let i = 0; i < 12; i += 1) {
+      const next = i % 2 === 0 ? AFTER_E4_C6 : AFTER_E4;
+      step(next, next === AFTER_E4_C6 ? "c7c6" : "e2e4", true);
+      // Whatever overlapped, every square holds exactly its own piece and no
+      // capture clone outlives the position it was drawn for.
+      const wrong = [];
+      const pieces = parseFenBoard(next);
+      for (const [name, sq] of board.squares) {
+        const want = pieces[name] || "";
+        const ownCount = sq.children.filter((c) => c.className.split(" ").includes("piece") && !c.className.includes("piece-caught")).length;
+        if (ownCount !== (want ? 1 : 0)) wrong.push(`${name}: ${ownCount} pieces, want ${want ? 1 : 0}`);
+        if (sq.dataset.piece !== want) wrong.push(`${name}: data-piece ${sq.dataset.piece} want ${want}`);
+        if (caught(name).length) wrong.push(`${name}: stale capture clone`);
+      }
+      expect(wrong).toEqual([]);
+    }
+  });
+
+  it("keeps the rewind geometry when the board is flipped", () => {
+    board.setOrientation("black");
+    layout("black");
+    landOnBoard(AFTER_E4, "e2e4");
+    step(START_FEN, null);
+    // Offsets come from the squares in the orientation on screen, so the travel
+    // is right on a flipped board too.
+    expect(travelOn("e2")).toBe("translate(0px, 200px)");
+    expect(own("e4")).toHaveLength(0);
+  });
+
+  it("leaves one running slide per piece when a render interrupts", () => {
+    landOnBoard(AFTER_E4, "e2e4");
+    // The e4 pawn keeps its element across this render; its new travel replaces
+    // the running one rather than stacking a second transform on the piece.
+    const runs = own("e4")[0].animations.filter((a) => a.frames?.[0]?.transform);
+    step(AFTER_E4_C6, "c7c6");
+    step(AFTER_E4, "e2e4");
+    expect(runs).toHaveLength(1);
+  });
+
+  it("sounds a played move once and stays quiet when told it is a step back", () => {
+    sounds.length = 0;
+    landOnBoard(AFTER_E4, "e2e4");
+    step(AFTER_E4_C6, "c7c6");
+    expect(sounds).toEqual(["move", "move"]);
+    sounds.length = 0;
+    step(AFTER_E4, "e2e4", true); // back: the undone move already sounded
+    expect(sounds).toEqual([]);
+  });
+});

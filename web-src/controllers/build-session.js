@@ -226,15 +226,22 @@ function paintGenerateVisibility() {
 
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
+  // Which way the board travels: into the current node's own child is a move
+  // being shown; a parent, a sibling or a distant node is a step through or a
+  // jump across existing history, so it stays quiet and keeps no move pulse.
+  // The pieces themselves come from the positions (board/move-motion.js).
+  const previous = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  const node = appState.buildNodeById.get(nodeId);
+  const back = !previous || previous.id !== node.parent_id;
   appState.buildCurrentNodeId = nodeId;
   // Landing on a position resets the fork pick to the mainline continuation.
   appState.buildBranchChoiceId = null;
-  const node = appState.buildNodeById.get(nodeId);
   const info = await boardInfo(node.fen);
   boards.build.setPosition({
     fen: node.fen,
     legalMoves: info.legal_moves,
     lastMove: node.uci,
+    back,
   });
   boards.build.setAnnotations(node.arrows || [], node.circles || []);
   // The board caption is the position, not the repertoire: the panel head above

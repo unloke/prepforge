@@ -265,11 +265,19 @@ describe("coach note", () => {
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*overflow-y: auto/);
   });
 
-  it("reserves rows for the controls, verdict, Humans and prep", () => {
+  it("reserves rows for the controls, verdict and Humans, but not for the prep", () => {
+    // The prep row takes its line only when a book-departure note exists: a
+    // reserved track put 22px + gaps of empty panel between the Humans pills and
+    // the Evaluation card on every other ply.
     const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
     expect(rule).toMatch(/--coach-head: 26px/);
-    expect(rule).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) var\(--coach-foot\)/);
-    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ var\(--coach-foot\) \* 2 \+ 28px\)/);
+    expect(rule).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
+    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 4px \+ var\(--coach-foot\) \+ var\(--coach-gap\) \* 2\)/);
+    // The rows are spaced by their own top margin, never by a grid gap: a gap is
+    // charged after the hidden prep row too, and lands as dead space below the
+    // Humans row.
+    expect(rule).toMatch(/gap: 0;/);
+    expect(ALL_STYLES).toMatch(/\.coach-card > \.coach-prose \{ margin: var\(--coach-gap\) 0; \}/);
   });
 });
 
@@ -567,12 +575,27 @@ describe("Analyze on a phone", () => {
   // Report and Engine are the two controls in the row a thumb reaches; they were
   // 32px, the one place on a phone a control may not be dense.
   it("gives the eval row's two pills a 44px target", () => {
+    // Painted at 32px so the row reads as one line of controls; the hit box grows
+    // past the paint to the 44px a thumb needs (the Train switch's pattern).
     const engine = phone.match(/#analysis-eval-card \.ev-engine \{[^}]*\}/);
     expect(engine).not.toBeNull();
-    expect(engine[0]).toMatch(/height: 44px/);
+    expect(engine[0]).toMatch(/height: 32px/);
+    expect(phone).toMatch(/#analysis-eval-card \.ev-engine::after \{ content: ""; position: absolute; inset: -6px 0; \}/);
     const report = phone.match(/#view-analyze:has\(#analysis-results:not\(\[hidden\]\)\) \.ev-report \{[^}]*\}/);
     expect(report).not.toBeNull();
-    expect(report[0]).toMatch(/height: 44px/);
+    expect(report[0]).toMatch(/height: 32px/);
+    expect(phone).toMatch(/#view-analyze:has\(#analysis-results:not\(\[hidden\]\)\) \.ev-report::after \{ content: ""; position: absolute; inset: -6px 0; \}/);
+  });
+
+  // Five 44px capsules around 11px text read as the tallest row in the coach, and
+  // out-weighed the verdict above them. The paint shrinks to the words; the thumb
+  // target keeps its 44px.
+  it("paints the Humans picks at their words' height with a full thumb target", () => {
+    expect(phone).toMatch(/#analysis-explain \.hp \{ position: relative; flex-shrink: 0; height: 28px; \}/);
+    expect(phone).toMatch(/#analysis-explain \.hp::after \{[^}]*inset: -8px 0;/);
+    // The row still measures the 44px target the picks stand in, so the coach's
+    // rows do not re-flow when the read lands.
+    expect(phone).toMatch(/#analysis-explain \.coach-maia \{[^}]*height: 44px/);
   });
 
   // The win meter repeated the graph above it — the same win-chance series, at

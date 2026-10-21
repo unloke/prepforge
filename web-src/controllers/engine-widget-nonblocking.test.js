@@ -12,7 +12,7 @@ const widgetSource = readFileSync(new URL("./engine-widget.js", import.meta.url)
 function stubEl() {
   const listeners = {};
   const classes = new Set();
-  return {
+  const el = {
     hidden: true,
     innerHTML: "",
     textContent: "",
@@ -26,6 +26,12 @@ function stubEl() {
     addEventListener(type, fn) { listeners[type] = fn; },
     fire(type, event) { listeners[type]?.(event); },
   };
+  // The rows host reports how many rows it holds (the card keys the inspector's
+  // refit on that shape — see _paintPvs), so the stub counts the rows it was given.
+  Object.defineProperty(el, "children", {
+    get() { return { length: (String(el.innerHTML).match(/class="engine-pv/g) || []).length }; },
+  });
+  return el;
 }
 
 // The card's view of the position store. No pass unless a test starts one; a
@@ -51,13 +57,16 @@ function noPassStore() {
   return fakeStore();
 }
 
-function harness({ choice = "ask", store = noPassStore() } = {}) {
+function harness({ choice = "ask", store = noPassStore(), view = "analyze" } = {}) {
   let choiceNow = choice;
   const subscribers = new Set();
+  // Build's inspector fit, which the card asks for when its own height changes.
+  const fits = [];
+  const hooks = { build: { session: { fitBuildDock: () => fits.push(1) } } };
   const deps = {
     html,
     setEngineBestArrow: vi.fn(), localGameOver: () => null,
-    activeViewName: () => "analyze", effectiveStockfishDepth: () => 16,
+    activeViewName: () => view, effectiveStockfishDepth: () => 16,
     createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval: () => "0.00",
     getAnalyzeSession: () => null,
@@ -65,7 +74,7 @@ function harness({ choice = "ask", store = noPassStore() } = {}) {
     chooseFullEngine: vi.fn(async (full) => { choiceNow = full ? null : "download"; }),
     subscribeEngineSetup: (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); },
     subscribeEngineProfile: (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); },
-    engineConsentHtml, createPassFeed,
+    engineConsentHtml, createPassFeed, hooks,
     analysisStore: async () => store,
   };
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
@@ -88,7 +97,7 @@ function harness({ choice = "ask", store = noPassStore() } = {}) {
   widget.currentFen = () => "board w - - 0 1";
   // The device's setup/answer changed elsewhere (a probe finished, Settings answered).
   const emit = (next) => { if (next !== undefined) choiceNow = next; for (const fn of [...subscribers]) fn({ phase: "ready" }); };
-  return { widget, row, sent, emit, store };
+  return { widget, row, sent, emit, store, fits };
 }
 
 describe("the full-net question never blocks the engine card", () => {
@@ -205,5 +214,117 @@ describe("a running whole-game pass owns the engine card's numbers", () => {
     store.endPass();
     await vi.waitFor(() => expect(String(widget.pvsEl.innerHTML)).not.toContain("Analyze is still running"));
     await vi.waitFor(() => expect(sent).toEqual([["open", "unreached p - - 0 1"]]));
+  });
+});
+
+// The Build inspector is sized to its drawers. The engine card is one of them, and
+// its lines are the only part of that drawer whose height changes while the user
+// does nothing: a new line count (MultiPV), a new position's pending rows, or the
+// full-net question appearing. A fit that only happened on a Build/Coverage paint
+// left the dock a row short of the card each time — an internal scrollbar inside
+// the inspector until the next unrelated repaint.
+describe("the engine card keeps the Build inspector sized to it", () => {
+  const snap = (pvs) => ({
+    session_id: "s", fen: "board w - - 0 1", running: true, current_depth: 12, max_depth: 16,
+    side_to_move: "white", pvs,
+  });
+  const line = (san) => ({ score_cp: 20, mate_in: null, pv_uci: ["e2e4"], pv_san: [san] });
+
+  it("asks for the fit when the block gains a row, and not per depth", () => {
+    const { widget, fits } = harness({ choice: null, view: "build" });
+    widget.el.hidden = false; // the card is on screen (openForCurrent reveals it)
+    widget.lastFen = "board w - - 0 1";
+    widget._renderSnapshot(snap([line("e4")]));
+    const afterFirst = fits.length;
+    expect(afterFirst).toBeGreaterThan(0);
+    // A deeper search re-paints the same single row: the block's shape is unchanged,
+    // so the dock is not measured again for every depth the engine reports.
+    widget._renderSnapshot({ ...snap([line("e4")]), current_depth: 14 });
+    widget._renderSnapshot({ ...snap([line("Nf3")]), current_depth: 16 });
+    expect(fits.length).toBe(afterFirst);
+    // MultiPV 3 is three rows: a shape change, so the inspector is fitted again.
+    widget.multipv = 3;
+    widget._renderSnapshot(snap([line("e4"), line("Nf3"), line("Nc6")]));
+    expect(fits.length).toBeGreaterThan(afterFirst);
+  });
+
+  it("asks for the fit when a new position replaces the block, and for the question row", async () => {
+    const { widget, row, fits } = harness({ choice: "ask", view: "build" });
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    // The question row above the lines is part of the card's height.
+    widget._paintChoice();
+    expect(row.hidden).toBe(false);
+    const asked = fits.length;
+    expect(asked).toBeGreaterThan(0);
+    // A new position empties the block to pending rows, then fills it: both sizes land.
+    widget.lastFen = "board x - - 0 1";
+    widget._clearAnalysisView();
+    widget._renderSnapshot({
+      ...snap([line("a6"), line("b6")]), fen: "board x - - 0 1", side_to_move: "black",
+    });
+    expect(fits.length).toBeGreaterThan(asked);
+  });
+
+  it("does not fit Build's inspector from another view", () => {
+    const { widget, fits } = harness({ choice: null });
+    // Analyze shows the card in its own evaluation card, which is not the Build dock.
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    widget._renderSnapshot(snap([line("e4")]));
+    expect(fits).toEqual([]);
+  });
+});
+
+// A streaming search is the only writer of the lines, and it reports transient extra
+// ranks while MultiPV changes. Driving the real snapshot path through pending →
+// first line → deeper depth → MultiPV raise → new FEN must never paint more rows than
+// the user asked for (extra rows are what grew the dock) and must keep the block the
+// size the fit was asked for.
+describe("streaming snapshots never paint more rows than the requested MultiPV", () => {
+  const line = (san, cp = 20) => ({ score_cp: cp, mate_in: null, pv_uci: ["e2e4"], pv_san: [san] });
+  const snap = (fen, pvs, depth = 8) => ({
+    session_id: "s", fen, running: true, current_depth: depth, max_depth: 16,
+    side_to_move: "white", pvs,
+  });
+  // A row is `class="engine-pv …"`; the eval chip and the line inside it are not rows.
+  const rowsOf = (widget) => (String(widget.pvsEl.innerHTML).match(/class="engine-pv(?:\s|")/g) || []).length;
+
+  it("holds the row budget through pending, deeper depths, a MultiPV raise and a new FEN", () => {
+    const { widget } = harness({ choice: null, view: "build" });
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    // Warming up: one placeholder row for the single line asked for.
+    widget._clearAnalysisView();
+    expect(rowsOf(widget)).toBe(1);
+    // First line, then a deeper depth of the same line: still one row.
+    widget._renderSnapshot(snap("board w - - 0 1", [line("e4")], 10));
+    expect(rowsOf(widget)).toBe(1);
+    widget._renderSnapshot(snap("board w - - 0 1", [line("Nf3")], 14));
+    expect(rowsOf(widget)).toBe(1);
+    // MultiPV 3, with the engine reporting a transient 4th rank: three rows, not four.
+    widget.multipv = 3;
+    widget._clearAnalysisView();
+    expect(rowsOf(widget)).toBe(3);
+    widget._renderSnapshot(snap("board w - - 0 1", [line("e4"), line("Nf3"), line("Nc6"), line("d4")], 12));
+    expect(rowsOf(widget)).toBe(3);
+    // A new uncached FEN: pending rows for the same three, then its own lines.
+    widget.lastFen = "board x - - 0 1";
+    widget._clearAnalysisView();
+    expect(rowsOf(widget)).toBe(3);
+    widget._renderSnapshot(snap("board x - - 0 1", [line("a6"), line("b6")], 9));
+    expect(rowsOf(widget)).toBe(3);
+  });
+
+  it("ignores a snapshot for a FEN the widget has already left", () => {
+    const { widget } = harness({ choice: null, view: "build" });
+    widget.el.hidden = false;
+    widget.lastFen = "board x - - 0 1";
+    widget._clearAnalysisView();
+    const pending = String(widget.pvsEl.innerHTML);
+    // A late update for the previous position must not land in the new block.
+    widget._renderSnapshot(snap("board w - - 0 1", [line("e4"), line("Nf3"), line("Nc6")]));
+    expect(String(widget.pvsEl.innerHTML)).toBe(pending);
+    expect(widget.lastSnapshot).toBe(null);
   });
 });

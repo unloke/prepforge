@@ -4,6 +4,7 @@ import { parsePgn } from "./analyze-pgn.js";
 import { createAnalyzeView } from "./views/analyze.js";
 import { parseWorkspaceLocation } from "./workspace-url.js";
 import { appSource } from "./test-app-source.js";
+import { createAnalysisSelection } from "./controllers/analyze-selection.js";
 
 const source = appSource();
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -46,7 +47,17 @@ function harness(realBoard = false) {
   const helper = body("function invalidateAnalysisSource(");
   const inputStart = source.indexOf('pgnInput.addEventListener("input",');
   const inputBinding = source.slice(inputStart, source.indexOf("\n  });", inputStart) + 6);
-  const functions = [...(realBoard ? ["async function showAnalysisPly("] : []), "async function recallAnalysis(", "async function renderAnalysis(",
+  // The selection rule lives in its own module; the FEN-only paste path needs the
+  // REAL one so its board read is the slow one this test holds open.
+  if (realBoard) {
+    deps.showAnalysisPly = createAnalysisSelection({
+      ...deps,
+      persistAnalysisSession: vi.fn(), refreshAnalysisExplain: vi.fn(),
+      setPositionCaption: vi.fn(), syncPgnFromTree: vi.fn(), boardAfterMove: vi.fn(),
+      analysisVariationLabel: () => "",
+    }).showAnalysisPly;
+  }
+  const functions = ["async function recallAnalysis(", "async function renderAnalysis(",
     "async function syncPgnFromTree(",
     "async function finishAnalyzeCheckpoint(", "async function loadPgnIntoAnalyze(", "async function runAnalysis(", "async function retryAnalyzeSave("].map(body).join("\n");
   const actions = new Function(...Object.keys(deps), "pgnInput", `
