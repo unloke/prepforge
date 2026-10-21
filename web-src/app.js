@@ -625,7 +625,7 @@ function switchView(name, { fromUrl = false } = {}) {
   // One engine session, shown inside whichever view owns a board: Build's
   // Explorer or Analyze's Evaluation card. Each view remembers its own on/off;
   // views without an analysis board close it.
-  syncEngineForView(name);
+  syncEngineForView(name, { from: previousView });
 }
 
 
