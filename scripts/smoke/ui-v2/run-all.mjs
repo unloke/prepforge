@@ -28,6 +28,10 @@ const SUITE = [
   ["Games", "games-viewport-smoke.mjs"],
   ["Scout", "scout-viewport-smoke.mjs"],
   ["Analyze", "analyze-viewport-smoke.mjs"],
+  // Last game / "you just finished a game": both entry paths orient the board,
+  // the nudge goes when the same game is loaded, and returning to the tab
+  // probes once per burst.
+  ["Last game", "last-game-smoke.mjs"],
   ["Teams", "teams-viewport-smoke.mjs"],
   ["Settings", "settings-viewport-smoke.mjs"],
   // Cross-view states: signed out, Library load errors, resize chunk hygiene,
