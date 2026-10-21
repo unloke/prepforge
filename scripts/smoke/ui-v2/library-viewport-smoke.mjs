@@ -259,8 +259,8 @@ async function runViewport(vp) {
   check(loadRequests.some((u) => u.includes("rep-2")), "clicking a row should open the workspace (/api/build/load)");
   check(/London System/.test(await page.locator("#build-rep-name").textContent().catch(() => "")), "the clicked repertoire must be hydrated");
 
-  // Hold the refresh so keyboard focus is acquired before its rows are replaced.
-  // Waiting for a quiet list hid the real focus-loss regression.
+  // Hold the refresh so keyboard focus is acquired before the fresh listing
+  // lands. Waiting for a quiet list hid the real focus-loss regression.
   let releaseRefresh, markRefreshStarted;
   const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
   const refreshStarted = new Promise((resolve) => { markRefreshStarted = resolve; });
@@ -273,10 +273,37 @@ async function runViewport(vp) {
   await page.evaluate(() => document.querySelector('[data-testid="nav-dashboard"]').click());
   await refreshStarted;
   const loadsBeforeKeyboard = loadRequests.length;
+  // Watch the row the refresh paints over: the same repertoire arriving again
+  // must not replace it (a replaced node is what replayed the row entrance and
+  // dropped focus, the "fades in twice" report).
+  await page.evaluate(() => {
+    window.__focusedLibraryRow = document.activeElement;
+    window.__entrancesBefore = 0;
+    document.addEventListener("animationstart", (event) => {
+      if (event.animationName !== "row-enter") return;
+      if (event.target.closest("#dashboard-repertoires")) window.__entrancesBefore += 1;
+    }, true);
+  });
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').focus();
-  await page.evaluate(() => { window.__focusedLibraryRow = document.activeElement; });
+  await page.evaluate(() => {
+    window.__focusedLibraryRow = document.activeElement;
+    window.__nodeOfRep2 = document.activeElement;
+  });
   releaseRefresh();
-  await page.waitForFunction(() => !window.__focusedLibraryRow.isConnected);
+  // The refresh has landed when the list stops being the one it started as; the
+  // rows themselves may (correctly) survive it, so wait on the node we hold
+  // plus a settled frame rather than on it being disconnected.
+  await page.waitForFunction(() => {
+    const row = document.querySelector('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
+    return !!row && row === window.__nodeOfRep2;
+  }, null, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  const keptNode = await page.evaluate(() => {
+    const row = document.querySelector('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
+    return { same: row === window.__nodeOfRep2, entrances: window.__entrancesBefore };
+  });
+  check(keptNode.same, "an identical Library refresh must keep the row's DOM node (no re-render)");
+  check(keptNode.entrances === 0, `an identical Library refresh must not replay the row entrance, saw ${keptNode.entrances}`);
   const focusRetained = await page.evaluate(() => document.activeElement?.dataset?.repertoireId === "rep-2");
   check(focusRetained, "a background Library refresh must retain keyboard focus on the repertoire row");
   // Continue the other checks even if focus retention failed.

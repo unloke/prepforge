@@ -1784,6 +1784,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 #view-teams .list-enter > * {
   animation-delay: calc(min(var(--i, 0), 8) * 60ms);
 }
+/* The Library reconciles its rows instead of rewriting them, so it marks the
+   ones that actually arrived. A row that was already on screen keeps its
+   settled state: re-showing the view, filtering, or a refresh that only
+   changed another row must not replay the entrance over it. */
+#view-dashboard .list-enter > .lib-row:not(.is-enter) {
+  animation: none;
+}
 @keyframes row-enter {
   from {
     opacity: 0;
