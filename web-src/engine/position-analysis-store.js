@@ -70,7 +70,16 @@ export function createPositionAnalysisStore({
   createProvider = createEngineProvider,
   analyzeFn = analyzeGamePositions,
   getMaia = null,
-  idleCloseMs = 60000,
+  // How long a lane that finished a search keeps its warm worker while the user stays on
+  // the view (leaving drops it at once). Every second of the window is a whole reserved
+  // WASM heap — 384 MiB on the full net, and the renderer's resident set stays ~330 MB
+  // above its loaded baseline for the whole time — while the only thing it buys is
+  // skipping one boot on the next step. Measured at 390x844, one engine, full net: a
+  // warm step answers in 246 ms (median of 5), the step after the worker was dropped
+  // costs 928 ms, so the most the window can ever save is ~0.7 s. A read that a search
+  // already finished is cached either way, so nothing is recomputed. 20 s covers a pause
+  // long enough to read the board and then shows the heap gone well inside a minute.
+  idleCloseMs = 20000,
   cacheSize = 600,
   maxNodes = ANALYSIS_MAX_NODES,
   maiaBatchSize = 16,
