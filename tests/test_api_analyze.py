@@ -118,6 +118,7 @@ def test_classify_save_persists_and_is_recallable(client):
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["game_id"] == prepared["game_id"]
+    assert len(payload["eval_graph"]) == len(payload["moves"]) == 4
     assert [m["san"] for m in payload["moves"]] == ["e4", "e5", "Nf3", "Nc6"]
     assert "summary" in payload and "eval_graph" in payload
     assert set(payload["position_evals"]) == set(prepared["positions"])
@@ -131,7 +132,31 @@ def test_classify_save_persists_and_is_recallable(client):
     recall = client.get(f"/api/analyses/{prepared['game_id']}")
     assert recall.status_code == 200
     assert recall.json()["game_id"] == prepared["game_id"]
+    assert recall.json()["eval_graph"] == payload["eval_graph"]
     assert set(recall.json()["position_evals"]) == set(prepared["positions"])
+
+
+def test_analysis_lookup_by_lichess_id_filters_before_paging_and_is_owner_scoped(client):
+    _register(client, "saved-game@example.com")
+    pgn = _PGN.replace('[Event "Test"]', '[Event "Test"]\n[Site "https://lichess.org/A1b2C3d4"]')
+    prepared = _prepare(client, pgn)
+    assert _classify_save(client, prepared).status_code == 200
+    unrelated = _prepare(client, pgn.replace("A1b2C3d4", "E5f6G7h8"))
+    assert _classify_save(client, unrelated).status_code == 200
+
+    query = "/api/analyses?lichess_id=A1b2C3d4&limit=1"
+    result = client.get(query).json()
+    assert [row["game_id"] for row in result["analyses"]] == [prepared["game_id"]]
+    assert result["next_cursor"] is None
+    assert client.get("/api/analyses?lichess_id=unknown").json()["analyses"] == []
+
+    with _client() as other:
+        _register(other, "other-saved-game@example.com")
+        assert other.get(query).json()["analyses"] == []
+        other_game = _prepare(other, pgn)
+        assert _classify_save(other, other_game).status_code == 200
+        assert [row["game_id"] for row in other.get(query).json()["analyses"]] == [other_game["game_id"]]
+    assert [row["game_id"] for row in client.get(query).json()["analyses"]] == [prepared["game_id"]]
 
 
 def test_classify_save_rejects_missing_game_id(client):

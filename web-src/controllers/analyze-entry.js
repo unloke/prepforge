@@ -184,17 +184,17 @@ export function invalidateAnalysisSource() {
   return ++analysisRecallSeq;
 }
 
-export async function recallAnalysis(gameId, listItem = null) {
-  const seq = invalidateAnalysisSource();
+export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource() } = {}) {
+  const seq = sourceSeq;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
     const view = await ensureAnalyzeView();
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq) return false;
     // The saved result carries no player names; the history row does. Without
     // them the head fell back to "Analysis board" for a named game.
-    for (const key of ["white", "black", "result"]) {
+    for (const key of ["white", "black", "result", "lichess_id"]) {
       if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
     }
     appState.analysis = payload;
@@ -206,17 +206,17 @@ export async function recallAnalysis(gameId, listItem = null) {
     orientAnalysisForSelf(payload.white, payload.black);
     resetAnalysisVariations();
     await showAnalysisPly(0);
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq) return false;
     view.renderAnalysis(payload);
     syncViewHeads();
     revealAnalysisResults();
     // The list sits at the panel's foot; open the new game at its summary.
     document.querySelector("#analyze-sidebar .panel-scroll")?.scrollTo({ top: 0 });
     await syncPgnFromTree();
-    if (seq !== analysisRecallSeq) return;
+    return seq === analysisRecallSeq;
   } catch (error) {
-    if (seq !== analysisRecallSeq) return;
-    setStatusError(error.message);
+    if (seq === analysisRecallSeq) setStatusError(error.message);
+    return false;
   }
 }
 

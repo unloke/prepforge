@@ -471,6 +471,7 @@ class GameRepository(EvaluationRepository):
         *,
         limit: int = 50,
         cursor: Optional[tuple[datetime, str]] = None,
+        lichess_id: Optional[str] = None,
     ) -> tuple[List[Dict[str, Any]], Optional[tuple]]:
         """One page of metadata for games with a saved analysis (latest per
         game), newest first — powers the Analyze "History" list. Analyses are
@@ -510,6 +511,8 @@ class GameRepository(EvaluationRepository):
         # per game" ranking (D-05).
         if owner_user_id is not None:
             ranked = ranked.where(g.c.owner_user_id == owner_user_id)
+        if lichess_id is not None:
+            ranked = ranked.where(g.c.lichess_id == lichess_id)
         ranked = ranked.subquery()
         stmt = select(ranked).where(ranked.c.rn == 1)
         stmt = stmt.order_by(ranked.c.analyzed_at.desc(), ranked.c.game_id.desc()).limit(

@@ -305,6 +305,7 @@ export function createAnalyzeView({
         `[Black "${safe(analysis.black)}"]`,
         `[Result "${safe(analysis.result || "*")}"]`,
       ];
+      if (analysis.lichess_id) tags.push(`[Site "https://lichess.org/${safe(analysis.lichess_id)}"]`);
       const fen = moves[0]?.fen_before;
       if (fen && fen !== START_FEN) tags.push('[SetUp "1"]', `[FEN "${safe(fen)}"]`);
       headers = tags.join("\n");

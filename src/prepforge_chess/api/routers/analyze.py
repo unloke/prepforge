@@ -420,6 +420,7 @@ def list_analyses(
     repo: GameRepository = Depends(get_repository),
     limit: int = 50,
     cursor: str | None = None,
+    lichess_id: str | None = None,
 ) -> dict[str, Any]:
     """This owner's analyzed games (latest analysis per game, newest first).
 
@@ -427,7 +428,7 @@ def list_analyses(
     ``next_cursor`` to fetch the next page (no gaps or repeats at equal
     timestamps). ``limit`` is clamped server-side (1–200)."""
     analyses, next_cursor = repo.list_analyzed_games(
-        owner_user_id=owner, limit=limit, cursor=_parse_cursor(cursor)
+        owner_user_id=owner, limit=limit, cursor=_parse_cursor(cursor), lichess_id=lichess_id
     )
     return {
         "analyses": analyses,
