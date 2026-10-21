@@ -186,7 +186,38 @@ describe("reconciling an unconfirmed answer", () => {
       expect(h.deps.renderTraining, change).not.toHaveBeenCalled();
       expect(h.deps.finishTrainingSession, change).not.toHaveBeenCalled();
       expect(h.board.setPosition, change).not.toHaveBeenCalled();
+      // The abandoned reconciliation owns no lock: the new card stays playable.
+      expect(h.appState.trainBusy, change).toBe(false);
     }
+  });
+
+  it("a new session opened while the answer is unconfirmed is not left locked", async () => {
+    const h = harness();
+    const attempt = h.submit("e2e4");
+    await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
+    h.pending.reject(new Error("Failed to fetch"));
+    await vi.waitFor(() => expect(h.reads.length).toBe(1));
+    expect(h.appState.trainBusy).toBe(true);
+    // "New session" replaces the rehearsal before the late read comes back.
+    h.appState.training = { prompt: CARD_NF3 };
+    h.readDeferred.resolve({ prompt: CARD_NF3 });
+    await attempt;
+    expect(h.deps.renderTraining).not.toHaveBeenCalled();
+    expect(h.appState.trainBusy).toBe(false);
+  });
+
+  it("a failed read that a newer card superseded does not strand the retry notice", async () => {
+    let fail;
+    const h = harness({ read: () => new Promise((_, no) => { fail = no; }) });
+    const attempt = h.submit("e2e4");
+    await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
+    h.pending.reject(new Error("Failed to fetch"));
+    await vi.waitFor(() => expect(h.reads.length).toBe(1));
+    h.appState.training = { prompt: CARD_NF3 };
+    fail(new Error("Failed to fetch"));
+    await attempt;
+    expect(h.notices.show).not.toHaveBeenCalled();
+    expect(h.appState.trainBusy).toBe(false);
   });
 
   it("a normal correct answer still advances without a reconciliation read", async () => {

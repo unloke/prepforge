@@ -40,12 +40,20 @@ export function createTrainRecovery(deps) {
     return !ctx.superseded() && trainRecoveryIsCurrent(ctx, { appState, currentOwnerId });
   }
 
+  // A reconciliation that a newer card (or another account) superseded owns
+  // nothing any more — including the lock it took. Releasing only our own lock
+  // keeps a live session's card answerable instead of stranding "Checking your
+  // answer" over a card the player can no longer play.
+  function release(ctx) {
+    if (ctx.locked) appState.trainBusy = false;
+  }
+
   async function sync(ctx) {
     let state;
     try {
       state = await api(`/api/train/session/${encodeURIComponent(ctx.prompt.session_id)}`);
     } catch (error) {
-      if (!stillCurrent(ctx)) return;
+      if (!stillCurrent(ctx)) return release(ctx);
       // Still unknown (offline, server down): keep the board locked and offer
       // the retry that resolves it rather than a stale card pretending to wait.
       // One actionable card, not a second status line saying the same thing.
@@ -62,7 +70,7 @@ export function createTrainRecovery(deps) {
       });
       return;
     }
-    if (!stillCurrent(ctx)) return;
+    if (!stillCurrent(ctx)) return release(ctx);
     ctx.card?.dismiss();
     appState.trainBusy = false;
     setStatus("Caught up with the server.");
@@ -74,6 +82,8 @@ export function createTrainRecovery(deps) {
   // provably unapplied, so the same card comes back; anything else may already
   // be saved, so the server's current prompt wins before the board reopens.
   async function recoverAnswer(error, prompt, superseded) {
+    // A newer card already won: never paint this answer's lock over it.
+    if (superseded()) return;
     if (trainMoveResultUnconfirmed(error)) {
       // Lock the board while the authority is unknown: no "Your move" over a
       // card the server may already have advanced past, and no second answer.
@@ -88,10 +98,10 @@ export function createTrainRecovery(deps) {
         generation: appState.ownerGeneration,
         mode: appState.trainMode,
         superseded,
+        locked: true,
       });
       return;
     }
-    if (superseded()) return;
     // The answer was not graded, so the card is still the same one: put the
     // board back on the position it asks about and let the player answer again.
     // Without this the optimistic move stayed on a locked board (legalMoves: [])
