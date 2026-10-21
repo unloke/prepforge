@@ -65,6 +65,12 @@ export function createBuildSession(deps) {
 const GEN_MAX_PLY_DEPTH = 20;
 
 async function hydrateBuild(payload, selectedNodeId = null) {
+  // This takes a /api/build/load PAYLOAD. Writing anything else into
+  // appState.build corrupts every later reader (the header, syncViewHeads),
+  // so refuse it here instead of half-adopting it.
+  if (!payload || typeof payload !== "object" || !payload.repertoire_id || !Array.isArray(payload.nodes)) {
+    throw new TypeError("hydrateBuild needs a /api/build/load payload with repertoire_id and nodes");
+  }
   // Opening/switching to a DIFFERENT repertoire must not throw away local-first
   // sync state: callers hard-flush before switching, and anything still queued
   // (a restored queue, a flush that failed) is tagged with its target and kept

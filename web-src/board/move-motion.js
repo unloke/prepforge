@@ -49,8 +49,10 @@ export function capturedSquare(prevFen, fen, from, to) {
 // A detached copy of the piece on `square` (a live element), ready to be mounted
 // on that square after the position re-renders. Cloning it before the render is
 // what lets a capture be seen at all: the render wipes the original at frame zero.
+// The square's OWN piece is the source, never a capture clone fading out over it
+// from the previous move.
 export function caughtPiece(squareEl) {
-  const source = squareEl && squareEl.querySelector(".piece");
+  const source = squareEl?.querySelector(".piece:not(.piece-caught)");
   if (!source) return null;
   const copy = source.cloneNode(true);
   copy.classList.add("piece-caught");

@@ -201,6 +201,7 @@ jobs:
           tests/e2e/test_axe_baseline.py
           tests/e2e/test_eval_chart_smoke.py
           tests/e2e/test_train_keyboard_smoke.py
+          tests/e2e/test_train_completion_smoke.py
           tests/e2e/test_analyze_board_smoke.py
           -q
 

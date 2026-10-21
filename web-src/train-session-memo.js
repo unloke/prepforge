@@ -6,6 +6,8 @@
 //
 // Scope by owner and session; another account or tab cannot replace this memo.
 
+import { saveSmartRun } from './train-history.js';
+
 const KEY = "pf.trainSessionMemo";
 
 function key(ownerId, sessionId, generation = "") {
@@ -60,6 +62,11 @@ export function clearSessionMemo(ownerId, sessionId, generation = "", storage = 
   } catch (_) {
     /* best-effort */
   }
+}
+
+export function finishSmartSessionMemo(ownerId, smart, stats) {
+  saveSmartRun(ownerId, smart, stats);
+  clearSessionMemo(ownerId, smart.sessionId, smart.generation);
 }
 
 export function restoreSmartSession(ownerId, mapped, smart) {

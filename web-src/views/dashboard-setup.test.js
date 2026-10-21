@@ -13,6 +13,7 @@ import { createDashboardView } from "./dashboard.js";
 
 function makeContainer() {
   return {
+    children: [],
     get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     querySelectorAll: vi.fn(() => []),
     addEventListener: vi.fn(),

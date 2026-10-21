@@ -11,6 +11,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createBoardController } from "./board/board-controller.js";
+import { caughtPiece } from "./board/move-motion.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -50,6 +51,7 @@ function element(tag = "div") {
     setAttribute(k, v) { this.attributes[k] = String(v); },
     getAttribute(k) { return this.attributes[k] ?? null; },
     appendChild(child) { child.parent = this; this.children.push(child); return child; },
+    cloneNode() { const copy = element(this.tag); copy.className = this.className; return copy; },
     remove() { if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this); },
     set innerHTML(_) { this.children = []; },
     get innerHTML() { return ""; },
@@ -61,13 +63,22 @@ function element(tag = "div") {
       }
     },
     querySelector(sel) {
-      const want = sel.replace(/^\./, "");
+      return this.querySelectorAll(sel)[0] || null;
+    },
+    querySelectorAll(sel) {
+      // `.piece` and `.piece:not(.piece-caught)` are the only shapes the board
+      // asks for.
+      const [, want, not] = /^\.([\w-]+)(?::not\(\.([\w-]+)\))?$/.exec(sel) || [];
+      const matches = (el) => {
+        const names = el.className.split(" ");
+        return names.includes(want) && !(not && names.includes(not));
+      };
+      const found = [];
       for (const child of this.children) {
-        if (child.className.split(" ").includes(want)) return child;
-        const found = child.querySelector?.(sel);
-        if (found) return found;
+        if (matches(child)) found.push(child);
+        found.push(...(child.querySelectorAll?.(sel) || []));
       }
-      return null;
+      return found;
     },
     addEventListener(type, fn) { (this.handlers[type] ||= []).push(fn); },
     dispatch(type, event = {}) {
@@ -286,5 +297,99 @@ describe("a step back through a game", () => {
     expect(sounds).toEqual(["move"]);
     expect(travel(moverOn("f3"))).toBe("translate(-100px, 200px)");
     expect(moverOn("g1")).toBeUndefined();
+  });
+});
+
+// A capture mounts a detached copy of the victim (.piece-caught) on the square
+// the mover lands on, so for one move that square holds two .piece elements.
+// Rapid navigation — a held ← / →, Next clicked through a game — renders the
+// next position while the clone is still fading. The render used to remove at
+// most ONE element per square and then treat `data-piece` as proof the square
+// was settled, so the leftover stayed; once the FEN emptied that square,
+// `data-piece` already read "" and no later render ever revisited it. A piece
+// that had been captured sat on the board for the rest of the session (the
+// reported phantom rook). Every render now reconciles the square against the
+// FEN, so the visible pieces converge on the position whatever overlapped.
+describe("a render that lands while a capture is still animating", () => {
+  const BEFORE_CAPTURE = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+  const AFTER_CAPTURE = "rnbqkbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
+  // The next position: Black answers elsewhere, so d5 still holds the capturing
+  // pawn — the clone has no business standing over it.
+  const NEXT_POSITION = "rnbqkbnr/p1p1pppp/1p6/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3";
+  // And later the square is empty in the FEN.
+  const D5_EMPTY = "rnbqkbnr/ppp1pppp/8/8/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
+
+  const piecesOn = (name) => square(name).children.filter((c) => c.className.split(" ").includes("piece"));
+  const caughtOn = (name) => piecesOn(name).filter((c) => c.className.includes("piece-caught"));
+  const ownOn = (name) => piecesOn(name).filter((c) => !c.className.includes("piece-caught"));
+
+  // The fake square's insertAdjacentHTML only ever makes a bare .piece, so the
+  // capture clone is planted the way setPosition plants it.
+  function plantCaught(name) {
+    const clone = element("span");
+    clone.className = "piece piece-caught";
+    square(name).appendChild(clone);
+    return clone;
+  }
+
+  it("does not leave a stale clone when the next position renders over it", () => {
+    mount({ onMove: () => {} });
+    board.setPosition({ fen: BEFORE_CAPTURE, legalMoves: [] });
+    // Land the capture, then render the next position before the fade ends.
+    board.setPosition({ fen: AFTER_CAPTURE, legalMoves: [], lastMove: "e4d5" });
+    expect(caughtOn("d5").length).toBe(1);
+    board.setPosition({ fen: NEXT_POSITION, legalMoves: [], lastMove: "b7b6" });
+    // The superseded clone belongs to the position it was drawn for.
+    expect(caughtOn("d5").length).toBe(0);
+    expect(ownOn("d5").length).toBe(1);
+  });
+
+  it("leaves no piece on a square the FEN empties, however many renders it saw", () => {
+    mount({ onMove: () => {} });
+    board.setPosition({ fen: BEFORE_CAPTURE, legalMoves: [] });
+    board.setPosition({ fen: AFTER_CAPTURE, legalMoves: [], lastMove: "e4d5" });
+    plantCaught("d5"); // a second overlap, as a held key produces
+    board.setPosition({ fen: D5_EMPTY, legalMoves: [], lastMove: null });
+    expect(piecesOn("d5")).toEqual([]);
+    // And it stays empty on every later render.
+    board.setPosition({ fen: D5_EMPTY, legalMoves: [], lastMove: null });
+    board.setPosition({ fen: AFTER_CAPTURE, legalMoves: [], lastMove: "e4d5" });
+    board.setPosition({ fen: D5_EMPTY, legalMoves: [], lastMove: null });
+    expect(piecesOn("d5")).toEqual([]);
+  });
+
+  it("draws exactly one piece per occupied square and none on empty ones", () => {
+    mount({ onMove: () => {} });
+    board.setPosition({ fen: BEFORE_CAPTURE, legalMoves: [] });
+    board.setPosition({ fen: AFTER_CAPTURE, legalMoves: [], lastMove: "e4d5" });
+    plantCaught("d5");
+    board.setPosition({ fen: D5_EMPTY, legalMoves: [], lastMove: null });
+    const wrong = [];
+    for (const [name, sq] of board.squares) {
+      const want = parseFenBoard(D5_EMPTY)[name] || "";
+      const own = sq.children.filter((c) => c.className.split(" ").includes("piece") && !c.className.includes("piece-caught"));
+      if (sq.dataset.piece !== want) wrong.push(`${name}: data ${sq.dataset.piece} want ${want}`);
+      if (own.length !== (want ? 1 : 0)) wrong.push(`${name}: ${own.length} own pieces, want ${want ? 1 : 0}`);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it("never clones a fading capture as the next victim", () => {
+    // caughtPiece reads the square's OWN piece: a clone left over from the
+    // previous move must not become the source of the next capture.
+    const sq = element("div");
+    const own = element("span");
+    own.className = "piece piece-black";
+    const clone = element("span");
+    clone.className = "piece piece-caught";
+    sq.appendChild(clone);
+    sq.appendChild(own);
+    // The copy carries the cloned piece's own classes, so which source was read
+    // is visible in the result.
+    const copy = caughtPiece(sq);
+    expect(copy.className).toContain("piece-caught");
+    expect(copy.className).toContain("piece-black");
+    own.remove();
+    expect(caughtPiece(sq)).toBeNull();
   });
 });

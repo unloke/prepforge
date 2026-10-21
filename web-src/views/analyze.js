@@ -305,6 +305,7 @@ export function createAnalyzeView({
         `[Black "${safe(analysis.black)}"]`,
         `[Result "${safe(analysis.result || "*")}"]`,
       ];
+      if (analysis.lichess_id) tags.push(`[Site "https://lichess.org/${safe(analysis.lichess_id)}"]`);
       const fen = moves[0]?.fen_before;
       if (fen && fen !== START_FEN) tags.push('[SetUp "1"]', `[FEN "${safe(fen)}"]`);
       headers = tags.join("\n");
@@ -716,25 +717,8 @@ export function createAnalyzeView({
     );
     chart.removeAttribute("tabindex");
     chart.style.cursor = points && points.length ? "pointer" : "default";
-    // The chart draws itself in once per dataset: a re-render of the SAME game
-    // (a later pass animating the same graph) must not replay it.
-    if (points && points.length && chart.dataset.drawnFor !== String(points.length)) {
-      chart.dataset.drawnFor = String(points.length);
-      chart.classList.add("is-entering");
-      // Drop the class once the draw finishes so a later re-render can replay it
-      // for a genuinely different game.
-      const done = () => chart.classList.remove("is-entering");
-      if (typeof chart.addEventListener === "function") {
-        chart.addEventListener("animationend", done, { once: true });
-        // A chart hidden while it animates never fires animationend; the timeout
-        // is the belt to that braces.
-        setTimeout(done, 900);
-      } else {
-        chart.classList.remove("is-entering");
-      }
-    } else {
-      chart.classList.remove("is-entering");
-    }
+    // New samples extend the series in place; changing point count is not a
+    // new scene and must not scale the graph back through zero.
 
     const axis = document.createElementNS(svgNS, "line");
     axis.setAttribute("class", "eval-axis");

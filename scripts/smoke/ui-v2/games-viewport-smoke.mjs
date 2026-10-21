@@ -11,6 +11,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { checkGamesAnalyze } from './games-analyze.mjs';
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
@@ -70,7 +71,11 @@ const server = createServer(async (req, res) => {
   if (path.startsWith("/static/")) path = path.slice("/static".length);
   try {
     const file = await readFile(join(STATIC_DIR, path));
-    res.writeHead(200, { "Content-Type": MIME[extname(path)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": MIME[extname(path)] || "application/octet-stream",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    });
     res.end(file);
   } catch { res.writeHead(404); res.end("nope"); }
 });
@@ -289,6 +294,8 @@ async function runViewport(vp) {
       await page.waitForTimeout(900);
     }
   }
+
+  await checkGamesAnalyze(page, GAMES, check, shot);
 
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

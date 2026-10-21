@@ -452,14 +452,10 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
-    // Coach copy wraps instead of clipping; the rule beside it is the note, not
-    // a reserved box, and it scrolls past five lines. The block's three-line
-    // floor (the note's own floors are pinned in analyze-chart.test.js) is what
-    // keeps the chart below still.
+    // The verdict scrolls inside its row; Humans/prep arrivals keep their rows.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-prose")).toMatch(/max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
-    expect(rule(".coach-card")).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
-    expect(rule(".coach-card")).not.toMatch(/(^|[^-])height:\s*\d+px/);
+    expect(rule(".coach-prose")).toMatch(/min-height: 0/);
+    expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) var\(--coach-foot\)/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     // The score sheet is sized to its content so the two sides of a move sit
     // next to each other, the way a score sheet prints them; the trailing
@@ -503,7 +499,7 @@ describe("workspace chrome layout", () => {
     // Last game lives in the Games sheet; Analyze stays in the thumb bar.
     expect(phoneCss).toMatch(/#fetch-my-game \{ display: none; \}/);
     // A phone has no score sheet: its room goes to the graph.
-    expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);
+    expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*height: var\(--phone-coach-h\)/);
     expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
     expect(app).toContain("function wirePhoneSheets()");
   });

@@ -2,6 +2,7 @@ import { html } from "../html.js";
 import { nounOf } from "../plural.js";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
+import { createLibraryRows } from "./library-rows.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
 import {
@@ -85,6 +86,30 @@ export function createDashboardView({
   let libraryQuery = "";
   let repListCache = { own: [], shared: [] };
   let repListLoaded = false;
+
+  // ---- Painting only what changed -----------------------------------------
+  // One load renders each surface twice: the cached team names arrive first
+  // (they are already in state), then the fresh /api/repertoires listing. Both
+  // writes replaced every node with the same content, which replayed the row
+  // entrance over the whole table and rebuilt the Today strip's Train button.
+  // Remember the markup each element was given and skip an identical rewrite;
+  // the callers that repaint bind their listeners only when a write happened.
+  const paintedMarkup = new WeakMap();
+  function paint(element, markup) {
+    if (!element) return false;
+    const next = String(markup ?? "");
+    if (paintedMarkup.get(element) === next) return false;
+    paintedMarkup.set(element, next);
+    element.innerHTML = next;
+    return true;
+  }
+  // A surface written by something other than paint() (the row reconciliation
+  // owns its own nodes) drops its note, so the next paint cannot mistake a
+  // stale string for what is on screen.
+  function forget(element) {
+    if (element) paintedMarkup.delete(element);
+  }
+
   // Full loads and mutation refreshes share ownership of the same list/cache.
   let loadSeq = 0;
   function currentLoad(seq) {
@@ -121,21 +146,6 @@ export function createDashboardView({
       bits.push(`shared with ${team ? team.name : "team"}`);
     }
     return bits.join(" · ");
-  }
-
-  function applySelectionHighlight() {
-    const container = document.getElementById("dashboard-repertoires");
-    if (!container) return;
-    container.querySelectorAll("[data-repertoire-id]").forEach((row) => {
-      const selected = row.dataset.repertoireId === selectedRepId;
-      row.classList.toggle("is-selected", selected);
-      row.setAttribute("aria-selected", String(selected));
-      // The role=option lives on the inner .lib-opt (it must not own the menu
-      // button), so its aria-selected mirrors the row's selection state.
-      row.querySelectorAll(".lib-opt").forEach((opt) => {
-        opt.setAttribute("aria-selected", String(selected));
-      });
-    });
   }
 
   function countBadge(n) {
@@ -175,7 +185,7 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-steps");
     if (card) {
       card.hidden = true;
-      card.innerHTML = "";
+      paint(card, "");
     }
   }
 
@@ -224,10 +234,11 @@ export function createDashboardView({
     const doneCount = steps.filter((step) => step.done).length;
     if (doneCount === steps.length || setupDismissed()) {
       card.hidden = true;
-      card.innerHTML = "";
+      paint(card, "");
       return;
     }
-    card.innerHTML =
+    paint(
+      card,
       html`<header class="card-head"><h2>Next steps</h2><span class="setup-count" data-testid="setup-progress">${doneCount} of ${steps.length} done</span><button type="button" class="btn icon setup-dismiss" data-setup-dismiss data-testid="setup-dismiss" aria-label="Hide next steps" title="Hide this checklist">&times;</button></header><div class="setup-bar" aria-hidden="true"><i style="width:${Math.round((doneCount / steps.length) * 100)}%"></i></div>${steps
         .map((step) => {
           // The mark column is a checklist: a finished step ticks, an open one
@@ -245,7 +256,8 @@ export function createDashboardView({
           return (
             html`<div class="step${step.done ? " is-done" : ""}" data-setup-step="${step.id}">${mark}<div class="step-text"><b>${step.title}</b>${note ? html`<p>${note}</p>` : ""}</div>${cta}</div>`
           );
-        })}`;
+        })}`,
+    );
     card.hidden = false;
   }
 
@@ -319,9 +331,9 @@ export function createDashboardView({
     const card = document.getElementById("dashboard-today");
     if (!card) return;
     card.hidden = false;
-    card.innerHTML = html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`;
-    card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
+    const written = paint(card, html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`);
     lastTodayPayload = null;
+    if (written) card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
   }
 
   function renderDashboardToday(payload) {
@@ -399,7 +411,7 @@ export function createDashboardView({
       metric(repCount ?? (payload.repertoires || 0), "repertoire"),
       metric(payload.training_sessions || 0, "session"),
     ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
-    card.innerHTML = html`
+    const written = paint(card, html`
     <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
          title="Calendar days with at least one graded move">
       <span class="today-count">${streak.current}</span>
@@ -417,8 +429,9 @@ export function createDashboardView({
     ${firstRun
       ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
       : html`<button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
-  `;
+  `);
     card.hidden = false;
+    if (!written) return;
     if (firstRun) {
       // The strip is re-rendered on every load, so it binds its own action;
       // a Train listener looked up by id would not exist.
@@ -435,155 +448,26 @@ export function createDashboardView({
   // ---- Library list rendering ----------------------------------------------
   // The list renders from `repListCache` (the /api/repertoires listing: own
   // repertoires + received team shares) so the filter bar can re-render
-  // client-side without another round trip.
+  // client-side without another round trip. The rows themselves are painted by
+  // `libraryRows`, which reconciles them against what is already on screen
+  // instead of rewriting the table (see that module for why).
 
-  // Team shares received from others: read-only rows beside the own ones.
-  function sharedRowsHtml(rows) {
-    return html`${rows
-      .map(
-        (item) => html`
-          <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${item.id}" data-shared="1">
-            <span class="lib-opt" role="option" aria-selected="false">
-              <span class="lib-cell-rep">
-                <span class="color-dot ${item.color}"></span>
-                <span class="lib-name">
-                  <span class="lib-name-line"><b class="name">${item.name}</b><span class="lib-chip is-shared">shared</span></span>
-                  <small class="rep-sub">${String(item.color) === "black" ? "Black" : "White"} · read-only</small>
-                </span>
-              </span>
-              <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
-              <span class="lib-cell-queue"><span class="muted">—</span></span>
-            </span>
-          </div>`,
-      )}`;
+  function teamNameOf(teamId) {
+    return (appState.teams.find((tm) => tm.id === teamId) || {}).name || "team";
   }
 
-  // ARIA listbox/option structure: the option role must not contain interactive
-  // widgets (the per-row ⋯ menu button). So the listbox owner is the row itself
-  // and the menu button sits as a SIBLING of the option, inside the grid row:
-  // <div class=lib-row (row wrapper, not an option)>
-  //   <span role=option aria-selected …>cells</span>
-  //   <button ⋯>
-  // The role=option lands on the .lib-opt span covering the info cells; the
-  // row's click/keyboard handlers stay on the wrapper so interaction is
-  // unchanged, and the button is no longer inside an option.
-  function renderRepertoireRows(container, visible, shared) {
-    // Library table (prototype layout): one row per repertoire with name,
-    // an inline mastery bar from the cached health badge, and the queue
-    // chips. The listing API carries no line count or last-trained date, so
-    // the prototype's "Lines" / "Last trained" columns stay out rather than
-    // inventing data.
-    if (!selectedRepId || !visible.some((item) => String(item.id) === selectedRepId)) {
-      selectedRepId = visible.length ? String(visible[0].id) : null;
-    }
-    container.innerHTML = html`${visible
-      .map((item) => {
-        const id = item.id;
-        const name = item.name;
-        const color = item.color;
-        const active = item.is_active !== false;
-        const cls = [
-          "lib-row",
-          active ? "" : "is-disabled",
-          String(item.id) === selectedRepId ? "is-selected" : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        const chipsHtml =
-          html`${active ? "" : html`<span class="lib-chip">disabled</span>`}${item.visibility === "team" && item.team_id
-            ? html`<span class="lib-chip is-shared" title="Shared with ${(appState.teams.find((tm) => tm.id === item.team_id) || {}).name || "team"}">shared</span>`
-            : ""}`;
-        const health = item.health;
-        const pct = health ? health.mastery_pct || 0 : null;
-        // Two layers from the left: mastered moves on top, every move trained at least
-        // once behind it, so practice shows before mastery catches up.
-        let mastery = html`<span class="lib-mastery lib-mastery-none">no moves trained yet</span>`;
-        if (pct != null) {
-          const count = (k) => Number(health[k]) || 0;
-          const started = count("mastered") + count("learning") + count("due") + count("weak");
-          const total = count("trainable") || started + count("untrained");
-          const startedPct = total ? Math.max(pct, Math.round((started / total) * 100)) : pct;
-          const label = `${count("mastered")} mastered · ${started - count("mastered")} learning · ${count("untrained")} new`;
-          mastery =
-            html`<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained"><i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b><span class="lib-mastery-word">mastered</span></span>`;
-        }
-        const queue = [];
-        if (health && health.weak) {
-          queue.push(html`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
-        }
-        if (health && health.due) {
-          queue.push(html`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
-        }
-        if (health && health.untrained) {
-          queue.push(html`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
-        }
-        const queueHtml = queue.length ? queue : html`<span class="muted">—</span>`;
-        return html`
-          <div class="${cls}" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${String(item.id) === selectedRepId}">
-            <span class="lib-opt" role="option" aria-selected="${String(item.id) === selectedRepId}">
-              <span class="lib-cell-rep">
-                <span class="color-dot ${color}"></span>
-                <span class="lib-name">
-                  <span class="lib-name-line"><b class="name">${name}</b>${chipsHtml}</span>
-                  <small class="rep-sub">${repSubline(item)}</small>
-                </span>
-              </span>
-              <span class="lib-cell-mastery">${mastery}</span>
-              <span class="lib-cell-queue">${queueHtml}</span>
-            </span>
-            <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
-          </div>
-        `;
-      })}${sharedRowsHtml(shared)}`;
-    applySelectionHighlight();
-    staggerRows(container);
-    container.querySelectorAll(".lib-row").forEach((row) => {
-      const repId = row.dataset.repertoireId;
-      if (row.dataset.shared) {
-        const openShared = () => editRepertoire(repId);
-        row.addEventListener("click", openShared);
-        row.addEventListener("keydown", (event) => {
-          if (event.target !== row) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openShared();
-          }
-        });
-        return;
-      }
-      const open = () => {
-        selectedRepId = repId;
-        editRepertoire(repId);
-      };
-      row.addEventListener("click", (event) => {
-        if (event.target.closest(".row-menu-btn")) return;
-        open();
-      });
-      row.addEventListener("keydown", (event) => {
-        if (event.target !== row) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          // Enter / Space open the workspace, the same as a click.
-          open();
-        }
-      });
-      row.addEventListener("contextmenu", (event) =>
-        openRepertoireContextMenu(event, repId, row.dataset.active === "1"),
-      );
-    });
-    container.querySelectorAll(".row-menu-btn").forEach((btn) => {
-      btn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const row = btn.closest(".lib-row");
-        const rect = btn.getBoundingClientRect();
-        openRepertoireContextMenu(
-          { preventDefault: () => {}, currentTarget: btn, clientX: rect.left, clientY: rect.bottom + 4 },
-          row.dataset.repertoireId,
-          row.dataset.active === "1",
-        );
-      });
-    });
-  }
+  const libraryRows = createLibraryRows({
+    // Clicking an own row selects it, then opens its workspace; a received
+    // share opens read-only without claiming the local selection.
+    openOwn: (repId) => {
+      selectedRepId = repId;
+      editRepertoire(repId);
+    },
+    openShared: (repId) => editRepertoire(repId),
+    openRepertoireContextMenu,
+    repSubline,
+    teamName: teamNameOf,
+  });
 
   // An empty library (signed out, or no repertoires yet) is the prototype's
   // onboarding card: no filter chips, column header or row hint over nothing.
@@ -608,14 +492,14 @@ export function createDashboardView({
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true, { error: true });
-    container.innerHTML = html`
+    paint(container, html`
       <div class="empty-state is-error" role="alert" data-testid="library-list-error">
         <h3>Could not refresh your repertoires.</h3>
         <p>${String(message || "The server did not respond.")}</p>
         <div class="row gap">
           <button type="button" class="btn primary" data-lib-action="retry-list">Try again</button>
         </div>
-      </div>`;
+      </div>`);
     selectedRepId = null;
   }
 
@@ -628,16 +512,13 @@ export function createDashboardView({
     const focusedMenu = focusedId && focused.matches(".row-menu-btn");
     const universe = [...repListCache.own, ...repListCache.shared];
     setLibraryEmpty(!universe.length);
-    // Selection follows the visible list: narrowing the table moves the
-    // selection to the first shown row when the old one is filtered out — the
-    // same rule the unfiltered table always had for a disappearing row.
     const shown = filterLibraryRows(universe, {
       filter: libraryFilter,
       query: libraryQuery,
     });
     if (!universe.length) {
       setListboxRole(container, false);
-      container.innerHTML = html`
+      paint(container, html`
         <div class="empty-state big">
           <h3>No repertoires yet.</h3>
           <p>Create a repertoire, import a PGN, or build one from a game.</p>
@@ -645,7 +526,7 @@ export function createDashboardView({
             <button type="button" class="btn primary" data-lib-action="new">New repertoire</button>
             <button type="button" class="btn" data-lib-action="import">Import PGN</button>
           </div>
-        </div>`;
+        </div>`);
       selectedRepId = null;
       return;
     }
@@ -654,24 +535,40 @@ export function createDashboardView({
       // filter chips are hidden in this state, so the card carries the way back.
       const q = libraryQuery.trim();
       setListboxRole(container, false);
-      container.innerHTML = html`<div class="empty-state lib-no-match" data-testid="library-no-match">
+      paint(container, html`<div class="empty-state lib-no-match" data-testid="library-no-match">
         <p>No repertoires match ${q ? "this search" : "this filter"}.</p>
         <button type="button" class="btn sm" data-lib-action="clear-filter">Clear filter</button>
-      </div>`;
+      </div>`);
       selectedRepId = null;
       return;
     }
     setListboxRole(container, true);
-    renderRepertoireRows(
+    // Selection follows the visible list: narrowing the table moves the
+    // selection to the first shown row when the old one is filtered out — the
+    // same rule the unfiltered table has for a row that disappears.
+    const shownOwn = shown.filter((item) => !item.sharedRow);
+    if (!selectedRepId || !shownOwn.some((item) => String(item.id) === selectedRepId)) {
+      selectedRepId = shownOwn.length ? String(shownOwn[0].id) : null;
+    }
+    // A filter or search keeps the rows it still shows: they are already
+    // settled on screen, so narrowing the table does not replay the entrance.
+    const painted = libraryRows.render(
       container,
       shown.filter((item) => !item.sharedRow),
       shown.filter((item) => item.sharedRow),
+      { selectedRepId, staggerRows },
     );
-    // Refresh replaces the row elements. Keep keyboard navigation on the same
-    // repertoire, without stealing focus from search, menus or another view.
+    // The row painter owns the nodes, so the note paint() keeps for the empty
+    // states in this same container no longer describes what is there.
+    forget(container);
+    // Focus follows the repertoire, not its node: a kept row usually keeps its
+    // focus for free, and one that was rebuilt (the row changed) or moved (the
+    // server reordered the list) is put back on the same repertoire. Search,
+    // menus and other views keep whatever they had.
     if (focusedId) {
-      const row = [...container.querySelectorAll(".lib-row")].find((el) => el.dataset.repertoireId === focusedId);
-      (focusedMenu ? row?.querySelector(".row-menu-btn") : row)?.focus({ preventScroll: true });
+      const row = [...painted].find((el) => el.dataset.repertoireId === focusedId);
+      const target = focusedMenu ? row?.querySelector(".row-menu-btn") : row;
+      if (target && globalThis.document.activeElement !== target) target.focus({ preventScroll: true });
     }
   }
 
@@ -777,7 +674,7 @@ export function createDashboardView({
     countBadge(null);
     setListboxRole(container, false);
     setLibraryEmpty(true);
-    container.innerHTML = html`
+    paint(container, html`
       <div class="empty-state big" data-testid="library-signed-out">
         <h3>Sign in to start your library.</h3>
         <p>Sign in, then create a repertoire or import a PGN.</p>
@@ -785,7 +682,7 @@ export function createDashboardView({
           <button type="button" class="btn primary" data-lib-action="signin">Sign in</button>
           <button type="button" class="btn" data-lib-action="import">Import PGN</button>
         </div>
-      </div>`;
+      </div>`);
     selectedRepId = null;
     lastTodayPayload = null;
     const today = document.getElementById("dashboard-today");
@@ -816,12 +713,14 @@ export function createDashboardView({
   function renderOnboardingSteps(steps) {
     const card = document.getElementById("dashboard-steps");
     if (!card) return;
-    card.innerHTML =
+    paint(
+      card,
       html`<header class="card-head"><h2>Next steps</h2></header>${steps
         .map(
           ([title, detail, action, label]) =>
             html`<div class="step"><span class="step-n" aria-hidden="true"></span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,
-        )}`;
+        )}`,
+    );
     card.hidden = false;
   }
 

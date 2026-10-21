@@ -86,46 +86,27 @@
 
 /* The coach card ---------------------------------------------------- */
 
-/* The verdict is the panel's own voice, not a card in it: running text on the
-   panel ground, with the 3px quality rule carrying its tone. It was a filled
-   118px band holding a 68px note, so every move left ~50px of empty tone
-   between the verdict and the instrument below it (measured at 1440x900).
-   The block keeps a floor of three lines: across three games and the three
-   desktop widths (171 plies) a verdict is one line 80 times, two 75, three 14
-   and four twice, so three lines holds the instrument still on every ply at
-   1440 and 1180 and on all but two at 982. The floor is this box's, not the
-   rule's: a one-line verdict leaves a rest under the text instead of drawing a
-   long stroke beside it. A longer note grows the block rather than being cut,
-   and past five lines it scrolls. The line box is a token because the block's
-   floor and the note's own floor are written in the same unit: `em` on the
-   block would resolve against the card's 13px, not the note's 16px. */
+/* Coach has four stable rows: controls, verdict, human picks and prep.
+   Async Human/prep reads must not move Evaluation or the board below them. */
 .coach-card {
-  /* The verdict's line box at its desktop size (16px x 1.5). */
   --coach-line: 24px;
-  /* The coach's own line: its title, the phase chip, the review switch and the
-     two actions. The 26px actions are the tallest thing in it, so the row is a
-     constant 26px — the chip clips before the row wraps (see .cc-head) — and the
-     card's floor is written from this number, not from a guess. */
   --coach-head: 26px;
+  --coach-foot: 22px;
   flex: none;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) var(--coach-foot);
   gap: 8px;
-  /* head 26 + gap 8 + three note lines + the note's 4px padding = 110px. Written
-     as the sum so the head can change without the floor going stale: with the
-     two actions on this line the head is 4px taller than the strip it replaced,
-     and a three-line verdict would otherwise grow the card by 4px and move the
-     instrument below it (measured at 1440 and 982). */
-  min-height: calc(var(--coach-head) + var(--coach-line) * 3 + 12px);
+  height: calc(var(--coach-head) + var(--coach-line) * 3 + var(--coach-foot) * 2 + 28px);
   padding: 0;
   background: none;
   border: 0;
   border-radius: 0;
   overflow: hidden;
 }
-.coach-card > .cc-head,
-.coach-card > .coach-maia,
-.coach-card > .coach-bookline { flex: none; }
+.coach-card > .cc-head { grid-row: 1; }
+.coach-card > .coach-prose { grid-row: 2; }
+.coach-card > .coach-maia { grid-row: 3; }
+.coach-card > .coach-bookline { grid-row: 4; }
 .coach-card > * {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -167,8 +148,8 @@
    one-line verdict cannot pull the instrument up by 24px between plies. */
 .coach-prose {
   flex: 0 1 auto;
-  min-height: calc(var(--coach-line) * 2 + 4px);
-  max-height: calc(var(--coach-line) * 5 + 4px);
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   scrollbar-width: thin;
   margin: 0;
@@ -245,11 +226,8 @@
   background: var(--good-text);
 }
 .coach-bookline {
-  padding-top: 8px;
-}
-.coach-maia[hidden],
-.coach-bookline[hidden] {
-  display: none;
+  padding-top: 0;
+  overflow: auto;
 }
 /* The book line is a quiet link in the coach's own row, not a button in a box. */
 .coach-bookaction {
@@ -277,39 +255,14 @@
 
 /* ---- Results: win chance, move grid, class bars ----------------------- */
 
-/* Fades in with the first analysed position (revealAnalysisResults). */
+/* Results update in place; data refreshes never replay an entrance. */
 .res-stack {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
 }
 .res-stack[hidden] {
   display: none;
-}
-.res-stack.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Analysis landing: the stack fades in as a whole, then its blocks arrive
-   one after another a beat later. Each block only fades and rises a few px;
-   nothing below it moves. */
-.res-stack.is-visible > .res-block {
-  animation: res-block-enter var(--dur) var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 70ms);
-}
-@keyframes res-block-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 .res-block {
@@ -541,8 +494,8 @@
 }
 .ev-engine::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--line-strong);
 }
@@ -677,33 +630,6 @@
 .eval-chart .eval-hover {
   stroke: var(--text);
   stroke-opacity: 0.35;
-}
-.eval-chart.is-entering .eval-line,
-.eval-chart.is-entering .eval-area {
-  transform-origin: left center;
-  animation: eval-chart-draw var(--dur-slow) var(--ease-out) both;
-}
-@keyframes eval-chart-draw {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-.eval-chart.is-entering .eval-marker {
-  animation: eval-dot-pop var(--dur) var(--ease-emphasis) both;
-  animation-delay: calc(var(--dur-slow) + var(--i, 0) * 30ms);
-}
-@keyframes eval-dot-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.4);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 .eval-chart .eval-m-brilliant { color: var(--brilliant); }
 .eval-chart .eval-m-great { color: var(--great); }
@@ -1139,20 +1065,8 @@
   transition: none;
 }
 
-/* Reduced motion is fewer and gentler, never less: the blocks still arrive,
-   they just stop travelling, and the figures land at once. */
+/* Control feedback respects reduced motion; values already update in place. */
 @media (prefers-reduced-motion: reduce) {
-  .res-stack {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  .res-stack.is-visible > .res-block,
-  .eval-chart.is-entering .eval-line,
-  .eval-chart.is-entering .eval-area,
-  .eval-chart.is-entering .eval-marker {
-    animation: none;
-  }
   .ev-meter > i {
     transition: none;
   }
@@ -1174,7 +1088,17 @@
    and the game sources are sheets; the sources fill the screen under the board
    while no game is loaded. */
 @media (max-width: 760px) {
-  #view-analyze { --phone-reserve: 222px; }
+  #view-analyze {
+    --phone-chart-min: 64px;
+    --phone-eval-h: 48px;
+    --phone-engine-h: 32px;
+    --phone-coach-h: 128px;
+    --phone-reserve: calc(var(--phone-chart-min) + var(--phone-eval-h) + var(--phone-engine-h) + var(--phone-coach-h));
+  }
+  #view-analyze .study { height: 100svh; }
+  #view-analyze .board-stack {
+    width: min(100vw, calc(100svh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
+  }
   #analyze-sidebar :is(.panel-scroll, .analyze-main),
   #analysis-eval-card,
   #analysis-results:not([hidden]) { display: contents; }
@@ -1183,30 +1107,33 @@
   #analysis-eval-card > *,
   #analysis-results > * { order: 2; flex: none; min-width: 0; }
 
-  /* Coach: under the engine, as tall as its note needs and no taller. It used to
-     take every pixel the screen had left, which parked a screenful of empty tone
-     under a one-line verdict; the room belongs to the game graph above, which is
-     the one block on this screen that uses height. A long note scrolls, so the
-     thumb bar never moves. */
+  /* The verdict and human picks own fixed rows; only the text scrolls. */
   #analysis-explain {
     order: 3;
-    flex: 0 1 auto;
-    display: block;
-    /* The verdict reads at 15px/1.4 here, so the note's line box is 21px. */
+    flex: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) 20px 44px;
+    gap: 4px 8px;
     --coach-line: 21px;
-    max-height: 118px;
-    height: auto;
-    min-height: 0;
+    height: var(--phone-coach-h);
+    min-height: var(--phone-coach-h);
+    max-height: var(--phone-coach-h);
     margin: 0;
-    padding: 8px var(--phone-gutter) 10px;
+    padding: 8px var(--phone-gutter);
     border: 0;
     border-radius: 0;
     background: var(--panel-soft);
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
   }
-  #analysis-explain::after { content: ""; display: block; clear: both; }
-  #analysis-explain .cc-head { float: right; flex-wrap: nowrap; gap: 6px; min-height: 0; margin: 0 0 2px 10px; }
+  #analysis-explain .cc-head {
+    grid-area: 1 / 2;
+    align-self: start;
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-height: 0;
+    margin: 0;
+  }
   #analysis-explain .cc-head > b { display: none; }
   /* On phones the coach head floats beside the text. The switch is a 22px
      control: its own padding gives it a 44px target (the border-box stays at a
@@ -1252,8 +1179,18 @@
   @media (prefers-reduced-motion: reduce) {
     #analysis-explain .cc-head .pf-switch::after { transition: none; }
   }
-  #analysis-explain .coach-prose { padding-left: 10px; font-size: 15px; line-height: 1.4; overflow: visible; }
-  #analysis-explain > :is(.coach-maia, .coach-bookline):not([hidden]) { clear: both; margin-top: 8px; }
+  #analysis-explain .coach-prose {
+    grid-area: 1 / 1;
+    min-height: 0;
+    padding-left: 10px;
+    font-size: 15px;
+    line-height: 1.4;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  #analysis-explain .coach-maia { grid-area: 3 / 1 / 4 / -1; height: 44px; margin: 0; overflow-x: auto; scrollbar-width: none; }
+  #analysis-explain .hp { height: 44px; flex-shrink: 0; }
+  #analysis-explain .coach-bookline { grid-area: 2 / 1 / 3 / -1; height: 20px; margin: 0; padding: 0; overflow: auto; white-space: nowrap; }
 
   /* No score sheet on a phone: the game graph is the only way to walk the game
      by hand, so it takes the room the move list held and the stack's slack with
@@ -1265,9 +1202,9 @@
   #analysis-results:not([hidden]) > .moves-grid { display: none; }
   #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) {
     order: 0;
-    flex: 1 1 auto;
-    min-height: 84px;
-    max-height: 34dvh;
+    flex: 1 1 0;
+    min-height: var(--phone-chart-min);
+    max-height: 34svh;
     margin: 0 var(--phone-gutter);
   }
   #analysis-eval-card .eval-chart {
@@ -1284,7 +1221,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 52px;
+    height: var(--phone-eval-h);
     padding: 0 var(--phone-gutter);
     background: var(--bg);
   }
@@ -1311,8 +1248,8 @@ name. */
     overflow-wrap: anywhere;
   }
   /* Report and Engine are the two controls in the row a thumb reaches, so they
-     take the same 44px box as every other phone control; the 52px row holds them
-     with 4px to spare. */
+     take the same 44px box as every other phone control; the 48px row holds them
+     with 2px to spare. */
   #analysis-eval-card .ev-engine { flex: none; height: 44px; padding: 0 14px 0 12px; font-size: 14px; }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
@@ -1334,16 +1271,43 @@ name. */
      were indented 10/12/14px by three rules written at different times, so the
      screen carried four left edges down one column (measured at 390x844: graph
      and eval at 16, engine line at 10, dock at 12, coach prose at 14). */
-  #analysis-engine-slot { display: block; padding: 0 var(--phone-gutter) 4px; }
-  #analysis-engine-slot > .engine-window:not([hidden]) { display: block; }
+  #analysis-engine-slot {
+    display: block;
+    position: relative;
+    flex: none;
+    height: var(--phone-engine-h);
+    min-height: var(--phone-engine-h);
+    padding: 0 var(--phone-gutter) 4px;
+  }
+  #analysis-engine-slot > .engine-window:not([hidden]) { display: block; overflow: visible; }
   #analysis-engine-slot .engine-window-head,
-  #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting) { display: none; }
+  #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting):not(.is-pending),
+  #analysis-engine-slot .engine-pv.is-pending ~ .engine-pv.is-pending { display: none; }
+  #analysis-engine-slot .engine-pv.is-pending { display: grid; height: 28px; min-height: 28px; }
+  #analysis-engine-slot .engine-window-consent:not([hidden]) {
+    position: absolute;
+    z-index: 20;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: 100%;
+    padding: 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--panel);
+  }
   /* The status line is the card's whole content while the pass runs: it stays. */
   #analysis-engine-slot .engine-pv.is-waiting { display: grid; height: 28px; min-height: 28px; }
   #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 28px; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #analysis-job-dock:empty { display: none; }
-  #analysis-job-dock { padding: 0 var(--phone-gutter) 4px; }
+  #analysis-job-dock {
+    position: absolute;
+    z-index: 8;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + var(--phone-coach-h) + var(--phone-engine-h) + var(--phone-eval-h));
+    padding: 0;
+  }
   .analysis-retry-save:not([hidden]),
   .analysis-import-picker:not([hidden]) { margin: 0 var(--phone-gutter) 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
 
@@ -1405,7 +1369,11 @@ name. */
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open > * { flex: none; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open :is(.sheet-rows, #pgn-drawer, #history-drawer:not([hidden])) { background: var(--panel); }
   /* …and the coach keeps to its few lines above them. */
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain { flex: none; max-height: 96px; }
+  /* Keep the absolute Analyze action in the thumb bar before a game is loaded. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain,
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head { display: contents; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain > :not(.cc-head),
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
 }
 
 /* While an engine line is on the board, the coach still speaks about the game

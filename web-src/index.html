@@ -432,7 +432,10 @@
                   <div class="train-brief-reps" id="train-brief-reps"></div>
                 </div>
                 <div class="train-empty" id="train-empty" hidden>
-                  <button class="btn primary" id="train-empty-build" type="button">Open Repertoire</button>
+                  <div class="train-start-row">
+                    <button class="btn primary" id="train-empty-build" type="button">Open Repertoire</button>
+                    <button class="btn" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
+                  </div>
                 </div>
                 <div class="field" id="train-srs-picker">
                   <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
@@ -444,6 +447,7 @@
                 </span>
                 <div class="train-start-row" id="train-srs-start">
                   <button class="btn primary lg train-start" id="start-train" data-testid="start-train">Start</button>
+                  <button class="btn lg" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
                 </div>
                 <div class="train-play-setup" id="train-play-setup" hidden>
                   <div class="field">
@@ -493,6 +497,7 @@
                     <button class="btn sm" id="play-takeback" data-testid="play-takeback" type="button" disabled>Takeback</button>
                     <button class="btn sm" id="play-resign" data-testid="play-resign" type="button" disabled>Resign</button>
                     <button class="btn sm" id="play-analyze" data-testid="play-analyze" type="button" disabled>Analyze</button>
+                    <button class="btn sm" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
                   </div>
                 </div>
               </section>
@@ -545,6 +550,7 @@
                 <div class="delta" id="train-summary-delta"></div>
                 <p class="muted" id="train-summary-foot"></p>
                 <button class="btn primary block" id="train-summary-new" type="button">New session</button>
+                <button class="btn sm block" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
               </section>
 
             </div>

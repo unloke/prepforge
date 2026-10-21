@@ -3,6 +3,7 @@
 // the sounding bus is faded out when a newer cue starts, so stepping quickly
 // through a move list reads as taps instead of a pile-up.
 import { pref } from "./prefs.js";
+import { Chess } from "chess.js";
 import { fenInCheck } from "../chess-local.js";
 
 // A repeat of the same cue closer than this is a fast step through the moves,
@@ -36,7 +37,11 @@ export function moveCue(prevFen, fen, lastMove) {
   if (!lastMove || lastMove.length < 4) return "move";
   if (fenInCheck(fen)) return "check";
   if (lastMove.length > 4) return "promotion";
-  if (Math.abs(FILES.indexOf(lastMove[0]) - FILES.indexOf(lastMove[2])) === 2) return "castle";
+  if (lastMove[1] === lastMove[3] && Math.abs(FILES.indexOf(lastMove[0]) - FILES.indexOf(lastMove[2])) === 2) {
+    try {
+      if (new Chess(prevFen).get(lastMove.slice(0, 2))?.type === "k") return "castle";
+    } catch { /* an unreadable position is not evidence of castling */ }
+  }
   return pieceCount(prevFen) > pieceCount(fen) ? "capture" : "move";
 }
 
@@ -51,6 +56,24 @@ export function moveCue(prevFen, fen, lastMove) {
 // once, so a cue sounds the same at every moment and its level is known.
 
 const buffers = new WeakMap();
+const cueSources = new WeakMap();
+
+function playBuffer(ctx, bus, when, buffer, level) {
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const voice = ctx.createGain();
+  voice.gain.value = level;
+  source.connect(voice).connect(bus);
+  const sources = cueSources.get(bus);
+  sources.add(source);
+  source.onended = () => {
+    source.disconnect();
+    voice.disconnect();
+    sources.delete(source);
+    if (!sources.size) bus.disconnect();
+  };
+  source.start(when);
+}
 
 // The computed samples for one voice, per context (sample rate) and key. The
 // peak is taken out so a voice is the same height whatever its partials, and
@@ -140,12 +163,7 @@ function knockSamples(ctx, { key, strike, modes }) {
 }
 
 function knock(ctx, bus, when, mode, level = 1) {
-  const source = ctx.createBufferSource();
-  source.buffer = knockSamples(ctx, mode);
-  const voice = ctx.createGain();
-  voice.gain.value = level;
-  source.connect(voice).connect(bus);
-  source.start(when);
+  playBuffer(ctx, bus, when, knockSamples(ctx, mode), level);
 }
 
 const SOFT_KNOCK = {
@@ -214,12 +232,7 @@ function noteSamples(freq, { decay, partials }) {
 
 function note(ctx, bus, when, freq, { gain, decay, partials = WOOD_PARTIALS }) {
   const samples = noteSamples(freq, { decay, partials });
-  const source = ctx.createBufferSource();
-  source.buffer = voiceBuffer(ctx, `note:${freq}:${decay}:${partials.length}`, samples.seconds, samples.fill);
-  const voice = ctx.createGain();
-  voice.gain.value = gain;
-  source.connect(voice).connect(bus);
-  source.start(when);
+  playBuffer(ctx, bus, when, voiceBuffer(ctx, `note:${freq}:${decay}:${partials.length}`, samples.seconds, samples.fill), gain);
 }
 
 // --- the cues ---------------------------------------------------------------
@@ -255,13 +268,13 @@ const CUES = {
         note(ctx, bus, t + 0.06 + i * 0.08, freq, { gain: 0.3, decay: 0.4 }));
     },
   },
-  // A firm two-note alert, high but not shrill: a fifth up, the first note
-  // struck harder so the pair reads as one urgent gesture rather than a chirp.
+  // Check keeps the move's impact, with one short low note rather than the
+  // rising fifth that earshot classified as a success chime (z +4.2).
   check: {
-    level: 0.95,
+    level: 1.25,
     play: (ctx, bus, t) => {
-      note(ctx, bus, t, 784, { gain: 0.5, decay: 0.5 });
-      note(ctx, bus, t + 0.1, 1175, { gain: 0.3, decay: 0.42 });
+      knock(ctx, bus, t, HARD_KNOCK, 0.85);
+      note(ctx, bus, t + 0.035, 392, { gain: 0.18, decay: 0.16, partials: DULL_PARTIALS });
     },
   },
   // Right: two notes rising, over the sound of the move landing. The notes come
@@ -302,7 +315,7 @@ export const CUE_NAMES = Object.keys(CUES);
 // --- playing ----------------------------------------------------------------
 
 let audio = null;
-let active = null; // the gain of the cue that is sounding, cut when the next one starts
+let active = null; // the sounding cue bus; a replacement stops its scheduled voices
 let lastCue = null;
 let lastAt = -1e9; // the audio clock, in seconds
 
@@ -330,6 +343,7 @@ export function renderCue(ctx, cue, destination = ctx.destination, when = 0) {
   const spec = CUES[cue];
   if (!spec) return null;
   const bus = ctx.createGain();
+  cueSources.set(bus, new Set());
   // MASTER leaves headroom for the moment a cue cuts its predecessor: both are
   // audible for the first few milliseconds of the fade, and their peaks add.
   bus.gain.value = spec.level * MASTER;
@@ -355,12 +369,14 @@ export function playSound(cue) {
   if (active) {
     // Cut what is sounding instead of mixing with it: twenty moves a second must
     // not turn into a buzz.
-    active.cancelScheduledValues(now);
-    active.setValueAtTime(active.value, now);
-    active.exponentialRampToValueAtTime(0.0001, now + CUT_MS / 1000);
+    active.gain.cancelScheduledValues(now);
+    active.gain.setValueAtTime(active.gain.value, now);
+    active.gain.exponentialRampToValueAtTime(0.0001, now + CUT_MS / 1000);
+    for (const source of cueSources.get(active) || []) {
+      try { source.stop(now + CUT_MS / 1000); } catch { /* already ended */ }
+    }
   }
-  const bus = renderCue(ctx, cue, ctx.destination, now + LEAD_S);
-  active = bus ? bus.gain : null;
+  active = renderCue(ctx, cue, ctx.destination, now + LEAD_S);
 }
 
 const GESTURES = ["pointerdown", "keydown", "touchstart"];

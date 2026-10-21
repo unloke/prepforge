@@ -14,6 +14,7 @@
 | Generate | 棋譜右上 Generate | 棋譜標題列 Generate |
 | Coverage 掃描、補法預覽與新增 | Inspector → Coverage | Coverage 分頁 |
 | Smart queue、提示、跳過、Blitz、摘要 | Train → Smart queue | Train → Smart queue |
+| 本機訓練紀錄（Smart queue／Blitz） | Train → History，或完成後 → History | 相同入口 |
 | Line rehearsal、錯題重練 | Train → Line rehearsal | Train → Line rehearsal |
 | Practice game、悔棋、認輸與轉分析 | Train → Practice game | Train → Practice game |
 | Analyze：輸入 PGN、檔案、最近分析、上一局 | Analyze 的來源與 Games 面板 | Analyze 底部 Games 資料夾按鈕 |
@@ -96,6 +97,14 @@
 6. 卡片完成後查看 Session complete；New session 開新一輪。
 
 完成判準：到達摘要，看到第一次答對、失誤（提示後答對也算失誤）與跳過數；結束後不再顯示待走方。
+
+**History 試用版**：在開始畫面按 History（Smart queue 與 Line rehearsal 的 Start 旁、Practice game 的 Start 下排（短手機需向下捲動設定面板），以及「No moves to train yet」時的 Open Repertoire 旁）或完成摘要按 History，查看這個帳號在此瀏覽器完成的 Smart queue／Blitz 紀錄；進行中的計時 session 不顯示入口。最新一輪以首次作答比例領頭（首次答對／首次作答，示範著法與跳過的手不列入分母，亦不計入答對），下方依時間列出較早的紀錄；每列以 tooltip 提供完整卡數、失誤與跳過數。對話框底部顯示實際保留的筆數（例如「37 saved runs」），上限細節在該行的 tooltip。
+
+保留上限（兩個硬上限同時成立）：每個帳號最多保留 **100 筆**，且該帳號的序列化紀錄 VALUE（`{"v":1,"runs":[…]}`，含外框與逗號）最多 **96 KiB ＝ 98,304 位元組 UTF-8**。排序一律依 `finishedAt` 由新到舊，再從最舊的一端移除直到兩個上限都成立；保留的是完成時間最近的紀錄，不是最後寫入的那一筆（系統時鐘回退時也一樣）。沒有例外：若單筆新紀錄自己就超過 byte 上限，或它的完成時間排在已保留整份清單之外，該筆不會寫入，既有紀錄逐 byte 不變，訓練完成流程照常；超過 byte 上限的既有文件整份視為不可用，不會被讀出。
+
+位元組計價：上限算的是 UTF-8 位元組，而 localStorage 配額一般以 UTF-16 code unit 計價（每單位約 2 bytes）。ASCII 字元正好是 1 個 UTF-8 位元組換 2 bytes 配額，所以 96 KiB 的紀錄最多佔用 **192 KiB** 的配額單位，另加 key 本身（`pf.trainHistory:<帳號>`）；非 ASCII 名稱的比例則各不相同。上限以帳號為單位，**沒有跨帳號的應用程式整體預算**：同一瀏覽器 N 個帳號各自 96 KiB，最外層仍受瀏覽器 origin 配額約束。
+
+紀錄只存在本機 localStorage（key `pf.trainHistory:<帳號>`），重新開分頁仍保留，清除網站儲存空間會刪除；不跨裝置同步，不記錄 Line rehearsal／Practice game，也不補入之前的訓練。寫入被拒（配額不足、站點儲存被關閉）時既有紀錄保持不變、訓練完成不受影響，該輪只是沒有存進去；若**讀取**被拒（例如站點儲存被封鎖），History 對話框顯示 History unavailable 並說明要開啟站點儲存——那是讀取失敗，不是每一種寫入失敗都會出現的畫面。
 
 ## 7. Line rehearsal
 

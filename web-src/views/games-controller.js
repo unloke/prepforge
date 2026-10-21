@@ -2,7 +2,8 @@ import { html } from "../html.js";
 import { MAX_FETCH } from "../generated/shared-constants.js";
 import { countOf } from "../plural.js";
 import { appState } from "../core/state.js";
-import { currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
+import { api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
+import { analysisRecallSeq, invalidateAnalysisSource, recallAnalysis } from "../controllers/analyze-entry.js";
 import { localBoardInfo } from "../chess-local.js";
 import { parseFenBoard, pieceSvg } from "../board/ui.js";
 import { saveReturnState, rememberHandoff, takeHandoff } from "../handoff-context.js";
@@ -377,16 +378,16 @@ function gameHandoff(game, focus, reason) {
   };
 }
 
-// "Review in Analyze": rebuild the game's PGN from the fetched move list and
-// hand it to the Analyze tab — same flow as "My last game" (press Analyze for
-// the full engine review; the book banner tracks your prep as you step through).
+// Reuse this game's saved review, or load its PGN ready for a first analysis.
 async function replayToAnalyze(game) {
   const owner = currentOwnerId(), generation = appState.ownerGeneration;
-  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration;
+  const sourceSeq = invalidateAnalysisSource();
+  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration && sourceSeq === analysisRecallSeq;
   const mod = await import("../controllers/replay-actions.js");
   if (!isCurrent()) return;
   return mod.replayToAnalyze(game, { switchView, orientAnalysisForSelf,
-    loadPgnIntoAnalyze, showAnalysisPly, takeHandoff, setStatus, isCurrent });
+    loadPgnIntoAnalyze, showAnalysisPly, takeHandoff, setStatus, isCurrent,
+    api, recallAnalysis, sourceSeq });
 }
 
   return {

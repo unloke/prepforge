@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -28,6 +29,18 @@ describe("list entry", () => {
     expect(body).toContain("calc(min(var(--i, 0), 8) * 25ms)");
     const frames = /@keyframes row-enter \{([\s\S]*?)\n\}/.exec(css)[1];
     expect(frames).not.toMatch(/width|height|top:|left:|margin|padding/);
+  });
+
+  it("the Library only animates the rows that actually arrived", () => {
+    // Rows are reconciled, not rewritten: a kept row keeps its node, and the
+    // marker decides whether it enters. Without the opt-out a re-shown view
+    // restarts the animation on every row it already had — the "it fades in
+    // twice" report.
+    const rule = /#view-dashboard \.list-enter > \.lib-row:not\(\.is-enter\) \{([^}]*)\}/.exec(css);
+    expect(rule, "the Library's settled-row opt-out is missing").toBeTruthy();
+    expect(rule[1].replace(/\s/g, "")).toBe("animation:none;");
+    const rows = fs.readFileSync(new URL("./views/library-rows.js", import.meta.url), "utf8");
+    expect(rows).toContain('animationName === "row-enter"');
   });
 
   it("gives every pressable control the same scale-down", () => {

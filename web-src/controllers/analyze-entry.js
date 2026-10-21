@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { appState } from "../core/state.js";
-import { api, currentOwnerId, localDayOf, postJson, setStatus, setStatusError } from "../core/api.js";
-import { markLichessSeen, orientAnalysisForSelf } from "../account-entry.js";
+import { api, currentOwnerId, localDayOf, setStatus, setStatusError } from "../core/api.js";
+import { holdNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
 
 // The Analyze entry points that are not the analysis run itself: "My last
 // game", the saved-list "Recent analyses", recalling one, and deleting one with
@@ -11,16 +11,16 @@ import { markLichessSeen, orientAnalysisForSelf } from "../account-entry.js";
 // The analysis session is lazy (it pulls chess.js, the coach and the engine), so
 // its entry points arrive as deps rather than imports; the shell passes the
 // wrappers it already keeps.
-let requireSignIn, startLichessOAuth, syncFetchMyGameButton, syncViewHeads, lichessAccounts,
+let requireSignIn, startLichessOAuth, syncViewHeads, lichessAccounts,
   showUndoToast, ensureAnalyzeView, orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis,
   resetAnalysisVariations, showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff;
 
 export function createAnalyzeEntry(deps) {
-  ({ requireSignIn, startLichessOAuth, syncFetchMyGameButton, syncViewHeads, lichessAccounts,
+  ({ requireSignIn, startLichessOAuth, syncViewHeads, lichessAccounts,
     showUndoToast, ensureAnalyzeView, orientAnalysisFromPgn, loadPgnIntoAnalyze, runAnalysis,
     resetAnalysisVariations, showAnalysisPly, revealAnalysisResults, hideAnalysisHandoff } = deps);
   return {
-    fetchMyLichessGame, loadAnalysisHistory, refreshAnalysisHistoryIfOpen,
+    fetchMyLichessGame, importLatestGame, loadAnalysisHistory, refreshAnalysisHistoryIfOpen,
     invalidateAnalysisSource, recallAnalysis, deleteSavedAnalysis, syncPgnFromTree,
     bindAnalyzePgnInput, invalidateHistory: () => { analysisHistorySeq++; },
   };
@@ -30,54 +30,80 @@ export function createAnalyzeEntry(deps) {
 // request (including a lazy view load) replace the latest game.
 export let analysisRecallSeq = 0;
 
+function latestGameHandoff() {
+  const sourceSeq = invalidateAnalysisSource(), owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const isCurrent = () => sourceSeq === analysisRecallSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
+  return { sourceSeq, isCurrent, release: holdNewGameNudge(isCurrent) };
+}
+
 export async function fetchMyLichessGame(accountId = null) {
-  // Your games come from the Lichess account linked to your PrepForge account.
   if (!requireSignIn("Sign in to load your latest Lichess game", "my-last-game")) return;
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
     return;
   }
+  const handoff = latestGameHandoff();
   const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
+  const button = document.getElementById("fetch-my-game"), token = String(handoff.sourceSeq);
   setStatus("Fetching your latest game...");
-  const button = document.getElementById("fetch-my-game");
-  // A second click while the fetch is in flight would race two analyses over
-  // the same PGN box; the button says it is working instead.
   if (button) {
-    button.dataset.wasDisabled = "1";
+    button.dataset.wasDisabled = token;
     button.disabled = true;
   }
-  let latest;
-  const done = () => {
-    if (button?.dataset.wasDisabled) {
+  try {
+    const latest = await api(`/api/lichess/latest${query}`);
+    if (!handoff.isCurrent()) return;
+    if (!latest.has_game) {
+      setStatus("No recent games found", { severity: "warning" });
+      return;
+    }
+    return await importLatestGame(latest, handoff);
+  } catch (error) {
+    if (handoff.isCurrent()) setStatusError(error.message);
+  } finally {
+    handoff.release();
+    if (button?.dataset.wasDisabled === token) {
       delete button.dataset.wasDisabled;
+      button.disabled = false;
       syncFetchMyGameButton();
     }
-  };
-  try {
-    latest = await api(`/api/lichess/latest${query}`);
-  } catch (error) {
-    done();
-    setStatusError(error.message);
-    return;
   }
-  if (!latest.has_game) {
-    done();
-  setStatus("No recent games found", { severity: "warning" });
-    return;
-  }
-  document.getElementById("pgn-input").value = latest.pgn || "";
-  // Show the game in the move list right away, then analyze it in the same step —
-  // "My last game" means "review my last game", not "paste it and wait for me".
-  await loadPgnIntoAnalyze(latest.pgn || "", { goToEnd: false, quiet: true }).catch(() => {});
-  orientAnalysisForSelf(latest.white, latest.black, [latest.source_account]);
-  if (latest.lichess_id) markLichessSeen(latest.lichess_id);
-  const source = latest.source_account ? ` · from ${latest.source_account}` : "";
-  setStatus(`Loaded ${latest.white || "?"} vs ${latest.black || "?"}${source} · analyzing`);
+}
+
+// Both entry points import the same full response. A light hint can become
+// outdated while its PGN is fetched; players, identity and text must travel together.
+export async function importLatestGame(game, context = null) {
+  if (!game?.has_game) return false;
+  const handoff = context || latestGameHandoff();
   try {
+    if (!game.pgn) game = await api("/api/lichess/latest");
+    if (!handoff.isCurrent()) return false;
+    const pgn = game.pgn || "";
+    if (!game.has_game || !pgn.trim()) {
+      setStatus("No recent games found", { severity: "warning" });
+      return false;
+    }
+    document.getElementById("pgn-input").value = pgn;
+    orientAnalysisForSelf(game.white, game.black, [game.source_account]);
+    const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: handoff.sourceSeq });
+    if (!handoff.isCurrent()) return false;
+    if (!loaded) {
+      setStatusError('Could not load this game. Try Last game again.');
+      return false;
+    }
+    orientAnalysisForSelf(game.white, game.black, [game.source_account]);
+    if (game.lichess_id) void markLichessSeen(game.lichess_id);
+    handoff.release();
+    const source = game.source_account ? ` · from ${game.source_account}` : "";
+    setStatus(`Loaded ${game.white || "?"} vs ${game.black || "?"}${source} · analyzing`);
     await runAnalysis();
+    return true;
+  } catch (error) {
+    if (handoff.isCurrent()) setStatusError(error.message);
+    return false;
   } finally {
-    done();
+    handoff.release();
   }
 }
 
@@ -184,17 +210,17 @@ export function invalidateAnalysisSource() {
   return ++analysisRecallSeq;
 }
 
-export async function recallAnalysis(gameId, listItem = null) {
-  const seq = invalidateAnalysisSource();
+export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource() } = {}) {
+  const seq = sourceSeq;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
   try {
     const payload = await api(`/api/analyses/${encodeURIComponent(gameId)}`);
     const view = await ensureAnalyzeView();
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq) return false;
     // The saved result carries no player names; the history row does. Without
     // them the head fell back to "Analysis board" for a named game.
-    for (const key of ["white", "black", "result"]) {
+    for (const key of ["white", "black", "result", "lichess_id"]) {
       if (!payload[key] && listItem?.[key]) payload[key] = listItem[key];
     }
     appState.analysis = payload;
@@ -206,17 +232,17 @@ export async function recallAnalysis(gameId, listItem = null) {
     orientAnalysisForSelf(payload.white, payload.black);
     resetAnalysisVariations();
     await showAnalysisPly(0);
-    if (seq !== analysisRecallSeq) return;
+    if (seq !== analysisRecallSeq) return false;
     view.renderAnalysis(payload);
     syncViewHeads();
     revealAnalysisResults();
     // The list sits at the panel's foot; open the new game at its summary.
     document.querySelector("#analyze-sidebar .panel-scroll")?.scrollTo({ top: 0 });
     await syncPgnFromTree();
-    if (seq !== analysisRecallSeq) return;
+    return seq === analysisRecallSeq;
   } catch (error) {
-    if (seq !== analysisRecallSeq) return;
-    setStatusError(error.message);
+    if (seq === analysisRecallSeq) setStatusError(error.message);
+    return false;
   }
 }
 

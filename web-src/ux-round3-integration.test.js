@@ -157,10 +157,10 @@ describe("Recall source ownership", () => {
     const move = parsed.root.children[0];
     h.pending.resolve({ game_id: "fen", moves: [{ ply: 1, san: move.san, move_number: move.moveNumber, side: move.side,
       fen_before: move.fenBefore, fen_after: move.fenAfter }], eval_graph: [] });
-    await h.recallAnalysis("fen", { white: "Me", black: "Other", result: "1/2-1/2" });
+    await h.recallAnalysis("fen", { white: "Me", black: "Other", result: "1/2-1/2", lichess_id: "A1b2C3d4" });
     const recalled = parsePgn(h.input.value);
     expect(recalled.ok).toBe(true);
-    expect(recalled.headers).toMatchObject({ White: "Me", Black: "Other", Result: "1/2-1/2", SetUp: "1", FEN: move.fenBefore });
+    expect(recalled.headers).toMatchObject({ White: "Me", Black: "Other", Result: "1/2-1/2", Site: "https://lichess.org/A1b2C3d4", SetUp: "1", FEN: move.fenBefore });
     expect(recalled.root.children[0].fenBefore).toBe(move.fenBefore);
   });
 });

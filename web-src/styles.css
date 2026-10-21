@@ -1784,6 +1784,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 #view-teams .list-enter > * {
   animation-delay: calc(min(var(--i, 0), 8) * 60ms);
 }
+/* The Library reconciles its rows instead of rewriting them, so it marks the
+   ones that actually arrived. A row that was already on screen keeps its
+   settled state: re-showing the view, filtering, or a refresh that only
+   changed another row must not replay the entrance over it. */
+#view-dashboard .list-enter > .lib-row:not(.is-enter) {
+  animation: none;
+}
 @keyframes row-enter {
   from {
     opacity: 0;
@@ -3516,6 +3523,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Choosing a mode is setup: once a session runs, or its result shows, the tabs
    leave with the setup card (the card head names the mode). */
 #view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { display: none; }
+/* Setup-only entries leave too, and a live Practice game is still `setup` for
+   the panel (the tabs stay up), so that one is read from the game itself: Lucky
+   is disabled exactly while a game is active, which is when History must be
+   gone. A finished game re-enables it and the entry returns. Every other state
+   already hides these entries with the setup card. */
+#view-train .train-sidebar[data-session-state="setup"] #train-play-setup:has(#feeling-lucky:disabled) [data-train-history] { display: none; }
 .train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {

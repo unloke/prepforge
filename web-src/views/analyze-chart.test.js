@@ -201,6 +201,16 @@ describe("eval chart tooltip boundaries", () => {
 });
 
 describe("eval chart sizing", () => {
+  it("adds analysis samples without replaying the graph entrance", () => {
+    const { chart, view } = setup();
+    for (let count = 1; count <= POINTS.length; count++) {
+      view.renderEvalChart(POINTS.slice(0, count));
+      expect(chart.getAttribute('class') || '').not.toContain('is-entering');
+      expect(chart.querySelectorAll('.eval-line')).toHaveLength(1);
+    }
+    expect(chart.listeners.animationend).toBeUndefined();
+  });
+
   it("draws a short phone chart once instead of redrawing itself forever", () => {
     const { chart, appState, view } = setup();
     chart.rectHeight = 30;
@@ -249,29 +259,17 @@ describe("class bars", () => {
 });
 
 describe("coach note", () => {
-  it("sets the note at reading size and sizes the block to the note", () => {
-    // The note is running text at 15px on a phone. Its rule runs the note and
-    // not a reserved box, and a note past five lines scrolls instead of pushing
-    // the score sheet down. Two lines are reserved inside the note so a one-line
-    // verdict cannot pull the instrument up (measured at 1440: the card is
-    // still between a one-line and a two-line ply without it).
+  it("keeps the verdict readable and scrolls text inside its reserved row", () => {
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: calc\(var\(--coach-line\) \* 2 \+ 4px\)/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: 0/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*overflow-y: auto/);
   });
 
-  it("reserves three lines in the block, so the instrument below holds still", () => {
-    // Across three games at 1440, 1180 and 982 (171 plies) a verdict is one
-    // line 80 times, two 75, three 14, four twice: three lines is the floor the
-    // block keeps, and a longer note grows it instead of being cut.
-    // The floor is the sum of the head and the note's lines, written from the
-    // same two tokens it is made of: putting the two 26px actions on the head
-    // row makes it 4px taller than the strip it replaced, and a stale constant
-    // would leave the verdict 4px short.
+  it("reserves rows for the controls, verdict, Humans and prep", () => {
     const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
     expect(rule).toMatch(/--coach-head: 26px/);
-    expect(rule).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
-    expect(rule).not.toMatch(/(^|[^-])height:\s*\d+px/);
+    expect(rule).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) var\(--coach-foot\)/);
+    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ var\(--coach-foot\) \* 2 \+ 28px\)/);
   });
 });
 
@@ -547,9 +545,9 @@ describe("Analyze on a phone", () => {
     expect(phone).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
     const graph = phone.match(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*\}/);
     expect(graph, "the phone graph rule").not.toBeNull();
-    expect(graph[0]).toMatch(/flex: 1 1 auto/);
-    expect(graph[0]).toMatch(/min-height: 84px/);
-    expect(graph[0]).toMatch(/max-height: 34dvh/);
+    expect(graph[0]).toMatch(/flex: 1 1 0/);
+    expect(graph[0]).toMatch(/min-height: var\(--phone-chart-min\)/);
+    expect(graph[0]).toMatch(/max-height: 34svh/);
   });
 
   // One left edge for the whole column. The engine line, the job dock and the
@@ -557,12 +555,13 @@ describe("Analyze on a phone", () => {
   // the graph and the eval row sat at 16 while everything under them started
   // somewhere else (measured at 390x844: 16, 10, 12, 14).
   it("keeps every band under the board on the phone gutter", () => {
-    for (const selector of ["#analysis-engine-slot", "#analysis-job-dock", "#analysis-explain"]) {
+    for (const selector of ["#analysis-engine-slot", "#analysis-explain"]) {
       const start = phone.indexOf(`${selector} {`);
       expect(start, selector).toBeGreaterThan(-1);
       const body = phone.slice(phone.indexOf("{", start), phone.indexOf("}", start));
       expect(body, selector).toMatch(/padding: [^;]*var\(--phone-gutter\)/);
     }
+    expect(phone).toMatch(/#analysis-job-dock \{[^}]*left: var\(--phone-gutter\);[^}]*right: var\(--phone-gutter\)/);
   });
 
   // Report and Engine are the two controls in the row a thumb reaches; they were

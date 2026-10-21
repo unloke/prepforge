@@ -1,6 +1,6 @@
 import { html } from "./html.js";
 import { appState, boards } from "./core/state.js";
-import { OUTBOX_TAB_ID, activeViewName, setStatus, setStatusError } from "./core/api.js";
+import { OUTBOX_TAB_ID, activeViewName, api, currentOwnerId, setStatus, setStatusError } from "./core/api.js";
 import { effectiveStockfishDepth, pref } from "./core/prefs.js";
 import { isBrowserEngineAvailable, createEngineProvider } from "./engine/stockfish-provider.js";
 import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/engine.js";
@@ -350,6 +350,48 @@ export function hasPendingBuildOpsFor(repertoireId) {
     appState.buildPending.some((m) => buildOpMatchesRepertoire(m, repertoireId)) ||
     appState.buildPendingDeletes.some((entry) => buildOpMatchesRepertoire(entry, repertoireId))
   );
+}
+
+// Re-read the open repertoire's tree from the server. This is the one hydrateBuild
+// entry point that is not a user navigation (a finished Train session changed
+// spaced-repetition state, so the Repertoire head's "to train" count is stale).
+//
+// hydrateBuild takes the /api/build/load PAYLOAD and assigns it to appState.build.
+// Handing it a repertoire id put a string in appState.build, and the next paint of
+// the header read build.nodes.filter — "Cannot read properties of undefined".
+//
+// The round-trip is a window in which the world can move: another repertoire can be
+// opened, the account can change, or a queued edit can be acknowledged (which
+// re-hydrates the tree and advances its revision). Adopting the older payload then
+// would paint a tree the user already left and drop the edit that just landed, so
+// any of those changes abandons the read. A failed read leaves the current tree
+// alone: a stale count beats a half-loaded builder.
+export async function reloadOpenBuildTree() {
+  const build = appState.build;
+  const repertoireId = build && build.repertoire_id;
+  if (!repertoireId || !appState.signedIn || !hooks.build?.session) return false;
+  const revision = build.revision;
+  const owner = currentOwnerId();
+  const generation = appState.ownerGeneration;
+  try {
+    const payload = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
+    const unchanged =
+      appState.signedIn &&
+      owner === currentOwnerId() &&
+      generation === appState.ownerGeneration &&
+      // Same tree object AND same revision: a confirmed edit both replaces the
+      // object and moves the revision, and the payload predates either.
+      appState.build === build &&
+      build.revision === revision &&
+      build.repertoire_id === repertoireId;
+    if (!unchanged) return false;
+    const selection = appState.buildCurrentNodeId;
+    const kept = payload.nodes.some((node) => node.id === selection);
+    await hooks.build.session.hydrateBuild(payload, kept ? selection : null);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Build a provisional Build node matching the serializer shape (workspace_view.py

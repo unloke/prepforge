@@ -5,6 +5,7 @@
 //   - coach banner + named board controls + blitz row present in setup
 //   - play mode shows opponent-book picker; switching back works
 //   - progress panel + queue strip + up-next render from a live session fixture
+import { checkTrainingHistory } from './training-history.mjs';
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -119,12 +120,20 @@ async function runViewport(vp) {
       startHidden: document.getElementById("train-srs-start")?.hidden,
       fixHidden: document.getElementById("train-empty")?.hidden,
       fix: document.getElementById("train-empty-build")?.textContent?.trim(),
+      history: (() => {
+        const el = document.querySelector('#train-empty [data-train-history]');
+        return el ? { text: el.textContent.trim(), visible: !!el.getBoundingClientRect().height } : null;
+      })(),
     }));
     check(emptySetup.banner === "No moves to train yet", "empty queue banner should be the one heading, got " + JSON.stringify(emptySetup.banner));
     check(emptySetup.previewHidden === true, "empty queue preview should be hidden, got " + JSON.stringify(emptySetup.preview));
     // Nothing to train: a dead Start is not the answer; the way to fix it is.
     check(emptySetup.startHidden === true, "empty queue should hide Start, got " + JSON.stringify(emptySetup.startHidden));
     check(emptySetup.fixHidden === false && emptySetup.fix === "Open Repertoire", "empty queue should offer the fix, got " + JSON.stringify(emptySetup.fix));
+    // History has to stay reachable when there is nothing to train: it is the
+    // one thing a player wants exactly then, and it used to leave with Start.
+    check(emptySetup.history?.visible === true && emptySetup.history.text === "History",
+      "the empty queue must still offer History, got " + JSON.stringify(emptySetup.history));
   } finally {
     await emptyPage.close();
   }
@@ -253,6 +262,7 @@ async function runViewport(vp) {
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
+      session_generation: '2026-10-21T07:00:00+00:00', state_version: 1,
       session_id: "s1", mode: "smart", mixed: true, fresh: true, resumed: false,
       repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
       card_index: 0, total_cards: 4,
@@ -294,6 +304,7 @@ async function runViewport(vp) {
   const summaryUp = await page.locator("#train-summary:not([hidden])").count();
   check(summaryUp === 1, "finishing the last card should show the session results");
   await shot("summary");
+  await checkTrainingHistory(page, check, shot);
   check(!(await page.locator("#train-modes").isVisible()), "the mode tabs should be hidden on the result screen");
   check((await page.locator("#train-mode-name").textContent()) === "Smart queue", "the result card should name the session's mode");
   await page.evaluate(() => document.getElementById("train-summary-new").click());
@@ -309,6 +320,7 @@ async function runViewport(vp) {
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
+      session_generation: '2026-10-21T07:01:00+00:00', state_version: 1,
       session_id: "s1", mode: "smart", mixed: true, fresh: true, resumed: false,
       repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
       card_index: 0, total_cards: 4,

@@ -31,7 +31,7 @@ import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoir
   isBuildReadOnly,
   deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
   hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
-  reapplyPendingBuildNodes, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
+  reapplyPendingBuildNodes, reloadOpenBuildTree, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
   setExplorerDb } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
@@ -1246,9 +1246,12 @@ async function refreshRepertoireHead() {
   if (view) {
     // Also re-reads the active repertoire's tree: spaced repetition moved its
     // moves from "to train" to learned, so the header's count is stale too.
+    // hydrateBuild takes the /api/build/load PAYLOAD, not an id (an id made it
+    // overwrite appState.build with a string, and the very next paint of the
+    // header read build.nodes.filter → "Cannot read properties of undefined").
     await Promise.all([
       view.loadDashboardRepertoires(),
-      appState.build && appState.signedIn ? hydrateBuild(appState.build.repertoire_id) : null,
+      reloadOpenBuildTree(),
     ]);
   } else if (appState.signedIn) {
     appState.repertoireList = ((await api("/api/repertoires")).repertoires || []);
@@ -1619,6 +1622,14 @@ function bindEvents() {
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
+  document.querySelectorAll('[data-train-history]').forEach(button => button.addEventListener('click', async () => {
+    if (!requireSignIn('Sign in to view your training history', 'train-history')) return;
+    const owner = currentOwnerId();
+    try {
+      const { openTrainingHistory } = await import('./views/train-history.js');
+      if (currentOwnerId() === owner) openTrainingHistory(owner);
+    } catch { setStatusError('Could not open History. Reload and try again.'); }
+  }));
   document.getElementById("train-empty-build").addEventListener("click", () => switchView("build"));
   document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
   const startPlay = document.getElementById("start-play");

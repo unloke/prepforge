@@ -33,6 +33,7 @@ def run_e2e_script(script: Path, tmp_path, env_overrides: dict | None = None):
             "PREPFORGE_TOKEN_KEY": "e2e-scout-token-key-not-for-prod",
             "PREPFORGE_ENV": "development",
             "E2E_BASE_URL": f"http://127.0.0.1:{port}",
+            "PYTHONPATH": str(ROOT / "src"),
             "E2E_SCOUT_UPSTREAM": os.environ.get("E2E_SCOUT_UPSTREAM", "fixture"),
         }
     )

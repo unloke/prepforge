@@ -11,6 +11,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
 import { Chess } from "chess.js";
+import { checkAnalyzeStability } from "./analyze-stability.mjs";
 
 // Explicit test PGN — the browser engine
 // evaluates these REAL positions, so the prepare stub derives real FENs.
@@ -445,7 +446,8 @@ async function runViewport(vp) {
       scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
   });
   check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
-  check(engineLayout.coachHeight <= 160, "Coach must remain compact");
+  check(engineLayout.coachHeight <= 180, "Coach must keep its reserved verdict, Humans and prep rows compact");
+  await checkAnalyzeStability(page, vp.width <= 760, check);
   await shot("engine");
   await page.locator("#open-engine-widget").click();
   await page.evaluate(() => document.getElementById("analysis-start").click());
@@ -587,7 +589,7 @@ async function runViewport(vp) {
         proseBottom: Math.round(prose.getBoundingClientRect().bottom),
         moves: box("#analysis-moves"),
         barTop: Math.round(bar.top),
-        coachDead: Math.round(coach.getBoundingClientRect().bottom - prose.getBoundingClientRect().bottom),
+        coachFits: coach.scrollHeight <= coach.clientHeight + 1,
         pageScrolls: document.getElementById("view-analyze").scrollHeight >
           document.getElementById("view-analyze").clientHeight + 1,
       };
@@ -597,11 +599,10 @@ async function runViewport(vp) {
       stack.coach.bottom <= stack.barTop + 1;
     check(inOrder, `phone stack must be chart, board, coach, thumb bar: ${JSON.stringify(stack)}`);
     check(stack.moves === null, `a phone Analyze screen must have no move list: ${JSON.stringify(stack.moves)}`);
-    // The graph is the scrubber now: it holds the room the list had (the phone
-    // used to draw an 84px strip and a 32px-pitch sheet).
-    check(stack.chart.height > 84, `the phone graph must take the room the move list had, got ${stack.chart.height}px`);
-    // A one-line verdict leaves at most a line of breathing room, not a band.
-    check(stack.coachDead <= 40, `the coach band must not keep an empty band under its note: ${stack.coachDead}px`);
+    // The scrubber keeps a 64px target on short screens; surplus height goes
+    // here after the board and the stable Coach/engine rows fit.
+    check(stack.chart.height >= 64, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
+    check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
   await page.evaluate(() => document.getElementById("analysis-start").click());

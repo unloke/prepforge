@@ -21,6 +21,7 @@ function classList() {
 function makeEl(extra = {}) {
   return {
     hidden: false,
+    children: [],
     get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
     textContent: "",
     querySelectorAll: vi.fn(() => []),

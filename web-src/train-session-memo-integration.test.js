@@ -3,6 +3,7 @@ import { queueRepertoireForStart, startNotice } from "./train-start.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
+import { readTrainingHistory } from './train-history.js';
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -24,7 +25,8 @@ const memo = { stats, seed: 7, generation: "start-1", healthBefore: { new: 20 },
 
 function harness(overrides = {}) {
   const data = new Map();
-  globalThis.localStorage = { getItem: (k) => data.get(k) || null,
+  globalThis.localStorage = { get length() { return data.size; }, key: index => [...data.keys()][index] ?? null,
+    getItem: (k) => data.get(k) || null,
     setItem: (k, v) => data.set(k, v), removeItem: (k) => data.delete(k) };
   const appState = { accountUserId: "alice", trainStats: { ...stats }, trainMode: "smart" };
   const payload = { mode: "smart", session_id: "session", seed: 7, session_generation: "start-1", card_index: 1, resumed: true, cards: queue,
@@ -253,7 +255,11 @@ describe("Smart memo integration at Start", () => {
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
       smartSessionOutcomeText: () => "",
     });
+    h.appState.smart.cardIndex = h.appState.smart.queue.length;
+    h.appState.smart.cardsDone = 3;
     await finish();
+    expect(readTrainingHistory('alice')).toHaveLength(1);
+    expect(readTrainingHistory('bob')).toHaveLength(0);
     expect(loadSessionMemo("alice", "session", "start-1")).toBeNull();
     expect(loadSessionMemo("bob", "session", "start-1")).not.toBeNull();
   });
