@@ -39,7 +39,12 @@
   input:not([type="checkbox"], [type="radio"], [type="range"]),
   select,
   textarea { font-size: 16px; }
-  .btn.sm { min-height: 36px; height: 36px; }
+  /* Every control a thumb reaches is a thumb-sized target. The shared 30px
+     control height is a mouse height; `.btn.sm` was overridden to 36 here, which
+     left the Library's "Clear filter" and its "Try again" (the two buttons a
+     dead-end screen offers) 8px under the floor. Dense rows that need to stay
+     dense (the Build inspector's tools) set their own height further down. */
+  .btn.sm { min-height: 44px; height: 44px; }
 
   /* ---- Pages ------------------------------------------------------------- */
   .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
