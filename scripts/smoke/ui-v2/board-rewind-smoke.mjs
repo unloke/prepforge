@@ -25,7 +25,7 @@ import { Chess } from "chess.js";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
-const PORT = Number(process.env.BOARD_REWIND_SMOKE_PORT || 8809);
+const PORT = Number(process.env.BOARD_REWIND_SMOKE_PORT || 8810);
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".wasm": "application/wasm", ".json": "application/json; charset=utf-8", ".svg": "image/svg+xml" };
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
