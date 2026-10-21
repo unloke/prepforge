@@ -26,40 +26,6 @@ const STARTUP_TIMEOUT_MS = 60000;
 const DEFAULT_MAX_NODES = ANALYSIS_MAX_NODES;
 const MAX_CONCURRENCY = 3;
 
-// Warm browser engines a finished pass leaves behind for the next one. Starting a Stockfish
-// worker (WASM + network load) costs ~250 ms, and a game analysis runs a few small batches
-// right after the main pass (the Maia trap and gap reads): they pick these up instead of
-// paying that again. Only the real browser engine is pooled; an idle one closes on its own.
-const POOL_IDLE_MS = 8000;
-const idleEngines = []; // { provider, net, maxNodes, timer }
-
-function takeIdleEngine(maxNodes, net) {
-  const k = idleEngines.findIndex((e) => e.maxNodes === maxNodes && e.net === net);
-  if (k < 0) return null;
-  const [entry] = idleEngines.splice(k, 1);
-  clearTimeout(entry.timer);
-  entry.unregisterIdle?.();
-  return entry.provider;
-}
-
-function parkIdleEngine(provider, maxNodes, net) {
-  if (idleEngines.length >= MAX_CONCURRENCY) return false;
-  const entry = { provider, maxNodes, net, timer: null, unregisterIdle: null };
-  const reclaim = () => {
-    const k = idleEngines.indexOf(entry);
-    if (k < 0) return;
-    idleEngines.splice(k, 1);
-    clearTimeout(entry.timer);
-    entry.unregisterIdle?.();
-    Promise.resolve(provider.close()).catch(() => {});
-  };
-  entry.reclaim = reclaim;
-  entry.timer = setTimeout(reclaim, POOL_IDLE_MS);
-  idleEngines.push(entry);
-  entry.unregisterIdle = stockfishBudget.registerIdle(reclaim);
-  return true;
-}
-
 export function resolveConcurrency(requested) {
   return Number.isFinite(requested) && requested >= 1
     ? Math.min(MAX_CONCURRENCY, Math.floor(requested)) : usableEngineProfile().workers;
@@ -288,9 +254,7 @@ async function analyzePositionsPass({
   }
 
   async function workerLoop() {
-    const pooled = createProvider === createEngineProvider;
     let provider, opened = false;
-    let clean = false;
     // Allocation/handshake waits happen before search polling. Keep cancellation
     // and the deadline active there too, so queued jobs cannot hang indefinitely.
     async function startRead(read) {
@@ -308,12 +272,10 @@ async function analyzePositionsPass({
       } finally { clearInterval(timer); }
     }
     try {
-      const warm = pooled ? takeIdleEngine(maxNodes, attempt?.net) : null;
       // The run owns the guard and fallback. A per-worker startup failure must not
       // change the profile while sibling workers are still settling.
-      provider = warm || createProvider({ maxDepth: targetDepth, maxNodes, batch: true,
+      provider = createProvider({ maxDepth: targetDepth, maxNodes, batch: true,
         profileManaged: false, net: attempt?.net });
-      opened = !!warm;
       while (!cancelled()) {
         const fen = takeNextFen();
         if (fen == null) break;
@@ -337,15 +299,17 @@ async function analyzePositionsPass({
 
         record(fen, await waitForEval(provider, fen, targetDepth, cancelled));
       }
-      clean = !cancelled();
     } catch (err) {
       // Stop the other workers, then surface the failure to the caller.
       aborted = true;
       throw err;
     } finally {
-      // A worker that finished its share cleanly stays warm for the next batch; one that
-      // failed or was stopped mid-search is torn down.
-      if (provider && !(pooled && clean && opened && parkIdleEngine(provider, maxNodes, attempt?.net))) {
+      // Every pass closes its own worker. A finished pass's worker used to be parked
+      // for POOL_IDLE_MS on the hope that a follow-up batch would pick it up, but a
+      // batch opens with `beginBatch()`, which reclaims idle engines before any worker
+      // loop can take one (measured: 0 pool hits over a whole session with the Maia
+      // follow-ups included) — so the parked worker only held its reserved heap.
+      if (provider) {
         try {
           await provider.close();
         } catch (_) {
