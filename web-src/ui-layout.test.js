@@ -372,28 +372,38 @@ describe("workspace chrome layout", () => {
     expect(session).toMatch(/applyBuildDockHeight\(drag\.want, \{ pinned: true \}\)/);
   });
 
-  it("composes Analyze as one panel: game head, coach card, results, drawers", () => {
+  it("composes Analyze as one panel: game on the board, coach card, results, drawers", () => {
     const view = html.slice(html.indexOf('id="view-analyze"'), html.indexOf('id="view-build"'));
     const rule = (selector) => {
       const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       return analyzeCss.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]+)\\}`))?.[1] || "";
     };
     expect(view).toContain('<aside class="sidebar panel" id="analyze-sidebar">');
-    // The head names the game (or, with none, says how to get one) beside the
-    // two actions: the strip used to be the actions on empty ground.
+    // The board bar names the game, in the slot the current move used to hold:
+    // the move label ("Initial position", "3... a6") is gone, because the board
+    // already shows the position and the moves list marks the move.
     expect(view).not.toContain('id="analysis-game-title"');
-    expect(view).toContain('class="board-label" id="analysis-board-label"');
-    const headRow = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
-    expect(headRow).toContain('id="analysis-game-meta"');
-    expect(headRow).toContain('class="ahi-hint"');
-    expect(headRow).toContain('id="run-analysis"');
+    expect(view).not.toContain('id="analysis-board-label"');
     const boardBar = view.slice(view.indexOf('class="board-bar"'), view.indexOf("<aside", view.indexOf('class="board-bar"')));
-    expect(boardBar).not.toContain('id="analysis-game-meta"');
-    expect(boardBar).toContain('class="board-label" id="analysis-board-label"');
-    expect(analyzeCss).toContain(".analyze-head-id {");
-    // Both actions say what they do. "Last game" was a bare download glyph in
-    // a strip with room for its name; the phone's Games sheet mirrors it.
-    expect(view).toContain('class="btn sm" id="fetch-my-game"');
+    expect(boardBar).toContain('class="board-label board-caption" id="analysis-board-caption"');
+    for (const id of ["analysis-start", "analysis-flip"]) expect(boardBar).toContain(`id="${id}"`);
+    // No head strip: the panel opens on the coach's line, and the two actions
+    // close it at the right end. The strip named the game (now the board's
+    // business) and, with no game loaded, stood on "Paste a PGN, or open your
+    // last game." — a standing explanation of the empty panel.
+    expect(view).not.toContain('class="panel-head"');
+    expect(view).not.toContain('class="ahi-hint"');
+    expect(view).not.toContain('id="analysis-head-status"');
+    const coachHead = view.slice(view.indexOf('class="cc-head"'), view.indexOf('class="coach-prose"'));
+    for (const id of ["analyze-actions", "fetch-my-game", "run-analysis"]) expect(coachHead).toContain(`id="${id}"`);
+    // The two actions close the coach's line, as words: two glyphs would add
+    // 20px to a row with none to give. The row is one line at every width, so
+    // the chip yields (clips, with its word in the title) rather than wrap.
+    expect(analyzeCss).toMatch(/#analyze-actions \.btn > \.bi \{ display: none; \}/);
+    expect(analyzeCss).toMatch(/(\.cc-head \{[^}]*flex-wrap: nowrap|\.phase-chip \{[^}]*text-overflow: ellipsis)/);
+    expect(analyzeCss).toMatch(/#analyze-actions \{ flex-wrap: nowrap; \}/);
+    expect(app).toContain("setBoardCaption(analysisGameName(");
+    // Both actions say what they do ("Last game" was a bare download glyph).
     expect(view).toMatch(/id="fetch-my-game"[^>]*>.*?<span class="bl">Last game<\/span>/);
     // Build's head names its primary action in words and is the panel's title
     // and nothing else: the name at title size, then its two actions. The size
@@ -429,11 +439,7 @@ describe("workspace chrome layout", () => {
     expect(view).not.toContain('id="analysis-evalbar"');
     // The sidebar is a raised panel: the body scrolls, the head stays put.
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
-    // Analyze actions live in the panel head.
-    const head = view.slice(view.indexOf('class="panel-head"'), view.indexOf('class="panel-scroll"'));
-    for (const id of ["analyze-actions", "fetch-my-game", "run-analysis"]) {
-      expect(head).toContain(`id="${id}"`);
-    }
+    const head = view.slice(view.indexOf('class="cc-head"'), view.indexOf('class="coach-prose"'));
     // The live engine shares the Evaluation card with the game graph, after Coach:
     // its switch sits in the card's header row beside the eval chip and win meter,
     // and the whole-game progress docks inside the card.
@@ -446,20 +452,20 @@ describe("workspace chrome layout", () => {
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
     expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
-    // Coach copy wraps instead of clipping; the note takes its own height (the
-    // rule beside it is the note, not a reserved box) and scrolls past five
-    // lines. The block's two-line floor is what keeps the chart below still.
+    // Coach copy wraps instead of clipping; the rule beside it is the note, not
+    // a reserved box, and it scrolls past five lines. The block's three-line
+    // floor (the note's own floors are pinned in analyze-chart.test.js) is what
+    // keeps the chart below still.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
-    expect(rule(".coach-prose")).toMatch(/max-height: calc\(1\.5em \* 5/);
-    expect(rule(".coach-card")).toMatch(/min-height: calc\(1\.5em \* 2/);
+    expect(rule(".coach-prose")).toMatch(/max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
+    expect(rule(".coach-card")).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
     expect(rule(".coach-card")).not.toMatch(/(^|[^-])height:\s*\d+px/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
     // The score sheet is sized to its content so the two sides of a move sit
     // next to each other, the way a score sheet prints them; the trailing
     // track keeps a variation row as wide as the sheet.
     expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content\s+minmax\(0,\s*1fr\)/);
-    expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);
-    // Superseded legacy Analyze chrome is gone from the eager sheet.
+    expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);    // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
     expect(css).not.toContain(".coach-scroll");
     expect(css).not.toContain(".reveal");
@@ -494,8 +500,9 @@ describe("workspace chrome layout", () => {
     // The pill owns the bar's middle: the move label would paint under it, so
     // the phone hides it.
     expect(phoneCss).toMatch(/#view-analyze \.board-bar \.board-label \{ display: none; \}/);
-    // A phone has no panel head: the game's identity block goes with it.
-    expect(phoneCss).toMatch(/#analyze-sidebar > \.panel-head \.analyze-head-id,\s*\n\s*#fetch-my-game \{ display: none; \}/);
+    // A phone has no room for Last game in the panel: it is a row in the Games
+    // sheet, and the pill in the thumb bar carries Analyze.
+    expect(phoneCss).toMatch(/#fetch-my-game \{ display: none; \}/);
     // The coach takes its note's height and the rest of the screen goes to the
     // score sheet, so a one-line verdict does not leave a band of empty tone.
     expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);

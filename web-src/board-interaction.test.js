@@ -230,3 +230,61 @@ describe("a move made on the board", () => {
     expect([...board.highlights]).toEqual(["d4"]);
   });
 });
+
+// Stepping back through a game lands on the position BEFORE the move being
+// undone. The piece that travels is that move's mover, going home — not the
+// new position's `lastMove` replayed forward, which animated the piece onto a
+// square it had just left and then snapped it back.
+describe("a step back through a game", () => {
+  const AFTER_E4_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+  const AFTER_NF3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+
+  beforeEach(() => {
+    sounds = [];
+  });
+
+  // The harness's fake squares have no layout, so the offsets a slide reads are
+  // given here. g1 is a knight's move from f3.
+  function placeSquares() {
+    Object.assign(board.squares.get("g1"), { offsetLeft: 0, offsetTop: 700 });
+    Object.assign(board.squares.get("f3"), { offsetLeft: 100, offsetTop: 500 });
+  }
+  const moverOn = (name) =>
+    square(name).children.find((c) => c.className.split(" ").includes("piece"));
+  const travel = (piece) => piece?.animations.find((a) => a.frames?.[0]?.transform)?.frames[0].transform;
+
+  it("slides the undone move's piece home, from its destination to its origin", () => {
+    mount({ onMove: () => {} });
+    landOnBoard(AFTER_E4_E5, "e7e5");
+    landOnBoard(AFTER_NF3, "g1f3");
+    placeSquares();
+    sounds.length = 0;
+    // Back to the position before 2.Nf3: the knight returns f3 -> g1, so the
+    // piece on g1 starts where it stood on f3 (right 100, up 200 from home).
+    board.setPosition({ fen: AFTER_E4_E5, legalMoves: [], lastMove: "e7e5", back: true });
+    expect(travel(moverOn("g1"))).toBe("translate(100px, -200px)");
+    // The square it left is empty, and nothing is held as captured.
+    expect(moverOn("f3")).toBeUndefined();
+    expect([...board.squares.values()].flatMap((sq) => sq.children).some((c) => c.className.includes("piece-caught"))).toBe(false);
+  });
+
+  it("stays silent: the undone move already sounded when it was played", () => {
+    mount({ onMove: () => {} });
+    landOnBoard(AFTER_E4_E5, "e7e5");
+    landOnBoard(AFTER_NF3, "g1f3");
+    sounds.length = 0;
+    board.setPosition({ fen: AFTER_E4_E5, legalMoves: [], lastMove: "e7e5", back: true });
+    expect(sounds).toEqual([]);
+  });
+
+  it("leaves the forward move's travel and sound unchanged", () => {
+    mount({ onMove: () => {} });
+    landOnBoard(AFTER_E4_E5, "e7e5");
+    placeSquares();
+    sounds.length = 0;
+    landOnBoard(AFTER_NF3, "g1f3");
+    expect(sounds).toEqual(["move"]);
+    expect(travel(moverOn("f3"))).toBe("translate(-100px, 200px)");
+    expect(moverOn("g1")).toBeUndefined();
+  });
+});

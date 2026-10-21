@@ -9,6 +9,7 @@ import {
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
+import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
@@ -643,6 +644,9 @@ function paintPhaseChip(phase, label) {
   el.hidden = false;
   el.dataset.phase = phase;
   el.textContent = label || phase;
+  // The chip yields its width to the coach's actions on a narrow panel, so the
+  // whole word is the tooltip.
+  el.title = el.textContent;
 }
 
 // What players at this level pick in the position the move was played from (Maia):
@@ -1431,6 +1435,9 @@ async function showAnalysisPly(ply) {
   const seq = analysisRecallSeq;
   const moves = appState.analysis ? appState.analysis.moves : [];
   const boundedPly = Math.max(0, Math.min(ply, moves.length));
+  // Which way the board travels: a step back lands on the position before the
+  // move just shown, so that move's piece goes home rather than replaying.
+  const back = boundedPly < appState.analysisPly;
   appState.analysisPly = boundedPly;
   syncWorkspaceUrl();
   appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
@@ -1439,18 +1446,17 @@ async function showAnalysisPly(ply) {
   const info = await boardInfo(fen);
   if (seq !== analysisRecallSeq || analysis !== appState.analysis || appState.analysisCurrentNodeId !== (boundedPly === 0 ? "root" : `m${boundedPly}`)) return;
   appState.analysisBoardFen = fen;
-  boards.analysis.setPosition({
-    fen,
-    legalMoves: info.legal_moves,
-    lastMove: move ? move.uci : null,
-  });
+  boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
   // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game sent
   // from Train) shows none instead of an empty placeholder dot.
   const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";
   boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? move.classification : null, badge);
-  document.getElementById("analysis-board-label").textContent = move
-    ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
-    : "Initial position";
+  // Which position is on the board is a phone fact: its eval row says it, because
+  // the thumb bar has no room and the bar under the board names the game. On a
+  // desktop the board itself shows the position and the moves list marks it.
+  setPositionCaption(
+    move ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}` : "",
+  );
   highlightCurrentMove();
   persistAnalysisSession();
   syncViewHeads();
@@ -1597,11 +1603,7 @@ async function selectAnalysisNode(nodeId) {
     lastMove: node.uci,
   });
   boards.analysis.setMoveBadge(null, null, "");
-  document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
-    node.moveNumber,
-    node.side,
-    node.san,
-  );
+  setPositionCaption(analysisVariationLabel(node.moveNumber, node.side, node.san));
   highlightCurrentMove();
   refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
   if (engineWidget) engineWidget.onBoardChanged();
@@ -1651,11 +1653,7 @@ async function onAnalysisBoardMove(moveUci, fen) {
       lastMove: moveUci,
     });
     boards.analysis.setMoveBadge(null, null, "");
-    document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
-      moveNumber,
-      side,
-      payload.move.san,
-    );
+    setPositionCaption(analysisVariationLabel(moveNumber, side, payload.move.san));
     highlightCurrentMove();
     refreshAnalysisExplain({
       fen: payload.board.fen,

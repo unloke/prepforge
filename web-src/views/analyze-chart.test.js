@@ -250,12 +250,28 @@ describe("class bars", () => {
 
 describe("coach note", () => {
   it("sets the note at reading size and sizes the block to the note", () => {
-    // The note is running text at 15px on a phone. It takes its own height, so
-    // the rule beside it runs the note and not a reserved box, and a note past
-    // five lines scrolls instead of pushing the score sheet down.
+    // The note is running text at 15px on a phone. Its rule runs the note and
+    // not a reserved box, and a note past five lines scrolls instead of pushing
+    // the score sheet down. Two lines are reserved inside the note so a one-line
+    // verdict cannot pull the instrument up (measured at 1440: the card is
+    // still between a one-line and a two-line ply without it).
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(1\.5em \* 5/);
-    expect(ALL_STYLES).not.toMatch(/\.coach-prose \{[^}]*min-height: calc\(1\.5em/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: calc\(var\(--coach-line\) \* 2 \+ 4px\)/);
+  });
+
+  it("reserves three lines in the block, so the instrument below holds still", () => {
+    // Across three games at 1440, 1180 and 982 (171 plies) a verdict is one
+    // line 80 times, two 75, three 14, four twice: three lines is the floor the
+    // block keeps, and a longer note grows it instead of being cut.
+    // The floor is the sum of the head and the note's lines, written from the
+    // same two tokens it is made of: putting the two 26px actions on the head
+    // row makes it 4px taller than the strip it replaced, and a stale constant
+    // would leave the verdict 4px short.
+    const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
+    expect(rule).toMatch(/--coach-head: 26px/);
+    expect(rule).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
+    expect(rule).not.toMatch(/(^|[^-])height:\s*\d+px/);
   });
 });
 

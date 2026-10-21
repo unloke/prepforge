@@ -135,7 +135,13 @@
                 <button class="btn icon" id="analysis-next" title="Next" aria-label="Next move">▶</button>
                 <button class="btn icon" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
               </div>
-              <span class="board-label" id="analysis-board-label">Initial position</span>
+              <!-- The bar's one text slot, directly under the board: the game
+                   on the board, named. An engine line being previewed takes the
+                   slot over (and the bar's accent) and gives the name back when
+                   it closes. With no game loaded it stays empty: the board shows
+                   a start position, and a label saying so is a standing
+                   explanation of the obvious. -->
+              <span class="board-label board-caption" id="analysis-board-caption" data-testid="analysis-game-name"></span>
               <button class="pv-exit" id="analysis-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <button class="btn icon bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>
@@ -147,28 +153,22 @@
 
           <aside class="sidebar panel" id="analyze-sidebar">
             <div class="engine-banner" id="analyze-engine-banner" data-testid="analyze-engine-banner" hidden></div>
-            <div class="panel-head">
-              <!-- The game on the board, then the two ways to change it. The
-                   strip used to be the actions on empty ground, so the panel
-                   had a title bar with no title; it now names the game (and
-                   with none loaded, says how to get one). -->
-              <div class="analyze-head-id">
-                <b class="ahi-game" id="analysis-game-meta" data-testid="analysis-game-meta"></b>
-                <span class="ahi-status" id="analysis-head-status" data-testid="analysis-head-status"></span>
-                <span class="ahi-hint">Paste a PGN, or open your last game.</span>
-              </div>
-              <span class="panel-actions" id="analyze-actions">
-                <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game" aria-label="Last game" title="Load and analyze your latest Lichess game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
-                <button class="btn sm primary" id="run-analysis" data-testid="run-analysis"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.2"/></svg><span class="bl">Analyze</span></button>
-              </span>
-            </div>
             <div class="panel-scroll">
               <div class="analyze-main" id="analyze-main">
                 <section class="coach-card" id="analysis-explain" data-testid="analysis-explain">
+                  <!-- The coach's own line, with the two ways to get a game at
+                       its right end: Last game, then Analyze. One row at every
+                       width — the phase chip yields before the row does (see
+                       .cc-head) — so the verdict and the instrument under it
+                       never move when the chip's word gets long. -->
                   <header class="cc-head">
                     <b>Coach</b>
                     <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
                     <button type="button" class="pf-switch is-on" id="explain-engine-toggle" role="switch" aria-checked="true" aria-label="Engine review" title="Engine review: grade each move with the engine"><span class="pf-knob"></span></button>
+                    <span class="panel-actions" id="analyze-actions">
+                      <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game" aria-label="Last game" title="Load and analyze your latest Lichess game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
+                      <button class="btn sm primary" id="run-analysis" data-testid="run-analysis"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.2"/></svg><span class="bl">Analyze</span></button>
+                    </span>
                   </header>
                   <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
                   <div class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></div>

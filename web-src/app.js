@@ -15,7 +15,8 @@ import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
-import { pgnHeaderTags } from "./analyze-pgn.js";
+import { analysisGameName } from "./analyze-name.js";
+import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo } from "./chess-local.js";
 import { setupOnFirstVisit } from "./engine/engine-profile.js";
@@ -473,38 +474,22 @@ function syncPageTitle() {
   syncViewHeads();
 }
 
-// Analyze head: the loaded game's identity (PGN headers, else the recalled
-// analysis) in the panel head.
+// Analyze: the loaded game's name (PGN headers, else the recalled analysis) in
+// the bar under the board, which is the one place on the page that names it.
+// Empty while no game is loaded, so nothing stands in the bar.
 
-function syncAnalyzeHead() {
-  const meta = document.getElementById("analysis-game-meta");
-  if (!meta) return;
-  const analysis = appState.analysis;
-  // Only name a game the board actually shows: the prefilled demo PGN sitting unloaded in
-  // the source box must not title an empty board "PrepForge vs Demo".
-  const loaded = !!(analysis && ((analysis.moves && analysis.moves.length) || analysis.initialFen));
-  const tags = loaded ? pgnHeaderTags(document.getElementById("pgn-input")?.value || "") : {};
-  const known = (v) => (v && !/^[?*.\s]+$/.test(v) ? v : "");
-  const white = known(tags.White) || known(analysis?.white);
-  const black = known(tags.Black) || known(analysis?.black);
-  const plies = analysis?.moves?.length || 0;
-  const playersText = white || black ? `${white || "?"} vs ${black || "?"}` : "";
-  const bits = [known(tags.Result) || known(analysis?.result), known(tags.Event) || known(analysis?.event), known(tags.Date)]
-    .filter(Boolean);
-  meta.textContent = [playersText, bits.length ? bits.join(" · ") : plies ? `${plies} half-move${plies === 1 ? "" : "s"}` : ""]
-    .filter(Boolean)
-    .join(" · ");
-  meta.title = meta.textContent;
+function syncAnalysisGameName() {
+  setBoardCaption(analysisGameName(appState, document.getElementById("pgn-input")?.value || ""));
 }
 
-// Per-view heads that live inside the pages: Analyze's game identity, the
-// Repertoire header's size summary, and (phones) the More sheet's Library
-// mirror of Import.
+// Per-view chrome that lives inside the pages: Analyze's game on the board, the
+// Repertoire header's size summary, and (phones) the More sheet's Library mirror
+// of Import.
 function syncViewHeads() {
   document.querySelectorAll("[data-lib-mirror]").forEach((item) => {
     item.hidden = appState.currentView !== "dashboard";
   });
-  if (appState.currentView === "analyze") syncAnalyzeHead();
+  if (appState.currentView === "analyze") syncAnalysisGameName();
   // The repertoire's size describes the whole tree, not the position, so it is
   // a caption on the name: as the panel's last band it spent 38px of every
   // build on a number the builder reads once.
@@ -1821,13 +1806,13 @@ function bindEvents() {
       return;
     }
     const active = document.activeElement;
-    const inEditable =
-      !!active &&
-      (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
-        active.isContentEditable === true);
+    const inEditable = !!active && (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
+      active.isContentEditable === true);
     if (inEditable) return;
     // An engine line on the board: ← → step through it, Esc goes back to the game.
-    if (engineWidget && engineWidget.isPreviewing()) {
+    // The preview belongs to a board, so it answers only on the view that owns it.
+    const view = activeViewName();
+    if (engineWidget && engineWidget.isPreviewing() && (view === "analyze" || view === "build")) {
       const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
       if (action) {
         event.preventDefault();
@@ -1840,25 +1825,27 @@ function bindEvents() {
         return;
       }
     }
-    // Arrow keys navigate the active tab's board. We blur clicked move buttons
-    // on click, so focus returns to the document for these to fire.
-    const inBuild = activeViewName() === "build";
+    // Arrow keys navigate the board of the view that is on screen — and only
+    // there: Analyze and Build each have one; every other view has none, so ← →
+    // must do nothing on it. This handler lives on the document, so it cannot be
+    // released with a view; the view name is the guard instead.
+    const inBuild = view === "build";
+    const stepsBoard = inBuild || view === "analyze";
+    const arrows = event.key === "ArrowLeft" || event.key === "ArrowRight";
     // A control the mouse focused (Engine, the review switch) would otherwise take
-    // the keyboard focus ring on the first arrow press, though the arrows drive the board.
-    if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && focusFromPointer && active && active !== document.body) {
-      active.blur();
-    }
-    if (event.key === "ArrowLeft") {
+    // the focus ring on the first arrow press, though the arrows drive the board.
+    if (stepsBoard && arrows && focusFromPointer && active && active !== document.body) active.blur();
+    if (stepsBoard && event.key === "ArrowLeft") {
       event.preventDefault();
       if (inBuild) buildGoBack();
       else void analysisTreeNav("prev").catch(() => {});
     }
-    if (event.key === "ArrowRight") {
+    if (stepsBoard && event.key === "ArrowRight") {
       event.preventDefault();
       if (inBuild) buildGoForward();
       else void analysisTreeNav("next").catch(() => {});
     }
-    if (event.key === "Home" || event.key === "End") {
+    if (stepsBoard && (event.key === "Home" || event.key === "End")) {
       // Home/End: the ends of the line. A held key repeats keydown, so one
       // hold steps the whole game instead of one move per press.
       event.preventDefault();
