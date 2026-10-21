@@ -7,6 +7,12 @@
 - Revalidate dated reports against current code. Do not resume a completed migration or apply an old research freeze to new product work.
 - Keep regression tests for present behavior. Research-only historical tests have separate opt-in discovery; old expected values are not permanent product requirements.
 
+## Background Agents
+
+- For supervised pi agents, use `/watch-agents <targets.json>` with the extension in `scripts/agent-monitor/pi-extension.mjs`; see `scripts/agent-monitor/README.md`.
+- Arm notifications before calling a monitor active. A status file alone is not supervision. Each exit must queue a follow-up turn independently; do not wait for every agent to finish.
+- Process exit means review is required. Check reports, Git state and actual validation before declaring success.
+
 ## Design Principles
 
 - No legacy support. There are no users yet, so there is no old data, old client, old
