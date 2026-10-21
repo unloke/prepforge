@@ -1,6 +1,9 @@
 import { html } from "../html.js";
 import { START_FEN, appState } from "../core/state.js";
 import { syncAnalysisEvalCard } from "../core/engine.js";
+// The report's "left prep at" row walks the repertoire trees the Analyze coach
+// already loads, so the view reads that one cache rather than fetching again.
+import { ensureBookLoaded, getBookReps } from "../analyze-book-state.js";
 
 // The Analyze view chunk and its move tree: created on first use, then shared
 // by every caller (the shell's view switching, the PGN box, the entry points).
@@ -17,8 +20,7 @@ export function createAnalyzeView({ loadSession, showPly, selectNode, reveal }) 
   loadAnalyzeSession = loadSession;
   showAnalysisPly = showPly;
   selectAnalysisNode = selectNode;
-  revealAnalysisResults = reveal;
-  return { preloadAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
+  revealAnalysisResults = reveal;  return { preloadAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
     renderAnalysisTree, renderAnalysisTreeEmptyState, bindEvalChart,
     get analyzeView() { return analyzeView; },
     get moveTreeRenderer() { return moveTreeRenderer; } };
@@ -46,6 +48,8 @@ export async function ensureAnalyzeView() {
       selectAnalysisNode,
       revealAnalysisResults,
       onEvalChartRendered: () => syncAnalysisEvalCard(),
+      bookReps: getBookReps,
+      ensureBookLoaded,
     });
   }
   return analyzeView;

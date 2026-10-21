@@ -813,6 +813,45 @@
    the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
+/* The report's facts: accuracy, the biggest swing, where the game left prep and
+   the opening. They are the numbers a player reads once and then leaves, so they
+   sit above the grade bars as label-and-figure rows, never as sentences or
+   cards. Two columns with the figures on one left edge, so the block reads down
+   rather than across. */
+.rpt-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.rpt-fact {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  font-size: var(--fs);
+}
+.rpt-fact dt {
+  color: var(--muted);
+}
+.rpt-fact dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+/* Whose game it was. The panel head already names it on a wide panel, so it is
+   the phone's copy of that line — the only place the game is named on a phone,
+   where the head is not drawn. */
+.rpt-identity {
+  display: none;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  overflow-wrap: anywhere;
+}
+
 /* Per-side classification bars — the at-a-glance "how did each side play"
    summary. Segment colours reuse the move-classification palette. */
 .class-bars {
@@ -1294,6 +1333,9 @@
     background: var(--surface-3);
   }
   #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
+  /* A phone does not draw the panel head that names the game, so the report
+     carries its own copy of that line under the facts. */
+  #analyze-sheet .rpt-identity { display: block; }
   #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   /* The sheet's rows are the entry points (Last game / Past analyses / Paste a
      PGN), so a drawer's own summary would be the same action named twice. The

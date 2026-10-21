@@ -61,3 +61,10 @@ export async function updateBookline() {
   return (await loadBookActions()).updateBookline();
 }
 
+
+// The loaded repertoire trees, for the Analyze report's "left prep at" row. The
+// cache above is this module's own (analyze-book.js fills it), so a reader never
+// loads it twice.
+export function getBookReps() {
+  return bookState.reps;
+}
