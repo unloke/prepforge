@@ -89,6 +89,17 @@ const SIBLING_D4 = after("e4", "e5", "Nf3", "Nc6", "d4");
 const SIBLING_D3 = after("e4", "e5", "Nf3", "Nc6", "d3");
 const SIBLING_BB5 = after("e4", "e5", "Nf3", "Nc6", "Bb5");
 const SIBLING_BC4 = after("e4", "e5", "Nf3", "Nc6", "Bc4");
+// 1.d4 d5 2.c4 dxc4: the opponent's reply takes the pawn, so a two-ply takeback
+// (Train's ordinary one) removes a capture. After 2...dxc4 the white pawn is on
+// c4 and the black pawn on d5; after 1...d5 the white pawn is home on c2 and the
+// black pawn is back on d5.
+const QGA_AFTER_D5 = after("d4", "d5");
+const QGA_AFTER_DXC4 = after("d4", "d5", "c4", "dxc4");
+// A delta-1 jump between two different lines: 1.e4 e5 (2 plies) and
+// 1.e4 e6 2.d4 (3 plies). The clocks are one apart; the d2 pawn never moved to
+// d4 in the first position, so no move explains the change.
+const OPEN_E5 = after("e4", "e5");
+const OPEN_E6_D4 = after("e4", "e6", "d4");
 
 const pair = (from, to) => ({ from, to });
 const squaresOf = (list) => list.map((entry) => entry.square);
@@ -210,6 +221,31 @@ describe("the board's move motion", () => {
     });
     expect(boardTransition(SIBLING_BB5, SIBLING_BC4)).toBeNull();
     expect(boardTransition(SIBLING_BC4, SIBLING_BB5)).toBeNull();
+  });
+
+  it("animates a two-ply takeback whose last ply was a capture", () => {
+    // 2...dxc4 -> 1...d5 is the takeback Train offers after the opponent takes:
+    // the pawn travels home to c2 and the taken black pawn fades back in on d5.
+    // A clock-only guard dropped this because the capture yields one mover.
+    expect(boardTransition(QGA_AFTER_DXC4, QGA_AFTER_D5)).toEqual({
+      movers: [pair("c4", "d5")], gone: [], restored: ["c2"],
+    });
+    // The same two plies read forwards (a repertoire render of the pair).
+    expect(boardTransition(QGA_AFTER_D5, QGA_AFTER_DXC4)).toEqual({
+      movers: [pair("d5", "c4")], gone: ["c2"], restored: [],
+    });
+    // A takeback across a capture and its recapture (2.exd5 Qxd5 -> 1.e4 d5):
+    // the recapture stands on the square the white pawn left, so the pair is not
+    // a slide — the white pawn's home square is not on the board either way.
+    expect(boardTransition(after("e4", "d5", "exd5", "Qxd5"), after("e4", "d5"))).toBeNull();
+  });
+
+  it("is a cut for a delta-1 jump between two lines", () => {
+    // The clocks differ by exactly one ply, so a clock-only proof let this slide
+    // d4's pawn all the way from d2 — a square it never left. The move is not
+    // legal in the earlier position, so it is a cut in both directions.
+    expect(boardTransition(OPEN_E5, OPEN_E6_D4)).toBeNull();
+    expect(boardTransition(OPEN_E6_D4, OPEN_E5)).toBeNull();
   });
 
   it("still animates a child after an ordinary undo to its parent", () => {

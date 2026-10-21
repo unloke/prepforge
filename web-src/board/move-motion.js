@@ -1,3 +1,5 @@
+import { Chess } from "chess.js";
+
 import { parseFenBoard } from "./ui.js";
 
 // A move is the app's most repeated action, so its motion has one budget:
@@ -45,6 +47,38 @@ function pliesPlayed(fen) {
   if (fields[1] !== "w" && fields[1] !== "b") return null;
   if (!Number.isInteger(fullmove) || fullmove < 1) return null;
   return (fullmove - 1) * 2 + (fields[1] === "b" ? 1 : 0);
+}
+
+// A move for chess.js, with the promotion letter the later placement shows when a
+// pawn reaches the last rank: the arriving piece is what names the promotion.
+function stepTo(earlier, later, from, to) {
+  const piece = earlier[from];
+  const promotion = piece && piece.toLowerCase() === "p" && (to[1] === "1" || to[1] === "8")
+    ? (later[to] || "q").toLowerCase()
+    : undefined;
+  return { from, to, promotion };
+}
+
+// Proof that `moves` really lead from the earlier position to the later one. The
+// moves are played on a local chess.js board (synchronous, no network, already in
+// the bundle) and the placement that comes out must be the later placement. Only
+// the placement is compared: the two engines disagree on the clock fields, and
+// chess.js moves the rook with its king, so a castling is proved by the king's
+// move alone.
+function playsOut(earlierFen, laterFen, moves) {
+  let chess;
+  try {
+    chess = new Chess(earlierFen);
+    for (const { from, to, promotion } of moves) chess.move({ from, to, promotion });
+  } catch (_) {
+    return false;
+  }
+  const reached = parseFenBoard(chess.fen());
+  const want = parseFenBoard(laterFen);
+  for (const square of new Set([...Object.keys(reached), ...Object.keys(want)])) {
+    if (reached[square] !== want[square]) return false;
+  }
+  return true;
 }
 
 // What one position change moved, read off the two placements rather than from
@@ -118,21 +152,57 @@ export function boardTransition(prevFen, fen) {
   // piece; anything wider is a jump.
   if (!movers.length || movers.length > 2 || gone.length > 1 || restored.length > 1) return null;
   if (sources.length + targets.length > 4) return null;
-  // The two positions must be one move apart. Siblings in a repertoire — d4 and
-  // d3 from the same parent — are alternative moves from the same square, not a
-  // move between those two positions: they carry the SAME side to move and
-  // fullmove, and pairing their like pieces would slide d3's pawn down from d4,
-  // a square no pawn ever left. Read the ply count off the FEN clocks instead of
-  // trusting the placement pairing. The one legitimate wider change is the
-  // two-ply step back (a takeback of both sides' moves): its two movers are of
-  // opposite colours and each travels to its own home. Everything else is a cut.
+  // The change must be a move, not a jump. The FEN clocks say which position came
+  // first and how far apart they are — never that the move between them is legal.
+  // They bound the work; the proof is a local chess.js replay from the earlier
+  // position, whose placement must be the later one. This is what stops a
+  // delta-1 jump between two lines (1.e4 e5 -> 1.e4 e6 2.d4), where pairing by
+  // piece happily invents d2->d4, and it is what separates a same-ply sibling
+  // pair (3.d4 / 3.d3: no move between them) from a real step. The pair of
+  // positions a board shows is the same pair whichever way the user travels, so
+  // the replay is chronological and the animation keeps its own direction.
   const beforePlies = pliesPlayed(prevFen);
   const afterPlies = pliesPlayed(fen);
   if (beforePlies === null || afterPlies === null) return null;
   const plies = Math.abs(afterPlies - beforePlies);
-  const twoPly = plies === 2 && movers.length === 2 &&
-    colour(before[movers[0].from]) !== colour(before[movers[1].from]);
-  if (plies !== 1 && !twoPly) return null;
+  if (plies !== 1 && plies !== 2) return null;
+  const forward = afterPlies > beforePlies; // the render plays the move forward
+  const earlierBoard = forward ? before : after;
+  const laterBoard = forward ? after : before;
+  const earlierFen = forward ? prevFen : fen;
+  const laterFen = forward ? fen : prevFen;
+  const ply = (mover) => stepTo(
+    earlierBoard, laterBoard,
+    forward ? mover.from : mover.to, forward ? mover.to : mover.from,
+  );
+  let proved;
+  if (plies === 1) {
+    // Castling arrives as the king and its rook; chess.js moves the rook with the
+    // king, so the king's own move is the one that is played.
+    const king = movers.find((mover) =>
+      String(before[mover.from] || after[mover.to]).toLowerCase() === "k");
+    proved = playsOut(earlierFen, laterFen, [ply(king || movers[0])]);
+  } else if (movers.length === 2) {
+    // Two plain moves, one from each side. Both orders are tried: the earlier
+    // position alone says which side begins, and reaching the later placement is
+    // the proof either way.
+    const [first, second] = movers.map(ply);
+    proved = playsOut(earlierFen, laterFen, [first, second]) ||
+      playsOut(earlierFen, laterFen, [second, first]);
+  } else if (movers.length === 1 && (forward ? gone.length === 1 : restored.length === 1)) {
+    // A two-ply change whose second ply was a capture: the taken piece stood on
+    // the square that is now empty and its own move took it to the square the
+    // capturer leaves (a step back: the capturer's square), and then it was
+    // taken. This is Train's ordinary takeback (1.d4 d5 2.c4 dxc4 -> 1...d5),
+    // where the pawn goes home and the taken pawn fades back in — and, read the
+    // other way, a forward render of the same two plies.
+    const captured = forward ? gone[0] : restored[0];
+    proved = playsOut(earlierFen, laterFen, [
+      stepTo(earlierBoard, laterBoard, captured, forward ? movers[0].to : movers[0].from),
+      ply(movers[0]),
+    ]);
+  }
+  if (!proved) return null;
   // Board order, so the same pair of positions always yields the same list.
   const place = (square) => FILES.indexOf(square[0]) * 8 + Number(square[1]);
   movers.sort((a, b) => place(a.from) - place(b.from));

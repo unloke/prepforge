@@ -96,7 +96,36 @@ function siblingsOf(id, name) {
   return rep;
 }
 const SIBLINGS = siblingsOf("sib", "Sibling alternatives");
-const REPERTOIRES = [EN_PASSANT, CASTLE, PROMOTION, SIBLINGS];
+// 1.d4 d5 2.c4 dxc4 — the opponent answers with a capture, so a two-ply takeback
+// (1...d5) has to bring the pawn home to c2 and fade the taken pawn back in on
+// d5. The mainline is the capture itself, so stepping back from 2...dxc4 is the
+// ordinary Train takeback shape.
+const CAPTURE_TAKEBACK = lineNodes("cap", "Capture takeback", ["d4", "d5", "c4", "dxc4"]);
+// Two real lines whose clocks differ by exactly one ply: 1.e4 e5 (2 plies) and
+// 1.e4 e6 2.d4 (3 plies). Jumping from one to the other is not a move.
+function crossLinesOf(id, name) {
+  const rep = lineNodes(id, name, ["e4", "e5"]);
+  const e4 = rep.nodes[1];
+  ["e6", "d4"].forEach((san, index) => {
+    const parent = rep.nodes.find((node) => node.id === (index === 0 ? e4.id : `${id}x1`));
+    const chess = new Chess(parent.fen);
+    const fenBefore = chess.fen();
+    const move = chess.move(san);
+    rep.nodes.push({
+      id: `${id}x${index + 1}`, parent_id: parent.id, depth: parent.depth + 1, san: move.san,
+      uci: `${move.from}${move.to}${move.promotion || ""}`, fen: chess.fen(),
+      fen_before: fenBefore, fen_after: chess.fen(),
+      move_number: Number(fenBefore.split(" ")[5]) || 1, ply: parent.ply + 1,
+      move_side: move.color === "w" ? "white" : "black",
+      side_to_move: chess.turn() === "w" ? "white" : "black",
+      source: "manual", is_mainline: false, is_enabled: true, is_prepared: false,
+      mastery: null, maia_probability: null, arrows: [], circles: [],
+    });
+  });
+  return rep;
+}
+const CROSS_LINES = crossLinesOf("crs", "Cross lines");
+const REPERTOIRES = [EN_PASSANT, CASTLE, PROMOTION, SIBLINGS, CAPTURE_TAKEBACK, CROSS_LINES];
 const byId = new Map(REPERTOIRES.map((rep) => [rep.repertoire_id, rep]));
 
 const api = (path) => {
@@ -405,6 +434,54 @@ async function buildReverseCapture(page) {
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 5), "build reverse capture");
   const restored = frames.some((frame) => frame.snapshot.d6?.opacity !== undefined && frame.snapshot.d6.opacity < 1);
   check(restored, "build reverse capture: the taken pawn fades back in on d6");
+}
+
+async function buildCaptureTakeback(page) {
+  const rep = CAPTURE_TAKEBACK;
+  await openBuild(page, rep.repertoire_id);
+  const size = await squareSizeOf(page, "#build-board");
+  for (let i = 1; i <= 4; i += 1) {
+    await clickNode(page, rep.nodes[i].id);
+    await page.waitForTimeout(180);
+  }
+  checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 4), "build capture takeback forward");
+  // 2...dxc4 -> 1...d5 is two plies back, and the second one took a pawn. The
+  // white pawn must travel home from c4 (not teleport), and the taken black pawn
+  // must fade back in on d5 rather than pop.
+  await startProbe(page, "#build-board");
+  await clickCrumb(page, rep.nodes[2].id);
+  const { frames } = await stopProbe(page);
+  checkTravel(frames, { movers: [["c4", "d5"]] }, size, "build capture takeback");
+  checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 2), "build capture takeback");
+  const fadedIn = frames.some((frame) => frame.snapshot.c2?.opacity !== undefined && frame.snapshot.c2.opacity < 1);
+  check(fadedIn, "build capture takeback: the taken pawn fades back in on c2");
+  const clone = frames.some((frame) => Object.values(frame.snapshot).some((state) => state.clone === 1));
+  check(!clone, "build capture takeback: no capture clone is held on the way back");
+}
+
+async function buildCrossLineCut(page) {
+  const rep = CROSS_LINES;
+  await openBuild(page, rep.repertoire_id);
+  const e5 = rep.nodes[2]; // 1...e5 (2 plies)
+  const d4 = rep.nodes.find((node) => node.id === "crsx2"); // 1...e6 2.d4 (3 plies)
+  await clickNode(page, e5.id);
+  await page.waitForTimeout(220);
+  checkSettled(await settledDom(page, "#build-board"), e5.fen, "build cross-line e5");
+  // One ply apart by the clocks, but d2->d4 never happened in 1.e4 e5: nothing
+  // may slide (the old clock-only guard slid d4's pawn two squares from d2).
+  await startProbe(page, "#build-board");
+  await clickNode(page, d4.id);
+  const { frames } = await stopProbe(page);
+  const travellers = Object.keys(frames[0].snapshot).filter((square) => travelFrames(frames, square).length > 0);
+  check(travellers.length === 0, `build cross-line jump: a delta-1 jump must be a cut (${travellers.join(",")})`);
+  checkSettled(await settledDom(page, "#build-board"), d4.fen, "build cross-line jump");
+  // And back: the same pair read the other way is a cut too.
+  await startProbe(page, "#build-board");
+  await clickNode(page, e5.id);
+  const back = await stopProbe(page);
+  const backTravellers = Object.keys(back.frames[0].snapshot).filter((square) => travelFrames(back.frames, square).length > 0);
+  check(backTravellers.length === 0, `build cross-line jump back: a delta-1 jump must be a cut (${backTravellers.join(",")})`);
+  checkSettled(await settledDom(page, "#build-board"), e5.fen, "build cross-line jump back");
 }
 
 async function buildCastle(page) {
@@ -726,6 +803,8 @@ const VIEWPORTS = [
     ["build rapid walk", buildRapidWalk],
     ["build jump", buildJumpCut],
     ["build sibling cut", buildSiblingCut],
+    ["build capture takeback", buildCaptureTakeback],
+    ["build cross-line cut", buildCrossLineCut],
     ["build flip", buildFlipThenBack],
     ["build reduced motion", buildReducedMotion],
     ["analyze", analyzeMainlineAndVariation],
