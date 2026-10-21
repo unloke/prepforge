@@ -2481,7 +2481,7 @@ async function finishSmartSession() {
   if (!smart) return;
   const stats = appState.trainStats || {};
   smart.prompt = null;
-  trainSessionMemo?.clearSessionMemo(currentOwnerId(), smart.sessionId, smart.generation);
+  trainSessionMemo?.finishSmartSessionMemo(currentOwnerId(), smart, stats);
   clearBlitzTimer();
   setBlitzBarVisible(false);
   boards.train.setEngineArrow(null);

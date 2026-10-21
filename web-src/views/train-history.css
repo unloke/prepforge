@@ -1,0 +1,20 @@
+.modal.training-history { width: min(720px, calc(100vw - 32px)); max-height: 85svh; display: flex; flex-direction: column; padding: 20px; overflow: hidden; }
+.training-history-head { display: flex; flex: none; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+.training-history-head .modal-title { margin: 0 0 4px; padding: 0; font-size: 18px; }
+.training-history-head .muted { font-size: 12px; }
+.training-history-list { margin: 0; padding: 0; min-height: 0; overflow-y: auto; list-style: none; }
+.training-history-row { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.training-history-session { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.training-history-session b { font-size: 15px; font-weight: 650; }
+.training-history-session :is(span, time) { color: var(--muted); font-size: 12px; }
+.training-history-row dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.training-history-row dt { color: var(--muted); font-size: 12px; }
+.training-history-row dd { margin: 6px 0 0; color: var(--text); font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .training-history-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .training-history-head .btn { min-height: 44px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .modal-overlay:has(> .training-history),
+  .modal-overlay > .modal.training-history { animation: none; opacity: 1; transform: none; }
+}

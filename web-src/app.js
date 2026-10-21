@@ -1619,6 +1619,14 @@ function bindEvents() {
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
 
   document.getElementById("start-train").addEventListener("click", () => startTraining());
+  document.querySelectorAll('[data-train-history]').forEach(button => button.addEventListener('click', async () => {
+    if (!requireSignIn('Sign in to view your training history', 'train-history')) return;
+    const owner = currentOwnerId();
+    try {
+      const { openTrainingHistory } = await import('./views/train-history.js');
+      if (currentOwnerId() === owner) openTrainingHistory(owner);
+    } catch { setStatusError('Could not open History. Reload and try again.'); }
+  }));
   document.getElementById("train-empty-build").addEventListener("click", () => switchView("build"));
   document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
   const startPlay = document.getElementById("start-play");
