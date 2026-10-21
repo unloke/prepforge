@@ -1431,6 +1431,9 @@ async function showAnalysisPly(ply) {
   const seq = analysisRecallSeq;
   const moves = appState.analysis ? appState.analysis.moves : [];
   const boundedPly = Math.max(0, Math.min(ply, moves.length));
+  // Which way the board travels: a step back lands on the position before the
+  // move just shown, so that move's piece goes home rather than replaying.
+  const back = boundedPly < appState.analysisPly;
   appState.analysisPly = boundedPly;
   syncWorkspaceUrl();
   appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
@@ -1439,11 +1442,7 @@ async function showAnalysisPly(ply) {
   const info = await boardInfo(fen);
   if (seq !== analysisRecallSeq || analysis !== appState.analysis || appState.analysisCurrentNodeId !== (boundedPly === 0 ? "root" : `m${boundedPly}`)) return;
   appState.analysisBoardFen = fen;
-  boards.analysis.setPosition({
-    fen,
-    legalMoves: info.legal_moves,
-    lastMove: move ? move.uci : null,
-  });
+  boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
   // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game sent
   // from Train) shows none instead of an empty placeholder dot.
   const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";

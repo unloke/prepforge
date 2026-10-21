@@ -533,7 +533,11 @@ class BoardController {
     if (this.onAnnotate) this.onAnnotate(this.arrows.slice(), [...this.highlights]);
   }
 
-  setPosition({ fen, legalMoves = [], lastMove = null, cue }) {
+  // `back` says the new position is the one BEFORE `lastMove` (a step back
+  // through a game): the mover travels to the square it came from instead of
+  // replaying the move forward. Nothing is captured on the way back — the piece
+  // returns — so no victim is held.
+  setPosition({ fen, legalMoves = [], lastMove = null, cue, back = false }) {
     // A real position arriving mid-preview ends the preview (see beginPreview).
     if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
     const fenChanged = this.fen !== fen;
@@ -541,28 +545,25 @@ class BoardController {
     // only in halfmove/fullmove is the same position arriving twice, not a move.
     const positionChanged = positionKey(this.fen) !== positionKey(fen);
     const prevFen = this.fen;
-    // A same-position refresh (an autosave landing, a panel re-render) must not
-    // yank a piece out of the user's hand: keep the drag and selection alive
-    // while the dragged/selected piece still has legal moves.
-    const keepInteraction =
-      !fenChanged &&
-      (this.dragFrom || this.selected) &&
+    // A same-position refresh (an autosave, a re-render) must not yank a piece
+    // out of the user's hand: keep the drag and selection while they stay legal.
+    const keepInteraction = !fenChanged && (this.dragFrom || this.selected) &&
       legalMoves.some((move) => move.startsWith(this.dragFrom || this.selected));
     if (!keepInteraction) this._cancelDrag();
 
-    // Read the slide's offsets and find the captured piece NOW, before any DOM
-    // writes, so neither needs a forced reflow mid-render.
+    // Read the slide's offsets and the captured piece NOW, before any DOM write
+    // (no forced reflow). Forward: `lastMove` arrives from -> to. Back: the move
+    // the step undid travels home.
+    const undone = back ? this.lastMove : null;
+    const mover = undone || lastMove;
     let slide = null;
-    if (fenChanged && this._hadPosition && lastMove) {
-      const from = lastMove.slice(0, 2);
-      const to = lastMove.slice(2, 4);
-      const fromSq = this.squares.get(from);
-      const toSq = this.squares.get(to);
+    if (fenChanged && this._hadPosition && mover) {
+      const [from, to] = [mover.slice(0, 2), mover.slice(2, 4)];
+      const fromSq = this.squares.get(from), toSq = this.squares.get(to);
       if (fromSq && toSq) {
-        slide = {
-          dx: fromSq.offsetLeft - toSq.offsetLeft, dy: fromSq.offsetTop - toSq.offsetTop, to,
-          capturedAt: capturedSquare(prevFen, fen, from, to),
-        };
+        const [standing, home] = back ? [toSq, fromSq] : [fromSq, toSq];
+        slide = { dx: standing.offsetLeft - home.offsetLeft, dy: standing.offsetTop - home.offsetTop,
+          to: back ? from : to, capturedAt: back ? null : capturedSquare(prevFen, fen, from, to) };
       }
     }
 
@@ -578,31 +579,34 @@ class BoardController {
     this.annotationStart = null;
     // The arrows and circles belong to the position they were drawn on. A
     // position change drops them; a same-position refresh (an autosave, a
-    // re-render) keeps them. The paint below does the work, and nothing is
-    // notified: the drawn marks were already saved to the node they belong to.
+    // re-render) keeps them. Nothing is notified: they were saved already.
     if (positionChanged) {
       this.arrows = [];
       this.highlights = new Set();
     }
     if (fenChanged) {
-      // The captured piece is still in the old DOM until _renderPieces wipes
-      // it. Copy it detached first and mount it after the render, so it never
-      // stands in for the square's own piece.
+      // The captured piece is still in the old DOM until _renderPieces wipes it.
+      // Copy it detached first and mount it after the render, so it never stands
+      // in for the square's own piece.
       const caught = slide?.capturedAt ? caughtPiece(this.squares.get(slide.capturedAt)) : null;
       this._renderPieces();
       if (caught) this.squares.get(slide.capturedAt)?.appendChild(caught);
-      if (this._hadPosition && lastMove) {
+      if (this._hadPosition && (lastMove || undone)) {
         // A drag left the piece under the pointer on its target: the slide would
         // replay the drop backwards. The mark covers one position change only.
-        const dragged = this._draggedMove && lastMove.startsWith(this._draggedMove);
-        if (dragged) slide = null;
+        if (this._draggedMove && lastMove && lastMove.startsWith(this._draggedMove)) slide = null;
         this._draggedMove = null;
-        // The sound belongs to the move, not to a position change: the optimistic
-        // render and the confirmed one are the same move, and it sounds once.
-        // Two different moves never share a `lastMove`, so a real move still sounds.
-        const heard = lastMove === this._soundedKey;
-        this._soundedKey = lastMove;
-        this._feedbackForMove(prevFen, fen, lastMove, slide, caught, cue, heard);
+        // A step back is quiet: the undone move's cue played when it was made.
+        if (back) {
+          if (slide && pref("moveAnim")) slidePiece(slide, (sq) => this.squares.get(sq));
+        } else {
+          // The sound belongs to the move, not to a position change: the optimistic
+          // render and the confirmed one are the same move, and it sounds once.
+          // Two different moves never share a `lastMove`, so a real move still sounds.
+          const heard = lastMove === this._soundedKey;
+          this._soundedKey = lastMove;
+          this._feedbackForMove(prevFen, fen, lastMove, slide, caught, cue, heard);
+        }
       }
     }
     this._hadPosition = true;
