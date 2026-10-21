@@ -18,8 +18,9 @@ export function createPassFeed({ host, store: loadStore }) {
   // No number, no line, no search: the pass has not reached this position yet.
   function waiting() {
     host.pvsEl.classList.remove("is-analysis-read");
-    host.pvsEl.innerHTML =
-      html`<div class="engine-pv is-waiting"><span class="engine-pv-line">Analyze is still running</span></div>`;
+    host._paintPvs(
+      html`<div class="engine-pv is-waiting"><span class="engine-pv-line">Analyze is still running</span></div>`,
+    );
     host.depthReadout.textContent = "";
     host.depthReadout.hidden = true;
     host.evalHead.textContent = "...";

@@ -24,6 +24,7 @@ const SMOKE_TIMEOUT_MS = 5 * 60_000;
 const SUITE = [
   ["Library", "library-viewport-smoke.mjs"],
   ["Repertoire", "build-viewport-smoke.mjs"],
+  ["Engine PV", "engine-pv-containment-smoke.mjs"],
   ["Train", "train-viewport-smoke.mjs"],
   ["Games", "games-viewport-smoke.mjs"],
   ["Scout", "scout-viewport-smoke.mjs"],
