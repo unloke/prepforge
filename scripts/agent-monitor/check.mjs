@@ -79,6 +79,35 @@ test('partially written events wait until their final newline', t => {
   poll(); assert.equal(f.messages.length, 1);
 });
 
+test('two exits between polls are both delivered even when the monitor already stopped', t => {
+  const f = fixture(t);
+  f.status.state = 'finished-observing';
+  f.status.updatedAt = new Date(0).toISOString(); f.save();
+  f.emit('first-exit', 'first'); f.emit('second-exit', 'second');
+  createDelivery(f.pi, f.ctx, f.directory)();
+  assert.deepEqual(f.messages[0].message.details.eventIds, ['first-exit', 'second-exit']);
+  assert.match(f.messages[0].message.content, /first: exited-review-required/);
+  assert.match(f.messages[0].message.content, /second: exited-review-required/);
+  assert.doesNotMatch(f.messages[0].message.content, /heartbeat missing/);
+});
+
+test('a failed worktree produces one alert per failure rather than one model turn per poll', { skip: process.platform !== 'win32', timeout: 60_000 }, async t => {
+  const f = fixture(t);
+  const config = { ownerSessionId: 'owner', runId: 'run', intervalMs: 100, agents: [
+    { pid: process.pid, name: 'bad-worktree', cwd: path.join(f.directory, 'missing'), branch: 'main' },
+  ] };
+  fs.writeFileSync(path.join(f.directory, 'targets.json'), JSON.stringify(config));
+  fs.unlinkSync(path.join(f.directory, 'status.json'));
+  const monitor = spawn(process.execPath, [fileURLToPath(new URL('monitor.mjs', import.meta.url)), f.directory], { stdio: 'ignore', windowsHide: true });
+  t.after(async () => { monitor.kill(); await delay(300); });
+  const samplesPath = path.join(f.directory, 'samples.jsonl');
+  await until(() => fs.existsSync(samplesPath) && fs.readFileSync(samplesPath, 'utf8').trim().split('\n').length >= 3);
+  const events = fs.readFileSync(path.join(f.directory, 'events.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(events.filter(event => event.type === 'inspection-error').length, 1);
+  createDelivery(f.pi, f.ctx, f.directory)();
+  assert.equal(f.messages.length, 1);
+});
+
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(predicate) {
   const deadline = Date.now() + 20_000;

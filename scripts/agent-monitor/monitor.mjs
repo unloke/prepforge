@@ -14,6 +14,7 @@ const intervalMs = config.intervalMs ?? 5000;
 const staleMs = config.staleMs ?? 15 * 60_000;
 const runId = config.runId;
 let sequence = 0;
+let lastMonitorError = null;
 let absentSamples = 0;
 const eventsPath = path.join(directory, 'events.jsonl');
 const json = value => JSON.stringify(value, null, 2);
@@ -160,13 +161,18 @@ function tick() {
     const inventory = processes();
     const now = Date.now();
     const agents = targets.map(target => {
-      try { return inspect(target, inventory, now); }
-      catch (error) {
+      try {
+        const snapshot = inspect(target, inventory, now);
+        target.previousError = null;
+        return snapshot;
+      } catch (error) {
         const message = String(error.message).slice(0, 1000);
-        event('inspection-error', { agent: target.name, error: message });
+        if (target.previousError !== message) event('inspection-error', { agent: target.name, error: message });
+        target.previousError = message;
         return { name: target.name, cwd: target.cwd, state: 'inspection-error', error: message };
       }
     });
+    lastMonitorError = null;
     absentSamples = agents.every(agent => agent.state === 'exited-review-required') ? absentSamples + 1 : 0;
     const status = { ownerSessionId: config.ownerSessionId, runId, startedAt, updatedAt: new Date(now).toISOString(), monitorPid: process.pid, intervalMs, staleMs, state: absentSamples >= 2 ? 'finished-observing' : 'monitoring', agents };
     atomicWrite('status.json', json(status));
@@ -177,7 +183,9 @@ function tick() {
       return;
     }
   } catch (error) {
-    event('monitor-error', { error: String(error.message).slice(0, 1000) });
+    const message = String(error.message).slice(0, 1000);
+    if (lastMonitorError !== message) event('monitor-error', { error: message });
+    lastMonitorError = message;
   }
   setTimeout(tick, intervalMs);
 }
