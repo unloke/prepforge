@@ -43,6 +43,29 @@ def _white_repertoire_with_e4(client: TestClient) -> str:
     return created["repertoire_id"]
 
 
+def _white_repertoire_with_e4_then_nf3(client: TestClient) -> str:
+    """White repertoire 1.e4 e5 2.Nf3: two own moves, so a graded correct answer
+    advances the session to a second prompt."""
+    created = client.post(
+        "/api/repertoires/create",
+        json={"name": "Two Moves", "color": "white"},
+        headers=csrf_headers(client),
+    ).json()
+    parent = created["selected_node_id"]
+    for uci in ("e2e4", "e7e5", "g1f3"):
+        added = client.post(
+            "/api/build/add-move",
+            json={
+                "repertoire_id": created["repertoire_id"],
+                "parent_node_id": parent,
+                "move_uci": uci,
+            },
+            headers=csrf_headers(client),
+        )
+        parent = added.json()["selected_node_id"]
+    return created["repertoire_id"]
+
+
 def _start(client: TestClient, repertoire_id: str):
     return client.post(
         "/api/train/start",
@@ -177,6 +200,86 @@ def test_hint_reveals_expected_move(client):
     assert body["expected_san"] == "e4"
     assert body["piece"] == "Move the pawn"
     assert isinstance(body["strategy"], str) and body["strategy"]
+
+
+# ---- reconciliation read (lost rehearsal response) --------------------------
+
+
+def _session_read(client: TestClient, session_id: str):
+    return client.get(f"/api/train/session/{session_id}")
+
+
+def test_session_read_requires_auth(client):
+    assert _session_read(client, "x").status_code == 401
+
+
+def test_session_read_matches_the_start_prompt(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _start(client, rep).json()
+    body = _session_read(client, start["session_id"]).json()
+    assert body["session_id"] == start["session_id"]
+    assert body["current_index"] == 0
+    assert body["total_lines"] == len(start["lines"])
+    assert body["prompt"] == start["prompt"]
+
+
+def test_session_read_reports_the_advanced_prompt_without_grading(client):
+    """After a correct answer the read names the next own move — the whole point
+    of reconciling instead of replaying the old one — and writes nothing."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4_then_nf3(client)
+    start = _start(client, rep).json()
+    graded = client.post(
+        "/api/train/move",
+        json={"session_id": start["session_id"], "played_uci": "e2e4"},
+        headers=csrf_headers(client),
+    ).json()
+    assert graded["correct"] is True
+    body = _session_read(client, start["session_id"]).json()
+    assert body["prompt"]["fen_before"] == graded["prompt"]["fen_before"]
+    assert "g1f3" in body["prompt"]["legal_moves"]
+    assert body["prompt"]["fen_before"] != start["prompt"]["fen_before"]
+    # Read-only: the e4 progress row still has exactly the one graded attempt.
+    assert graded["progress"]["attempts"] == 1
+    again = _session_read(client, start["session_id"]).json()
+    assert again["prompt"] == body["prompt"]
+    assert again["current_index"] == body["current_index"]
+
+
+def test_session_read_returns_no_prompt_for_a_finished_session(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _start(client, rep).json()["session_id"]
+    client.post(
+        "/api/train/move",
+        json={"session_id": session_id, "played_uci": "e2e4"},
+        headers=csrf_headers(client),
+    )
+    body = _session_read(client, session_id).json()
+    assert body["prompt"] is None
+    assert body["current_index"] == 1
+
+
+def test_session_read_ignores_smart_sessions(client):
+    """Smart sessions store encoded cards, not node ids: the rehearsal read has
+    no contract for them and must not try to walk one as a line."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _smart_start(client, rep, seed=5).json()["session_id"]
+    assert _session_read(client, session_id).status_code == 404
+
+
+def test_session_read_is_owner_gated(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    session_id = _start(client, rep).json()["session_id"]
+
+    from prepforge_chess.api import main
+
+    other = TestClient(main.app)
+    _register(other, "b@example.com")
+    assert _session_read(other, session_id).status_code == 404
 
 
 def test_skip_advances_past_the_line(client):

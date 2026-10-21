@@ -4,8 +4,11 @@
 //     queue is released before its summary paints, so the restart used to widen a
 //     single-repertoire queue to a MIXED queue over every active repertoire.
 //  2. Line rehearsal: a failed POST /api/train/move must leave the SAME card
-//     answerable. It used to leave the optimistic move on a locked board under a
-//     "Your move" banner.
+//     answerable when the server rejected it, and must NOT re-ask the old card
+//     when the response was lost after the server committed the grade. Replaying
+//     an old answer would grade the NEXT card wrong (a false miss + permanent
+//     desync), so the client reconciles with GET /api/train/session/{id} and
+//     adopts the server's current prompt.
 //
 // Runs against a real API server serving the built app (no Lichess, no fixtures):
 //
@@ -85,6 +88,9 @@ async function buildRepertoire(name, color, moves) {
 // widened queue would visibly change the session).
 const whiteId = await buildRepertoire("Repro White", "white", ["e2e4", "e7e5", "g1f3"]);
 await buildRepertoire("Repro Black", "black", ["e2e4", "c7c6", "d2d4", "d7d5"]);
+// A second untouched white repertoire: the lost-response case needs a session
+// whose cards and progress no earlier case has graded.
+const white2Id = await buildRepertoire("Repro White 2", "white", ["e2e4", "e7e5", "g1f3"]);
 
 // ---- Browser -----------------------------------------------------------------
 let browser;
@@ -175,35 +181,137 @@ try {
   check(restart.fresh === true && restart.mixed === false && restart.repertoire_id === whiteId,
     "New session keeps the finished queue's repertoire", { starts });
 
-  // ---- 2. Line rehearsal: a failed answer stays answerable ------------------
-  await toSetup();
-  await page.click('#train-modes .train-mode[data-mode="all_lines"]');
-  await page.waitForTimeout(1200);
-  await page.selectOption("#train-repertoire-select", whiteId);
-  await page.waitForTimeout(1200);
-  await page.click("#start-train");
-  await page.waitForTimeout(3500);
+  // ---- 2. Line rehearsal: the server REJECTED the answer -------------------
+  // A 4xx proves the transaction never committed, so the same card comes back
+  // and no reconciliation read is needed.
+  const sessionReads = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/train/session/")) sessionReads.push(request.url());
+  });
+  const startRehearsal = async (repertoireId = whiteId) => {
+    await toSetup();
+    await page.click('#train-modes .train-mode[data-mode="all_lines"]');
+    await page.waitForTimeout(1200);
+    await page.selectOption("#train-repertoire-select", repertoireId);
+    await page.waitForTimeout(1200);
+    await page.click("#start-train");
+    await page.waitForTimeout(3500);
+  };
+  await startRehearsal();
   const uci = await expectedUci();
   check(!!uci, "the rehearsal card names a prepared move", await snapshot());
   let failOnce = true;
   await page.route("**/api/train/move", async (route) => {
-    if (failOnce) { failOnce = false; await route.abort("failed"); return; }
+    if (failOnce) {
+      failOnce = false;
+      await route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ detail: "training session has no current prompt" }) });
+      return;
+    }
     await route.continue();
   });
   await play(uci);
   await page.waitForTimeout(2200);
   const afterFailure = await snapshot();
-  check(/didn't save/.test(afterFailure.sub || "") && afterFailure.banner === "move",
-    "a failed answer says it did not save", afterFailure);
-  check(afterFailure.pieces[uci.slice(0, 2)] && !afterFailure.pieces[uci.slice(2, 4)],
-    "a failed answer puts the piece back on its square", afterFailure.pieces);
+  check(afterFailure.banner === "move" && /didn't save/.test(afterFailure.sub || "")
+    && afterFailure.pieces[uci.slice(0, 2)] && !afterFailure.pieces[uci.slice(2, 4)],
+    "a rejected answer puts the same card back", afterFailure);
   check(afterFailure.hint === false && afterFailure.skip === false,
-    "a failed answer leaves hint/skip usable", afterFailure);
+    "a rejected answer leaves hint/skip usable", afterFailure);
+  check(sessionReads.length === 0, "a rejected answer needs no reconciliation read", sessionReads);
   await play(uci);
   await page.waitForTimeout(2600);
   const afterRetry = await snapshot();
-  check(afterRetry.banner === "done" || afterRetry.sub !== afterFailure.sub,
-    "the same card accepts the answer on retry", afterRetry);
+  check(afterRetry.pieces.e4 === "P" && afterRetry.pieces.e5 === "p" && afterRetry.pieces.e2 !== "P",
+    "the same card accepts the answer on retry and advances", afterRetry.pieces);
+
+  // ---- 3. Line rehearsal: the server committed, the RESPONSE was lost ------
+  // route.fetch() sends the request and lets the server grade + advance; the
+  // response is then dropped before the page sees it. The client must not ask
+  // for e4 again: the server now expects Nf3.
+  await page.unroute("**/api/train/move");
+  await startRehearsal(white2Id);
+  // No hint taps here: the answer must be a clean first attempt, otherwise the
+  // grade itself would be a miss and hide the false-mistake check below.
+  const fresh = await snapshot();
+  check(fresh.pieces.e2 === "P" && fresh.pieces.e4 === undefined && fresh.pieces.g1 === "N",
+    "the rehearsal starts on the 1.e4 card", fresh.pieces);
+  const reads = sessionReads.length;
+  const graded = [];
+  let loseOnce = true;
+  await page.route("**/api/train/move", async (route) => {
+    if (!loseOnce) { await route.continue(); return; }
+    loseOnce = false;
+    const response = await route.fetch();
+    graded.push(await response.json());
+    await route.abort("failed"); // the response never reaches the page
+  });
+  await play("e2e4");
+  await page.waitForTimeout(3000);
+  const afterLost = await snapshot();
+  check(graded.length === 1 && graded[0].correct === true,
+    "the server graded the e4 answer before the response was lost", graded[0]);
+  check(sessionReads.length > reads, "the client reconciled with the session read", sessionReads);
+  // The server's next card is 2.Nf3 (1.e4 e5 on the board), not 1.e4 again.
+  check(afterLost.pieces.e4 === "P" && afterLost.pieces.e5 === "p" && afterLost.pieces.g1 === "N",
+    "the client adopted the server's advanced card (2.Nf3)", { afterLost: afterLost.pieces, graded: graded[0]?.prompt });
+  check(afterLost.pieces.e2 !== "P",
+    "the client did not put the old 1.e4 card back", afterLost.pieces);
+  // Answering the card on screen must be a first attempt on Nf3: no false miss.
+  const answered = [];
+  await page.route("**/api/train/move", async (route) => {
+    const response = await route.fetch();
+    answered.push(await response.json());
+    await route.fulfill({ response });
+  });
+  await play("g1f3");
+  await page.waitForTimeout(2600);
+  const final = await snapshot();
+  check(answered.length === 1 && answered[0].correct === true,
+    "the adopted card accepts its own answer", answered[0]);
+  check(answered[0] && (answered[0].mistakes || []).length === 0,
+    "recovery records no false mistake", answered[0]?.mistakes);
+  check(answered[0] && answered[0].progress && answered[0].progress.attempts === 1
+    && answered[0].progress.correct_attempts === 1,
+    "the next card's progress has exactly one attempt", answered[0]?.progress);
+  check(final.summaryUp === true || final.banner === "done",
+    "the rehearsal finishes on the server's line", final);
+
+  // ---- 4. Line rehearsal: the reconciliation read fails, then succeeds ------
+  // The grade committed and its response was lost, but the follow-up read also
+  // fails (offline). The board must stay locked behind a concrete Retry sync
+  // action — never a dead "Your move" on the old card.
+  await page.unroute("**/api/train/move");
+  await startRehearsal(white2Id);
+  let loseAgain = true;
+  await page.route("**/api/train/move", async (route) => {
+    if (!loseAgain) { await route.continue(); return; }
+    loseAgain = false;
+    await route.fetch();
+    await route.abort("failed");
+  });
+  let failRead = true;
+  await page.route("**/api/train/session/**", async (route) => {
+    if (!failRead) { await route.continue(); return; }
+    failRead = false;
+    await route.abort("failed");
+  });
+  await play("e2e4");
+  await page.waitForTimeout(2500);
+  const offline = await snapshot();
+  check(offline.banner === "done" && /confirm/.test(offline.title || ""),
+    "a failed reconciliation says the answer is unconfirmed", offline);
+  // The board is locked, not re-asked: no "Your move" over a card the server
+  // may already have advanced past, and no second answer on the old position.
+  check(offline.hint === true && offline.skip === true && offline.title !== "Your move",
+    "a failed reconciliation locks the card instead of re-asking it", offline);
+  const retrySync = page.locator(".notice-action", { hasText: "Retry sync" });
+  check(await retrySync.count() === 1, "the failure offers a concrete Retry sync action");
+  await retrySync.click();
+  await page.waitForTimeout(2200);
+  const recovered = await snapshot();
+  check(recovered.pieces.e4 === "P" && recovered.pieces.e5 === "p" && recovered.pieces.e2 !== "P"
+    && recovered.pieces.g1 === "N",
+    "Retry sync adopts the server's advanced card (2.Nf3)", recovered.pieces);
   check(pageErrors.length === 0, "no page errors", pageErrors);
 } finally {
   await browser.close();

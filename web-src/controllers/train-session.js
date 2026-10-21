@@ -10,6 +10,7 @@ import { watchMaiaInit } from "../maia-init-notice.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
 import { countOf } from "../plural.js";
 import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveTip } from "../train-hint.js";
+import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, rememberFinishedQueueScope, startNotice, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
@@ -20,7 +21,7 @@ let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, 
   notices, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
   refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, renderSmartSummaryStats, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
   setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
-  syncWorkspaceUrl, updateTrainTurnBadge;
+  syncWorkspaceUrl, updateTrainTurnBadge, trainRecovery;
 
 export function createTrainSession(deps) {
   ({
@@ -34,6 +35,10 @@ export function createTrainSession(deps) {
     setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   } = deps);
+  trainRecovery = createTrainRecovery({
+    api, appState, boards, currentOwnerId, notices, setStatus, setStatusError,
+    setTrainBanner, syncTrainSessionControls, renderTraining, finishTrainingSession,
+  });
   initTrainControls();
   return {
     clearBlitzTimer, loadTrainRepertoireOptions, onFeelingLucky, openPlayInAnalyze,
@@ -1473,19 +1478,11 @@ async function submitTrainingMove(playedUci) {
       }),
     });
   } catch (error) {
-    // The answer was not graded, so the card is still the same one: put the
-    // board back on the position it asks about and let the player answer again.
-    // Without this the optimistic move stayed on a locked board (legalMoves: [])
-    // under a "Your move" banner — a rehearsal the player could not continue.
-    if (superseded()) return;
-    boards.train.setPosition({
-      fen: prompt.fen_before,
-      legalMoves: prompt.legal_moves || [],
-      lastMove: null,
-    });
-    setTrainBanner("move", "Your move", "That answer didn't save. Play it again.");
-    setStatusError(error.message);
-    syncTrainSessionControls();
+    // A rejected answer (the server answered 4xx) provably did not grade, so the
+    // same card comes back. A lost response may already be saved: the server's
+    // current prompt is fetched before the board reopens, because replaying the
+    // old answer would grade the next card wrong and record a false miss.
+    await trainRecovery.recoverAnswer(error, prompt, superseded);
     return;
   }
   if (result.day_streak) appState.dayStreak = result.day_streak;

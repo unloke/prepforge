@@ -7,14 +7,17 @@
 //     exactly that hand-off and fenced by owner + owner generation.
 //  2. Line rehearsal: a failed /api/train/move put the board back on the played
 //     (optimistic) move with no legal moves under a "Your move" banner, so the
-//     card could not be answered again. The failure now restores the SAME prompt,
-//     and a late failure never repaints after the card/mode/owner changed.
+//     card could not be answered again. An answer the server rejected (4xx)
+//     restores the SAME prompt, and a late failure never repaints after the
+//     card/mode/owner changed. An unconfirmed result (no server answer) is
+//     reconciled instead — see train-recovery.test.js.
 import { describe, expect, it, vi } from "vitest";
 
 import {
   finishedQueueScopeFor, queueRepertoireForStart, rememberFinishedQueueScope,
 } from "./train-start.js";
 import { appSource } from "./test-app-source.js";
+import { createTrainRecovery } from "./train-recovery.js";
 
 const source = appSource();
 function compile(marker, deps, prelude = "") {
@@ -153,6 +156,7 @@ function rehearsalHarness({ move } = {}) {
     finishTrainingSession: vi.fn(),
     currentTrainingPrompt: () => appState.training.prompt,
   };
+  deps.trainRecovery = createTrainRecovery(deps);
   const submit = compile("async function submitTrainingMove(", deps);
   return { appState, board, pending, deps, submit };
 }
@@ -162,7 +166,7 @@ describe("a failed rehearsal answer keeps the same card answerable", () => {
     const h = rehearsalHarness();
     const attempt = h.submit("e2e4");
     await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
-    h.pending.reject(new Error("Failed to fetch"));
+    h.pending.reject(Object.assign(new Error("Failed to fetch"), { status: 400 }));
     await attempt;
     // The optimistic move is undone: the same position, with its legal moves.
     expect(h.board.setPosition).toHaveBeenLastCalledWith({
@@ -181,7 +185,7 @@ describe("a failed rehearsal answer keeps the same card answerable", () => {
     await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
     // The session moved on (another prompt) while the request was in flight.
     h.appState.training = { prompt: { session_id: "sess-2", fen_before: FEN_BEFORE, legal_moves: [] } };
-    h.pending.reject(new Error("Failed to fetch"));
+    h.pending.reject(Object.assign(new Error("Failed to fetch"), { status: 400 }));
     await attempt;
     expect(h.board.setPosition).not.toHaveBeenCalled();
     expect(h.deps.setTrainBanner).not.toHaveBeenCalled();
@@ -195,7 +199,7 @@ describe("a failed rehearsal answer keeps the same card answerable", () => {
       await vi.waitFor(() => expect(h.deps.api).toHaveBeenCalled());
       if (change === "mode") h.appState.trainMode = "play";
       else h.appState.accountUserId = "bob";
-      h.pending.reject(new Error("Failed to fetch"));
+      h.pending.reject(Object.assign(new Error("Failed to fetch"), { status: 400 }));
       await attempt;
       expect(h.board.setPosition).not.toHaveBeenCalled();
       expect(h.deps.setTrainBanner).not.toHaveBeenCalled();
