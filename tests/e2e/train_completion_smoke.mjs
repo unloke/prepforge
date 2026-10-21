@@ -168,6 +168,16 @@ async function main() {
       fail(`Repertoire header lost its repertoire after finishing (got "${headerAfter}")`);
     }
 
+    // Restarting used to expose the poisoned Build state as reading 'filter'.
+    const restarted = page.waitForResponse(res => res.url().includes('/api/train/smart/start'), { timeout: TIMEOUT_MS });
+    await page.click('#train-summary-new');
+    const restartResponse = await restarted;
+    if (!restartResponse.ok()) fail(`starting the next session returned ${restartResponse.status()}`);
+    await page.waitForFunction(() => document.getElementById('train-banner')?.dataset.state !== 'runin', null, { timeout: TIMEOUT_MS });
+    await page.waitForTimeout(500);
+    const restartRejections = await page.evaluate(() => window.__completionRejections || []);
+    if (errors.length || restartRejections.length) fail(`restarting after completion raised:\n${errors.join('\n')}\n${restartRejections.join('\n')}`);
+
     // 5) The re-read must have landed: the trained moves now read "Learning"
     //    instead of "Not trained yet".
     await page.click('[data-testid="nav-build"]');
