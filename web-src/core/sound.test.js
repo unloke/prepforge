@@ -8,7 +8,7 @@ import { Chess } from "chess.js";
 // the one call the cut makes on a sounding bus (cancelScheduledValues). A
 // buffer keeps its samples, because every voice is now computed into one.
 function fakeAudio() {
-  const made = { contexts: 0, sources: 0, cancels: 0, buffers: [] };
+  const made = { contexts: 0, sources: 0, cancels: 0, buffers: [], sourceNodes: [], stops: 0, disconnections: 0 };
   const param = () => ({
     value: 1,
     setValueAtTime() {},
@@ -17,7 +17,7 @@ function fakeAudio() {
       made.cancels += 1;
     },
   });
-  const node = (extra = {}) => ({ connect: (target) => target, ...extra });
+  const node = (extra = {}) => ({ connect: (target) => target, disconnect: () => { made.disconnections += 1; }, ...extra });
   class FakeContext {
     constructor() {
       made.contexts += 1;
@@ -36,7 +36,9 @@ function fakeAudio() {
       return buffer;
     }
     createBufferSource() {
-      return node({ start: () => { made.sources += 1; }, stop() {} });
+      const source = node({ start: () => { made.sources += 1; }, stop: () => { made.stops += 1; } });
+      made.sourceNodes.push(source);
+      return source;
     }
     createOscillator() {
       return node({ frequency: param(), start: () => { made.sources += 1; }, stop() {} });
@@ -95,6 +97,17 @@ describe("which cue a move plays", () => {
     const move = position(["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5", "O-O"]);
     expect(move.lastMove).toBe("e1g1");
     expect(sound.moveCue(move.prevFen, move.fen, move.lastMove)).toBe("castle");
+  });
+
+  it("keeps two-file knight, bishop and rook moves separate from castling", async () => {
+    const { sound } = await soundWith();
+    for (const move of [position(["d4", "d5", "Nd2"]), position(["e4", "e5", "Bd3"])]) {
+      expect(sound.moveCue(move.prevFen, move.fen, move.lastMove)).toBe("move");
+    }
+    const chess = new Chess("4k3/8/8/8/8/8/8/R1n1K3 w - - 0 1");
+    const before = chess.fen();
+    chess.move("Rxc1");
+    expect(sound.moveCue(before, chess.fen(), "a1c1")).toBe("capture");
   });
 
   it("is a promotion when a pawn arrives with a new piece", async () => {
@@ -157,6 +170,23 @@ describe("playing a cue", () => {
     sound.playSound("capture");
     expect(made.cancels).toBe(1);
     expect(made.sources).toBeGreaterThan(afterMove);
+  });
+
+  it("stops every scheduled voice of a replaced cue, including later capture taps", async () => {
+    const { sound, made } = await soundWith();
+    sound.playSound("capture");
+    expect(made.sourceNodes).toHaveLength(2);
+    sound.playSound("move");
+    expect(made.stops).toBe(2);
+  });
+
+  it("disconnects the cue only after its last voice ends", async () => {
+    const { sound, made } = await soundWith();
+    sound.playSound("capture");
+    made.sourceNodes[0].onended();
+    expect(made.disconnections).toBe(2);
+    made.sourceNodes[1].onended();
+    expect(made.disconnections).toBe(5);
   });
 
   it("makes its context on the first gesture, then stops listening", async () => {
