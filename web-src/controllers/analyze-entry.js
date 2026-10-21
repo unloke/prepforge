@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { appState } from "../core/state.js";
-import { api, currentOwnerId, localDayOf, postJson, setStatus, setStatusError } from "../core/api.js";
-import { dismissNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
+import { api, currentOwnerId, localDayOf, setStatus, setStatusError } from "../core/api.js";
+import { holdNewGameNudge, markLichessSeen, orientAnalysisForSelf, syncFetchMyGameButton } from "../account-entry.js";
 
 // The Analyze entry points that are not the analysis run itself: "My last
 // game", the saved-list "Recent analyses", recalling one, and deleting one with
@@ -30,98 +30,81 @@ export function createAnalyzeEntry(deps) {
 // request (including a lazy view load) replace the latest game.
 export let analysisRecallSeq = 0;
 
+function latestGameHandoff() {
+  const sourceSeq = invalidateAnalysisSource(), owner = currentOwnerId(), generation = appState.ownerGeneration;
+  const isCurrent = () => sourceSeq === analysisRecallSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
+  return { sourceSeq, isCurrent, release: holdNewGameNudge(isCurrent) };
+}
+
 export async function fetchMyLichessGame(accountId = null) {
-  // Your games come from the Lichess account linked to your PrepForge account.
   if (!requireSignIn("Sign in to load your latest Lichess game", "my-last-game")) return;
   if (!appState.lichessUsername && !lichessAccounts().length) {
     setStatus("Connect a Lichess account first");
     startLichessOAuth();
     return;
   }
+  const handoff = latestGameHandoff();
   const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
+  const button = document.getElementById("fetch-my-game"), token = String(handoff.sourceSeq);
   setStatus("Fetching your latest game...");
-  // The "you just finished a game" card and this button are the same workflow:
-  // the card goes now, not after the fetch, so the user is never left with two
-  // ways to open one game.
-  dismissNewGameNudge();
-  const button = document.getElementById("fetch-my-game");
-  // A second click while the fetch is in flight would race two analyses over
-  // the same PGN box; the button says it is working instead.
   if (button) {
-    button.dataset.wasDisabled = "1";
+    button.dataset.wasDisabled = token;
     button.disabled = true;
   }
-  let latest;
-  const done = () => {
-    if (!button?.dataset.wasDisabled) return;
-    delete button.dataset.wasDisabled;
-    // The button was disabled for the fetch and never re-enabled: one Last game
-    // per session, and the second click landed on a dead control. Re-arm it here
-    // (syncFetchMyGameButton only repaints availability, it does not re-enable).
-    button.disabled = false;
-    syncFetchMyGameButton();
-  };
   try {
-    latest = await api(`/api/lichess/latest${query}`);
-  } catch (error) {
-    done();
-    setStatusError(error.message);
-    return;
-  }
-  try {
+    const latest = await api(`/api/lichess/latest${query}`);
+    if (!handoff.isCurrent()) return;
     if (!latest.has_game) {
       setStatus("No recent games found", { severity: "warning" });
       return;
     }
-    await importLatestGame(latest);
+    return await importLatestGame(latest, handoff);
+  } catch (error) {
+    if (handoff.isCurrent()) setStatusError(error.message);
   } finally {
-    done();
+    handoff.release();
+    if (button?.dataset.wasDisabled === token) {
+      delete button.dataset.wasDisabled;
+      button.disabled = false;
+      syncFetchMyGameButton();
+    }
   }
 }
 
-// The one import for "a finished Lichess game": Analyze's Last game button and
-// the "you just finished a game" card both land here, so the game is loaded,
-// oriented to the user's side and acknowledged exactly the same way whichever
-// entry the user took. `game` is a `/api/lichess/latest` payload; the watcher's
-// lightweight probe carries no move text, so the full game is fetched here.
-export async function importLatestGame(game) {
-  if (!game || !game.has_game) return false;
-  // Show the game in the move list right away, then analyze it in the same step —
-  // "Last game" means "review my last game", not "paste it and wait for me".
-  let pgn = game.pgn || "";
-  if (!pgn) {
-    try {
-      const full = await api("/api/lichess/latest");
-      pgn = (full && full.pgn) || "";
-    } catch (error) {
-      setStatusError(error.message);
+// Both entry points import the same full response. A light hint can become
+// outdated while its PGN is fetched; players, identity and text must travel together.
+export async function importLatestGame(game, context = null) {
+  if (!game?.has_game) return false;
+  const handoff = context || latestGameHandoff();
+  try {
+    if (!game.pgn) game = await api("/api/lichess/latest");
+    if (!handoff.isCurrent()) return false;
+    const pgn = game.pgn || "";
+    if (!game.has_game || !pgn.trim()) {
+      setStatus("No recent games found", { severity: "warning" });
       return false;
     }
-  }
-  if (!pgn.trim()) {
-    setStatus("No recent games found", { severity: "warning" });
+    document.getElementById("pgn-input").value = pgn;
+    orientAnalysisForSelf(game.white, game.black, [game.source_account]);
+    const loaded = await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true, sourceSeq: handoff.sourceSeq });
+    if (!handoff.isCurrent()) return false;
+    if (!loaded) {
+      setStatusError('Could not load this game. Try Last game again.');
+      return false;
+    }
+    orientAnalysisForSelf(game.white, game.black, [game.source_account]);
+    if (game.lichess_id) void markLichessSeen(game.lichess_id);
+    handoff.release();
+    const source = game.source_account ? ` · from ${game.source_account}` : "";
+    setStatus(`Loaded ${game.white || "?"} vs ${game.black || "?"}${source} · analyzing`);
+    await runAnalysis();
+    return true;
+  } catch (error) {
+    if (handoff.isCurrent()) setStatusError(error.message);
     return false;
+  } finally {
+    handoff.release();
   }
-  document.getElementById("pgn-input").value = pgn;
-  // Which way round the board goes is decided from THIS game's players, before
-  // the move list and the board are rebuilt: the lazy Analyze chunk and the
-  // position lookup both resolve asynchronously, and the previous game's
-  // perspective must not survive until then.
-  orientAnalysisForSelf(game.white, game.black, [game.source_account]);
-  // Acknowledged for the game the user actually chose, before the slow part: a
-  // watcher probe that is already in flight must not put the same card back
-  // while this import is still loading (the seen POST is ordered in the
-  // background, so a later game's ack cannot be overwritten by this one).
-  if (game.lichess_id) void markLichessSeen(game.lichess_id);
-  await loadPgnIntoAnalyze(pgn, { goToEnd: false, quiet: true }).catch(() => {});
-  // Re-assert after the handoff settled. setOrientation is idempotent, and this
-  // is the only place that flips the analysis board, so a slow chunk load can
-  // never leave the board on the previous game's side.
-  orientAnalysisForSelf(game.white, game.black, [game.source_account]);
-  const source = game.source_account ? ` · from ${game.source_account}` : "";
-  setStatus(`Loaded ${game.white || "?"} vs ${game.black || "?"}${source} · analyzing`);
-  await runAnalysis();
-  return true;
 }
 
 

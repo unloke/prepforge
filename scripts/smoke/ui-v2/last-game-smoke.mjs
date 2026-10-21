@@ -94,6 +94,8 @@ async function openPage() {
     fullCalls: 0,
     seenPosts: [],
     lightDelayMs: 0,
+    fullStatus: 200,
+    prepareCalls: 0,
   };
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -130,11 +132,15 @@ async function openPage() {
     }
     if (path === "/api/lichess/latest") {
       const light = url.searchParams.get("light") === "1";
+      const payload = latestPayload(!light);
       if (light) {
         state.lightCalls += 1;
         if (state.lightDelayMs) await new Promise((r) => setTimeout(r, state.lightDelayMs));
-      } else state.fullCalls += 1;
-      return json(latestPayload(!light));
+      } else {
+        state.fullCalls += 1;
+        if (state.fullStatus !== 200) return json({ detail: 'Lichess unavailable' }, state.fullStatus);
+      }
+      return json(payload);
     }
     if (path === "/api/lichess/seen") {
       const body = JSON.parse(req.postData() || "{}");
@@ -143,11 +149,13 @@ async function openPage() {
       return json({ ok: true });
     }
     if (path === "/api/analyze/prepare") {
+      state.prepareCalls += 1;
       return json({
         game_id: "smoke-game", depth: 4, engine: "stockfish (browser)",
-        positions: MOVES.map((m) => m.fen_after),
-        moves: MOVES.map((m) => ({ ply: m.ply, san: m.san })),
-        brilliant: { enabled: false },
+        positions: [...new Set(MOVES.flatMap(m => [m.fen_before, m.fen_after]))],
+        moves: MOVES,
+        import_summary: { mode: 'single', total_games: 1, imported_count: 1, existing_count: 0, failed_count: 0, selected_index: 0, selected_game_id: 'smoke-game', games: [] },
+        brilliant: { enabled: false, rating: null },
       });
     }
     if (path === "/api/analyze/classify-save") {
@@ -214,15 +222,22 @@ async function clickLastGame(page) {
   );
 }
 // The nudge's own action.
-async function clickNudgeAnalyze(page) {
+async function clickNudgeAnalyze(page, expectedId) {
   await page.locator('#notices .notice', { hasText: "You just finished a game!" })
     .locator("button.notice-action", { hasText: "Analyze" }).click();
+  await page.waitForFunction(id => document.getElementById('pgn-input').value.includes(`https://lichess.org/${id}`), expectedId);
   await page.waitForFunction(
     () => document.querySelectorAll("#analysis-moves .mtree-move, #analysis-moves button").length > 0,
     null, { timeout: 90_000 },
   );
   await page.waitForTimeout(400);
 }
+const returnToTab = page => page.evaluate(() => {
+  window.dispatchEvent(new Event('blur'));
+  window.dispatchEvent(new Event('focus'));
+  document.dispatchEvent(new Event('visibilitychange'));
+});
+
 const nudgeText = (page) => page.evaluate(() =>
   [...document.querySelectorAll("#notices .notice")]
     .filter((el) => !el.classList.contains("is-leaving") && !el.classList.contains("is-docked"))
@@ -286,7 +301,7 @@ async function scenarioNudgeOrientation() {
 
   // A black game finishes while the app is open; returning to the tab surfaces it.
   state.latest = game("b-b", "opp_b", "me_user", "me_user");
-  await page.evaluate(() => { window.dispatchEvent(new Event("focus")); document.dispatchEvent(new Event("visibilitychange")); });
+  await returnToTab(page);
   await page.waitForFunction(
     () => [...document.querySelectorAll("#notices .notice")]
       .some((el) => (el.querySelector(".notice-title") || {}).textContent === "You just finished a game!"),
@@ -294,12 +309,18 @@ async function scenarioNudgeOrientation() {
   ).catch(() => {});
   check("B1 a game finished while away surfaces the nudge", (await nudgeText(page)).includes("You just finished a game!"), await nudgeText(page));
 
-  await clickNudgeAnalyze(page);
+  await clickNudgeAnalyze(page, 'b-b');
   check("B2 nudge import orients to Black (was White from the previous game)",
     await orientation(page) === ORIENT_FIRST.black, { before, after: await orientation(page) });
   await shot(page, "B2-nudge-black");
   check("B3 nudge is gone after its own action ran", (await nudgeText(page)).length === 0, await nudgeText(page));
-  check("B4 no console errors", errors.length === 0, errors.slice(0, 3));
+  check('B4 nudge acknowledges its loaded game exactly once', JSON.stringify(state.seenPosts) === JSON.stringify(['b-w', 'b-b']), state.seenPosts);
+  state.latest = game('b-w2', 'me_user', 'opp_c', 'me_user');
+  await returnToTab(page);
+  await page.locator('#notices .notice', { hasText: 'You just finished a game!' }).waitFor();
+  await clickNudgeAnalyze(page, 'b-w2');
+  check('B5 the next nudge returns the board from Black to White', await orientation(page) === ORIENT_FIRST.white, await orientation(page));
+  check("B6 no console errors", errors.length === 0, errors.slice(0, 3));
   await page.close();
 }
 
@@ -314,7 +335,7 @@ async function scenarioNudgeDismissal() {
   // The watcher's baseline is the cold-start latest game (never popped).
   await waitForBaseline(state);
   state.latest = game("c-2", "me_user", "opp_b", "me_user");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await returnToTab(page);
   await page.waitForFunction(
     () => [...document.querySelectorAll("#notices .notice")]
       .some((el) => (el.querySelector(".notice-title") || {}).textContent === "You just finished a game!"),
@@ -326,7 +347,7 @@ async function scenarioNudgeDismissal() {
   // A slow probe is in flight when the user presses Last game: its response
   // arrives afterwards and must not put the same card back.
   state.lightDelayMs = 1500;
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await returnToTab(page);
   await page.waitForTimeout(150);
   await clickLastGame(page);
   const goneAt = (await nudgeText(page)).length === 0;
@@ -340,7 +361,7 @@ async function scenarioNudgeDismissal() {
 
   // A genuinely newer game still earns its own card.
   state.latest = game("c-3", "opp_c", "me_user", "me_user");
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await returnToTab(page);
   await page.waitForFunction(
     () => [...document.querySelectorAll("#notices .notice")]
       .some((el) => (el.querySelector(".notice-title") || {}).textContent === "You just finished a game!"),
@@ -371,6 +392,7 @@ async function scenarioFocusReturn() {
   state.latest = game("d-new", "opp_b", "me_user", "me_user", 0.2);
   const before = state.lightCalls;
   await page.evaluate(() => {
+    window.dispatchEvent(new Event('blur'));
     window.dispatchEvent(new Event("focus"));
     document.dispatchEvent(new Event("visibilitychange"));
     window.dispatchEvent(new Event("focus"));
@@ -442,7 +464,59 @@ async function scenarioErrorRecovery() {
   await page.close();
 }
 
-const scenarios = [scenarioButtonOrientation, scenarioNudgeOrientation, scenarioNudgeDismissal, scenarioFocusReturn, scenarioErrorRecovery];
+async function scenarioCanonicalFullGame() {
+  const { page, state, errors } = await openPage();
+  state.latest = game('ffbase01', 'me_user', 'old_opponent', 'me_user');
+  await goAnalyze(page);
+  await waitForBaseline(state);
+  state.latest = game('ffhint01', 'me_user', 'hint_opponent', 'me_user');
+  await returnToTab(page);
+  await page.locator('#notices .notice', { hasText: 'You just finished a game!' }).waitFor();
+  state.latest = game('ffnew002', 'new_opponent', 'alt_handle', 'alt_handle');
+  await clickNudgeAnalyze(page, 'ffnew002');
+  check('F1 light G1 → full G2 uses G2 PGN', (await page.locator('#pgn-input').inputValue()).includes('ffnew002'));
+  check('F2 light G1 → full G2 uses G2 Black orientation', await orientation(page) === ORIENT_FIRST.black, await orientation(page));
+  check('F3 light G1 → full G2 acknowledges G2 exactly once', JSON.stringify(state.seenPosts) === JSON.stringify(['ffnew002']), state.seenPosts);
+  check('F4 no console errors', errors.length === 0, errors.slice(0, 3));
+  await page.close();
+}
+
+async function scenarioFailedNudgeImport() {
+  const { page, state, errors } = await openPage();
+  state.latest = game('ggbase01', 'me_user', 'old_opponent', 'me_user');
+  await goAnalyze(page);
+  await waitForBaseline(state);
+  state.latest = game('ggfail01', 'opponent', 'me_user', 'me_user');
+  await returnToTab(page);
+  const nudge = page.locator('#notices .notice', { hasText: 'You just finished a game!' });
+  await nudge.waitFor();
+  state.fullStatus = 502;
+  await nudge.locator('button.notice-action', { hasText: 'Analyze' }).click();
+  await page.getByText('Lichess unavailable', { exact: false }).first().waitFor();
+  check('G1 failed nudge fetch sends no seen mutation', state.seenPosts.length === 0, state.seenPosts);
+  check('G2 failed nudge fetch starts no analysis', state.prepareCalls === 0, state.prepareCalls);
+  state.fullStatus = 200;
+  await clickLastGame(page);
+  check('G3 Last game can retry and acknowledge after successful loading', JSON.stringify(state.seenPosts) === JSON.stringify(['ggfail01']), state.seenPosts);
+  check('G4 retried game is oriented for Black', await orientation(page) === ORIENT_FIRST.black, await orientation(page));
+  check('G5 no console errors beyond the deliberate 502', errors.length === 0, errors.slice(0, 3));
+  await page.close();
+}
+
+async function scenarioInvalidPgn() {
+  const { page, state, errors } = await openPage();
+  state.latest = game('hhbad001', 'me_user', 'opponent', 'me_user');
+  state.latest.pgn = state.latest.pgn.replace('Nf3', 'Qa9');
+  await goAnalyze(page);
+  await clickLastGame(page);
+  check('H1 rejected PGN sends no seen mutation', state.seenPosts.length === 0, state.seenPosts);
+  check('H2 rejected PGN starts no analysis', state.prepareCalls === 0, state.prepareCalls);
+  check('H3 rejected PGN offers a retry action', await page.getByText('Could not load this game. Try Last game again.', { exact: false }).count() > 0);
+  check('H4 no console errors', errors.length === 0, errors.slice(0, 3));
+  await page.close();
+}
+
+const scenarios = [scenarioButtonOrientation, scenarioNudgeOrientation, scenarioNudgeDismissal, scenarioFocusReturn, scenarioErrorRecovery, scenarioCanonicalFullGame, scenarioFailedNudgeImport, scenarioInvalidPgn];
 for (const run of scenarios) {
   console.log(`[last-game-smoke] ${run.name}`);
   try { await run(); }

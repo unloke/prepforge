@@ -85,6 +85,9 @@ export function initAccountController() {
       // the baseline, and let the status refresh re-arm the watch for the new
       // identity (a stale baseline would swallow that account's first game).
       resetLichessGameWatch();
+      analyzeEntry?.invalidateAnalysisSource();
+      const latestButton = document.getElementById('fetch-my-game');
+      if (latestButton) { delete latestButton.dataset.wasDisabled; latestButton.disabled = false; }
       clearCoverage();
       appState.settingsRequestSeq = (appState.settingsRequestSeq || 0) + 1;
       appState.settingsReadSeq = (appState.settingsReadSeq || 0) + 1;
@@ -235,6 +238,9 @@ const LICHESS_FOCUS_MIN_GAP_MS = 2000;
 let newGameNudgeCard = null;
 let acknowledgedGameIds = new Set();
 let latestProbe = null;
+let newGameNudgeHold = null;
+let newGameNudgeVersion = 0;
+let watchWasAway = false, foregroundRefreshPending = false;
 // The seen writes are ordered: dismissing the card for an older game and then
 // loading a newer one must leave the NEWER id as the server's last-seen, or a
 // reload would offer the game the user already reviewed.
@@ -252,20 +258,30 @@ export function startLichessGameWatch() {
   appState.lichessLastActivity = Date.now();
   if (!sameIdentity) {
     appState.lichessBaselineId = null;
+    latestProbe = null;
+    foregroundRefreshPending = false;
     acknowledgedGameIds = new Set();
     dismissNewGameNudge();
   }
   // Re-check promptly when the user returns to the tab/window (and treat it as
   // activity so the cadence tightens). Bound once; refs kept for clean removal.
+  watchWasAway = watchWasAway || document.visibilityState === 'hidden';
   appState.lichessOnFocus = () => {
+    if (document.visibilityState === 'hidden') return;
+    const returned = watchWasAway;
+    watchWasAway = false;
     noteLichessActivity();
-    if (Date.now() - (appState.lichessLastProbeAt || 0) < LICHESS_FOCUS_MIN_GAP_MS) return;
-    checkLatestLichessGame();
+    if (returned && latestProbe) { foregroundRefreshPending = true; return; }
+    if (!returned && Date.now() - (appState.lichessLastProbeAt || 0) < LICHESS_FOCUS_MIN_GAP_MS) return;
+    void checkLatestLichessGame();
   };
+  appState.lichessOnBlur = () => { watchWasAway = true; };
   appState.lichessOnVisible = () => {
     if (document.visibilityState === "visible") appState.lichessOnFocus();
+    else watchWasAway = true;
   };
   window.addEventListener("focus", appState.lichessOnFocus);
+  window.addEventListener('blur', appState.lichessOnBlur);
   document.addEventListener("visibilitychange", appState.lichessOnVisible);
   // Establish the silent baseline (the FIRST sighting of this identity is never
   // a pop) before anything else, then keep polling. Taking it now rather than on
@@ -285,6 +301,10 @@ function stopLichessGameWatch() {
     window.removeEventListener("focus", appState.lichessOnFocus);
     appState.lichessOnFocus = null;
   }
+  if (appState.lichessOnBlur) {
+    window.removeEventListener('blur', appState.lichessOnBlur);
+    appState.lichessOnBlur = null;
+  }
   if (appState.lichessOnVisible) {
     document.removeEventListener("visibilitychange", appState.lichessOnVisible);
     appState.lichessOnVisible = null;
@@ -299,6 +319,10 @@ function resetLichessGameWatch() {
   appState.lichessWatchIdentity = null;
   acknowledgedGameIds = new Set();
   latestProbe = null;
+  newGameNudgeHold = null;
+  watchWasAway = foregroundRefreshPending = false;
+  seenWrite = Promise.resolve();
+  appState.lichessLastProbeAt = 0;
   dismissNewGameNudge();
 }
 
@@ -347,14 +371,18 @@ export function finishedRecently(finishedAt) {
 function checkLatestLichessGame() {
   if (!appState.lichessUsername) return Promise.resolve();
   if (latestProbe) return latestProbe;
-  latestProbe = probeLatestLichessGame().finally(() => {
+  const probe = probeLatestLichessGame().finally(() => {
+    if (latestProbe !== probe) return;
     latestProbe = null;
+    if (foregroundRefreshPending) { foregroundRefreshPending = false; void checkLatestLichessGame(); }
   });
-  return latestProbe;
+  latestProbe = probe;
+  return probe;
 }
 
 async function probeLatestLichessGame() {
-  const owner = currentOwnerId();
+  const owner = currentOwnerId(), generation = appState.ownerGeneration, identity = appState.lichessWatchIdentity, version = newGameNudgeVersion;
+  const isCurrent = () => owner === currentOwnerId() && generation === appState.ownerGeneration && identity === appState.lichessWatchIdentity && version === newGameNudgeVersion;
   appState.lichessLastProbeAt = Date.now();
   let latest;
   try {
@@ -365,12 +393,13 @@ async function probeLatestLichessGame() {
     // A failed probe leaves no baseline behind. Do not let it hold the focus
     // throttle: the next return to the tab tries again instead of waiting out a
     // probe that never answered (the game is still there when it works).
-    appState.lichessLastProbeAt = 0;
+    if (isCurrent()) appState.lichessLastProbeAt = 0;
     return;
   }
   // The account changed while the probe was out: its game belongs to somebody
   // else, and the new owner's watch has its own baseline.
-  if (owner !== currentOwnerId()) return;
+  if (!isCurrent() || newGameNudgeHold?.isCurrent()) return;
+  if (foregroundRefreshPending && appState.lichessBaselineId !== null) return;
   if (!latest || !latest.has_game) return;
   if (appState.lichessBaselineId === null) {
     // First sighting this session: adopt as baseline, never pop.
@@ -399,9 +428,11 @@ async function probeLatestLichessGame() {
 
 // Surface a "you just finished a game" nudge as a notice with an Analyze action.
 function showNewGameWidget(game) {
+  if (newGameNudgeHold?.isCurrent()) return;
   if (!game.lichess_id) return;
   if (appState.newGameWidgetId === game.lichess_id) return;
   if (acknowledgedGameIds.has(String(game.lichess_id))) return;
+  dismissNewGameNudge();
   appState.newGameWidgetId = game.lichess_id;
   const sub =
     `${game.white || "?"} vs ${game.black || "?"}` +
@@ -413,14 +444,16 @@ function showNewGameWidget(game) {
     title: "You just finished a game!",
     duration: 45000,
     onClose: () => {
-      if (newGameNudgeCard === card) newGameNudgeCard = null;
+      if (newGameNudgeCard !== card) return;
+      newGameNudgeCard = null;
       appState.newGameWidgetId = null;
-      markLichessSeen(game.lichess_id);
+      void markLichessSeen(game.lichess_id);
     },
     actions: [
       {
         label: "Analyze",
         primary: true,
+        closeOnClick: false,
         onClick: async () => {
           switchView("analyze");
           // The same import Analyze's "Last game" runs: one path, so the board is
@@ -439,7 +472,20 @@ function showNewGameWidget(game) {
 // closed by hand a second later. This dismissal is not an acknowledgement: the
 // card may be showing a game other than the one just loaded, and only the game
 // actually loaded may be marked seen.
-export function dismissNewGameNudge() {
+export function holdNewGameNudge(isCurrent) {
+  const hold = { isCurrent };
+  newGameNudgeHold = hold;
+  newGameNudgeVersion++;
+  dismissNewGameNudge();
+  return () => {
+    if (newGameNudgeHold !== hold) return;
+    if (isCurrent()) newGameNudgeVersion++;
+    newGameNudgeHold = null;
+  };
+}
+
+export function dismissNewGameNudge(lichessId = null) {
+  if (lichessId !== null && appState.newGameWidgetId !== lichessId) return;
   const card = newGameNudgeCard;
   newGameNudgeCard = null;
   appState.newGameWidgetId = null;
@@ -451,9 +497,12 @@ export function dismissNewGameNudge() {
 export async function markLichessSeen(lichessId) {
   if (!lichessId) return;
   acknowledgedGameIds.add(String(lichessId));
-  dismissNewGameNudge();
+  dismissNewGameNudge(String(lichessId));
+  const owner = currentOwnerId(), generation = appState.ownerGeneration;
   seenWrite = seenWrite
-    .then(() => postJson("/api/lichess/seen", { lichess_id: lichessId }))
+    .then(() => {
+      if (owner === currentOwnerId() && generation === appState.ownerGeneration) return postJson("/api/lichess/seen", { lichess_id: lichessId });
+    })
     .catch(() => {
       /* a lost ack is not worth a status line; the next probe re-evaluates */
     });
