@@ -66,7 +66,7 @@ def _classify_save(client: TestClient, prepared: dict, **overrides) -> "object":
     """Submit one trivial eval per prepared position (a slight White edge), so the
     browser classifier has a complete payload."""
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
-    body = {"game_id": prepared["game_id"], "positions": positions}
+    body = {"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions}
     body.update(overrides)
     return client.post("/api/analyze/classify-save", json=body, headers=csrf_headers(client))
 
@@ -88,7 +88,7 @@ def test_prepare_requires_auth(client):
 def test_prepare_returns_positions_and_move_skeleton(client):
     _register(client, "a@example.com")
     body = _prepare(client)
-    assert body["engine"] == "stockfish (browser)"
+    assert "engine" not in body
     assert isinstance(body["depth"], int)
     assert body["game_id"]
     # 4 plies => 4 fen_before + the final fen_after = 5 distinct positions.
@@ -138,10 +138,72 @@ def test_classify_save_rejects_missing_game_id(client):
     _register(client, "a@example.com")
     r = client.post(
         "/api/analyze/classify-save",
-        json={"positions": [{"fen": "x"}]},
+        json={"engine": "sf-test", "positions": [{"fen": "x"}]},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
+
+
+# ---- delete: saved analyses can be removed ---------------------------------
+
+
+def test_delete_analysis_removes_it_from_history_and_recall(client):
+    _register(client, "a@example.com")
+    prepared = _prepare(client)
+    assert _classify_save(client, prepared).status_code == 200
+
+    r = client.delete(
+        f"/api/analyses/{prepared['game_id']}", headers=csrf_headers(client)
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["deleted"] is True
+
+    # Gone from the history list...
+    assert client.get("/api/analyses").json()["analyses"] == []
+    # ...and from recall, which now 404s.
+    assert client.get(f"/api/analyses/{prepared['game_id']}").status_code == 404
+    # Deleting again is a 404, not a silent success on nothing.
+    assert (
+        client.delete(
+            f"/api/analyses/{prepared['game_id']}", headers=csrf_headers(client)
+        ).status_code
+        == 404
+    )
+
+
+def test_delete_analysis_requires_csrf(client):
+    _register(client, "a@example.com")
+    prepared = _prepare(client)
+    _classify_save(client, prepared)
+    r = client.delete(f"/api/analyses/{prepared['game_id']}")
+    assert r.status_code == 403
+    # The analysis survived the rejected delete.
+    assert client.get(f"/api/analyses/{prepared['game_id']}").status_code == 200
+
+
+def test_delete_analysis_is_owner_scoped(client):
+    _register(client, "a@example.com")
+    prepared = _prepare(client)
+    _classify_save(client, prepared)
+    _register(client, "b@example.com")
+    # Another owner cannot delete it, and cannot tell it exists.
+    r = client.delete(
+        f"/api/analyses/{prepared['game_id']}", headers=csrf_headers(client)
+    )
+    assert r.status_code == 404
+    assert client.get("/api/analyses").json()["analyses"] == []
+
+
+def test_delete_analysis_keeps_the_game_row(client):
+    """The PGN is the user's; only the server-side analysis is removed. A later
+    analyze of the same PGN re-imports onto the same game rather than forking
+    a new row."""
+    _register(client, "a@example.com")
+    prepared = _prepare(client)
+    _classify_save(client, prepared)
+    client.delete(f"/api/analyses/{prepared['game_id']}", headers=csrf_headers(client))
+    again = _prepare(client)
+    assert again["game_id"] == prepared["game_id"]
 
 
 def test_classify_save_rejects_empty_positions(client):
@@ -149,7 +211,7 @@ def test_classify_save_rejects_empty_positions(client):
     prepared = _prepare(client)
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": []},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": []},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
@@ -162,7 +224,7 @@ def test_classify_save_incomplete_payload_is_400(client):
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"][:-2]]
     r = client.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": positions},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions},
         headers=csrf_headers(client),
     )
     assert r.status_code == 400
@@ -220,7 +282,7 @@ def test_classify_save_is_owner_gated(client):
     positions = [{"depth": 10, "fen": f, "score_cp": 20} for f in prepared["positions"]]
     r = other.post(
         "/api/analyze/classify-save",
-        json={"game_id": prepared["game_id"], "positions": positions},
+        json={"engine": "sf-test", "game_id": prepared["game_id"], "positions": positions},
         headers=csrf_headers(other),
     )
     assert r.status_code == 404

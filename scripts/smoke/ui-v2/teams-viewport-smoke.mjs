@@ -1,5 +1,5 @@
 // Teams viewport smoke — fixture-backed (same stack as the games/scout smokes).
-// Serves the committed static/ tree, intercepts /api/* with real-shape team
+// Serves the built static/ tree, intercepts /api/* with real-shape team
 // payloads (a two-member team + one shared repertoire + a live invite), and at
 // 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console errors
@@ -102,20 +102,23 @@ async function runViewport(vp) {
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
-  let inviteStatus = { ...TEAM_DETAIL.invite };
+  let inviteStatus = { exists: false };
   let generated = 0, revoked = 0;
   await page.route("**/api/teams/t1/invite", async (route) => {
     const method = route.request().method();
-    let payload = inviteStatus;
     if (method === "POST") {
       generated++;
       inviteStatus = { exists: true, created_at: "2026-09-30T00:00:00Z", expires_at: null };
-      payload = { url: "/?join=session-only-invite", expires_at: null };
-    } else if (method === "DELETE") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ url: "/?join=session-only-invite", expires_at: null }) });
+      return;
+    }
+    if (method === "DELETE") {
       revoked++;
       inviteStatus = { exists: false };
-      payload = {};
+      await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      return;
     }
+    const payload = inviteStatus;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(payload) });
   });
   // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after); the
@@ -239,11 +242,12 @@ async function runViewport(vp) {
   const invite = page.getByRole("dialog", { name: "Team invite link", exact: true });
   await invite.waitFor();
   check(generated === 0, "opening Invite must not rotate the link");
-  await invite.getByRole("button", { name: "Generate new link", exact: true }).click();
-  await page.getByRole("dialog", { name: "Generate a new invite link?", exact: true })
-    .getByRole("button", { name: "Generate new link", exact: true }).click();
+  await invite.getByRole("button", { name: "Generate link", exact: true }).click();
   await invite.getByLabel("Invite link", { exact: true }).waitFor();
   check(generated === 1, "explicit generation must mint exactly once");
+  const noteText = (await invite.locator("[data-invite-note]").innerText()).trim();
+  check(/^Invite link active/.test(noteText) && !/only shown once|anyone signed in/.test(noteText),
+    `the dialog shows one live status line, got "${noteText}"`);
   await invite.getByRole("button", { name: "Copy link", exact: true }).click();
   await page.waitForFunction(() => document.activeElement?.textContent === "Copy link");
   check(await invite.count() === 1, "Copy redraw must preserve the dialog's accessible name");
@@ -257,6 +261,7 @@ async function runViewport(vp) {
     .getByRole("button", { name: "Revoke link", exact: true }).click();
   await invite.getByRole("button", { name: "Generate link", exact: true }).waitFor();
   check(revoked === 1, "explicit revocation must revoke exactly once");
+  check((await page.locator("#team-invite-foot").isHidden()), "revoking must hide the card's invite footer");
   check(await invite.getByLabel("Invite link", { exact: true }).count() === 0, "revoke must remove the plaintext link");
   await page.keyboard.press("Escape");
   await invite.waitFor({ state: "detached" });
@@ -265,6 +270,39 @@ async function runViewport(vp) {
   await page.evaluate(() => document.getElementById("team-detail-close").click());
   await page.waitForTimeout(300);
   check(await page.locator("#team-detail-card[hidden]").count() === 1, "closing the detail hides the card");
+
+  // The phone More sheet belongs to the bar: widening must not leave it open
+  // as a full-width bottom sheet over the desktop board.
+  if (vp.width <= 760) {
+    await page.evaluate(() => document.querySelector('[data-testid="bottom-more"]').click());
+    await page.waitForTimeout(300);
+    check(await page.locator("#more-sheet").isVisible(), "More should open the sheet on a phone");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForTimeout(400);
+    check(await page.locator("#more-sheet").isHidden(), "widening to desktop must close the More sheet");
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await page.waitForTimeout(300);
+  }
+
+  // Teams is a work surface: with no team picked the middle card fills the
+  // height of the view, and the directory and the incoming shares are short
+  // lists that keep their own height at the top of their columns.
+  if (vp.width >= 1021) {
+    const boxes = await page.evaluate(() => {
+      const h = (sel) => Math.round(document.querySelector(sel)?.getBoundingClientRect().height || 0);
+      const view = document.querySelector("#view-teams");
+      const grid = document.querySelector("#view-teams .teams");
+      return {
+        middle: h("#view-teams .teams > .team-empty"),
+        dir: h("#view-teams .teams > .card.dir"),
+        incoming: h("#view-teams .teams > .card.incoming"),
+        gap: Math.round(view.getBoundingClientRect().bottom - grid.getBoundingClientRect().bottom),
+      };
+    });
+    check(boxes.gap <= 40, `the Teams work surface should reach the bottom of the view, ${boxes.gap}px short`);
+    check(boxes.middle > boxes.dir && boxes.middle > boxes.incoming,
+      `the middle card should fill the surface, got ${JSON.stringify(boxes)}`);
+  }
 
   // Overflow + console errors.
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

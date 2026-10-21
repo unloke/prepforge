@@ -15,6 +15,12 @@ Both are exercised here against a real upgrade from b7d21c93e4a8 (the last
 revision before the change) with pre-existing rows: PostgreSQL when
 TEST_POSTGRES_URL is set (the CI ``postgres`` job provides it), plus a SQLite
 path for local runs.
+
+The schema assertions run at the revision this module guards
+(``f3a9c1e7b2d4``), because a later migration (b9e1f3a5c7d0) reshapes the key —
+the digest alone, as 32 raw bytes — and that final shape is pinned by
+``tests/test_compact_domain_storage.py``. Each test then upgrades on to head,
+so the chain still has to run over real rows.
 """
 from __future__ import annotations
 
@@ -27,6 +33,9 @@ from alembic import command
 from alembic.config import Config
 
 from prepforge_chess.storage import codec
+
+# The revision this module guards; later migrations reshape the same table.
+_GUARDED_HEAD = "f3a9c1e7b2d4"
 
 
 def _pg_url(raw: str) -> str:
@@ -212,13 +221,12 @@ def test_fingerprint_identity_migration_postgres(monkeypatch) -> None:
         cfg = _alembic_config(base, monkeypatch, connect_options=f"-csearch_path={schema}")
         command.upgrade(cfg, "b7d21c93e4a8")
         seed = _seed_pre_migration_rows(engine)
+        command.upgrade(cfg, _GUARDED_HEAD)
+        _check_upgraded(engine, seed)
         command.upgrade(cfg, "head")
         with engine.connect() as conn:
             version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
-        # Compare against the actual chain head — later migrations must not
-        # break this migration contract test just by existing.
         assert version == _chain_head(cfg)
-        _check_upgraded(engine, seed)
     finally:
         with admin.connect() as conn:
             conn.execute(sa.text(f'DROP SCHEMA "{schema}" CASCADE'))
@@ -230,11 +238,12 @@ def test_fingerprint_identity_migration_sqlite(tmp_path, monkeypatch) -> None:
     cfg = _alembic_config(db_url, monkeypatch)
     command.upgrade(cfg, "b7d21c93e4a8")
     seed = _seed_pre_migration_rows(engine)
+    command.upgrade(cfg, _GUARDED_HEAD)
+    _check_upgraded(engine, seed)
     command.upgrade(cfg, "head")
     with engine.connect() as conn:
         version = conn.execute(sa.text("SELECT version_num FROM alembic_version")).scalar()
     assert version == _chain_head(cfg)
-    _check_upgraded(engine, seed)
 
 
 def test_large_fingerprint_backfill_batches_driver_calls(tmp_path, monkeypatch) -> None:

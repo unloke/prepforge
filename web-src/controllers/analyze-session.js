@@ -9,20 +9,23 @@ import {
 import { isReviewedMove } from "../analyze-orient.js";
 import { parsePgn } from "../analyze-pgn.js";
 import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
+import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
 import { localBoardAfterMove, localGameOver } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
-import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
+import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
+import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
+import { clearReturnState, saveReturnState } from "../handoff-context.js";
 
 let accountService, activeViewName, analysisSelfSide, analysisStore, api, appState,
   boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
   defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
   engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-  importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
+  importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
   maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
   refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
   sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
@@ -35,7 +38,7 @@ export function createAnalyzeSession(deps) {
     boardAfterMove, boardInfo, boards, BROWSER_ENGINE_UNAVAILABLE, currentOwnerId,
     defaultRepertoireNameFromPgn, effectiveMaiaRating, effectiveStockfishDepth,
     engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
-    importRepertoireFromPgnText, invalidateAnalysisSource, jobToast, loadPhaseCoach,
+    importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
     maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
     refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
     sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
@@ -107,7 +110,7 @@ function savedMainlineMove(ply, prevFen, uci, fen) {
 function savedPositionEvalRead(fen, depth) {
   const positionEvals = appState.analysis && appState.analysis.position_evals;
   const ev = positionEvals && positionEvals[fen];
-  if (!ev) return null;
+  if (!ev || appState.analysis.engine !== ENGINE_ID) return null;
   const pvUci = Array.isArray(ev.pv) ? ev.pv.slice() : [];
   const firstUci = ev.best_move_uci || pvUci[0] || null;
   if (!firstUci && ev.score_cp == null && ev.mate_in == null) return null;
@@ -151,17 +154,20 @@ class PositionCoach {
     this.enabled = true;
     this.timer = null;
     this.token = 0;
-    // `${depth}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}], depth }
-    // (White-POV). Cached so stepping forward (this position was last turn's "after")
-    // costs one new search, not two. The depth is part of the key so a Settings depth
-    // change can't serve a shallower read for a position seen at the old depth.
+    // `${depth}|${lines}|fen` -> engine read { lines:[{uci,san,cp,mate,pvUci,pvSan}],
+    // depth } (White-POV), one entry per read width: the before-move check needs two
+    // lines, the after-move one needs one, and a narrower search can't answer a wider
+    // question. Cached so stepping forward (this position was last turn's "after") costs
+    // one new search, not two. The depth is part of the key so a Settings depth change
+    // can't serve a shallower read for a position seen at the old depth.
     this.evalCache = new Map();
   }
 
   // Follow the Settings depth, dropping the now-stale eval cache when it changes.
   _ensureEngine() {
     const depth = effectiveStockfishDepth();
-    if (this.engineDepth === depth) return;
+    if (this.engineDepth === depth && this.engineId === ENGINE_ID) return;
+    this.engineId = ENGINE_ID;
     this.engineDepth = depth;
     this.evalCache.clear();
   }
@@ -227,7 +233,9 @@ class PositionCoach {
     const now = performance.now();
     const rapid = now - this.lastUpdateAt < COACH_RAPID_STEP_MS;
     this.lastUpdateAt = now;
-    const cached = (position) => this.evalCache.get(`${this.engineDepth}|${position}`) ||
+    // Both reads are one line wide. The position before the move gets its best ALTERNATIVE
+    // only when a verdict actually turns on it — see _run.
+    const cached = (position) => this.evalCache.get(`${this.engineDepth}|1|${position}`) ||
       savedPositionEvalRead(position, this.engineDepth);
     if (!rapid && cached(this.ctx.prevFen) && (localGameOver(fen) || cached(fen))) {
       void this._run(fen);
@@ -253,11 +261,12 @@ class PositionCoach {
       // A move that ends the game leaves no position for the
       // engine to search, so the "after" read is synthesized instead.
       const over = localGameOver(fen);
-      // The position BEFORE the move (best line + best alternative) and AFTER it, read
-      // at once: the store gives each its own warm lane.
+      // Both positions are read one line wide: the top move is all either needs on its
+      // own. The second line of the position BEFORE the move (its best alternative) is the
+      // one fact a single line can't carry, and only a few verdicts read it — see below.
       const [before, after] = await Promise.all([
-        this._eval(prevFen, token),
-        over ? null : this._eval(fen, token),
+        this._eval(prevFen, token, 1),
+        over ? null : this._eval(fen, token, 1),
       ]);
       if (token !== this.token || fen !== this.fen) return;
       if (!before || !before.lines.length) return;
@@ -271,6 +280,14 @@ class PositionCoach {
         top = after.lines[0] || {};
       }
       const prevMove = previousAnalysisMove();
+      // The best alternative decides only three things: the "only move"/Great wording, and
+      // the only_move_gap behind a Brilliant. All three need the played move to BE the
+      // engine's top choice — so only that move ever reads the second line. A move with a
+      // saved GRADE is skipped even then: Analyze already decided it, and the alternative
+      // would only re-word a settled answer, not worth a search of its own.
+      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
+      const wide = !saved?.classification && before.lines[0].uci === ctx.lastUci ? await this._eval(prevFen, token, 2) : null;
+      if (token !== this.token || fen !== this.fen) return;
       const features = c.buildMoveFeatures({
         ply: ctx.ply ?? null,
         moveNumber: Number(prevFen.split(" ")[5]) || null,
@@ -282,17 +299,16 @@ class PositionCoach {
         prevFenBefore: prevMove ? prevMove.fenBefore : null,
         fenBefore: prevFen,
         fenAfter: fen,
-        beforeEval: { lines: before.lines },
+        beforeEval: { lines: wide && wide.lines.length > 1 ? wide.lines : before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       features.opponentRead = opponentRead;
-      const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       // The saved grade is authoritative for Great both ways: the board badge and the move
       // list show it, so the coach neither drops a saved Great nor calls a saved ✓ move Great
       // off its shallower live read.
       if (saved && saved.classification === "great") c.markGreat(features);
       else if (saved && features.classification?.code === "great") {
-        features.classification = { code: "best", label: "Best move", glyph: "✓", tone: "good" };
+        features.classification = { code: "best", label: "Best move", tone: "good" };
       }
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       if (!opponentRead) offerLiveBetterArrow(features, saved, fen);
@@ -421,7 +437,9 @@ class PositionCoach {
     } catch (_) {
       return null; // illegal/unparseable natural move → trap un-evaluable
     }
-    const read = await this._eval(humanFen, token);
+    // Only the top line is read here, so ask for one: a wider search would cost the
+    // user a slower Brilliant verdict for a score it never looks at.
+    const read = await this._eval(humanFen, token, 1);
     if (token !== this.token || fen !== this.fen || !read || !read.lines.length) return null;
     const line = read.lines[0];
     const humanWc = c.moverWinChanceAfter({ cp: line.cp ?? null, mate: line.mate ?? null }, features.mover);
@@ -454,27 +472,33 @@ class PositionCoach {
     }
   }
 
-  // Run (or reuse a cached) MultiPV-2 read of `fen`, White-POV, on a short budget.
-  async _eval(fen, token) {
+  // Run (or reuse a cached) engine read of `fen`, White-POV. `lines` is how many lines the
+  // caller reads: 2 for the position before a move that needs its best ALTERNATIVE to
+  // decide "only move" / Brilliant, 1 everywhere else — including that same position when
+  // the played move isn't the top choice. The Engine card searches exactly the lines it
+  // shows, so its snapshot only ever answers a 1-line need.
+  async _eval(fen, token, lines = 1) {
     if (!fen) return null;
-    const key = `${this.engineDepth}|${fen}`;
-    const cached = this.evalCache.get(key);
+    const cacheKey = `${this.engineDepth}|${lines}|${fen}`;
+    const cached = this.evalCache.get(cacheKey);
     if (cached) return cached;
-    const saved = savedPositionEvalRead(fen, this.engineDepth);
+    const saved = lines <= 1 ? savedPositionEvalRead(fen, this.engineDepth) : null;
     if (saved) {
-      this.evalCache.set(key, saved);
+      this.evalCache.set(cacheKey, saved);
       return saved;
     }
     const store = await analysisStore();
     // Two tries: a worker that dies mid-search gets one fresh lane before the coach gives up.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       if (token !== this.token) return null;
-      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: 2 });
+      const lease = store.acquire(fen, { depth: this.engineDepth, multipv: lines });
       this.leases.add(lease);
       // No wall-clock deadline: a busy machine is slower, not wrong. Only a newer move
       // (cancel releases the lease, resolving null) or an engine failure ends the wait.
       // An interrupted search keeps its depth in the store, so stepping back is instant.
-      const snap = await lease.until((s) => s.pvs?.[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14));
+      const snap = await lease.until(
+        (s) => s.pvs?.length >= lines && s.pvs[0]?.pv_uci?.length && (s.running === false || s.current_depth >= 14),
+      );
       this.leases.delete(lease);
       lease.release();
       if (token !== this.token || !snap) return null;
@@ -484,7 +508,9 @@ class PositionCoach {
   }
 
   // Cache a snapshot of `fen` (if it is for that position and deep enough) as a
-  // coach read; returns the read or null.
+  // coach read; returns the read or null. It is filed under every read width it can
+  // answer, so the deep 1-line snapshot the Engine card produces still serves a 1-line
+  // after-read without ever standing in for the 2-line alternative read.
   _remember(fen, snap, minDepth) {
     if (!snap || snap.fen !== fen || (snap.current_depth || 0) < minDepth) return null;
     const lines = (snap.pvs || [])
@@ -499,10 +525,11 @@ class PositionCoach {
       }));
     if (!lines.length) return null;
     const result = { fen, depth: snap.current_depth || 0, lines };
-    const key = `${this.engineDepth}|${fen}`;
-    const existing = this.evalCache.get(key);
-    if (existing && existing.depth > result.depth) return existing;
-    this.evalCache.set(key, result);
+    for (let need = lines.length; need >= 1; need -= 1) {
+      const key = `${this.engineDepth}|${need}|${fen}`;
+      const existing = this.evalCache.get(key);
+      if (!existing || existing.depth <= result.depth) this.evalCache.set(key, result);
+    }
     if (this.evalCache.size > 50) this.evalCache.delete(this.evalCache.keys().next().value);
     return result;
   }
@@ -617,6 +644,9 @@ function paintPhaseChip(phase, label) {
   el.hidden = false;
   el.dataset.phase = phase;
   el.textContent = label || phase;
+  // The chip yields its width to the coach's actions on a narrow panel, so the
+  // whole word is the tooltip.
+  el.title = el.textContent;
 }
 
 // What players at this level pick in the position the move was played from (Maia):
@@ -641,7 +671,7 @@ function paintMaiaCoachLine(model) {
       .map((p) => {
         const notes = [p.played ? "played" : "", p.best ? "engine's choice" : ""].filter(Boolean).join(", ");
         return (
-          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" style="--p:${Math.min(100, Math.max(0, p.pct))}%" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
+          html`<button type="button" class="hp${p.played ? " is-played" : ""}${p.best ? " is-best" : ""}" data-uci="${p.uci}" title="${`${p.san}: ${pct(p)} of ${who}${notes ? ` (${notes})` : ""}`}"><b>${p.san}</b><span class="hp-pct">${pct(p)}</span></button>`
         );
       })}`;
   paintPhaseChip(model.phase, model.title);
@@ -716,7 +746,13 @@ function renderInstantCoach() {
     const summary = hasClassifiedMoves(appState.analysis)
       ? buildGameSummary({ moves: appState.analysis.moves, selfSide: analysisSelfSide() })
       : null;
-    setCoachProse(summary?.text || "Make a move and I'll tell you what I think.", "info");
+    // A game is on the board but its review hasn't landed yet: the coach has nothing
+    // to grade, and "make a move" would invite one in a game the user is reviewing.
+    const loaded = appState.analysis?.moves?.length > 0;
+    setCoachProse(
+      summary?.text || (loaded ? "Reading the game…" : "Make a move and I'll tell you what I think."),
+      "info",
+    );
     const turn = summary?.turningPoint;
     if (turn) {
       const prose = document.getElementById("coach-prose");
@@ -749,7 +785,7 @@ async function runAnalysis(options = {}) {
     setStatus("Paste PGN before analyzing");
     return;
   }
-  if (jobToast.isBusy()) {
+  if (notices.isBusy()) {
     setStatus("Another job is already running");
     return;
   }
@@ -757,7 +793,7 @@ async function runAnalysis(options = {}) {
   // classifies + stores the browser's evals (/api/analyze/prepare and
   // classify-save are owner-scoped). Live engine + coach on the board work
   // signed out.
-  if (!requireSignIn("Sign in to run a full-game review — it's saved to your library", "analyze-game", {
+  if (!requireSignIn("Sign in to run a full-game review. It is saved to your library.", "analyze-game", {
     pgn, mode: importMode, selectIndex,
   })) return;
   const seq = invalidateAnalysisSource();
@@ -780,6 +816,7 @@ async function runAnalysis(options = {}) {
   // these (declared out here so the catch block can reach them).
   let inMemoryCheckpoint = null;
   let completedCheckpoint = null;
+  let engineRun = null;
   const jobId = `browser-analysis-${Date.now()}`;
   try {
     let prep;
@@ -830,7 +867,7 @@ async function runAnalysis(options = {}) {
       }
     };
 
-    jobToast.startJob({
+    notices.startJob({
       id: jobId,
       title: "Analyzing game",
       tab: "analyze",
@@ -842,6 +879,8 @@ async function runAnalysis(options = {}) {
         cancelled = true;
       },
     });
+    await readyIfCached();
+    engineRun = createEngineAnalysisRun();
 
     // Start the shared Maia init (worker spawn + weight fetch + ORT session) NOW,
     // in parallel with the Stockfish pass below — but only when this run can
@@ -866,7 +905,7 @@ async function runAnalysis(options = {}) {
     // Every job update also drives the live graph's animation for that phase.
     const job = (update) => {
       live.phase?.(update.phase, update.current, update.total);
-      jobToast.updateJob(update);
+      notices.updateJob(update);
     };
     // The Maia pass streams alongside Stockfish: every finished eval goes to the assessor,
     // which assesses a move as soon as both of its positions are known, so most of the Maia
@@ -882,7 +921,7 @@ async function runAnalysis(options = {}) {
               depth: prep.depth,
               rating: effectiveMaiaRating(),
               provider: getSharedMaia3Provider(),
-              analyzeFn: (o) => store.analyzeGame(o),
+              analyzeFn: (o) => store.analyzeGame({ ...o, engineRun }),
               shouldCancel,
               onPhase: ({ phase: sub, detail }) => {
                 timings[`maia_${sub}`] = detail || 1;
@@ -897,32 +936,19 @@ async function runAnalysis(options = {}) {
           })
           .catch(() => null)
       : null;
-    // Two tiers (engine/tiered-analysis.js): every position at a screen depth, then the full
-    // depth only where a grade could hinge on it. The Maia pass streams the reads that will
-    // be saved.
-    const tiered = await import("../engine/tiered-analysis.js");
-    const { evals, screenDepth } = await timed("stockfish", () =>
-      tiered.analyzeTiered({
-        analyze: (o) => store.analyzeGame(o),
-        positions,
-        moves: prep.moves,
-        depth: prep.depth,
-        onResult: (fen, ev) => live(fen, ev),
-        onFinal: (fen, ev) => {
-          if (assessor) assessor.push(fen, ev);
-          else if (wantsMaia) pendingEvals.push([fen, ev]);
-        },
-        onProgress: (done, total, stage) => {
-          job({
-            current: done,
-            total,
-            phase: "stockfish",
-            message: stage === "screen" ? `Stockfish ${done}/${total} positions` : `Stockfish depth ${prep.depth} · ${done}/${total}`,
-          });
-        },
-        shouldCancel,
-      })
-    );
+    const evals = await timed("stockfish", () => store.analyzeGame({
+      engineRun,
+      positions,
+      depth: prep.depth,
+      onResult: (fen, ev) => {
+        live(fen, ev);
+        if (assessor) assessor.push(fen, ev);
+        else if (wantsMaia) pendingEvals.push([fen, ev]);
+      },
+      onProgress: (done, total) => job({ current: done, total, phase: "stockfish",
+        message: `Stockfish depth ${prep.depth} · ${done}/${total}` }),
+      shouldCancel,
+    }));
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
     if (wantsMaia && maiaReady && typeof maiaReady.then === "function") {
       live.phase?.("maia-load");
@@ -989,6 +1015,8 @@ async function runAnalysis(options = {}) {
 
     // Final cancellation checkpoint: even if eval/Maia work completed, a Stop that arrived
     // during it must prevent persistence. classify-save is the write — don't post past a Stop.
+    if (engineRun.error) throw engineRun.error;
+    const runEngineId = engineIdentity(engineRun.profile().net);
     if (cancelled) {
       const err = new Error("Analysis stopped");
       err.cancelled = true;
@@ -999,7 +1027,7 @@ async function runAnalysis(options = {}) {
     // save is not cancellable, so remove the Stop affordance rather than
     // imply a cancel that wouldn't hold. Classifying (CPU) and saving (DB)
     // are separate phases — the server reports both in server_timings_ms.
-    jobToast.lockJob();
+    notices.lockJob();
     job({
       current: positions.length,
       total: positions.length,
@@ -1016,9 +1044,8 @@ async function runAnalysis(options = {}) {
       requestId: crypto.randomUUID(),
       savedAt: Date.now(),
       ownerId: analysisOwnerId,
-      engine: prep.engine || "stockfish (browser)",
+      engine: runEngineId,
       depth: prep.depth,
-      screenDepth,
       positions,
       evals: [...evals.entries()],
       maiaAssessments,
@@ -1028,7 +1055,7 @@ async function runAnalysis(options = {}) {
     const checkpointStored = await saveCheckpoint({
       ...checkpoint,
       ownerId: analysisOwnerId,
-      engine: prep.engine || "stockfish (browser)",
+      engine: runEngineId,
       depth: prep.depth,
     });
     if (!checkpointStored) inMemoryCheckpoint = { ...checkpoint, inMemoryOnly: true };
@@ -1038,9 +1065,8 @@ async function runAnalysis(options = {}) {
       postJson("/api/analyze/classify-save", {
         game_id: prep.game_id,
         request_id: checkpoint.requestId,
-        engine: prep.engine || "stockfish (browser)",
+        engine: runEngineId,
         depth: prep.depth,
-        screen_depth: screenDepth,
         positions: positions.map((fen) => {
           const ev = evals.get(fen) || {};
           return {
@@ -1064,7 +1090,7 @@ async function runAnalysis(options = {}) {
           timings[`server_${key}`] = value;
         }
         if (server.save_game_ms != null || server.save_analysis_ms != null) {
-          jobToast.updateJob({
+          notices.updateJob({
             current: positions.length,
             total: positions.length,
             phase: "saving",
@@ -1078,7 +1104,7 @@ async function runAnalysis(options = {}) {
     await finishAnalyzeCheckpoint(inMemoryCheckpoint || checkpoint);
     if (analysisOwnerId !== currentOwnerId()) throw Object.assign(new Error("Account changed"), { cancelled: true });
     refreshAnalysisHistoryIfOpen();
-    const complete = (current = false) => jobToast.completeJob({
+    const complete = (current = false) => notices.completeJob({
       title: current ? "Analysis ready" : "Analysis saved",
       message: `${payload.moves.length} plies classified`,
       onClick: current ? () => switchView("analyze") : null,
@@ -1095,7 +1121,7 @@ async function runAnalysis(options = {}) {
       complete();
       return;
     }
-    jobToast.updateJob({
+    notices.updateJob({
       current: positions.length,
       total: positions.length,
       phase: "rendering",
@@ -1111,9 +1137,10 @@ async function runAnalysis(options = {}) {
     // The docked job toast goes with the Analyze panel; a run that finishes
     // after the user left gets a card in the stack instead.
     if (activeViewName() !== "analyze") {
-      jobToast.notify({
+      notices.show(`${payload.moves.length} plies classified`, {
+        tone: "success",
         title: "Analysis ready",
-        message: `${payload.moves.length} plies classified`,
+        duration: 10000,
         actions: [{ label: "Open", primary: true, onClick: () => switchView("analyze") }],
       });
     }
@@ -1129,15 +1156,20 @@ async function runAnalysis(options = {}) {
       if (current) {
         appState.analysisSourcePgn = null;
         hideAnalysisHandoff();
-        setStatus("Analysis stopped");
+        // The coach must not go on reading a game that was stopped.
+        setCoachProse("The analysis stopped.", "warn", "error");
       }
-      jobToast.cancelJob(error.message || "Analysis stopped");
+      notices.cancelJob(error.message || "Analysis stopped");
     } else if (isAuthError(error)) {
-      if (current) accountService().handleAuthRequired("Sign in to run a full-game review — it's saved to your library");
-      jobToast.failJob("Sign in required");
+      if (current) accountService().handleAuthRequired("Sign in to run a full-game review. It is saved to your library.");
+      notices.failJob("Sign in required");
     } else {
-      if (current) setStatusError(error.message);
-      jobToast.failJob(error.message);
+      if (current) {
+        setStatusError(error.message);
+        // The coach must not go on reading a game that could not be read.
+        setCoachProse(`The analysis failed: ${error.message}`, "danger", "error");
+      }
+      notices.failJob(error.message);
     }
     // F-03: if the compute finished but the SAVE didn't, offer "Retry save" —
     // the checkpoint holds the evals, so a retry never re-runs the engine.
@@ -1150,6 +1182,7 @@ async function runAnalysis(options = {}) {
       showAnalysisRetrySave(checkpoint, error.message);
     }
   } finally {
+    engineRun?.done();
     runButton.disabled = false;
   }
 }
@@ -1166,7 +1199,7 @@ function renderImportPicker(summary, mode) {
   }
   const games = summary.games || [];
   const label = (g) =>
-    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"} — ${g.status}${g.error ? ` (${g.error})` : ""}`;
+    `Game ${g.index + 1}: ${g.white || "?"} vs ${g.black || "?"}, ${g.status}${g.error ? ` (${g.error})` : ""}`;
   host.hidden = false;
   host.innerHTML =
     html`<span class="import-summary">${summary.imported_count} new · ${summary.existing_count} already present · ${summary.failed_count} failed of ${summary.total_games}</span><select id="analysis-import-select" aria-label="Choose analyzed game">${games
@@ -1181,7 +1214,7 @@ function renderImportPicker(summary, mode) {
     });
   }
   setStatus(
-    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed — analyzing game ${summary.selected_index + 1}.`,
+    `Imported ${summary.imported_count} new, ${summary.existing_count} already present, ${summary.failed_count} failed. Analyzing game ${summary.selected_index + 1}.`,
   );
 }
 
@@ -1241,9 +1274,8 @@ async function retryAnalyzeSave() {
     const payload = await postJson("/api/analyze/classify-save", {
       game_id: checkpoint.gameId,
       request_id: checkpoint.requestId,
-      engine: checkpoint.engine || "stockfish (browser)",
+      engine: checkpoint.engine,
       depth: checkpoint.depth,
-      screen_depth: checkpoint.screenDepth ?? null,
       positions: (checkpoint.positions || []).map((fen) => {
         const ev = evals.get(fen) || {};
         return {
@@ -1277,7 +1309,7 @@ async function retryAnalyzeSave() {
     if (ownerId !== currentOwnerId()) return;
     if (checkpoint.serverSaved) { setStatusError(error.message); return; }
     if (isAuthError(error)) {
-      accountService().handleAuthRequired("Sign in to save — the analysis stays on this device until you do");
+      accountService().handleAuthRequired("Sign in to save. The analysis stays on this device until you do.");
     }
     showAnalysisRetrySave(checkpoint, error.message);
   } finally {
@@ -1334,11 +1366,11 @@ async function onCreateRepertoireFromGameClick() {
   try {
     const payload = await importRepertoireFromPgnText(pgn, { name, color });
     switchView("build");
-    setStatus(`Repertoire “${payload.name}” created — edit it in Repertoire`, { severity: "success" });
+    setStatus(`Repertoire “${payload.name}” created. Edit it in Repertoire.`, { severity: "success" });
     appState.analysisSourcePgn = null;
     hideAnalysisHandoff();
   } catch (error) {
-    setStatusError(error.message || "Could not create repertoire — try again");
+    setStatusError(error.message || "Could not create repertoire. Try again.");
     if (btn) btn.disabled = false;
   }
 }
@@ -1385,11 +1417,27 @@ function updateEvalChartCursor() {
   void ensureAnalyzeView().then((view) => view.updateEvalChartCursor()).catch(() => {});
 }
 
+// The loaded game and the ply the board shows are one session: a reload that
+// keeps only one of them (the PGN box's browser-restored text, say) leaves the
+// move list and the board disagreeing. Save both, keyed like Games' return state.
+function persistAnalysisSession() {
+  const moves = appState.analysis ? appState.analysis.moves || [] : [];
+  const pgn = document.getElementById("pgn-input")?.value || "";
+  if (!moves.length || !pgn.trim()) {
+    clearReturnState("analyze");
+    return;
+  }
+  saveReturnState("analyze", { pgn, ply: Math.max(0, Number(appState.analysisPly) || 0) });
+}
+
 async function showAnalysisPly(ply) {
   const analysis = appState.analysis;
   const seq = analysisRecallSeq;
   const moves = appState.analysis ? appState.analysis.moves : [];
   const boundedPly = Math.max(0, Math.min(ply, moves.length));
+  // Which way the board travels: a step back lands on the position before the
+  // move just shown, so that move's piece goes home rather than replaying.
+  const back = boundedPly < appState.analysisPly;
   appState.analysisPly = boundedPly;
   syncWorkspaceUrl();
   appState.analysisCurrentNodeId = boundedPly === 0 ? "root" : `m${boundedPly}`;
@@ -1398,19 +1446,19 @@ async function showAnalysisPly(ply) {
   const info = await boardInfo(fen);
   if (seq !== analysisRecallSeq || analysis !== appState.analysis || appState.analysisCurrentNodeId !== (boundedPly === 0 ? "root" : `m${boundedPly}`)) return;
   appState.analysisBoardFen = fen;
-  boards.analysis.setPosition({
-    fen,
-    legalMoves: info.legal_moves,
-    lastMove: move ? move.uci : null,
-  });
+  boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
   // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game sent
   // from Train) shows none instead of an empty placeholder dot.
   const badge = move && move.classification ? classBadgeSymbol(move.classification) : "";
   boards.analysis.setMoveBadge(badge ? move.uci.slice(2, 4) : null, badge ? move.classification : null, badge);
-  document.getElementById("analysis-board-label").textContent = move
-    ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}`
-    : "Initial position";
+  // Which position is on the board is a phone fact: its eval row says it, because
+  // the thumb bar has no room and the bar under the board names the game. On a
+  // desktop the board itself shows the position and the moves list marks it.
+  setPositionCaption(
+    move ? `${move.move_number}${move.side === "black" ? "..." : "."} ${move.san}` : "",
+  );
   highlightCurrentMove();
+  persistAnalysisSession();
   syncViewHeads();
   refreshAnalysisExplain({
     fen,
@@ -1555,11 +1603,7 @@ async function selectAnalysisNode(nodeId) {
     lastMove: node.uci,
   });
   boards.analysis.setMoveBadge(null, null, "");
-  document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
-    node.moveNumber,
-    node.side,
-    node.san,
-  );
+  setPositionCaption(analysisVariationLabel(node.moveNumber, node.side, node.san));
   highlightCurrentMove();
   refreshAnalysisExplain({ fen, lastUci: node.uci, lastSan: node.san, prevFen: node.fenBefore });
   if (engineWidget) engineWidget.onBoardChanged();
@@ -1609,11 +1653,7 @@ async function onAnalysisBoardMove(moveUci, fen) {
       lastMove: moveUci,
     });
     boards.analysis.setMoveBadge(null, null, "");
-    document.getElementById("analysis-board-label").textContent = analysisVariationLabel(
-      moveNumber,
-      side,
-      payload.move.san,
-    );
+    setPositionCaption(analysisVariationLabel(moveNumber, side, payload.move.san));
     highlightCurrentMove();
     refreshAnalysisExplain({
       fen: payload.board.fen,

@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     env: str = Field(default="development")
 
     # SQLAlchemy URL. SQLite for dev/test, postgresql+psycopg://... in prod.
-    # Database uses the deploy platform's DATABASE_URL; all other settings use PREPFORGE_.
+    # Database uses the deploy platform's DATABASE_URL; Google uses GOOGLE_CLIENT_*;
+    # all other settings use PREPFORGE_.
     database_url: str = Field(
         default=f"sqlite:///{_DEFAULT_SQLITE}",
         validation_alias="DATABASE_URL",
@@ -90,21 +91,17 @@ class Settings(BaseSettings):
     # Allowed browser origins for CORS / CSRF origin checks. Comma-separated.
     allowed_origins: str = Field(default="http://localhost:5173,http://localhost:8765")
 
-    # Google OAuth (primary sign-in). Empty until configured; the Google login
-    # routes return 503 when unset.
-    google_client_id: str = Field(
-        default="",
-    )
-    google_client_secret: str = Field(
-        default="",
-    )
+    # Google OAuth (primary sign-in), under the names Google's console and the
+    # deploy use. Empty until configured; the Google login routes return 503.
+    google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", validation_alias="GOOGLE_CLIENT_SECRET")
 
     # Stripe (billing phase). Empty until configured; billing routes guard on this.
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
     stripe_price_pro: str = Field(default="")
 
-    # Free-plan quota: max repertoires a Free user may own. Pro is unlimited.
+    # A real storage limit: max repertoires a user may own. There is no paid tier.
     free_repertoire_limit: int = Field(default=5)
 
     # Observability. Sentry stays dark until a DSN is set (no-op otherwise).

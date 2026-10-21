@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from contextlib import nullcontext
 from datetime import datetime, timezone
-from hashlib import sha256
 from typing import Any, Dict, List, Mapping, Optional
 from sqlalchemy import or_, and_, case, func, literal, select, update
 from sqlalchemy.engine import Connection
@@ -14,7 +13,8 @@ from prepforge_chess.storage.repositories.settings import SettingsRepository
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY
 
 
-_PROGRESS_COLUMNS = tuple(c for c in t.training_progress.c if c.name not in {"created_at", "updated_at"})
+# Collected once: the row's shape does not depend on the caller's lookup.
+_PROGRESS_COLUMNS = tuple(t.training_progress.c)
 
 
 class TrainingRepository(SettingsRepository):
@@ -297,13 +297,10 @@ class TrainingRepository(SettingsRepository):
         """Conn-scoped ``save_training_progress``: run inside the caller's
         transaction so the progress write commits together with related writes
         (attempt receipts, ingest ledgers)."""
-        progress_id = self._training_progress_id(owner_user_id, repertoire_id, progress.node_id)
-        now = datetime.now(timezone.utc)
         _upsert(
             conn,
             t.training_progress,
             {
-                "id": progress_id,
                 "owner_user_id": owner_user_id,
                 "repertoire_id": repertoire_id,
                 "node_id": progress.node_id,
@@ -313,13 +310,11 @@ class TrainingRepository(SettingsRepository):
                 "spaced_repetition_score": progress.spaced_repetition_score,
                 "due_at": progress.due_at,
                 "is_mastered": _bool_to_int(progress.is_mastered),
-                "created_at": now,
-                "updated_at": now,
             },
-            conflict=[t.training_progress.c.id],
+            conflict=[t.training_progress.c.owner_user_id, t.training_progress.c.node_id],
             update_cols=(
-                "attempts", "correct_attempts", "last_reviewed_at",
-                "spaced_repetition_score", "due_at", "is_mastered", "updated_at",
+                "repertoire_id", "attempts", "correct_attempts", "last_reviewed_at",
+                "spaced_repetition_score", "due_at", "is_mastered",
             ),
         )
 
@@ -341,12 +336,9 @@ class TrainingRepository(SettingsRepository):
         a zeroed progress for a freshly claimed row. Follow up with
         ``write_training_progress`` before the transaction ends.
         """
-        progress_id = self._training_progress_id(owner_user_id, repertoire_id, node_id)
-        now = datetime.now(timezone.utc)
         conn.execute(
             _insert(conn, t.training_progress)
             .values(
-                id=progress_id,
                 owner_user_id=owner_user_id,
                 repertoire_id=repertoire_id,
                 node_id=node_id,
@@ -356,14 +348,18 @@ class TrainingRepository(SettingsRepository):
                 spaced_repetition_score=0.0,
                 due_at=None,
                 is_mastered=0,
-                created_at=now,
-                updated_at=now,
             )
-            .on_conflict_do_nothing(index_elements=[t.training_progress.c.id])
+            .on_conflict_do_nothing(
+                index_elements=[t.training_progress.c.owner_user_id, t.training_progress.c.node_id]
+            )
         )
         row = conn.execute(
             select(*_PROGRESS_COLUMNS)
-            .where(t.training_progress.c.id == progress_id)
+            .where(
+                t.training_progress.c.owner_user_id == owner_user_id,
+                t.training_progress.c.repertoire_id == repertoire_id,
+                t.training_progress.c.node_id == node_id,
+            )
             .with_for_update()
         ).mappings().first()
         return self._training_progress_from_row(row)
@@ -375,10 +371,13 @@ class TrainingRepository(SettingsRepository):
         *,
         owner_user_id: str,
     ) -> Optional[TrainingProgress]:
-        progress_id = self._training_progress_id(owner_user_id, repertoire_id, node_id)
         with self.engine.connect() as conn:
             row = conn.execute(
-                select(*_PROGRESS_COLUMNS).where(t.training_progress.c.id == progress_id)
+                select(*_PROGRESS_COLUMNS).where(
+                    t.training_progress.c.owner_user_id == owner_user_id,
+                    t.training_progress.c.repertoire_id == repertoire_id,
+                    t.training_progress.c.node_id == node_id,
+                )
             ).mappings().first()
         if row is None:
             return None
@@ -427,17 +426,3 @@ class TrainingRepository(SettingsRepository):
             due_at=row["due_at"],
             is_mastered=_int_to_bool(row["is_mastered"]),
         )
-
-    def _training_progress_id(
-        self,
-        owner_user_id: Optional[str],
-        repertoire_id: str,
-        node_id: str,
-    ) -> str:
-        payload = {
-            "owner_user_id": owner_user_id or "default",
-            "repertoire_id": repertoire_id,
-            "node_id": node_id,
-        }
-        digest = sha256(_json_dump(payload).encode("utf-8")).hexdigest()[:32]
-        return "training-progress:{0}".format(digest)

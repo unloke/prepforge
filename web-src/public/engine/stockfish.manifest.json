@@ -1,0 +1,53 @@
+{
+  "package": "stockfish",
+  "engines": {
+    "big": {
+      "packageVersion": "19.0.0",
+      "engineVersion": "19",
+      "nets": [
+        "nn-1a298aa575a0"
+      ],
+      "id": "sf19@19.0.0+e0ef9003/nn-1a298aa575a0",
+      "dir": "d0262ec6",
+      "initialHeapPages": 2048,
+      "maxHeapPages": 6144,
+      "bytes": 99065439,
+      "files": {
+        "script": {
+          "bundled": "d0262ec6/stockfish.js",
+          "source": "stockfish-19.js",
+          "sha256": "6cc89967e509bd85be96efca1bc120fc0ec94a09aadaf8723aad24383923f48a"
+        },
+        "wasm": {
+          "bundled": "d0262ec6/stockfish.wasm",
+          "source": "stockfish-19.wasm",
+          "sha256": "e0ef90031a310479e5b0c3692a9839118ed785535c306252e68ed3300a45b02d"
+        }
+      }
+    },
+    "lite": {
+      "packageVersion": "19.0.0",
+      "engineVersion": "19",
+      "nets": [
+        "nn-61e7af4bb97d"
+      ],
+      "id": "sf19@19.0.0+18727c9a/nn-61e7af4bb97d",
+      "dir": "eabf1134",
+      "initialHeapPages": 2048,
+      "maxHeapPages": 4096,
+      "bytes": 1636291,
+      "files": {
+        "script": {
+          "bundled": "eabf1134/stockfish.js",
+          "source": "stockfish-19-lite.js",
+          "sha256": "0be38c4ef44e995710225dd09f6b49b031341c342a9f8be25e291ce6b22c4e01"
+        },
+        "wasm": {
+          "bundled": "eabf1134/stockfish.wasm",
+          "source": "stockfish-19-lite.wasm",
+          "sha256": "18727c9ade11a8ca04391ab5a298232bc6fffebe2002e7cfffac82e7ad453447"
+        }
+      }
+    }
+  }
+}

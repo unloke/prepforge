@@ -110,11 +110,21 @@ export function serializeWorkspaceLocation(loc, currentHref) {
   return `${url.pathname}${url.search}${formatWorkspaceHash(loc)}`;
 }
 
-// Views whose URL carries the open repertoire: the builder and trainer work
-// on it, and Analyze's coach reads its book line. Elsewhere (Library, Games,
-// Scout, Teams, Settings) a ?rep= would just leak across unrelated pages.
-export const REPERTOIRE_VIEWS = Object.freeze(["build", "train", "analyze"]);
+// Views whose URL carries the open repertoire: only the builder shows one.
+// Analyze's coach reads the book lines of every active repertoire rather than
+// one named in the URL, so a rep= on an Analyze link would be a leftover from
+// whatever Build last opened. Train carries the repertoire its queue drills
+// instead (see trainQueueRepertoireId).
+export const REPERTOIRE_VIEWS = Object.freeze(["build"]);
 const REPERTOIRE_VIEW_SET = new Set(REPERTOIRE_VIEWS);
+
+// The one repertoire Train's queue is drilling. A smart queue over all active
+// repertoires (mixed) drills none, and a repertoire merely opened in Build is
+// not what Train is set to — so neither may name one in the URL.
+export function trainQueueRepertoireId(state) {
+  if (state.smart) return state.smart.mixed ? null : state.smart.repertoireId || null;
+  return (state.training && state.training.repertoire_id) || null;
+}
 
 export function workspaceLocationFromState(state = {}) {
   const view = asView(state.currentView || state.view);
@@ -124,12 +134,15 @@ export function workspaceLocationFromState(state = {}) {
       view === "replay"
         ? asReplaySection(state.replaySection || state.replay_section)
         : null,
-    repertoireId: REPERTOIRE_VIEW_SET.has(view)
-      ? (state.build && state.build.repertoire_id) ||
-        state.trainingRepertoireId ||
-        state.repertoireId ||
-        null
-      : null,
+    repertoireId:
+      view === "train"
+        ? trainQueueRepertoireId(state)
+        : REPERTOIRE_VIEW_SET.has(view)
+          ? (state.build && state.build.repertoire_id) ||
+            state.trainingRepertoireId ||
+            state.repertoireId ||
+            null
+          : null,
     ply:
       (state.currentView || state.view) === "analyze"
         ? asPly(state.analysisPly) || null

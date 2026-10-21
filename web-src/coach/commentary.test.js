@@ -4,7 +4,7 @@ import { Chess } from "chess.js";
 import { buildMoveFeatures } from "./features.js";
 import { buildCommentary, buildOpponentCommentary, bucket } from "./commentary.js";
 import { lineOutcome, netFor, gainPhrase, numberLine } from "./move-facts.js";
-import { motifPhrase, participle, hangingCapture } from "./motifs.js";
+import { motifPhrase, participle } from "./motifs.js";
 import RATED from "./fixtures/rated-moves.json";
 
 function play(fen, sans) {
@@ -55,7 +55,7 @@ describe("rated positions from coach-review-ratings.json (real Stockfish lines)"
 
   it("names both pieces a double attack hits", () => {
     const rc6 = RATED.find((r) => r.input.san === "Rc6");
-    expect(rc6.prose).toMatch(/27\.\.\.Ne5, which hits the rook on c6 and the bishop on f3/);
+    expect(rc6.prose).toMatch(/27\.\.\.Ne5, when the knight on e5 attacks the bishop on f3 and the rook on c6 at once/);
   });
 
   it("calls an even exchange a trade, and the opposite-coloured bishops it leaves", () => {
@@ -101,43 +101,6 @@ describe("buildCommentary", () => {
       prev: { san: "dxe4", uci: "d5e4", fenBefore: prevFen } });
     expect(buildCommentary(f).prose).toMatch(/takes back the pawn/);
   });
-  it("prices a hanging piece by the line that takes it", () => {
-    const f = scenario({
-      fen: "6k1/8/2p5/8/8/8/8/5BK1 w - - 0 1",
-      san: "Bb5",
-      best: "Kf2",
-      before: 0,
-      after: -300,
-      playedLine: ["cxb5", "Kf2"],
-    });
-    expect(buildCommentary(f).prose).toBe("Blunder. Bb5 hangs the bishop to 1...cxb5. Kf2 was the move, keeping the material.");
-  });
-
-  it("names the fork the reply executes instead of a bare material count", () => {
-    const f = scenario({
-      fen: "r3k3/7p/8/1N6/8/8/8/4K3 b - - 0 1",
-      san: "h6",
-      best: "Kd7",
-      before: 0,
-      after: 500,
-      playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc8"],
-    });
-    expect(buildCommentary(f).prose).toBe("Blunder. h6 loses a rook to 2.Nc7+, which forks the king and the rook on a8. Kd7 was the move, keeping the material.");
-  });
-
-  it("names the tactic in the line the player missed", () => {
-    const f = scenario({
-      fen: "r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1",
-      san: "Kd2",
-      best: "Nc7+",
-      bestLine: ["Nc7+", "Kd7", "Nxa8", "Kc8"],
-      before: 500,
-      after: 0,
-      playedLine: ["Ra5", "Nc3"],
-    });
-    expect(buildCommentary(f).prose).toBe("Blunder. Kd2 misses Nc7+, which forks the king and the rook on a8 and wins a rook.");
-  });
-
   it("leads a winning move's read with the tactic that wins the material", () => {
     const f = scenario({
       fen: "r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1",
@@ -151,46 +114,11 @@ describe("buildCommentary", () => {
     expect(buildCommentary(f).prose).toBe("Good move. Nc7+ forks the king and the rook on a8, winning a rook.");
   });
 
-  it("does not call a defended piece hanging", () => {
-    expect(hangingCapture("6k1/8/2p5/1B6/P7/8/8/6K1 b - - 0 1", "c6b5")).toBeNull();
-    expect(hangingCapture("6k1/8/2p5/1B6/8/8/8/6K1 b - - 0 1", "c6b5")).toEqual({ type: "b", square: "b5" });
-  });
-
   it("names pins and skewers set up by the moved piece", () => {
     expect(motifPhrase("3k4/8/5n2/8/7B/8/8/4K3 w - - 0 1", "h4g5", "Bg5")).toBe("pins the knight to the king");
     expect(motifPhrase("4r1k1/8/8/4q3/8/8/4R3/3K4 w - - 0 1", "e2e1", "Re1")).toBe("skewers the queen and the rook behind it");
     expect(motifPhrase("3k4/8/8/8/8/8/8/1N2K3 w - - 0 1", "b1c3", "Nc3")).toBe("");
     expect(["forks a", "pins a", "skewers a"].map(participle)).toEqual(["forking a", "pinning a", "skewering a"]);
-  });
-
-  it("speaks to the user as 'you' and to the opponent by colour", () => {
-    const f = scenario({
-      fen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
-      san: "a3",
-      best: "Bb5",
-      before: 120,
-      after: -10,
-      playedLine: ["Nf6"],
-    });
-    expect(buildCommentary(f, { selfSide: "white" }).prose).toBe(
-      "Mistake. a3 allows 3...Nf6, which develops the knight and attacks the pawn on e4. You were slightly better; now it's level. Bb5 was the move, keeping you slightly better.",
-    );
-    expect(buildCommentary(f).prose).toMatch(/White was slightly better; now it's level\./);
-  });
-
-  it("does not narrate a gain when the two searches disagree on an inaccuracy", () => {
-    const f = scenario({
-      fen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
-      san: "h3",
-      best: "Bb5",
-      before: 40,
-      after: 90,
-      playedLine: ["Nf6"],
-    });
-    // Classified from the win% drop only through isBest; force an inaccuracy for the wording.
-    f.classification = { code: "inaccuracy", label: "Inaccuracy", glyph: "?!", tone: "warn" };
-    f.winAfterMover = f.winBeforeMover + 8;
-    expect(buildCommentary(f).prose).toBe("h3 is slightly inaccurate. Bb5 was better.");
   });
 
   it("tells a take-back from the capture that starts a new trade", () => {
@@ -255,10 +183,11 @@ describe("buildCommentary", () => {
 describe("the opponent's move, read for the user", () => {
   const afterNf3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
 
-  it("names the piece a slip leaves hanging and the reply that takes it", () => {
+  it("gives a slip the reason the user's own error would get, then the reply that punishes it", () => {
     const f = scenario({ fen: afterNf3, san: "Qh4", best: "Nc6", before: 30, after: 900, playedLine: ["Nxh4"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("2...Qh4 leaves their queen on h4 hanging. Take it with 3.Nxh4.");
+    expect(read.prose).toBe(`${buildCommentary(f, { selfSide: "black" }).prose} Punish it with 3.Nxh4 and you're winning.`);
+    expect(read.prose).toBe("Blunder. Qh4 leaves the queen on h4 open to the knight on f3. Nc6 was the move. Punish it with 3.Nxh4 and you're winning.");
     expect(read.tone).toBe("good");
   });
 
@@ -295,21 +224,8 @@ describe("the opponent's move, read for the user", () => {
   it("points out a positional slip with their better move and where your reply leaves you", () => {
     const f = scenario({ fen: afterNf3, san: "a6", best: "Nc6", before: 30, after: 160, playedLine: ["Nxe5"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toMatch(/^2\.\.\.a6 is (a little loose\. Nc6 was better for them|a mistake\. They should have played Nc6|a blunder\. They had to play Nc6)\. Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
-  });
-
-  it("prices a slip by what its own line loses, not by what their best move would have grabbed", () => {
-    // 19...Qc7?: 19...Na3 wins the c2 bishop for the knight and two pawns besides, while
-    // after Qc7 only a pawn changes hands (20.Nxc4 dxc4 21.Qg3 b4 22.cxb4).
-    const fen = "r2qr1k1/3bbp1p/p3p1pB/1p1pP3/P1nP1P2/2PQ4/2BN2PP/RR4K1 b - - 0 19";
-    const f = scenario({
-      fen, san: "Qc7", best: "Na3", ply: 38, before: -98, after: 42,
-      bestLine: ["Na3", "Rc1", "Nxc2", "Rxc2", "bxa4", "h4", "Bxh4", "g4"],
-      playedLine: ["Nxc4", "dxc4", "Qg3", "b4", "cxb4", "Qb6", "Rd1"],
-    });
-    const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(prose).not.toMatch(/bishop|three pawns/);
-    expect(prose).toMatch(/^19\.\.\.Qc7 gives you a pawn\. Pick it up with 20\.Nxc4 dxc4 21\.Qg3 b4 22\.cxb4\.$/);
+    expect(read.prose.startsWith(buildCommentary(f, { selfSide: "black" }).prose)).toBe(true);
+    expect(read.prose).toMatch(/ Punish it with 3\.Nxe5 and you're (slightly|clearly) better\.$/);
   });
 
   it("calls out a move that walks into mate", () => {
@@ -337,9 +253,8 @@ describe("the opponent's move, read for the user", () => {
       const { prose } = buildOpponentCommentary(buildMoveFeatures(input), { selfSide: self });
       expect(prose.length).toBeLessThanOrEqual(240);
       expect(prose).not.toMatch(/\{|\}|undefined|null|NaN| {2}|(^|[^.])\.\.(?!\.)|—/);
-      // Spoken sentences, not "Label: fact".
-      expect(prose).not.toMatch(/[:;]/);
-      expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(3);
+      // the reason (with its one-word grade), then the reply that punishes it
+      expect(prose.split(/(?<=[.!])\s/).length).toBeLessThanOrEqual(4);
     }
   });
 
@@ -373,16 +288,15 @@ describe("the opponent's move, read for the user", () => {
     const f = scenario({ fen: "r3k3/7p/8/3N4/8/8/8/4K3 b - - 0 1", san: "h6", best: "Kd7",
       before: 0, after: 500, playedLine: ["Nc7+", "Kd7", "Nxa8", "Kc6"] });
     const read = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(read.prose).toBe("1...h6 is a blunder. Now 2.Nc7+ forks the king and the rook on a8.");
+    expect(read.prose).toContain("Punish it with 2.Nc7+, forking the king and the rook on a8, and you're winning.");
     expect(read.tone).toBe("good");
   });
 
-  it("calls out a win they missed, with the tactic and the material, instead of a bare grade", () => {
+  it("calls out a win they missed", () => {
     const f = scenario({ fen: "4k3/7p/8/8/1n6/8/8/R3K3 b - - 0 1", san: "h6", best: "Nc2+",
       bestLine: ["Nc2+", "Kd2", "Nxa1", "Kc1"], before: -500, after: 0, playedLine: ["Kd2"] });
     const { prose } = buildOpponentCommentary(f, { selfSide: "white" });
-    expect(prose).toMatch(/^Lucky for you, they missed Nc2\+, which forks your king and your rook on a1\./);
-    expect(prose).not.toMatch(/is an? (inaccuracy|mistake|blunder);/);
+    expect(prose).toMatch(/^Blunder\. h6 misses Nc2\+/);
   });
 
   it("reads a sound capture by the opponent as the material it wins", () => {
@@ -441,17 +355,17 @@ function fromRead(fen, uci, before, after) {
 }
 const read = (...a) => buildCommentary(fromRead(...a), { selfSide: "white" }).prose;
 
-describe("mate lines and static costs", () => {
+describe("mate lines", () => {
   it("writes out the whole missed mate", () => {
     const prose = read("r1bq1rk1/pppp2p1/2n4p/2bNppN1/2B5/8/PPPP1PPP/R1BQK2R w KQ - 0 9", "d5c7",
       { cp: null, mate: 2, pv: ["d5e7", "g8h8", "e7g6"] }, { cp: -425, mate: null, pv: ["g8h8", "d1h5", "d7d5", "c4d5"] });
-    expect(prose).toBe("Mistake. Nxc7+ misses mate in 2: 9.Ne7+ Kh8 10.Ng6#.");
+    expect(prose).toBe("Mistake. Nxc7+ misses mate in two: 9.Ne7+ Kh8 10.Ng6#.");
   });
 
-  it("writes out the whole mate an error allows", () => {
+  it("writes out the whole mate an error allows, ahead of a higher-scored reason", () => {
     const prose = read("r3k2r/1pp5/p2p2p1/3Np2p/4PPbq/P6n/1PPBBP1K/R2QR3 w kq - 1 21", "d2e3",
       { cp: -678, mate: null, pv: ["h2g2", "h4f2", "g2h1", "f2h4"] }, { cp: null, mate: 4, pv: ["h3f2", "h2g2", "h4h3", "g2f2", "h3h2", "f2f1", "g4h3"] });
-    expect(prose).toMatch(/^Be3 allows mate in 4: 21\.\.\.Nxf2\+ 22\.Kg2 Qh3\+ 23\.Kxf2 Qh2\+ 24\.Kf1 Bh3#\./);
+    expect(prose).toBe("Be3 allows mate in four: 21...Nxf2+ 22.Kg2 Qh3+ 23.Kxf2 Qh2+ 24.Kf1 Bh3#. Kg2 was the move.");
   });
 
   it("does not praise a move when every move is mated", () => {
@@ -460,15 +374,4 @@ describe("mate lines and static costs", () => {
     expect(prose).toBe("Nothing helps here: mate in 6 is coming whatever you play.");
   });
 
-  it("names a bishop the move shuts in", () => {
-    const prose = read("rnbqkbnr/ppp3pp/8/3p1p2/8/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 0 5", "d1e2",
-      { cp: 117, mate: null, pv: ["d2d4", "g8f6", "f1d3", "c7c6"] }, { cp: -10, mate: null, pv: ["f8e7", "d2d4", "g8f6", "e2d1"] });
-    expect(prose).toMatch(/^Qe2\+ is slightly inaccurate: it shuts in the bishop on f1\. d4 was better\./);
-  });
-
-  it("names the centre the opponent takes", () => {
-    const prose = buildCommentary(fromRead("r2qkbnr/1pp2ppp/p1n1p3/5b2/2BP1B2/2N1PN2/PP3PPP/R2QK2R b KQkq - 1 7", "c6b4",
-      { cp: -64, mate: null, pv: ["f8d6", "f4g5", "g8e7", "a1c1"] }, { cp: 345, mate: null, pv: ["e3e4", "f5g4", "e1g1", "f8d6"] }), { selfSide: "black" }).prose;
-    expect(prose).toMatch(/^Blunder\. Nb4 lets the opponent take the centre with pawns on d4 and e4\./);
-  });
 });

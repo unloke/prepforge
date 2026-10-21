@@ -107,12 +107,11 @@ class MoveRecord:
     # ``comment`` is the ORIGINAL / user-authored note (PGN import, user edit).
     # ``generated_comment`` is the classifier's explanation, owned by the
     # analysis run: re-analysis REPLACES it (never appends), so explanations
-    # cannot accumulate across runs (improvement review A-04). ``generated_meta``
-    # records which algorithm/engine/depth wrote it, so the generated block is
-    # identifiable by version, not by text matching.
+    # cannot accumulate across runs (improvement review A-04). Which algorithm,
+    # engine and depth wrote it is recorded once per run in
+    # ``AnalysisResult.quality``, not per move.
     comment: Optional[str] = None
     generated_comment: Optional[str] = None
-    generated_meta: Optional[Dict[str, Any]] = None
     tags: List[str] = field(default_factory=list)
 
 

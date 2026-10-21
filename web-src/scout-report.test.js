@@ -17,6 +17,7 @@ import {
   legalScoutLineSans,
   refutationA11ySummary,
   renderScoutProfile,
+  scoutAnalyzedLabel,
   restoreScoutExpanded,
   scoutLineDetailHtml,
   scoutRouteReasonText,
@@ -28,6 +29,8 @@ import {
   scoutWdlBar,
   scoutLineWdlCounts,
   buildScoutIntelligenceA11ySummary,
+  scoutDistRowHtml,
+  openScoutLine,
 } from "./scout-report.js";
 import {
   MAIA_ENRICH_LOADING,
@@ -392,6 +395,28 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     expect(sideEl.hidden).toBe(false);
     expect(sideEl.dataset.lineKey).toBe(key);
     expect(results.scrollTop).toBe(88);
+  });
+
+  it("repaints the open detail when the same line is rebuilt with new numbers", () => {
+    const lineEl = createStubElement("div");
+    lineEl.classList.add("scout-line");
+    lineEl.dataset.lineKey = "e2e4";
+    lineEl.dataset.color = "white";
+    lineEl.dataset.rowIdx = "0";
+    lineEl.dataset.rowKind = "prep";
+    const sideEl = createStubElement("aside");
+    const ctx = (games) => ({
+      scoutModule,
+      sideEl,
+      ecoCache: new Map(),
+      callbacks: { scoutLineDetailHtml: () => `<p>seen in ${games} games</p>` },
+    });
+    openScoutLine(lineEl, { ucis: ["e2e4"], games: 3 }, "prep", ctx(3));
+    expect(String(sideEl.innerHTML)).toContain("seen in 3 games");
+    // Streaming re-renders the same key/colour from a fresh line object; the
+    // detail used to keep the old snapshot and disagree with the row.
+    openScoutLine(lineEl, { ucis: ["e2e4"], games: 4 }, "prep", ctx(4));
+    expect(String(sideEl.innerHTML)).toContain("seen in 4 games");
   });
 
   it("preserves expansion across a simulated live re-render", () => {
@@ -1128,7 +1153,7 @@ describe("scout intelligence panel", () => {
           families: [{ san: "e4", acpl: 42, firstInaccuracyPly: 3, analyzedGames: 5 }],
         },
       )),
-    ).toContain("based on latest 60 games");
+    ).toContain("based on the latest 60 games");
   });
 
   // The ACPL is the most sample-sensitive figure on the card (it averages over
@@ -1325,6 +1350,16 @@ describe("scoutDisplayDistribution", () => {
   });
 });
 
+describe("scoutDistRowHtml", () => {
+  it("separates the 'scores' label from the percentage", () => {
+    // The label is a <small> inline element, so "scores48%" only read as one
+    // word once the 3px margin was stripped (or in copied/accessed text).
+    const row = String(scoutDistRowHtml({ san: "Nf3", uci: "g1f3", share: 0.13, gameCount: 12, scorePct: 57 }));
+    const text = row.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+    expect(text).toContain("scores 57%");
+  });
+});
+
 // Regression: the "first slip around move N" sentence used Math.ceil(ply / 2).
 // `firstInaccuracyPly` is a 0-based ABSOLUTE ply index, so an opponent-White
 // inaccuracy on their own 1st move (ply 0) rendered as "move 0" - not a valid
@@ -1353,5 +1388,66 @@ describe("scout engine panel move numbering", () => {
     );
     expect(String(html)).toContain("42 cp");
     expect(String(html)).not.toContain("first slip");
+  });
+});
+
+// The tab, the section heading and the section's W/D/L used to count different
+// sets: the trie drops early-resign collapses (and honours the speed filter) while
+// the W/D/L counted every game of that colour, so "201 games" sat above a W/D/L
+// summing to 203. Every count now reads analyzedGames().
+describe("scout counts all read the analysed set", () => {
+  const withClock = (game, clockSeconds) =>
+    scoutGameRecord({
+      ...game,
+      totalPly: game.ucis.length,
+      timeControl: { baseSeconds: 300, incrementSeconds: 0 },
+      clockAfterPly: game.ucis.map(() => clockSeconds),
+      status: "resign",
+    });
+  // Two ordinary wins, plus a short loss resigned with most of the clock left.
+  const games = [
+    ...Array.from({ length: 2 }, (_, i) =>
+      withClock(
+        { color: "white", score: 1, sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], speed: "blitz", datestamp: 4000 - i, gameId: `win-${i}` },
+        5,
+      ),
+    ),
+    withClock(
+      { color: "white", score: 0, sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], speed: "blitz", datestamp: 2000, gameId: "collapse" },
+      280,
+    ),
+  ];
+
+  it("drops the early-resign collapse from the W/D/L, the trie and the profile", () => {
+    expect(scoutModule.analyzedGames(games, "white")).toHaveLength(2);
+    expect(scoutModule.opponentColorStats(games, "white").games).toBe(2);
+    expect(scoutModule.opponentProfile(games).total).toBe(2);
+    const { sectionData } = buildScoutSectionReport(
+      scoutModule,
+      { games, profile: scoutModule.opponentProfile(games) },
+      "white",
+      [],
+      { speedFilter: "all" },
+    );
+    expect(sectionData.gameCount).toBe(2);
+    expect(sectionData.colorWdl.games).toBe(sectionData.gameCount);
+    expect(sectionData.colorWdl.w + sectionData.colorWdl.d + sectionData.colorWdl.l).toBe(2);
+  });
+
+  it("keeps the collapse when it is a real game (clock run down)", () => {
+    const realLoss = withClock(
+      { color: "white", score: 0, sans: ["e4", "c5"], ucis: ["e2e4", "c7c5"], speed: "blitz", datestamp: 1000, gameId: "real" },
+      5,
+    );
+    expect(scoutModule.analyzedGames([...games, realLoss], "white")).toHaveLength(3);
+  });
+
+  it("labels every fetched game the report leaves out", () => {
+    const profile = { total: 30, skipped: 2, speedCounts: { blitz: 12 } };
+    expect(scoutAnalyzedLabel(30)).toBe("30 games analyzed");
+    expect(String(renderScoutProfile(profile, "rival", "all"))).toContain("30 games analyzed, 2 skipped");
+    expect(String(renderScoutProfile(profile, "rival", "blitz"))).toContain("12 games analyzed, 20 skipped");
+    // The chips still count the whole history, so the other speeds stay reachable.
+    expect(String(renderScoutProfile(profile, "rival", "blitz"))).toContain('data-speed="blitz"');
   });
 });

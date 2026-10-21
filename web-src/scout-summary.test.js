@@ -91,6 +91,30 @@ describe("buildScoutSectionSummary", () => {
     expect(out.headline).toMatch(/50% average/);
   });
 
+  it("does not repeat the Expect read chip inside the headline's lead", () => {
+    // Many games, varied first moves, no well-sampled weak branch: the headline
+    // falls back to "Expect 1.e4 (…%) or 1.d4 (…%). No opening where …".
+    const games = Array.from({ length: 40 }, (_, i) =>
+      game({
+        score: i % 2,
+        san: i < 24 ? "e4" : "d4",
+        sans: [i < 24 ? "e4" : "d4"],
+        ucis: i < 24 ? ["e2e4"] : ["d2d4"],
+        gameId: `x${i}`,
+      }),
+    );
+    const stats = buildScoutStats(games, { color: "white" });
+    const out = buildScoutSectionSummary(stats, { username: "foe", prepTargets: [] });
+    expect(out.headline.startsWith("Expect 1. e4")).toBe(true);
+    // The section's "Expect" chip quotes the same expectation, so no bullet may
+    // repeat it word for word.
+    expect(out.bullets.filter((b) => b.includes("Expect 1. e4"))).toHaveLength(1);
+    // It still reaches the Expect chip's tooltip, which summary.notes feeds.
+    expect(out.notes.filter((n) => n.includes("Expect 1. e4 (60%)"))).toEqual([
+      "Expect 1. e4 (60%) or 1. d4 (40%).",
+    ]);
+  });
+
   it("leads with a well-sampled weak opening branch", () => {
     const games = [
       ...Array.from({ length: 60 }, (_, i) =>
@@ -268,5 +292,19 @@ describe("colour banner wording", () => {
     );
     expect(String(html)).not.toContain("()");
     expect(String(html)).toContain("rival");
+  });
+
+  it("states the colour split as a chip and keeps the explanation in its tooltip", () => {
+    const html = String(
+      buildColorRecommendationBanner(
+        { pick: null, theirWeakColor: null, whiteScore: 44, blackScore: 56, confidence: { level: "high", n: 72 } },
+        { username: "rival" },
+      ),
+    );
+    // Live numbers stay visible; "a gap that size is normal variation" was a
+    // standing explanation under the header, so it moves into the tooltip.
+    expect(html).toContain("rival 44% as White · 56% as Black");
+    expect(html).toContain('title="No clear colour edge: the gap is within normal variation for this many games"');
+    expect(html).not.toContain("— a gap that size is normal variation");
   });
 });

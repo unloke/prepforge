@@ -7,23 +7,74 @@
 
 /* ---- Section nav ------------------------------------------------------- */
 
-.settings-nav { top: 12px; }
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own: the title spans the width above the section strip. */
+@media (min-width: 761px) {
+  #view-settings .page-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 10px;
+  }
+  #view-settings .page-head h1 {
+    margin: 0;
+    /* The phone header sets 32px for every page, so the desktop title keeps
+       the same size: one type size for the title at every width. */
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* The section you are in, named beside the page title: the heading and the
+   strip answer "where am I" with the same word at the same moment. */
+.settings-here {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 600;
+}
+.settings-here::before {
+  content: "/";
+  margin-right: 10px;
+  color: var(--line-strong);
+  font-weight: 400;
+}
+.settings-here span { color: var(--text); }
+
+.settings-nav {
+  width: fit-content;
+  max-width: 100%;
+}
 .settings-nav-link {
-  padding: 6px 10px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
   border-radius: var(--radius);
   color: var(--muted);
+  font-size: 14px;
   font-weight: 550;
+  white-space: nowrap;
   text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
-.settings-nav-link:hover { background: var(--surface-3); }
+.settings-nav-link:hover { background: var(--surface-3); color: var(--text); }
+.settings-nav-link:active { transform: scale(0.97); }
+/* The open section is a filled ink plate: the strongest mark on the page, so
+   "where am I" is answered without reading. Weight stays the same between the
+   two states - a heavier label would reflow the strip on every jump. */
 .settings-nav-link.is-active {
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
+  background: var(--text);
+  color: var(--panel);
 }
-.settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- Cards + rows ------------------------------------------------------ */
+
+/* A jump to a section lands its title below the sticky strip, not under it. */
+.settings-content > .set { scroll-margin-top: 64px; }
 
 .set {
   padding: 12px 14px;
@@ -37,14 +88,16 @@
 }
 .set .spacer { flex: 1; }
 .set .pf-info-pop { margin: 0 0 6px; }
+/* Rows are separated by space, not by a rule: a settings card is a list of
+   label/value pairs, and the label column plus the value edge already say
+   where one row ends. */
 .set-row,
 .set .pf-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
 }
 .set-row > span:first-child,
 .set .pf-row-text {
@@ -69,9 +122,10 @@
   padding: 4px 10px 4px 4px;
   min-height: 34px;
 }
-/* The chosen set needs to read as chosen: accent ring + weight, not a faint tint. */
+/* The chosen set needs to read as chosen: a soft accent plate + weight, not a
+   ring drawn around the pieces. */
 #piece-style-picker .piece-style-option.is-active {
-  box-shadow: inset 0 0 0 2px var(--accent);
+  background: var(--accent-soft);
   font-weight: 650;
 }
 .piece-style-preview { display: flex; border-radius: 4px; overflow: hidden; }
@@ -85,14 +139,14 @@
 .set .note:empty,
 .set .note[hidden],
 .set .faint:empty { display: none; }
-.settings-error { font-family: var(--mono); word-break: break-word; }
+.settings-error { word-break: break-word; }
 
 .status-pill {
   padding: 1px 8px;
   border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 700;
 }
 .status-pill.ok { background: var(--good-soft); color: var(--good-text); }
@@ -110,7 +164,6 @@
 }
 .strength-readout {
   min-width: 44px;
-  font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
@@ -129,7 +182,6 @@
   justify-content: space-between;
   gap: 10px;
   padding: 8px 0;
-  border-top: 1px solid var(--line);
 }
 .conn-name {
   display: flex;
@@ -149,20 +201,21 @@
   min-width: 28px;
   height: 28px;
   padding: 0 6px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .conn-menu-btn:hover,
 .conn-menu-btn[aria-expanded="true"] {
-  border-color: var(--line);
   background: var(--surface-3);
   color: var(--text);
 }
+.conn-menu-btn:active { transform: scale(0.92); }
 .conn-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .conn-menu {
   position: absolute;
@@ -173,12 +226,22 @@
   gap: 2px;
   min-width: 132px;
   padding: 4px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--panel);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
+  /* The menu opens where the eye already is: it settles under the button
+     instead of appearing flat. @starting-style keeps the closed state hidden,
+     so a browser without it shows the menu as it is. */
+  translate: 0 0;
+  transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
 .conn-menu[hidden] { display: none; }
+@starting-style {
+  .conn-menu:not([hidden]) {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
 .conn-menu-item {
   display: block;
   width: 100%;
@@ -192,10 +255,41 @@
   text-align: left;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .conn-menu-item:hover { background: var(--surface-3); }
 .conn-menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .conn-menu-item.is-danger { color: var(--danger-strong); }
+
+/* ---- Motion ------------------------------------------------------------ */
+
+/* The page arrives in reading order: the title, then the index of sections,
+   then the cards one after another, so the eye lands on the first card and
+   follows the page down. The shared view-enter keyframes do the travel, so
+   this reads like the rest of the app. The animation hangs off the active
+   view, so it plays again every time the page is opened. */
+#view-settings.is-active .page-head h1,
+#view-settings.is-active .settings-here {
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+#view-settings.is-active .settings-nav-link {
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+#view-settings.is-active .settings-nav-link:nth-child(1) { animation-delay: 50ms; }
+#view-settings.is-active .settings-nav-link:nth-child(2) { animation-delay: 100ms; }
+#view-settings.is-active .settings-nav-link:nth-child(3) { animation-delay: 150ms; }
+#view-settings.is-active .settings-nav-link:nth-child(4) { animation-delay: 200ms; }
+#view-settings.is-active .settings-nav-link:nth-child(5) { animation-delay: 250ms; }
+#view-settings.is-active .settings-nav-link:nth-child(6) { animation-delay: 300ms; }
+#view-settings.is-active .settings-content > .set {
+  animation: view-enter var(--dur) var(--ease-out) both;
+}
+#view-settings.is-active .settings-content > .set:nth-child(1) { animation-delay: 60ms; }
+#view-settings.is-active .settings-content > .set:nth-child(2) { animation-delay: 120ms; }
+#view-settings.is-active .settings-content > .set:nth-child(3) { animation-delay: 180ms; }
+#view-settings.is-active .settings-content > .set:nth-child(4) { animation-delay: 240ms; }
+#view-settings.is-active .settings-content > .set:nth-child(5) { animation-delay: 300ms; }
+#view-settings.is-active .settings-content > .set:nth-child(6) { animation-delay: 360ms; }
 
 /* ---- Responsive -------------------------------------------------------- */
 
@@ -209,7 +303,27 @@
   .set .seg-btn,
   .conn-menu-btn,
   .settings-nav-link { min-height: 44px; }
-  .set .pf-switch { min-height: 26px; }
+  /* Touch targets: the 38x26 switch and the 24px ⓘ are thumb targets on a
+     phone. The switch keeps its parts and grows its hit box to 40px (the track
+     is drawn by ::after, the knob stays centered); the ⓘ gets a 40px box with
+     the glyph unchanged. */
+  /* background/border are cleared on ::after only: the base rule sets the
+     transparent state there too. */
+  .set .pf-switch { height: 40px; background: none; border-color: transparent; }
+  .set .pf-switch::after {
+    content: "";
+    position: absolute;
+    inset: 9px 0;
+    border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
+    border-radius: 999px;
+    background: var(--panel-soft);
+    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .set .pf-switch.is-on { background: none; }
+  .set .pf-switch:hover::after { background: var(--surface-3); }
+  .set .pf-switch.is-on::after { background: var(--accent); border-color: var(--accent); }
+  .set .pf-switch .pf-knob { top: 10px; }
+  .set .pf-info { min-width: 40px; min-height: 40px; }
   .set-row { flex-wrap: wrap; }
 }
 
@@ -221,8 +335,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 0 14px;
-  border-bottom: 1px solid var(--line);
+  padding: 6px 0 4px;
 }
 .acct-avatar {
   flex: none;
@@ -257,18 +370,29 @@
 .acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
 .acct-tag {
   padding: 1px 8px;
-  border: 1px solid var(--line);
   border-radius: 10px;
+  background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
+  font-size: var(--fs);
   font-weight: 650;
 }
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
+/* Account skeleton: the identity header's shape while the session is unread. */
+.acct-skeleton-avatar {
+  width: 48px;
+  height: 48px;
+  margin-top: 0;
+}
+.acct-id-text > .skeleton-bar { justify-self: start; }
+.acct-id-text > .skeleton-line { height: 16px; }
+.acct-id-text .acct-id-meta { margin-top: 4px; }
+.acct-skeleton-tag { width: 72px; height: 18px; border-radius: 10px; }
+.acct-skeleton-pill { width: 82px; height: 20px; border-radius: 10px; }
 .acct-row-text { display: grid; gap: 1px; min-width: 0; }
 .acct-row > .btn { flex: none; white-space: nowrap; }
 .acct-block { margin-top: 14px; }
 .acct-block:empty { display: none; }
-#settings-account-data { padding-top: 10px; border-top: 1px solid var(--line); }
+#settings-account-data { padding-top: 4px; }
 .acct-block-head {
   display: flex;
   align-items: center;
@@ -286,24 +410,49 @@
   padding: 4px 0 2px;
 }
 .conn-site {
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px 7px;
+  border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--fs);
+  font-weight: 600;
 }
-.conn-user { color: var(--text); text-decoration: none; }
+/* The linked username is a link into Lichess: it reads as text but takes a
+   thumb-sized box on a phone. */
+.conn-user {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+@media (max-width: 760px) { .conn-user { min-height: 40px; } }
 .conn-user:hover { text-decoration: underline; }
 .acct-danger-zone { margin-top: 14px; }
 .acct-danger-zone > summary {
   width: max-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
   font-size: var(--fs-s);
   cursor: pointer;
+  list-style: none;
+  transition: color var(--dur-fast) var(--ease-out);
 }
+.acct-danger-zone > summary::-webkit-details-marker { display: none; }
+/* The native disclosure triangle is replaced by a drawn arrow that turns when
+   the zone opens. */
+.acct-danger-zone > summary::before {
+  content: "";
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.acct-danger-zone[open] > summary::before { transform: rotate(90deg); }
 .acct-danger-zone > summary:hover { color: var(--danger-strong); }
 .acct-danger-zone[open] > summary { color: var(--danger-strong); }
 .acct-danger {
@@ -313,8 +462,8 @@
   gap: 12px;
   margin-top: 8px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
   border-radius: var(--radius);
+  background: var(--danger-soft);
 }
 .acct-danger p { margin: 0; }
 .acct-danger .btn { white-space: nowrap; flex: none; }
@@ -323,4 +472,28 @@
   .acct-signout { margin-left: 62px; }
   .acct-row { flex-wrap: wrap; }
   .acct-danger { flex-direction: column; align-items: flex-start; }
+}
+
+/* Device probe: a track under the Detect row; the fill eases between steps. */
+.profile-progress {
+  position: relative;
+  height: 6px;
+  margin: 2px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.profile-progress[hidden] { display: none; }
+.profile-progress-fill {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transform: scaleX(var(--progress, 0));
+  transform-origin: left center;
+  transition: transform 700ms var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-progress-fill { transition: none; }
 }

@@ -112,7 +112,7 @@ describe("Games link chip respects explicit Self selection", () => {
   ])("%s with %j and no linked accounts", (linkedMode, accountIds, expected) => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     const paint = compile("function paintGamesSource(", {
-      appState: { signedIn: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
+      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
     });
     paint();
     expect(String(tray.innerHTML)).toContain(expected);
@@ -121,7 +121,8 @@ describe("Games link chip respects explicit Self selection", () => {
   it("external usernames stay usable without linking", () => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     compile("function paintGamesSource(", {
-      appState: { signedIn: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
+      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
+      gamesIdleHint: () => "",
     })();
     expect(String(tray.innerHTML)).toContain("Foe");
     expect(String(tray.innerHTML)).not.toContain("data-games-link");

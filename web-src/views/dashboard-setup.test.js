@@ -116,7 +116,7 @@ describe("dashboard setup checklist", () => {
     expect(String(container.innerHTML)).toContain('class="empty-state big"');
     expect(String(container.innerHTML)).not.toContain("step-n");
     expect(steps.hidden).toBe(false);
-    expect(String(steps.innerHTML)).toContain("<h2>Get started</h2>");
+    expect(String(steps.innerHTML)).toContain("<h2>Next steps</h2>");
     expect(String(steps.innerHTML)).toContain("0 of 3 done");
     for (const id of ["repertoire", "lichess", "train"]) {
       expect(String(steps.innerHTML)).toContain(`data-setup-step="${id}"`);
@@ -124,8 +124,24 @@ describe("dashboard setup checklist", () => {
     // One entry point per job: the repertoire step doesn't repeat Import PGN
     // (the empty state and the list header already carry it).
     expect(String(steps.innerHTML)).not.toContain('data-lib-action="import"');
-    // Training is locked until there is something to train.
-    expect(String(steps.innerHTML)).toMatch(/data-lib-action="train" disabled/);
+    // Training waits for a repertoire, so the step names what is missing
+    // instead of carrying a button that cannot apply.
+    expect(String(steps.innerHTML)).not.toContain('data-lib-action="train"');
+    expect(String(steps.innerHTML)).toMatch(/data-setup-step="train"[^]*?Add a repertoire first/);
+  });
+
+  it("a done step never carries a locked/blocked explanation (round 2, symptom 1)", async () => {
+    // The account once trained (8 sessions) but has no repertoire now: the step
+    // rendered "Done" and "Unlocks once you have a repertoire." together. Steps
+    // keep no standing detail copy at all — the disabled Train says why.
+    mockDashboard({ repertoires: 0, training_sessions: 8 });
+    await view.loadDashboard();
+    expect(String(steps.innerHTML)).toMatch(/data-setup-step="train"[^]*?Done/);
+    expect(String(steps.innerHTML)).not.toContain("Unlocks once");
+    expect(String(steps.innerHTML)).not.toMatch(/<div class="step-text"><b>[^<]+<\/b><p>/);
+    // The open repertoire step is where the lock is named.
+    expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train"/);
+    expect(String(container.innerHTML)).toContain("No repertoires yet.");
   });
 
   it("keeps Link Lichess on the card after the first repertoire exists", async () => {
@@ -137,8 +153,17 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).toContain("1 of 3 done");
     expect(String(steps.innerHTML)).toMatch(/data-setup-step="repertoire"[^>]*>.*Done/s);
     expect(String(steps.innerHTML)).toContain('data-lib-action="lichess"');
+    expect(String(steps.innerHTML)).toContain('data-lib-action="train"');
     expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
     expect(String(container.innerHTML)).not.toContain("step-n");
+  });
+
+  it("the setup checklist marks its steps, it does not number them", async () => {
+    // The mark column carried a tick for a finished step and a number for the
+    // open one, so one list read as two. A phone shows no number at all.
+    mockDashboard({ repertoires: 1 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
+    await view.loadDashboard();
+    expect(String(steps.innerHTML)).not.toMatch(/class="step-n"[^>]*>[^<]*\d/);
   });
 
   it("ticks Link Lichess from the linked accounts and re-renders on refreshSetup", async () => {
@@ -162,12 +187,22 @@ describe("dashboard setup checklist", () => {
     expect(String(steps.innerHTML)).toBe("");
   });
 
+  it("counts saved analyses, not Lichess games", async () => {
+    mockDashboard({ games: 3 });
+    await view.loadDashboard();
+    const counts = String(todayCard.innerHTML);
+    expect(counts).toContain("<b>3</b> analyses");
+    expect(counts).not.toContain("<b>3</b> games");
+    expect(counts).toContain('title="Saved analyses, repertoires and training sessions"');
+  });
+
   it("follows the repertoire listing, not the earlier dashboard read", async () => {
     // The dashboard was read before the first import; the listing refresh
     // after it already has the new repertoire.
     mockDashboard({ repertoires: 0 }, [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }]);
     await view.loadDashboard();
     expect(String(steps.innerHTML)).toContain("1 of 3 done");
+    expect(String(steps.innerHTML)).toContain('data-lib-action="train"');
     expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
   });
 
@@ -244,6 +279,91 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).not.toContain("Learn new moves");
   });
 
+  it("first run: the Today primary action is New repertoire, not a Train that cannot start (round 2, symptom 2)", async () => {
+    mockDashboard({ repertoires: 0, training_sessions: 0 });
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain("No repertoire to train yet");
+    expect(today).not.toContain("Queue is clear");
+    expect(today).toContain('data-lib-action="new"');
+    expect(today).not.toContain("dashboard-train-now");
+  });
+
+  it("the Today primary action follows the repertoire count, not the training history", async () => {
+    // The account trained before and has no repertoire now: Train can only
+    // answer "nothing to train", so the strip offers the first repertoire.
+    mockDashboard({ repertoires: 0, training_sessions: 8 });
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain('data-lib-action="new"');
+    expect(today).not.toContain("dashboard-train-now");
+    expect(today).toContain("No repertoire to train yet");
+    expect(today).not.toContain("Queue is clear");
+  });
+
+  it("keeps Train once the account has a repertoire", async () => {
+    mockDashboard({ repertoires: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: false, health: { untrained: 0, due: 0 } },
+    ]);
+    await view.loadDashboard();
+    expect(String(todayCard.innerHTML)).toContain("dashboard-train-now");
+  });
+
+  it("turns the first-run action into Train when a created repertoire reaches an early listing", async () => {
+    // The listing refresh can land before /api/dashboard; the strip must not
+    // keep offering New repertoire after the first one exists.
+    api.mockImplementation(async (url) => (String(url).startsWith("/api/dashboard")
+      ? dashboardPayload({ repertoires: 1 })
+      : { repertoires: [{ id: "rep-1", name: "e4", color: "white", is_active: true, health: null }] }));
+    let release;
+    const dashboardRead = new Promise((resolve) => { release = resolve; });
+    api.mockImplementationOnce(() => dashboardRead);
+    const load = view.loadDashboard();
+    await vi.waitFor(() => expect(String(todayCard.innerHTML)).toBe(""));
+    release(dashboardPayload({ repertoires: 1 }));
+    await load;
+    expect(String(todayCard.innerHTML)).toContain("dashboard-train-now");
+    expect(String(todayCard.innerHTML)).not.toContain('data-lib-action="new"');
+  });
+
+  it("the Today strip counts an unopened repertoire's moves as unknown, not zero", async () => {
+    // The coverage badge is written the first time a repertoire is opened or
+    // trained. Until then the listing knows nothing about it, so the strip
+    // must not claim a clear queue beside a row that says "no moves trained
+    // yet" - the queue holds that repertoire's whole tree.
+    mockDashboard({ repertoires: 1, due_reviews: 0, due_soon: 0 }, [
+      { id: "rep-1", name: "imported", color: "black", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain("1 repertoire not opened yet");
+    expect(today).not.toContain("Queue is clear");
+    // There is a repertoire to train, so Train stays the action.
+    expect(today).toContain("dashboard-train-now");
+  });
+
+  it("an unopened repertoire does not hide the moves of the other ones", async () => {
+    mockDashboard({ repertoires: 2, due_reviews: 0, due_soon: 0 }, [
+      { id: "rep-1", name: "known", color: "white", is_active: true, health: { untrained: 7, due: 0, weak: 0 } },
+      { id: "rep-2", name: "imported", color: "black", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).toContain("1 repertoire not opened yet");
+    expect(today).toContain("7 new moves to learn");
+    expect(today).not.toContain("Queue is clear");
+  });
+
+  it("a disabled repertoire is not counted as an unopened one", async () => {
+    mockDashboard({ repertoires: 1, due_reviews: 0, due_soon: 0 }, [
+      { id: "rep-1", name: "off", color: "white", is_active: false, health: null },
+    ]);
+    await view.loadDashboard();
+    const today = String(todayCard.innerHTML);
+    expect(today).not.toContain("not opened yet");
+    expect(today).toContain("Queue is clear");
+  });
+
   it("Today strip only says the queue is clear when nothing is due or new", async () => {
     mockDashboard({ repertoires: 1 }, [
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 0, due: 0 } },
@@ -263,6 +383,37 @@ describe("dashboard setup checklist", () => {
     expect(String(todayCard.innerHTML)).toMatch(/data-testid="dashboard-train-now">Train</);
   });
 
+  it("counts repertoires from the listing, so create and delete reach the Today counts", async () => {
+    const rep = (id) => ({ id, name: id, color: "white", is_active: true, health: null });
+    mockDashboard({ repertoires: 2 }, [rep("rep-1"), rep("rep-2")]);
+    await view.loadDashboard();
+    expect(String(todayCard.innerHTML)).toContain("<b>2</b> repertoires");
+
+    // Create / import / delete end in a listing refresh and never re-read
+    // /api/dashboard, so the count has to come from that listing.
+    api.mockResolvedValue({ repertoires: [rep("rep-1"), rep("rep-2"), rep("rep-3")] });
+    await view.loadDashboardRepertoires();
+    expect(String(todayCard.innerHTML)).toContain("<b>3</b> repertoires");
+
+    api.mockResolvedValue({ repertoires: [] });
+    await view.loadDashboardRepertoires();
+    expect(String(todayCard.innerHTML)).toContain("<b>0</b> repertoires");
+  });
+
+  it("uses singular labels when a lifetime count is one", async () => {
+    mockDashboard({ games: 1, training_sessions: 1 }, [
+      { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
+    ]);
+    await view.loadDashboard();
+    const counts = String(todayCard.innerHTML);
+    expect(counts).toContain("<b>1</b> analysis");
+    expect(counts).toContain("<b>1</b> repertoire");
+    expect(counts).toContain("<b>1</b> session");
+    expect(counts).not.toContain("<b>1</b> analyses");
+    expect(counts).not.toContain("<b>1</b> repertoires");
+    expect(counts).not.toContain("<b>1</b> sessions");
+  });
+
   it("renders the signed-out Library as the onboarding card without any API call", () => {
     view.renderSignedOut();
     expect(api).not.toHaveBeenCalled();
@@ -270,7 +421,7 @@ describe("dashboard setup checklist", () => {
     expect(String(container.innerHTML)).toContain('data-lib-action="signin"');
     expect(todayCard.hidden).toBe(true);
     expect(steps.hidden).toBe(false);
-    expect(String(steps.innerHTML)).toContain("<h2>Get started</h2>");
+    expect(String(steps.innerHTML)).toContain("<h2>Next steps</h2>");
     // One Sign in on the page: the empty state has it, the checklist doesn't repeat it.
     expect(steps.innerHTML.match(/class="step"/g)).toHaveLength(2);
     expect(String(steps.innerHTML)).not.toContain('data-lib-action="signin"');

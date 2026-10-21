@@ -6,7 +6,8 @@ import { html } from "../html.js";
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
-import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
+import { staggerRows } from "../list-enter.js";
+import { teamRowsSkeleton } from "./team-skeleton.js";
 
 export function createTeamsView({
   appState,
@@ -79,6 +80,20 @@ export function createTeamsView({
     const list = document.getElementById("teams-list");
     const shared = document.getElementById("teams-shared");
     if (!list) return;
+    // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting
+    // guest state here is what flashed "Sign in to create or join a team" for a
+    // signed-in user on reload, so hold a neutral loading state until auth is
+    // known instead — including the owner-scoped affordances.
+    if (!appState.authKnown) {
+      const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
+      if (sharedCard) sharedCard.hidden = true;
+      const searchField = document.getElementById("teams-search")?.closest?.(".search-field");
+      if (searchField) searchField.hidden = true;
+      const newTeam = document.getElementById("teams-new");
+      if (newTeam) newTeam.hidden = true;
+      list.innerHTML = teamRowsSkeleton(3);
+      return;
+    }
     // A guest gets one Sign in, in the main card; the list and the shares card
     // have nothing to show yet, so they don't repeat it.
     const sharedCard = shared && shared.closest ? shared.closest(".card") : null;
@@ -90,30 +105,34 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
-    list.innerHTML = html`<div class="empty-state">Loading…</div>`;
+    list.innerHTML = teamRowsSkeleton(3);
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
       renderTeamsList();
-      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
-      // Re-open an expanded team after a reload so a member add/remove stays in view.
-      if (appState.selectedTeamId && appState.teams.some((tm) => tm.id === appState.selectedTeamId)) {
+      // Only a team the user picked opens on its own (a reload, or a member
+      // add/remove). A single-team directory used to auto-expand, which skipped
+      // the list and hid the empty card under "Choose a team / Select a team
+      // from the list" — the card now explains how to get a second team.
+      if (appState.selectedTeamId && appState.teams.some((team) => team.id === appState.selectedTeamId)) {
         openTeamDetail(appState.selectedTeamId);
-      } else if (appState.teams.length === 1) {
-        // Only one team: open it rather than leaving a big "Choose a team" blank.
-        openTeamDetail(appState.teams[0].id);
       } else {
         hideTeamDetail();
       }
+      renderTeamEmptyCard(appState.teams.length ? "choose" : "no-teams");
     } catch (error) {
       if (!isCurrent()) return;
-      list.innerHTML = html`<div class="empty-state">${error.message}</div>`;
+      // A failure says what went wrong and how to retry, like the Library's.
+      list.innerHTML = html`<div role="alert" class="empty-state">${error.message} <button class="btn sm" type="button">Retry</button></div>`;
+      list.querySelector("button")?.addEventListener("click", loadTeams);
     }
     if (isCurrent()) loadSharedRepertoires();
   }
 
-  // The placeholder card beside the directory explains what to do next for the
-  // current state (signed out / no teams yet / pick one) instead of a bare blank.
+  // The placeholder card beside the directory says what to do next for the
+  // current state (signed out / no teams yet / none picked) instead of a bare
+  // blank. It names the state and the one step that changes it; it does not
+  // describe what a team holds.
   const EMPTY_CARD_COPY = {
     "signed-out": {
       title: "Teams",
@@ -121,11 +140,11 @@ export function createTeamsView({
     },
     "no-teams": {
       title: "No teams yet",
-      body: "Create a team, then invite people with a shareable link or add existing PrepForge users by their Lichess username.",
+      body: "Create a team, then invite people with a link.",
     },
     choose: {
-      title: "Choose a team",
-      body: "Select a team from the list.",
+      title: "No team selected",
+      body: "Choose a team from the directory.",
     },
   };
   function renderTeamEmptyCard(kind) {
@@ -147,20 +166,6 @@ export function createTeamsView({
   }
 
 
-  async function openInviteDialog(teamId) {
-    const ui = createInviteDialogUi({ activateModal });
-    await runInviteDialog(teamId, {
-      api,
-      postJson,
-      origin: window.location.origin,
-      copyText: (text) => navigator.clipboard.writeText(text),
-      confirm: showConfirmModal,
-      setStatus,
-      setStatusError,
-      ui,
-    });
-  }
-
   function renderTeamsList() {
     const list = document.getElementById("teams-list");
     if (!list) return;
@@ -177,13 +182,21 @@ export function createTeamsView({
     // primary "New team" beside it only competes with it.
     const newTeam = document.getElementById("teams-new");
     if (newTeam) newTeam.hidden = !appState.signedIn;
+    // Same rule as loadTeams(): until the session is known the collection is not
+    // "empty", it is unread.
+    if (!appState.authKnown) {
+      list.innerHTML = teamRowsSkeleton(3);
+      return;
+    }
     // hideTeamDetail() re-renders the list; keep the guest's sign-in line.
     if (!appState.signedIn) {
       list.innerHTML = "";
       return;
     }
+    // No teams: the card beside the directory already says "No teams yet" and how
+    // to start one, so the directory is just empty.
     if (!appState.teams.length) {
-      list.innerHTML = html`<div class="empty-state">No teams yet.</div>`;
+      list.innerHTML = "";
       return;
     }
     const query = (search?.value || "").trim().toLocaleLowerCase();
@@ -205,6 +218,7 @@ export function createTeamsView({
           <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
       })}` : html`<div class="empty-state">No teams match your search.</div>`;
+    staggerRows(list);
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);
@@ -275,25 +289,6 @@ export function createTeamsView({
     });
   }
 
-  // Prototype invite footer: one muted line naming the team's live invite link.
-  // Data comes from the real detail payload (managers only); anything else hides
-  // the line rather than implying a link exists.
-  function renderTeamInviteFooter(detail) {
-    const foot = document.getElementById("team-invite-foot");
-    if (!foot) return;
-    const invite = detail && detail.invite;
-    if (!invite || !invite.exists) {
-      foot.hidden = true;
-      foot.innerHTML = "";
-      return;
-    }
-    const expiresDay = formatDay(invite.expires_at);
-    const when = expiresDay ? ` · expires ${expiresDay}` : "";
-    foot.innerHTML =
-      html`Invite link active${when} · revoke from Invite`;
-    foot.hidden = false;
-  }
-
   return {
     invalidateRequests: () => { loadSeq++; },
     loadTeams,
@@ -301,9 +296,7 @@ export function createTeamsView({
     renderTeamSharedRepertoires,
     selectTeamPane,
     renderTeamTabCounts,
-    renderTeamInviteFooter,
     bindTeamTabs,
     renderTeamEmptyCard,
-    openInviteDialog,
   };
 }

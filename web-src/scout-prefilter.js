@@ -6,7 +6,7 @@ import { preparationValue, selectPreparationRoutes, routeKey, canonicalPosition 
 import { analyzeGamePositions } from "./engine/game-analyzer.js";
 import {
   createEngineProvider,
-  STOCKFISH_PACKAGE_VERSION,
+  ENGINE_ID as SCOUT_PREFILTER_ENGINE_VERSION,
 } from "./engine/stockfish-provider.js";
 import {
   SCOUT_BRANCH_SCORE_CAP,
@@ -28,7 +28,7 @@ export const SCOUT_MAIA_PREFILTER_LIMIT = SCOUT_MAIA_LIMIT;
 export const SCOUT_PREFILTER_CONCURRENCY = 3;
 /** Run the bounded leaf queue to completion unless cancelled. */
 export const SCOUT_PREFILTER_TIME_BUDGET_MS = Infinity;
-export const SCOUT_PREFILTER_ENGINE_VERSION = `stockfish-${STOCKFISH_PACKAGE_VERSION}-lite`;
+export { SCOUT_PREFILTER_ENGINE_VERSION };
 export const PREFILTER_IDLE = "idle";
 export const PREFILTER_LOADING = "loading";
 export const PREFILTER_READY = "ready";
@@ -366,7 +366,7 @@ export async function runStockfishPrefilter(
             onProgress({ done: cachedCount + done, total: allFens.length, phase: "stockfish" });
           }
         },
-        createProvider: (opts) => createProvider({ ...opts, maxDepth: depth }),
+        createProvider,
       });
       for (const [fen, evalResult] of freshEvals) {
         cache.set(prefilterCacheKey(fen, depth), wrapEvalComplete(evalResult, !cancelled()));

@@ -6,19 +6,20 @@ import { html } from "../html.js";
 import { isAuthError } from "../auth-gate.js";
 import { isStartFen, localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
+import { watchMaiaInit } from "../maia-init-notice.js";
 import { describeMove } from "../explain.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
 import { countOf } from "../plural.js";
 import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { trainStartDisabled } from "../train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, startNotice, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
   loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty, openAuthModal,
-  optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
-  refreshAuthStatus, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
+  notices, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView, queueTrainAttempt,
+  refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead, renderSmartSummaryStats, renderTrainStats, requireSignIn, setStatus, setStatusError, setTrainBanner,
   setTrainSyncState, sleep, START_FEN, switchView, syncViewHeads,
   syncWorkspaceUrl, updateTrainTurnBadge;
 
@@ -28,9 +29,10 @@ export function createTrainSession(deps) {
     boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
     loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
-    queueTrainAttempt, refreshAuthStatus, renderTrainStats, requireSignIn, setStatus,
-    setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
+    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
+    queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
+    renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   } = deps);
   initTrainControls();
@@ -71,7 +73,6 @@ async function skipTrainingLine() {
     if (result.prompt) {
       appState.training.prompt = result.prompt;
       await renderTraining(result.prompt);
-      setStatus("Skipped to next line");
     } else {
       appState.training.prompt = null;
       if (appState.trainReview && appState.trainReview.queue.length) {
@@ -142,10 +143,15 @@ async function loadTrainRepertoireOptions() {
             html`<option value="${r.id}">${r.name} (${r.color})</option>`,
         )
       : [
-          appState.signedIn
-            ? html`<option value="" disabled selected>Create a repertoire first</option>`
-            : html`<option value="" disabled selected>Sign in to train your repertoires</option>`,
-        ];
+        // Three states, not two: the session may be UNREAD (a reload before
+        // /api/auth/me lands). Reading that as "signed out" is what flashed
+        // "Sign in to train your repertoires" for a signed-in user.
+        appState.signedIn
+          ? html`<option value="" disabled selected>Create a repertoire first</option>`
+          : appState.authKnown
+            ? html`<option value="" disabled selected>Sign in to train your repertoires</option>`
+            : html`<option value="" disabled selected>Loading…</option>`,
+      ];
     select.innerHTML = html`${options}`;
     const valid = new Set(active.map((r) => r.id));
     select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";
@@ -214,6 +220,14 @@ function selectedTrainRepertoireIds() {
 function playRepertoireMeta(ids = selectedTrainRepertoireIds()) {
   const wanted = new Set((ids || []).map(String));
   return (appState.repertoireList || []).filter((rep) => wanted.has(String(rep.id)));
+}
+
+// The repertoires the smart queue mixes: active, and not deleted off-device
+// waiting for the delete to land.
+function activeTrainRepertoires() {
+  return (appState.repertoireList || []).filter(
+    (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
+  );
 }
 
 function renderPlayRepertoirePicker(active = null) {
@@ -288,11 +302,6 @@ function syncTrainPickerVisibility() {
   if (srs) srs.hidden = play;
   if (playSetup) playSetup.hidden = !play;
   if (blitzRow) blitzRow.hidden = mode !== "smart";
-  const setupTitle = document.getElementById("train-setup-title");
-  if (setupTitle) {
-    setupTitle.hidden = play;
-    setupTitle.textContent = smart ? "Smart queue" : "Line rehearsal";
-  }
   if (play) {
     if (progress) progress.hidden = true;
     if (summary) summary.hidden = true;
@@ -302,14 +311,10 @@ function syncTrainPickerVisibility() {
   if (skip) skip.hidden = false;
   const startBtn = document.getElementById("start-train");
   if (startBtn) {
-    startBtn.disabled = trainStartDisabled({
-      mode: smart ? "smart" : play ? "play" : "all_lines",
-      signedIn: appState.signedIn,
-      hasRepertoire: !!selectedTrainRepertoireId(),
-    });
     // A guest's Start opens the sign-in gate; say so on the button instead of
     // promising a session that cannot begin.
     startBtn.textContent = appState.signedIn ? "Start" : "Sign in to start";
+    paintTrainStartDisabled();
   }
   const startPlay = document.getElementById("start-play");
   const bookEl = document.getElementById("train-play-book");
@@ -332,25 +337,62 @@ function syncTrainPickerVisibility() {
 }
 
 // Before Start: the card counts of the queue Start will serve. Cached briefly
-// so the many syncTrainPickerVisibility() calls don't each refetch.
-const trainPreviewCache = { at: 0, text: "", loading: null };
+// so the many syncTrainPickerVisibility() calls don't each refetch. The raw
+// counts ride along, because they are also what tells Start whether a queue
+// exists at all.
+const trainPreviewCache = { at: 0, brief: null, sources: [], nextSession: null, loading: null };
 function invalidateTrainSessionPreview() {
   trainPreviewCache.at = 0;
+  trainPreviewCache.nextSession = null;
+  trainPreviewCache.brief = null;
+  trainPreviewCache.sources = [];
 }
+
+
 async function refreshTrainSessionPreview() {
-  const el = document.getElementById("train-session-preview");
-  if (!el) return;
+  const host = document.getElementById("train-brief");
+  if (!host) return;
   const smartIdle = (appState.trainMode || "smart") === "smart" && !(appState.smart && appState.smart.prompt);
   if (!smartIdle || !appState.signedIn) {
-    el.hidden = true;
+    host.hidden = true;
+    const emptyBlock = document.getElementById("train-empty");
+    if (emptyBlock) emptyBlock.hidden = true;
     return;
   }
-  const paint = (text) => {
-    el.textContent = text;
-    el.hidden = !text;
+
+  const paint = () => {
+    // One setup heading only: an empty queue says so in the banner instead of
+    // stacking the same message above a start button.
+    const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
+    const brief = trainPreviewCache.brief;
+    host.hidden = !brief;
+    const banner = document.getElementById("train-banner");
+    if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
+      setTrainBanner("idle", brief ? "Ready to train" : empty ? "No moves to train yet" : "Ready to train", "");
+    }
+    // Nothing to serve: the dead Start leaves with the briefing and the fix
+    // takes its place, so the panel never shows a button that cannot work.
+    const startRow = document.getElementById("train-srs-start");
+    const blitzRow = document.getElementById("train-blitz-row");
+    const emptyBlock = document.getElementById("train-empty");
+    if (startRow) startRow.hidden = empty;
+    if (blitzRow) blitzRow.hidden = empty || (appState.trainMode || "smart") !== "smart";
+    if (emptyBlock) emptyBlock.hidden = !empty;
+    if (!brief) return;
+    document.getElementById("train-brief-count").textContent = String(brief.cards);
+    document.getElementById("train-brief-label").textContent = brief.label;
+    document.getElementById("train-brief-kinds").innerHTML =
+      html`${brief.kinds.map(([kind, count]) => html`<span class="kchip k-${kind}">${count} ${kind}</span>`)}`;
+    // What the queue is drawn from, and how far each repertoire has come: the
+    // setup screen's own numbers, not a caption about the page.
+    document.getElementById("train-brief-reps").innerHTML =
+      html`${trainPreviewCache.sources.map(
+        (rep) =>
+          html`<div class="train-source"><span class="color-dot ${rep.black ? "black" : "white"}"></span><span class="train-source-name">${rep.name}</span><span class="train-source-meter" title="${rep.pct}% mastered: ${rep.mastered} of ${rep.trainable} moves"><i style="width:${rep.pct}%"></i></span><span class="train-source-count">${rep.pct}% mastered · ${rep.trainable} to train</span></div>`,
+      )}`;
   };
   if (Date.now() - trainPreviewCache.at < 30000) {
-    paint(trainPreviewCache.text);
+    paint();
     return;
   }
   if (!trainPreviewCache.loading) {
@@ -359,26 +401,59 @@ async function refreshTrainSessionPreview() {
         preloadTrainView(),
         api(`/api/train/smart/summary?mixed=true&preview=true&local_date=${encodeURIComponent(localDateString())}`),
       ]);
-      trainPreviewCache.text = mod.sessionPreviewText(payload && payload.next_session);
+      trainPreviewCache.nextSession = payload && payload.next_session;
+      trainPreviewCache.brief = mod.sessionBrief(trainPreviewCache.nextSession);
+      trainPreviewCache.sources = mod.queueSources(appState.repertoireList || [], appState.pendingRepDeletes);
       trainPreviewCache.at = Date.now();
-    })().finally(() => {
+    })().catch(() => {
+      // No answer, so no opinion: Start stays live and Start itself reports
+      // why the queue could not be built.
+      trainPreviewCache.nextSession = null;
+      trainPreviewCache.brief = null;
+      trainPreviewCache.sources = [];
+    }).finally(() => {
       trainPreviewCache.loading = null;
     });
   }
   await trainPreviewCache.loading;
-  paint(trainPreviewCache.text);
+  paint();
+  // The payload just decided whether Start is live: repaint it now rather than
+  // leaving a dead/enabled button until the next unrelated sync.
+  paintTrainStartDisabled();
 }
 
-function trainSessionLive() {
-  if (appState.trainMode === "play") return !!(appState.play && appState.play.active);
-  if (appState.smart && appState.smart.prompt) return true;
-  if (appState.training && appState.training.prompt) return true;
-  return false;
+// Start's enabled/title state, without the rest of the setup sync (which would
+// re-enter the preview fetch). Cheap and idempotent.
+function paintTrainStartDisabled() {
+  const startBtn = document.getElementById("start-train");
+  if (!startBtn) return;
+  const mode = appState.trainMode || "smart";
+  const blocked = mode === "smart" && appState.signedIn
+    ? trainStartBlockReason(trainPreviewCache.nextSession, { hasActiveRepertoire: !!activeTrainRepertoires().length })
+    : mode === "all_lines" && appState.signedIn
+      ? rehearsalStartBlockReason(selectedTrainRepertoire())
+      : "";
+  startBtn.disabled = !!blocked || trainStartDisabled({
+    mode, signedIn: appState.signedIn, hasRepertoire: !!selectedTrainRepertoireId(),
+  });
+  startBtn.title = blocked;
+}
+
+// The listing row behind the picker's selection: its health counts the moves
+// line rehearsal walks.
+function selectedTrainRepertoire() {
+  const id = selectedTrainRepertoireId();
+  return (appState.repertoireList || []).find((rep) => String(rep.id) === String(id)) || null;
 }
 
 function syncTrainSessionControls() {
-  const live = trainSessionLive();
+  // "Live" is about the current mode's own session. A Practice game that is
+  // open must not keep Hint/Skip lit for the smart queue's next session (and the
+  // reverse), or the first card of a queue starts with dead buttons.
   const play = (appState.trainMode || "smart") === "play";
+  const live = play
+    ? !!(appState.play && appState.play.active)
+    : !!(appState.smart?.prompt || appState.training?.prompt);
   const sidebar = document.querySelector("#view-train .train-sidebar");
   const summaryVisible = !document.getElementById("train-summary")?.hidden;
   if (sidebar) sidebar.dataset.sessionState = !play && summaryVisible ? "summary" : !play && live ? "active" : "setup";
@@ -406,6 +481,11 @@ function syncTrainSessionControls() {
       : "Skip this card";
   }
   if (fresh) fresh.disabled = !(appState.smart || appState.training);
+  // The mode tabs belong to setup and are hidden with it (styles.css); a running
+  // or finished session names its mode in the card head instead, and "New
+  // session" is the way back to the tabs.
+  const modeName = document.getElementById("train-mode-name");
+  if (modeName) modeName.textContent = document.querySelector("#train-modes .train-mode.is-active")?.textContent || "";
   syncViewHeads();
   if (blitzToggle) {
     blitzToggle.disabled = !!appState.smart;
@@ -414,7 +494,7 @@ function syncTrainSessionControls() {
   }
   if (blitzRow) {
     blitzRow.title = appState.smart
-      ? "Blitz is locked for this session — applies on next Start"
+      ? "Blitz is locked for this session: applies on next Start"
       : "10s per move · a timeout counts as a miss";
   }
   const takeback = document.getElementById("play-takeback");
@@ -425,6 +505,16 @@ function syncTrainSessionControls() {
   if (takeback) takeback.disabled = !play || !hasMoves;
   if (resign) resign.disabled = !play || !appState.play || !appState.play.active;
   if (analyze) analyze.disabled = !play || !hasMoves;
+  // Lucky abandons the running game for a fresh position, so mid-game it is a
+  // way to lose the game to a stray click. It comes back with the next game.
+  const lucky = document.getElementById("feeling-lucky");
+  if (lucky) {
+    const liveGame = play && !!(appState.play && appState.play.active);
+    lucky.disabled = liveGame;
+    lucky.title = liveGame
+      ? "Finish, resign or take back first. Lucky starts another position."
+      : "Jump to a key position instead of move 1";
+  }
 }
 
 async function resetTrainBoardIdle(label) {
@@ -488,8 +578,9 @@ async function startTraining(mode, options = {}) {
   clearBlitzTimer();
   setBlitzBarVisible(false);
   setSmartPanelsHidden();
-  setStatus("Starting trainer");
-  const repertoireId = selectedTrainRepertoireId();
+  // A caller that names the repertoire (a deep link, a repertoire's own Train
+  // action) is the source of truth; otherwise Start follows the picker.
+  const repertoireId = options.repertoireId || selectedTrainRepertoireId();
   appState.trainingRepertoireId = repertoireId;
   // No unauthenticated demo in the SaaS model: training is always against one of the
   // user's own repertoires. Without one, prompt them to build first instead of
@@ -537,7 +628,14 @@ async function startTraining(mode, options = {}) {
     );
     syncWorkspaceUrl();
   } catch (error) {
-    if (isCurrent()) setStatusError(error.message);
+    if (!isCurrent()) return;
+    if (isNothingToTrainError(error)) {
+      // The picked repertoire has no moves to walk; Start's disabled reason
+      // already says so. A raw 400 toast would repeat it as a fault.
+      setTrainBanner("idle", "No moves to train yet", "");
+      return;
+    }
+    setStatusError(error.message);
   }
 }
 
@@ -791,14 +889,49 @@ async function fetchPlayExplorer(fen) {
   }
 }
 
+// A Maia failure on the board, in the same voice as the Retry notice that
+// already showed: name the reason, and the action that clears it.
+function maiaOpponentErrorText(error) {
+  const message = String(error?.message || "");
+  if (/timed out/i.test(message)) return "Maia did not answer in time. Retry.";
+  if (/stalled/i.test(message)) return "The Maia download stopped part-way. Retry.";
+  if (/network|fetch|offline|Failed to/i.test(message)) return "The Maia download failed. Check your connection and retry.";
+  if (/size mismatch|truncated|exceeds manifest/i.test(message)) return "The Maia download was incomplete. Retry.";
+  return message || "Maia could not start. Retry.";
+}
+
+// Returns Maia's predictions, or { error } when it produced none. The caller must
+// tell the two apart: "the opponent has no legal move" is only true when the move
+// generator really came back empty, while an engine failure owes the user the
+// actual reason and a retry, not a misleading book message.
 async function fetchPlayMaia(fen) {
   // Train Play opponent fallback is Maia-by-design (thin Explorer positions
   // fall back to human-like replies), independent of the Analyze-layer switch.
   try {
     const provider = getSharedMaia3Provider();
-    return await provider.predictions({ fen, rating: effectiveMaiaRating() });
-  } catch (_) {
-    return [];
+    const maiaNotice = watchMaiaInit(provider, {
+      notices,
+      onRetry: () => {
+        // The failure above sets play.active = false, so gating on it would make
+        // the notice's Retry a dead button exactly when it is needed. Re-asking
+        // the same position is what the user asked for.
+        const play = appState.play;
+        if (play?.fen === fen) {
+          play.active = true;
+          void playOpponentReply();
+        }
+      },
+    });
+    try {
+      const predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
+      maiaNotice.succeed();
+      return predictions;
+    } catch (error) {
+      maiaNotice.fail(error);
+      return { error };
+    }
+  } catch (error) {
+    return { error };
   }
 }
 
@@ -942,15 +1075,15 @@ async function startPlaySession({
   }
   const why =
     reason === "miss"
-      ? "Engine miss — your move"
+      ? "Engine miss: your move"
       : reason === "departure"
-        ? "You left prep here — your move"
+        ? "You left prep here: your move"
         : reason === "fork"
-          ? "A real fork — more than one human reply"
+          ? "A real fork: more than one human reply"
               : reason === "db-critical"
-                ? `Master game, critical ${phase || "moment"} — your move`
+                ? `Master game, critical ${phase || "moment"}: your move`
               : reason === "titled-game"
-                  ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"} — your move`
+                  ? `${String(luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"}, critical ${phase || "moment"}: your move`
               : "";
   const luckyMeta =
     reason === "titled-game" && luckyGameId
@@ -963,7 +1096,6 @@ async function startPlaySession({
     sub: `${why}${luckyMeta}`,
     label: playBookLabel(appState.play),
   });
-  setStatus(isStartFen(info.fen) ? "Your move" : `Started from a key position (${reason || "book"})`);
   renderPlayTrail();
   syncTrainPickerVisibility();
   if (sideToMoveFromFen(info.fen) !== userColor) {
@@ -1030,8 +1162,19 @@ async function playOpponentReply() {
     maiaPredictions,
   });
   if (!reply.uci) {
-    maiaPredictions = await fetchPlayMaia(fen);
+    const maia = await fetchPlayMaia(fen);
     if (!isCurrent()) return;
+    // Maia could not start at all: say so and keep the session retryable. The
+    // download/init failure already carries a Retry notice, so this only names
+    // the reason on the board instead of blaming the book.
+    if (maia.error) {
+      play.active = false;
+      updateTrainTurnBadge(null);
+      setTrainBanner("done", "Opponent unavailable", maiaOpponentErrorText(maia.error));
+      syncTrainSessionControls();
+      return;
+    }
+    maiaPredictions = maia;
     reply = pickOpponentReply({
       book: play.book,
       legalUcis: info.legal_moves,
@@ -1242,7 +1385,7 @@ async function takebackPlaySession() {
     lastMove: undone.lastMove,
     banner: yourMove ? "Your move" : "Opponent thinking…",
     sub: yourMove
-      ? "Takeback — play again"
+      ? "Takeback: play again"
       : playThinkingSub(play),
     label: playBookLabel(play),
     state: yourMove ? "move" : "runin",
@@ -1310,8 +1453,9 @@ async function submitTrainingMove(playedUci) {
   const training = appState.training;
   const superseded = () => appState.training !== training || appState.smart;
   // Land the dragged move on the board right away; the server response below
-  // decides whether it advances (correct) or resets (wrong).
-  await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
+  // decides whether it advances (correct) or resets (wrong), and its right/wrong
+  // cue covers the move, so the landing itself stays quiet.
+  await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
   // An answer after a hint advances the line but is graded as a miss.
   const hinted = appState.trainHintLevel > 0;
   let result;
@@ -1359,6 +1503,7 @@ async function submitTrainingMove(playedUci) {
         fen: after.board.fen,
         legalMoves: [],
         lastMove: playedUci,
+        cue: false, // the answer's own cue, played below
       });
     } catch (_) {
       // Keep SAN-only feedback even if the preview move cannot be rendered.
@@ -1372,7 +1517,7 @@ async function submitTrainingMove(playedUci) {
       playedSan ? `Not ${playedSan}` : "Not the prepared move",
       sub
     );
-    playSound("capture");
+    playSound("wrong");
     if (appState.training) appState.training.prompt = result.prompt;
     await sleep(1450);
     if (superseded()) return;
@@ -1396,13 +1541,16 @@ async function submitTrainingMove(playedUci) {
   appState.trainBusy = true;
   boards.train.setEngineArrow(null);
 
-  // 1) Land the player's own move on the board (board animates + sounds).
+  // 1) Land the player's own move on the board (board animates), then the
+  // answer's cue.
   boards.train.setPosition({
     fen: result.fen_after_player || prompt.fen_before,
     legalMoves: [],
     lastMove: result.played_uci,
+    cue: false,
   });
-  setTrainBanner("correct", hinted ? "Correct, with a hint" : "Correct!", result.played_san ? `You played ${result.played_san}` : "");
+  playSound("right");
+  setTrainBanner("correct", hinted ? "Correct, with a hint" : "Correct", result.played_san ? `You played ${result.played_san}` : "");
 
   // 2) After a beat, let the opponent reply as its own animated step.
   if (result.reply_uci && result.fen_after_reply) {
@@ -1477,20 +1625,20 @@ async function submitReviewMove(playedUci) {
       after = null;
     }
     if (after) {
-      boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci });
+      boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
     }
     review.recovered += 1;
     // The trail mirrors the first-try counters; recovery answers are not graded.
     await renderTrainStats();
-    setTrainBanner("correct", "Recovered!", "Mistake fixed");
-    playSound("move");
+    setTrainBanner("correct", "Recovered", "Mistake fixed");
+    playSound("right");
     await sleep(640);
     appState.trainBusy = false;
     review.index += 1;
     showReviewItem();
   } else {
     setTrainBanner("wrong", "Still not it", "Try again");
-    playSound("capture");
+    playSound("wrong");
   }
 }
 
@@ -1504,9 +1652,9 @@ function finishReviewRound() {
     stats.streak = review.savedStreak;
     stats.best = Math.max(stats.best, review.savedStreak);
     void renderTrainStats().catch(() => {});
-    setTrainBanner("done", "Run recovered!", `Fixed ${review.recovered} · back to ${review.savedStreak} in a row · best ${stats.best}`);
+    setTrainBanner("done", "Run recovered", `Fixed ${review.recovered} · back to ${review.savedStreak} in a row · best ${stats.best}`);
   } else {
-    setTrainBanner("done", "All cleaned up!", `Fixed ${countOf(review.recovered, "missed move")}`);
+    setTrainBanner("done", "All cleaned up", `Fixed ${countOf(review.recovered, "missed move")}`);
   }
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "Session complete";
@@ -1518,15 +1666,17 @@ function finishTrainingSession() {
   if (appState.training) appState.training.prompt = null;
   boards.train.setEngineArrow(null);
   document.getElementById("train-progress-fill").style.width = "100%";
-  setTrainBanner("done", "Session complete!", `${stats.correct} correct · ${countOf(stats.mistakes, "mistake")} · best run ${stats.best}`);
+  setTrainBanner("done", "Session complete", `${stats.correct} correct · ${countOf(stats.mistakes, "mistake")} · best run ${stats.best}`);
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "Session complete";
   syncTrainSessionControls();
   celebrate();
 }
 
-// Lightweight confetti burst, no library, just falling coloured chips.
+// Lightweight confetti burst, no library, just falling coloured chips, and the
+// cue that says the run is over.
 function celebrate() {
+  playSound("complete");
   const host = document.getElementById("view-train");
   if (!host) return;
   const colors = ["#d18b3f", "#4a8964", "#b9722a", "#c4524d", "#e6c34a"];
@@ -1612,6 +1762,14 @@ function setSmartPanelsHidden() {
   if (queue) queue.hidden = true;
   const summary = document.getElementById("train-summary");
   if (summary) summary.hidden = true;
+  // The previous session's cells, deltas and New session button do not belong
+  // to the queue that is starting.
+  const summaryStats = document.getElementById("train-summary-stats");
+  if (summaryStats) summaryStats.innerHTML = "";
+  const summaryDelta = document.getElementById("train-summary-delta");
+  if (summaryDelta) summaryDelta.innerHTML = "";
+  const summaryFoot = document.getElementById("train-summary-foot");
+  if (summaryFoot) summaryFoot.textContent = "";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
 }
@@ -1668,16 +1826,31 @@ function startBlitzTimer(smart, prompt) {
 }
 
 let smartStartSeq = 0;
+
+export function smartSessionOutcomeText(smart = {}, stats = {}) {
+  const correct = Number(stats.correct) || 0;
+  const missed = Number(stats.mistakes) || 0;
+  const scored = correct + missed;
+  const recall = scored
+    ? `First-try recall: ${correct} of ${scored} review move${scored === 1 ? "" : "s"}.`
+    : "New moves learned. No review moves scored yet.";
+  const details = [];
+  if (missed) details.push(`${missed} missed first try`);
+  if (smart.retriesFixed) details.push(`${smart.retriesFixed} fixed on retry`);
+  if (smart.blitz && smart.timeouts) details.push(`${smart.timeouts} timed out`);
+  if (stats.skipped) details.push(`${stats.skipped} skipped`);
+  return details.length ? `${recall} ${details.join(" · ")}.` : recall;
+}
+
 async function startSmartTraining(options = {}) {
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
   const isCurrent = () => seq === smartStartSeq && owner === currentOwnerId() && (appState.trainMode || "smart") === "smart";
   const fresh = !!options.fresh;
-  setStatus(fresh ? "Building a new queue" : "Building your queue");
   setTrainBanner(
     "runin",
     fresh ? "Building a new queue…" : "Building your queue…",
-    "",
+    "Saving repertoire edits…",
   );
   // Train must see the latest tree: drain unsynced Build edits (adds + deletes)
   // before the server builds the queue, else a just-added line wouldn't be in
@@ -1690,13 +1863,19 @@ async function startSmartTraining(options = {}) {
     setTrainBanner("done", "Couldn't save your repertoire edits", "Try Start again in a moment.");
     return;
   }
+  if (!isCurrent()) return;
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Syncing your last session…",
+  );
   // Land any leftover graded attempts (an abandoned previous session) before
   // the new queue is scheduled from SR state. Strict: starting anyway would
   // schedule the queue off stale SR state, so block until the sync lands.
   const trainSynced = await flushTrainSync().catch(() => false);
   if (!isCurrent()) return;
   if (!trainSynced) {
-    setStatus("Couldn't sync your last session — check your connection and try again.");
+    setStatus("Couldn't sync your last session. Check your connection and try again.");
     setTrainBanner("done", "Couldn't sync your last session", "Try Start again in a moment.");
     return;
   }
@@ -1708,11 +1887,25 @@ async function startSmartTraining(options = {}) {
     // the current tree + SR state — a resumed stale queue is exactly the desync
     // this avoids.
     trainResume = await loadTrainResume();
+    if (!isCurrent()) return;
+    setTrainBanner(
+      "runin",
+      fresh ? "Building a new queue…" : "Building your queue…",
+      "Choosing the cards…",
+    );
     const targets = options.targetNodeIds || [];
+    // A new session keeps the queue's scope: a queue drilled for one
+    // repertoire must not widen to every active repertoire because the user
+    // asked for another queue.
+    const repertoireId = queueRepertoireForStart({
+      requested: options.repertoireId,
+      current: appState.smart,
+      fresh,
+    });
     payload = await postJson("/api/train/smart/start", {
-      mixed: !options.repertoireId,
+      mixed: !repertoireId,
       fresh: fresh || !!targets.length,
-      ...(options.repertoireId ? { repertoire_id: options.repertoireId } : {}),
+      ...(repertoireId ? { repertoire_id: repertoireId } : {}),
       ...(targets.length ? { target_node_ids: targets } : {}),
     });
   } catch (error) {
@@ -1722,9 +1915,10 @@ async function startSmartTraining(options = {}) {
       accountService().handleAuthRequired("Sign in to start training");
       return;
     }
-    if (error.status === 400 && /no active repertoires to train/i.test(error.message)) {
-      setStatus("Nothing to train yet");
-      setTrainBanner("done", "Nothing to train yet", "Create or activate a repertoire in Library.");
+    if (isNothingToTrainError(error)) {
+      // Nothing to train is not a fault: Start is already dead with the reason
+      // (and the preview names it), so do not stack a failure notice on it.
+      setTrainBanner("idle", "No moves to train yet", "");
       return;
     }
     setStatusError(error.message);
@@ -1732,7 +1926,15 @@ async function startSmartTraining(options = {}) {
     return;
   }
   if (!isCurrent()) return;
-  appState.trainingRepertoireId = payload.repertoire_id;
+  // The URL names the repertoire the queue drills; a mixed queue drills all of
+  // them, so it names none. Keeping the anchor here would write ?rep=<anchor>
+  // into a Train link that is not about that repertoire.
+  appState.trainingRepertoireId = payload.mixed ? null : payload.repertoire_id;
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Loading session tools…",
+  );
   try {
     trainSessionMemo ||= await import("../train-session-memo.js");
   } catch (_) { /* recovery is optional if the chunk cannot load */ }
@@ -1750,10 +1952,16 @@ async function startSmartTraining(options = {}) {
   // requeue, skip); only graded attempts + the position sync back, batched.
   const queue = mapped.queue;
   if (!queue.length) {
-    setStatus("Nothing to train yet");
-    setTrainBanner("done", "Nothing to train yet", "Add prepared moves in Repertoire, then train.");
+    // The setup screen already carries this state: the banner names it and the
+    // Open Repertoire action is the fix. A toast on top repeats the banner.
+    setTrainBanner("idle", "No moves to train yet", "");
     return;
   }
+  setTrainBanner(
+    "runin",
+    fresh ? "Building a new queue…" : "Building your queue…",
+    "Opening your first card…",
+  );
   appState.smart = {
     sessionId: mapped.sessionId,
     generation: mapped.generation,
@@ -1792,7 +2000,7 @@ async function startSmartTraining(options = {}) {
     if (scheduled && ["pending", "prepared"].includes(handoff.status)) transitionHandoff(handoff.key, "queued");
   }
   setBlitzBarVisible(appState.smart.blitz);
-  const preview = document.getElementById("train-session-preview");
+  const preview = document.getElementById("train-brief");
   if (preview) preview.hidden = true;
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
@@ -1812,11 +2020,12 @@ async function startSmartTraining(options = {}) {
       return renderSmartQueueStrip();
     })
     .catch(() => {});
-  setStatus(
-    mapped.resumed
-      ? `Resumed queue: card ${smart.cardIndex + 1} / ${smart.queue.length}`
-      : `Queue ready: ${countOf(smart.queue.length, "card")}`,
-  );
+  // The card head already reads "Card 2 / 5" and the setup brief already named
+  // the queue's size, so a toast repeating either is a second copy of a number
+  // that is on screen. A resume says the one thing the head cannot: that this
+  // is the queue from last time rather than a new one.
+  const startMsg = startNotice(mapped.resumed);
+  if (startMsg) setStatus(startMsg);
   syncWorkspaceUrl();
   const resumedAttempt = appState.smart.attempt;
   const prompt = smartLocalPrompt(appState.smart);
@@ -1869,6 +2078,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
   smart.prompt = prompt;
   smart.attempt = attempt;
   appState.trainHintLevel = 0;
+  setTrainHintLine("");
   await renderSmartProgress(prompt);
   const board = boards.train;
   board.setEngineArrow(null);
@@ -1993,7 +2203,8 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   const prompt = smart.prompt;
   const attempt = smart.attempt;
   // Land the dragged move immediately; a blitz timeout has no real move to show.
-  if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci);
+  // The graded cue below covers the landing, so it stays quiet.
+  if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
   // Grade locally — the prompt carries the answer (it's the player's own
   // repertoire). Only the first attempt writes spaced repetition; it lands on
   // the server in the next debounced /smart/sync batch, not per move.
@@ -2030,12 +2241,13 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
         fen: after.board.fen,
         legalMoves: [],
         lastMove: playedUci,
+        cue: false, // the answer's own cue, played below
       });
     } catch (_) {
       // Wrong-move preview is cosmetic (a blitz timeout has no move to show);
       // grading already happened above.
     }
-    playSound("capture");
+    playSound("wrong");
     if (attempt === 1) {
       // First miss: auto-hint and a free retry, no reveal.
       // The blitz retry is deliberately untimed — the clock tests recall,
@@ -2130,13 +2342,18 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // straight into the next prompt (same-card prompts skip the run-in because
   // the board is already on the position).
   const target = prompt.target;
+  // A "new" card is a demonstration, not an answer: it keeps the board's own
+  // move sound, and only a real recall gets the success cue.
+  const demonstrating = prompt.kind === "new";
   boards.train.setPosition({
     fen: target.fen_after || prompt.fen_before,
     legalMoves: [],
     lastMove: playedUci,
+    cue: demonstrating ? undefined : false,
   });
+  if (!demonstrating) playSound("right");
   const praise =
-    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned!" : hinted ? "Correct, with a hint" : "Correct!";
+    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned" : hinted ? "Correct, with a hint" : "Correct";
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);
@@ -2188,12 +2405,21 @@ async function skipSmartCard() {
   markTrainPositionDirty();
   const next = smartLocalPrompt(smart);
   if (next) {
-    setStatus("Skipped to the next card");
     await presentSmartPrompt(next);
   } else {
     setStatus("Session complete");
     await finishSmartSession();
   }
+}
+
+// The hint the player asked for, held in the stats card next to the board (the
+// coach strip above the board is out of sight on a phone). Cleared with the card.
+function setTrainHintLine(text) {
+  const el = document.getElementById("train-hint-line");
+  if (!el) return;
+  el.hidden = !text;
+  el.textContent = text || "";
+  if (text) el.scrollIntoView({ block: "nearest" });
 }
 
 // Progressive hint, fully local — the prompt already carries the idea, the
@@ -2218,6 +2444,7 @@ function smartHint() {
     setTrainBanner("move", "Hint 3 · Answer", `Play ${prompt.expected_san}`);
     boards.train.setEngineArrow(prompt.expected_uci);
   }
+  setTrainHintLine(`Hint ${level} · ${level === 1 ? prompt.hint.strategy || "Follow your preparation" : level === 2 ? prompt.hint.piece || "Find the move" : `Play ${prompt.expected_san}`}`);
 }
 
 let trainSessionMemo = null;
@@ -2227,13 +2454,34 @@ function rememberSmartSession(progress = {}) {
   trainSessionMemo?.saveSmartSession(currentOwnerId(), smart, appState.trainStats, progress);
 }
 
+// The finished session's report, on screen from the moment the last card is
+// answered: the card panel goes, the results appear with what the session did.
+// The flush and the server summary only fill in health numbers afterwards.
+function showSmartSummary(smart, stats) {
+  document.getElementById("train-progress-panel").hidden = true;
+  const bar = document.getElementById("train-queue");
+  if (bar) bar.hidden = true;
+  const delta = document.getElementById("train-summary-delta");
+  if (delta) delta.innerHTML = "";
+  const foot = document.getElementById("train-summary-foot");
+  if (foot) foot.textContent = "";
+  void renderSmartSummaryStats(smart, stats);
+  const panel = document.getElementById("train-summary");
+  if (panel) {
+    panel.hidden = false;
+    // Read from the card's top: on a phone the results replace the session card
+    // in the same scroller, and the last card left it scrolled out of view.
+    panel.scrollIntoView({ block: "start" });
+  }
+  syncTrainSessionControls();
+}
+
 async function finishSmartSession() {
   const smart = appState.smart;
   if (!smart) return;
   const stats = appState.trainStats || {};
   smart.prompt = null;
   trainSessionMemo?.clearSessionMemo(currentOwnerId(), smart.sessionId, smart.generation);
-  syncTrainSessionControls();
   clearBlitzTimer();
   setBlitzBarVisible(false);
   boards.train.setEngineArrow(null);
@@ -2241,13 +2489,8 @@ async function finishSmartSession() {
   document.getElementById("train-progress-fill").style.width = "100%";
   const dots = document.getElementById("train-card-dots");
   if (dots) dots.innerHTML = "";
-  const fixed = smart.retriesFixed ? ` · ${smart.retriesFixed} fixed on retry` : "";
-  const blitzed = smart.blitz && smart.timeouts ? ` (${smart.timeouts} timed out)` : "";
-  setTrainBanner(
-    "done",
-    smart.blitz ? "Blitz session complete!" : "Session complete!",
-    `${stats.correct || 0} first-try correct · ${stats.mistakes || 0} missed${blitzed}${fixed}${stats.skipped ? ` · ${stats.skipped} skipped` : ""}`
-  );
+  setTrainBanner("done", smart.blitz ? "Blitz session complete" : "Session complete", smartSessionOutcomeText(smart, stats));
+  showSmartSummary(smart, stats);
   // End on the last card's final position (its last answer, plus the reply when the
   // line has one) instead of wherever the board happened to be mid-line.
   const lastCard = smart.queue[smart.queue.length - 1];
@@ -2259,9 +2502,11 @@ async function finishSmartSession() {
       fen: finalFen,
       legalMoves: [],
       lastMove: finalReply ? finalReply.uci : lastTarget.uci,
+      cue: false, // the completion cue covers the last move
     });
   }
-  document.getElementById("train-board-label").textContent = finalFen ? "Final position of the last card" : "";
+  // The phone's thumb bar gives the label one narrow track: a line that fits.
+  document.getElementById("train-board-label").textContent = finalFen ? "Final position" : "";
   invalidateTrainSessionPreview();
   celebrate();
   // End-of-session report: what this session changed, and what lands tomorrow.
@@ -2283,6 +2528,17 @@ async function finishSmartSession() {
   // (switched to Line rehearsal / Play, or restarted), the report belongs to a
   // session that is no longer on screen — don't paint it over the new mode.
   if (appState.smart !== smart || (appState.trainMode || "smart") !== "smart") return;
+  // The results card has replaced the live session: from here the setup screen
+  // (and Start) describes the queue as it now stands, not the one just played.
+  appState.smart = null;
   await renderSmartSummary(smart, stats, after);
   syncTrainSessionControls();
+  // The session just wrote spaced-repetition state, so every cached count of
+  // what is left to train is stale: the Library rows, the Train preview and the
+  // Repertoire header's "to train".
+  refreshRepertoireHead();
+  void refreshDashboardRepertoires().catch(() => {});
+  invalidateTrainSessionPreview();
+  paintTrainStartDisabled();
+  void refreshTrainSessionPreview().catch(() => {});
 }

@@ -1,0 +1,80 @@
+name: Update Stockfish
+
+on:
+  schedule:
+    - cron: "43 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# One branch/PR, refreshed from main on each attempt, including manual reruns.
+concurrency:
+  group: update-stockfish
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # Installation tokens last one hour. Timeout leaves a failed run and an open PR.
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Check npm release
+        id: release
+        run: node scripts/update-stockfish.mjs check
+      # GITHUB_TOKEN-created pushes/PRs do not trigger CI. Use a repository-scoped
+      # App installation token for BOTH the push and PR creation instead.
+      - name: Create installation token
+        if: steps.release.outputs.version != ''
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.STOCKFISH_APP_ID }}
+          private-key: ${{ secrets.STOCKFISH_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-actions: write
+      - name: Pin release and regenerate the engine manifest
+        if: steps.release.outputs.version != ''
+        env:
+          STOCKFISH_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          npm ci
+          npm install --save-exact "stockfish@$STOCKFISH_VERSION"
+          npm run sync-engine
+      - name: Create or refresh update PR
+        if: steps.release.outputs.version != ''
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+          base: main
+          branch: automation/stockfish
+          add-paths: |
+            package.json
+            package-lock.json
+            web-src/public/engine/stockfish.manifest.json
+          commit-message: "chore(deps): update Stockfish to ${{ steps.release.outputs.version }}"
+          title: "chore(deps): update Stockfish to ${{ steps.release.outputs.version }}"
+          body: |
+            Pins the npm release and regenerates the engine manifest (hashes, heap caps, identities).
+            The SPA is no longer committed: the image and CI build it from this manifest.
+            WASM stays out of git; Docker fetches it using the manifest version and SHA-256.
+
+            The updater waits for every CI job, including browser Stockfish smoke, then squash merges the tested head.
+            A failure leaves this PR open. See the checks and the [updater run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+      - name: Wait for all PR CI jobs and squash merge tested head
+        if: steps.pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.pull-request-number }}
+          PR_HEAD: ${{ steps.pr.outputs.pull-request-head-sha }}
+        run: node scripts/update-stockfish.mjs merge "$PR_NUMBER" "$PR_HEAD"

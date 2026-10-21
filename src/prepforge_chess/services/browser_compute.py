@@ -44,7 +44,6 @@ from prepforge_chess.core.chess_core import ChessCore
 
 from prepforge_chess.services.analysis_metadata import (
     build_analysis_quality,
-    generated_analysis_metadata,
 )
 
 # Bounded shapes for the untrusted per-position payload (D-03).
@@ -207,7 +206,6 @@ def classify_precomputed_game(
     brilliant_config: Optional[BrilliantConfig] = None,
     maia_available: Optional[bool] = None,
     maia_rating: Optional[int] = None,
-    screen_depth: Optional[int] = None,
 ) -> AnalysisResult:
     """Apply client evals, classify each move exactly once, build the result.
 
@@ -275,10 +273,8 @@ def classify_precomputed_game(
         # A-04: the explanation is GENERATED content owned by this run. It is
         # stored apart from the original/user comment and REPLACED (never
         # appended) on re-analysis, so re-running can't accumulate duplicates.
-        # The meta records who wrote it (versioned), so the generated block is
-        # identifiable without text matching.
+        # The versioned provenance of the run lives once in AnalysisResult.quality.
         move.generated_comment = comment
-        move.generated_meta = generated_analysis_metadata(engine_name, depth)
 
     critical = [
         move.ply
@@ -305,7 +301,6 @@ def classify_precomputed_game(
         quality=build_analysis_quality(
             game,
             target_depth=depth,
-            screen_depth=screen_depth,
             engine_name=engine_name,
             maia_available=(
                 brilliant_analyzer is not None if maia_available is None else maia_available

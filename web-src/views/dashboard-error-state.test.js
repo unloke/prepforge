@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { html } from "../html.js";
 
 import { createDashboardView } from "./dashboard.js";
 
@@ -135,7 +136,16 @@ describe("Library error state", () => {
     });
     await expect(view.loadDashboard()).rejects.toThrow("dashboard 500");
     expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
+    // One alert in the strip, with the server message and the retry; the raw
+    // markup used to render the message twice and without a role.
+    expect(today.hidden).toBe(false);
+    expect(String(today.innerHTML)).toContain('data-testid="today-error"');
+    expect(String(today.innerHTML)).toContain("Try again");
+    expect(String(today.innerHTML)).toContain('role="alert"');
     expect(String(today.innerHTML)).toContain("dashboard 500");
+    expect(String(today.innerHTML).match(/dashboard 500/g)).toHaveLength(1);
+    expect(String(today.innerHTML).match(/role="alert"/g)).toHaveLength(1);
+    expect(String(today.innerHTML)).toContain('data-today-retry');
     expect(api).toHaveBeenCalledWith("/api/repertoires");
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });
@@ -150,20 +160,25 @@ describe("Library error state", () => {
     expect(statuses).not.toContainEqual(["status", "Ready"]);
   });
 
-  it("the first-load spinner state (is-loading from index.html) clears on success and on failure", async () => {
+  it("the first-load skeleton state (is-loading from index.html) clears on success and on failure", async () => {
     build(async (url) => {
       if (String(url).startsWith("/api/dashboard")) return DASHBOARD;
       return REPS;
     });
     card.classList.set.add("is-loading");
+    // The skeleton ships in index.html, so a cold start must replace it.
+    container.innerHTML = html`<div class="lib-row is-skeleton"></div>`;
     await view.loadDashboard();
     expect(card.classList.contains("is-loading")).toBe(false);
+    expect(String(container.innerHTML)).not.toContain("is-skeleton");
     build(async () => {
       throw new Error("dashboard 500");
     });
     card.classList.set.add("is-loading");
+    container.innerHTML = html`<div class="lib-row is-skeleton"></div>`;
     await expect(view.loadDashboard()).rejects.toThrow();
     expect(card.classList.contains("is-loading")).toBe(false);
+    expect(String(container.innerHTML)).not.toContain("is-skeleton");
   });
 
   it("a later successful load clears is-error and reports Ready", async () => {

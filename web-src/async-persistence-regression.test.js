@@ -5,8 +5,10 @@ import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
 import { createSettingsActions } from "./settings-actions.js";
 import { classifySyncError } from "./sync-errors.js";
+import { rebaseBuildOps } from "./build-revision.js";
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
 const source = appSource();
 function compile(marker, deps, prelude = "", code = source) {
   deps = { html, ...deps };
@@ -25,7 +27,7 @@ function queueFlush(marker, deps) {
     state: () => train ? app.trainSync : buildState, owner: deps.currentOwnerId,
     generation: () => app.ownerGeneration, idleMs: train ? 4000 : 2000,
     hasWork: () => train ? app.trainSync.pending.length || app.trainSync.dirty
-      : app.build && (app.buildPending.length || app.buildPendingDeletes.length),
+      : app.buildPending.length || app.buildPendingDeletes.length,
     persist: () => deps.persistOutbox(), flush: (checkpoint, isCurrent) => compile(marker, deps)(checkpoint, isCurrent),
   });
   deps[train ? "trainQueue" : "buildQueue"] = queue;
@@ -39,7 +41,7 @@ function deferred() {
 }
 
 it("opening a repertoire retains and reapplies its durable pending deletes", async () => {
-  const deletion = { id: "B-node", repertoire_id: "B" };
+  const deletion = { id: "B-node", repertoire_id: "B", base_revision: 2 };
   const appState = { build: { repertoire_id: "A" }, buildPendingDeletes: [deletion], buildPending: [], buildIdMap: {} };
   const reapplyPendingBuildDeletes = vi.fn(() => {
     expect(appState.buildPendingDeletes).toEqual([deletion]);
@@ -49,9 +51,11 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(), hasPendingBuildOpsFor: () => true, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
+    rebaseBuildOps,
   });
-  await run({ repertoire_id: "B", nodes: [{ id: "B-root" }] });
+  await run({ repertoire_id: "B", revision: 5, nodes: [{ id: "B-root" }] });
   expect(appState.buildPendingDeletes).toEqual([deletion]);
+  expect(deletion.base_revision).toBe(5); // replays on the tree just loaded
   expect(reapplyPendingBuildDeletes).toHaveBeenCalled();
 });
 
@@ -86,7 +90,8 @@ it("team detail B stays visible after slow A responds", async () => {
   const deps = { appState, document, currentOwnerId: () => "owner", renderTeamsList: vi.fn(),
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
-    renderTeamSharedRepertoires: vi.fn() };
+    renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton,
+    formatDay: () => "", renderTeamInviteFooter: () => {} };
   const open = compile("async function openTeamDetail(", deps, "let teamDetailSeq = 0");
   const a = open("A"), b = open("B");
   second.resolve({ name: "B", role: "member", members: [] }); await b;
@@ -138,16 +143,16 @@ it("Scout bulk counts only confirmed complete lines and continues after failures
   const scoutSource = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   // Private view functions are indented inside createScoutView.
   const code = scoutSource.replace(/^  /gm, "");
-  const jobToast = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
+  const notices = { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() };
   const write = vi.fn().mockResolvedValueOnce(null).mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce("node");
-  const run = compile("async function scoutPrepareAll(", {
-    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), jobToast,
+  const run = compile("async function runPrepareAll(", {
+    scoutLineKey: (ucis) => ucis.join(" "), setStatus: vi.fn(), notices,
     scoutPickRepertoire: async () => "r", scoutWriteLineToRep: write,
   }, "", code);
   await run(["a", "b", "c"].map((uci) => ({ ucis: [uci], sans: [uci] })), "white");
   expect(write).toHaveBeenCalledTimes(3);
-  expect(jobToast.completeJob).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("1 line") }));
-  expect(jobToast.completeJob.mock.calls[0][0].message).toContain("2 failed");
+  expect(notices.completeJob).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("1 line") }));
+  expect(notices.completeJob.mock.calls[0][0].message).toContain("2 failed");
 });
 
 it("the application wires Scout's handoff recorder", async () => {
@@ -156,7 +161,7 @@ it("the application wires Scout's handoff recorder", async () => {
   const noop = () => {};
   const deps = Object.fromEntries(["escapeHtml", "setStatus", "switchView", "api", "showInputModal",
     "createRepertoirePrompt", "editRepertoire", "boardAfterMove", "buildProvisionalNode", "hardFlushBuild",
-    "selectBuildNode", "resolveBuildId", "setBuildSync", "jobToast", "parseFenBoard", "pieceSvg",
+    "selectBuildNode", "resolveBuildId", "setBuildSync", "notices", "parseFenBoard", "pieceSvg",
     "startLichessOAuth", "loadPgnIntoAnalyze", "effectiveMaiaRating", "maiaAnalysisEnabled",
     "scoutPickedUsernames", "requireSignIn", "effectiveStockfishDepth", "queueBuildAdd"].map((key) => [key, noop]));
   const run = compile("async function ensureScoutView(", { ...deps, rememberHandoff,
@@ -180,9 +185,113 @@ function buildFlushHarness() {
     releaseFlushLock: vi.fn(), classifySyncError: () => ({ kind: "network" }), describeSyncError: () => "error",
     setTimeout: vi.fn(), BUILD_FLUSH_MAX_BACKOFF_MS: 30000, scheduleBuildFlush: vi.fn(),
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
+    rebaseBuildOps, api: vi.fn(), selectBuildNode: vi.fn(),
   };
   return { op, appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
+
+it("deleting a saved analysis hides the row and only calls the server after the undo window", async () => {
+  const appState = { pendingAnalysisDeletes: new Set() };
+  const statuses = [];
+  const removed = [];
+  const row = { remove: vi.fn(), closest: () => row };
+  const button = { dataset: { historyDelete: "g1", historyLabel: "me_user vs opp_one" }, closest: () => row };
+  const deps = {
+    appState, html,
+    showUndoToast: vi.fn(),
+    setStatus: (message, options) => statuses.push([message, options]),
+    loadAnalysisHistory: vi.fn(),
+    api: vi.fn((path, options) => {
+      removed.push([path, options.method]);
+      return Promise.resolve({ deleted: true });
+    }),
+  };
+  const del = compile("function deleteSavedAnalysis(", deps);
+
+  // No host element: the row still leaves and the empty hint is skipped safely.
+  globalThis.document = { getElementById: () => null };
+  del(button);
+  expect(appState.pendingAnalysisDeletes.has("g1")).toBe(true);
+  expect(row.remove).toHaveBeenCalled();
+  expect(deps.api).not.toHaveBeenCalled(); // the window is still open
+  expect(deps.loadAnalysisHistory).not.toHaveBeenCalled();
+
+  // Undo restores the list from the server without ever deleting.
+  deps.showUndoToast.mock.calls[0][0].onUndo();
+  expect(appState.pendingAnalysisDeletes.has("g1")).toBe(false);
+  expect(deps.loadAnalysisHistory).toHaveBeenCalled();
+  expect(deps.api).not.toHaveBeenCalled();
+
+  // Committing the window deletes, and clears the pending marker on success.
+  deps.showUndoToast.mock.calls[0][0].onCommit();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(removed).toEqual([["/api/analyses/g1", "DELETE"]]);
+  expect(appState.pendingAnalysisDeletes.has("g1")).toBe(false);
+
+  delete globalThis.document;
+});
+
+it("a failed analysis delete restores the row and says why", async () => {
+  const appState = { pendingAnalysisDeletes: new Set() };
+  const statuses = [];
+  const row = { remove: vi.fn(), closest: () => row };
+  const button = { dataset: { historyDelete: "g9", historyLabel: "a vs b" }, closest: () => row };
+  const deps = {
+    appState, html,
+    showUndoToast: vi.fn(),
+    setStatus: (message, options) => statuses.push([message, options]),
+    loadAnalysisHistory: vi.fn(),
+    api: vi.fn(() => Promise.reject(new Error("Request failed (500)"))),
+  };
+  globalThis.document = { getElementById: () => null };
+  compile("function deleteSavedAnalysis(", deps)(button);
+  deps.showUndoToast.mock.calls[0][0].onCommit();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(statuses[0][0]).toContain("Request failed (500)");
+  expect(statuses[0][1]).toEqual({ severity: "error" });
+  expect(deps.loadAnalysisHistory).toHaveBeenCalled();
+  delete globalThis.document;
+});
+
+// Production 2026-10-14: one edit made elsewhere moved the server revision, and
+// every queued edit kept its stale base, so each flush (and each reload) hit
+// 409 again while new edits piled onto the queue. A conflict now loads the
+// current tree, rebases the queue onto it and replays.
+it("a Build revision conflict replays the queue on the current tree", async () => {
+  const h = buildFlushHarness();
+  h.op.base_revision = 2;
+  const conflict = Object.assign(new Error("changed elsewhere"), { status: 409 });
+  h.deps.classifySyncError = classifySyncError;
+  h.deps.postJson.mockRejectedValueOnce(conflict);
+  h.deps.queuedBuildRevision = (ops) => Math.min(...ops.map((op) => op.base_revision));
+  h.deps.api.mockResolvedValue({ repertoire_id: "r", revision: 3, nodes: [{ id: "root" }] });
+  h.deps.hydrateBuild = vi.fn(async (payload) => {
+    h.appState.build = payload;
+    rebaseBuildOps(h.appState.buildPending, payload.repertoire_id, payload.revision);
+  });
+  expect(await h.run()).toBe(false);
+  expect(h.deps.api).toHaveBeenCalledWith("/api/build/load?repertoire_id=r");
+  expect(h.appState.buildPending).toEqual([h.op]);
+  expect(h.op.base_revision).toBe(3);
+  h.deps.hydrateBuild.mockResolvedValue(undefined);
+  expect(await queueFlush("function flushBuildMoves(", h.deps)()).toBe(true);
+  expect(h.deps.postJson.mock.calls[1][1].base_revision).toBe(3);
+  expect(h.appState.buildPending).toEqual([]);
+});
+
+it("queued edits for a repertoire that is not open still save", async () => {
+  const h = buildFlushHarness();
+  h.appState.build = null;
+  h.deps.captureBuildContext = () => () => false;
+  expect(await h.run()).toBe(true);
+  expect(h.deps.postJson.mock.calls[0][1].repertoire_id).toBe("r");
+  expect(h.deps.hydrateBuild).not.toHaveBeenCalled();
+  expect(h.appState.buildPending).toEqual([]);
+  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
+});
 
 it("Build render failure after commit does not requeue confirmed adds", async () => {
   const { run, appState, deps } = buildFlushHarness();
@@ -271,7 +380,7 @@ it("a Train sync response after changing owners cannot settle the new owner's ou
 
 
 it("a late Generate save response cannot hydrate the repertoire the user left", async () => {
-  const start = source.indexOf('    const payload = await postJson(', source.indexOf('    jobToast.lockJob("saving'));
+  const start = source.indexOf('    const payload = await postJson(', source.indexOf('    notices.lockJob("saving'));
   const end = source.indexOf('    const summary = payload.summary', start);
   const response = deferred();
   let current = true;

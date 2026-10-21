@@ -1,24 +1,21 @@
 import { Chess } from "chess.js";
 import { stockfishBudget } from "./compute-budget.js";
+import { loadEngineModule, EngineAssetError } from "./engine-assets.js";
 
-// Browser Stockfish (nmrugg stockfish.js, lite multi-threaded build) running in
-// a Web Worker over UCI. Implements the EngineProvider interface
-// (open/update/snapshot/close -> snapshot), so EngineWidget is unchanged.
-// Needs cross-origin isolation (COOP/COEP) for threads.
-//
-// The bundled lite build uses an embedded SMALL net: weaker than the full net,
-// but appropriate for the browser
-// widget. All chess compute runs locally — there is NO server fallback (hard
-// product rule: the server must never run engine compute in the public flow).
-//
-// Stockfish stays SAME-ORIGIN (script + wasm both under /static/engine/). Hosting
-// the wasm on a CDN was attempted but reverted: the lite build is multi-threaded,
-// and a blob/cross-origin main worker breaks Emscripten's pthread script-URL
-// resolution (see engine-base.js). The wasm is only ~6.8 MB, so the bandwidth win
-// did not justify the fragility. Only the much larger ORT wasm is offloaded (its
-// .mjs glue stays local — see ortWasmPaths in engine-base.js).
-const ENGINE_SCRIPT_URL = "/static/engine/stockfish-lite.js";
-export const STOCKFISH_PACKAGE_VERSION = globalThis.__STOCKFISH_PACKAGE_VERSION__;
+import { usableEngineProfile, subscribeUsableEngineProfile, engineStarted, guardEngineStartup, reserveEngineMemory, reportEngineFailure } from "./engine-profile.js";
+
+// Both threaded builds are same-origin; pthread workers resolve WASM beside the script.
+export const STOCKFISH = globalThis.__STOCKFISH__;
+const THREADS = 1;
+const HASH_MB = 16;
+export function engineIdentity(net = usableEngineProfile().net) {
+  return `${STOCKFISH[net].id} t${THREADS} h${HASH_MB}`;
+}
+export function engineScriptUrl(net = usableEngineProfile().net) {
+  return `/static/engine/${STOCKFISH[net].dir}/stockfish.js`;
+}
+export let ENGINE_ID = engineIdentity();
+subscribeUsableEngineProfile(() => { ENGINE_ID = engineIdentity(); });
 
 const DEFAULT_MAX_DEPTH = 18;
 // Node budget for searches that must finish (whole-game analysis, the coach's verdict),
@@ -32,7 +29,7 @@ export const ANALYSIS_MAX_NODES = 1500000;
 // (Phase 3c) needs `branchLimit + manualPreparedCount` candidates so it can skip preserved
 // manual moves and still find a new branch — so the cap is configurable per provider.
 const DEFAULT_MAX_MULTIPV = 5;
-const READY_TIMEOUT_MS = 15000;
+const READY_TIMEOUT_MS = 60000; // Instantiation/handshake only; assets are already compiled.
 // Safety net for the stop-drain (see startSearch): how long to wait for a stopped search's
 // concluding `bestmove` before proceeding anyway. Stockfish answers `stop` with a `bestmove`
 // almost immediately, so this only fires for a wedged engine — without it a missing bestmove
@@ -64,7 +61,7 @@ function uciToSan(fen, uciMoves) {
   return san;
 }
 
-const defaultCreateWorker = () => new Worker(ENGINE_SCRIPT_URL);
+const defaultCreateWorker = url => new Worker(url);
 
 export function createStockfishWasmProvider({
   maxDepth = DEFAULT_MAX_DEPTH,
@@ -73,6 +70,13 @@ export function createStockfishWasmProvider({
   // uses it so one explosive tactical position cannot dominate the run.
   maxNodes = null,
   priority = "background",
+  net = null,
+  batch = false,
+  profileManaged = true,
+  wasmMemory = null,
+  wasmModule = null,
+  loadModule = loadEngineModule,
+  reserveMemory = reserveEngineMemory,
   // Injectable for tests; the live flow always constructs the real Web Worker. A factory
   // (not a worker instance) so the provider still owns the worker lifecycle and can rebuild
   // it after a fatal error exactly as before.
@@ -80,9 +84,15 @@ export function createStockfishWasmProvider({
   computeBudget = createWorker === defaultCreateWorker ? stockfishBudget : null,
 } = {}) {
   let worker = null;
+  let selectedNet = net || usableEngineProfile().net;
+  let selectedProfile = null;
+  let attemptedProfile = null;
+  let startupGuard = null;
   let allocation = null;
   let releaseAllocation = null;
   function freeAllocation() {
+    startupGuard?.done();
+    startupGuard = null;
     allocation?.abort();
     allocation = null;
     releaseAllocation?.();
@@ -119,6 +129,9 @@ export function createStockfishWasmProvider({
   let generation = 0;
   // Event-driven waiters for waitForSearchComplete — woken on worker UCI lines, not timers.
   let searchWaiters = [];
+  // Subscriber told about every depth the search reaches (see watch), so a consumer
+  // renders lines as they arrive instead of sampling the state on a timer.
+  let onChange = null;
 
   function notifySearchWaiters() {
     if (!searchWaiters.length) return;
@@ -140,6 +153,8 @@ export function createStockfishWasmProvider({
   }
 
   function failReady(message) {
+    const failedGuard = startupGuard;
+    startupGuard = null;
     state.error = message;
     state.running = false;
     // A worker error / startup timeout is a HARD failure of this worker. Bump the generation so an
@@ -172,11 +187,13 @@ export function createStockfishWasmProvider({
     }
     freeAllocation();
     notifySearchWaiters();
+    if (failedGuard) failedGuard.fail();
+    else if (attemptedProfile) reportEngineFailure(attemptedProfile);
   }
 
   const state = {
     session_id: null,
-    engine: "stockfish (browser)",
+    engine: engineIdentity(selectedNet),
     fen: null,
     side_to_move: "white",
     multipv: 1,
@@ -184,9 +201,6 @@ export function createStockfishWasmProvider({
     current_depth: 0,
     nodes: 0,
     pvs: [],
-    // The search's exact line-1 result per completed depth, side-to-move POV:
-    // { depth, cp, mate, best, nodes, seldepth } (the deepening router's input).
-    iterations: [],
     running: false,
     error: null,
   };
@@ -239,6 +253,7 @@ export function createStockfishWasmProvider({
         const resolve = readyResolve;
         readyResolve = null;
         resolve();
+        if (createWorker === defaultCreateWorker && (profileManaged || computeBudget)) engineStarted();
       }
       return;
     }
@@ -250,7 +265,10 @@ export function createStockfishWasmProvider({
         return;
       }
       state.running = false;
+      startupGuard?.done();
+      startupGuard = null;
       notifySearchWaiters();
+      onChange?.();
       return;
     }
     if (line.startsWith("info ") && line.includes(" pv ")) {
@@ -268,16 +286,12 @@ export function createStockfishWasmProvider({
     let scoreCp = null;
     let mateIn = null;
     let nodes = null;
-    let seldepth = null;
-    let bound = false;
     let pv = [];
     for (let i = 1; i < parts.length; i += 1) {
       const tok = parts[i];
       if (tok === "depth") depth = Number(parts[i + 1]);
       else if (tok === "multipv") multipv = Number(parts[i + 1]);
       else if (tok === "nodes") nodes = Number(parts[i + 1]);
-      else if (tok === "seldepth") seldepth = Number(parts[i + 1]);
-      else if (tok === "lowerbound" || tok === "upperbound") bound = true;
       else if (tok === "score") {
         if (parts[i + 1] === "cp") scoreCp = Number(parts[i + 2]);
         else if (parts[i + 1] === "mate") mateIn = Number(parts[i + 2]);
@@ -287,12 +301,6 @@ export function createStockfishWasmProvider({
       }
     }
     if (!pv.length) return;
-    if (multipv === 1 && !bound && depth !== null) {
-      const row = { depth, cp: scoreCp, mate: mateIn, best: pv[0], nodes, seldepth };
-      if (state.iterations.at(-1)?.depth === depth) state.iterations[state.iterations.length - 1] = row;
-      else state.iterations.push(row);
-    }
-
     // UCI reports from the side-to-move's POV; the rest of the app expects
     // White's POV (matches the server's EngineSession), so flip for Black.
     if (state.side_to_move === "black") {
@@ -325,25 +333,50 @@ export function createStockfishWasmProvider({
       pv_san: uciToSan(state.fen, pv),
     };
     notifySearchWaiters();
+    onChange?.();
   }
 
   async function ensureWorker() {
     if (worker) return readyPromise;
+    const gen = generation;
+    selectedProfile ||= { ...usableEngineProfile(), ...(net ? { net } : {}) };
+    selectedNet = selectedProfile.net;
+    state.engine = engineIdentity(selectedNet);
+    let module;
+    try {
+      module = wasmModule || await loadModule(selectedNet);
+    } catch (cause) {
+      if (gen !== generation) throw new Error("Browser engine closed");
+      const error = cause instanceof EngineAssetError ? cause : new EngineAssetError(cause);
+      state.error = error.message;
+      throw error;
+    }
+    if (gen !== generation) throw new Error("Browser engine closed");
     if (computeBudget) {
       const waiting = new AbortController();
       allocation = waiting;
       const release = await computeBudget.acquire({
-        interactive: priority === "interactive", signal: waiting.signal,
+        interactive: priority === "interactive", signal: waiting.signal, batch, reclaim: () => provider.close(),
       });
-      if (waiting.signal.aborted) {
+      if (waiting.signal.aborted || gen !== generation) {
         release();
         throw new Error("Browser engine closed");
       }
       releaseAllocation = release;
     }
     try {
-      worker = createWorker();
+      if (profileManaged && createWorker === defaultCreateWorker) startupGuard = guardEngineStartup(selectedProfile);
+      attemptedProfile = startupGuard ? selectedProfile : null;
+      // Reserve on the caller thread so address-space exhaustion throws catchably.
+      const memory = wasmMemory || reserveMemory(selectedNet);
+      wasmMemory = null;
+      worker = createWorker(engineScriptUrl(selectedNet));
+      worker.postMessage({ wasmModule: module, wasmMemory: memory });
     } catch (err) {
+      worker?.terminate();
+      worker = null;
+      startupGuard?.fail();
+      startupGuard = null;
       freeAllocation();
       readyPromise = Promise.reject(
         new Error("Browser engine could not start: " + (err && err.message)),
@@ -364,12 +397,18 @@ export function createStockfishWasmProvider({
     worker.onmessage = (event) => {
       const line =
         typeof event.data === "string" ? event.data : event.data && event.data.data;
-      if (typeof line === "string") handleLine(line);
+      if (typeof line === "string") {
+        if (/abort|out of memory|OOM/i.test(line)) failReady(line);
+        else handleLine(line);
+      }
     };
     worker.onerror = (event) => {
       failReady((event && event.message) || "engine worker failed to load");
     };
+    worker.onmessageerror = () => failReady("engine worker could not receive the compiled module");
     worker.postMessage("uci");
+    worker.postMessage(`setoption name Threads value ${THREADS}`);
+    worker.postMessage(`setoption name Hash value ${HASH_MB}`);
     worker.postMessage("isready");
     return readyPromise;
   }
@@ -451,7 +490,6 @@ export function createStockfishWasmProvider({
     state.current_depth = 0;
     state.nodes = 0;
     state.pvs = [];
-    state.iterations = [];
     state.running = true;
     state.error = null;
     // `newGame` clears the hash so a caller can read one line at a time (Scout's path guard).
@@ -476,8 +514,15 @@ export function createStockfishWasmProvider({
     );
   }
 
-  return {
+  const provider = {
     kind: "wasm",
+    prepare() {
+      const gen = generation;
+      return serialize(() => {
+        if (gen !== generation) throw new Error("Browser engine closed");
+        return ensureWorker();
+      });
+    },
     // open/update both run through serialize() so a search-switch never overlaps another (see
     // opChain). update() inlines the no-worker fallback rather than delegating to open(), since
     // re-entering serialize() from within a serialized op would deadlock on opChain.
@@ -508,8 +553,11 @@ export function createStockfishWasmProvider({
       });
     },
     snapshot() {
-      return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })), iterations: state.iterations.slice() };
+      return { ...state, pvs: state.pvs.map((pv) => ({ ...pv })) };
     },
+    // Replace (or, with null, remove) the change listener. The store's capture is the
+    // only consumer; the provider calls it after every parsed depth and at bestmove.
+    watch(fn) { onChange = fn || null; },
     // Resolve when the in-flight search finishes (worker `info`/`bestmove` driven).
     // A 1s cancel poll is the only timer — Chromium clamps hidden-tab timers to ≥1s anyway,
     // so this avoids the old 90ms poll loop that made background Analyze ~10× slower.
@@ -646,12 +694,15 @@ export function createStockfishWasmProvider({
       readyResolve = null;
       readyReject = null;
       newGameSent = false;
+      selectedProfile = null;
       state.session_id = null;
       state.running = false;
+      state.error ||= "Browser engine closed";
       rejectAllSearchWaiters("Browser engine closed");
       return Promise.resolve();
     },
   };
+  return provider;
 }
 
 /**

@@ -13,6 +13,22 @@ import { ortWasmPaths } from "./engine-base.js";
 // The manifest is small and ships in-image; the .onnx weights are CDN/object-store
 // hosted and resolved at runtime (see resolveModelBase / the migration doc).
 const MANIFEST_URL = "/static/maia3/maia3.manifest.json";
+
+// One read per page. The manifest describes the shipped artifact, so it cannot
+// change under a running page, but three independent readers want it on every
+// load (Settings' status row, Settings' Maia row, and provider init). A failed
+// read is not remembered, so Retry re-fetches.
+let manifestPromise = null;
+export function loadMaia3Manifest(url = MANIFEST_URL) {
+  manifestPromise ||= fetch(url).then((resp) => {
+    if (!resp.ok) throw new Error(`manifest ${resp.status}`);
+    return resp.json();
+  }).catch((error) => {
+    manifestPromise = null;
+    throw error;
+  });
+  return manifestPromise;
+}
 const DEFAULT_RATING = 1500;
 // Init has to download + sha256-verify the artifact (fp16 ~46 MB) and create the ORT
 // session, so the bound is generous — it's a HANG detector, not an SLA. Without it a
@@ -366,8 +382,7 @@ class Maia3Provider {
   }
 
   async _init() {
-    const manifest =
-      this._manifestOption || (await (await fetch(this._manifestUrl)).json());
+    const manifest = this._manifestOption || (await loadMaia3Manifest(this._manifestUrl));
     // Fail fast if the manifest's layout no longer matches the tokenizer's contract.
     assertManifestContract(manifest);
     const assetBase = this._assetBaseOption || resolveModelBase(manifest);

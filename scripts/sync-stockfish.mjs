@@ -1,12 +1,11 @@
-// Discover the installed Stockfish threaded-lite build, copy it behind stable
-// browser URLs, and emit metadata describing the exact bundled engine.
+// Bundle both installed threaded builds under content-hashed browser URLs.
 import {
-  copyFileSync,
   chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
@@ -26,39 +25,66 @@ function fail(message) {
 // The upstream script asks for a shared WASM heap with a 2 GB maximum. WebKit reserves a
 // shared memory's whole maximum up front, so on iOS three or four engines (analysis pool plus
 // the live board) exhaust the address space and abort with "OOM" on a phone with RAM to spare.
-// The lite engine runs in its 128 MB initial heap; 256 MB leaves room to grow.
-const MAX_HEAP_PAGES = 4096;
+// Lite: 128 MiB initial, 256 MiB maximum. Big: Node smoke (stockfish-heap-smoke.cjs)
+// on 2026-10-18, default Hash=16 / Threads=1, start/middlegame/rook endgame at
+// depth 16 with carried hash: peak memory.buffer.byteLength=340525056 (~325 MiB).
+// Repeated at 6144 pages (384 MiB), all passed; ~59 MiB (18%) growth headroom.
+export const MAX_HEAP_PAGES = { lite: 4096, big: 6144 };
 const UPSTREAM_MEMORY = "maximum:32768,shared:!0";
 
-export function capSharedHeap(script) {
+export function capSharedHeap(script, net) {
   if (!script.includes(UPSTREAM_MEMORY)) fail("shared WebAssembly.Memory declaration changed upstream");
-  return script.replace(UPSTREAM_MEMORY, `maximum:${MAX_HEAP_PAGES},shared:!0`);
+  return script.replace(UPSTREAM_MEMORY, `maximum:${MAX_HEAP_PAGES[net]},shared:!0`);
 }
 
-function sha256(path) {
-  return createHash("sha256").update(readFileSync(path)).digest("hex");
+// Browser workers receive a compiled module and a separately reserved heap.
+// Keep the upstream pthread path, including its module forwarding, intact.
+export function injectSharedHeap(script) {
+  const anchors = [
+    ['function i(t){var r,a;function o(e,s){return fetch(e).then(function(e){var a,o,t,n,r,i=Date.now();if(e.ok)return a=l,o=0,t=e.body.getReader(),n=new ReadableStream({start:function(r){!function n(){t.read().then(function(e){var t=e.done,e=e.value;t?(s(i,a,a),r.close()):(o+=e.byteLength,s(i,o,a),r.enqueue(e),n())}).catch(function e(t){r.error(t),e(t)})}()}}),r=new Headers(e.headers),new Response(n,{status:e.status,statusText:e.statusText,headers:r});throw new Error("HTTP "+e.status+": "+e.statusText)})}function i(){return function(e,t,n){c&&(t=m(t,n,e),a=t,r=r||setTimeout(function(){r=null,c.postMessage(a),1<=a.percent&&(c.close(),c=null)},4))}}',
+      'function i(t){'],
+    ['f={locateFile:function(e){return-1<e.indexOf(".wasm")?-1<e.indexOf(".wasm.map")?u+".map":t||u:',
+      'f={wasmModule:f.wasmModule,wasmMemory:f.wasmMemory,locateFile:function(e){return-1<e.indexOf(".wasm")?-1<e.indexOf(".wasm.map")?u+".map":t||u:'],
+    ['i(),onmessage=onmessage||function(e){if(',
+      'onmessage=onmessage||function(e){if(e.data.wasmModule&&e.data.wasmMemory){f.wasmModule=e.data.wasmModule;f.wasmMemory=e.data.wasmMemory;i();return}if('],
+    ['instantiateWasm:function(t,n){var e=i();return o(u,e).then(function(e){return WebAssembly.instantiateStreaming(e,t)}).then(function(e){return n(e.instance,e.module),e.instance.exports}).catch(function(e){throw console.error("WASM streaming failed:",e),e})}',
+      'instantiateWasm:function(t,n){var e=new WebAssembly.Instance(f.wasmModule,t);return n(e,f.wasmModule),e.exports}'],
+  ];
+  for (const [anchor, replacement] of anchors) {
+    if (script.split(anchor).length !== 2) fail(`worker initialization anchor changed upstream: ${anchor}`);
+    script = script.replace(anchor, replacement);
+  }
+  return script;
 }
 
-export function discoverStockfishBuild({ packageJson, files }) {
+function sha256(data) {
+  return createHash("sha256").update(data).digest("hex");
+}
+
+export function discoverStockfishBuild({ packageJson, files, net }) {
   const buildVersion = String(packageJson.buildVersion || "").trim();
   if (!packageJson.version || !buildVersion) {
     fail("installed package metadata must include version and buildVersion");
   }
-  const candidates = files.filter((name) => /^stockfish-[^-]+-lite\.js$/.test(name));
+  const suffix = net === "big" ? "" : "-lite";
+  const candidates = files.filter((name) => new RegExp(`^stockfish-[^-]+${suffix}\\.js$`).test(name));
   if (candidates.length !== 1) {
-    fail(`expected exactly one threaded lite JS build, found: ${candidates.join(", ") || "none"}`);
+    fail(`expected exactly one threaded ${net} JS build, found: ${candidates.join(", ") || "none"}`);
   }
   const sourceJs = candidates[0];
   const sourceWasm = sourceJs.replace(/\.js$/, ".wasm");
   if (!files.includes(sourceWasm)) fail(`missing WASM pair for ${sourceJs}`);
-  const filenameVersion = sourceJs.match(/^stockfish-([^-]+)-lite\.js$/)?.[1];
+  const filenameVersion = sourceJs.match(/^stockfish-([^-]+)(?:-lite)?\.js$/)?.[1];
   if (filenameVersion !== buildVersion) {
     fail(`package buildVersion ${buildVersion} does not match ${sourceJs}`);
   }
   return { sourceJs, sourceWasm, buildVersion };
 }
 
-export function syncStockfish() {
+// The browser's engine: the capped script and its wasm, and the engine's identity
+// "sf<build>@<package version>+<wasm sha8>/<net>". npm can ship a new build under the same
+// version, so the identity names the wasm itself and the net embedded in it.
+export function stockfishBuild(net) {
   if (!existsSync(packageJsonPath) || !existsSync(srcDir)) {
     fail("stockfish package is not installed; run `npm ci` first");
   }
@@ -66,42 +92,69 @@ export function syncStockfish() {
   const { sourceJs, sourceWasm, buildVersion } = discoverStockfishBuild({
     packageJson,
     files: readdirSync(srcDir),
+    net,
   });
-  const outputs = [
-    { source: sourceJs, bundled: "stockfish-lite.js" },
-    { source: sourceWasm, bundled: "stockfish-lite.wasm" },
-  ];
-  mkdirSync(dstDir, { recursive: true });
-  for (const output of outputs) {
-    const destination = join(dstDir, output.bundled);
-    if (output.bundled.endsWith(".js")) {
-      writeFileSync(destination, capSharedHeap(readFileSync(join(srcDir, output.source), "utf8")));
-    } else {
-      copyFileSync(join(srcDir, output.source), destination);
-    }
-    // npm preserves executable bits for some package files on Linux. Browser
-    // assets are data, so keep their committed permissions platform-independent.
-    chmodSync(destination, 0o644);
-    console.log(`[sync-stockfish] copied ${output.source} -> ${output.bundled}`);
-  }
-  const manifest = {
-    package: "stockfish",
+  const upstream = readFileSync(join(srcDir, sourceJs), "utf8");
+  const initialBytes = upstream.match(/p=c.INITIAL_MEMORY\|\|(\d+),d\)g=c.wasmMemory/);
+  if (!initialBytes) fail("initial heap declaration changed upstream");
+  const initialHeapPages = Number(initialBytes[1]) / 65536;
+  const script = injectSharedHeap(capSharedHeap(upstream, net));
+  const wasm = readFileSync(join(srcDir, sourceWasm));
+  const nets = [...new Set(wasm.toString("latin1").match(/nn-[0-9a-f]{12}/g) || [])];
+  if (!nets.length) fail("no embedded net identity found");
+  nets.sort();
+  return {
     packageVersion: packageJson.version,
     engineVersion: buildVersion,
-    variant: "lite-threaded",
-    files: Object.fromEntries(
-      outputs.map(({ source, bundled }) => [
-        bundled.endsWith(".js") ? "script" : "wasm",
-        { bundled, source, sha256: sha256(join(dstDir, bundled)) },
-      ]),
-    ),
+    nets,
+    initialHeapPages,
+    maxHeapPages: MAX_HEAP_PAGES[net],
+    bytes: wasm.byteLength,
+    id: `sf${buildVersion}@${packageJson.version}+${sha256(wasm).slice(0, 8)}/${nets.join("+")}`,
+    // Both files sit in a folder named by their joint hash: the wasm is cached as immutable,
+    // and Emscripten's pthread workers find it next to the script's own URL.
+    dir: createHash("sha256").update(script).update(wasm).digest("hex").slice(0, 8),
+    files: { script: { source: sourceJs, data: script }, wasm: { source: sourceWasm, data: wasm } },
   };
-  writeFileSync(
-    join(dstDir, "stockfish.manifest.json"),
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    "utf8",
-  );
-  console.log(`[sync-stockfish] bundled Stockfish ${packageJson.version}`);
+}
+
+// Embed the same exact WASM byte count as the manifest; no runtime manifest fetch
+// or Content-Length header is needed for download progress.
+export function stockfishIdentity() {
+  return Object.fromEntries(["big", "lite"].map(net => {
+    const { packageVersion, id, dir, initialHeapPages, maxHeapPages, bytes } = stockfishBuild(net);
+    return [net, { packageVersion, id, dir, initialHeapPages, maxHeapPages, bytes }];
+  }));
+}
+
+export function syncStockfish() {
+  const builds = Object.fromEntries(["big", "lite"].map(net => [net, stockfishBuild(net)]));
+  mkdirSync(dstDir, { recursive: true });
+  const keep = new Set(Object.values(builds).map(b => b.dir));
+  for (const name of readdirSync(dstDir)) {
+    if (/^[0-9a-f]{8}$/.test(name) && !keep.has(name)) rmSync(join(dstDir, name), { recursive: true });
+  }
+  const engines = {};
+  for (const [net, build] of Object.entries(builds)) {
+    const folder = join(dstDir, build.dir);
+    mkdirSync(folder, { recursive: true });
+    for (const name of readdirSync(folder)) {
+      if (!["stockfish.js", "stockfish.wasm"].includes(name)) rmSync(join(folder, name));
+    }
+    const files = {};
+    for (const [kind, { source, data }] of Object.entries(build.files)) {
+      const bundled = `${build.dir}/stockfish.${kind === "script" ? "js" : "wasm"}`;
+      const destination = join(dstDir, bundled);
+      writeFileSync(destination, data);
+      chmodSync(destination, 0o644);
+      files[kind] = { bundled, source, sha256: sha256(data) };
+    }
+    const { packageVersion, engineVersion, nets, id, dir, initialHeapPages, maxHeapPages, bytes } = build;
+    engines[net] = { packageVersion, engineVersion, nets, id, dir, initialHeapPages, maxHeapPages, bytes, files };
+    console.log(`[sync-stockfish] bundled ${net}: ${id} in engine/${dir}/`);
+  }
+  const manifest = { package: "stockfish", engines };
+  writeFileSync(join(dstDir, "stockfish.manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return manifest;
 }
 

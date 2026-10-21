@@ -61,11 +61,11 @@ class GameRepository(EvaluationRepository):
                 ).all():
                     pos_ids[row.fen] = int(row.id)
 
-        # 2. Deduplicate engine evaluations by their unique key (identity +
-        # content fingerprint) and insert them in chunks with RETURNING ids.
-        # Rows are immutable snapshots: identical content dedupes onto one row,
-        # while a different result carries a different fingerprint and gets its
-        # own row — nothing is ever rewritten (improvement review D-01).
+        # 2. Deduplicate engine evaluations by their content fingerprint and
+        # insert them in chunks with RETURNING ids. The fingerprint commits to
+        # position, engine, search limits and result, so it is the whole key:
+        # identical content dedupes onto one row, a different result gets its
+        # own row, and nothing is ever rewritten (improvement review D-01).
 
         def _eval_payload(evaluation, fen) -> Dict[str, Any]:
             wdl = codec.encode_wdl(evaluation.wdl)
@@ -83,7 +83,7 @@ class GameRepository(EvaluationRepository):
                 "wdl_draw": None if wdl is None else wdl[1],
                 "wdl_loss": None if wdl is None else wdl[2],
             }
-            payload["fingerprint"] = codec.evaluation_fingerprint(
+            payload["fingerprint"] = codec.fingerprint_bytes(codec.evaluation_fingerprint(
                 engine=payload["engine"],
                 position_fen=codec.position_key(fen),
                 depth=payload["depth"],
@@ -96,22 +96,12 @@ class GameRepository(EvaluationRepository):
                 wdl_win=payload["wdl_win"],
                 wdl_draw=payload["wdl_draw"],
                 wdl_loss=payload["wdl_loss"],
-            )
+            ))
             return payload
 
-        def _eval_key(payload: Dict[str, Any]) -> tuple:
-            return (
-                payload["position_id"],
-                payload["engine"],
-                payload["depth"],
-                payload["nodes"],
-                payload["time_ms"],
-                payload["fingerprint"],
-            )
-
-        eval_keys: List[tuple] = []
+        eval_keys: List[bytes] = []
         seen_evals: set = set()
-        eval_payloads: Dict[tuple, Dict[str, Any]] = {}
+        eval_payloads: Dict[bytes, Dict[str, Any]] = {}
         for move in annotated:
             for evaluation, fen in (
                 (move.engine_eval_before, move.fen_before),
@@ -121,13 +111,13 @@ class GameRepository(EvaluationRepository):
                 if evaluation is None:
                     continue
                 payload = _eval_payload(evaluation, fen)
-                key = _eval_key(payload)
+                key = payload["fingerprint"]
                 if key in seen_evals:
                     continue
                 seen_evals.add(key)
                 eval_keys.append(key)
                 eval_payloads[key] = payload
-        eval_ids: Dict[tuple, int] = {}
+        eval_ids: Dict[bytes, int] = {}
         if eval_payloads:
             # Same SQLite executemany-upsert limitation as move rows: use
             # chunked multi-row VALUES (13 columns per eval row → a 40-row
@@ -138,74 +128,31 @@ class GameRepository(EvaluationRepository):
                 stmt = _insert(conn, t.engine_evaluations).values(
                     [eval_payloads[key] for key in chunk]
                 )
-                stmt = stmt.on_conflict_do_nothing(
-                    index_elements=[
-                        "position_id",
-                        "engine",
-                        "depth",
-                        "nodes",
-                        "time_ms",
-                        "fingerprint",
-                    ],
-                ).returning(
+                stmt = stmt.on_conflict_do_nothing(index_elements=["fingerprint"]).returning(
                     t.engine_evaluations.c.id,
-                    t.engine_evaluations.c.position_id,
-                    t.engine_evaluations.c.engine,
-                    t.engine_evaluations.c.depth,
-                    t.engine_evaluations.c.nodes,
-                    t.engine_evaluations.c.time_ms,
                     t.engine_evaluations.c.fingerprint,
                 )
                 for row in conn.execute(stmt).all():
-                    eval_ids[
-                        (
-                            int(row.position_id),
-                            row.engine,
-                            int(row.depth),
-                            int(row.nodes),
-                            int(row.time_ms),
-                            row.fingerprint,
-                        )
-                    ] = int(row.id)
+                    eval_ids[row.fingerprint] = int(row.id)
             # RETURNING only yields the rows this call INSERTED — snapshots
             # already stored (cache hits) come back via these selects (same
             # variable-cap reason as above).
             missing = [key for key in eval_keys if key not in eval_ids]
-            if missing:
-                pos_chunks = sorted({key[0] for key in missing})
-                engine_name = eval_payloads[missing[0]]["engine"]
-                for pos_start in range(0, len(pos_chunks), FEN_CHUNK):
-                    pos_chunk = pos_chunks[pos_start : pos_start + FEN_CHUNK]
-                    rows = conn.execute(
-                        select(
-                            t.engine_evaluations.c.id,
-                            t.engine_evaluations.c.position_id,
-                            t.engine_evaluations.c.engine,
-                            t.engine_evaluations.c.depth,
-                            t.engine_evaluations.c.nodes,
-                            t.engine_evaluations.c.time_ms,
-                            t.engine_evaluations.c.fingerprint,
-                        ).where(
-                            t.engine_evaluations.c.position_id.in_(pos_chunk),
-                            t.engine_evaluations.c.engine == engine_name,
-                        )
-                    ).all()
-                    for row in rows:
-                        key = (
-                            int(row.position_id),
-                            row.engine,
-                            int(row.depth),
-                            int(row.nodes),
-                            int(row.time_ms),
-                            row.fingerprint,
-                        )
-                        if key in eval_payloads:
-                            eval_ids[key] = int(row.id)
+            for start in range(0, len(missing), FEN_CHUNK):
+                chunk = missing[start : start + FEN_CHUNK]
+                rows = conn.execute(
+                    select(
+                        t.engine_evaluations.c.id,
+                        t.engine_evaluations.c.fingerprint,
+                    ).where(t.engine_evaluations.c.fingerprint.in_(chunk))
+                ).all()
+                for row in rows:
+                    eval_ids[row.fingerprint] = int(row.id)
 
         def _eval_id(evaluation, fen) -> Optional[int]:
             if evaluation is None:
                 return None
-            return eval_ids.get(_eval_key(_eval_payload(evaluation, fen)))
+            return eval_ids.get(_eval_payload(evaluation, fen)["fingerprint"])
 
         # 3. Deterministic upsert of move rows by (game_id, ply) in one
         # bulk statement. It replaces annotations on re-analysis; plies
@@ -218,7 +165,6 @@ class GameRepository(EvaluationRepository):
             {
                 "game_id": game.id,
                 "ply": move.ply,
-                "uci": move.uci,
                 "engine_eval_before_id": _eval_id(move.engine_eval_before, move.fen_before),
                 "engine_eval_after_id": _eval_id(move.engine_eval_after, move.fen_after),
                 "best_move_uci": move.best_move_uci,
@@ -226,9 +172,6 @@ class GameRepository(EvaluationRepository):
                 "classification": move.classification.value,
                 "comment": move.comment,
                 "generated_comment": move.generated_comment,
-                "generated_meta_json": (
-                    _json_dump(move.generated_meta) if move.generated_meta else None
-                ),
                 "tags_json": _json_dump(move.tags) if move.tags else None,
                 "source": move.source.value,
             }
@@ -247,7 +190,6 @@ class GameRepository(EvaluationRepository):
                 stmt = stmt.on_conflict_do_update(
                     index_elements=["game_id", "ply"],
                     set_={
-                        "uci": stmt.excluded.uci,
                         "engine_eval_before_id": stmt.excluded.engine_eval_before_id,
                         "engine_eval_after_id": stmt.excluded.engine_eval_after_id,
                         "best_move_uci": stmt.excluded.best_move_uci,
@@ -255,7 +197,6 @@ class GameRepository(EvaluationRepository):
                         "classification": stmt.excluded.classification,
                         "comment": stmt.excluded.comment,
                         "generated_comment": stmt.excluded.generated_comment,
-                        "generated_meta_json": stmt.excluded.generated_meta_json,
                         "tags_json": stmt.excluded.tags_json,
                         "source": stmt.excluded.source,
                     },
@@ -375,7 +316,6 @@ class GameRepository(EvaluationRepository):
                 "classification": move_row["classification"],
                 "comment": move_row["comment"],
                 "generated_comment": move_row["generated_comment"],
-                "generated_meta": _json_load(move_row["generated_meta_json"], None),
                 "tags": _json_load(move_row["tags_json"], []),
                 "engine_eval_before": evals.get(move_row["engine_eval_before_id"]),
                 "engine_eval_after": evals.get(move_row["engine_eval_after_id"]),
@@ -639,6 +579,24 @@ class GameRepository(EvaluationRepository):
                 t.analysis_results.c.id == self.analysis_save_id(game_id, save_id),
                 t.games.c.owner_user_id == owner_user_id,
             )) is not None
+
+    def delete_analysis_results(self, game_id: str, owner_user_id: Optional[str] = None) -> int:
+      """Drop every saved analysis snapshot for one game. Analyses are owned
+      transitively through their game, so scoping joins on ``games.owner_user_id``
+      exactly like the reads do: a foreign game matches nothing and reports 0.
+      The game row itself stays (the PGN is the user's, the analysis is ours)."""
+      stmt = delete(t.analysis_results).where(
+          t.analysis_results.c.game_id == game_id
+      )
+      if owner_user_id is not None:
+          stmt = stmt.where(
+              t.analysis_results.c.game_id.in_(
+                  select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
+              )
+          )
+      with self.engine.begin() as conn:
+          result = conn.execute(stmt)
+      return int(result.rowcount or 0)
 
     @staticmethod
     def _analysis_from_row(row) -> AnalysisResult:

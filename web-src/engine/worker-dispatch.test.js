@@ -1,3 +1,4 @@
+import { engineProfile } from "./engine-profile.js";
 import { describe, it, expect } from "vitest";
 
 import { analyzeGamePositions, resolveConcurrency } from "./game-analyzer.js";
@@ -153,26 +154,8 @@ describe("Claim 2/3 — duplicate FENs in the input", () => {
     expect(resolveConcurrency(1)).toBe(1);
   });
 
-  it("default concurrency uses half the cores, clamped to [1, 4]", () => {
-    const desc = Object.getOwnPropertyDescriptor(globalThis, "navigator");
-    const setHw = (n) =>
-      Object.defineProperty(globalThis, "navigator", {
-        value: { hardwareConcurrency: n },
-        configurable: true,
-      });
-    try {
-      setHw(16);
-      expect(resolveConcurrency()).toBe(4); // min(4, 16/2)
-      setHw(8);
-      expect(resolveConcurrency()).toBe(4); // 8/2
-      setHw(4);
-      expect(resolveConcurrency()).toBe(2); // 4/2
-      setHw(1);
-      expect(resolveConcurrency()).toBe(1); // never below 1
-    } finally {
-      if (desc) Object.defineProperty(globalThis, "navigator", desc);
-      else delete globalThis.navigator;
-    }
+  it("default concurrency follows the device profile", () => {
+    expect(resolveConcurrency()).toBe(engineProfile().workers);
   });
 
   it("progress still climbs to the full position total even with duplicates", async () => {

@@ -18,8 +18,8 @@ const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; cha
 const CARDS = [
   { kind: "due", repertoire_name: "Caro-Kann: Advance", color: "black", targets: [{ node_id: "t1", uci: "c7c6", san: "c6", fen_before: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
   { kind: "weak", repertoire_name: "London System", color: "white", targets: [{ node_id: "t2", uci: "g1f3", san: "Nf3", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
-  { kind: "new", repertoire_name: "Najdorf prep", color: "black", targets: [{ node_id: "t3", uci: "e7e6", san: "e6", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
-  { kind: "polish", repertoire_name: "Ruy Lopez", color: "white", targets: [{ node_id: "t4", uci: "f1b5", san: "Bb5", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
+  { kind: "new", repertoire_name: "Najdorf prep", color: "black", targets: [{ node_id: "t3", uci: "e7e6", san: "e6", fen_before: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
+  { kind: "polish", repertoire_name: "Ruy Lopez", color: "white", targets: [{ node_id: "t4", uci: "f1b5", san: "Bb5", fen_before: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", start_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", run_in: [], hint: {} }] },
 ];
 
 const api = (path) => {
@@ -30,7 +30,11 @@ const api = (path) => {
     return { repertoires: [
       { id: "rep-1", name: "Caro-Kann: Advance", color: "black", is_active: true, health: { trainable: 10, mastered: 3, weak: 2, due: 4, learning: 1, untrained: 0, mastery_pct: 30 } },
       { id: "rep-2", name: "London System", color: "white", is_active: true, health: { trainable: 8, mastered: 5, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 62 } },
+      { id: "rep-empty", name: "Just started", color: "black", is_active: true, health: { trainable: 0, mastered: 0, weak: 0, due: 0, learning: 0, untrained: 0, mastery_pct: 0 } },
     ], shared: [] };
+  }
+  if (path.startsWith("/api/train/smart/summary")) {
+    return { next_session: { cards: 4, weak: 1, due: 1, new: 1, polish: 1, resumed: 0 } };
   }
   if (path.startsWith("/api/dashboard")) return { games: 0, repertoires: 2, training_sessions: 0, open_mistakes: 0, due_reviews: 5, due_soon: 1, streak: { current: 3, best: 9, trained_today: false }, recap: {}, recommendations: [] };
   if (path.startsWith("/api/lichess")) return { accounts: [] };
@@ -73,24 +77,71 @@ async function runViewport(vp) {
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
-  await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(1000);
-  if (vp.width > 760) {
-    // The rail is a 60px icon rail that expands on hover (overlay). Mousemove,
-    // pause for the 60ms+transition, then click while the label is still up.
-    await page.mouse.move(30, 300);
-    await page.waitForTimeout(400);
-    // Onto the Train row itself, wherever the rail's density puts it.
-    const row = await page.locator('[data-testid="nav-train"]').boundingBox();
-    await page.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
-    await page.waitForTimeout(120);
-    await page.mouse.down();
-    await page.mouse.up();
-  } else {
-    // Mobile: bottom tab bar.
-    await page.evaluate(() => document.querySelector('[data-testid="bottom-train"]').click());
+  async function openTrain(target) {
+    await target.goto(base, { waitUntil: "domcontentloaded" });
+    await target.waitForTimeout(1000);
+    if (vp.width > 760) {
+      // The rail is a 60px icon rail that expands on hover (overlay). Mousemove,
+      // pause for the 60ms+transition, then click while the label is still up.
+      await target.mouse.move(30, 300);
+      await target.waitForTimeout(400);
+      // Onto the Train row itself, wherever the rail's density puts it.
+      const row = await target.locator('[data-testid="nav-train"]').boundingBox();
+      await target.mouse.move(row.x + row.width / 2, row.y + row.height / 2);
+      await target.waitForTimeout(120);
+      await target.mouse.down();
+      await target.mouse.up();
+    } else {
+      // Mobile: bottom tab bar.
+      await target.evaluate(() => document.querySelector('[data-testid="bottom-train"]').click());
+    }
+    await target.waitForTimeout(800);
   }
-  await page.waitForTimeout(800);
+
+  // Empty queue: one setup heading. The preview must not repeat it underneath.
+  const emptyPage = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  try {
+    await emptyPage.route("**/api/train/smart/summary**", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ next_session: { cards: 0, weak: 0, due: 0, new: 0, polish: 0, resumed: 0 } }),
+    }));
+    await openTrain(emptyPage);
+    await emptyPage.waitForFunction(
+      () => document.getElementById("train-banner-title")?.textContent === "No moves to train yet",
+      null,
+      { timeout: 2000 },
+    ).catch(() => {});
+    const emptySetup = await emptyPage.evaluate(() => ({
+      banner: document.getElementById("train-banner-title")?.textContent?.trim(),
+      preview: document.getElementById("train-brief")?.textContent?.trim(),
+      previewHidden: document.getElementById("train-brief")?.hidden,
+      startHidden: document.getElementById("train-srs-start")?.hidden,
+      fixHidden: document.getElementById("train-empty")?.hidden,
+      fix: document.getElementById("train-empty-build")?.textContent?.trim(),
+    }));
+    check(emptySetup.banner === "No moves to train yet", "empty queue banner should be the one heading, got " + JSON.stringify(emptySetup.banner));
+    check(emptySetup.previewHidden === true, "empty queue preview should be hidden, got " + JSON.stringify(emptySetup.preview));
+    // Nothing to train: a dead Start is not the answer; the way to fix it is.
+    check(emptySetup.startHidden === true, "empty queue should hide Start, got " + JSON.stringify(emptySetup.startHidden));
+    check(emptySetup.fixHidden === false && emptySetup.fix === "Open Repertoire", "empty queue should offer the fix, got " + JSON.stringify(emptySetup.fix));
+  } finally {
+    await emptyPage.close();
+  }
+
+  await openTrain(page);
+  await page.waitForFunction(
+    () => !document.getElementById("train-brief")?.hidden,
+    null,
+    { timeout: 2000 },
+  ).catch(() => {});
+  const setupPreview = await page.evaluate(() => ({
+    banner: document.getElementById("train-banner-title")?.textContent?.trim(),
+    preview: document.getElementById("train-brief")?.textContent?.trim(),
+    previewHidden: document.getElementById("train-brief")?.hidden,
+  }));
+  check(setupPreview.banner === "Ready to train", "queue banner should be Ready to train, got " + JSON.stringify(setupPreview.banner));
+  check(setupPreview.previewHidden === false && /cards?/.test(setupPreview.preview || ""), "queue preview should name the cards, got " + JSON.stringify(setupPreview.preview));
 
   // Setup: mode tabs render with Smart queue active.
   const tabs = await page.locator("#train-modes .train-mode").count();
@@ -120,7 +171,39 @@ async function runViewport(vp) {
   // picker is hidden by design (the queue mixes all repertoires); assert the data
   // landed by reading the select's options regardless of visibility.
   const repOptions = await page.locator("#train-repertoire-select option").count();
-  check(repOptions === 2, `repertoire picker should have 2 options loaded, got ${repOptions}`);
+  check(repOptions === 3, `repertoire picker should have 3 options loaded, got ${repOptions}`);
+
+  // Line rehearsal's Start must follow the pick: dead on a repertoire with no
+  // moves to walk, live again on one with moves.
+  await page.evaluate(() => document.querySelector('#train-modes .train-mode[data-mode="all_lines"]').click());
+  await page.waitForTimeout(300);
+  const startState = () => page.evaluate(() => {
+    const b = document.getElementById("start-train");
+    const cs = getComputedStyle(b);
+    return { disabled: b.disabled, title: b.title, opacity: cs.opacity, cursor: cs.cursor, background: cs.backgroundColor };
+  });
+  const liveStart = await startState();
+  check(liveStart.disabled === false, "rehearsal Start should be live for a repertoire with moves");
+  await page.evaluate(() => {
+    const sel = document.getElementById("train-repertoire-select");
+    sel.value = "rep-empty";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(300);
+  const emptyStart = await startState();
+  check(emptyStart.disabled === true, "rehearsal Start should be dead when the repertoire has no moves");
+  check(/No moves to train/.test(emptyStart.title), `rehearsal Start should say why, got "${emptyStart.title}"`);
+  check(emptyStart.cursor === "not-allowed" && Number(emptyStart.opacity) < 1, "disabled Start should read as disabled");
+  check(emptyStart.background !== liveStart.background, "disabled Start should not keep the enabled primary fill");
+  await page.evaluate(() => {
+    const sel = document.getElementById("train-repertoire-select");
+    sel.value = "rep-1";
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(300);
+  check((await startState()).disabled === false, "rehearsal Start should come back with a trainable repertoire");
+  await page.evaluate(() => document.querySelector('#train-modes .train-mode[data-mode="smart"]').click());
+  await page.waitForTimeout(300);
 
   // Mode switch to Practice game works (and back). The rail overlay collapses on
   // mouse-out, so use the keyboard path users have: focus the tab, press Enter.
@@ -161,6 +244,60 @@ async function runViewport(vp) {
   await page.waitForTimeout(1500);
 
   await shot("active");
+
+  // Starting a queue must not toast a number the panel already shows: the card
+  // head reads "Card 1 / 4" and the setup brief named the queue's size.
+  const startToasts = await page.locator(".notices .notice").allTextContents();
+  check(!startToasts.some((t) => /Queue ready|Resumed queue/.test(t)),
+    `starting a queue should not toast its size, got ${JSON.stringify(startToasts)}`);
+
+  // Result screen: the finished session is a report, so the mode tabs are gone
+  // with the setup card — "New session" is the way back to them. Reach it by
+  // playing the whole 4-card fixture queue, one card at a time.
+  for (const [from, to] of [["c7", "c6"], ["g1", "f3"], ["e7", "e6"], ["f1", "b5"]]) {
+    for (const sq of [from, to]) {
+      await page.evaluate((name) => {
+        document.querySelector(`#train-board .square[data-square="${name}"]`).click();
+      }, sq);
+      await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(2600);
+  }
+  const summaryUp = await page.locator("#train-summary:not([hidden])").count();
+  check(summaryUp === 1, "finishing the last card should show the session results");
+  await shot("summary");
+  check(!(await page.locator("#train-modes").isVisible()), "the mode tabs should be hidden on the result screen");
+  check((await page.locator("#train-mode-name").textContent()) === "Smart queue", "the result card should name the session's mode");
+  await page.evaluate(() => document.getElementById("train-summary-new").click());
+  await page.waitForTimeout(400);
+  check(!(await page.locator("#train-modes").isVisible()), "New session starts the next queue without the mode tabs");
+  await page.locator("#train-mode-name").click();
+  await page.waitForTimeout(300);
+  check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isVisible(), "the card's mode name should lead back to the mode tabs");
+  check(await page.locator("#train-summary").evaluate((el) => el.hidden), "New session should clear the result screen");
+
+  // Start a fresh session for the rest of the checks.
+  await page.route("**/api/train/smart/start", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({
+      session_id: "s1", mode: "smart", mixed: true, fresh: true, resumed: false,
+      repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black",
+      card_index: 0, total_cards: 4,
+      requeue_gap: 3,
+      card_kinds: [
+        { key: "weak", label: "Weak spot", title: "Missed more than answered" },
+        { key: "due", label: "Due review", title: "Spaced repetition says now" },
+        { key: "new", label: "New move", title: "Shown once, then tested" },
+        { key: "polish", label: "Polish", title: "Kept warm with an occasional rep" },
+      ],
+      counts: { weak: 1, due: 1, new: 1, polish: 1 },
+      health: { trainable: 4, mastered: 0, weak: 1, due: 1, learning: 0, untrained: 2, mastery_pct: 0 },
+      cards: CARDS,
+    }),
+  }));
+  await page.evaluate(() => document.getElementById("start-train").click());
+  await page.waitForTimeout(1500);
 
   // Progress panel visible with real card counter.
   const panelHidden = await page.locator("#train-progress-panel").evaluate((el) => el.hidden);

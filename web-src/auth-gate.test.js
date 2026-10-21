@@ -17,7 +17,6 @@ import {
   takeAuthReturn,
   takePendingAction,
 } from "./auth-gate.js";
-import { shouldClearStatusOnNavigate } from "./status-pill.js";
 
 function memoryStorage() {
   const values = new Map();
@@ -145,13 +144,5 @@ describe("401 handling", () => {
     expect(isAuthRequiredMessage("Sign in to start training")).toBe(false);
     expect(isAuthError({ status: 401 })).toBe(true);
     expect(isAuthError({ status: 500 })).toBe(false);
-  });
-});
-
-describe("status pill navigation", () => {
-  it("clears an older error but keeps one raised by the navigating action", () => {
-    expect(shouldClearStatusOnNavigate(1000, 5000, 400)).toBe(true);
-    expect(shouldClearStatusOnNavigate(4900, 5000, 400)).toBe(false);
-    expect(shouldClearStatusOnNavigate(0, 5000, 400)).toBe(true);
   });
 });

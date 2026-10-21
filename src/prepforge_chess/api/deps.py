@@ -38,7 +38,9 @@ def current_user_optional(
     if last_seen is None or now - last_seen >= _LAST_SEEN_REFRESH:
         session.last_seen_at = now
         db.commit()
-    return db.get(User, session.user_id)
+    user = db.get(User, session.user_id)
+    request.state.user = user
+    return user
 
 
 def current_user(user: User | None = Depends(current_user_optional)) -> User:

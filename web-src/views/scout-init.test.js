@@ -92,7 +92,7 @@ describe("scout view initialization reentrancy", () => {
       selectBuildNode: vi.fn(),
       resolveBuildId: vi.fn(),
       setBuildSync: vi.fn(),
-      jobToast: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
+      notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})),
       pieceSvg: vi.fn(() => ""),
       getBuildState: vi.fn(),
@@ -130,6 +130,66 @@ describe("scout view initialization reentrancy", () => {
     expect(streamGames).toHaveBeenCalledTimes(1);
   });
 
+  it("opens one target-repertoire dialog when Add to prep is clicked twice", async () => {
+    // A double-click reaches the handler twice (the side card and the colour
+    // card stay mounted), and two identical "Add line to prep" dialogs used to
+    // stack up. The second click must be ignored while the first is open.
+    let resolveModal;
+    let opened = 0;
+    const showInputModal = vi.fn((options) => {
+      opened += 1;
+      return new Promise((resolve) => {
+        resolveModal = () => resolve({ repertoire: "rep-1" });
+      });
+    });
+    view = createScoutView({
+      setStatus,
+      switchView: vi.fn(),
+      api: async (url) =>
+        url === "/api/repertoires"
+          ? { repertoires: [] }
+          : { repertoires: [{ id: "rep-1", name: "Caro-Kann", color: "black", is_active: true }] },
+      showInputModal,
+      createRepertoirePrompt: vi.fn(),
+      editRepertoire: vi.fn(),
+      boardAfterMove: vi.fn(),
+      buildProvisionalNode: vi.fn(),
+      hardFlushBuild: vi.fn(),
+      selectBuildNode: vi.fn(),
+      resolveBuildId: vi.fn(),
+      setBuildSync: vi.fn(),
+      notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
+      parseFenBoard: vi.fn(() => ({})),
+      pieceSvg: vi.fn(() => ""),
+      getBuildState: vi.fn(),
+      getBuildNodeById: vi.fn(),
+      queueBuildAdd: vi.fn(),
+      scoutPickedUsernames: () => pickedUsernames,
+    });
+
+    const addLine = {
+      ucis: ["e2e4"],
+      sans: ["e4"],
+      rowKind: "line",
+      color: "white",
+      idx: 0,
+      section: {
+        gradedLines: [{ ucis: ["e2e4"], sans: ["e4"] }],
+        prepTargets: [],
+        weaknessTargets: [],
+      },
+    };
+    const handler = view.__testHandleAddToPrep;
+    expect(typeof handler).toBe("function");
+    const first = handler(addLine, "white");
+    const second = handler(addLine, "white");
+    await vi.waitFor(() => expect(opened).toBe(1));
+    resolveModal();
+    await Promise.all([first, second]);
+    expect(opened).toBe(1);
+    expect(showInputModal.mock.calls.filter((c) => c[0]?.title === "Add line to prep")).toHaveLength(1);
+  });
+
   it("allows Start immediately after Reset without reusing the prior session", async () => {
     await view.runScout();
     expect(streamGames).toHaveBeenCalledTimes(1);
@@ -143,6 +203,24 @@ describe("scout view initialization reentrancy", () => {
     expect(streamGames.mock.calls[0][0]).toBe("fresh");
   });
 
+  it("clears the last report when a source chip is removed", async () => {
+    // Unpicking a source silences the refresh that invalidates the report (the
+    // view sits in a hidden panel), so the old opponent's report survived under
+    // a "no sources" tray until the next Start.
+    const hint = makeEl("scout-empty-hint", { textContent: "" });
+    elements.set("scout-empty-hint", hint);
+    await view.runScout();
+    expect(String(elements.get("scout-results").innerHTML)).not.toBe("");
+    expect(elements.get("scout-profile").hidden).toBe(false);
+
+    pickedUsernames = [];
+    view.syncSources();
+
+    expect(String(elements.get("scout-results").innerHTML)).toBe("");
+    expect(elements.get("scout-profile").hidden).toBe(true);
+    expect(elements.get("scout-live-count").textContent).toBe("0");
+  });
+
   it("shows an error and re-enables Start when repertoire load fails", async () => {
     api.mockImplementation(async (url) => {
       if (url === "/api/repertoires") throw new Error("repertoire service down");
@@ -154,8 +232,42 @@ describe("scout view initialization reentrancy", () => {
     expect(String(elements.get("scout-results").innerHTML)).toContain("repertoire service down");
     expect(elements.get("scout-profile").hidden).toBe(true);
     expect(elements.get("scout-btn").disabled).toBe(false);
-    expect(setStatus).toHaveBeenCalledWith("repertoire service down");
     expect(streamGames).not.toHaveBeenCalled();
+  });
+
+  it("shows a failed source as retryable instead of claiming the player has no games", async () => {
+    streamGames.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await view.runScout();
+    const results = elements.get("scout-results");
+    // One title, then the source's own sentence: "Couldn't load rival.
+    // Failed to fetch." stacked two apologies in front of the same fact.
+    expect(String(results.innerHTML)).toContain("Couldn&#39;t scout this player");
+    expect(String(results.innerHTML)).toContain("rival: Could not reach Lichess");
+    expect(String(results.innerHTML)).toContain("Retry failed sources");
+    expect(String(results.innerHTML)).not.toContain("No games found");
+  });
+
+  it("keeps the genuine empty result when the source succeeded with no games", async () => {
+    streamGames.mockReset();
+    streamGames.mockResolvedValue({ accepted: 0, received: 0, lastDatestamp: null });
+    const scoutModule = await import("../scout.js");
+    scoutModule.createScoutClient({});
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(String(results.innerHTML)).toContain("No games found for this player");
+    expect(String(results.innerHTML)).not.toContain("Retry failed sources");
+  });
+
+  it("reports failed and empty sources separately when the run has no games", async () => {
+    view.__setPickedUsernames(["failed", "empty"]);
+    streamGames.mockImplementation(async (username) => {
+      if (username === "failed") throw new TypeError("Failed to fetch");
+      return { accepted: 0, received: 0, lastDatestamp: null };
+    });
+    await view.runScout();
+    const results = elements.get("scout-results");
+    expect(String(results.innerHTML)).toContain("failed: Could not reach Lichess");
+    expect(String(results.innerHTML)).toContain("Retry failed sources");
   });
 
   it("repaints the existing report when Replay is shown after the results DOM was emptied", async () => {

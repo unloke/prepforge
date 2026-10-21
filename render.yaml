@@ -30,6 +30,12 @@ services:
       # config.py auto-pins postgres:// -> postgresql+psycopg:// (psycopg v3).
       - key: DATABASE_URL
         sync: false
+      # Google sign-in. Without both, /api/auth/providers reports google:false
+      # and the Google button is not shown.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
       # Placeholder — the live deploy overrides this in the Render dashboard with
       # its actual service URL (e.g. https://prepforge-w0c5.onrender.com). Update
       # this value too if you ever recreate the service from this blueprint.

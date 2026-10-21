@@ -132,8 +132,9 @@ export function createAccountController({
       if (appState.signedIn && initial) el.textContent = initial;
     };
     // Page-level guest marker for copy that only applies signed out (the Games
-    // empty state cannot invite a guest to "run a check").
-    document.body?.classList.toggle("is-guest", !appState.signedIn);
+    // empty state cannot invite a guest to "run a check"). Until the session is
+    // read it is UNKNOWN, so the marker stays off — see the boot hold above.
+    document.body?.classList.toggle("is-guest", appState.authKnown === true && !appState.signedIn);
     paintAvatar(document.getElementById("account-avatar"));
     paintAvatar(document.getElementById("sheet-account-avatar"));
     const sheetLabel = document.getElementById("sheet-account-label");
@@ -148,6 +149,21 @@ export function createAccountController({
       if (sheetItem) {
         sheetItem.setAttribute("aria-haspopup", "menu");
         if (!sheetItem.hasAttribute("aria-expanded")) sheetItem.setAttribute("aria-expanded", "false");
+      }
+    } else if (!appState.authKnown) {
+      // The session is still being read. `!signedIn` here means UNKNOWN, not
+      // "signed out", so the guest chip would be a guess that a signed-in
+      // reload flashes. Say nothing instead (the label is empty in the markup).
+      chip.classList.remove("is-connected");
+      label.textContent = "";
+      if (sub) sub.textContent = "";
+      if (sheetLabel) sheetLabel.textContent = "";
+      chip.removeAttribute("aria-haspopup");
+      chip.setAttribute("aria-expanded", "false");
+      chip.title = "Checking your session…";
+      if (sheetItem) {
+        sheetItem.removeAttribute("aria-haspopup");
+        sheetItem.removeAttribute("aria-expanded");
       }
     } else {
       chip.classList.remove("is-connected");
@@ -623,6 +639,8 @@ export function createAccountController({
 
   async function refreshAuthStatus() {
     const previousOwner = appState.accountUserId;
+    // The session is being read right now. Anything that renders "signed out" while
+    // this is false is guessing, and a signed-in user sees that guess flash on reload.
     try {
       const me = await api("/api/auth/me");
       appState.signedIn = !!me.id;
@@ -644,6 +662,7 @@ export function createAccountController({
       appState.accountUserId = null;
       appState.account = null;
     }
+    appState.authKnown = true;
     if (previousOwner !== appState.accountUserId) {
       appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
       onOwnerChanged();
@@ -805,6 +824,7 @@ export function createAccountController({
     toggleAccountMenu,
     handleAccountMenuAction,
     refreshAuthStatus,
+    authKnown: () => appState.authKnown === true,
     signOut,
     syncReplayControls,
     refreshLichessStatus,

@@ -1,6 +1,6 @@
 // Bundle-size regression gate. Run after `npm run build` (CI's `js` job).
 //
-// The deploy build is committed and served from Render's free tier with no CDN,
+// The deploy build is served from Render's free tier with no CDN,
 // so the main entry chunk's size directly sets first-load cost. This fails the
 // build if the main `assets/index-*.js` grows past a budget, catching an
 // accidental heavy import before it ships. Raise LIMITS intentionally (with the
@@ -76,8 +76,10 @@ const LIMITS = [
     // Build and Analyze split: the repertoire editor and the Analyze runs/coach move to
     // lazy build-session / analyze-session chunks; the entry drops to ~243,800 B raw /
     // ~77,000 B gzip.
-    maxBytes: 250_000,
-    maxGzipBytes: 80_000,
+    // 2026-10-19 engine startup: the eager Stockfish provider now owns the shared wasm
+    // download/compile and the device profile; the entry lands at ~258,800 B raw / ~83,300 B gzip.
+    maxBytes: 262_000,
+    maxGzipBytes: 85_000,
     label: "main app chunk",
   },
   { prefix: "maia3-worker-", suffix: ".js", maxBytes: 220_000, label: "maia3 worker chunk" },

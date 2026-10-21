@@ -33,18 +33,19 @@ function harness(realBoard = false) {
     hideAnalysisHandoff: vi.fn(), resetAnalysisVariations: vi.fn(), showAnalysisPly: vi.fn(async () => {}),
     revealAnalysisResults: vi.fn(), syncViewHeads: vi.fn(), setStatus: vi.fn(), setStatusError: vi.fn(),
     orientAnalysisForSelf: vi.fn(), orientAnalysisFromPgn: vi.fn(),
-    isBrowserEngineAvailable: () => true, jobToast: { isBusy: () => false }, requireSignIn: () => true,
+    isBrowserEngineAvailable: () => true, notices: { isBusy: () => false }, requireSignIn: () => true,
     postJson: vi.fn(async () => { throw new Error("stop before engine"); }), engineLifecycleMark: vi.fn(),
     isAuthError: () => false, hideAnalysisResults: vi.fn(), loadCheckpoint: () => null, currentOwnerId: () => "owner",
+    setCoachProse: vi.fn(),
     evalMapFrom: () => new Map(), clearCheckpoint: vi.fn(async () => true), markCheckpointSaved: vi.fn(), refreshAnalyzeRecovery: vi.fn(), hideAnalysisRetrySave: vi.fn(),
     refreshAnalysisHistoryIfOpen: vi.fn(), updateAnalysisHandoff: vi.fn(async () => {}), showAnalysisRetrySave: vi.fn(),
     boardInfo: vi.fn(async () => ({ legal_moves: [] })), boards: { analysis: { setPosition: vi.fn(), setMoveBadge: vi.fn() } },
     highlightCurrentMove: vi.fn(), classBadgeSymbol: () => "", engineWidget: null, syncWorkspaceUrl: vi.fn(),
   };
-  deps.jobToast.failJob = vi.fn();
+  deps.notices.failJob = vi.fn();
   const helper = body("function invalidateAnalysisSource(");
   const inputStart = source.indexOf('pgnInput.addEventListener("input",');
-  const inputBinding = source.slice(inputStart, source.indexOf("\n    });", inputStart) + 8);
+  const inputBinding = source.slice(inputStart, source.indexOf("\n  });", inputStart) + 6);
   const functions = [...(realBoard ? ["async function showAnalysisPly("] : []), "async function recallAnalysis(", "async function renderAnalysis(",
     "async function syncPgnFromTree(",
     "async function finishAnalyzeCheckpoint(", "async function loadPgnIntoAnalyze(", "async function runAnalysis(", "async function retryAnalyzeSave("].map(body).join("\n");
@@ -170,7 +171,9 @@ describe("Boot route lifecycle", () => {
     const deps = { appState, document: { getElementById: () => null }, boards: {}, takeBuildPreview: vi.fn(),
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
-      window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation };
+      window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation,
+      paintGenerateVisibility: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(),
+      syncViewHeads: vi.fn(), switchView: vi.fn(), localBoardInfo: () => ({ legal_moves: [] }) };
     const start = source.indexOf("function switchView(");
     const navigation = source.slice(start, source.indexOf("  if (appState.currentView", start));
     const actions = new Function(...Object.keys(deps), `

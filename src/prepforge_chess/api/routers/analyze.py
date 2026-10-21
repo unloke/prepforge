@@ -11,6 +11,9 @@ only orchestrates and persists, never computing chess. Two POSTs carry the flow:
 
 Two GETs read it back: ``/api/analyses`` (history list) and ``/api/analyses/{id}``
 (recall the latest saved analysis).
+
+A DELETE removes them: ``/api/analyses/{id}`` drops the saved results for one
+game, so the Analyze "History" list can offer a delete on every row.
 """
 from __future__ import annotations
 
@@ -252,7 +255,6 @@ def analyze_prepare(
     return {
         "game_id": game_id,
         "import_summary": import_summary,
-        "engine": "stockfish (browser)",
         "depth": owner_stockfish_depth(repo, owner),
         "positions": positions,
         "moves": moves_skeleton,
@@ -271,11 +273,9 @@ def analyze_prepare(
 class ClassifySavePayload(BaseModel):
     game_id: str = ""
     request_id: UUID = Field(default_factory=uuid4)
-    engine: str = "stockfish (browser)"
+    # The browser engine's identity and search settings (ENGINE_ID in stockfish-provider.js).
+    engine: str = Field(min_length=1, max_length=120)
     depth: int | None = None
-    # Two-tier analysis: every position searched to this depth, the moves a grade could
-    # hinge on to ``depth``. None for a single-depth run.
-    screen_depth: int | None = None
     positions: list[dict[str, Any]] | None = Field(default=None, max_length=MAX_ANALYSIS_POSITIONS)
     maia_assessments: list[dict[str, Any]] | None = Field(
         default=None, max_length=MAX_ANALYSIS_POSITIONS
@@ -338,7 +338,7 @@ def analyze_classify_save(
         )
     timings_ms["validate_ms"] = int((time.perf_counter() - mark) * 1000)
 
-    engine_name = (body.engine or "stockfish (browser)").strip() or "stockfish (browser)"
+    engine_name = body.engine.strip()
     resolved_depth = (
         int(body.depth)
         if body.depth is not None
@@ -368,11 +368,6 @@ def analyze_classify_save(
             depth=resolved_depth,
             brilliant_analyzer=brilliant_analyzer,
             maia_rating=owner_maia_rating(repo, owner),
-            screen_depth=(
-                max(1, min(int(body.screen_depth), resolved_depth))
-                if body.screen_depth is not None
-                else None
-            ),
         )
     except MissingEvaluationError as exc:
         # Incomplete client payload (a position was never evaluated).
@@ -469,3 +464,23 @@ def recall_analysis(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail="Saved analysis has no move snapshot. Analyze this game again.")
     return analysis_result_to_payload(result)
+
+
+@router.delete("/analyses/{game_id}")
+@limiter.limit("60/minute")
+def delete_analyses(
+    request: Request,
+    game_id: str,
+    owner: str = Depends(current_owner),
+    repo: GameRepository = Depends(get_repository),
+) -> dict[str, bool]:
+    """Delete every saved analysis for one of this owner's games. A foreign or
+    unanalyzed game is 404, so a stale row in the UI reports rather than
+    silently lying about what it removed. The game row itself is kept."""
+    removed = repo.delete_analysis_results(game_id, owner_user_id=owner)
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="no saved analysis for that game",
+        )
+    return {"deleted": True, "removed": removed}

@@ -196,7 +196,6 @@ export async function runCoverageScan({
     algorithmVersion: COVERAGE_ALGORITHM_VERSION,
     ownPolicy: "prepared-mainline", rootNodeId: root.id, maxDepth,
     coverage: coveredMass, coveredMass, gapMass, unknownMass, scannedNodes,
-    status: unknownMass > 0.00001 ? "partial" : "complete",
     truncated: unknownMass > 0.00001, stopReasons: [...reasons],
     totalGapCount: gaps.length, omittedGapCount: Math.max(0, gaps.length - maxGaps),
     gaps: gaps.slice(0, maxGaps),

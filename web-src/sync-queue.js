@@ -35,9 +35,17 @@ export function createSyncQueue({ key, state, owner, generation, serialize, flus
     arm(info?.retryAfterMs ?? Math.min(30_000, 1000 * 2 ** (sync.retry - 1)));
   }
   // An unloading page never reaches the flush's finally: release its lock on
-  // pagehide, or a reload would find it held by a "tab" that no longer exists.
+  // the way out. The teardown order is beforeunload -> pagehide ->
+  // visibilitychange(hidden) -> unload, and the visibilitychange flush is the
+  // one that TAKES the lock — so releasing on beforeunload/pagehide alone left
+  // the lock behind and it blocked the next load of the same owner (Train:
+  // "Couldn't sync your last session" and no session). unload fires last, so
+  // the lock always goes back.
   let heldLock = null;
-  globalThis.addEventListener?.("pagehide", () => { if (heldLock) releaseFlushLock(heldLock, key); });
+  const releaseHeldLock = () => { if (heldLock) releaseFlushLock(heldLock, key); };
+  globalThis.addEventListener?.("beforeunload", releaseHeldLock);
+  globalThis.addEventListener?.("pagehide", releaseHeldLock);
+  globalThis.addEventListener?.("unload", releaseHeldLock);
   function drain() {
     const sync = state(), account = owner(), epoch = generation();
     if (sync.flushing) return sync.flushing;
@@ -45,10 +53,14 @@ export function createSyncQueue({ key, state, owner, generation, serialize, flus
     const lockId = `${tabId}:${account}:${epoch}`;
     if (!acquireFlushLock(account, lockId, Date.now(), key)) { arm(idleMs); return Promise.resolve(false); }
     heldLock = lockId;
+    // Keep the lease alive while the flush runs: a slow request must not look
+    // like a dead tab and let a second tab send the same queue.
+    const heartbeat = setInterval(() => refreshFlushLock(lockId, key), LOCK_HEARTBEAT_MS);
     cancel();
     const checkpoint = persist();
     const isCurrent = () => account === owner() && epoch === generation() && sync === state();
     const task = Promise.resolve(flush(checkpoint, isCurrent)).finally(() => {
+      clearInterval(heartbeat);
       if (sync.flushing === task) sync.flushing = null;
       if (heldLock === lockId) heldLock = null;
       releaseFlushLock(lockId, key);
@@ -95,14 +107,19 @@ export const loadDurableOutbox = async (owner) => (await outboxDatabase()).loadD
 export const clearDurableOutbox = async (owner) => (await outboxDatabase()).clearDurableOutbox(owner);
 
 const LOCK_KEY = "prepforge.outbox.lock.v1";
-const LOCK_STALE_MS = 30_000;
+// The cross-tab lock is a lease: the holder renews it while it works, so a
+// second tab waits its turn instead of sending the same queue twice. A holder
+// that died without releasing (a crash, a force-quit) lets the lease run out
+// in seconds — a dead tab must not block the next load of the same owner.
+const LOCK_LEASE_MS = 8_000;
+const LOCK_HEARTBEAT_MS = 2_000;
 // A suspended tab can retain a stale snapshot indefinitely. Do not evict
 // tombstones until an enforced replay horizon exists.
 // Rejected operations remain available until the user resolves them.
 
 function emptyOutbox() {
   return {
-    build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
+    build: { pending: [], pendingDeletes: [], idMap: {} },
     train: { pending: [], rejected: [] },
     settled: { build: [], deletes: [], train: [] },
   };
@@ -193,7 +210,6 @@ export function mergeOutboxState(stored, incoming, settled = null) {
       ),
       // tmp -> real ids are additive facts: a later flush's mapping always wins.
       idMap: { ...(base.build.idMap || {}), ...(next.build?.idMap || {}) },
-      rejected: mergeById(asArray(base.build.rejected), asArray(next.build?.rejected), rejectedId),
     },
     train: {
       pending: mergeById(
@@ -221,11 +237,7 @@ export function outboxHasWork(state) {
 }
 
 export function outboxHasRejected(state) {
-  return !!(
-    state &&
-    ((state.build.rejected && state.build.rejected.length) ||
-      (state.train.rejected && state.train.rejected.length))
-  );
+  return !!state?.train.rejected?.length;
 }
 
 export function outboxIsQuiescent(state) {
@@ -242,7 +254,7 @@ export function acquireFlushLock(ownerId, tabId, now = Date.now(), key = "build"
         lock &&
         lock.tabId !== tabId &&
         lock.ownerId === (ownerId || "anon") &&
-        now - (lock.at || 0) < LOCK_STALE_MS
+        now - (lock.at || 0) < LOCK_LEASE_MS
       ) {
         return false; // another tab is flushing this owner's queue right now
       }
@@ -254,6 +266,22 @@ export function acquireFlushLock(ownerId, tabId, now = Date.now(), key = "build"
     return true;
   } catch (_) {
     return true; // storage blocked: no lock, rely on server-side receipts
+  }
+}
+
+// Renews the holder's lease. A lock that is not ours any more (another tab
+// took it over) is left alone.
+export function refreshFlushLock(tabId, key = "build", now = Date.now()) {
+  const lockKey = `${LOCK_KEY}.${key}`;
+  try {
+    const raw = localStorage.getItem(lockKey);
+    if (!raw) return false;
+    const lock = JSON.parse(raw);
+    if (!lock || lock.tabId !== tabId) return false;
+    localStorage.setItem(lockKey, JSON.stringify({ ...lock, at: now }));
+    return true;
+  } catch (_) {
+    return false; // storage blocked: the lock is advisory anyway
   }
 }
 

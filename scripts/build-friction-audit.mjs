@@ -179,7 +179,7 @@ async function main() {
 
   async function getAppStatus(page) {
     return page.evaluate(() => {
-      const bar = document.querySelector('[data-testid="app-status"], .status');
+      const bar = document.getElementById("notices");
       return bar ? bar.textContent.trim() : "";
     });
   }
@@ -241,7 +241,7 @@ async function main() {
       dashboardEmptyText: (document.getElementById("dashboard-repertoires")?.textContent || "")
         .trim()
         .slice(0, 120),
-      status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+      status: document.getElementById("notices")?.textContent?.trim() || "",
     }));
   }
 
@@ -261,7 +261,7 @@ async function main() {
       syncClass: document.getElementById("build-sync")?.className || "",
       syncHidden: document.getElementById("build-sync")?.hidden,
       boardSquareCount: document.querySelectorAll("#build-board .square").length,
-      status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+      status: document.getElementById("notices")?.textContent?.trim() || "",
     }));
   }
 
@@ -680,7 +680,7 @@ async function main() {
           genAriaDisabled: btn?.getAttribute("aria-disabled") || "",
           genGated: btn?.classList.contains("is-coming-soon"),
           genTitle: btn?.getAttribute("title") || "",
-          status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+          status: document.getElementById("notices")?.textContent?.trim() || "",
         };
       });
       record("3-recovery", "engine-gate", {
@@ -728,7 +728,7 @@ async function main() {
           syncText: document.getElementById("build-sync")?.textContent?.trim() || "",
           syncClass: document.getElementById("build-sync")?.className || "",
           syncHidden: document.getElementById("build-sync")?.hidden,
-          status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+          status: document.getElementById("notices")?.textContent?.trim() || "",
         }));
         if (
           errorSnap.syncClass.includes("is-error") ||
@@ -785,7 +785,7 @@ async function main() {
           names,
           colors,
           hasRep: names.some((n) => n.includes(expectedName)),
-          metricsRepertoires: document.querySelector("#dashboard-today .today-metrics .metric b")?.textContent?.trim(),
+          metricsRepertoires: document.querySelector("#dashboard-today .today-counts")?.textContent?.trim(),
         };
       }, repName);
       record("5-recovery", "dashboard-refresh", {

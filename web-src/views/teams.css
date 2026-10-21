@@ -15,8 +15,9 @@
   gap: 8px;
   margin: 0;
   padding: 10px 12px;
-  border-bottom: 1px solid var(--line);
 }
+/* The head carries no rule of its own: the first row under it brings one
+   (border-top), and two lines in the same place read as a thick rule. */
 .teams .card-head h2 {
   min-width: 0;
   overflow: hidden;
@@ -26,7 +27,13 @@
 }
 .teams .spacer { flex: 1; }
 .teams .hint { margin: 0; padding: 6px 12px; }
-.teams .empty-state { margin: 10px 12px; }
+/* A dashed box floating on margins read as a stray widget; inside a card a
+   "nothing here yet" line is a row like any other, the way the Library does it. */
+.teams .empty-state:not(.big) { margin: 0; border: 0; border-radius: 0; background: none; text-align: left; }
+.dir .search-field {
+  width: auto;
+  margin: 10px 12px;
+}
 .teams .sub {
   color: var(--muted);
   font-size: var(--fs-xs);
@@ -34,24 +41,40 @@
 
 /* ---- Directory ---------------------------------------------------------- */
 
-.dir .search-field {
-  width: auto;
-  margin: 10px 12px;
-}
 .team-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 9px 12px;
-  border-top: 1px solid var(--line);
   cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out);
 }
+/* The directory is one interface fragment, so the line between its rows is a
+   table rule (the way the replay ledger and the scout lines keep theirs). */
+#teams-list[data-ui] .team-row { border-top: 1px solid var(--line); }
 .team-row:hover { background: var(--panel-soft); }
+/* The same press as the Library rows: a row cannot scale, so it steps deeper
+   into the surface. */
+.team-row:active { background: var(--surface-3); }
+/* Loading: the row's own geometry, bars where the values go. */
+.team-row.is-skeleton:hover { background: none; }
+.team-row.is-skeleton { cursor: default; }
+.team-badge-skeleton { flex: none; width: 46px; height: 15px; border-radius: 10px; }
+.team-btn-skeleton { width: 52px; height: 24px; border-radius: var(--radius); }
+.mem-row.is-skeleton { cursor: default; }
 .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .team-row.is-selected {
+  position: relative;
   background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
+}
+.team-row.is-selected::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
 }
 .tr-text {
   display: flex;
@@ -68,10 +91,10 @@
 .team-role-badge {
   flex: none;
   padding: 1px 7px;
-  border-radius: 10px;
+  border-radius: 4px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: capitalize;
   white-space: nowrap;
@@ -79,12 +102,7 @@
 .team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
 .team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent); }
 /* "read-only" on an incoming share is a plain note chip, not a role. */
-.incoming .team-role-badge {
-  border-radius: 4px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-transform: none;
-}
+.incoming .team-role-badge { font-weight: 600; text-transform: none; }
 
 /* ---- Team detail -------------------------------------------------------- */
 
@@ -94,7 +112,8 @@
   display: flex;
   gap: 2px;
   padding: 0 8px;
-  border-bottom: 1px solid var(--line);
+  /* The strip carries its own fill, so it does not need a line under it. The
+     active tab's accent underline is the only rule in the strip. */
   background: var(--panel-soft);
 }
 .teams .tabs button {
@@ -116,24 +135,32 @@
   border-bottom-color: var(--accent);
   color: var(--text);
 }
+/* An inactive tab brightens under the pointer: the strip sits on the quiet
+   panel fill, so a fill would not read. */
+.teams .tabs button:hover { color: var(--text); }
 .teams .tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .teams .tabs .count[hidden] { display: none; }
 [data-team-panel][hidden] { display: none; }
 
+/* The pane's action lives on its own line above the rows — the tab already
+   names the pane, so a second bold label under it was a repeat. */
 .sub-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
-  padding: 10px 12px 4px;
+  padding: 8px 12px;
 }
 .mem-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-top: 1px solid var(--line);
 }
+/* The member list and the shared list are interface fragments, so the line
+   between their rows is a table rule. */
+#team-members[data-ui] > .mem-row,
+#team-shared-repertoires[data-ui] > .mem-row { border-top: 1px solid var(--line); }
 .mem-id {
   display: flex;
   flex: 1;
@@ -149,7 +176,7 @@
   align-items: center;
   gap: 8px;
 }
-.team-role-select {
+select.team-role-select {
   height: 26px;
   padding: 0 6px;
   border: 1px solid var(--line-strong);
@@ -160,22 +187,20 @@
   font-size: var(--fs-s);
   cursor: pointer;
 }
-/* Detail-head and member-row icon actions are ghost (prototype .icon-btn):
-   no border or fill until hover; delete turns red only on hover. */
-.teams .card-head .ib,
+/* Detail-head and member-row icon actions are ghost: no border or fill until
+   hover; delete turns red only on hover. */
+.teams .card-head .btn.icon,
 .team-remove {
   border-color: transparent;
   background: transparent;
-  box-shadow: none;
   color: var(--muted);
 }
-.teams .card-head .ib:hover { background: var(--surface-3); color: var(--text); }
-.teams .card-head .ib.danger:hover { background: var(--danger-soft, var(--surface-3)); color: var(--danger); }
+.teams .card-head .btn.icon:hover { background: var(--surface-3); color: var(--text); }
+.teams .card-head .btn.icon.danger:hover { background: var(--danger-soft); color: var(--danger); }
 .team-remove {
-  min-width: 26px;
-  height: 26px;
+  min-width: var(--control-h);
+  height: var(--control-h);
   padding: 0 8px;
-  font-size: 13px;
   color: var(--muted);
 }
 .team-remove:hover {
@@ -186,25 +211,42 @@
 .shared-rep-row { cursor: pointer; }
 .team-shared-rep-row:hover,
 .shared-rep-row:hover { background: var(--panel-soft); }
+.team-shared-rep-row:active,
+.shared-rep-row:active { background: var(--surface-3); }
 .team-shared-rep-row:focus-visible,
 .shared-rep-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-/* Invite footer — one muted line under the panel. */
+/* Opening a team brings its members in one after another, the way the
+   directory list arrives. The rows are written by the shell, so the order is
+   set here rather than by the list helper. */
+#team-members > .mem-row {
+  animation: row-enter var(--dur) var(--ease-out) both;
+}
+#team-members > .mem-row:nth-child(1) { animation-delay: 0ms; }
+#team-members > .mem-row:nth-child(2) { animation-delay: 60ms; }
+#team-members > .mem-row:nth-child(3) { animation-delay: 120ms; }
+#team-members > .mem-row:nth-child(n + 4) { animation-delay: 180ms; }
+
+/* Invite footer — one muted line under the panel. It carries its own fill, so
+   it does not need a line above it either. */
 .team-invite-foot {
   padding: 10px 12px;
-  border-top: 1px solid var(--line);
+  background: var(--panel-soft);
   font-size: var(--fs-s);
 }
 .team-invite-foot[hidden] { display: none; }
 
 /* ---- Empty + incoming --------------------------------------------------- */
 
+/* The empty state is a work surface with nothing in it yet, so its one line
+   sits in the middle of the card the way the Library's empty table does. */
 .teams .team-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 48px 24px;
+  padding: 24px;
   text-align: center;
 }
 .team-empty h3 { margin: 0; }
@@ -232,10 +274,14 @@
 
 @media (max-width: 760px) {
   .teams .btn.sm,
-  .teams .ib,
+  .teams .btn.icon,
   .team-role-select,
   .teams .tabs button { min-height: 44px; }
   .teams .card-head { flex-wrap: wrap; }
+  /* The spacer breaks the head in two: the name and the role on the first
+     line, the actions together on the second, all packed to the left. */
+  .team-detail .card-head { justify-content: flex-start; }
+  .team-detail .card-head .spacer { flex-basis: 100%; height: 0; }
   .mem-row { flex-wrap: wrap; }
   .team-member-tail { margin-left: auto; }
 }

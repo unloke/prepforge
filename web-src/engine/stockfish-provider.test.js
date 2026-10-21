@@ -1,7 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 
-import { createStockfishWasmProvider } from "./stockfish-provider.js";
+import { createStockfishWasmProvider, engineIdentity, engineScriptUrl, STOCKFISH } from "./stockfish-provider.js";
+import { setEngineProfile, resetEngineProfile, reportEngineFailure, guardEngineStartup,
+  createEngineProfileManager, usableEngineProfile } from "./engine-profile.js";
+import { EngineAssetError } from "./engine-assets.js";
 import { createComputeBudget } from "./compute-budget.js";
+
+vi.mock("./engine-profile.js", async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, reserveEngineMemory: vi.fn(() => ({})),
+    usableEngineProfile: vi.fn(actual.usableEngineProfile),
+    guardEngineStartup: vi.fn(actual.guardEngineStartup),
+    engineStarted: vi.fn(), reportEngineFailure: vi.fn(actual.reportEngineFailure) };
+});
+vi.mock("./engine-assets.js", async importOriginal => ({ ...await importOriginal(),
+  loadEngineModule: vi.fn(async () => ({})),
+}));
 
 const FEN_A = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const FEN_B = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -47,7 +61,164 @@ function makeProvider() {
 // the `stop` it posts settle before we assert on them.
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+describe("per-net provider identity", () => {
+  it("starts lite at the user's depth while the recommended full asset is not ready", async () => {
+    const data = new Map();
+    const manager = createEngineProfileManager({ storage: () => ({ getItem: k => data.get(k) ?? null,
+      setItem: (k, v) => data.set(k, v) }), assetState: () => ({ phase: "download" }),
+    device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }) });
+    manager.setEngineProfile({ net: "big", workers: 3 });
+    expect(manager.engineProfile()).toMatchObject({ net: "big", workers: 3 });
+    const originalUsable = usableEngineProfile.getMockImplementation();
+    usableEngineProfile.mockImplementation(manager.usableEngineProfile);
+    const worker = new FakeWorker(), loadModule = vi.fn(async () => ({}));
+    const provider = createStockfishWasmProvider({ maxDepth: 23, loadModule, createWorker: () => worker });
+    try {
+      await provider.open({ fen: FEN_A });
+      expect(loadModule).toHaveBeenCalledWith("lite");
+      expect(provider.snapshot().engine).toBe(engineIdentity("lite"));
+      expect(worker.posted).toContain("go depth 23");
+    } finally { await provider.close(); usableEngineProfile.mockImplementation(originalUsable); }
+  });
+  it.each(["big", "lite"])("loads %s with its own URL and snapshot identity", async net => {
+    const worker = new FakeWorker();
+    const factory = vi.fn(() => worker);
+    const provider = createStockfishWasmProvider({ net, createWorker: factory });
+    await provider.open({ fen: FEN_A });
+    expect(factory).toHaveBeenCalledWith(`/static/engine/${STOCKFISH[net].dir}/stockfish.js`);
+    expect(provider.snapshot().engine).toBe(`${STOCKFISH[net].id} t1 h16`);
+    expect(engineScriptUrl(net)).toContain(STOCKFISH[net].dir);
+    expect(engineIdentity("big")).not.toBe(engineIdentity("lite"));
+    await provider.close();
+  });
+  it("keeps an active worker and its identity across a profile change", async () => {
+    const { provider, fake } = makeProvider();
+    await provider.open({ fen: FEN_A });
+    const waiting = provider.waitForSearchComplete({ targetDepth: 16, timeoutMs: 1000 });
+    const identity = provider.snapshot().engine;
+    setEngineProfile({ net: "big", workers: 2 });
+    fake.emit("info depth 16 score cp 20 pv e2e4");
+    await waiting;
+    expect(provider.snapshot().engine).toBe(identity);
+    expect(fake.terminated).toBe(false);
+    await provider.close();
+    resetEngineProfile();
+  });
+});
+
 describe("provider compute allocation lifecycle", () => {
+  it("reserves before creating a worker and posts the same Memory before UCI without a transfer list", async () => {
+    const memory = {}, wasmModule = {};
+    const worker = new FakeWorker();
+    const post = vi.spyOn(worker, "postMessage");
+    const events = [];
+    const reserveMemory = vi.fn(net => { events.push("reserve"); expect(net).toBe("big"); return memory; });
+    const loadModule = vi.fn(async () => { events.push("module"); return wasmModule; });
+    const provider = createStockfishWasmProvider({ net: "big", reserveMemory, loadModule,
+      createWorker: () => { events.push("worker"); return worker; } });
+    await provider.prepare();
+    expect(events).toEqual(["module", "reserve", "worker"]);
+    expect(post.mock.calls[0]).toEqual([{ wasmModule, wasmMemory: memory }]);
+    expect(worker.posted[1]).toBe("uci");
+    await provider.close();
+  });
+
+  it("injects a probe reservation without allocating a second heap", async () => {
+    const memory = {}, wasmModule = {}, worker = new FakeWorker(), reserveMemory = vi.fn(), loadModule = vi.fn();
+    const provider = createStockfishWasmProvider({ wasmModule, wasmMemory: memory, loadModule, reserveMemory, createWorker: () => worker });
+    await provider.prepare();
+    expect(reserveMemory).not.toHaveBeenCalled();
+    expect(loadModule).not.toHaveBeenCalled();
+    expect(worker.posted[0].wasmModule).toBe(wasmModule);
+    expect(worker.posted[0].wasmMemory).toBe(memory);
+    await provider.close();
+  });
+
+  it("waits beyond the startup deadline for assets with no heap, crash guard or timer", async () => {
+    vi.useFakeTimers();
+    const create = vi.fn();
+    vi.stubGlobal("Worker", class extends FakeWorker { constructor() { super(); create(); } });
+    guardEngineStartup.mockClear();
+    let resolveModule;
+    const pendingModule = new Promise(resolve => { resolveModule = resolve; });
+    const reserveMemory = vi.fn(() => ({}));
+    const provider = createStockfishWasmProvider({ computeBudget: null, reserveMemory, loadModule: () => pendingModule });
+    try {
+      const ready = provider.prepare();
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(create).not.toHaveBeenCalled();
+      expect(reserveMemory).not.toHaveBeenCalled();
+      expect(guardEngineStartup).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      resolveModule({});
+      await ready;
+      expect(reserveMemory).toHaveBeenCalledTimes(1);
+      expect(guardEngineStartup).toHaveBeenCalledTimes(1);
+    } finally { await provider.close(); vi.unstubAllGlobals(); vi.useRealTimers(); }
+  });
+
+  it.each([new Error("download aborted"), new RangeError("compile out of memory")])(
+    "does not step down the profile for asset failure: %s", async cause => {
+      vi.stubGlobal("Worker", vi.fn());
+      guardEngineStartup.mockClear(); reportEngineFailure.mockClear();
+      const reserveMemory = vi.fn();
+      const provider = createStockfishWasmProvider({ computeBudget: null, reserveMemory,
+        loadModule: async () => { throw cause; } });
+      try {
+        await expect(provider.prepare()).rejects.toBeInstanceOf(EngineAssetError);
+        expect(reserveMemory).not.toHaveBeenCalled();
+        expect(guardEngineStartup).not.toHaveBeenCalled();
+        expect(reportEngineFailure).not.toHaveBeenCalled();
+        expect(provider.snapshot().error).toContain(cause.message);
+      } finally { await provider.close(); vi.unstubAllGlobals(); }
+    });
+
+  it("does not resurrect a closed provider when its shared module becomes ready", async () => {
+    let resolveModule;
+    const module = new Promise(resolve => { resolveModule = resolve; });
+    const createWorker = vi.fn(() => new FakeWorker()), reserveMemory = vi.fn(() => ({}));
+    const provider = createStockfishWasmProvider({ createWorker, reserveMemory, loadModule: () => module });
+    const pending = provider.prepare().catch(error => error);
+    await tick();
+    await provider.close();
+    resolveModule({});
+    expect((await pending).message).toMatch(/closed/);
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(reserveMemory).not.toHaveBeenCalled();
+    await provider.prepare();
+    expect(createWorker).toHaveBeenCalledTimes(1);
+    await provider.close();
+  });
+
+  it("surfaces reservation failure without creating a worker and releases the compute slot", async () => {
+    const budget = createComputeBudget({ limit: 1, backgroundLimit: 1 });
+    const createWorker = vi.fn();
+    const provider = createStockfishWasmProvider({ createWorker, computeBudget: budget,
+      reserveMemory: () => { throw new RangeError("address space gone"); } });
+    await expect(provider.prepare()).rejects.toThrow(/could not start: address space gone/);
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(budget.snapshot().used).toBe(0);
+    await provider.close();
+  });
+
+  it("reports a live worker failure even after its startup search completed, then rebuilds", async () => {
+    const workers = [];
+    vi.stubGlobal("Worker", class extends FakeWorker { constructor() { super(); workers.push(this); } });
+    reportEngineFailure.mockClear();
+    const provider = createStockfishWasmProvider({ computeBudget: null });
+    try {
+      await provider.open({ fen: FEN_A });
+      workers[0].emit("info depth 18 score cp 20 pv e2e4");
+      workers[0].emit("bestmove e2e4");
+      workers[0].emit("Aborted(OOM)");
+      expect(reportEngineFailure).toHaveBeenCalledTimes(1);
+      expect(workers[0].terminated).toBe(true);
+      await provider.open({ fen: FEN_B });
+      expect(workers).toHaveLength(2);
+      expect(provider.snapshot()).toMatchObject({ fen: FEN_B, error: null });
+    } finally { await provider.close(); vi.unstubAllGlobals(); }
+  });
+
   it("closing a queued provider settles its open without creating a worker", async () => {
     const budget = createComputeBudget({ limit: 1, backgroundLimit: 1 });
     const release = await budget.acquire();
@@ -114,26 +285,23 @@ describe("createStockfishWasmProvider — search lifecycle", () => {
     expect(snap.pvs[0].pv_uci).toEqual(["e2e4", "e7e5"]);
   });
 
-  it("keeps the exact line-1 result of each depth in side-to-move POV, and clears it per search", async () => {
+  it("tells its watcher about every depth it reaches, not just the last one", async () => {
     const { provider, fake } = makeProvider();
-    await provider.open({ fen: FEN_B, multipv: 2 });
-    fake.emit("info depth 1 seldepth 2 multipv 1 score cp 20 nodes 30 pv e7e5");
-    fake.emit("info depth 1 seldepth 2 multipv 2 score cp 10 nodes 30 pv d7d5");
-    fake.emit("info depth 2 seldepth 4 multipv 1 score cp 50 lowerbound nodes 70 pv c7c5");
-    fake.emit("info depth 2 seldepth 5 multipv 1 score mate 3 nodes 90 pv d7d5");
-    const snap = provider.snapshot();
-    expect(snap.pvs[0].mate_in).toBe(-3);
-    expect(snap.iterations).toEqual([
-      { depth: 1, cp: 20, mate: null, best: "e7e5", nodes: 30, seldepth: 2 },
-      { depth: 2, cp: null, mate: 3, best: "d7d5", nodes: 90, seldepth: 5 },
-    ]);
-    fake.emit("bestmove d7d5");
-    await provider.update({ fen: FEN_A, multipv: 1 });
-    expect(provider.snapshot().iterations).toEqual([]);
+    const depths = [];
+    provider.watch(() => depths.push(provider.snapshot().current_depth));
+    await provider.open({ fen: FEN_A, multipv: 1 });
+    fake.emit("info depth 3 score cp 10 pv e2e4");
+    fake.emit("info depth 4 score cp 12 pv e2e4");
+    fake.emit("info depth 5 score cp 14 pv e2e4");
+    fake.emit("bestmove e2e4");
+    // Each depth wakes the consumer as it arrives, so a panel can deepen its rows in place.
+    expect(depths).toEqual([3, 4, 5, 5]);
+    provider.watch(null);
+    fake.emit("info depth 6 score cp 16 pv e2e4");
+    expect(depths).toEqual([3, 4, 5, 5]);
   });
 
-  it("restricts the root moves with searchmoves when given candidates", async () => {
-    const { provider, fake } = makeProvider();
+  it("restricts the root moves with searchmoves when given candidates", async () => {    const { provider, fake } = makeProvider();
     await provider.open({ fen: FEN_A, multipv: 3, searchmoves: ["e2e4", "d2d4", "bogus", "g1f3"] });
     expect(fake.posted).toContain("setoption name MultiPV value 3");
     expect(fake.posted).toContain("go depth 18 searchmoves e2e4 d2d4 g1f3");

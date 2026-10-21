@@ -1,5 +1,4 @@
 import { expect, it, vi } from "vitest";
-import { analyzeTiered } from "./engine/tiered-analysis.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -74,20 +73,23 @@ it("switching accounts during classify-save releases the analysis job without re
   const bobAnalysis = { game_id: "bob-game" };
   const runButton = { disabled: false };
   const appState = {};
-  const jobToast = {
+  const notices = {
     isBusy: () => busy, startJob: vi.fn(() => { busy = true; }),
     updateJob: vi.fn(), lockJob: vi.fn(),
     cancelJob: vi.fn(() => { busy = false; }), failJob: vi.fn(), completeJob: vi.fn(),
   };
   const deps = {
-    appState, jobToast, currentOwnerId: () => owner,
-    isBrowserEngineAvailable: () => true, requireSignIn: () => true,
+    appState, notices, currentOwnerId: () => owner,
+    isBrowserEngineAvailable: () => true, ENGINE_ID: "sf-test", requireSignIn: () => true,
     document: { getElementById: (id) => id === "pgn-input" ? { value: "1. e4" } : runButton },
     invalidateAnalysisSource: () => 1, analysisRecallSeq: 1,
     hideAnalysisHandoff: vi.fn(), loadPgnIntoAnalyze: async () => true,
     engineLifecycleMark: vi.fn(), renderImportPicker: vi.fn(), maiaAnalysisEnabled: () => false,
     analysisStore: async () => ({ analyzeGame: async () => new Map([["fen", { score_cp: 0 }]]) }),
-    analyzeTiered,
+    effectiveStockfishDepth: () => 12,
+    createEngineAnalysisRun: () => ({ profile: () => ({ net: "big" }), done: vi.fn() }),
+    readyIfCached: async () => {},
+    engineIdentity: () => "sf-test",
     ensureAnalyzeView: async () => ({ liveEvalChart: () => () => {} }),
     engineModule: { analyzeGamePositions: async () => new Map([["fen", { score_cp: 0 }]]) },
     postJson: vi.fn(async (path) => {
@@ -101,15 +103,14 @@ it("switching accounts during classify-save releases the analysis job without re
   };
   const start = source.indexOf("async function runAnalysis(");
   const runCode = source.slice(start, source.indexOf("function renderImportPicker(", start))
-    .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)")
-    .replace('await import("../engine/tiered-analysis.js")', "({ analyzeTiered })");
+    .replace('import("./engine/game-analyzer.js")', "Promise.resolve(engineModule)");
   attachFinish(deps);
   const run = new Function(...Object.keys(deps), `${runCode}\nreturn runAnalysis;`)(...Object.values(deps));
   await run();
   expect(deps.postJson).toHaveBeenCalledWith("/api/analyze/classify-save", expect.any(Object));
   expect(deps.clearCheckpoint).toHaveBeenCalledWith("alice-game", "alice", expect.any(String));
   expect(appState.analysis).toBe(bobAnalysis);
-  expect(jobToast.failJob).not.toHaveBeenCalled();
+  expect(notices.failJob).not.toHaveBeenCalled();
   expect(busy).toBe(false);
   expect(runButton.disabled).toBe(false);
 });

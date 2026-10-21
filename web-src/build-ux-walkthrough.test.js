@@ -109,7 +109,9 @@ describe("Generate dialog", () => {
     expect(helpers.generateEstimateRange({ ...base, mainThreshold: 0.05 }).high).toBeGreaterThan(range.high);
     const deep = helpers.generateEstimateRange({ ...base, plyDepth: 11 }).high;
     expect(helpers.generateEstimateRange({ ...base, plyDepth: 11, branchThreshold: 0.5 }).high).toBeLessThan(deep);
-    expect(helpers.generateEstimateText(base)).toMatch(/^About \d+–\d+ new moves$/);
+    // The range is the value; the field's own "new moves" unit names it, so the
+    // text is figures only (they carry tabular-nums in the dialog).
+    expect(helpers.generateEstimateText(base)).toMatch(/^\d+–\d+$/);
   });
 
   it("has no presets, no own-side alternatives and nothing folded away", () => {
@@ -119,6 +121,30 @@ describe("Generate dialog", () => {
     expect(fields).not.toContain("depth_preset");
     expect(fields).not.toContain("own_color");
     expect(app).not.toContain("GEN_DEPTH_PRESETS");
+  });
+
+  it("groups the knobs and puts the estimate in a stat, at the bottom", () => {
+    const fields = extractByMarker("function generateDialogFields() {");
+    const names = [...fields.matchAll(/name: "(\w+)"/g)].map((m) => m[1]);
+    // Three knobs shape the tree, two shape the engine — two named runs.
+    expect(fields.match(/group: "Coverage"/g)).toHaveLength(3);
+    expect(fields.match(/group: "Engines"/g)).toHaveLength(2);
+    // The estimate is last, and it is a stat (not a note) so it can be emphasised.
+    const estimateIdx = fields.indexOf('name: "estimate"');
+    expect(names[names.length - 1]).toBe("estimate");
+    expect(fields.slice(estimateIdx)).toContain('type: "stat"');
+    expect(fields.slice(estimateIdx)).toContain('unit: "new moves"');
+    expect(fields).not.toMatch(/name: "estimate"[\s\S]{0,120}type: "note"/);
+  });
+
+  it("repaints only the range figure, and keeps the reuse caveat on it", () => {
+    const open = extractByMarker("async function generateFromCurrentNode() {");
+    expect(open).toContain("fields: generateDialogFields(),");
+    expect(open).toContain('\'[data-note="estimate"] b\'');
+    // The stat holds the unit as a span, so writing textContent must not target
+    // the whole row (it would drop "new moves").
+    expect(open).not.toContain("overlay.querySelector('[data-note=\"estimate\"]').textContent");
+    expect(open).toContain('"Fewer where your repertoire already has the moves"');
   });
 });
 
@@ -143,7 +169,9 @@ describe("Move counts (P2-4)", () => {
   it("uses the same 'to train' wording on the Library row and the Repertoire header", () => {
     expect(dashboard).toContain("to train`");
     expect(dashboard).not.toContain("trainable move");
-    expect(app).toContain("` · ${train} to train`");
+    // The Repertoire's count is a caption on the repertoire's name, and it
+    // says "to train" exactly as the Library row does.
+    expect(app).toContain('${train} to train.`');
   });
 });
 
@@ -192,6 +220,37 @@ describe("Move delete shows one notice, beside the tree (P1-1)", () => {
     // The undo card sits in the tree column, before the Explorer dock.
     expect(html.indexOf('id="build-undo"')).toBeLessThan(html.indexOf('id="build-inspector"'));
   });
+
+  it("takes the deleted comment out of the position trail with the move", () => {
+    // The trail under the breadcrumbs shows the current move's comment. A delete
+    // that lands on the current move selects its parent, so the stale paragraph
+    // has to go with it: the path repaint alone left the removed move's comment
+    // on screen (and a delete button click stays on the button, so nothing else
+    // repainted the trail either).
+    const del = extractByMarker("async function deleteBuildNodeLocal(nodeId) {");
+    // Parent selection and the view-heads repaint both go through hooks.build
+    // (the shell creates them after build-entry.js binds).
+    const parentSelect = del.indexOf("await hooks.build.selectBuildNode(parentId);");
+    expect(parentSelect).toBeGreaterThan(-1);
+    expect(del.indexOf("hooks.build.syncViewHeads()", parentSelect)).toBeGreaterThan(parentSelect);
+  });
+});
+
+describe("Notices report finished work in past tense", () => {
+  // The undo window opens only once the action has already been applied, so
+  // "will be removed" described something that had already happened.
+  const undoSites = ["deleteSavedAnalysis", "handleRepertoireContextAction"];
+  for (const fn of undoSites) {
+    it(`${fn} speaks past tense`, () => {
+      const body = extractByMarker(`function ${fn}(`);
+      expect(body).not.toMatch(/will be/);
+    });
+  }
+  it("keeps confirm bodies that describe a consequence that has not happened", async () => {
+    // A confirm modal asks about the future, so it may stay in future tense.
+    const team = extractByMarker("async function deleteTeam(teamId, name) {");
+    expect(team).toContain("will be removed");
+  });
 });
 
 describe("Repertoire opens immediately with a loading state (P2-5)", () => {
@@ -200,12 +259,38 @@ describe("Repertoire opens immediately with a loading state (P2-5)", () => {
     expect(edit.indexOf("setBuildLoading(true)")).toBeLessThan(edit.indexOf("await api("));
     const loading = extractByMarker("function setBuildLoading(on, { restore = true } = {}) {");
     expect(loading).toContain('switchView("build", { fromUrl: true })');
-    expect(loading).toContain("tree-skeleton");
+    expect(loading).toContain("skeleton-row");
+    expect(loading).toContain("skeleton-bar");
   });
 });
 
 describe("Selected tree move keeps contrast (P3-10)", () => {
-  it("overrides the opponent-move grey on the selected pill", () => {
+  it("overrides the opponent-move grey on the selected move", () => {
+    // Analyze's filled cell sets a light ink on the accent.
     expect(css).toMatch(/\.mtree-move\.is-current\.is-opp,[\s\S]{0,80}\{\s*color: var\(--accent-ink\)/);
+    // Build's calmer selected move is --accent-strong on --accent-soft, the
+    // same pair the fork chip's active state uses, so the opponent grey (and a
+    // disabled move's fade) still never reaches the selected token.
+    expect(css).toMatch(/#view-build \.mtree-move\.is-current \{[^}]*background: var\(--accent-soft\);[^}]*color: var\(--accent-strong\)/);
+  });
+});
+
+describe("Next-move count names itself (2026-10-19 critique)", () => {
+  it("reads \"2 options\", not a bare number after the label", () => {
+    // A lone count beside "Next move" read as "the next move is 2".
+    const view = readFileSync(join(root, "views", "build.js"), "utf8");
+    expect(view).toMatch(/<b>Next move<\/b><span class="count">\$\{countOf\(ctx\.options\.length, "option"\)\}/);
+    expect(view).toContain('import { countOf } from "../plural.js";');
+  });
+
+  it("groups the node menu by seams, not by uppercase captions", () => {
+    // Five 10px uppercase captions, two of them over a single item, labelled
+    // what the item already said.
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    expect(session).not.toMatch(/class="context-section">\$\{section\.title\}/);
+    const menu = session.slice(session.indexOf("function openNodeContextMenu("));
+    const markup = menu.slice(menu.indexOf("menu.innerHTML"), menu.indexOf("menu.hidden = false"));
+    expect(markup).toMatch(/class="menu-sep-before"/);
+    expect(markup).not.toMatch(/context-section|Position|Danger/);
   });
 });

@@ -4,11 +4,12 @@ import {
   trainAttemptId, ungroupAttempts,
 } from "../sync-queue.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
+import { rebaseBuildOps } from "../build-revision.js";
 
-let appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision, rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
+let api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision, rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
 
 export function createSyncController(deps) {
-  ({ appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision, rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
+  ({ api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision, rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
   const buildState = {
     get timer() { return appState.buildFlushTimer; },
     set timer(value) { appState.buildFlushTimer = value; },
@@ -26,7 +27,7 @@ export function createSyncController(deps) {
       }
     } };
   buildQueue = createSyncQueue({ ...common, key: "build", state: () => buildState,
-    hasWork: () => appState.build && (appState.buildPending.length || appState.buildPendingDeletes.length),
+    hasWork: () => appState.buildPending.length || appState.buildPendingDeletes.length,
     idleMs: 2000, flush: flushBuildMoves });
   trainQueue = createSyncQueue({ ...common, key: "train", state: () => appState.trainSync,
     hasWork: () => appState.trainSync.pending.length || appState.trainSync.dirty,
@@ -42,10 +43,14 @@ function scheduleBuildFlush() {
 }
 
 function flushBuildMoves(durableCheckpoint, ownsQueue) {
+  // The open tree first, then any other repertoire's queued edits, which save
+  // without being shown. Edits made during the request stay queued.
+  const open = appState.build?.repertoire_id;
+  const repertoireId = hasPendingBuildOpsFor(open)
+    ? open
+    : (appState.buildPending[0] || appState.buildPendingDeletes[0]).repertoire_id;
   const buildCurrent = captureBuildContext();
-  const isCurrent = () => ownsQueue() && buildCurrent();
-  // Drain this repertoire only; edits made during the request stay queued.
-  const repertoireId = appState.build.repertoire_id;
+  const isCurrent = () => ownsQueue() && buildCurrent() && appState.build?.repertoire_id === repertoireId;
   const batch = appState.buildPending.filter((m) => buildOpMatchesRepertoire(m, repertoireId));
   appState.buildPending = appState.buildPending.filter(
     (m) => !buildOpMatchesRepertoire(m, repertoireId),
@@ -65,20 +70,14 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       appState.buildPendingDeletes.push(...deleteBatch.splice(i, 1));
     }
   }
-  const deferredCount = [...appState.buildPending, ...appState.buildPendingDeletes]
-    .filter((op) => !buildOpMatchesRepertoire(op, repertoireId)).length;
-  if (deferredCount) {
-    setStatus(
-      `${deferredCount} edit${deferredCount === 1 ? "" : "s"} for another repertoire kept on this device — open that repertoire to save ${deferredCount === 1 ? "it" : "them"}.`,
-    );
-  }
+  const hasBuildWork = () => appState.buildPending.length || appState.buildPendingDeletes.length;
   setBuildSync("syncing");
 
   return (async () => {
     let acknowledged = false;
     try {
       await durableCheckpoint;
-      if (!isCurrent()) return false;
+      if (!ownsQueue()) return false;
       // Deletes go FIRST: replaying a just-deleted move must create a fresh
       // node, not dedupe against the dying server one. A still-tmp id means the
       // node never reached the server (its pending add was cancelled) — drop it.
@@ -113,7 +112,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         // Those tmp-only deletes are resolved either way — tombstone them so a
         // second tab can't put them back in the durable queue.
         await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
-        if (hasPendingBuildOpsFor(repertoireId)) {
+        if (hasBuildWork()) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
@@ -154,34 +153,35 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       // hydrate needs a selection that exists in the authoritative payload; if the
       // user is sitting on a still-pending tmp node, pick a safe anchor now and
       // restore the tmp selection after we re-insert it below.
-      const payloadHasSelection = payload.nodes.some((n) => n.id === translatedSelection);
-      if (!isCurrent()) return true;
-      await hydrateBuild(payload, payloadHasSelection ? translatedSelection : null);
-      if (branchPick) appState.buildBranchChoiceId = branchPick;
+      if (isCurrent()) {
+        const payloadHasSelection = payload.nodes.some((n) => n.id === translatedSelection);
+        await hydrateBuild(payload, payloadHasSelection ? translatedSelection : null);
+        if (branchPick) appState.buildBranchChoiceId = branchPick;
 
-      reapplyPendingBuildNodes(stillPending, idMap);
-      // Subtrees deleted DURING the round-trip were resurrected by the hydrate
-      // (the server still had them) — prune them again; their delete ops are
-      // queued and flush next cycle.
-      reapplyPendingBuildDeletes();
+        reapplyPendingBuildNodes(stillPending, idMap);
+        // Subtrees deleted DURING the round-trip were resurrected by the hydrate
+        // (the server still had them) — prune them again; their delete ops are
+        // queued and flush next cycle.
+        reapplyPendingBuildDeletes();
 
-      // Restore the user's selection if it was a still-pending tmp node (now back
-      // in the tree after reapply) and hydrate couldn't land on it.
-      if (
-        !payloadHasSelection &&
-        appState.buildNodeById.has(prevSelection) &&
-        prevSelection !== appState.buildCurrentNodeId
-      ) {
-        await selectBuildNode(prevSelection);
+        // Restore the user's selection if it was a still-pending tmp node (now back
+        // in the tree after reapply) and hydrate couldn't land on it.
+        if (
+          !payloadHasSelection &&
+          appState.buildNodeById.has(prevSelection) &&
+          prevSelection !== appState.buildCurrentNodeId
+        ) {
+          await selectBuildNode(prevSelection);
+        }
       }
       buildQueue.resetRetry();
       persistOutbox();
-      if (hasPendingBuildOpsFor(repertoireId)) {
+      if (hasBuildWork()) {
         setBuildSync("dirty");
         scheduleBuildFlush();
       } else {
         await clearOutboxWhenQuiescent();
-        if (!isCurrent()) return false;
+        if (!ownsQueue()) return false;
         setBuildSync("saved");
       }
       return true;
@@ -192,7 +192,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         // confirmed operations or misreport this as a failed network commit.
         persistOutbox();
         setStatusError(`Edits saved. Reload the repertoire to refresh it: ${error.message}`);
-        if (hasPendingBuildOpsFor(repertoireId)) {
+        if (hasBuildWork()) {
           setBuildSync("dirty");
           scheduleBuildFlush();
         } else {
@@ -209,7 +209,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
           deleteBatch,
           repertoireId,
         );
-        appState.buildRejected = (appState.buildRejected || []).concat(rejected);
         if (idMap && Object.keys(idMap).length) {
           // Ops that landed mid-isolation have real ids now; the local tree and
           // any queued children must be reconciled against them (R-05).
@@ -221,23 +220,23 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
               m.node.parent_id = m.parentRef;
             }
           }
-          if (payload) {
+          if (payload && isCurrent()) {
             await hydrateBuild(payload, null);
             reapplyPendingBuildNodes(stillPending, idMap);
             reapplyPendingBuildDeletes();
           }
         }
+        // Rejected edits are reported here once and dropped: the server will
+        // never accept them, and there is nothing to review them with.
         await persistOutbox(settled);
         setStatusError(
           rejected.length
-            ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved and are kept for review. The rest saved.`
+            ? `${rejected.length} edit${rejected.length === 1 ? "" : "s"} could not be saved: ${rejected[0].message}`
             : error.message,
         );
-        if (hasPendingBuildOpsFor(repertoireId)) {
+        if (hasBuildWork()) {
           setBuildSync("dirty");
           scheduleBuildFlush();
-        } else if (appState.buildRejected.length) {
-          setBuildSync("rejected");
         } else {
           await clearOutboxWhenQuiescent();
           setBuildSync("saved");
@@ -248,18 +247,35 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       appState.buildPending = batch.concat(appState.buildPending);
       appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
       persistOutbox();
-      setStatus(describeSyncError(info, { count: inFlightCount }), info.kind === "conflict" ? "warning" : "info");
+      if (info.kind === "conflict") {
+        // The repertoire moved on elsewhere. Queued edits are move intents the
+        // server re-validates, so replay them on top of its current tree.
+        try {
+          const fresh = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
+          if (!ownsQueue()) return false;
+          if (isCurrent()) {
+            // hydrateBuild rebases the queue and puts the pending moves back.
+            const selection = appState.buildCurrentNodeId;
+            const kept = fresh.nodes.some((n) => n.id === selection);
+            await hydrateBuild(fresh, kept ? selection : null);
+            if (!kept && appState.buildNodeById.has(selection)) await selectBuildNode(selection);
+          } else {
+            rebaseBuildOps([...appState.buildPending, ...appState.buildPendingDeletes], repertoireId, fresh.revision);
+          }
+          persistOutbox();
+          setBuildSync("dirty");
+          buildQueue.retry(info);
+          return false;
+        } catch (_) {
+          // Could not load it either: back off like any other failed save.
+        }
+      }
+      setStatus(describeSyncError(info, { count: inFlightCount }));
       if (info.pauseForAuth) {
         // R-04: 401 needs a sign-in, not a backoff timer. Stop sending until
         // loadSignedInWorkspace re-arms the flush after sign-in.
         appState.syncPausedForAuth = true;
         setBuildSync("blocked");
-        return false;
-      }
-      if (info.kind === "conflict") {
-        // D-02: base revision was stale — the draft stays queued; the user
-        // reconciles (reload the tree) and the queue replays after it.
-        setBuildSync("conflict");
         return false;
       }
       setBuildSync("error");
@@ -593,7 +609,7 @@ function beaconFlushTrain() {
 function outboxSnapshot() {
   return {
     build: { pending: appState.buildPending, pendingDeletes: appState.buildPendingDeletes,
-      idMap: appState.buildIdMap, rejected: appState.buildRejected || [] },
+      idMap: appState.buildIdMap },
     train: { pending: appState.trainSync.pending, rejected: appState.trainRejected || [] },
   };
 }
@@ -616,15 +632,13 @@ async function restoreOutbox() {
   const owner = currentOwnerId(), generation = appState.ownerGeneration;
   const outbox = await loadDurableOutbox(owner);
   if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) return null;
-  const rejectedCount =
-    (outbox.build.rejected || []).length + (outbox.train.rejected || []).length;
+  const rejectedCount = (outbox.train.rejected || []).length;
   if (!outboxHasWork(outbox) && !rejectedCount) return null;
   appState.buildPending = outbox.build.pending.concat(appState.buildPending);
   appState.buildPendingDeletes = outbox.build.pendingDeletes.concat(
     appState.buildPendingDeletes,
   );
   Object.assign(appState.buildIdMap, outbox.build.idMap);
-  appState.buildRejected = (outbox.build.rejected || []).concat(appState.buildRejected || []);
   appState.trainRejected = (outbox.train.rejected || []).concat(appState.trainRejected || []);
   appState.trainSync.pending = outbox.train.pending.concat(appState.trainSync.pending);
   if (appState.trainSync.pending.length) {
@@ -645,10 +659,13 @@ async function flushAllPendingForSignOut() {
   appState.buildFlushTimer = null;
   clearTimeout(appState.trainSync.timer);
   appState.trainSync.timer = null;
-  await Promise.all([
-    buildQueue.flush().catch(() => false),
-    trainQueue.flush().catch(() => false),
-  ]);
+  // One repertoire per Build flush: keep going while each one saves.
+  const drainBuild = async () => {
+    while (appState.buildPending.length || appState.buildPendingDeletes.length) {
+      if (!(await buildQueue.flush().catch(() => false))) return;
+    }
+  };
+  await Promise.all([drainBuild(), trainQueue.flush().catch(() => false)]);
   await persistOutbox();
   return {
     pending:

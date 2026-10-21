@@ -1,6 +1,6 @@
 [
  {
-  "prose": "Blunder. Bxd4 loses two pieces for two pawns after 16...e5 17.Qc2 exd4. Nxd4 was the right way to take back.",
+  "prose": "Blunder. Bxd4 allows 16...e5, when the pawn on e5 attacks the bishop on d4. Nxd4 was the move.",
   "input": {
    "ply": 31,
    "mover": "white",
@@ -118,7 +118,7 @@
   }
  },
  {
-  "prose": "Blunder. Bxd4 misses e5, which wins a bishop for a pawn (16...e5 17.Qc2 exd4).",
+  "prose": "Blunder. Bxd4 misses e5, which attacks the bishop on d4.",
   "input": {
    "ply": 32,
    "mover": "black",
@@ -452,7 +452,7 @@
   }
  },
  {
-  "prose": "Blunder. Rc1 allows 28...Nxc4 and a bishop-for-knight trade. You were clearly better; now it's level. Be2 was the move, keeping you clearly better.",
+  "prose": "Blunder. Rc1 allows 28...Nxc4. Be2 was the move.",
   "input": {
    "ply": 55,
    "mover": "white",
@@ -1210,7 +1210,7 @@
   }
  },
  {
-  "prose": "Blunder. Rc6 allows 27...Ne5, which hits the rook on c6 and the bishop on f3. Black is clearly better now. Rd7 was the move, keeping it level.",
+  "prose": "Blunder. Rc6 allows 27...Ne5, when the knight on e5 attacks the bishop on f3 and the rook on c6 at once. Rd7 was the move.",
   "input": {
    "ply": 53,
    "mover": "white",
@@ -1538,7 +1538,7 @@
   }
  },
  {
-  "prose": "Blunder. Rd4 allows 41.Rxd4 and a trade into opposite-coloured bishops, usually a draw. Black was clearly better; now it's level. Kf8 was the move, winning a pawn.",
+  "prose": "Blunder. Rd4 is not the best move. Kf8 was the move: it comes out a pawn better (40...Kf8 41.Be6 Rxa4).",
   "input": {
    "ply": 80,
    "mover": "black",

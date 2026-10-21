@@ -27,6 +27,12 @@ export function knownInviteUrl(teamId, status) {
   return entry.url;
 }
 
+// A link minted earlier in this browser session keeps its created_at: GET
+// status reports the row's own timestamp, which a fresh mint leaves unset.
+export function inviteCreatedAt(teamId, status) {
+  return status?.created_at || (teamId ? sessionInviteUrls.get(teamId)?.createdAt : null) || null;
+}
+
 // Dates read "Sep 30" in the English UI whatever the browser locale (Scout and
 // Games already pin "en"; a zh-TW browser showed "9月30日" here).
 export function formatDay(iso) {
@@ -40,29 +46,18 @@ export function formatDay(iso) {
 }
 
 // Pure view model for the dialog: what it says and which buttons it offers.
-// Copy is the primary action whenever there is a link to copy; Revoke is always
-// a secondary (quiet danger) action.
-export function inviteDialogModel({ status, url }) {
-  const exists = !!(status && status.exists);
-  if (!exists) {
-    return {
-      state: "none",
-      note:
-        "No invite link yet. Generate one to share — anyone signed in who opens it joins the team as a member.",
-      url: null,
-      actions: [
-        { id: "done", label: "Close", kind: "ghost" },
-        { id: "generate", label: "Generate link", kind: "primary" },
-      ],
-    };
-  }
-  const created = formatDay(status.created_at);
-  const since = created ? ` (created ${created})` : "";
+// The dialog carries one line of live status and nothing else standing — what a
+// link is for belongs in the button/label; what it does ("the old one stops
+// working") belongs in the confirmation.
+//
+// Copy is the primary action whenever there is a link to copy; Revoke is
+// always a secondary (quiet danger) action.
+export function inviteDialogModel({ status, url, teamId = null }) {
   if (url) {
+    const since = formatDay(inviteCreatedAt(teamId, status));
     return {
       state: "known",
-      note:
-        `This invite link is active${since}. Anyone signed in who opens it joins the team as a member.`,
+      note: since ? `Invite link active · created ${since}` : "Invite link active",
       url,
       actions: [
         { id: "revoke", label: "Revoke link", kind: "danger-quiet" },
@@ -72,16 +67,26 @@ export function inviteDialogModel({ status, url }) {
       ],
     };
   }
+  if (status && status.exists) {
+    const since = formatDay(inviteCreatedAt(teamId, status));
+    return {
+      state: "hidden",
+      note: since ? `Invite link active · created ${since}` : "Invite link active",
+      url: null,
+      actions: [
+        { id: "revoke", label: "Revoke link", kind: "danger-quiet" },
+        { id: "done", label: "Close", kind: "ghost" },
+        { id: "generate", label: "Generate new link", kind: "primary" },
+      ],
+    };
+  }
   return {
-    state: "hidden",
-    note:
-      `An invite link is active${since}. For security it's only shown once, when it's generated — ` +
-      "if you no longer have it, generate a new link (the current one will stop working).",
+    state: "none",
+    note: "No invite link yet",
     url: null,
     actions: [
-      { id: "revoke", label: "Revoke link", kind: "danger-quiet" },
       { id: "done", label: "Close", kind: "ghost" },
-      { id: "generate", label: "Generate new link", kind: "primary" },
+      { id: "generate", label: "Generate link", kind: "primary" },
     ],
   };
 }
@@ -98,7 +103,7 @@ export function inviteDialogBodyHtml(model) {
   return html`
         <div class="modal-title">Team invite link</div>
         <div class="modal-body">
-          <p class="modal-note muted" data-invite-note>${model.note}</p>
+          ${model.state === "known" && model.note ? html`<p class="modal-note muted" data-invite-note>${model.note}</p>` : ""}
           ${field}
         </div>
         <div class="modal-footer">${buttons}</div>`;
@@ -123,7 +128,7 @@ export async function runInviteDialog(teamId, {
   } catch (error) {
     ui.close();
     setStatusError(error.message);
-    return;
+    return status;
   }
   let url = knownInviteUrl(teamId, status);
   const copy = async () => {
@@ -136,9 +141,11 @@ export async function runInviteDialog(teamId, {
       return false; // clipboard blocked — the link stays visible to copy by hand
     }
   };
+  const publish = () => ui.status?.(status);
   try {
     for (;;) {
-      ui.render(inviteDialogModel({ status, url }));
+      ui.render(inviteDialogModel({ status, url, teamId }));
+      publish();
       const action = await ui.nextAction();
       if (action === "copy") {
         if (!(await copy())) ui.selectUrl?.();
@@ -162,12 +169,16 @@ export async function runInviteDialog(teamId, {
           continue;
         }
         url = `${origin}${payload.url}`;
+        // The mint instant is known; remember it so the dialog dates the link
+        // even if the status read below lands before the row's timestamp.
+        const mintedAt = new Date().toISOString();
         try {
           status = await api(path);
         } catch (_) {
           status = { exists: true, created_at: null, expires_at: payload.expires_at ?? null };
         }
-        rememberInviteUrl(teamId, url, status.created_at || null);
+        rememberInviteUrl(teamId, url, status.created_at || mintedAt);
+        publish();
         await copy();
         continue;
       }
@@ -185,6 +196,7 @@ export async function runInviteDialog(teamId, {
           status = { exists: false };
           url = null;
           forgetInviteUrl(teamId);
+          publish();
         } catch (error) {
           setStatusError(error.message);
         }
@@ -195,10 +207,13 @@ export async function runInviteDialog(teamId, {
   } finally {
     ui.close();
   }
+  // The last KNOWN status, returned so the caller's line can follow a mint or
+  // revoke. A fresh read here could land before the server commits the change.
+  return status;
 }
 
 // DOM implementation of `ui` for runInviteDialog.
-export function createInviteDialogUi({ activateModal }) {
+export function createInviteDialogUi({ activateModal, onInviteStatus = () => {} }) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   // The name lives on the persistent dialog: replacing its body after a
@@ -223,6 +238,11 @@ export function createInviteDialogUi({ activateModal }) {
   });
   let activated = false;
   return {
+    // The caller re-reads the team while this dialog is open; its fresh link
+    // status is the one the card's line must show.
+    status(status) {
+      onInviteStatus(status);
+    },
     render(model) {
       if (!overlay.isConnected) {
         // Attached on first render, so a failed status fetch never flashes an empty modal.

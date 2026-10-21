@@ -432,7 +432,7 @@ def test_import_package_obeys_free_repertoire_quota(client):
         headers=csrf_headers(client),
     )
     assert response.status_code == 402
-    assert "Free plan" in response.json()["detail"]
+    assert "Delete one to add another" in response.json()["detail"]
 
 
 def test_imported_repertoire_is_owner_isolated(client):
@@ -512,7 +512,7 @@ def test_import_pgn_obeys_free_repertoire_quota(client):
         headers=csrf_headers(client),
     )
     assert response.status_code == 402
-    assert "Free plan" in response.json()["detail"]
+    assert "Delete one to add another" in response.json()["detail"]
 
 
 def test_build_response_lost_retries_recover_add_ids_and_delete_receipt(client):

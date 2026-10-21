@@ -6,10 +6,9 @@ import { formatEngineEval } from "../engine-eval.js";
 // menus and Generate. Lazy-loaded by app.js with the Build view. Saving edits (the Build
 // outbox and its flushes) stays in app.js so it can run before this loads and on unload.
 
-import {
-  _buildGenReady, buildDockTab, buildView, coverageView, explorerClient, explorerDb,
-  explorerModule,
-} from "../app.js";
+import { _buildGenReady, buildView, coverageView } from "../app.js";
+import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
+import { rebaseBuildOps } from "../build-revision.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
@@ -23,12 +22,13 @@ let activeViewName, api, appState, boardAfterMove, boardInfo, boards, BROWSER_EN
   effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark, engineWidget,
   ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
   explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
-  hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
-  openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
-  reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
-  renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
-  sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError, showInputModal,
-  START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH, switchView, syncWorkspaceUrl;
+  hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
+  openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+  preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+  refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
+  requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
+  setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
+  switchView, syncWorkspaceUrl;
 
 export function createBuildSession(deps) {
   ({
@@ -38,21 +38,21 @@ export function createBuildSession(deps) {
     downloadText, effectiveMaiaRating, effectiveStockfishDepth, engineLifecycleMark,
     engineWidget, ensureBuildView, ensureExplorerClient, EXPLORER_EVAL_MAX_LINES,
     explorerDrawerOpen, explorerEvalEngine, handleRepertoireContextAction, hardFlushBuild,
-    hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, jobToast, normalizeUci,
-    openSettingsSection, optimisticBoardMove, postJson, preloadBuildGen, queueBuildAdd,
-    reapplyPendingBuildDeletes, reapplyPendingBuildNodes, refreshDashboardRepertoires,
-    renderBuilderTree, renderBuildRepHeader, renderBuildSync, requireSignIn, resolveBuildId,
-    sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus, setStatusError,
-    showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH, switchView,
-    syncWorkspaceUrl,
+    hasPendingBuildOpsFor, invalidateBook, isBuildReadOnly, notices, normalizeUci,
+    openSettingsSection, optimisticBoardMove, OUTBOX_TAB_ID, postJson,
+    preloadBuildGen, queueBuildAdd, reapplyPendingBuildDeletes, reapplyPendingBuildNodes,
+    refreshDashboardRepertoires, renderBuilderTree, renderBuildRepHeader, renderBuildSync,
+    requireSignIn, resolveBuildId, sameFenPosition, scheduleBuildFlush, setBuildSync, setStatus,
+    setStatusError, showInputModal, START_FEN, STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH,
+    switchView, syncWorkspaceUrl,
   } = deps);
   initBuildDockLayout();
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
-    closeNodeContextMenu, createRepertoirePrompt, generateFromCurrentNode, hydrateBuild,
+    closeNodeContextMenu, createRepertoirePrompt, fitBuildDock, generateFromCurrentNode, hydrateBuild,
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
-    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel, saveBuildAnnotations,
-    scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
+    paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
+    saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
   };
 }
 
@@ -89,6 +89,7 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
+  rebaseBuildOps([...appState.buildPending, ...appState.buildPendingDeletes], payload.repertoire_id, payload.revision);
   // Derived analysis must match this exact local tree, including optimistic edits.
   coverageView?.sync();
   invalidateBook();
@@ -210,6 +211,13 @@ async function renameRepertoire() {
   }
 }
 
+// The paint rule lives in the build view because it reads appState, exactly like
+// renderBuildBranchBar below.
+function paintGenerateVisibility() {
+  if (buildView) return buildView.paintGenerateVisibility();
+  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
+}
+
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
   appState.buildCurrentNodeId = nodeId;
@@ -223,17 +231,25 @@ async function selectBuildNode(nodeId) {
     lastMove: node.uci,
   });
   boards.build.setAnnotations(node.arrows || [], node.circles || []);
+  // The board caption is the position, not the repertoire: the panel head above
+  // already names the repertoire and its side, and repeating it here spent the
+  // caption on the one thing on screen the reader already knows.
   const label =
     node.depth === 0
-      ? `${appState.build.name} · ${appState.build.color}`
+      ? "Start"
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
   renderBuilderTree();
+  paintGenerateVisibility();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }
 let explorerTimer = null;
 let explorerSeq = 0;
+// The opening the Explorer's rows belong to. It is a caption on the data, so
+// it rides the inspector's ⓘ tooltip and its popover: as a line of its own it
+// spent a row of the dock's short height saying what the rows already imply.
+let explorerOpeningName = "";
 
 // ---- Inspector dock: fold + drag-to-resize ---------------------------------
 // The seam between the move tree and the inspector is a drag handle; the height
@@ -241,7 +257,9 @@ let explorerSeq = 0;
 // layout convenience, so it lives in localStorage, never in synced prefs.
 const BUILD_DOCK_HEIGHT_KEY = "pf.buildDock.height";
 const BUILD_DOCK_FOLDED_KEY = "pf.buildDock.folded";
-const BUILD_DOCK_MIN = 150; // tabs + tools row + a couple of Explorer rows
+// Tabs + tools row + a couple of Explorer rows. Below this the dock is a tab
+// strip and the fold is the honest state, so it is the drag floor.
+const BUILD_DOCK_MIN = 150;
 const BUILD_DOCK_TREE_MIN = 90; // matches .tree-wrap min-height
 
 function readDockStore(key) {
@@ -274,11 +292,49 @@ function buildDockMaxHeight() {
   return Math.max(BUILD_DOCK_MIN, panel.clientHeight - others - BUILD_DOCK_TREE_MIN);
 }
 
-function applyBuildDockHeight(px) {
+// The dock's natural height: its own contents, capped by the tree's minimum.
+// The panel is a stack of head, trail, next move, line, inspector; when the
+// inspector is left to "the rest" (a 278px floor over 113px of Explorer rows)
+// the leftover shows up as a hole in one of the two panes. Sizing the dock to
+// its content gives every spare pixel to the tree, which is the workspace.
+function fitBuildDock() {
+  const dock = document.getElementById("build-inspector");
+  if (!dock) return;
+  // A height the user dragged is theirs: a repaint must not undo it.
+  if (dock.dataset.dockPinned) return;
+  const max = buildDockMaxHeight();
+  const was = dock.style.minHeight;
+  const basis = dock.style.flexBasis;
+  // Measure at the ceiling so a long Explorer is not reported as a short one.
+  dock.style.minHeight = `${max}px`;
+  dock.style.flexBasis = `${max}px`;
+  // A drawer is a block, so it never shrinks below its own content. The body's
+  // own height says nothing (it is the flex remainder), so its padding is added
+  // back to the drawers; the tab strip above it is what the dock adds.
+  const body = dock.querySelector(".dock-body");
+  const style = body && getComputedStyle(body);
+  const wanted = body
+    ? [...body.children].filter((c) => !c.hidden).reduce((sum, c) => sum + c.scrollHeight, 0)
+      + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
+      + (dock.offsetHeight - body.offsetHeight)
+    : dock.scrollHeight;
+  dock.style.minHeight = was;
+  dock.style.flexBasis = basis;
+  applyBuildDockHeight(Math.min(max, Math.max(BUILD_DOCK_MIN, wanted)));
+}
+
+// `pinned` is a height the user asked for: the dock keeps it while the window
+// changes. Without it the dock follows its content, and a taller Explorer on a
+// wider position grows it again (the rows are what the height is for).
+function applyBuildDockHeight(px, { pinned = false } = {}) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
+  dock.dataset.dockPinned = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
+  // Basis and floor together: the dock neither grows past what the tree does
+  // not need nor gets squashed under a long one (rule: .dock min-height 0).
   dock.style.flexBasis = `${clamped}px`;
+  dock.style.minHeight = `${clamped}px`;
   return clamped;
 }
 
@@ -298,6 +354,7 @@ function setBuildDockFolded(folded, { remember = true } = {}) {
   if (was === folded) return;
   // Folding parks the Explorer fetch and the row-eval worker; unfolding catches up.
   if (!folded && buildDockTab === "explorer") refreshExplorerPanel();
+  if (!folded) fitBuildDock();
   void explorerEvalEngine.sync();
 }
 
@@ -307,7 +364,7 @@ function initBuildDockLayout() {
   const fold = document.getElementById("build-dock-fold");
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
-  if (Number.isFinite(stored) && stored > 0) dock.style.flexBasis = `${Math.round(stored)}px`;
+  if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
@@ -315,18 +372,32 @@ function initBuildDockLayout() {
   });
 
   let drag = null;
+  // One render per animation frame: applyBuildDockHeight measures the panel and
+  // its siblings, so a naive per-event loop would interleave a read of the
+  // subtree we are writing to (layout thrash) and draw behind the pointer.
+  let frame = 0;
   const onMove = (event) => {
     if (!drag) return;
-    const want = drag.startHeight + (drag.startY - event.clientY);
-    // Dragging well below the minimum folds the dock; dragging back up unfolds.
-    if (want < BUILD_DOCK_MIN * 0.5) {
-      if (!buildDockFolded()) setBuildDockFolded(true);
-      return;
+    drag.want = drag.startHeight + (drag.startY - event.clientY);
+    if (!frame) {
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!drag) return;
+        // Dragging well below the minimum folds the dock; dragging back up unfolds.
+        if (drag.want < BUILD_DOCK_MIN * 0.5) {
+          if (!buildDockFolded()) setBuildDockFolded(true);
+          return;
+        }
+        if (buildDockFolded()) setBuildDockFolded(false);
+        drag.height = applyBuildDockHeight(drag.want, { pinned: true });
+      });
     }
-    if (buildDockFolded()) setBuildDockFolded(false);
-    drag.height = applyBuildDockHeight(want);
   };
   const onUp = () => {
+    if (frame) {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    }
     if (!drag) return;
     if (drag.height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, drag.height);
     drag = null;
@@ -340,13 +411,21 @@ function initBuildDockLayout() {
     if (event.button !== 0) return;
     event.preventDefault();
     const startHeight = buildDockFolded() ? BUILD_DOCK_MIN * 0.5 : dock.getBoundingClientRect().height;
-    drag = { startY: event.clientY, startHeight, height: null };
+    drag = { startY: event.clientY, startHeight, height: null, want: startHeight };
     resizer.classList.add("is-dragging");
     document.body.classList.add("is-resizing-dock");
+    // Pointer capture keeps the drag on the handle even when the pointer leaves
+    // it (or the window), which is what made the seam look undraggable.
+    try {
+      resizer.setPointerCapture(event.pointerId);
+    } catch { /* a synthetic pointer without an id: the window listeners still cover it */ }
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onUp);
   });
+  // The panel's height ceiling depends on the window, so a resize refits an
+  // unpinned dock (a pinned one keeps the height the user chose).
+  window.addEventListener("resize", () => fitBuildDock());
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
   resizer.addEventListener("keydown", (event) => {
     // Up/Down are the fork picker's keys elsewhere in Build; on the focused
@@ -367,7 +446,7 @@ function initBuildDockLayout() {
       if (delta > 0) setBuildDockFolded(false);
       return;
     }
-    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta);
+    const height = applyBuildDockHeight(dock.getBoundingClientRect().height + delta, { pinned: true });
     if (height) writeDockStore(BUILD_DOCK_HEIGHT_KEY, height);
   });
 }
@@ -445,15 +524,16 @@ function inspectorScopeText() {
   if (buildDockTab === "coverage") {
     return "Share of human play at your rating that reaches a move your prepared mainline does not answer, within the horizon. Pruned or unmodelled lines count as unchecked.";
   }
-  if (explorerDb !== "lichess") return "Master games.";
+  if (explorerDb !== "lichess") {
+    return explorerOpeningName ? `${explorerOpeningName}. Master games.` : "Master games.";
+  }
   const rating = effectiveMaiaRating();
   const buckets =
     explorerModule && typeof explorerModule.ratingBucketsFor === "function"
       ? explorerModule.ratingBucketsFor(rating)
       : null;
-  return buckets && buckets.length
-    ? `Players near ~${rating} (pool ${buckets.join(", ")}).`
-    : `Players near ~${rating}.`;
+  const pool = buckets && buckets.length ? `Players near ~${rating} (pool ${buckets.join(", ")}).` : `Players near ~${rating}.`;
+  return explorerOpeningName ? `${explorerOpeningName}. ${pool}` : pool;
 }
 
 function paintInspectorScope() {
@@ -526,12 +606,11 @@ async function refreshExplorerPanel() {
   // so the previous position is not still searched at full depth meanwhile.
   delete rows.dataset.fen;
   void explorerEvalEngine.sync();
-  const openingEl = document.getElementById("explorer-opening");
   if (keepRows) {
     rows.classList.add("is-stale");
     rows.setAttribute("aria-busy", "true");
   } else {
-    if (openingEl) openingEl.textContent = "";
+    explorerOpeningName = "";
     rows.classList.remove("is-stale");
     rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   }
@@ -550,7 +629,7 @@ async function refreshExplorerPanel() {
     if (seq !== explorerSeq || db !== explorerDb) return;
     rows.classList.remove("is-stale");
     rows.removeAttribute("aria-busy");
-    if (openingEl) openingEl.textContent = "";
+    explorerOpeningName = "";
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
@@ -579,8 +658,8 @@ function renderExplorerScope() {
 function renderExplorerRows(stats, fen) {
   const rows = document.getElementById("explorer-rows");
   if (!rows) return;
-  const openingEl = document.getElementById("explorer-opening");
-  if (openingEl) openingEl.textContent = stats.opening || "";
+  explorerOpeningName = stats.opening || "";
+  paintInspectorScope();
   rows.dataset.fen = fen || "";
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
@@ -609,7 +688,7 @@ function renderExplorerRows(stats, fen) {
         const seg = (cls, label, value) =>
           html`<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
         return html`
-    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}">
+    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}" style="--i:${stats.moves.indexOf(m)}">
       <button type="button" class="explorer-pick" data-explorer-pick aria-label="${action} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
@@ -629,6 +708,11 @@ function renderExplorerRows(stats, fen) {
   });
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
+  // The row count is the dock's height: a position with more replies gets a
+  // taller inspector instead of an inner scrollbar inside a fixed one. The rows
+  // paint on the next frame (their animation sets the height), so the fit is
+  // read after that paint rather than against the empty host.
+  requestAnimationFrame(() => fitBuildDock());
 }
 
 // Explorer bars are always full width: the W/D/B split is what a row is read
@@ -939,36 +1023,152 @@ async function onBuildBoardMove(moveUci) {
   }
 
   const node = buildProvisionalNode(parent, moveUci, after);
+  appState.buildJustAddedId = node.id;
   queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");
   scheduleBuildFlush();
 }
 
+// One create dialog at a time. The Library offers New repertoire in the page
+// head and the list header, so re-entering while the first dialog is still open
+// would ask twice and, on Enter, send two creates.
+let createRepertoireDialog = null;
+
 async function createRepertoirePrompt({ title, defaultName, openAfter = true, defaultColor = "white" } = {}) {
   if (!requireSignIn("Sign in to create a repertoire", "new-repertoire")) return null;
-  const result = await showInputModal({
+  if (createRepertoireDialog) return createRepertoireDialog;
+  createRepertoireDialog = showInputModal({
     title: title || "New repertoire",
     okLabel: "Create",
     fields: [
       { name: "name", label: "Name", default: defaultName || "New repertoire" },
       repertoireColorField(defaultColor),
     ],
+    // The optimistic empty repertoire is already on screen, so the form has
+    // done its job the moment Enter lands: dismiss it and let the board/tree
+    // carry the wait. The promise still resolves when the server answers, so a
+    // first Build move can play onto the real repertoire.
+    dismissOnSubmit: true,
+    onSubmit: async (result, close) => {
+      const name = (result.name || "").trim() || "New repertoire";
+      const color = normalizeRepertoireColor(result.color);
+      // When opening it, show an empty repertoire on the tab's own temp id right away, so the
+      // board and tree are there while the request runs. On failure the
+      // optimistic tree is dropped and the previous repertoire is restored.
+      const optimistic = openAfter ? optimisticEmptyRepertoire(name, color) : null;
+      try {
+        const payload = await postJson("/api/repertoires/create", { name, color });
+        await hydrateBuild(payload, payload.selected_node_id);
+        appState.trainingRepertoireId = payload.repertoire_id;
+        close(payload);
+        setStatus(`Created ${name}`);
+        await refreshDashboardRepertoires();
+      } catch (error) {
+        if (optimistic) rollbackOptimisticRepertoire(optimistic);
+        close(null);
+        setStatusError(error.message);
+      }
+    },
   });
-  if (!result) return null;
-  const name = (result.name || "").trim() || "New repertoire";
-  const color = normalizeRepertoireColor(result.color);
   try {
-    const payload = await postJson("/api/repertoires/create", { name, color });
-    await hydrateBuild(payload, payload.selected_node_id);
-    appState.trainingRepertoireId = payload.repertoire_id;
-    if (openAfter) switchView("build");
-    setStatus(`Created ${name}`);
-    await refreshDashboardRepertoires();
-    return payload;
-  } catch (error) {
-    setStatusError(error.message);
-    return null;
+    return (await createRepertoireDialog) || null;
+  } finally {
+    createRepertoireDialog = null;
+  }
+}
+
+// A local-only placeholder for a repertoire the server has not confirmed yet.
+// It mirrors the Build payload shape so the view, tree and board render the
+// empty repertoire with no loading state.
+function optimisticEmptyRepertoire(name, color) {
+  const previous = appState.build;
+  const rootFen = START_FEN;
+  const info = localBoardInfo(rootFen);
+  const rootId = `tmp-rep-${OUTBOX_TAB_ID}-${Date.now().toString(36)}`;
+  appState.build = {
+    repertoire_id: null,
+    revision: 0,
+    name,
+    color,
+    root_fen: rootFen,
+    selected_node_id: rootId,
+    writable: true,
+    optimistic: true,
+    nodes_total: 0,
+    summary: {},
+    health: {},
+    nodes: [{
+      id: rootId,
+      parent_id: null,
+      depth: 0,
+      san: null,
+      uci: null,
+      fen: rootFen,
+      fen_before: null,
+      fen_after: rootFen,
+      move_number: 1,
+      ply: 0,
+      move_side: null,
+      side_to_move: "white",
+      source: "manual",
+      is_mainline: false,
+      is_enabled: true,
+      is_prepared: false,
+      maia_probability: null,
+      engine_evaluation: null,
+      tags: [],
+      comment: "",
+      arrows: [],
+      circles: [],
+      mastery: null,
+    }],
+  };
+  appState.buildNodeById = new Map(appState.build.nodes.map((node) => [node.id, node]));
+  appState.buildCurrentNodeId = rootId;
+  appState.buildPending = [];
+  appState.buildPendingDeletes = [];
+  appState.buildSyncState = "saved";
+  if (boards.build) {
+    boards.build.setOrientation(color);
+    boards.build.setPosition({ fen: rootFen, legalMoves: info.legal_moves, lastMove: null });
+  }
+  switchView("build");
+  renderBuildRepHeader();
+  renderBuildSync();
+  renderBuilderTree();
+  syncWorkspaceUrl();
+  return { previous, rootId };
+}
+
+// Discard an unconfirmed optimistic repertoire and put the previous tree back.
+function rollbackOptimisticRepertoire({ previous, rootId }) {
+  if (!previous) {
+    appState.build = null;
+    appState.buildNodeById = new Map();
+    appState.buildCurrentNodeId = null;
+  } else {
+    appState.build = previous;
+    appState.buildNodeById = new Map(previous.nodes.map((node) => [node.id, node]));
+    // The open tree had selected the optimistic root: the previous repertoire's
+    // own node goes back under the cursor, exactly like hydrateBuild does.
+    appState.buildCurrentNodeId = previous.selected_node_id || previous.nodes[0]?.id || null;
+  }
+  if (boards.build && appState.build) {
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    if (node) {
+      boards.build.setOrientation(appState.build.color === "black" ? "black" : "white");
+      boards.build.setPosition({ fen: node.fen, legalMoves: [], lastMove: node.uci });
+    }
+  }
+  renderBuildRepHeader();
+  renderBuildSync();
+  renderBuilderTree();
+  syncWorkspaceUrl();
+  if (rootId && appState.build && appState.build.repertoire_id !== null) {
+    // The optimistic node's id never reaches the server; dropping it from the id
+    // map keeps a later flush from translating it onto a real node.
+    appState.buildIdMap?.delete?.(rootId);
   }
 }
 
@@ -1012,24 +1212,27 @@ function generateDialogFields() {
       default: GEN_DEFAULT_OWN_MOVES,
       min: 1,
       max: GEN_MAX_OWN_MOVES,
+      group: "Coverage",
     },
     {
       name: "main_pct",
-      label: "Cover mainline replies played at least (%)",
+      label: "Mainline replies, min %",
       hint: "Opponent moves below this share of human games are left out.",
       type: "number",
       default: GEN_DEFAULT_MAIN_PCT,
       min: 1,
       max: 50,
+      group: "Coverage",
     },
     {
       name: "branch_pct",
-      label: "Cover branch replies played at least (%)",
+      label: "Branch replies, min %",
       hint: "Same cut-off, applied inside side branches.",
       type: "number",
       default: GEN_DEFAULT_BRANCH_PCT,
       min: 1,
       max: 50,
+      group: "Coverage",
     },
     // Defaults to the player's own strength (Settings → Playing strength), so the
     // tree leans toward replies THEIR opponents actually play.
@@ -1041,6 +1244,7 @@ function generateDialogFields() {
       min: 600,
       max: 2600,
       step: 50,
+      group: "Engines",
     },
     // Per-position Stockfish search depth for this run; Settings holds the default.
     {
@@ -1050,8 +1254,11 @@ function generateDialogFields() {
       default: effectiveStockfishDepth(),
       min: STOCKFISH_MIN_DEPTH,
       max: STOCKFISH_MAX_DEPTH,
+      group: "Engines",
     },
-    { name: "estimate", label: "", type: "note" },
+    // Last in the body, above the buttons: the estimate of what this run adds.
+    // The label is the range the knobs produce; `unit` names it.
+    { name: "estimate", label: "", type: "stat", unit: "new moves" },
   ];
 }
 
@@ -1093,7 +1300,7 @@ function generateEstimateRange(options) {
 
 function generateEstimateText(options) {
   const { low, high } = generateEstimateRange(options);
-  return `About ${low}–${high} new moves`;
+  return `${low}–${high}`;
 }
 
 async function generateFromCurrentNode() {
@@ -1119,7 +1326,7 @@ async function generateFromCurrentNode() {
     setStatus("Open or create a repertoire first");
     return;
   }
-  if (jobToast.isBusy()) {
+  if (notices.isBusy()) {
     setStatus("Another job is already running", { severity: "warning" });
     return;
   }
@@ -1141,10 +1348,10 @@ async function generateFromCurrentNode() {
     okLabel: "Generate",
     fields: generateDialogFields(),
     onInput: (current, overlay) => {
-      const note = overlay.querySelector('[data-note="estimate"]');
-      if (!note) return;
-      note.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
-      note.title = "Fewer where your repertoire already has the moves";
+      const range = overlay.querySelector('[data-note="estimate"] b');
+      if (!range) return;
+      range.textContent = generateEstimateText(readGenerateOptions(current, { userToMove }));
+      range.title = "Fewer where your repertoire already has the moves";
     },
   });
   if (!values || !isCurrent()) return;
@@ -1155,7 +1362,7 @@ async function generateFromCurrentNode() {
   const generatedRepertoireId = appState.build.repertoire_id;
   const generatedBaseRevision = appState.build.revision;
   // Cancel model has two phases. GENERATION (local, before the POST) is
-  // cancellable: jobToast's Stop aborts the controller, the recursion checks the
+  // cancellable: notices's Stop aborts the controller, the recursion checks the
   // signal, and an explicit re-check below bails before the POST — so Stop here
   // persists NOTHING. SAVING (the apply-plan POST) is NOT cancellable: an atomic
   // server apply can't be un-persisted by aborting the fetch, so we remove the
@@ -1173,8 +1380,7 @@ async function generateFromCurrentNode() {
   let lastInitAt = 0;
   let nudgeTimer = null;
   try {
-    setStatus("Loading engines and generating moves");
-    jobToast.startJob({
+    notices.startJob({
       id: jobId,
       title: "Generating moves",
       tab: "build",
@@ -1184,10 +1390,10 @@ async function generateFromCurrentNode() {
     });
 
     nudgeTimer = setInterval(() => {
-      if (!jobToast.isBusy()) return;
+      if (!notices.isBusy()) return;
       if (Date.now() - lastInitAt < 2000) return; // let Maia cold-init progress own the toast
       progress.done = Math.min(progress.total - 3, progress.done + 1);
-      jobToast.updateJob({
+      notices.updateJob({
         current: progress.done,
         total: progress.total,
         message: progress.plannedMoves
@@ -1247,7 +1453,7 @@ async function generateFromCurrentNode() {
           progress.total - 2,
           Math.max(progress.done + 1, Math.ceil(added * 0.75)),
         );
-        jobToast.updateJob({
+        notices.updateJob({
           current: progress.done,
           total: progress.total,
           message: progress.plannedMoves
@@ -1261,11 +1467,11 @@ async function generateFromCurrentNode() {
       // nudge timer drive, so a chatty stream can't fake completion. Skipped while the Maia
       // cold-init owns the toast (its download % is more useful there).
       onEvent: (ev) => {
-        if (!jobToast.isBusy()) return;
+        if (!notices.isBusy()) return;
         if (Date.now() - lastInitAt < 2000) return;
         if (ev && ev.type === "search") {
           const base = progress.plannedMoves ? `+${progress.plannedMoves} moves · ` : "";
-          jobToast.updateJob({
+          notices.updateJob({
             message:
               ev.engine === "maia"
                 ? `${base}consulting Maia for human replies`
@@ -1282,28 +1488,28 @@ async function generateFromCurrentNode() {
         lastInitAt = Date.now();
         if (phase === "download") {
           const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
             message: `downloading Maia model · ${pct}%`,
           });
         } else if (phase === "cache") {
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
             message: "loading cached Maia model",
           });
         } else if (phase === "verify") {
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
             message: "verifying Maia model",
           });
         } else if (phase === "session") {
-          jobToast.updateJob({
+          notices.updateJob({
             current: 0,
             total: 1,
             phase: "maia-init",
@@ -1340,12 +1546,12 @@ async function generateFromCurrentNode() {
     // an atomic server apply, so the saving phase is NOT cancellable: remove the
     // Stop button (synchronously, before the awaited POST, so no late click can
     // land in the gap) rather than let the UI imply a cancel that wouldn't hold.
-    jobToast.updateJob({
+    notices.updateJob({
       current: progress.total,
       total: progress.total,
       message: "saving",
     });
-    jobToast.lockJob("saving — finishing up");
+    notices.lockJob("saving — finishing up");
     const payload = await postJson(
       "/api/build/generate/apply-plan",
       {
@@ -1358,10 +1564,7 @@ async function generateFromCurrentNode() {
     );
     if (isCurrent()) await hydrateBuild(payload, nodeId);
     const summary = payload.summary || {};
-    setStatus(
-      `Generated from ${appState.buildNodeById.get(nodeId)?.san || "node"} · +${summary.added_nodes || 0} new`
-    );
-    jobToast.completeJob({
+    notices.completeJob({
       title: "Generation done",
       message: `+${summary.added_nodes || 0} new moves`,
       onClick: () => switchView("build"),
@@ -1369,11 +1572,10 @@ async function generateFromCurrentNode() {
   } catch (error) {
     if (error && (error.name === "AbortError" || error.cancelled)) {
       // Aborted before the POST: nothing persisted, existing tree still rendered.
-      setStatus("Generation stopped");
-      jobToast.cancelJob("Generation stopped");
+      notices.cancelJob("Generation stopped");
     } else {
       setStatusError(error.message);
-      jobToast.failJob(error.message);
+      notices.failJob(error.message);
     }
   } finally {
     if (nudgeTimer) clearInterval(nudgeTimer);
@@ -1386,53 +1588,43 @@ function openNodeContextMenu(event, nodeId) {
   const node = appState.buildNodeById.get(nodeId);
   if (!node) return;
   const menu = document.getElementById("node-context-menu");
-  const sections = [
-    {
-      title: "Position",
-      items: [
-        ["generate", "Generate from here"],
-      ],
-    },
-    {
-      title: "Branch",
-      items: [
-        ["set_mainline", node.is_mainline ? "Mainline (active)" : "Set as mainline"],
-        ["mark_prepared", node.is_prepared ? "Unmark prepared" : "Mark prepared"],
-        ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
-      ],
-    },
-    {
-      title: "Annotate",
-      items: [
-        ["add_comment", "Comment..."],
-        ["add_tag", "Tag..."],
-      ],
-    },
-    {
-      title: "Copy / Export",
-      items: [
-        ["copy_fen", "Copy FEN"],
-        ["copy_line_pgn", "Copy line PGN"],
-        ["export_branch_pgn", "Export branch PGN"],
-      ],
-    },
-    {
-      title: "Danger",
-      items: [["delete", "Delete this move"]],
-    },
+  // Only what the page can act on and then show. Each entry here changes
+  // something the tree or the board then displays: the moves under this
+  // position, which child is its mainline, the note the tree dots, the text on
+  // the clipboard, or the move's own presence. Three entries went: "Mark
+  // prepared" (nothing in the tree draws it, and the server already marks your
+  // own moves; unmarking one only made Coverage call that line unknown), "Tag…"
+  // (no view reads a tag, and the comment is the note the tree does show) and
+  // "Export branch PGN" (the same serialization "Copy line PGN" puts on the
+  // clipboard). On the starting position Delete would be refused after the
+  // click, so it is not offered.
+  const groups = [
+    [["generate", "Generate from here"]],
+    [
+      ...(node.is_mainline || !node.parent_id ? [] : [["set_mainline", "Set as mainline"]]),
+      ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
+    ],
+    [["add_comment", node.comment ? "Edit comment…" : "Add comment…"]],
+    [
+      ["copy_fen", "Copy FEN"],
+      ["copy_line_pgn", "Copy line PGN"],
+    ],
+    ...(node.parent_id ? [[["delete", "Delete this move"]]] : []),
   ];
   const safeId = nodeId;
+  // Groups are told apart by a gap and a seam, not by five 10px uppercase
+  // captions: the items say what they do, and a caption over a one-item group
+  // ("Position", "Danger") is a second label for the same thing.
   menu.innerHTML =
-    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${sections
-    .map(
-      (section) =>
-        html`<div class="context-section">${section.title}</div>${section.items
-          .map(
-            ([action, label]) =>
-              html`<button type="button" data-action="${action}" data-node-id="${safeId}">${label}</button>`
-          )
-          }`
-    )}`;
+    html`<div class="context-target" data-testid="context-target">${nodeMenuHeading(node)}</div>${groups
+    .map((items, groupIndex) =>
+      items.map(([action, label], i) =>
+        html`<button type="button" role="menuitem" data-action="${action}" data-node-id="${safeId}"${groupIndex > 0 && i === 0 ? html` class="menu-sep-before"` : ""}>${label}</button>`
+      )
+    )
+    }`;
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Move actions");
   menu.hidden = false;
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();
@@ -1445,6 +1637,25 @@ function openNodeContextMenu(event, nodeId) {
       handleNodeContextAction(button.dataset.action, button.dataset.nodeId)
     );
   });
+  // Same keyboard behaviour as the repertoire's ⋯ menu: arrows walk the items,
+  // Home/End jump, Escape or Tab leaves. The menu opens on the pointer's
+  // position, so its first item takes focus.
+  const buttons = [...menu.querySelectorAll("button")];
+  menu.onkeydown = (event) => {
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const index = buttons.indexOf(document.activeElement);
+      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
+      buttons[next]?.focus();
+    } else if (event.key === "Escape" || event.key === "Tab") {
+      if (event.key === "Escape") event.preventDefault();
+      event.stopPropagation();
+      closeNodeContextMenu();
+    }
+  };
+  buttons[0]?.focus();
 }
 
 async function handleNodeContextAction(action, nodeId) {
@@ -1482,10 +1693,6 @@ async function handleNodeContextAction(action, nodeId) {
       await generateFromCurrentNode();
       return;
     }
-    if (action === "export_branch_pgn") {
-      await exportBuild("pgn", nodeId);
-      return;
-    }
     if (action === "copy_fen") {
       await navigator.clipboard.writeText(node.fen);
       setStatus("FEN copied");
@@ -1512,18 +1719,6 @@ async function handleNodeContextAction(action, nodeId) {
       });
       if (!result) return;
       value = result.comment;
-    } else if (action === "add_tag") {
-      const result = await showInputModal({
-        title: "Add tag",
-        okLabel: "Add",
-        fields: [{ name: "tag", label: "Tag name", default: "" }],
-      });
-      if (!result) return;
-      value = (result.tag || "").trim();
-      if (!value) {
-        setStatus("Tag is empty");
-        return;
-      }
     }
     const payload = await postJson("/api/build/action", {
       repertoire_id: appState.build.repertoire_id,
@@ -1539,7 +1734,9 @@ async function handleNodeContextAction(action, nodeId) {
 }
 
 function closeNodeContextMenu() {
-  document.getElementById("node-context-menu").hidden = true;
+  const menu = document.getElementById("node-context-menu");
+  menu.hidden = true;
+  menu.onkeydown = null;
   markNodeMenuTarget(null);
 }
 
@@ -1553,37 +1750,25 @@ function markNodeMenuTarget(nodeId) {
   });
 }
 
-async function exportBuild(format, nodeId = null) {
+// "Export PGN" in the repertoire's ⋯: the whole tree with its variations.
+// The per-move menu's one line export is a clipboard copy, not a download.
+async function exportBuild() {
   if (!appState.build) {
     setStatus("Open a repertoire first");
     return;
   }
   const repertoireId = appState.build.repertoire_id;
   const ownerId = currentOwnerId();
-  // Export reads server-side tree state (and may scope to a node id) — sync first.
+  // Export reads server-side tree state — sync first.
   try {
     await hardFlushBuild();
   } catch (error) {
     setStatusError(error.message);
     return;
   }
-  if (ownerId !== currentOwnerId()) return;
-  if (nodeId) nodeId = resolveBuildId(nodeId);
-  // Full tree-with-variations PGN for top-level "Export PGN" calls
-  if (format === "pgn" && !nodeId) {
-    const payload = await api(
-      `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
-    );
-    if (ownerId !== currentOwnerId()) return;
-    downloadText(payload.filename, payload.mime, payload.content);
-    setStatus(`Downloaded ${payload.filename}`);
-    return;
-  }
-  const payload = await postJson("/api/build/export", {
-    repertoire_id: repertoireId,
-    format,
-    node_id: nodeId,
-  });
+  const payload = await api(
+    `/api/repertoires/export-pgn?repertoire_id=${encodeURIComponent(repertoireId)}`
+  );
   if (ownerId !== currentOwnerId()) return;
   downloadText(payload.filename, payload.mime, payload.content);
   setStatus(`Downloaded ${payload.filename}`);

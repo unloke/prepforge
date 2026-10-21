@@ -1,5 +1,6 @@
 // The run's search coverage stays in the saved report's metadata; the page does not
 // print it (a "2 positions below depth 16" line told players nothing they could act on).
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
@@ -45,5 +46,30 @@ describe("analysis quality summary", () => {
       expect(String(html)).toMatch(/class-bars/);
       expect(String(html)).not.toMatch(/quality-note|below depth|partial-shallow|no-maia/);
     }
+  });
+});
+
+// The Coach head's Engine-review switch. On phones the head floats beside the
+// coach text, so the switch is a 22px control in a touch context: it must be a
+// 44px target (measured live at 390x660: 38x22 before, 44x44 after) and name
+// itself without a hidden label taking up row space.
+describe("coach engine-review switch", () => {
+  const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const css = readFileSync(new URL("./analyze-chart.css", import.meta.url), "utf8");
+
+  it("is labelled and titled in place, with no standing description", () => {
+    const tag = html.match(/<button[^>]*id="explain-engine-toggle"[^>]*>/)[0];
+    expect(tag).toContain('aria-label="Engine review"');
+    expect(tag).toContain("title=");
+    expect(html).not.toMatch(/class="pf-row-text explain-review"/);
+    expect(html).not.toContain("read for what they mean to you");
+  });
+
+  it("is a 44px touch target in the phone coach head", () => {
+    const phone = css.slice(css.lastIndexOf("@media (max-width: 760px)"));
+    const rule = phone.match(/#analysis-explain .cc-head .pf-switch {[^}]*}/)[0];
+    expect(rule).toMatch(/width: 44px/);
+    expect(rule).toMatch(/height: 44px/);
+    expect(rule).toMatch(/box-sizing: border-box/);
   });
 });

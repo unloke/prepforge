@@ -5,6 +5,7 @@ import {
   createReplayView,
   displayReplayResult,
   formatReplayDate,
+  isDifferentOpening,
   moveNumberLabel,
   plyMoveLabel,
   revealIfOffscreen,
@@ -113,6 +114,32 @@ const stayedGame = {
   source_account: "self",
 };
 
+// Early opponent departure ("different opening") and a late one ("novelty")
+// share the left-prep bucket: one badge for both, so the ledger and the
+// summary chip read the same word for the same count.
+const earlyOpeningGame = {
+  lichess_id: "early1",
+  white: "me_user",
+  black: "opp_two",
+  result: "1-0",
+  user_color: "white",
+  in_repertoire: true,
+  matched_plies: 3,
+  departure_ply: 4,
+  departure_move_uci: "g8f6",
+  departure_reason: "opponent_unprepared_branch",
+  repertoire_id: "rep-1",
+  repertoire_name: "Caro-Kann: Advance",
+  move_san_history: ["e4", "c6", "d4", "Nf6"],
+  expected_move_uci: null,
+  expected_move_san: null,
+  training_recorded: false,
+  source_account: "self",
+};
+
+const lateNoveltyGame = { ...earlyOpeningGame, lichess_id: "late1", departure_ply: 12,
+  departure_move_uci: "h7h6", move_san_history: [...earlyOpeningGame.move_san_history] };
+
 describe("replay focus internals", () => {
   it("escapes API text and attributes while preserving generated detail markup", () => {
     const elements = makeElements();
@@ -132,6 +159,45 @@ describe("replay focus internals", () => {
   beforeEach(() => {
     elements = makeElements();
   });
+
+  it("stages the ledger entrance once per result, not on every row click", () => {
+    const view = makeView(elements);
+    const payload = { games: [userErrorGame], misses_recorded: 0 };
+    view.renderReplayResults(payload);
+    expect(String(elements["replay-results"].innerHTML)).toContain("ledger-table list-enter");
+    // A row click re-renders the SAME payload: the stagger must not replay.
+    view.renderReplayResults(payload);
+    expect(String(elements["replay-results"].innerHTML)).not.toContain("list-enter");
+    // A new Check result animates again.
+    view.renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-results"].innerHTML)).toContain("ledger-table list-enter");
+  });
+
+  it("counts games and queued moves with real plurals", () => {
+    const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
+    makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
+    const summary = String(elements["replay-summary"].innerHTML);
+    expect(summary).toContain("2 you left prep");
+    expect(summary).toContain("+2 moves queued for training");
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-summary"].innerHTML)).toContain("+1 move queued for training");
+    // The ledger header counts games, not a bare number.
+    expect(String(elements["replay-results"].innerHTML)).toContain("1 game \u00b7");
+  });
+
+  it("counts outcomes and queued moves with real plurals", () => {
+    const second = { ...userErrorGame, lichess_id: "def456", white: "you", black: "opp_two", result: "1-0" };
+    makeView(elements).renderReplayResults({ games: [userErrorGame, second], misses_recorded: 2 });
+    const summary = String(elements["replay-summary"].innerHTML);
+    // Two games, so the plural noun; one queued move stays singular at 1.
+    expect(summary).toContain("2 you left prep");
+    expect(summary).toContain("+2 moves queued for training");
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 1 });
+    expect(String(elements["replay-summary"].innerHTML)).toContain("+1 move queued for training");
+    // The ledger header counts games, not a bare number.
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    expect(String(elements["replay-results"].innerHTML)).toContain("1 game \u00b7");
+  });
   afterEach(() => {
     globalThis.document = undefined;
   });
@@ -146,6 +212,23 @@ describe("replay focus internals", () => {
     expect(String(html)).toContain('data-square="f3"');
     // Pieces render through the production SVG helpers.
     expect(String(html)).toMatch(/data-piece="p"/);
+  });
+
+  it("resolves You in the detail header like the ledger rows", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html).toContain("<h2>opp_one vs You</h2>");
+    expect(html).not.toContain("<h2>opp_one vs me_user</h2>");
+  });
+
+  it("renders the moveline as move-pair rows with the departure called out", () => {
+    makeView(elements).renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(html.match(/class="move-pair/g)).toHaveLength(2);
+    expect(html).toContain('data-move="2"');
+    expect(html).toMatch(/<div class="move-pair is-departure t-bad" data-move="2">/);
+    expect(html).toMatch(/<span class="ply dep t-bad" data-ply="4">d5<\/span>/);
+    expect(html).toContain('<span class="dep-note t-bad">You left prep</span>');
   });
 
   it("draws expected (good) vs played (bad) arrows from the payload UCIs", () => {
@@ -191,7 +274,7 @@ describe("replay focus internals", () => {
     expect(String(html)).not.toContain("1/2-1/2");
     // Both games come from "self": the account sits in the header, not per row.
     expect(String(html).match(/class="acct"/g)).toHaveLength(1);
-    expect(String(html)).toMatch(/shown · <i class="acct"[^>]*>self<\/i>/);
+    expect(String(html)).toMatch(/2 games · <i class="acct"[^>]*>self<\/i>/);
     // The finish date is shown on the row.
     expect(String(html)).toContain('<time class="lr-date" datetime="2026-09-28T12:00:00Z">');
   });
@@ -201,13 +284,13 @@ describe("replay focus internals", () => {
     makeView(elements).renderReplayResults({ games: [userErrorGame, other], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);
     expect(String(html).match(/class="acct"/g)).toHaveLength(2);
-    expect(String(html)).not.toMatch(/shown · <i class="acct"/);
+    expect(String(html)).not.toMatch(/games · <i class="acct"/);
   });
 
   it("names the account per row when two accounts were selected but one supplied every game", () => {
     makeView(elements).renderReplayResults({ games: [stayedGame, userErrorGame], misses_recorded: 0, requested_sources: 2 });
     const html = String(elements["replay-results"].innerHTML);
-    expect(String(html)).not.toMatch(/shown · <i class="acct"/);
+    expect(String(html)).not.toMatch(/games · <i class="acct"/);
     expect(String(html).match(/class="acct"/g)).toHaveLength(2);
   });
 
@@ -301,6 +384,35 @@ describe("replay focus internals", () => {
     expect(String(html)).toContain("2… d5");
     expect(String(html)).toContain("in prep through 2. Nf3");
   });
+
+  it("badges every opponent departure by who left, not which opening", () => {
+    // One name for the shared bucket: the row badge, the focus badge and the
+    // summary chip must match, so the count on the chip is the count under it.
+    makeView(elements).renderReplayResults({
+      games: [earlyOpeningGame, lateNoveltyGame],
+      misses_recorded: 0,
+    });
+    const html = String(elements["replay-results"].innerHTML);
+    expect(String(html).match(/kind-badge t-warn/g)).toHaveLength(3); // 2 rows + focus
+    expect(String(html)).toContain(">Opponent left prep<");
+    expect(String(html)).not.toContain("Different opening");
+    expect(String(html)).not.toContain("Opponent novelty");
+    // The summary chip reads the same words as the rows it counts.
+    const summary = String(elements["replay-summary"].innerHTML);
+    expect(summary).toContain("2 opponent left prep");
+  });
+
+  it("still splits the detail copy between an early opening and a late novelty", () => {
+    for (const game of [earlyOpeningGame, lateNoveltyGame]) {
+      const el = makeElements();
+      makeView(el).renderReplayResults({ games: [game], misses_recorded: 0 });
+      const html = String(el["replay-results"].innerHTML);
+      const early = isDifferentOpening(game);
+      if (early) expect(html).toContain("Opponent chose a different opening at");
+      else expect(html).toContain("Opponent took an unprepared branch at");
+      expect(html).not.toContain("novelty");
+    }
+  });
 });
 
 
@@ -311,9 +423,96 @@ it("keeps partial-source failures visible with results and empty results", () =>
     view.renderReplayResults({ games, source_errors: [{ username: "Unavailable", message: "429 rate limited" }] });
     expect(String(elements["replay-results"].innerHTML)).toContain('role="alert"');
     expect(String(elements["replay-results"].innerHTML)).toContain("Unavailable: 429 rate limited");
-    expect(String(elements["replay-results"].innerHTML)).toContain("Retry Check");
+    expect(String(elements["replay-results"].innerHTML)).not.toContain("Retry Check");
   }
   view.renderReplayResults({ games: [] });
   expect(String(elements["replay-results"].innerHTML)).not.toContain('role="alert"');
   delete globalThis.document;
+});
+
+describe("replay empty states", () => {
+  let elements;
+  beforeEach(() => { elements = makeElements(); });
+  afterEach(() => { globalThis.document = undefined; });
+
+  it("tells the user what to do when a source returned no games", () => {
+    makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("No recent games found");
+    expect(markup).toContain("Try a larger sample.");
+  });
+
+  it("keeps the ledger columns when there is nothing to list", () => {
+    // An empty Games page was two lines of text on the page ground, with no
+    // sign of the table they belonged to. Every empty state now sits in the
+    // ledger body, under the same column headers as the rows.
+    makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Games to review");
+    expect(markup).toContain("lr head col-head");
+    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).not.toContain("empty-state big");
+  });
+
+  it("names the empty bucket and keeps the way back", () => {
+    // The filter comes from the app; drive it through a view whose getter says
+    // "left-prep" while the sample holds only a user-error game.
+    makeView(elements); // installs the DOM stubs
+    const filtered = createReplayView({
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => "left-prep",
+      isGameOpen: () => false,
+      onToggleFilter: () => {},
+      onToggleGame: () => {},
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+    });
+    filtered.renderReplayResults({ games: [userErrorGame], misses_recorded: 0 });
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("No games in this bucket");
+    expect(markup).toContain("Nothing in this sample opponent left prep.");
+    expect(markup).toContain("Show all");
+  });
+});
+
+describe("replay failure state", () => {
+  let elements;
+  beforeEach(() => { elements = makeElements(); });
+  afterEach(() => { globalThis.document = undefined; });
+
+  it("says what failed and offers the same action again", () => {
+    makeView(elements);
+    const retries = [];
+    const view = createReplayView({
+      boardRenderers: RENDERERS,
+      getReplayFilter: () => null,
+      isGameOpen: () => false,
+      onToggleFilter: () => {},
+      onToggleGame: () => {},
+      onTrainMiss: () => {},
+      onBuildReply: () => {},
+      onAnalyze: () => {},
+      onRetry: () => retries.push(true),
+    });
+    view.renderReplayError("Lichess is unreachable");
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Could not check your games");
+    expect(markup).toContain("Lichess is unreachable");
+    expect(markup).toContain("Try again");
+    // A failure is not the idle prompt: nothing may read "No games checked yet".
+    expect(markup).not.toContain("No games checked yet");
+    expect(elements["replay-summary"].hidden).toBe(true);
+    void retries;
+  });
+
+  it("puts the failure where the rows would be", () => {
+    // The error is an answer to a Check, so it keeps the ledger the Check was
+    // about instead of replacing the page with a floating card.
+    makeView(elements).renderReplayError("Lichess is unreachable");
+    const markup = String(elements["replay-results"].innerHTML);
+    expect(markup).toContain("Games to review");
+    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).toContain('role="alert"');
+  });
 });

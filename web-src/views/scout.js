@@ -4,7 +4,7 @@ import { html } from "../html.js";
 
 import "./scout.css";
 import { createEnrichPipeline } from "../enrich-pipeline.js";
-import { countOf } from "../plural.js";
+import { countOf, nounOf } from "../plural.js";
 
 import {
   applyScoutColorTabs,
@@ -29,6 +29,7 @@ import {
   scoutLineKey,
 } from "../scout-report.js";
 import { createScoutInitGuard, scoutStateCarryover } from "../scout-init-guard.js";
+import { watchMaiaInit } from "../maia-init-notice.js";
 import { sameFetchSources } from "./shared/source-composer.js";
 
 const SCOUT_E2E_BUILD_ENABLED = import.meta.env.VITE_ENABLE_SCOUT_E2E === "1";
@@ -91,6 +92,11 @@ export function scoutRenderForceEvery(gameCount) {
   return 200;
 }
 
+/** The plan-row enter fade is for a settled re-rank, never for the live stream. */
+export function planRowEntranceEnabled(sessionState) {
+  return sessionState !== "running";
+}
+
 /** Debounce delay for batched rerenders — longer waits as history grows. */
 export function scoutRenderDebounceMs(gameCount) {
   const n = Number(gameCount) || 0;
@@ -105,13 +111,12 @@ const PATH_GUARD_DEBOUNCE_MS = 300;
 // A replay that no longer matches its recorded run re-runs the guard at most this often per scope.
 const PATH_GUARD_MAX_RERUNS = 3;
 
-/** Path guard prototype (research/scout-v11): on by default for testing; ?scoutPathGuard=0 shows v10. */
-export function scoutPathGuardEnabled(search = typeof location === "undefined" ? "" : location.search) {
-  return new URLSearchParams(search).get("scoutPathGuard") !== "0";
-}
-
-function scoutErrorHtml(message) {
-  return html`<div class="scout-error" role="alert">${message}</div>`;
+function scoutErrorHtml(title, message, action = null) {
+  return html`<div class="scout-error" role="alert">
+    <p class="scout-error-title">${title}</p>
+    <p class="scout-error-body">${message}</p>
+    ${action ? html`<button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>` : ""}
+  </div>`;
 }
 
 // Multi-identity label: "self (2 accounts)" keeps time/sample stats honest
@@ -136,7 +141,7 @@ export function createScoutView(deps) {
     selectBuildNode,
     resolveBuildId,
     setBuildSync,
-    jobToast,
+    notices,
     parseFenBoard,
     pieceSvg,
     getBuildState,
@@ -161,6 +166,10 @@ export function createScoutView(deps) {
   let scoutState = null;
   let scoutSession = null;
   let scoutSourceNames = null;
+  // One async action at a time: a double-click on "Add to prep" (or a repeated
+  // "Add all gaps") used to open two identical dialogs. The side card and the
+  // colour card stay mounted while a dialog is up, so both clicks land.
+  let actionBusy = false;
   const scoutBoundEventTargets = new WeakSet();
   // Memo for maiaCandidateLines, keyed by trie identity (fresh per report rebuild).
   const maiaCandidateCache = new WeakMap();
@@ -209,10 +218,11 @@ export function createScoutView(deps) {
     delete side.dataset.color;
   }
 
-  // Phone layout stacks the detail after the plan: bring it into view on select.
+  // Below 1020px the detail stacks under the plan; bring it into view on select.
+  // At 768-1020 it sat ~1,400px down and opening a row showed nothing.
   function revealScoutDetail() {
     const side = getSideEl();
-    if (!side || side.hidden || !window.matchMedia?.("(max-width: 760px)").matches) return;
+    if (!side || side.hidden || !window.matchMedia?.("(max-width: 1020px)").matches) return;
     side.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }
 
@@ -233,6 +243,38 @@ export function createScoutView(deps) {
     const fetched = scoutState?.games?.length || 0;
     const el = document.getElementById("scout-live-count");
     if (el) el.textContent = String(fetched);
+    // "1 games fetched" — the noun is markup beside the number, so it has to
+    // agree with the count too.
+    const noun = document.getElementById("scout-live-noun");
+    if (noun) noun.textContent = nounOf(fetched, "game");
+    updateStreamPhase();
+  }
+
+  // Live progress while a fetch is in flight. The count and the phase come from
+  // data the fetch already has: games accepted so far, plus which phase we are in
+  // (init → streaming). The streaming card is the only surface mid-stream, before
+  // the first report render exists.
+  let lastPhaseKey = "";
+  function updateStreamPhase() {
+    const phase = document.getElementById("scout-stream-phase");
+    if (!phase) return;
+    const detail = document.getElementById("scout-stream-detail");
+    const initializing = initGuard.isInitializing;
+    const fetched = scoutState?.games?.length || 0;
+    // Fires once per streamed game; skip the DOM write when nothing changed.
+    const key = `${initializing ? "init" : "fetch"}:${fetched}`;
+    if (key === lastPhaseKey) return;
+    lastPhaseKey = key;
+    if (initializing) {
+      phase.textContent = "Loading your repertoires…";
+      if (detail) detail.textContent = "Loading your repertoires";
+    } else if (fetched > 0) {
+      phase.textContent = "Reading their games…";
+      if (detail) detail.textContent = `${fetched} so far`;
+    } else {
+      phase.textContent = "Fetching games from Lichess…";
+      if (detail) detail.textContent = "";
+    }
   }
 
   function engineProgressLabel(p) {
@@ -330,11 +372,18 @@ export function createScoutView(deps) {
       resetBtn.hidden = state === "idle" || state === "running";
     }
     if (colorSel) {
-      colorSel.disabled = state !== "idle";
+      // The scope is read once, when the run starts. While a scout is
+      // initialising or streaming, the select must not take a change the
+      // run would then ignore.
+      colorSel.disabled = initGuard.isInitializing || state !== "idle";
     }
     if (card) {
-      card.classList.toggle("is-streaming", state === "running");
+      // The card shows the live stream card from the moment Start is pressed:
+      // the init phase (repertoire loads) happens before the first game arrives,
+      // and that used to look like nothing was happening at all.
+      card.classList.toggle("is-streaming", initGuard.isInitializing || state === "running");
     }
+    updateLiveCounter();
   }
 
   function syncVisibleState() {
@@ -349,6 +398,8 @@ export function createScoutView(deps) {
       const hasReport = !!results?.innerHTML?.trim();
       if (scoutState.games?.length && !hasReport) {
         renderScoutReport({ force: true });
+      } else if (!scoutState.games?.length && !hasReport && scoutSession?.emptyStateMessage) {
+        showScoutEmptyState(scoutSession, scoutSession.emptyStateMessage);
       } else {
         patchEngineProgressUI();
       }
@@ -420,6 +471,11 @@ export function createScoutView(deps) {
   // not shown before fade in, one after another; rows that stay do not move or flash.
   function markEnteringPlanRows(root, before) {
     if (!before.size) return;
+    // Mid-stream every batch rebuilds the plan: staggering a new row in holds it
+    // at opacity 0 (animation-fill-mode: both) for up to ~385ms, so its ~60px
+    // row shows as a blank gap between rows until loading ends. The enter fade
+    // is for a settled re-rank after enrichment, so skip it while streaming.
+    if (!planRowEntranceEnabled(scoutSession?.state)) return;
     let n = 0;
     for (const row of root.querySelectorAll(".scout-weakness-row")) {
       if (before.has(`${row.dataset.color}|${row.dataset.lineKey}`)) continue;
@@ -459,12 +515,6 @@ export function createScoutView(deps) {
     const profileEl = getProfileEl();
     const results = getResultsEl();
     const captured = results ? captureScoutExpanded(results) : null;
-    // Prototype "With White / With Black" tabs: real per-colour game counts
-    // from the opponent profile; hidden while streaming (both sections build live).
-    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, {
-      hidden: isStreaming(),
-      username: scoutState.username,
-    });
 
     if (profileEl) {
       profileEl.innerHTML = renderScoutProfile(
@@ -474,7 +524,7 @@ export function createScoutView(deps) {
         {
           usernames: scoutState.usernames,
           colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(scoutState.games),
+            colorRecommendation(scoutModule.analyzedGames(scoutState.games)),
             { username: scoutState.username },
           ),
         },
@@ -498,6 +548,18 @@ export function createScoutView(deps) {
         speedFilter: scoutState.activeSpeed,
       });
     }
+    // Built after the sections so a tab's count is the section's gameCount: the
+    // raw per-colour total ignores the speed filter and counts games the trie
+    // skips, which left the tab and the heading quoting different numbers.
+    // Hidden while streaming (both sections build live).
+    const tabsHtml = renderScoutColorTabsHtml(scoutState.profile, {
+      hidden: isStreaming(),
+      username: scoutState.username,
+      counts: {
+        white: scoutState.sections.white?.gameCount ?? 0,
+        black: scoutState.sections.black?.gameCount ?? 0,
+      },
+    });
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
     const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
     if (results) {
@@ -582,13 +644,11 @@ export function createScoutView(deps) {
 
   // Re-runs the guard after the selector input changed (for example once Maia lands).
   function schedulePathGuard() {
-    if (!scoutPathGuardEnabled()) return;
     pathGuard.schedule();
   }
 
   // The recorded guard run for one colour, replayed by the report without engine reads.
   function pathGuardOption(oppColor) {
-    if (!scoutPathGuardEnabled()) return null;
     const rec = scoutState?.pathGuard?.[oppColor];
     if (!rec) return null;
     return {
@@ -657,7 +717,7 @@ export function createScoutView(deps) {
   }
 
   async function rerunPathGuard(gen) {
-    if (!scoutPathGuardEnabled() || !scoutState?.games?.length || !scoutModule) return;
+    if (!scoutState?.games?.length || !scoutModule) return;
     if (gen !== pathGuard.generation || scoutState.prefilterEnrichState !== PREFILTER_READY) return;
     const isCurrent = () => gen === pathGuard.generation && Boolean(scoutState);
     const engine = createPathGuardEngine({ shouldCancel: () => !isCurrent() });
@@ -874,7 +934,7 @@ export function createScoutView(deps) {
     // The path guard reads each colour's lines before they are published, so the first
     // engine-ranked plan on screen is already the guarded one.
     const guardCurrent = () => gen === prefilterEnrich.generation && Boolean(scoutState);
-    const guardEngine = scoutPathGuardEnabled() ? createPathGuardEngine({ shouldCancel: () => !guardCurrent() }) : null;
+    const guardEngine = createPathGuardEngine({ shouldCancel: () => !guardCurrent() });
     try {
       for (const oppColor of ["white", "black"]) {
         if (gen !== prefilterEnrich.generation) return;
@@ -909,12 +969,10 @@ export function createScoutView(deps) {
           applyPrefilterFallbackForColor(section, oppColor);
         } else {
           const rankedLines = result.ranked.map(entry => entry.line);
-          if (guardEngine) {
-            setEngineProgress({ phase: "path", done: 0, total: 0 });
-            const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
-              { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
-            if (!done) return;
-          }
+          setEngineProgress({ phase: "path", done: 0, total: 0 });
+          const done = await runPathGuardForColor(oppColor, guardEngine, guardCurrent,
+            { prefilteredLines: rankedLines, prefilterEnrichState: PREFILTER_READY });
+          if (!done) return;
           scoutState.prefilterPools[oppColor] = result.pool;
           scoutState.prefilterRanked[oppColor] = result.ranked;
           scoutState.prefilteredLines[oppColor] = rankedLines;
@@ -936,7 +994,7 @@ export function createScoutView(deps) {
         scoutState.prefilterScopeKey = scopeKey;
       }
     } finally {
-      if (guardEngine) await guardEngine.close();
+      await guardEngine.close();
       prefilterEnrich.settled(gen);
       if (gen === prefilterEnrich.generation && scoutState) {
         renderScoutReport();
@@ -1024,31 +1082,41 @@ export function createScoutView(deps) {
       const { getSharedMaia3Provider } = await import("../engine/maia3-provider.js");
       if (gen !== maiaEnrich.generation) return;
       const provider = getSharedMaia3Provider();
-      const globalPool = globalMaiaRankedPool();
-      if (
-        globalMaiaPoolNeedsWork(globalPool, {
-          successTarget: SCOUT_MAIA_SUCCESS_TARGET,
-          attemptsUsed: scoutState.maiaAttemptsUsed,
-          ...maiaPoolContext(),
-        })
-      ) {
-        const { attempts } = await enrichGlobalMaiaPool(globalPool, {
-          successTarget: SCOUT_MAIA_SUCCESS_TARGET,
-          attemptsUsed: scoutState.maiaAttemptsUsed,
-          provider,
-          fenAfterLine: scoutModule.fenAfterLine,
-          getRating: (oppColor) => scoutState.maiaRatings[oppColor],
-          getBaselineScorePct: (oppColor) =>
-            scoutState.sections?.[oppColor]?.baselineScorePct ?? 0,
-          cache: scoutState.maiaCache,
-          maiaResults: scoutState.maiaResults,
-          shouldCancel: () => gen !== maiaEnrich.generation,
-          onProgress: (p) => {
-            if (gen === maiaEnrich.generation) setEngineProgress(p);
-          },
-        });
-        if (gen !== maiaEnrich.generation) return;
-        scoutState.maiaAttemptsUsed = attempts;
+      const maiaNotice = watchMaiaInit(provider, {
+        notices,
+        onRetry: () => scheduleMaiaEnrich(),
+      });
+      try {
+        const globalPool = globalMaiaRankedPool();
+        if (
+          globalMaiaPoolNeedsWork(globalPool, {
+            successTarget: SCOUT_MAIA_SUCCESS_TARGET,
+            attemptsUsed: scoutState.maiaAttemptsUsed,
+            ...maiaPoolContext(),
+          })
+        ) {
+          const { attempts } = await enrichGlobalMaiaPool(globalPool, {
+            successTarget: SCOUT_MAIA_SUCCESS_TARGET,
+            attemptsUsed: scoutState.maiaAttemptsUsed,
+            provider,
+            fenAfterLine: scoutModule.fenAfterLine,
+            getRating: (oppColor) => scoutState.maiaRatings[oppColor],
+            getBaselineScorePct: (oppColor) =>
+              scoutState.sections?.[oppColor]?.baselineScorePct ?? 0,
+            cache: scoutState.maiaCache,
+            maiaResults: scoutState.maiaResults,
+            shouldCancel: () => gen !== maiaEnrich.generation,
+            onProgress: (p) => {
+              if (gen === maiaEnrich.generation) setEngineProgress(p);
+            },
+          });
+          if (gen !== maiaEnrich.generation) return;
+          scoutState.maiaAttemptsUsed = attempts;
+        }
+        maiaNotice.succeed();
+      } catch (error) {
+        maiaNotice.fail(error);
+        throw error;
       }
 
       if (gen !== maiaEnrich.generation) return;
@@ -1226,10 +1294,20 @@ export function createScoutView(deps) {
     const drawer = document.getElementById("pgn-drawer");
     if (drawer) drawer.open = true;
     switchView("analyze");
-    setStatus(`Loaded ${username}'s line — press "Analyze game" to start`);
+    setStatus(`Loaded ${username}'s line. Press "Analyze game" to start.`);
   }
 
   async function scoutPickRepertoire(oppColor, { ownColor = false } = {}) {
+    if (actionBusy) return null;
+    actionBusy = true;
+    try {
+      return await pickRepertoire(oppColor, ownColor);
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function pickRepertoire(oppColor, ownColor) {
     const myColor = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
     let reps = [];
     try {
@@ -1343,10 +1421,20 @@ export function createScoutView(deps) {
     if (!repId) return;
     const side = ownColor ? oppColor : oppColor === "white" ? "black" : "white";
     const nodeId = await scoutWriteLineToRep(line, repId, { side });
-    if (nodeId) setStatus(`Added line to prep — opened at ${line.sans.at(-1) || "position"}`);
+    if (nodeId) setStatus(`Added line to prep. Opened at ${line.sans.at(-1) || "position"}.`);
   }
 
   async function scoutPrepareAll(lines, oppColor) {
+    if (actionBusy) return;
+    actionBusy = true;
+    try {
+      await runPrepareAll(lines, oppColor);
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function runPrepareAll(lines, oppColor) {
     const unique = [];
     const seen = new Set();
     for (const line of lines) {
@@ -1359,15 +1447,19 @@ export function createScoutView(deps) {
       setStatus("No lines to add");
       return;
     }
-    if (jobToast.isBusy()) {
+    if (notices.isBusy()) {
       setStatus("Another job is running");
       return;
     }
     const repId = await scoutPickRepertoire(oppColor);
     if (!repId) return;
+    if (notices.isBusy()) {
+      setStatus("Another job is running");
+      return;
+    }
 
     const ctrl = new AbortController();
-    jobToast.startJob({
+    notices.startJob({
       id: `scout-prep-${Date.now()}`,
       title: "Add Scout Lines",
       tab: "build",
@@ -1379,7 +1471,7 @@ export function createScoutView(deps) {
     let failed = 0;
     for (const line of unique) {
       if (ctrl.signal.aborted) break;
-      jobToast.updateJob({
+      notices.updateJob({
         current: done,
         total: unique.length,
         message: `${line.sans.at(-1) || "line"} · ${done + 1}/${unique.length}`,
@@ -1396,7 +1488,7 @@ export function createScoutView(deps) {
       }
       done++;
     }
-    jobToast.completeJob({
+    notices.completeJob({
       title: ctrl.signal.aborted ? "Stopped" : failed ? "Finished with errors" : "Lines added",
       message: `Wrote ${written} line${written === 1 ? "" : "s"} into prep${failed ? ` · ${failed} failed` : ""}`,
     });
@@ -1409,7 +1501,7 @@ export function createScoutView(deps) {
       await navigator.clipboard.writeText(text);
       setStatus("Scout report copied to clipboard");
     } catch (_) {
-      setStatus("Could not copy — check clipboard permissions");
+      setStatus("Could not copy. Check clipboard permissions.");
     }
   }
 
@@ -1418,7 +1510,7 @@ export function createScoutView(deps) {
       setStatus("Scout an opponent first");
       return;
     }
-    if (jobToast.isBusy()) {
+    if (notices.isBusy()) {
       setStatus("Another job is running");
       return;
     }
@@ -1436,7 +1528,7 @@ export function createScoutView(deps) {
       state.games.some((g) => g.color === c),
     );
     const total = colors.length;
-    jobToast.startJob({
+    notices.startJob({
       id: `scout-deep-${Date.now()}`,
       title: "Scout Deep Scan",
       tab: "replay",
@@ -1448,7 +1540,7 @@ export function createScoutView(deps) {
     try {
       for (const color of colors) {
         if (!canApplyDeepScan(opGen, state) || ctrl.signal.aborted) break;
-        jobToast.updateJob({
+        notices.updateJob({
           current: done,
           total,
           message: `Scanning ${color} openings…`,
@@ -1459,7 +1551,7 @@ export function createScoutView(deps) {
           speedFilter: state.activeSpeed,
           shouldCancel: () => !canApplyDeepScan(opGen, state) || ctrl.signal.aborted,
           onProgress: (cur, tot) => {
-            jobToast.updateJob({
+            notices.updateJob({
               current: done,
               total,
               message: `${color}: game ${cur}/${tot}`,
@@ -1471,26 +1563,26 @@ export function createScoutView(deps) {
         done++;
       }
       if (!canApplyDeepScan(opGen, state) || ctrl.signal.aborted) {
-        jobToast.cancelJob("Deep scan stopped");
+        notices.cancelJob("Deep scan stopped");
         return;
       }
       state.engineAggByColor = {};
       renderScoutReport({ force: true });
       scheduleEngineAggregation();
       bindScoutEvents();
-      jobToast.completeJob({
+      notices.completeJob({
         title: "Deep scan done",
         message: `Engine patterns for ${done} colour${done === 1 ? "" : "s"}`,
       });
     } catch (error) {
       if (!canApplyDeepScan(opGen, state)) {
-        jobToast.cancelJob("Deep scan stopped");
+        notices.cancelJob("Deep scan stopped");
         return;
       }
       if (error?.cancelled) {
-        jobToast.cancelJob("Deep scan stopped");
+        notices.cancelJob("Deep scan stopped");
       } else {
-        jobToast.failJob(error.message || "Deep scan failed");
+        notices.failJob(error.message || "Deep scan failed");
         setStatus(error.message);
       }
     } finally {
@@ -1820,24 +1912,38 @@ export function createScoutView(deps) {
     updateLiveCounter();
 
     if (!scoutState?.games?.length && session.state === "done") {
-      const results = getResultsEl();
-      const message = SCOUT_ERR_NO_GAMES;
-      if (results) results.innerHTML = scoutErrorHtml(message);
-      const profile = getProfileEl();
-      if (profile) profile.hidden = true;
-      setStatus(message);
+      showScoutEmptyState(session, scoutSourceFailureMessage(session) || SCOUT_ERR_NO_GAMES);
       return;
     }
-    if (scoutState?.games?.length) {
-      const n = scoutState.games.length;
-      const label =
-        session.state === "done"
-          ? `Scouted ${countOf(n, "game")} for ${scoutState.username} · no more history`
-          : session.state === "paused"
-            ? `Paused at ${countOf(n, "game")}`
-            : `Scouted ${countOf(n, "game")} for ${scoutState.username}`;
-      setStatus(label);
+  }
+
+  function scoutSourceFailureMessage(session) {
+    const failed = Object.entries(session.sourceStatus || {})
+      .filter(([, status]) => status.status === "failed");
+    if (!failed.length) return null;
+    if (failed.length === 1) {
+      const [username, status] = failed[0];
+      return status.error ? `${username}: ${status.error}` : `${username} could not be read. Try again.`;
     }
+    return `${failed.length} sources could not be read. Retry the ones that failed.`;
+  }
+
+  function showScoutEmptyState(session, message) {
+    const results = getResultsEl();
+    session.emptyStateMessage = message;
+    const failedUsers = Object.entries(session.sourceStatus || {})
+      .filter(([, status]) => status.status === "failed")
+      .map(([username]) => username);
+    if (results) results.innerHTML = scoutErrorHtml(failedUsers.length ? "Couldn't scout this player" : "No games to scout", message, failedUsers.length > 0);
+    results?.querySelector?.("#scout-retry-failed")?.addEventListener("click", () => {
+      if (!failedUsers.length) return;
+      results.classList.add("is-streaming");
+      void runStream({ session, only: failedUsers }).finally(() => {
+        if (isActiveSession(session)) results.classList.remove("is-streaming");
+      });
+    });
+    const profile = getProfileEl();
+    if (profile) profile.hidden = true;
   }
 
   // R-05: per-source outcome tracking. A merged report must SAY which sources
@@ -1855,6 +1961,12 @@ export function createScoutView(deps) {
     const statuses = Object.entries(session.sourceStatus || {}).filter(
       ([, s]) => s.status !== "ok",
     );
+    // With no source left, the report area already shows the reason; don't repeat it.
+    const anyOk = Object.values(session.sourceStatus || {}).some((s) => s.status === "ok");
+    if (!anyOk && !scoutState?.games?.length) {
+      document.getElementById("scout-source-warnings")?.remove();
+      return;
+    }
     let bar = document.getElementById("scout-source-warnings");
     if (!statuses.length) {
       if (bar) bar.remove();
@@ -1866,8 +1978,6 @@ export function createScoutView(deps) {
       bar.className = "scout-source-warnings";
       results.parentNode.insertBefore(bar, results);
     }
-    // With no source left, the report area already shows the reason; don't repeat it.
-    const anyOk = Object.values(session.sourceStatus || {}).some((s) => s.status === "ok");
     const chips = Object.entries(session.sourceStatus || {})
       .map(([user, s]) => {
         const label =
@@ -1880,7 +1990,7 @@ export function createScoutView(deps) {
       });
     const failedCount = statuses.length;
     bar.innerHTML =
-      html`<div class="source-warn-text" title="The report covers only the sources that returned games">⚠ ${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
+      html`<div class="source-warn-text" title="The report covers only the sources that returned games">${failedCount} source${failedCount === 1 ? "" : "s"} incomplete</div><div class="source-chips">${chips}</div><button type="button" class="btn sm" id="scout-retry-failed">Retry failed sources</button>`;
     bar.querySelector("#scout-retry-failed")?.addEventListener("click", () => {
       bar.remove();
       const failedUsers = Object.entries(session.sourceStatus || {})
@@ -1967,9 +2077,6 @@ export function createScoutView(deps) {
       session.batchFull = settled.some(
         (r) => r.status === "fulfilled" && (r.value?.received || 0) >= SCOUT_STREAM_BATCH,
       );
-      if (batchAccepted === 0 && failures.length) {
-        throw failures[0];
-      }
       // R-05: partial failure with results — the report stands, but the gap is
       // visible (persistent warning above the report, not just a toast).
       await onStreamEnd({ accepted: batchAccepted }, session);
@@ -1998,13 +2105,9 @@ export function createScoutView(deps) {
         }
         flushRender();
       } else {
-        const results = getResultsEl();
-        if (results) results.innerHTML = scoutErrorHtml(message);
-        const profile = getProfileEl();
-        if (profile) profile.hidden = true;
+        showScoutEmptyState(session, scoutSourceFailureMessage(session) || message);
       }
       updateScoutControls();
-      setStatus(message);
     }
   }
 
@@ -2040,6 +2143,7 @@ export function createScoutView(deps) {
     }
     if (profile) profile.hidden = true;
     clearScoutSide();
+    lastPhaseKey = "";
     updateLiveCounter();
     updateScoutControls();
     setStatus("");
@@ -2048,7 +2152,12 @@ export function createScoutView(deps) {
   // Self can change when accounts are linked/unlinked in Settings, without a
   // source-composer write. This also invalidates an initialization in flight.
   function syncSources() {
-    if (scoutSourceNames && !sameFetchSources(scoutSourceNames, scoutPickedUsernames())) resetScout();
+    // Sources can change while this panel is hidden (a composer opened from
+    // elsewhere), where the unmount cleanup does not run: clear here instead.
+    if (scoutSourceNames && !sameFetchSources(scoutSourceNames, scoutPickedUsernames())) {
+      resetScout();
+      if (!scoutPickedUsernames().length) setStatus("");
+    }
   }
 
   async function startScout() {
@@ -2068,7 +2177,7 @@ export function createScoutView(deps) {
     if (!usernames.length) {
       initGuard.finish(initToken);
       updateScoutControls();
-      setStatus("No Scout sources selected — open Add and pick Self, an account, or a username");
+      setStatus("No Scout sources selected. Open Add and pick Self, an account, or a username.");
       return;
     }
     const color = colorSel?.value || "both";
@@ -2102,7 +2211,6 @@ export function createScoutView(deps) {
       clearScoutSide();
       if (profile) profile.hidden = true;
       updateLiveCounter();
-      setStatus(`Scouting ${scoutLabel(usernames)}`);
       await runStream({ session });
       if (isActiveSession(session)) results?.classList.remove("is-streaming");
     } catch (error) {
@@ -2110,9 +2218,8 @@ export function createScoutView(deps) {
       const message = scoutFetchErrorMessage(error) || error.message || "Scout failed";
       scoutState = null;
       scoutSession = null;
-      if (results) results.innerHTML = scoutErrorHtml(message);
+      if (results) results.innerHTML = scoutErrorHtml("Scout stopped", message);
       if (profile) profile.hidden = true;
-      setStatus(message);
     } finally {
       initGuard.finish(initToken);
       updateScoutControls();
@@ -2124,7 +2231,6 @@ export function createScoutView(deps) {
     if (!session || !scoutState) return;
     const results = getResultsEl();
     if (results) results.classList.add("is-streaming");
-    setStatus(`Resuming scout for ${scoutState.username}…`);
     const until = session.oldestDatestamp;
     await runStream({ until, session });
     if (isActiveSession(session)) results?.classList.remove("is-streaming");
@@ -2172,6 +2278,7 @@ export function createScoutView(deps) {
     runScout,
     handleScoutAction,
     bindControls,
+    __testHandleAddToPrep: scoutAddToPrep,
     onShow: syncVisibleState,
     // Sources changed under a finished or running report (app.js).
     discardReport: resetScout,

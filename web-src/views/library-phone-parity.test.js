@@ -1,0 +1,74 @@
+// Library phone parity: what the desktop Library shows must be reachable on a
+// phone too.
+//
+// The phone layout hides the Library's header actions, so "Import PGN" had no
+// route on a phone at all: the page head's + is New repertoire, and the import
+// button lived only in the hidden header. These rules pin the phone layout so a
+// later density pass cannot hide the import action again.
+import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const root = dirname(fileURLToPath(import.meta.url));
+const css = readFileSync(join(root, "..", "phone.css"), "utf8");
+
+// The rule body for a selector, starting at its first occurrence.
+function rule(selector) {
+  const start = css.indexOf(selector);
+  expect(start, selector).toBeGreaterThan(-1);
+  const open = css.indexOf("{", start);
+  return css.slice(open, css.indexOf("}", open));
+}
+
+it("Import PGN stays reachable on a phone", () => {
+  // The actions row is shown, not hidden.
+  const actions = rule("#view-dashboard .lib-actions {");
+  expect(actions).not.toMatch(/display:\s*none/);
+  expect(actions).toMatch(/display:\s*flex/);
+
+  // New repertoire keeps the page head's +; import is the action in this row.
+  const newRep = rule("#view-dashboard .lib-actions #dashboard-new-rep");
+  expect(newRep).toMatch(/display:\s*none/);
+
+  // A 40px target, like the rest of the phone controls.
+  const importBtn = rule("#view-dashboard .lib-actions #dashboard-import-pgn");
+  expect(importBtn).toMatch(/height:\s*40px/);
+});
+
+it("the phone Library header is a grid: chips on top, search and import below", () => {
+  const head = rule("#view-dashboard .lib-list .card-head {");
+  expect(head).toMatch(/display:\s*grid/);
+  expect(rule("#view-dashboard .lib-list .seg {")).toMatch(/grid-column:\s*1 \/ -1/);
+  expect(rule("#view-dashboard .lib-list .search-field {")).toMatch(/grid-column:\s*1/);
+});
+
+it("the phone repertoire row keeps the mastery figure", () => {
+  // The mastery cell used to be display:none on a phone, so a phone row said
+  // nothing about progress even though the desktop row carries a percentage.
+  const cell = rule("#view-dashboard .lib-row .lib-cell-mastery {");
+  expect(cell).not.toMatch(/display:\s*none/);
+  expect(cell).toMatch(/display:\s*flex/);
+  // The percentage itself is kept, the bar is not (no room for it).
+  expect(rule("#view-dashboard .lib-row .lib-mbar {")).toMatch(/display:\s*none/);
+  // The word names the number: the phone has no column header to do it.
+  expect(rule("#view-dashboard .lib-row .lib-mastery-word {")).toMatch(/display:\s*inline/);
+});
+
+it("an untrained repertoire keeps its name whole on a phone", () => {
+  // The note that says a repertoire has no trained moves is as wide as the
+  // name it shared a line with, so the name was cut to three letters. The note
+  // takes the row's own line under the name instead.
+  const opt = rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-opt {");
+  expect(opt).toMatch(/grid-template-areas:\s*"rep rep"/);
+  // Aligned with the name, not with the colour dot.
+  expect(rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
+});
+
+it("the phone checklist shows no step number", () => {
+  // A phone hides the finished steps, so the one step left wore a badge
+  // reading "2" that pointed at a list the phone never drew.
+  expect(rule("#view-dashboard .step[data-setup-step] .step-n {")).toMatch(/display:\s*none/);
+  // The row drops the badge's column so the title gets the width.
+  expect(rule("#view-dashboard .step[data-setup-step] {")).toMatch(/grid-template-columns/);
+});

@@ -2,6 +2,7 @@ import { html } from "./html.js";
 import { expect, it, vi } from 'vitest';
 import { createSettingsActions } from './settings-actions.js';
 import { withBuildRevision, advanceBuildRevision } from './build-revision.js';
+import { memberRowsSkeleton, sharedRepRowsSkeleton } from './views/team-skeleton.js';
 const source = appSource();
 function compile(marker, deps, prelude = '') {
   deps = { html, ...deps };
@@ -67,7 +68,7 @@ it('History follows cursors, deduplicates games and retains scroll',async()=>{
 it('switching Teams removes old action handlers even when the new detail fails',async()=>{
   const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]});return elements.get(id);};
   el('team-detail-delete').onclick=vi.fn();const response=deferred();
-  const open=compile('async function openTeamDetail(',{appState:{},currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,teamsView:null},'let teamDetailSeq=0;');
+  const open=compile('async function openTeamDetail(',{appState:{},currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,teamsView:null,memberRowsSkeleton,sharedRepRowsSkeleton,formatDay:()=> '',renderTeamInviteFooter:()=>{}},'let teamDetailSeq=0;');
   const pending=open('B');expect(el('team-detail-delete').onclick).toBeNull();expect(el('team-detail-delete').hidden).toBe(true);
   response.reject(Error('offline'));await pending;expect(el('team-detail-delete').onclick).toBeNull();
 });
@@ -84,7 +85,7 @@ it('team directory caches empty results and rejects old refreshes and owners',as
 });
 it('shared repertoire refresh ignores an older response',async()=>{
   const first=deferred(),second=deferred();const host={get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]};
-  const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null},'let sharedRepertoiresSeq=0;');
+  const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null,sharedRepRowsSkeleton},'let sharedRepertoiresSeq=0;');
   const a=load(),b=load();second.resolve({shared:[]});await b;first.resolve({shared:[{id:'stale'}]});await a;expect(String(host.innerHTML)).not.toContain('stale');
 });
 it('discarding one recovery refreshes the remaining work',async()=>{
@@ -109,7 +110,7 @@ it('recovery rechecks server confirmation after reload when local cleanup failed
 it('workspace restores local work before remote settings or dashboard resolve',async()=>{
   const settings=deferred(),dashboard=deferred();const appState={buildPending:[],buildPendingDeletes:[]};
   const restoreOutbox=vi.fn();const recovery=vi.fn(async()=>{});
-  const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsActions:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
+  const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsController:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
     getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
   const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();await Promise.resolve();expect(recovery).toHaveBeenCalledOnce();
   settings.resolve();dashboard.resolve();await pending;

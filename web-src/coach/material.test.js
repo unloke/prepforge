@@ -58,7 +58,7 @@ describe("walkLine", () => {
   });
 });
 
-describe("squareExchange (single-square SEE) — the phantom-pawn fix", () => {
+describe("squareExchange (single-square SEE): the phantom-pawn fix", () => {
   it("reads an even pawn trade as level, not a pawn up", () => {
     // 1.e4 d5 2.exd5 — White has just taken the d5 pawn; Black recaptures with the queen.
     // A naive count says White +1; the settled count prices in the recapture → level.
@@ -90,7 +90,7 @@ describe("squareExchange (single-square SEE) — the phantom-pawn fix", () => {
   });
 });
 
-describe("walkLine settled swing — honest exchange accounting", () => {
+describe("walkLine settled swing: honest exchange accounting", () => {
   it("reports an even recapture exchange as zero swing", () => {
     // 1.e4 d5 2.exd5 Qxd5 — pawns are swapped, queen recaptures: dead level.
     const fen = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2";

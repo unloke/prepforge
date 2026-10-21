@@ -164,7 +164,7 @@ describe("scout explorer enrichment generation", () => {
       selectBuildNode: vi.fn(),
       resolveBuildId: vi.fn(),
       setBuildSync: vi.fn(),
-      jobToast: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
+      notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
       parseFenBoard: vi.fn(() => ({})),
       pieceSvg: vi.fn(() => ""),
       getBuildState: vi.fn(),

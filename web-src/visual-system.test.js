@@ -30,7 +30,11 @@ const REQUIRED_TOKENS = [
   "--radius-card",
   "--control-h",
   "--surface-3",
-  "--btn-hover",
+  "--dur-fast",
+  "--dur",
+  "--dur-slow",
+  "--ease-out",
+  "--ease-emphasis",
   "--on-accent",
   "--board-frame",
   "--danger-soft",
@@ -184,7 +188,8 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('aria-controls="palette-results"');
     expect(html).toContain('aria-label="Notifications"');
     expect(app).toContain("function activateModal");
-    expect(app).toContain("child.inert = true");
+    // A dialog that is not a direct body child must not inert its ancestor.
+    expect(app).toContain("if (!child.contains(overlay)) child.inert = true;");
     expect(app).toContain('event.key !== "Tab"');
   });
 
@@ -362,8 +367,24 @@ describe("status semantics", () => {
     expect(app).toContain('function setStatusError(message)');
     expect(app).toContain('setStatus(message, { severity: "error" })');
     expect(app).not.toContain("const isError = /(?:error|failed|unavailable");
-    expect(html).toContain('data-severity="info"');
-    expect(css).toContain('.status[data-severity="success"]');
-    expect(css).toContain('.status[data-severity="warning"]');
+    expect(app).toContain("notices.status(text === \"Ready\" ? \"\" : text, { tone: severity })");
+    expect(css).toContain('.notice[data-tone="success"]');
+    expect(css).toContain('.notice[data-tone="warning"]');
+    expect(css).toContain('.notice[data-tone="error"]');
+  });
+});
+
+describe("accessible names", () => {
+  it("gives every icon-only button a name, and matches the label to the placeholder", () => {
+    for (const tag of html.match(/<button\b[^>]*>/g) || []) {
+      if (!/\bicon\b/.test(tag) || />[^<]*[A-Za-z]/.test(tag)) continue;
+      expect(tag, `icon-only button without a name: ${tag}`).toMatch(/aria-label="/);
+    }
+    // The Teams search's accessible name must be what the placeholder says, so a
+    // screen-reader user and a sighted user search for the same thing.
+    const search = /<input id="teams-search"[^>]*>/.exec(html)[0];
+    expect(/aria-label="([^"]*)"/.exec(search)[1]).toBe(
+      /placeholder="([^"]*)"/.exec(search)[1],
+    );
   });
 });

@@ -1,8 +1,12 @@
+import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
+  engineSetupState, subscribeEngineSetup, engineWorkerChoices } from "../engine/engine-profile.js";
+import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
+import { renderFullEngineChoice, bindFullEngineChoice } from "./settings-full-engine.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
 import "./settings.css";
-import { resolveModelBase, peekSharedMaia3Provider } from "../engine/maia3-provider.js";
+import { resolveModelBase, peekSharedMaia3Provider, loadMaia3Manifest } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 import { createAccountSection } from "./settings-account.js";
 
@@ -27,6 +31,8 @@ export function createSettingsView({
   refreshAuthStatus,
 }) {
   let eventsBound = false;
+  const unsubscribers = [];
+  let stockfishManifest = null;
   const accountSection = createAccountSection({
     appState,
     api,
@@ -88,6 +94,13 @@ export function createSettingsView({
     if (ratingOut) ratingOut.textContent = auto ? String(effective) : ratingEl.value;
   }
 
+  // The one way this card changes the color theme; the app's pref writer then
+  // repaints this control, so both stay on one value.
+  function pickTheme(value) {
+    setPref("theme", value);
+    renderThemeControl();
+  }
+
   function renderThemeControl() {
     const themeEl = document.getElementById("settings-theme");
     const current = String(pref("theme") || "system");
@@ -105,7 +118,7 @@ export function createSettingsView({
     const browserStatusEl = document.getElementById("settings-browser-engine-status");
     const note = document.getElementById("settings-stockfish-status");
     if (browserStatusEl) {
-      if (self.crossOriginIsolated) {
+      if (isBrowserEngineAvailable()) {
         browserStatusEl.textContent = "available";
         browserStatusEl.className = "status-pill ok";
         if (note) note.textContent = "";
@@ -118,24 +131,89 @@ export function createSettingsView({
         }
       }
     }
-    void renderStockfishVersion();
     renderMaia3Status();
+  }
+
+  function renderEngineProfile() {
+    const profile = engineProfile();
+    const setup = engineSetupState();
+    const busy = ["download", "compile", "waiting", "probe"].includes(setup.phase);
+    const paint = (id, key, value) => document.getElementById(id)?.querySelectorAll(".seg-btn").forEach((btn) => {
+      const active = btn.dataset[key] === String(value);
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", String(active));
+    });
+    paint("settings-net-seg", "net", profile.net);
+    paint("settings-workers-seg", "workers", profile.workers);
+    // Only the steps this device measured are offered: asking for a count it never
+    // ran, or for the net the ladder stopped at, would start heaps Detect could not
+    // hold.
+    const choices = engineWorkerChoices();
+    document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.disabled = choices[btn.dataset.net] < 1;
+    });
+    document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.disabled = Number(btn.dataset.workers) > choices[profile.net];
+    });
+    const detectBtn = document.getElementById("settings-detect");
+    if (detectBtn) detectBtn.disabled = busy;
+    const status = document.getElementById("settings-profile-status");
+    if (status) {
+      const m = engineMeasurements();
+      const speed = m?.nodesPerSecond ? ` · ${Math.round(m.nodesPerSecond / 1000)}k nodes/s` : "";
+      const bytes = setup.phase === "download" && setup.total
+        ? ` ${Math.round(setup.loaded / 1048576)} / ${Math.round(setup.total / 1048576)} MB` : "";
+      status.textContent = busy || setup.phase === "error" ? `${setup.label}${bytes}`
+        : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
+        : profile.source === "user" ? "Set by you"
+        : profile.source === "detected" ? `Detected for this device${speed}`
+        : "Not detected yet";
+      // A detected profile that stopped on an error is the memory limit, not a failure.
+      status.title = m?.error && profile.source === "detected" ? `Stopped at: ${m.error}` : "";
+    }
+    const bar = document.getElementById("settings-profile-progress");
+    if (bar) {
+      bar.hidden = !busy;
+      // One bar for the whole setup: getting the net fills the first half, measuring the second,
+      // so it never runs backwards between them. A small floor keeps a fresh start visible.
+      const share = setup.phase === "download" || setup.phase === "compile" ? setup.fraction / 2
+        : setup.phase === "probe" ? 0.5 + setup.fraction / 2 : 0.5;
+      bar.firstElementChild.style.setProperty("--progress", String(Math.max(0.03, share)));
+    }
+    // The full net is this device's choice: the question until it answers, then
+    // one action that brings its 94 MB back after a step down.
+    renderFullEngineChoice();
   }
 
   async function renderStockfishVersion() {
     const versionEl = document.getElementById("settings-stockfish-version");
     if (!versionEl) return;
     try {
-      const response = await fetch("/static/engine/stockfish.manifest.json");
-      if (!response.ok) throw new Error(`manifest ${response.status}`);
-      const manifest = await response.json();
-      if (!manifest.packageVersion || manifest.variant !== "lite-threaded") {
+      stockfishManifest ||= fetch("/static/engine/stockfish.manifest.json").then(async response => {
+        if (!response.ok) throw new Error(`manifest ${response.status}`);
+        return response.json();
+      });
+      const net = engineProfile().net;
+      const manifest = (await stockfishManifest).engines[net];
+      if (!manifest.packageVersion || !manifest.id) {
         throw new Error("invalid manifest");
       }
-      versionEl.textContent = `Stockfish ${manifest.packageVersion} lite (WASM)`;
+      versionEl.textContent = `Stockfish ${manifest.packageVersion} ${net === "big" ? "full" : "lite"} (WASM)`;
     } catch {
       versionEl.textContent = "Stockfish version unavailable";
     }
+  }
+
+  // Refresh re-checks BOTH halves of this card: the server's saved settings
+  // (loadSettings) and the browser engine the rows above report — availability,
+  // the engine this device's profile loads, and its net/worker choice. It used
+  // to reload /api/settings only, leaving a stale "checking…"/"unavailable"
+  // browser row next to a fresh server read.
+  async function refreshEngineCard() {
+    renderBrowserEngineStatus();
+    renderEngineProfile();
+    stockfishManifest = null;
+    await Promise.allSettled([loadSettings(), renderStockfishVersion()]);
   }
 
   // Resolves once the async Connections list has rendered too, so callers
@@ -143,6 +221,8 @@ export function createSettingsView({
   function renderSettings(payload) {
     void payload;
     renderBrowserEngineStatus();
+    renderEngineProfile();
+    void renderStockfishVersion();
     renderStrengthControls();
     renderThemeControl();
     let connections = Promise.resolve();
@@ -345,9 +425,7 @@ export function createSettingsView({
       }
       let manifest;
       try {
-        const resp = await fetch("/static/maia3/maia3.manifest.json");
-        if (!resp.ok) throw new Error(`manifest ${resp.status}`);
-        manifest = await resp.json();
+        manifest = await loadMaia3Manifest();
       } catch {
         set(MAIA_STATUS.UNAVAILABLE, "Model manifest is not reachable from this server.");
         return;
@@ -422,6 +500,12 @@ export function createSettingsView({
     window.location.reload();
   }
 
+  // One info pop is open at most: opening one closes the rest.
+  function closeInfoPops() {
+    for (const pop of document.querySelectorAll("#view-settings .pf-info-pop")) pop.hidden = true;
+    for (const btn of document.querySelectorAll("#view-settings .pf-info")) btn.setAttribute("aria-expanded", "false");
+  }
+
   function toggleInfoPop(btnId, popId) {
     const btn = document.getElementById(btnId);
     const pop = document.getElementById(popId);
@@ -437,31 +521,37 @@ export function createSettingsView({
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
       const open = pop.hidden;
-      for (const other of document.querySelectorAll("#view-settings .pf-info-pop")) {
-        other.hidden = true;
-      }
-      for (const other of document.querySelectorAll("#view-settings .pf-info")) {
-        other.setAttribute("aria-expanded", "false");
-      }
+      closeInfoPops();
       pop.hidden = !open;
       btn.setAttribute("aria-expanded", String(open));
     });
   }
 
-  // Section nav (prototype 180px column): click scrolls the card into view and
-  // marks the link active; a scroll spy keeps the active marker honest while
-  // the user scrolls the long card list by hand. Mobile keeps the nav as a
-  // horizontal chip row (CSS), same behaviour.
+  // Section nav: click scrolls the card into view and marks the link active; a
+  // scroll spy keeps the active marker honest while the user scrolls by hand.
+  // The same id names the section beside the page title, so the heading and the
+  // strip never disagree. On a phone the strip wraps into rows that all fit.
   function markActiveSection(id) {
+    let label = "";
     document.querySelectorAll(".settings-nav .settings-nav-link").forEach((link) => {
-      link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+      const active = link.getAttribute("href") === `#${id}`;
+      link.classList.toggle("is-active", active);
+      // aria-current is the accessible form of the same mark.
+      if (!active) return link.removeAttribute("aria-current");
+      link.setAttribute("aria-current", "true");
+      label = link.textContent.trim();
     });
+    const here = document.getElementById("settings-current");
+    if (here && label) here.textContent = label;
   }
 
   function bindSectionNav() {
     const nav = document.querySelector(".settings-nav");
     if (!nav || nav.dataset.navBound === "1") return;
     nav.dataset.navBound = "1";
+    // The markup paints Account as the open section; this names it in the
+    // heading too, so the two agree from the first frame.
+    markActiveSection((nav.querySelector(".settings-nav-link.is-active")?.getAttribute("href") || "").slice(1) || "set-account");
     // A clicked link stays the active marker while its smooth scroll settles: a
     // short page cannot always bring the target to the spy line, so the spy
     // would otherwise hand the marker to a taller neighbour mid-scroll.
@@ -499,21 +589,20 @@ export function createSettingsView({
           markActiveSection(lockedId);
           return;
         }
-        const probe = window.innerHeight * 0.35;
-        let current = null;
-        for (const section of sections()) {
-          const rect = section.getBoundingClientRect();
-          if (rect.top <= probe && rect.bottom > probe) {
-            current = section.id;
-            break;
-          }
-        }
-        // Past the last section's top (short final card scrolled up), keep the
-        // last id active rather than dropping the marker entirely.
-        if (!current) {
-          const list = sections();
-          const last = list[list.length - 1];
-          if (last && last.getBoundingClientRect().top <= probe) current = last.id;
+        const list = sections();
+        // A window that shows every card at once has no section "in front of
+        // you", only the one you last jumped to: the spy stays out of the
+        // click's way there.
+        if (document.documentElement.scrollHeight - window.innerHeight < window.innerHeight * 0.5) return;
+        // The last card whose top passed the probe line - also the right answer
+        // when the line sits in the gap between two cards. At the bottom of the
+        // page a last card too short to reach the line still counts, once it
+        // sits in the upper half of the screen.
+        const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+        const probe = window.innerHeight * (atEnd ? 0.5 : 0.35);
+        let current = list[0]?.id ?? null;
+        for (const section of list) {
+          if (section.getBoundingClientRect().top <= probe) current = section.id;
         }
         if (current) markActiveSection(current);
       });
@@ -533,19 +622,31 @@ export function createSettingsView({
     const themeSeg = document.getElementById("settings-theme-seg");
     if (themeSeg) {
       themeSeg.querySelectorAll(".seg-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          setPref("theme", btn.dataset.themeValue);
-          renderThemeControl();
-        });
+        btn.addEventListener("click", () => pickTheme(btn.dataset.themeValue));
       });
     }
+    // The hidden select is a second door to the same pref: apply it through the
+    // control's own pick (see pickTheme).
     const themeEl = document.getElementById("settings-theme");
     if (themeEl) {
-      themeEl.addEventListener("change", () => {
-        setPref("theme", themeEl.value);
-        renderThemeControl();
-      });
+      themeEl.addEventListener("change", () => pickTheme(themeEl.value));
     }
+
+    document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setEngineProfile({ net: btn.dataset.net, workers: engineProfile().workers });
+      });
+    });
+    document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => setEngineProfile({ net: engineProfile().net, workers: Number(btn.dataset.workers) }));
+    });
+    bindFullEngineChoice();
+
+    document.getElementById("settings-detect")?.addEventListener("click", () => {
+      void detectEngineProfile().catch(() => {});
+    });
+    unsubscribers.push(subscribeEngineProfile(() => { renderEngineProfile(); void renderStockfishVersion(); }),
+      subscribeEngineSetup(renderEngineProfile));
 
     toggleInfoPop("engine-info", "engine-info-pop");
     toggleInfoPop("maia-info", "maia-info-pop");
@@ -554,16 +655,11 @@ export function createSettingsView({
     toggleInfoPop("connections-info", "connections-info-pop");
     document.getElementById("view-settings")?.addEventListener("click", (event) => {
       if (event.target.closest(".pf-info, .pf-info-pop")) return;
-      for (const other of document.querySelectorAll("#view-settings .pf-info-pop")) {
-        other.hidden = true;
-      }
-      for (const other of document.querySelectorAll("#view-settings .pf-info")) {
-        other.setAttribute("aria-expanded", "false");
-      }
+      closeInfoPops();
     });
 
     const refreshBtn = document.getElementById("settings-refresh");
-    if (refreshBtn) refreshBtn.addEventListener("click", () => loadSettings().catch(() => {}));
+    if (refreshBtn) refreshBtn.addEventListener("click", () => refreshEngineCard().catch(() => {}));
 
     const maiaRetryBtn = document.getElementById("settings-maia-retry");
     if (maiaRetryBtn) maiaRetryBtn.addEventListener("click", () => retryMaia3().catch(() => {}));
@@ -655,7 +751,9 @@ export function createSettingsView({
 
   return {
     bind,
+    dispose() { for (const unsubscribe of unsubscribers.splice(0)) unsubscribe(); },
     renderSettings,
+    refreshEngineCard,
     renderBrowserEngineStatus,
     renderMaia3Status,
     renderStrengthControls,
@@ -663,7 +761,7 @@ export function createSettingsView({
     renderMaiaAnalysis,
     renderConnections,
     refreshConnections,
-    renderAccount: () => accountSection.refresh(),
+    renderAccount: () => accountSection.render(),
     retryMaia3,
     verifyMaia3,
     resetMaia3Cache,

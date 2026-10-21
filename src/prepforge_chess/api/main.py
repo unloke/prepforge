@@ -23,6 +23,7 @@ from prepforge_chess.api.config import get_settings
 from prepforge_chess.api.middleware import CSRFMiddleware, SecurityHeadersMiddleware
 from prepforge_chess.api.observability import configure_logging, init_sentry
 from prepforge_chess.api.ratelimit import limiter
+from prepforge_chess.api.session_sliding import SlidingSessionMiddleware
 from prepforge_chess.api.routers import (
     account,
     analyze,
@@ -39,6 +40,17 @@ from prepforge_chess.api.routers import (
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
 from prepforge_chess.storage.repositories.repertoires import RepertoireQuotaExceeded, RevisionConflict
+
+
+class _TextGZipMiddleware(GZipMiddleware):
+    """GZip that leaves engine/model binaries alone: compressing the 99 MB Stockfish
+    wasm on every request took 11.8 s (0.2 s plain) and serialized parallel engine loads."""
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"].endswith((".wasm", ".onnx")):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
 
 
 @asynccontextmanager
@@ -83,7 +95,9 @@ def create_app() -> FastAPI:
     @app.exception_handler(RepertoireQuotaExceeded)
     async def repertoire_quota(request: Request, exc: RepertoireQuotaExceeded):
         return JSONResponse(status_code=402, content={"detail": (
-            "Free plan is limited to {0} repertoires. Upgrade to Pro for unlimited.".format(exc.limit)
+            # There is no Pro plan: this is a real storage limit, so say what it is
+            # and what clears it.
+            "You can keep up to {0} repertoires. Delete one to add another.".format(exc.limit)
         )})
 
     # Middleware order: last added is outermost. We want CORS outermost so even
@@ -93,9 +107,12 @@ def create_app() -> FastAPI:
     # GZip is added first (innermost) so it compresses the route/static response
     # body before the outer header middlewares wrap it. Render's free tier has no
     # CDN, so on-the-fly compression here cuts the first-load text payload
-    # (index JS ~280 KB, CSS ~61 KB) by ~70%. Binary engine assets (.wasm) are
-    # already compact and the ONNX weights are CDN-hosted, so they rarely hit this.
-    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    # (index JS ~280 KB, CSS ~61 KB) by ~70%. Engine/model binaries are skipped.
+    app.add_middleware(_TextGZipMiddleware, minimum_size=1024)
+    # Authenticated responses re-arm the cookie's browser lifetime. The server
+    # still enforces idle expiry from last_seen_at, so this cannot extend a
+    # session the user has abandoned.
+    app.add_middleware(SlidingSessionMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     # The Stripe webhook authenticates by signature, not the session cookie, so it
     # bypasses CSRF. The client-error beacon can't set a CSRF header (sendBeacon)

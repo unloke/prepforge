@@ -171,6 +171,14 @@ function xOfIdx(idx, n) {
   return n === 1 ? 320 : (idx / (n - 1)) * 640;
 }
 
+// Win% to chart units, mirroring evalChartYOf (analyze.js): a 9px inset keeps a
+// marker at either extreme inside the frame, and the rest is the plotted band.
+// Matched to the fake chart's measured 96px height, so the inset converts 1:1.
+function yOfWinPct(pct) {
+  const padY = Math.min((9 * 96) / 96, 96 / 4);
+  return padY + (1 - pct / 100) * (96 - 2 * padY);
+}
+
 afterEach(() => {
   delete globalThis.document;
 });
@@ -184,7 +192,7 @@ describe("eval chart tooltip boundaries", () => {
     tooltip.offsetWidth = 180;
     view.renderEvalChart(POINTS);
     for (const x of [0, width]) {
-      chart.dispatch("mousemove", { clientX: x });
+      chart.dispatch("pointermove", { pointerType: "mouse", clientX: x });
       const left = Number.parseFloat(tooltip.style.left);
       expect(left - 90).toBeGreaterThanOrEqual(0);
       expect(left + 90).toBeLessThanOrEqual(width);
@@ -199,6 +207,101 @@ describe("eval chart sizing", () => {
     appState.evalChartPoints = POINTS;
     expect(() => view.renderEvalChart(POINTS)).not.toThrow();
     expect(chart.querySelectorAll(".eval-marker").length).toBeGreaterThan(0);
+  });
+});
+
+describe("evaluation win meter", () => {
+  it("draws an empty track, not a mid-width fill, while there is no number", () => {
+    // A half-full bar with no figures beside it reads as a real 50/50 eval,
+    // so the fill starts at zero until a number paints it.
+    expect(ALL_STYLES).toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\)/);
+    expect(ALL_STYLES).not.toMatch(/\.ev-meter > i \{[^}]*transform: scaleX\(0\.5\)/);
+  });
+
+  it("lands its new share within the stepping budget", () => {
+    // Arrow-stepping is the repeated action here: a 300ms slide left the bar
+    // trailing its own number by a third of a second on every keypress.
+    const rule = /\.ev-meter > i \{([^}]*)\}/.exec(ALL_STYLES)[1];
+    expect(rule).toMatch(/transition:\s*transform var\(--dur-fast\)/);
+    // The live engine still jumps: it repaints many times a second.
+    expect(ALL_STYLES).toMatch(/#analysis-eval-card\.is-engine \.ev-meter > i \{\s*transition: none;/);
+  });
+});
+
+describe("class bars", () => {
+  it("keeps every count legible on its grade colour", () => {
+    // The grade colours are dark in the light theme and light in the dark one,
+    // so the ink on them flips with the theme. The amber is light in both, so
+    // it takes dark ink of its own.
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*color: var\(--accent-ink\)/);
+    expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
+    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
+  });
+
+  it("gives a grade glyph a text-safe colour, not the fill", () => {
+    // --brilliant fills a dot or a bar; as 13px text it is 4:1 on the panel,
+    // under AA ("!!" measured at 4:1 in the grade tally). The same applies to
+    // the amber, which is 2.9:1 against white — hence its own text token.
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-brilliant \.mtree-glyph \{ color: var\(--brilliant-text\)/);
+    expect(CHART_STYLES).toMatch(/\.mtree-move\.cls-inaccuracy \.mtree-glyph \{ color: var\(--inaccuracy-text\)/);
+    expect(STYLES).toMatch(/--inaccuracy-text:/);
+  });
+});
+
+describe("coach note", () => {
+  it("sets the note at reading size and sizes the block to the note", () => {
+    // The note is running text at 15px on a phone. Its rule runs the note and
+    // not a reserved box, and a note past five lines scrolls instead of pushing
+    // the score sheet down. Two lines are reserved inside the note so a one-line
+    // verdict cannot pull the instrument up (measured at 1440: the card is
+    // still between a one-line and a two-line ply without it).
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*max-height: calc\(var\(--coach-line\) \* 5 \+ 4px\)/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: calc\(var\(--coach-line\) \* 2 \+ 4px\)/);
+  });
+
+  it("reserves three lines in the block, so the instrument below holds still", () => {
+    // Across three games at 1440, 1180 and 982 (171 plies) a verdict is one
+    // line 80 times, two 75, three 14, four twice: three lines is the floor the
+    // block keeps, and a longer note grows it instead of being cut.
+    // The floor is the sum of the head and the note's lines, written from the
+    // same two tokens it is made of: putting the two 26px actions on the head
+    // row makes it 4px taller than the strip it replaced, and a stale constant
+    // would leave the verdict 4px short.
+    const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
+    expect(rule).toMatch(/--coach-head: 26px/);
+    expect(rule).toMatch(/min-height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 12px\)/);
+    expect(rule).not.toMatch(/(^|[^-])height:\s*\d+px/);
+  });
+});
+
+describe("the panel's one filled action", () => {
+  it("keeps Analyze the accent and puts the handoff behind the report fold", () => {
+    // The accent used to move to "New repertoire from this game" whenever that
+    // handoff was on the panel — two filled blue actions in one column, the
+    // second one always open under an already-run report. The handoff now
+    // lives inside the report fold, so the two are never on screen together
+    // and the head's Analyze keeps the accent unconditionally.
+    expect(ALL_STYLES).not.toMatch(/#run-analysis \{[^}]*background:\s*transparent/);
+    expect(ALL_STYLES).not.toMatch(
+      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\)[^{]*#run-analysis \{/,
+    );
+  });
+});
+
+describe("score sheet ink", () => {
+  it("paints the selected move in the accent's ink, glyph included", () => {
+    // The mainline ink rule and the grade-glyph rules both out-ranked the
+    // shared tree's .is-current colour, so on this grid the selected move read
+    // --text on the accent fill (2.9:1 at 1440x900) and its glyph came out in
+    // --text on the same fill. Both now take the accent's ink.
+    const row = CHART_STYLES.match(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \{([^}]+)\}/,
+    )?.[1] || "";
+    expect(row).toMatch(/color:\s*var\(--accent-ink\)/);
+    expect(CHART_STYLES).toMatch(
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
+    );
   });
 });
 
@@ -226,6 +329,29 @@ describe("eval chart theme colours", () => {
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--accent-strong:/);
     expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-m-blunder\s*\{ color: var\(--danger\)/);
     expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\][\s\S]*--danger:/);
+  });
+
+  it("fills White's and Black's areas from the theme's own piece colours", () => {
+    // Hardcoded hexes made the dark theme draw a glaring white band; the
+    // tokens carry a dark-theme value for each side. White's wedge is the
+    // panel tone (the light one in the dark theme), so it stands clear of the
+    // field the way the dark wedge does.
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-area-white\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-black\s*\{[^}]*fill: var\(--eval-side-black\)/);
+    expect(ALL_STYLES).toMatch(/\.eval-chart \{[^}]*--eval-area-white: var\(--panel\)/);
+    expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-area-white: var\(--eval-side-white\)/);
+    expect(ALL_STYLES).not.toMatch(/\.eval-area-(white|black)\s*\{[^}]*fill: #/);
+  });
+
+  it("keeps the field a quiet step off the card, not a tone of its own", () => {
+    // A mid-grey field outweighed both areas: the curve read at 2.2:1 against
+    // it while the wedges read at 3.4–3.9. Mixed mostly out of the card's own
+    // tone the field recedes, and the curve leads.
+    const field = ALL_STYLES.match(/\.eval-chart \{[^}]*--eval-field: ([^;]+);/)?.[1] || "";
+    expect(field).toContain("var(--panel) 84%");
+    const dark = ALL_STYLES.match(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-field: ([^;]+);/)?.[1] || "";
+    expect(dark).toContain("var(--panel) 84%");
+    expect(dark).toContain("var(--eval-side-white)");
   });
 
   it("keeps the main-line stroke width constant when the SVG stretches", () => {
@@ -265,7 +391,12 @@ describe("eval chart current-ply indicator", () => {
 
     const ring = doc(chart).getElementById("eval-chart-cursor-dot");
     expect(ring.getAttribute("visibility")).toBe("visible");
+    // Same win% sigmoid the view uses, mapped onto the plot band.
+    const cp = POINTS[2].score_cp;
+    const pct = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * Math.max(-1500, Math.min(1500, cp)))) - 1);
+    const y = yOfWinPct(pct);
     expect(ring.getAttribute("cx")).toBe(String(x));
+    expect(Number(ring.getAttribute("cy"))).toBeCloseTo(y, 6);
   });
 
   it("hides the indicator when the current ply is not on the chart", () => {
@@ -293,14 +424,26 @@ describe("eval chart mouse behaviour", () => {
   it("hover shows the move, its eval in pawns, and classification as text", () => {
     const { chart, tooltip, view } = setup();
     view.renderEvalChart(POINTS);
-    chart.dispatch("mousemove", { clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
+    chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
     expect(String(tooltip.innerHTML)).toContain("<b>Nc6</b>");
     expect(String(tooltip.innerHTML)).toContain("−1.2");
     expect(String(tooltip.innerHTML)).not.toContain("win chance");
     expect(String(tooltip.innerHTML)).toContain("Mistake");
     expect(String(tooltip.innerHTML)).toContain("?"); // glyph — a non-colour cue
-    chart.dispatch("mouseleave");
+    chart.dispatch("pointerleave", { pointerType: "mouse" });
+    expect(tooltip.hidden).toBe(true);
+  });
+
+  it("a finger scrubs with the tooltip up and lifting it hides the tooltip", () => {
+    const { chart, tooltip, showAnalysisPly, view } = setup();
+    view.renderEvalChart(POINTS);
+    chart.dispatch("pointerdown", { pointerType: "touch", clientX: 480 });
+    expect(tooltip.hidden).toBe(false);
+    expect(showAnalysisPly).toHaveBeenCalledWith(4);
+    chart.dispatch("pointermove", { pointerType: "touch", clientX: 0 });
+    expect(showAnalysisPly).toHaveBeenCalledWith(1);
+    chart.dispatch("pointerup", { pointerType: "touch" });
     expect(tooltip.hidden).toBe(true);
   });
 
@@ -323,9 +466,9 @@ describe("eval chart pointer focus", () => {
     expect(chart.getAttribute("tabindex")).toBe(null);
     const down = chart.dispatch("mousedown");
     expect(down.preventDefault).toHaveBeenCalled();
-    chart.dispatch("mousemove", { clientX: 160 });
+    chart.dispatch("pointermove", { pointerType: "mouse", clientX: 160 });
     expect(tooltip.hidden).toBe(false);
-    chart.dispatch("mouseleave");
+    chart.dispatch("pointerleave", { pointerType: "mouse" });
     expect(tooltip.hidden).toBe(true);
   });
 

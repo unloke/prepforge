@@ -4,16 +4,18 @@ import {
   acquireFlushLock,
   buildAddId,
   buildDeleteId,
+  createSyncQueue,
   mergeOutboxState,
   outboxHasRejected,
   outboxHasWork,
   outboxIsQuiescent,
+  refreshFlushLock,
   releaseFlushLock,
   trainAttemptId,
 } from "./sync-queue.js";
 
-// Outbox merge rules (R-03/R-04): rejected ops are kept for inspection (never
-// silently dropped), settled ops never return, and a cross-tab lock stops two
+// Outbox merge rules (R-03/R-04): rejected training attempts are kept, rejected
+// Build edits are reported once and dropped, settled ops never return, and a cross-tab lock stops two
 // tabs from double-sending the same queue. Storage itself is outbox-db.js.
 
 function fakeStorage() {
@@ -45,15 +47,14 @@ function memoryOutbox() {
 }
 
 describe("outbox state", () => {
-  it("round-trips the queue and keeps rejected ops for inspection", () => {
+  it("round-trips the queue and keeps rejected training attempts", () => {
     const state = {
       build: {
         pending: [buildEntry],
         pendingDeletes: [{ tempId: "d1" }],
         idMap: { t1: 11 },
-        rejected: [{ tempId: "bad", error: "validation" }],
       },
-      train: { pending: [{ attempt: "u1" }], rejected: [] },
+      train: { pending: [{ attempt: "u1" }], rejected: [{ sessionId: "s", attempts: [], status: 422 }] },
     };
     const box = memoryOutbox();
     box.save(state);
@@ -70,7 +71,7 @@ describe("outbox state", () => {
 
   it("reports pending work and rejected ops separately", () => {
     const empty = {
-      build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
+      build: { pending: [], pendingDeletes: [], idMap: {} },
       train: { pending: [], rejected: [] },
     };
     expect(outboxHasWork(empty)).toBe(false);
@@ -81,7 +82,7 @@ describe("outbox state", () => {
     ).toBe(true);
     expect(outboxHasWork({ ...empty, train: { ...empty.train, pending: [{}] } })).toBe(true);
     // Rejected ops are for the user to act on — they are NOT auto-retried work.
-    const rejected = { ...empty, build: { ...empty.build, rejected: [buildEntry] } };
+    const rejected = { ...empty, train: { ...empty.train, rejected: [{ sessionId: "s", attempts: [] }] } };
     expect(outboxHasWork(rejected)).toBe(false);
     expect(outboxHasRejected(rejected)).toBe(true);
   });
@@ -109,9 +110,20 @@ describe("cross-tab flush lock", () => {
     expect(acquireFlushLock("owner", "tab-2", 1200)).toBe(false);
   });
 
-  it("steals a stale lock (holder went silent for 30s)", () => {
+  it("steals a lock whose holder stopped renewing it (a dead tab)", () => {
     expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
-    expect(acquireFlushLock("owner", "tab-2", 31_000)).toBe(true);
+    // The holder renews while it works, so only a holder that stopped (a crash)
+    // lets the lease run out — in seconds, not in half a minute.
+    expect(acquireFlushLock("owner", "tab-2", 5_000)).toBe(false);
+    expect(acquireFlushLock("owner", "tab-2", 9_500)).toBe(true);
+  });
+
+  it("renews the holder's lease without touching someone else's lock", () => {
+    expect(acquireFlushLock("owner", "tab-1", 1000)).toBe(true);
+    expect(refreshFlushLock("tab-1", "build", 6_000)).toBe(true);
+    // Renewed: the lock is still held, now until 6s + the lease.
+    expect(acquireFlushLock("owner", "tab-2", 8_000)).toBe(false);
+    expect(refreshFlushLock("tab-2", "build", 8_000)).toBe(false);
   });
 
   it("ignores locks held for a different owner", () => {
@@ -133,7 +145,7 @@ describe("cross-tab flush lock", () => {
 
 describe("outbox settling", () => {
   const empty = {
-    build: { pending: [], pendingDeletes: [], idMap: {}, rejected: [] },
+    build: { pending: [], pendingDeletes: [], idMap: {} },
     train: { pending: [], rejected: [] },
   };
 
@@ -164,8 +176,7 @@ describe("outbox settling", () => {
   });
 
   it("never reports quiescent while rejected ops are kept for review", () => {
-    const rejected = { kind: "add", tempId: "bad", message: "nope" };
-    box.save({ ...empty, build: { ...empty.build, rejected: [rejected] } });
+    box.save({ ...empty, train: { ...empty.train, rejected: [{ sessionId: "s", attempts: [], status: 422 }] } });
     const stored = box.load();
     expect(outboxHasWork(stored)).toBe(false);
     expect(outboxIsQuiescent(stored)).toBe(false);
@@ -222,17 +233,10 @@ describe("outbox settling", () => {
     expect(merged.build.pending).toHaveLength(0);
   });
 
-  it("bounds the rejected tail so a device can't grow without limit", () => {
-    for (let i = 0; i < 140; i += 1) {
-      box.save({
-        ...empty,
-        build: { ...empty.build, rejected: [{ kind: "add", tempId: `bad-${i}` }] },
-      });
-    }
-    const rejected = box.load().build.rejected;
-    expect(rejected).toHaveLength(140);
-    // The newest rejections survive — those are the ones being worked on.
-    expect(rejected[rejected.length - 1].tempId).toBe("bad-139");
+  it("drops stored rejected Build edits: they are reported once, not kept", () => {
+    box.save({ ...empty, build: { ...empty.build, rejected: [{ kind: "add", tempId: "bad" }] } });
+    expect(box.load().build.rejected).toBeUndefined();
+    expect(outboxIsQuiescent(box.load())).toBe(true);
   });
 
   it("requires attempt UUIDs rather than deriving identities from grades", () => {
@@ -274,4 +278,52 @@ describe("outbox settling", () => {
     expect(merged.build.pending).toHaveLength(0);
   });
 });
+// The lock must never outlive the page that took it: a page that goes away
+// mid-flush (a reload) leaves the next load of the same owner unable to flush,
+// and Train then refuses to start the session ("Couldn't sync your last
+// session"). The browser fires pagehide BEFORE the visibilitychange flush that
+// takes the lock, so the release has to happen on the way out as well.
+describe("flush lock and the page that took it", () => {
+  let handlers;
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", fakeStorage());
+    handlers = {};
+    vi.stubGlobal("addEventListener", (type, fn) => { handlers[type] = fn; });
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+  });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  function queueWithStuckFlush() {
+    const state = { pending: [1], dirty: false, timer: null, flushing: null, retry: 0 };
+    const queue = createSyncQueue({
+      key: "train",
+      state: () => state,
+      owner: () => "owner",
+      generation: () => 1,
+      serialize: () => ({}),
+      persist: () => Promise.resolve(true),
+      hasWork: () => true,
+      idleMs: 10,
+      tabId: "tab-1",
+      flush: () => new Promise(() => {}), // never settles: the page dies with it
+    });
+    return { queue, state };
+  }
+
+  it("gives the lock back when the page unloads", () => {
+    const { queue } = queueWithStuckFlush();
+    // The browser tears a page down in this order: beforeunload, pagehide,
+    // visibilitychange(hidden) — the flush that TAKES the lock — then unload.
+    handlers.beforeunload?.();
+    handlers.pagehide?.();
+    queue.flush();
+    expect(acquireFlushLock("owner", "tab-2", 1000, "train")).toBe(false); // held
+    handlers.unload?.();
+    expect(acquireFlushLock("owner", "tab-2", 1100, "train")).toBe(true); // released
+  });
+});

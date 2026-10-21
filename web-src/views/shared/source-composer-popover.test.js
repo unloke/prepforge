@@ -289,4 +289,21 @@ describe("source composer popover", () => {
       restore();
     }
   });
+
+  it("counts every picked source, not just the linked accounts on file", async () => {
+    const { doc, overlay, restore } = makeDoc();
+    try {
+      openSourceComposer({
+        document: doc,
+        selection: { linkedMode: "all", external: ["DrNykterstein"] },
+        linkedAccounts: [linked[0]],
+        onChange: () => {},
+        onClose: () => {},
+      });
+      // One linked account plus the added opponent — the header said "1 account".
+      expect(String(overlay.innerHTML)).toContain("2 accounts");
+    } finally {
+      restore();
+    }
+  });
 });

@@ -15,9 +15,9 @@ The product covers:
   production. Current selector and runtime boundaries: `docs/scout-production-ranking.md`.
 
 Shared core models (`src/prepforge_chess/core/`, `services/`, `storage/`) back both the
-web SPA and the optional CLI demos. Start with `docs/README.md` and
-`docs/ARCHITECTURE.md` for the current implementation. Superseded plans and
-checkpoints are in `docs/archive/`; they are historical context, not current instructions.
+web SPA and the optional CLI demos. Start with `docs/README.md` for the current
+documentation. History — superseded plans, audits and checkpoints — lives on the
+`history` branch.
 
 ## Local development
 
@@ -49,8 +49,14 @@ py -3.11 -m venv .venv
 ```powershell
 npm ci
 npm test -- --run
-npm run build    # emits SPA into src/prepforge_chess/web/static/
+npm run build    # builds the SPA into src/prepforge_chess/web/static/ (git-ignored)
 ```
+
+The served SPA is build output, not source: the tree under
+`src/prepforge_chess/web/static/` is ignored by git and every reader of it — the
+local server, the browser smokes, `tests/test_api_static.py` — needs `npm run build`
+once (and again after any `web-src/` change). The Docker image builds it in a Node
+stage; CI builds it before the jobs that serve it.
 
 Open http://127.0.0.1:8000 after starting uvicorn (API docs at `/docs` in dev).
 
@@ -121,4 +127,4 @@ docker build -t prepforge-chess .
 docker run --rm -p 8000:8000 prepforge-chess
 ```
 
-Roadmap and launch checklist: `docs/ROADMAP.md`.
+Deployment and operations: `docs/DEPLOYMENT.md`.

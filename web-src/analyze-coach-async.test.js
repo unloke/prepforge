@@ -25,22 +25,28 @@ function fakeStore() {
     maiaRead: vi.fn(),
   };
 }
-const read = (fen, depth = 16) => ({ fen, current_depth: depth, running: false, pvs: [{ score_cp: 20, pv_uci: ["e2e4"], pv_san: ["e4"] }] });
+// A read whose top move is NOT the one the harness plays (e2e4): the alternative line
+// is only fetched when the played move is the engine's first choice.
+const read = (fen, depth = 16, lines = 2, topUci = "d2d4") => ({
+  fen, current_depth: depth, running: false,
+  pvs: Array.from({ length: lines }, (_, i) => ({ score_cp: 20 - i, pv_uci: [i ? "g1f3" : topUci], pv_san: [i ? "Nf3" : "d4"] })),
+});
 
-function harness({ reviewed = true } = {}) {
+function harness({ reviewed = true, saved = { classification: "good" } } = {}) {
   let view = "analyze";
   let gameOver = null;
   const moduleGate = deferred();
   const render = vi.fn();
   const store = fakeStore();
   const deps = {
+    ENGINE_ID: "sf-test",
     window: globalThis, effectiveStockfishDepth: () => 16, analysisStore: async () => store,
     setEngineBestArrow: vi.fn(), setAnalysisBetterArrow: vi.fn(), savedBetterMove: () => null,
     offerLiveBetterArrow: vi.fn(), activeViewName: () => view, isBrowserEngineAvailable: () => true,
     isReviewedMove: () => reviewed, analysisSelfSide: () => (reviewed ? null : "black"),
     _coachReady: moduleGate.promise, preloadCoach: () => moduleGate.promise,
-    savedPositionEvalRead: () => null, savedMainlineMove: () => ({ classification: "good" }),
-    previousAnalysisMove: () => null, localBoardInfo: () => ({ status: {} }),
+    savedPositionEvalRead: () => null, savedMainlineMove: () => saved,
+    previousAnalysisMove: () => null, localBoardInfo: () => ({ status: {}, legal_moves: ["a2a3", "e2e4"] }),
     localGameOver: () => gameOver,
     renderCoachProse: render, maiaAnalysisEnabled: () => false,
     COACH_MIN_REUSE_DEPTH: 10,
@@ -53,7 +59,12 @@ function harness({ reviewed = true } = {}) {
   coach.fen = "after b - - 0 1";
   coach.ctx = { prevFen: "before w - - 0 1", lastUci: "e2e4", lastSan: "e4", ply: 1 };
   const mod = {
-    buildMoveFeatures: (x) => x,
+    // Just the two facts _run gates the alternative read on (see features.js).
+    buildMoveFeatures: (x) => ({
+      ...x,
+      isBest: !!(x.beforeEval.lines[0] && x.beforeEval.lines[0].uci === x.uci),
+      forced: false,
+    }),
     buildCommentary: (f, { selfSide }) =>
       ({ prose: f.opponentRead ? `Read for ${selfSide} on ${f.fenAfter}` : `Engine verdict on ${f.fenAfter}` }),
   };
@@ -69,7 +80,7 @@ describe("PositionCoach async continuation ownership", () => {
     const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     const appState = { explainContext: { prevFen: fen, lastUci: "e2e4" } };
     const start = source.indexOf("function paintMaiaCoachFromRead(");
-    const end = source.indexOf("\nasync function maiaPhaseCoach", start);
+    const end = source.indexOf("function refreshAnalysisExplain(", start);
     const run = new Function("loadPhaseCoach", "effectiveMaiaRating", "paintMaiaCoachLine", "appState",
       `${source.slice(start, end)}; return paintMaiaCoachFromRead;`)(() => gate.promise, () => 1500, paint, appState);
     const read = { predictions: [{ move_uci: "e2e4", probability: 0.6 }] };
@@ -107,19 +118,68 @@ describe("PositionCoach async continuation ownership", () => {
     expect(h.render).not.toHaveBeenCalled();
   });
 
-  it("reads the before and after positions at once, at the Settings depth with two lines", async () => {
+  it("reads both positions with one line, and widens only a move that needs its alternative", async () => {
     const h = harness();
     h.moduleGate.resolve(h.mod);
     const pending = h.coach._run(h.coach.fen);
     await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    // Neither position needs a second line on its own; the before-position's best
+    // alternative is asked for afterwards, and only when the played move is the top
+    // choice (the "only move"/Brilliant questions, see features.js onlyMove).
     expect(h.store.leases.map((l) => [l.fen, l.opts])).toEqual([
-      ["before w - - 0 1", { depth: 16, multipv: 2 }],
-      ["after b - - 0 1", { depth: 16, multipv: 2 }],
+      ["before w - - 0 1", { depth: 16, multipv: 1 }],
+      ["after b - - 0 1", { depth: 16, multipv: 1 }],
     ]);
     h.answerAll();
     await pending;
     expect(h.render).toHaveBeenCalledWith({ prose: "Engine verdict on after b - - 0 1" });
     expect(h.store.leases.every((l) => l.release.mock.calls.length === 1)).toBe(true);
+  });
+
+  it("widens the position before the move when the played move is the engine's best", async () => {
+    // Unanalysed (a variation): no saved verdict, so the alternative can still re-word it.
+    const h = harness({ saved: null });
+    h.moduleGate.resolve(h.mod);
+    // The played move IS the top line, so the verdict may turn on the best alternative.
+    const best = read("before w - - 0 1", 16, 1, "e2e4");
+    const pending = h.coach._run(h.coach.fen);
+    await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    h.store.leases[0].answer(best);
+    h.store.leases[1].answer(read("after b - - 0 1", 16, 1));
+    await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(3));
+    expect(h.store.leases.map((l) => [l.fen, l.opts])).toEqual([
+      ["before w - - 0 1", { depth: 16, multipv: 1 }],
+      ["after b - - 0 1", { depth: 16, multipv: 1 }],
+      ["before w - - 0 1", { depth: 16, multipv: 2 }],
+    ]);
+    h.answerAll();
+    await pending;
+    expect(h.render).toHaveBeenCalledOnce();
+  });
+
+  it("does not widen a saved move's position: its verdict is settled", async () => {
+    const h = harness();
+    h.moduleGate.resolve(h.mod);
+    const best = read("before w - - 0 1", 16, 1, "e2e4");
+    const pending = h.coach._run(h.coach.fen);
+    await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    h.answerAll();
+    await pending;
+    expect(h.store.acquire).toHaveBeenCalledTimes(2);
+    expect(h.store.leases.some((l) => l.opts.multipv === 2)).toBe(false);
+    expect(h.render).toHaveBeenCalledOnce();
+    void best;
+  });
+
+  it("does not widen when the played move is not the engine's best", async () => {
+    const h = harness({ saved: null });
+    h.moduleGate.resolve(h.mod);
+    const pending = h.coach._run(h.coach.fen);
+    await vi.waitFor(() => expect(h.store.acquire).toHaveBeenCalledTimes(2));
+    h.answerAll();
+    await pending;
+    expect(h.store.acquire).toHaveBeenCalledTimes(2);
+    expect(h.render).toHaveBeenCalledOnce();
   });
 
   it("reads the opponent's move for the user instead of leaving it blank", async () => {
@@ -224,7 +284,7 @@ describe("PositionCoach async continuation ownership", () => {
   h.moduleGate.resolve(h.mod);
   h.coach._ensureEngine();
   h.coach._remember(h.coach.ctx.prevFen, read(h.coach.ctx.prevFen), 0);
-  h.coach._remember(h.coach.fen, read(h.coach.fen), 0);
+  h.coach._remember(h.coach.fen, read(h.coach.fen, 16, 1), 0);
   expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
   await vi.waitFor(() => expect(h.render).toHaveBeenCalledOnce());
   expect(vi.getTimerCount()).toBe(0);
@@ -237,7 +297,7 @@ describe("PositionCoach async continuation ownership", () => {
   h.moduleGate.resolve(h.mod);
   h.coach._ensureEngine();
   h.coach._remember(h.coach.ctx.prevFen, read(h.coach.ctx.prevFen), 0);
-  h.coach._remember(h.coach.fen, read(h.coach.fen), 0);
+  h.coach._remember(h.coach.fen, read(h.coach.fen, 16, 1), 0);
   expect(h.coach.update(h.coach.fen, h.coach.ctx)).toBe(true);
   await vi.advanceTimersByTimeAsync(0); // waitFor would advance the faked clock past the window
   expect(h.render).toHaveBeenCalledOnce();
@@ -268,3 +328,32 @@ describe("PositionCoach async continuation ownership", () => {
   run({ fen: "uncached" });
   expect(instant).toHaveBeenCalledOnce();
  });
+
+it("does not invite a move while a loaded game's review is still running", () => {
+  // A whole game on the board has no "just played" move to grade yet, and the user
+  // did not play it: the empty-board invitation is wrong until the review lands.
+  const prose = { textContent: "", dataset: {}, classList: { toggle() {} }, append() {} };
+  const document = { getElementById: (id) => (id === "coach-prose" ? prose : null), createElement: () => ({ addEventListener() {} }) };
+  const start = source.indexOf("function renderInstantCoach(");
+  const end = source.indexOf("\nasync function runAnalysis(", start);
+  const run = new Function("appState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
+    "START_FEN", "paintPhaseChip", "paintMaiaCoachLine", "setCoachProse", "describeMove", "showAnalysisPly", "savedCoachQuality", "COACH_QUALITY_GROUP",
+    "COACH_TONES",
+    `${source.slice(start, end)}; return renderInstantCoach;`)({ analysis: { moves: [{ ply: 1, san: "e4" }] }, explainContext: {} },
+      document, () => false, () => null, () => "white", "startfen", () => {}, () => {},
+      (text) => { prose.textContent = text; }, () => "", () => {}, () => null, {}, []);
+
+  run();
+  expect(prose.textContent).toBe("Reading the game…");
+
+  // Nothing loaded: the invitation is the right empty state.
+  const empty = { analysis: null, explainContext: {} };
+  const runEmpty = new Function("appState", "document", "hasClassifiedMoves", "buildGameSummary", "analysisSelfSide",
+    "START_FEN", "paintPhaseChip", "paintMaiaCoachLine", "setCoachProse", "describeMove", "showAnalysisPly", "savedCoachQuality", "COACH_QUALITY_GROUP",
+    "COACH_TONES",
+    `${source.slice(start, end)}; return renderInstantCoach;`)(empty,
+      document, () => false, () => null, () => "white", "startfen", () => {}, () => {},
+      (text) => { prose.textContent = text; }, () => "", () => {}, () => null, {}, []);
+  runEmpty();
+  expect(prose.textContent).toBe("Make a move and I'll tell you what I think.");
+});

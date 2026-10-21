@@ -7,6 +7,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from fastapi.testclient import TestClient
 
+from prepforge_chess.services.google_oauth import GoogleOAuthError
+
 
 @pytest.fixture()
 def google_client(tmp_path, monkeypatch):
@@ -16,8 +18,8 @@ def google_client(tmp_path, monkeypatch):
     monkeypatch.setenv("PREPFORGE_SECRET_KEY", "test-secret-not-for-prod")
     monkeypatch.setenv("PREPFORGE_TOKEN_KEY", "test-token-key-not-for-prod")
     monkeypatch.setenv("PREPFORGE_ENV", "development")
-    monkeypatch.setenv("PREPFORGE_GOOGLE_CLIENT_ID", "test-google-client")
-    monkeypatch.setenv("PREPFORGE_GOOGLE_CLIENT_SECRET", "test-google-secret")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client")
+    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "test-google-secret")
 
     from prepforge_chess.api import config, db, main
     from prepforge_chess.api.ratelimit import limiter
@@ -66,7 +68,9 @@ def test_providers_enabled_with_creds(google_client):
 
 
 def test_login_503_when_unconfigured(client):
-    assert client.get("/api/auth/google/login", follow_redirects=False).status_code == 503
+    r = client.get("/api/auth/google/login", follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/?oauth_error=google_not_configured"
 
 
 def test_login_redirects_with_pkce_and_flow_cookie(google_client):
@@ -106,7 +110,25 @@ def test_callback_state_mismatch_rejected(google_client):
     r = google_client.get(
         "/api/auth/google/callback?code=abc&state=WRONG", follow_redirects=False
     )
-    assert r.status_code == 400
+    assert r.status_code == 303
+    assert r.headers["location"] == "/?oauth_error=google_state_mismatch"
+    assert any(
+        c.startswith("pf_google_oauth=") and "Max-Age=0" in c
+        for c in r.headers.get_list("set-cookie")
+    )
+
+
+def test_callback_provider_failure_redirects_without_raw_error(google_client, monkeypatch):
+    def fail(**kwargs):
+        raise GoogleOAuthError("upstream secret detail")
+
+    monkeypatch.setattr(
+        "prepforge_chess.api.routers.google_auth.exchange_code", fail
+    )
+    r = _run_login_flow(google_client)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/?oauth_error=google_provider_error"
+    assert "upstream" not in r.headers["location"]
 
 
 def test_callback_binds_to_existing_email_account(google_client, monkeypatch):

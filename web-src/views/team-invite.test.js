@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   forgetInviteUrl,
+  formatDay,
   inviteDialogBodyHtml,
   inviteDialogModel,
   knownInviteUrl,
@@ -75,6 +76,13 @@ beforeEach(() => {
   forgetInviteUrl("t1");
 });
 
+describe("invite line formatting", () => {
+  it("dates in English whatever the browser locale (the footer uses this)", () => {
+    expect(formatDay("2030-10-04T12:00:00Z")).toBe("Oct 4");
+    expect(formatDay(null)).toBe("");
+  });
+});
+
 describe("team invite dialog", () => {
   it("opening never rotates the link: it only reads status", async () => {
     const h = makeDeps({
@@ -145,6 +153,71 @@ describe("team invite dialog", () => {
     await runInviteDialog("t1", h.deps);
     expect(h.calls).toContainEqual(["DELETE", "/api/teams/t1/invite"]);
     expect(h.ui.rendered.at(-1).state).toBe("none");
+  });
+
+  it("carries one status line and no standing explanation", () => {
+    // Every state: the paragraph that explained what a link does is gone; only
+    // the live status remains (and only where a link is shown).
+    for (const [status, url] of [
+      [{ exists: false }, null],
+      [{ exists: true, created_at: "2026-09-01T00:00:00+00:00" }, null],
+      [{ exists: true, created_at: "2026-09-01T00:00:00+00:00" }, "https://app.test/?join=X"],
+    ]) {
+      const model = inviteDialogModel({ status, url });
+      expect(model.note.length).toBeLessThan(40);
+      const html = String(inviteDialogBodyHtml(model));
+      expect(html).not.toContain("anyone signed in who opens it");
+      expect(html).not.toContain("only shown once");
+      if (model.state !== "known") expect(html).not.toContain("data-invite-note");
+    }
+  });
+
+  it("a link minted in this session shows its created day, not a blank status", () => {
+    rememberInviteUrl("t1", "https://app.test/?join=NEW", "2026-09-30T10:00:00+00:00");
+    // GET status right after POST /invite can report a fresh row with no timestamp.
+    const model = inviteDialogModel({ status: { exists: true, created_at: null }, url: "https://app.test/?join=NEW", teamId: "t1" });
+    expect(model.note).toBe("Invite link active · created Sep 30");
+  });
+
+  it("returns the last known status so the caller's line follows a mint or revoke", async () => {
+    // The dialog stays open across actions; its final status is what the card's
+    // invite line under the tabs must show (the old code returned nothing, so
+    // the line kept the status from before the mint).
+    const minted = makeDeps({ status: { exists: false }, actions: ["generate", "done"] });
+    expect(await runInviteDialog("t1", minted.deps)).toEqual({
+      exists: true, created_at: "2026-09-30T10:00:00+00:00", expires_at: null,
+    });
+    const revoked = makeDeps({ status: { exists: true, created_at: null }, actions: ["revoke", "done"], confirmAnswers: [true] });
+    expect(await runInviteDialog("t1", revoked.deps)).toEqual({ exists: false });
+  });
+
+  it("a failed status read still resolves, so the caller's line is re-read", async () => {
+    const ui = makeUi([]);
+    const outcome = await runInviteDialog("t1", {
+      api: async () => { throw new Error("Network down"); },
+      postJson: async () => ({}),
+      origin: "https://app.test",
+      copyText: async () => {},
+      confirm: async () => false,
+      setStatus: () => {},
+      setStatusError: () => {},
+      ui,
+    });
+    expect(outcome).toBeUndefined();
+    expect(ui.closed).toBe(true);
+  });
+
+  it("reports each status change to the caller, not just the final one", async () => {
+    // The card's line follows a revoke even though the dialog stays open; the
+    // caller repaints from the last known status once the stale detail read
+    // has landed.
+    const seen = [];
+    const ui = makeUi(["revoke", "done"]);
+    ui.status = (status) => seen.push(status);
+    const h = makeDeps({ status: { exists: true, created_at: null }, actions: ["revoke", "done"], confirmAnswers: [true] });
+    await runInviteDialog("t1", { ...h.deps, ui });
+    // First paint, then the revoke; "done" repaints the same (no-link) state.
+    expect(seen).toEqual([{ exists: true, created_at: null }, { exists: false }, { exists: false }]);
   });
 
   it("Copy is the primary button and Revoke is a quiet secondary action", () => {

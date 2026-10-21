@@ -173,7 +173,7 @@ async function main() {
       resultsVisible: !document.getElementById("analysis-results")?.hidden,
       moveListChildCount: document.getElementById("analysis-moves")?.children.length || 0,
       summaryHasBars: !!document.querySelector("#analysis-summary .class-bars, #analysis-summary .cbar-row"),
-      status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+      status: document.getElementById("notices")?.textContent?.trim() || "",
       handoffVisible: !document.getElementById("analysis-handoff")?.hidden,
       repertoireCta: !!document.querySelector('[data-testid="create-repertoire-from-game"]'),
     }));
@@ -210,7 +210,7 @@ async function main() {
     const afterHandoff = await page.evaluate(() => ({
       viewBuildActive: document.getElementById("view-build")?.classList.contains("is-active"),
       repName: document.getElementById("build-rep-name")?.textContent?.trim() || "",
-      status: document.querySelector('[data-testid="app-status"]')?.textContent?.trim() || "",
+      status: document.getElementById("notices")?.textContent?.trim() || "",
     }));
 
     record("handoff-create", {

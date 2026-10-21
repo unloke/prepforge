@@ -38,8 +38,8 @@ The live deploy runs on Render's **free tier**.
    | `PREPFORGE_STRIPE_SECRET_KEY` | For billing | Stripe secret key. |
    | `PREPFORGE_STRIPE_WEBHOOK_SECRET` | For billing | Stripe webhook signing secret. |
    | `PREPFORGE_STRIPE_PRICE_PRO` | For billing | Stripe Price ID for Pro plan. |
-   | `PREPFORGE_GOOGLE_CLIENT_ID` | Optional | Google OAuth sign-in. |
-   | `PREPFORGE_GOOGLE_CLIENT_SECRET` | Optional | Google OAuth sign-in. |
+   | `GOOGLE_CLIENT_ID` | Optional | Google OAuth sign-in. |
+   | `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth sign-in. |
    | `PREPFORGE_SENTRY_DSN` | Optional | Error reporting (dark-by-default). |
    | `PREPFORGE_PUBLIC_BASE_URL` | For password recovery | Public HTTPS origin used in reset links. |
    | `PREPFORGE_SMTP_HOST` / `PREPFORGE_SMTP_PORT` | For password recovery | SMTP service with STARTTLS; port defaults to 587. |
@@ -105,6 +105,62 @@ https://huggingface.co/Andy108/prepforge-maia3/resolve/77fcb55654f1fad83ee9e987b
 
 Set both env vars in the Render dashboard to that base (with trailing slash). No rebuild
 needed — only a service restart. Re-pin when you upload new ONNX/WASM artifacts.
+
+### Automatic Stockfish updates
+
+`.github/workflows/update-stockfish.yml` checks npm's latest stable Stockfish
+version daily at 09:43 UTC (02:43 Phoenix), and supports **Run workflow**. Dependabot
+ignores Stockfish; this is its only update path. Equal or older versions do nothing;
+invalid registry responses fail the run.
+
+For a newer version, the workflow pins `package.json` and the lockfile, runs
+`npm run sync-engine`, and commits the regenerated `web-src/public/engine/`
+manifest (the only engine file in git). The image builds the SPA itself, with its
+baked engine identities, from that manifest. Docker reads the manifest's package
+version and verifies the downloaded WASM hashes, so neither Docker nor Python
+needs a version edit. The changed engine identity invalidates device probes; saved
+analysis identities stay as recorded.
+
+One serialized workflow maintains `automation/stockfish`, updating the same open
+PR even across releases. It waits for that head's ordinary `ci.yml` PR run and
+requires **every** job to succeed, explicitly including `python`, `postgres`,
+`js`, `stockfish` (real-browser UCI smoke), `e2e`, and `docker` (the production
+image build). It then requests a squash merge with an exact-head guard and no
+administrator bypass. Main's normal Render
+Docker deployment builds the SPA and fetches the matching WASM.
+
+#### One-time GitHub setup
+
+1. Create a GitHub App (Settings → Developer settings → GitHub Apps), disable its
+   webhook, and grant repository **Contents: Read and write**, **Pull requests:
+   Read and write**, and **Actions: Read and write**. Actions write lets a later
+   scheduled attempt rerun failed CI on an unchanged PR. Install it on **only this
+   repository**, generate a private key, and add repository Actions secrets:
+   `STOCKFISH_APP_ID` (the App ID) and `STOCKFISH_APP_PRIVATE_KEY` (the full PEM).
+   The workflow mints a repository-scoped, one-hour installation token. There is
+   no personal access token. Both the branch push and PR creation use the App
+   token so they trigger CI; the default `GITHUB_TOKEN` would suppress those runs.
+2. In repository Settings → General → Pull Requests, enable **Allow squash
+   merging**. GitHub's **Allow auto-merge** setting is unnecessary: the workflow
+   waits for CI and requests the merge itself.
+3. Main's branch protection/rules must allow this App to merge without human
+   approval. Configure required checks `python`, `postgres`, `js`, `stockfish`,
+   `e2e`, and `docker`, with **Require branches to be up to date before merging**. Do not
+   impose a required review, code-owner approval, or other manual gate on these
+   PRs; permit the App if pushes are restricted. The workflow never bypasses
+   rules. These hosted settings cannot be determined from the workflow files.
+4. Land this automation on `main`, close obsolete Dependabot PR **#157**, and run
+   **Actions → Update Stockfish → Run workflow** once to verify installation,
+   PR CI, and merge end to end. Subsequent releases need no owner action.
+
+Registry/install/build errors (including changed upstream patch anchors) fail
+their named workflow step before publishing a candidate. CI or merge failures
+leave the PR open with red checks/a failed updater run. Missing CI times out;
+skipped/cancelled jobs never count as passing. The next daily attempt refreshes
+from main and retries failed CI without duplicating the PR. Enable Actions
+failure notifications for the repository. GitHub schedules are best-effort and
+can be disabled by GitHub after inactivity on public repositories; use external
+monitoring if the schedule itself needs an availability guarantee.
 
 ### Database backups
 
@@ -195,6 +251,10 @@ Use clientlog volume to decide engine graceful-failure priority (stability plan 
 **Python 3.11** is required for server work (CI and production match). Use a project
 venv so Windows' default Python 3.8 does not shadow the install.
 
+`npm run build` writes the SPA (git-ignored) into
+`src/prepforge_chess/web/static/`; the local server, the browser smokes and the
+static-serving tests read that tree, so run it after every `web-src/` change.
+
 ### Option A — uv (recommended)
 
 ```powershell
@@ -268,8 +328,9 @@ docker build -t prepforge-chess .
 docker run --rm -p 8000:8000 prepforge-chess
 ```
 
-Then open http://127.0.0.1:8000 — with no `DATABASE_URL` set, the app falls back to a
-local SQLite file under `data/`.
+The image builds the SPA in a Node stage, so no local `npm run build` is needed
+before it. Then open http://127.0.0.1:8000 — with no `DATABASE_URL` set, the app
+falls back to a local SQLite file under `data/`.
 
 ## Manual GitHub upload
 

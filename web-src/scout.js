@@ -772,6 +772,21 @@ export function isEarlyResignCollapse(
   return frac >= minClockFrac;
 }
 
+/**
+ * The games the report actually analyses: inside the speed filter, minus the
+ * early-resign collapses. Pass a `color` to narrow to one side; omit it for both.
+ * Every count on screen (colour tab, section W/D/L, profile total, speed chips,
+ * coverage) reads this one set, so they add up.
+ */
+export function analyzedGames(games, color = null, { speedFilter = "all" } = {}) {
+  return (games || []).filter(
+    (g) =>
+      (!color || g.color === color) &&
+      (speedFilter === "all" || g.speed === speedFilter) &&
+      !isEarlyResignCollapse(g),
+  );
+}
+
 // Aggregate the games one colour at a time. Each path through the trie is a line
 // the opponent has actually played, with how often and how well they scored.
 export function buildOpeningTrie(
@@ -1069,11 +1084,9 @@ export function aggregateOpeningBranches(
   return { branches, droppedCount, ancestorFreq };
 }
 
-/** Opponent W/D/L + score% for one colour, optionally restricted to a speed filter. */
+/** Opponent W/D/L + score% for one colour over the games the report analyses. */
 export function opponentColorStats(games, color, { speedFilter = "all" } = {}) {
-  const filtered =
-    speedFilter !== "all" ? (games || []).filter((g) => g.speed === speedFilter) : games || [];
-  return colorResultStats(filtered, color);
+  return colorResultStats(analyzedGames(games, color, { speedFilter }), color);
 }
 
 /** Opponent's overall score% in games for one colour (used as the prep baseline). */
@@ -1288,7 +1301,7 @@ export function fensAlongLine(ucis) {
 }
 
 // One final budgeted set selection, shared by live and fallback reports. With a recorded
-// path-guard run (`pathGuard`, feature-flagged) the guarded selection is replayed instead.
+// path-guard run (`pathGuard`) the guarded selection is replayed instead.
 export function rankGamePlan(
   lines,
   baselineScorePct,
@@ -1691,23 +1704,31 @@ function colorResultStats(games, color) {
 }
 
 export function opponentProfile(games) {
-  const ratingsSeen = games.map((g) => g.rating).filter((r) => r > 0);
+  // Only the games the report analyses: collapses are dropped everywhere they are
+  // counted, so the profile total equals the two colour sections' counts. The speed
+  // filter is deliberately not applied here — the speed chips have to keep counting
+  // the other speeds so the user can switch to them.
+  const analyzed = analyzedGames(games);
+  const ratingsSeen = analyzed.map((g) => g.rating).filter((r) => r > 0);
   const speedCounts = { bullet: 0, blitz: 0, rapid: 0, classical: 0, unknown: 0 };
-  games.forEach((g) => {
+  analyzed.forEach((g) => {
     speedCounts[g.speed] = (speedCounts[g.speed] || 0) + 1;
   });
-  const last20 = games.slice(0, 20);
-  const prev20 = games.slice(20, 40);
+  const last20 = analyzed.slice(0, 20);
+  const prev20 = analyzed.slice(20, 40);
   return {
-    total: games.length,
+    total: analyzed.length,
+    // Games fetched but not analysed (early resignations), so the report label can
+    // account for every game the toolbar counter counted.
+    skipped: (games || []).length - analyzed.length,
     ratingMin: ratingsSeen.length ? Math.min(...ratingsSeen) : null,
     ratingMax: ratingsSeen.length ? Math.max(...ratingsSeen) : null,
-    ratingLast: games[0]?.rating || null,
+    ratingLast: analyzed[0]?.rating || null,
     speedCounts,
     recentlyChanged: detectRecentChange(last20, prev20),
     colorStats: {
-      white: colorResultStats(games, "white"),
-      black: colorResultStats(games, "black"),
+      white: colorResultStats(analyzed, "white"),
+      black: colorResultStats(analyzed, "black"),
     },
   };
 }

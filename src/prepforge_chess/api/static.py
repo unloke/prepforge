@@ -29,9 +29,10 @@ import json
 import mimetypes
 import os
 import re
+from email.utils import formatdate, parsedate_to_datetime
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from prepforge_chess.api.middleware import build_csp
@@ -91,6 +92,8 @@ _IMMUTABLE_EXT = {".wasm", ".onnx", ".nnue"}
 # Only these (not every file under assets/) are safe to mark immutable — the
 # hash changes whenever the content does.
 _HASHED_NAME = re.compile(r"-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$")
+# The Stockfish build sits in engine/<hash of its files>/ (scripts/sync-stockfish.mjs).
+_HASHED_DIR = re.compile(r"^[0-9a-f]{8}$")
 
 
 def _static_mime(path: Path) -> str:
@@ -102,11 +105,66 @@ def _static_mime(path: Path) -> str:
 
 
 def _cache_control(path: Path) -> str:
-    if path.suffix.lower() in _IMMUTABLE_EXT or _HASHED_NAME.search(path.name):
+    hashed_dir = path.parent.parent.name == "engine" and _HASHED_DIR.match(path.parent.name)
+    if path.suffix.lower() in _IMMUTABLE_EXT or _HASHED_NAME.search(path.name) or hashed_dir:
         return "public, max-age=31536000, immutable"
     # App shell + unhashed assets (index.html, styles, icons): always revalidate so
     # deploys/edits are picked up immediately.
     return "no-cache"
+
+
+def _file_etag(stat_result: os.stat_result) -> str:
+    """Strong ETag for a file: the exact formula ``FileResponse`` uses.
+
+    Computed identically so the validator a conditional request echoes back is the
+    one the 200 carried, whichever handler produced it.
+    """
+    seed = "{0}-{1}".format(stat_result.st_mtime, stat_result.st_size)
+    return '"' + hashlib.md5(seed.encode(), usedforsecurity=False).hexdigest() + '"'
+
+
+def _not_modified(
+    request: Request, etag: str, last_modified: float | None = None
+) -> bool:
+    """True when the request's validators still describe the current body.
+
+    The SPA shell and the unhashed files are served ``no-cache``, so the browser
+    re-asks on every load. Answering 304 keeps that a header-only round trip
+    instead of re-sending the whole file (the shell is 71 KB of markup).
+    If-None-Match wins over If-Modified-Since, as RFC 9110 requires.
+    """
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match is not None:
+        return etag in [tag.strip(" W/") for tag in if_none_match.split(",")]
+    if last_modified is None:
+        return False
+    if_modified_since = request.headers.get("if-modified-since")
+    if not if_modified_since:
+        return False
+    try:
+        since = parsedate_to_datetime(if_modified_since)
+    except (TypeError, ValueError):
+        return False
+    return since is not None and since.timestamp() >= int(last_modified)
+
+
+def _not_modified_response(etag: str, cache_control: str, isolation: dict[str, str]) -> Response:
+    # Vary must ride on the 304 too: the gzip middleware never compresses an empty
+    # body, so it cannot add the header here, and a shared cache reading Vary only
+    # from the 304 would hand a gzipped body to a client that did not ask for one.
+    return Response(
+        status_code=304,
+        headers={"ETag": etag, "Cache-Control": cache_control, "Vary": "Accept-Encoding", **isolation},
+    )
+
+
+def _validator_headers(etag: str, mtime: float) -> dict[str, str]:
+    """The response validators a client echoes back in If-None-Match / If-Modified-Since.
+
+    HTML is rendered here rather than streamed by FileResponse, so it does not get
+    these for free the way a streamed asset does.
+    """
+    return {"ETag": etag, "Last-Modified": formatdate(mtime, usegmt=True)}
 
 
 def _maia3_asset_base() -> str:
@@ -198,23 +256,37 @@ def _dev_maia3_fallback(rel_path: str) -> Path | None:
     return target if target.is_file() else None
 
 
-def _render_index() -> Response:
+def _render_index(request: Request) -> Response:
     index = STATIC_DIR / "index.html"
     try:
+        stat_result = index.stat()
         body = _inject_asset_base(index.read_bytes())
     except OSError:
         return Response("app shell not found", status_code=404)
+    cache_control = _cache_control(index)
+    etag = _file_etag(stat_result)
+    # The injected asset-base globals are env-derived, so a process that restarts
+    # with different bases serves a different body for an unchanged file. Fold the
+    # script body into the ETag so that edit is never answered with a 304.
+    script_body = _asset_base_script()
+    if script_body:
+        etag = '"' + hashlib.md5(
+            (etag + script_body).encode(), usedforsecurity=False
+        ).hexdigest() + '"'
+    if _not_modified(request, etag, stat_result.st_mtime):
+        return _not_modified_response(etag, cache_control, _DOCUMENT_ISOLATION)
     return HTMLResponse(
         content=body,
         headers={
-            "Cache-Control": _cache_control(index),
+            "Cache-Control": cache_control,
+            **_validator_headers(etag, stat_result.st_mtime),
             "Content-Security-Policy": _document_csp(),
             **_DOCUMENT_ISOLATION,
         },
     )
 
 
-def _serve_asset(rel_path: str) -> Response:
+def _serve_asset(request: Request, rel_path: str) -> Response:
     base = STATIC_DIR.resolve()
     target = (base / rel_path).resolve()
     # Reject path traversal outside STATIC_DIR.
@@ -231,20 +303,35 @@ def _serve_asset(rel_path: str) -> Response:
     # HTML documents (the app shell, served via /static too) get the runtime
     # asset-base injection and the document isolation headers; everything else
     # streams via FileResponse (range requests, sendfile) with CORP.
+    cache_control = _cache_control(target)
     if target.suffix.lower() == ".html":
+        stat_result = target.stat()
+        etag = _file_etag(stat_result)
+        if _not_modified(request, etag, stat_result.st_mtime):
+            return _not_modified_response(etag, cache_control, _DOCUMENT_ISOLATION)
         body = _inject_asset_base(target.read_bytes())
         return HTMLResponse(
             content=body,
             headers={
-                "Cache-Control": _cache_control(target),
+                "Cache-Control": cache_control,
+                **_validator_headers(etag, stat_result.st_mtime),
                 "Content-Security-Policy": _document_csp(),
                 **_DOCUMENT_ISOLATION,
             },
         )
+    # FileResponse carries an ETag of its own, but nothing checks it: only
+    # StaticFiles answers conditionals, and this route is hand-rolled. Hashed
+    # names are immutable so they never re-ask; the revalidating files (the two
+    # manifests, icons, logos) do, on every load. A Range request is a ranged
+    # read, never a cache revalidation, so it keeps streaming.
+    stat_result = target.stat()
+    etag = _file_etag(stat_result)
+    if "range" not in request.headers and _not_modified(request, etag, stat_result.st_mtime):
+        return _not_modified_response(etag, cache_control, _ASSET_ISOLATION)
     return FileResponse(
         target,
         media_type=_static_mime(target),
-        headers={"Cache-Control": _cache_control(target), **_ASSET_ISOLATION},
+        headers={"Cache-Control": cache_control, **_ASSET_ISOLATION},
     )
 
 
@@ -256,9 +343,9 @@ def register_static(app: FastAPI) -> None:
     """
 
     @app.get("/", include_in_schema=False)
-    def index() -> Response:
-        return _render_index()
+    def index(request: Request) -> Response:
+        return _render_index(request)
 
     @app.get("/static/{rel_path:path}", include_in_schema=False)
-    def static_asset(rel_path: str) -> Response:
-        return _serve_asset(rel_path)
+    def static_asset(request: Request, rel_path: str) -> Response:
+        return _serve_asset(request, rel_path)

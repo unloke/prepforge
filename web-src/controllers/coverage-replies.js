@@ -1,13 +1,13 @@
 import { prepareCoverageReply } from "../coverage-plan.js";
 
 export async function previewCoverageReplies(gaps, { isValid }, deps) {
-  const { isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage, jobToast,
+  const { isBuildReadOnly, isBrowserEngineAvailable, unavailableMessage, notices,
     hardFlushBuild, captureBuildContext, getBuild, effectiveMaiaRating, effectiveStockfishDepth,
     getGenerator, getProvider, showConfirmModal, postJson, classifySyncError, hydrateBuild,
     trainRepertoire } = deps;
   if (isBuildReadOnly()) throw new Error("Copy this repertoire to add replies");
   if (!isBrowserEngineAvailable()) throw new Error(unavailableMessage);
-  if (jobToast.isBusy()) throw new Error("Another job is running");
+  if (notices.isBusy()) throw new Error("Another job is running");
   await hardFlushBuild();
   if (!isValid()) throw new Error("Preparation changed; check again");
   const isCurrent = captureBuildContext();
@@ -15,7 +15,7 @@ export async function previewCoverageReplies(gaps, { isValid }, deps) {
   const controller = new AbortController();
   const ready = [], failures = [];
   const rating = effectiveMaiaRating();
-  jobToast.startJob({ id: `coverage-preview-${Date.now()}`, title: "Previewing replies",
+  notices.startJob({ id: `coverage-preview-${Date.now()}`, title: "Previewing replies",
     tab: "build", dock: document.getElementById("coverage-job-dock"), total: gaps.length,
     onCancel: () => controller.abort() });
   try {
@@ -31,15 +31,15 @@ export async function previewCoverageReplies(gaps, { isValid }, deps) {
         if (error.name === "AbortError") break;
         failures.push(`${gap.moveSan}: ${error.message}`);
       }
-      jobToast.updateJob({ current: ready.length + failures.length, total: gaps.length,
+      notices.updateJob({ current: ready.length + failures.length, total: gaps.length,
         message: `${ready.length} ready${failures.length ? `, ${failures.length} failed` : ""}` });
     }
     if (controller.signal.aborted || !isCurrent() || !isValid()) {
-      jobToast.cancelJob("Reply preview stopped");
+      notices.cancelJob("Reply preview stopped");
       return;
     }
     if (!ready.length) throw new Error(failures.join("; ") || "No replies generated");
-    jobToast.completeJob({ title: "Replies previewed", message: `${ready.length} ready${failures.length ? `, ${failures.length} failed` : ""}` });
+    notices.completeJob({ title: "Replies previewed", message: `${ready.length} ready${failures.length ? `, ${failures.length} failed` : ""}` });
     const text = ready.map((r) => `${r.line} (+${r.addedMoves} moves)`).join("\n");
     const approved = await showConfirmModal({ title: "Add prepared replies?",
       body: text + (failures.length ? `\nFailed: ${failures.join("; ")}` : ""), okLabel: "Add replies" });
@@ -81,7 +81,7 @@ export async function previewCoverageReplies(gaps, { isValid }, deps) {
       }
     }
   } catch (error) {
-    if (error.name === "AbortError") jobToast.cancelJob("Reply preview stopped");
-    else { if (jobToast.isBusy()) jobToast.failJob(error.message); throw error; }
+    if (error.name === "AbortError") notices.cancelJob("Reply preview stopped");
+    else { if (notices.isBusy()) notices.failJob(error.message); throw error; }
   }
 }

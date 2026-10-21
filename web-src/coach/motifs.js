@@ -43,20 +43,3 @@ export function motifPhrase(fenBefore, uci, san) {
 export function participle(phrase) {
   return String(phrase || "").replace(/^(fork|pin|skewer)s/, (_, v) => `${v}${v === "pin" ? "n" : ""}ing`);
 }
-
-// The piece `replyUci` captures on a square the mover left with no defender, as
-// { type, square }, or null: the "hanging piece" an error gives away.
-export function hangingCapture(fenAfter, replyUci) {
-  const chess = safeChess(fenAfter);
-  if (!chess || !replyUci) return null;
-  const sq = replyUci.slice(2, 4);
-  const victim = chess.get(sq);
-  if (!victim || victim.color === chess.turn() || victim.type === "p" || victim.type === "k") return null;
-  let defenders = [];
-  try {
-    defenders = chess.attackers(sq, victim.color);
-  } catch (_) {
-    return null;
-  }
-  return defenders.length ? null : { type: victim.type, square: sq };
-}

@@ -1,5 +1,5 @@
 // Repertoire workspace (Build) viewport smoke — fixture-backed.
-// Serves the committed static/ tree, intercepts /api/* with real-shape fixtures
+// Serves the built static/ tree, intercepts /api/* with real-shape fixtures
 // (signed-in account + one repertoire with a real e5/Bf5/Nc6-style fork), and at
 // 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console/page errors
@@ -44,6 +44,44 @@ const BUILD_NODES = [
   { id: "n7", parent_id: "n5", depth: 6, san: "Na6", uci: "b8a6", fen: "r1bqkbnr/pp2pppp/n1p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4", fen_before: "rnbqkbnr/pp2pppp/2p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3", fen_after: "r1bqkbnr/pp2pppp/n1p5/3pP3/3P4/8/PPP2PPP/RNBQKBNR w KQkq - 1 4", move_number: 3, ply: 6, move_side: "black", side_to_move: "white", source: "manual", is_mainline: false, is_enabled: true, is_prepared: false, mastery: "weak", maia_probability: null, arrows: [], circles: [] },
 ];
 
+// A large repertoire: 30 lines from the root, each running to move 9 (511
+// nodes). This is the tree that used to run out of the right-hand panel: the
+// .tree-wrap is a flex item with shrink 0, so it kept its content height,
+// pushed the panel's card to the top of the screen and scrolled the page under
+// the board. FENs are placeholders - nothing moves on them.
+const BIG_TREE_FENS = [
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+  "rnbqkbnr/pppp1ppp/8/4p3/2N1P3/8/PPPP1PPP/R1BQKBNR b KQkq - 1 2",
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2N1P3/8/PPPP1PPP/R1BQKBNR w KQkq - 2 3",
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2N1P3/5N2/PPPP1PPP/R1BQKB1R b KQkq - 3 3",
+  "r1bqkbnr/pppp1ppp/2n5/4p3/2N1P3/5N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",
+];
+const BIG_TREE_SAN = ["c5", "c3", "g3", "a3", "h3", "f4", "b3", "e3", "a6", "h6", "Bb4", "Be7", "Nc6", "Nf6", "Qc7", "Qe7", "O-O", "d6", "d5", "e6"];
+function bigBuildNodes() {
+  const nodes = [];
+  let next = 0;
+  const push = (parentId, depth, san) => {
+    const id = "b" + next++;
+    nodes.push({
+      id, parent_id: parentId, depth, san: depth % 2 === 1 ? san : "x" + san, uci: "a7a6",
+      move_number: Math.ceil(depth / 2), ply: depth, move_side: depth % 2 === 1 ? "white" : "black",
+      fen: BIG_TREE_FENS[depth % BIG_TREE_FENS.length],
+      fen_before: BIG_TREE_FENS[(depth - 1) % BIG_TREE_FENS.length],
+      fen_after: BIG_TREE_FENS[depth % BIG_TREE_FENS.length],
+      source: "manual", is_mainline: true, is_enabled: true, is_prepared: false,
+      mastery: null, maia_probability: null, arrows: [], circles: [],
+    });
+    return id;
+  };
+  const root = push(null, 0, null);
+  for (let line = 0; line < 30; line += 1) {
+    let parent = root;
+    for (let d = 1; d <= 17; d += 1) parent = push(parent, d, BIG_TREE_SAN[(line + d) % BIG_TREE_SAN.length]);
+  }
+  return nodes;
+}
+
 const api = (path) => {
   if (path.startsWith("/api/auth/me")) return { id: "u1", display_name: "Smoke Tester", email: "s@x.test" };
   if (path.startsWith("/api/auth/providers")) return { google: false };
@@ -57,6 +95,12 @@ const api = (path) => {
       nodes: BUILD_NODES,
     };
   }
+  if (path.startsWith("/api/build/load") && decodeURIComponent(path).includes("rep-big")) {
+    return {
+      repertoire_id: "rep-big", name: "Wide Repertoire", color: "black",
+      writable: true, selected_node_id: "b0", root_fen: BIG_TREE_FENS[0], nodes: bigBuildNodes(),
+    };
+  }
   if (path.startsWith("/api/build/load")) {
     return {
       repertoire_id: "rep-1", name: "Caro-Kann: Advance", color: "black",
@@ -66,12 +110,15 @@ const api = (path) => {
   }
   if (path.startsWith("/api/repertoires")) {
     return {
-      repertoires: [{ id: "rep-1", name: "Caro-Kann: Advance", color: "black", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", notes: "", tags: [], is_active: true, team_id: null, visibility: "private", health: { trainable: 3, mastered: 1, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 33, shallow_lines: 0 } }],
+      repertoires: [
+        { id: "rep-1", name: "Caro-Kann: Advance", color: "black", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", notes: "", tags: [], is_active: true, team_id: null, visibility: "private", health: { trainable: 3, mastered: 1, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 33, shallow_lines: 0 } },
+        { id: "rep-big", name: "Wide Repertoire", color: "black", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", notes: "", tags: [], is_active: false, team_id: null, visibility: "private", health: { trainable: 3, mastered: 1, weak: 1, due: 1, learning: 1, untrained: 0, mastery_pct: 33, shallow_lines: 0 } },
+      ],
       shared: [],
     };
-  }
+}
   if (path.startsWith("/api/dashboard")) {
-    return { games: 0, repertoires: 1, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: { reviews_7d: 0, mastered_now: 0, mastered_delta: 0, weak_now: 0, weak_delta: 0 }, recommendations: [] };
+    return { games: 0, repertoires: 1, training_sessions: 0, open_mistakes: 0, due_reviews: 0, due_soon: 0, streak: { current: 0, best: 0, trained_today: false }, recap: { moves_reviewed_7d: 0, mastered_now: 0, mastered_delta: 0, weak_now: 0, weak_delta: 0 }, recommendations: [] };
   }
   if (path.startsWith("/api/lichess/explorer")) {
     return {
@@ -173,10 +220,66 @@ async function runViewport(vp) {
   const crumbs = await page.locator("#build-tree-meta .mtree-crumb").count();
   check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
 
-  // Build header: size summary + Generate live next to the repertoire name.
-  const repStats = await page.locator("#build-rep-stats").textContent().catch(() => "");
-  check(/2 lines · 7 moves/.test(repStats), `build header should read "2 lines · 7 moves", got "${repStats}"`);
-  check((await page.locator("#build-generate-node:visible").count()) === 1, "Generate moves should be visible in the build header");
+  // Build header: size summary + Generate's applicability rule. The button only
+  // applies where a writable repertoire's move of yours is missing, so at 3.e5
+  // (where Bf5 already answers for black) it must be OUT of the head — and
+  // reachable from the ⋯ menu's "Move …" entry instead. The size summary is a
+  // caption on the repertoire's name (its tooltip), not a band of the panel.
+  const repStats = await page.locator("#build-rep-name").getAttribute("title").catch(() => "");
+  check(/2 lines · 7 moves/.test(repStats || ""), `the repertoire's name should carry "2 lines · 7 moves", got "${repStats}"`);
+  const genAtE5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
+  check(genAtE5 === true, `Generate should be hidden at 3.e5 (your Bf5 reply exists), got hidden=${genAtE5}`);
+
+  // Move to 2...d5 — the tree ends on your move there, so Generate applies.
+  await page.locator('#builder-tree .mtree-move[data-node-id="n4"]').click();
+  await page.waitForTimeout(250);
+  const genAtD5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
+  const genShownAtD5 = await page.locator("#build-generate-node:visible").count();
+  check(genAtD5 === false, `Generate should apply at 2...d5, got hidden=${genAtD5}`);
+  check(genShownAtD5 === 1, "Generate should be visible in the head where it applies");
+
+  // Where it does not apply NOTHING reveals it: the hidden attribute is the
+  // only state, so a hover or a focused tree row can no longer force the button
+  // back (a head-row CSS rule used to override the attribute on :hover/:focus,
+  // which made the button appear exactly where it could not apply).
+  await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
+  await page.waitForTimeout(250);
+  if (vp.width > 760) {
+    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').hover();
+    await page.waitForTimeout(150);
+    const genOnHover = await page.locator("#build-generate-node:visible").count();
+    check(genOnHover === 0, "hovering the current move row must not reveal Generate");
+    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').focus();
+    await page.waitForTimeout(150);
+    const genOnFocus = await page.locator("#build-generate-node:visible").count();
+    check(genOnFocus === 0, "a focused tree row must not reveal Generate either");
+    await page.mouse.move(4, 4);
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await page.waitForTimeout(150);
+    const genSettled = await page.locator("#build-generate-node").evaluate((el) => el.hidden);
+    check(genSettled === true, "Generate stays hidden at 3.e5");
+  }
+
+  // Back to 3.e5: the ⋯ menu still reaches Generate at any position.
+  await page.locator('[data-testid="build-menu"]').click();
+  await page.waitForTimeout(150);
+  const moreItems = await page.locator("#repertoire-context-menu button").allTextContents();
+  check(moreItems.some((t) => /^Move 3\./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => { const m = document.getElementById("repertoire-context-menu"); if (m) m.hidden = true; });
+  await page.waitForTimeout(100);
+
+  // Phones: the same rule drives the board bar's pill.
+  if (vp.width <= 760) {
+    const genAtD5Phone = await page.evaluate(() => document.getElementById("build-generate-node").hidden);
+    check(genAtD5Phone === true, `the phone pill should also hide at 3.e5, got hidden=${genAtD5Phone}`);
+    await page.locator('#builder-tree .mtree-move[data-node-id="n4"]').click();
+    await page.waitForTimeout(250);
+    const genAtN4Phone = await page.locator("#build-generate-node:visible").count();
+    check(genAtN4Phone === 1, "the phone pill should show where Generate applies");
+    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
+    await page.waitForTimeout(250);
+  }
 
   // Fork bar at e5: two chips, count, and the real practical share on Bf5.
   const barVisible = await page.locator("#build-branchbar:not([hidden])").count();
@@ -184,7 +287,7 @@ async function runViewport(vp) {
   const chips = await page.locator("#build-branchbar .fork-chip").count();
   check(chips === 2, `fork bar should have 2 chips, got ${chips}`);
   const count = await page.locator("#build-branchbar .count").textContent().catch(() => "");
-  check(count === "2", `fork count should be 2, got "${count}"`);
+  check(count === "2 options", `fork count should read "2 options", got "${count}"`);
   const bf5Chip = page.locator('#build-branchbar .fork-chip', { hasText: "Bf5" });
   const share = await bf5Chip.locator("small").textContent().catch(() => "");
   check(share === "48%", `Bf5 chip should show the real 48% practical share, got "${share}"`);
@@ -214,6 +317,71 @@ async function runViewport(vp) {
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
+
+  // The seam between the move tree and the inspector drags. Regression guard:
+  // phone.css once set `.sidebar > .panel-body { display: contents }` outside
+  // its media query, so the Build panel body had no box at any width —
+  // `panel.clientHeight` read 0, buildDockMaxHeight() clamped to the minimum
+  // and every drag snapped the dock back down to 150px.
+  // Only checked above the phone breakpoint: the handle is hidden below 760.
+  if (vp.width > 760) {
+    const resizer = page.locator('[data-testid="build-dock-resizer"]');
+    const seam = await resizer.evaluate((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y }));
+    const dockH = () => page.evaluate(() => document.getElementById("build-inspector").getBoundingClientRect().height);
+    const growBy = 120;
+    const startDock = await dockH();
+    const startTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    // Drag in the right half of the seam, well clear of the tree's left gutter.
+    const atX = seam.x + 200;
+    await page.mouse.move(atX, seam.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y - (growBy * i) / 4);
+    await page.waitForTimeout(120);
+    const midDock = await dockH();
+    // Release where the drag ended: moving the pointer back first would let the
+    // drag's own track-back resize the dock before pointerup lands.
+    await page.mouse.up();
+    await page.waitForTimeout(120);
+    const endDock = await dockH();
+    const endLabel = await page.locator("#build-board-label").textContent().catch(() => "");
+    check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
+    check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
+    check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
+    // The tree is the other half of the seam: the dock grows out of the panel,
+    // never past it. On a short line the tree already sits at its floor
+    // (min-height), so what the drag takes comes from the panel's rest — the
+    // check is that the panel itself never overflows and the page never scrolls.
+    const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    const panelFit = await page.evaluate(() => {
+      const panel = document.querySelector("#build-sidebar > .panel-body");
+      return {
+        overflow: panel.scrollHeight - panel.clientHeight,
+        page: document.documentElement.scrollHeight - innerHeight,
+      };
+    });
+    check(
+      startTree - endTree > growBy * 0.7 || endTree <= 110,
+      `the move tree should give up what the dock took, or already be at its floor, got ${startTree} → ${endTree}`,
+    );
+    check(panelFit.overflow <= 1, `the dragged dock overflowed the panel by ${panelFit.overflow}px`);
+    check(panelFit.page <= 0, `the dragged dock scrolled the page by ${panelFit.page}px`);
+    const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);
+    check(cursorOnHandle === "row-resize", `the handle should carry a resize cursor, got "${cursorOnHandle}"`);
+
+    // Double-click still folds the dock (it never depended on the panel's box).
+    // The seam moves with the dock height, so re-read it before every click:
+    // a stale y lands inside the panel instead of on the handle.
+    const seamAt = async () => resizer.evaluate((el) => el.getBoundingClientRect());
+    let box = await seamAt();
+    await page.mouse.dblclick(box.x + 200, box.y);
+    await page.waitForTimeout(150);
+    check((await page.locator("#build-inspector.is-folded").count()) === 1, "double-click on the seam should fold the inspector");
+    box = await seamAt();
+    await page.mouse.dblclick(box.x + 200, box.y);
+    await page.waitForTimeout(150);
+    check((await page.locator("#build-inspector.is-folded").count()) === 0, "double-click again should unfold the inspector");
+  }
+
   // Phones switch panes with the segmented control above the tree.
   const tool = (name) => page.locator(vp.width <= 760 ? `#build-panes [data-pane="${name}"]` : `[data-testid="build-tool-${name}"]`);
   await tool("coverage").click();
@@ -237,6 +405,19 @@ async function runViewport(vp) {
   check(overflow <= 0, `horizontal overflow of ${overflow}px`);
   const realErrors = consoleErrors.filter((t) => !/Failed to load resource|favicon/.test(t));
   check(realErrors.length === 0, `console errors: ${realErrors.join(" | ")}`);
+
+  // A large tree (the fixture's rows repeated 40 times) scrolls inside its
+  // panel on desktop; it used to grow past the card and scroll the whole page.
+  if (vp.width >= 1100) {
+    const big = await page.evaluate(() => {
+      const tree = document.getElementById("builder-tree");
+      tree.innerHTML = tree.innerHTML.repeat(40);
+      const wrap = document.querySelector(".tree-wrap");
+      return { pageScroll: document.documentElement.scrollHeight - innerHeight, treeScroll: wrap.scrollHeight - wrap.clientHeight };
+    });
+    check(big.pageScroll <= 0, `a large tree scrolled the page by ${big.pageScroll}px`);
+    check(big.treeScroll > 0, "a large tree should scroll inside its panel");
+  }
 
   await page.close();
 

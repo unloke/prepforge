@@ -81,6 +81,8 @@ describe("library filter wiring", () => {
   function makeContainer() {
     return {
       get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
+      classList: { toggle: () => {} },
+      closest: () => null,
       querySelectorAll: vi.fn(() => []),
       addEventListener: vi.fn(),
       setAttribute: vi.fn(),
@@ -178,9 +180,41 @@ describe("library filter wiring", () => {
   it("shows a filter empty state and clears it when a filter matches again", async () => {
     await view.loadDashboardRepertoires();
     view.setLibraryQuery("no such repertoire");
-    expect(String(container.innerHTML)).toContain("No repertoires match this filter.");
+    expect(String(container.innerHTML)).toContain("No repertoires match this search.");
     expect(String(container.innerHTML)).not.toContain('role="option"');
     view.setLibraryQuery("");
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-2"');
+  });
+
+  it("offers a Clear filter action when nothing matches, and it resets chips and search", async () => {
+    // On phones the filter chips are hidden over a no-match card, so the card
+    // itself must carry the way back or the library is a dead end.
+    const search = { value: "london" };
+    const elements = new Map([
+      ["dashboard-repertoires", container],
+      ["dashboard-rep-count", { hidden: true, textContent: "" }],
+      ["lib-filter-search", { ...search, addEventListener: () => {} }],
+    ]);
+    globalThis.document = {
+      getElementById: (id) => elements.get(id) || null,
+      querySelector: () => null,
+      querySelectorAll: () => [],
+    };
+    await view.loadDashboardRepertoires();
+    // bind() wires the list container's delegated click; click the card's button.
+    view.bind();
+    // bind() also wires the list's delegated click; take that handler directly.
+    const click = container.addEventListener.mock.calls.filter(([type]) => type === "click").pop()[1];
+    view.setLibraryFilter("black");
+    view.setLibraryQuery("london");
+    elements.get("lib-filter-search").value = "london";
+    expect(String(container.innerHTML)).toContain('data-testid="library-no-match"');
+    expect(String(container.innerHTML)).toContain("No repertoires match this search.");
+    expect(String(container.innerHTML)).toContain('data-lib-action="clear-filter"');
+
+    click({ target: { closest: () => ({ dataset: { libAction: "clear-filter" } }) } });
+    expect(elements.get("lib-filter-search").value).toBe("");
+    expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-1"');
     expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-2"');
   });
 

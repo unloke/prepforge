@@ -2,7 +2,7 @@
 
 Register / login mint a server-side session and set an HttpOnly cookie. The
 cookie carries an opaque token; the DB stores only its hash. In production the
-cookie is Secure + SameSite=Lax (set in main.set_session_cookie).
+cookie is Secure + SameSite=Lax (set in session_cookie.set_session_cookie).
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import smtplib
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from prepforge_chess.api.config import Settings, get_settings
@@ -24,6 +24,7 @@ from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_user
 from prepforge_chess.api.middleware import CSRF_COOKIE
 from prepforge_chess.api.models import AuthSession, PasswordResetToken, User
+from prepforge_chess.api.session_cookie import set_session_cookie
 from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.security import (
@@ -73,18 +74,6 @@ class UserOut(BaseModel):
         return data
 
 
-def _set_session_cookie(response: Response, settings: Settings, token: str) -> None:
-    response.set_cookie(
-        key=settings.session_cookie_name,
-        value=token,
-        max_age=settings.session_ttl_days * 24 * 3600,
-        httponly=True,
-        secure=settings.is_production,
-        samesite="lax",
-        path="/",
-    )
-
-
 def _purge_expired(db: Session, settings: Settings) -> int:
     """Delete sessions idle longer than ``session_ttl_days``. Does NOT commit — the
     caller owns the transaction (called inside ``_open_session``)."""
@@ -113,15 +102,34 @@ def _enforce_session_cap(db: Session, settings: Settings, user_id: str) -> None:
         db.delete(stale)
 
 
+def _purge_spent_reset_tokens(db: Session) -> None:
+    """Delete reset links that can no longer be redeemed — used, or expired with
+    a grace day so a clock-skewed client is never cut off early. A spent token
+    row is otherwise unreachable forever: redemption rejects it, and minting a
+    new link never touches it. Does NOT commit (the caller owns the transaction)."""
+    db.execute(
+        delete(PasswordResetToken)
+        .where(
+            or_(
+                PasswordResetToken.used_at.is_not(None),
+                PasswordResetToken.expires_at < datetime.now(timezone.utc) - timedelta(days=1),
+            )
+        )
+        .execution_options(synchronize_session=False)
+    )
+
+
 def _open_session(db: Session, response: Response, settings: Settings, user: User) -> None:
     token = new_session_token()
     db.add(AuthSession(token_hash=hash_session_token(token), user_id=user.id))
     db.flush()
     _enforce_session_cap(db, settings, user.id)
-    # Opportunistic global cleanup of long-idle sessions (no scheduler needed).
+    # Opportunistic global cleanup (no scheduler needed): long-idle sessions and
+    # reset links nobody can redeem any more.
     _purge_expired(db, settings)
+    _purge_spent_reset_tokens(db)
     db.commit()
-    _set_session_cookie(response, settings, token)
+    set_session_cookie(response, settings, token)
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)

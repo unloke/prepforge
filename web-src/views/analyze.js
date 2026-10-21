@@ -7,6 +7,27 @@ import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { treeToMovetext } from "../analyze-pgn.js";
 
+// The board, the move list, the eval display and the engine's controls are
+// real interface: they keep their own lines, sizes and borders. The marker is
+// set here, when the module loads with the view, because the markup belongs
+// to the shell — and the empty view is on screen before anything is analysed.
+// The module also loads without a DOM (unit tests import it to reach its
+// functions), where there is nothing to mark.
+if (typeof document !== "undefined") {
+  const INTERFACE_ROOTS = [
+    "#view-analyze .board-stack",
+    "#analysis-moves",
+    "#analysis-eval-meter",
+    "#eval-chart-tooltip",
+    "#analysis-engine-slot",
+    "#explain-engine-toggle",
+  ];
+  INTERFACE_ROOTS.forEach((selector) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute("data-ui", "");
+  });
+}
+
 export function createAnalyzeView({
   appState,
   START_FEN,
@@ -154,10 +175,10 @@ export function createAnalyzeView({
       const counts = tally[side];
       const total = CLASS_GROUPS.reduce((sum, g) => sum + (counts[g.key] || 0), 0);
       const segs = CLASS_GROUPS.filter((g) => counts[g.key] > 0)
-        .map((g) => {
+        .map((g, i) => {
           const n = counts[g.key];
           return (
-            html`<button class="cbar-seg seg-${g.key}" style="flex:${n}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${classBadgeSymbol(g.members[0])} ${n}</span></button>`
+            html`<button class="cbar-seg seg-${g.key}" style="flex:${n};--i:${i}" data-side="${side}" data-group="${g.key}" title="${g.label}: ${n}" aria-label="${label} ${g.label}: ${n}"><span class="cbar-seg-n">${classBadgeSymbol(g.members[0])} ${n}</span></button>`
           );
         });
       const track = total ? segs : html`<span class="cbar-empty">no scored moves</span>`;
@@ -342,15 +363,18 @@ export function createAnalyzeView({
       pathIds,
       decorate: (node) => {
         if (node.isVariation) {
-          return { classes: ["is-variation"], title: "variation" };
+          return { classes: ["is-variation"], title: "variation", label: "variation" };
         }
         const cls = String(node.classification || "unknown");
         const group = CLASS_GROUP_OF[cls.toLowerCase()];
         const glyph = group ? classBadgeSymbol(cls) : "";
+        // "unknown" is the absent-grade sentinel: nothing to show or read out.
+        const grade = group ? CLASS_GROUPS.find((g) => g.key === group).label : "";
         return {
           classes: [`cls-${cls}`, node.side === "black" ? "is-black" : "is-white"],
           suffix: glyph ? html`<i class="mtree-glyph">${glyph}</i>` : "",
-          title: cls,
+          title: grade,
+          label: grade,
         };
       },
     });
@@ -403,7 +427,10 @@ export function createAnalyzeView({
       if (/\d|#|M/.test(live)) {
         text = live;
         side = head.dataset.side || "even";
-        pct = parseFloat(document.getElementById("engine-eval-bar-white")?.style.height);
+        // The engine bar now carries White's share as a scaleY, so read it back
+        // out of the transform rather than a height.
+        const scale = Number(/scaleY\(([\d.]+)\)/.exec(document.getElementById("engine-eval-bar-white")?.style.transform || "")?.[1]);
+        pct = Number.isFinite(scale) ? scale * 100 : NaN;
       }
     }
     if (!engineOn && chartPoint) {
@@ -411,22 +438,26 @@ export function createAnalyzeView({
       pct = pointWinPct(chartPoint);
       side = pct > 52 ? "white" : pct < 48 ? "black" : "even";
     }
-    chip.textContent = text;
+    if (chip.textContent !== text) chip.textContent = text;
     chip.dataset.side = side;
     chip.dataset.pending = String(!!engineOn && document.getElementById("engine-head-eval")?.dataset.pending === "true");
     chip.parentElement?.classList.toggle("has-eval", !!text);
     const fill = document.querySelector("#analysis-eval-meter > i");
-    if (fill) fill.style.width = `${Number.isFinite(pct) ? Math.round(pct) : 50}%`;
-  }
-
-  // "12 / 16" -> a ring filled to 12/16 showing "12"; the full text is the tooltip.
-  function paintDepthRing() {
-    const el = document.getElementById("engine-window-depth-readout");
-    if (!el) return;
-    const m = /(\d+)\s*\/\s*(\d+)/.exec(el.textContent || "");
-    el.dataset.d = m ? m[1] : "";
-    el.style.setProperty("--p", m && Number(m[2]) ? String(Math.min(1, Number(m[1]) / Number(m[2]))) : "0");
-    el.title = m ? `Depth ${m[1]} of ${m[2]}` : "";
+    if (fill) {
+      // No number means no evaluation: the track stays empty. A half-width
+      // fill with no figure beside it reads as a real 50/50 score.
+      const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
+      fill.style.transform = `scaleX(${share.toFixed(4)})`;
+    }
+    // An empty Evaluation card is an empty grey block: hide it until it has a
+    // number, a game graph or the live engine to show. A job is a fourth thing
+    // it can show: the running graph and the job's own progress and Stop.
+    const card = document.getElementById("analysis-eval-card");
+    if (card && !card.classList.contains("is-engine")) {
+      const graph = document.getElementById("analysis-eval-graph");
+      const job = document.querySelector("#analysis-job-dock .notice");
+      card.hidden = !text && (!graph || graph.hidden) && !job;
+    }
   }
 
   const watch = (id, fn, options) => {
@@ -436,7 +467,14 @@ export function createAnalyzeView({
   const TEXT_CHANGES = { childList: true, characterData: true, subtree: true };
   watch("engine-head-eval", paintEvalHead, { ...TEXT_CHANGES, attributes: true });
   watch("analysis-eval-card", paintEvalHead, { attributes: true, attributeFilter: ["class"] });
-  watch("engine-window-depth-readout", paintDepthRing, TEXT_CHANGES);
+  // The job dock is inside the card: a job's notice, its count and its Stop
+  // are the card's content while the run lasts.
+  watch("analysis-job-dock", paintEvalHead, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["data-state"],
+  });
 
   function updateChartCaption(point) {
     chartPoint = point || null;
@@ -525,10 +563,15 @@ export function createAnalyzeView({
     const hidden = !points.length || idx < 0;
     // While a run is in progress the stored points are the previous game's (the
     // CSS hides that graph too), so they are not this position's eval.
-    const running = !!document.querySelector('#analysis-eval-card .job-toast[data-state="running"]');
+    const running = !!document.querySelector('#analysis-eval-card .notice[data-state="running"]');
     const x = hidden ? -10 : evalChartXOf(idx, points.length);
+    const y = hidden || !points[idx] ? -10 : evalChartYOf(pointWinPct(points[idx]));
     marker.setAttribute("x1", String(x));
     marker.setAttribute("x2", String(x));
+    if (dot) {
+      dot.setAttribute("cx", String(x));
+      dot.setAttribute("cy", String(y));
+    }
     // The chart overflows its frame (edge plies' markers overhang), so a parked
     // line at x=-10 would show beside it: the start position has no point.
     marker.setAttribute("visibility", hidden ? "hidden" : "visible");
@@ -542,8 +585,6 @@ export function createAnalyzeView({
       return;
     }
     dot.setAttribute("visibility", "visible");
-    dot.setAttribute("cx", String(x));
-    dot.setAttribute("cy", String(evalChartYOf(pointWinPct(points[idx]))));
   }
 
   // White-POV win chance (0..100) from an eval-graph point, via the Lichess sigmoid —
@@ -575,18 +616,24 @@ export function createAnalyzeView({
     }
     const point = points[idx];
     const x = evalChartXOf(idx, points.length);
-    tooltip.innerHTML = evalChartTooltipHtml(point, {
-      isCurrent: point.ply === appState.analysisPly,
-    });
-    tooltip.hidden = false;
-    // Anchor under the hovered ply: the SVG maps its width onto the wrap box.
     const rect = chart.getBoundingClientRect();
     const px = rect.width > 0 ? (x / EVAL_CHART_W) * rect.width : 0;
-    // Clamp the centred box so its edges stay inside the chart (it used to spill
-    // past the panel's right edge on the last plies).
-    const half = (tooltip.offsetWidth || 0) / 2;
-    const left = rect.width > 2 * half ? Math.max(half, Math.min(px, rect.width - half)) : rect.width / 2;
-    tooltip.style.left = `${left}px`;
+    const markup = evalChartTooltipHtml(point, {
+      isCurrent: point.ply === appState.analysisPly,
+    });
+    // Same markup as the last move: keep the measured width instead of writing
+    // content and then reading its box back on every pointermove.
+    if (tooltip.innerHTML !== markup) {
+      tooltip.innerHTML = markup;
+      // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
+      tooltip.hidden = false;
+      // Clamp the centred box so its edges stay inside the chart (it used to
+      // spill past the panel's right edge on the last plies).
+      const half = (tooltip.offsetWidth || 0) / 2;
+      const left = rect.width > 2 * half ? Math.max(half, Math.min(px, rect.width - half)) : rect.width / 2;
+      tooltip.style.left = `${left}px`;
+    }
+    tooltip.hidden = false;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));
@@ -621,30 +668,47 @@ export function createAnalyzeView({
       selectEvalChartIdx(evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX)));
     });
 
-    // A finger dragged along the graph scrubs through the game.
+    // A finger on the graph scrubs through the game with the tooltip showing;
+    // lifting it hides the tooltip. A mouse hovers. Pointer events, not mouse
+    // events: a tap's emulated mousemove would pin the tooltip until the next
+    // interaction, since no mouseleave follows a touch.
     let scrubIdx = -1;
-    chart.addEventListener("pointermove", (event) => {
+    const scrub = (event) => {
       const points = appState.evalChartPoints || [];
-      if (event.pointerType !== "touch" || !points.length) return;
+      if (!points.length) return;
       const idx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
+      showEvalChartTooltip(idx);
       if (idx === scrubIdx) return;
       scrubIdx = idx;
       selectEvalChartIdx(idx);
+    };
+    const endScrub = (event) => {
+      if (event.pointerType !== "touch") return;
+      scrubIdx = -1;
+      hideEvalChartTooltip();
+    };
+    chart.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "touch") scrub(event);
     });
-    chart.addEventListener("pointerup", () => { scrubIdx = -1; });
-
-    chart.addEventListener("mousemove", (event) => {
+    chart.addEventListener("pointermove", (event) => {
+      if (event.pointerType === "touch") {
+        scrub(event);
+        return;
+      }
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
       showEvalChartTooltip(evalChartFocusIdx);
     });
+    chart.addEventListener("pointerup", endScrub);
+    chart.addEventListener("pointercancel", endScrub);
 
     // Pointer focus would pin the tooltip after the mouse leaves; keyboard
     // users step moves with the arrow keys (global) and read the move list.
     chart.addEventListener("mousedown", (event) => event.preventDefault());
 
-    chart.addEventListener("mouseleave", () => {
+    chart.addEventListener("pointerleave", (event) => {
+      if (event.pointerType === "touch") return;
       evalChartFocusIdx = -1;
       hideEvalChartTooltip();
     });
@@ -673,6 +737,25 @@ export function createAnalyzeView({
     );
     chart.removeAttribute("tabindex");
     chart.style.cursor = points && points.length ? "pointer" : "default";
+    // The chart draws itself in once per dataset: a re-render of the SAME game
+    // (a later pass animating the same graph) must not replay it.
+    if (points && points.length && chart.dataset.drawnFor !== String(points.length)) {
+      chart.dataset.drawnFor = String(points.length);
+      chart.classList.add("is-entering");
+      // Drop the class once the draw finishes so a later re-render can replay it
+      // for a genuinely different game.
+      const done = () => chart.classList.remove("is-entering");
+      if (typeof chart.addEventListener === "function") {
+        chart.addEventListener("animationend", done, { once: true });
+        // A chart hidden while it animates never fires animationend; the timeout
+        // is the belt to that braces.
+        setTimeout(done, 900);
+      } else {
+        chart.classList.remove("is-entering");
+      }
+    } else {
+      chart.classList.remove("is-entering");
+    }
 
     const axis = document.createElementNS(svgNS, "line");
     axis.setAttribute("class", "eval-axis");
@@ -770,7 +853,7 @@ export function createAnalyzeView({
       dot.setAttribute("cx", String(c.x));
       dot.setAttribute("cy", String(c.y));
       dot.setAttribute("data-ply", String(c.ply));
-      dot.dataset.baseR = "4.5";
+      dot.dataset.baseR = "2.8";
       dot.style.cursor = "pointer";
       dot.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -800,7 +883,7 @@ export function createAnalyzeView({
     ring.setAttribute("cx", "-10");
     ring.setAttribute("cy", "-10");
     ring.setAttribute("visibility", "hidden");
-    ring.dataset.baseR = "6.5";
+    ring.dataset.baseR = "4.5";
     chart.appendChild(ring);
 
     updateEvalChartCursor();
@@ -811,6 +894,55 @@ export function createAnalyzeView({
     renderMovePairs(payload.moves);
     renderEvalChart(payload.eval_graph);
     renderClassificationBars(payload.moves);
+    // Blocks arrive one after another: the chart first, then the grade bars.
+    // The staggering is CSS (--i), capped so a long stack never drags.
+    const stack = document.getElementById("analysis-results");
+    stack?.querySelectorAll(".res-block").forEach((block, i) => {
+      block.style.setProperty("--i", String(Math.min(i, 5)));
+    });
+    countUpGradeBars();
+  }
+
+  // The grade counts brief count-up as the result lands. Runs once per result:
+  // re-rendering the same analysis (a later pass) leaves the settled numbers.
+  let countUpToken = 0;
+  function countUpGradeBars() {
+    const host = document.getElementById("analysis-summary");
+    if (!host) return;
+    const segs = [...host.querySelectorAll(".cbar-seg")];
+    if (!segs.length) return;
+    // Reduced motion: the figure is already on the bar, so it stays there.
+    const still = Boolean(
+      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
+    const token = ++countUpToken;
+    segs.forEach((seg, i) => {
+      const label = seg.querySelector(".cbar-seg-n");
+      const raw = (label?.textContent || "").trim();
+      const m = /^(\S+)\s+(\d+)$/.exec(raw);
+      if (!m) return;
+      const [, glyph, endRaw] = m;
+      const end = Number(endRaw) || 0;
+      if (still) return;
+      const start = performance.now();
+      const dur = 360;
+      const delay = Math.min(i, 5) * 45;
+      label.textContent = `${glyph} 0`;
+      const tick = (now) => {
+        if (token !== countUpToken) return;
+        if (now - start < delay) {
+          requestAnimationFrame(tick);
+          return;
+        }
+        const t = Math.min(1, (now - start - delay) / dur);
+        // Ease-out: the number settles instead of stopping dead.
+        const eased = 1 - (1 - t) * (1 - t);
+        label.textContent = `${glyph} ${Math.round(end * eased)}`;
+        if (t < 1) requestAnimationFrame(tick);
+        else label.textContent = `${glyph} ${end}`;
+      };
+      requestAnimationFrame(tick);
+    });
   }
 
   return {

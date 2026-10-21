@@ -82,7 +82,7 @@ export function createEngineCandidateAdapter(
           // White-POV eval (the provider already flips for Black) — matches the server's
           // EngineEvaluation and the _engine_eval_to_json build-load payload shape.
           evaluation: {
-            engine: snap.engine || "stockfish (browser)",
+            engine: snap.engine,
             depth: pv.depth || snap.current_depth || null,
             score_cp: pv.score_cp,
             mate_in: pv.mate_in,

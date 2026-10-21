@@ -114,6 +114,26 @@ describe("train up-next preview", () => {
     expect(html).toContain("6...e6 7.f4");
   });
 
+  it("names the starting position on a first-move card instead of a blank row", () => {
+    const appState = {
+      smart: {
+        cardIndex: 0,
+        repertoireName: "Caro-Kann: Advance",
+        queue: [
+          card("due", "Caro-Kann: Advance", "black", "c6", "1.e4 c6 2.d4 d5"),
+          card("new", "Ruy Lopez", "white", "Bc4", ""),
+        ],
+      },
+    };
+    const view = makeView(appState, elements);
+    view.renderSmartProgress({ total_cards: 2, card_index: 0, kind: "due", targets_total: 1, target_index: 0 });
+    const html = String(elements["train-upnext"].innerHTML);
+    expect((html.match(/un-line/g) || []).length).toBe(1);
+    // "Start" was the Start button's word in a row that has no button.
+    expect(html).toContain(">First move<");
+    expect(html).not.toContain(">Start<");
+  });
+
   it("lineTail keeps the move number of a black move", () => {
     expect(lineTail("1.e4 c6 2.d4 d5")).toBe("2.d4 d5");
     expect(lineTail("1.e4 c6 2.d4 d5 3.e5")).toBe("2...d5 3.e5");

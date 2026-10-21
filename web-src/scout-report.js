@@ -67,10 +67,13 @@ function findLineByKey(sections, color, lineKey) {
   return null;
 }
 
-export function renderScoutColorTabsHtml(profile, { hidden = false, username = "" } = {}) {
-  const colors = ["white", "black"].filter(
-    (c) => profile?.colorStats?.[c] && profile.colorStats[c].games > 0,
-  );
+export function renderScoutColorTabsHtml(profile, { hidden = false, username = "", counts = null } = {}) {
+  // A tab's count must be the section's count. profile.colorStats is the raw
+  // per-colour total: it ignores the speed filter and counts games the section's
+  // trie skips (early resignations), so the tab and the heading below it read as
+  // two different numbers of games. `counts` is that per-colour trie gameCount.
+  const gamesFor = (c) => (counts?.[c] != null ? counts[c] : profile?.colorStats?.[c]?.games) || 0;
+  const colors = ["white", "black"].filter((c) => gamesFor(c) > 0);
   // With a real opponent history both colours almost always have games; single-
   // colour histories render a lone (still-correct) tab. No data → no bar.
   if (!colors.length) return "";
@@ -78,19 +81,19 @@ export function renderScoutColorTabsHtml(profile, { hidden = false, username = "
   // the active tab is tabbable, the rest stay focusable via arrow keys.
   const buttons = colors
     .map((c, i) => {
-      const stats = profile.colorStats[c];
+      const games = gamesFor(c);
       const label = c === "white" ? "With White" : "With Black";
       const you = c === "white" ? "you have Black" : "you have White";
       const selected = i === 0 ? "true" : "false";
       const tabindex = i === 0 ? "" : html` tabindex="-1"`;
-      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${countOf(stats.games, "game")}; in these games ${you}`;
+      const title = `${username || "Opponent"} ${c === "white" ? "with White" : "with Black"}: ${countOf(games, "game")}; in these games ${you}`;
       // The "you have <Colour>" clause lives in `title` only. Inlining it in the
       // always-visible label made each tab ~246px wide, and the nowrap flex row
       // then pushed the whole page to 503px at 390px. Keeping it in the tooltip
       // (and the a11y name) preserves the wording without the overflow.
-      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(stats.games, "game")}</small></button>`;
+      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(games, "game")}</small></button>`;
     });
-  return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays"${hidden ? ' hidden' : ''}>${buttons}</div>`;
+  return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays" data-ui${hidden ? ' hidden' : ''}>${buttons}</div>`;
 }
 
 // Tab switch = visibility only: the sections keep their computed line state
@@ -192,11 +195,13 @@ export function openScoutLine(lineEl, line, rowKind, ctx) {
   lineEl.classList.add("is-expanded");
   lineEl.setAttribute("aria-expanded", "true");
   if (sideEl) {
-    if (sideEl.dataset.lineKey !== key || sideEl.dataset.color !== color) {
-      sideEl.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
-      sideEl.dataset.lineKey = key;
-      sideEl.dataset.color = color;
-    }
+    // Always repaint from the line we were handed: while games stream in the
+    // same row is rebuilt with fresh counts, so skipping the paint when the
+    // key/colour matched left the detail on an old snapshot ("4 games" row,
+    // "seen in 3 games" detail).
+    sideEl.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
+    sideEl.dataset.lineKey = key;
+    sideEl.dataset.color = color;
     sideEl.hidden = false;
   }
   const ecoCached = ctx.ecoCache?.get(key);
@@ -395,8 +400,8 @@ export function renderScoutEnginePanel(engineAgg) {
     const eligible = engineAgg.eligibleGames ?? 0;
     const coverage = engineAgg.coveragePct ?? 0;
     const staleNote =
-      engineAgg.status === "stale" ? " — new games arrived, re-run Deep scan" : "";
-    return html`<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage — need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${staleNote}</div>`;
+      engineAgg.status === "stale" ? ", new games arrived, so re-run Deep scan" : "";
+    return html`<div class="scout-engine-panel scout-engine-insufficient muted hint">Deep scan coverage insufficient (${analyzed}/${eligible} games analyzed, ${coverage}% coverage, need ≥${engineAgg.minAnalyzedGames} games and ≥${engineAgg.minCoveragePct}%)${staleNote}</div>`;
   }
   const families = engineAgg.families?.slice(0, 6) || [];
   const maxAcpl = Math.max(120, ...families.map((f) => f.acpl || 0));
@@ -413,7 +418,7 @@ export function renderScoutEnginePanel(engineAgg) {
   const worst = families[0];
   const scopeNote =
     engineAgg.scopeLimited && engineAgg.maxGames
-      ? ` — based on latest ${engineAgg.maxGames} games`
+      ? `: based on the latest ${engineAgg.maxGames} games`
       : "";
   const summary = worst
     ? html`<div class="scout-engine-summary muted hint">Most mistakes after 1.${worst.san}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
@@ -836,15 +841,15 @@ export function renderScoutIntelChartsStrip(
   return html`
       ${a11yBlock}
       <div class="scout-intel-charts charts">
-        <div class="scout-intel-panel card chart">
+        <div class="scout-intel-panel card chart" data-ui>
           <h3 class="scout-col-label"${baseline != null ? html` title="Their average ${baseline}%"` : ""}>${byFirstTitle}</h3>
           ${scoreBars}
         </div>
-        <div class="scout-intel-panel card chart">
+        <div class="scout-intel-panel card chart" data-ui>
           <h3 class="scout-col-label scout-engine-label">Where ${who} makes mistakes</h3>
           ${enginePanel}
         </div>
-        <div class="scout-intel-panel scout-intel-trends card chart">
+        <div class="scout-intel-panel scout-intel-trends card chart" data-ui>
           <h3 class="scout-col-label">Activity and habits</h3>
           <p class="scout-chart-title">Games per week</p>
           ${activityChart}
@@ -889,14 +894,17 @@ export function renderMiniBoardHtml(fen, orientation, { parseFenBoard, pieceSvg 
       squares.push(html`<div class="scout-minisquare ${dark ? "dark" : "light"}${last?.has(sq) ? " last" : ""}">${p ? pieceSvg(p) : ""}</div>`);
     }
   }
-  return html`<div class="scout-miniboard" aria-hidden="true">${squares}</div>`;
+  return html`<div class="scout-miniboard" data-ui aria-hidden="true">${squares}</div>`;
 }
 
 // Games in the rendered report. The live fetch total lives in the toolbar
 // counter ("N games fetched"); the report label only changes when the report does.
-export function scoutAnalyzedLabel(analyzed) {
+// The report drops early resignations (see isEarlyResignCollapse) and any speed
+// outside the active filter, so the label names that gap when there is one.
+export function scoutAnalyzedLabel(analyzed, skipped = 0) {
   const a = Number(analyzed) || 0;
-  return `${a} game${a === 1 ? "" : "s"} analyzed`;
+  const s = Number(skipped) || 0;
+  return `${a} game${a === 1 ? "" : "s"} analyzed${s ? `, ${s} skipped` : ""}`;
 }
 
 export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtml = "", usernames = [] } = {}) {
@@ -907,6 +915,12 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
       (s) =>
         html`<button type="button" class="scout-speed-chip speed${activeSpeed === s ? " is-on" : ""}" data-speed="${s}" aria-pressed="${activeSpeed === s}">${s.charAt(0).toUpperCase() + s.slice(1)} <small class="scout-speed-n">${profile.speedCounts[s]}</small></button>`,
     );
+  // The chips count the whole analysed history (so the other speeds stay reachable),
+  // while the analysed total and the colour tabs follow the active filter. "Skipped"
+  // is every fetched game the report leaves out: other speeds, plus the early
+  // resignations dropped from the analysis entirely.
+  const analyzed = activeSpeed === "all" ? profile.total : (profile.speedCounts[activeSpeed] || 0);
+  const skipped = profile.total - analyzed + (profile.skipped || 0);
   return html`
     <div class="prof-row">
       <div class="prof-id scout-profile-main">
@@ -914,7 +928,7 @@ export function renderScoutProfile(profile, username, activeSpeed, { colorRecHtm
           // "self (2 accounts)" is a label, not a Lichess user: no profile link.
           ? html`<span class="prof-name" title="${usernames.join(", ")}">${username}</span>`
           : html`<a class="scout-username-link prof-name" data-username="${username}" href="https://lichess.org/@/${encodeURIComponent(username)}" target="_blank" rel="noopener">${username} ↗</a>`}
-        <span class="scout-profile-games faint">${scoutAnalyzedLabel(profile.total)}</span>
+        <span class="scout-profile-games faint">${scoutAnalyzedLabel(analyzed, skipped)}</span>
       </div>
       <div class="scout-speed-chips speed-chips" role="group" aria-label="Speed">
         <button type="button" class="scout-speed-chip speed${activeSpeed === "all" ? " is-on" : ""}" data-speed="all" aria-pressed="${activeSpeed === "all"}">All</button>
@@ -979,7 +993,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
   const replyNote = line.suggestedReply?.uci
     ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${formatReplyLabel(line.suggestedReply)}</strong> (${line.suggestedReply.source || "engine"})</p>`
     : line.needsPrep
-      ? html`<p class="scout-line-reply note warn">No reply in your prep yet — run Deep scan or extend repertoire</p>`
+      ? html`<p class="scout-line-reply note warn">No reply in your prep yet. Run Deep scan or extend the repertoire.</p>`
       : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
@@ -998,7 +1012,6 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
            })}</div></div>`
       : "";
   return html`
-      <div class="eyebrow">Line detail</div>
       <h2 class="line-title">${scoutLineText(line.sans)}</h2>
       <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
@@ -1014,7 +1027,7 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
 
 export function buildScoutAnalyzePgn(line, oppColor, username) {
   const [white, black] = oppColor === "white" ? [username, "?"] : ["?", username];
-  const headers = `[Event "Scout — ${username}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "*"]`;
+  const headers = `[Event "Scout: ${username}"]\n[White "${white}"]\n[Black "${black}"]\n[Result "*"]`;
   return `${headers}\n\n${scoutLineText(legalScoutLineSans(line))} *`;
 }
 
@@ -1062,7 +1075,7 @@ export function scoutDistRowHtml(m, { clickable = true } = {}) {
         <b class="scout-dist-san">${m.san}</b>
         <span class="scout-dist-bar share"><i style="width:${Math.round(m.share * 100)}%"></i></span>
         <span class="scout-dist-share" title="${games} game${games === 1 ? "" : "s"}">${formatSharePct(m.share)}</span>
-        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small>${m.scorePct}%</span>
+        <span class="scout-dist-score sc" title="Their score in these games · ${games} game${games === 1 ? "" : "s"}"><small>scores</small> ${m.scorePct}%</span>
       </div>`;
 }
 
@@ -1138,9 +1151,9 @@ function scoutLineRowHtml(
   // decays toward 0 for old lines and would render a true n=1 line as "n=0".
   const rawCount = line.routeSupportGames ?? line.gameCount ?? line.games ?? Math.round(line.count ?? 0);
   const engineFlag = line.hasEngineMistake || line.refutation
-    ? html`<i class="scout-err-marker eng" title="Engine-backed refutation available">⚠</i>`
+    ? html`<i class="scout-err-marker eng" title="Engine-backed refutation available"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.6 20h18.8L12 4Z"/><path d="M12 10v4.2"/><path d="M12 17.4v.01"/></svg></i>`
     : "";
-  // Path guard (flagged prototype): a kept line whose earlier position fails the leaf gate.
+  // Path guard: a kept line whose earlier position fails the leaf gate.
   const pathFlag = line.pathStatus === "risk"
     ? html`<i class="scout-err-marker path-risk" title="Your side is worse than −0.75 at an earlier move of this line (depth 8)">!</i>`
     : "";
@@ -1209,15 +1222,14 @@ function scoutWeaknessRowHtml(target, i, oppColor, baseline, opts = {}) {
 
 // How many of their games your repertoires follow move for move through the
 // first PREPARED_PLIES plies (or the whole game, if shorter). Best repertoire
-// per game.
+// per game. Counts the analysed set, like every other number in the section.
 export function scoutGameCoverage(games, oppColor, myLookups, scoutModule, { speedFilter = "all" } = {}) {
   const depth = scoutModule.PREPARED_PLIES || 8;
   if (typeof scoutModule.lineCoverage !== "function") return { games: 0, followed: 0 };
   let total = 0;
   let followed = 0;
-  for (const game of games || []) {
-    if (game.color !== oppColor || !game.ucis?.length) continue;
-    if (speedFilter !== "all" && game.speed !== speedFilter) continue;
+  for (const game of scoutModule.analyzedGames(games, oppColor, { speedFilter })) {
+    if (!game.ucis?.length) continue;
     total += 1;
     const need = Math.min(depth, game.ucis.length);
     const path = game.ucis.slice(0, need);
@@ -1361,7 +1373,13 @@ export function buildScoutSectionReport(
 
   const sectionData = {
     moduleB: PRODUCTION_MODULE_B_ID,
-    // The selector's input, kept so the flagged path guard can run on exactly these lines.
+    // The total the section itself states, so the colour tab can quote the same
+    // number instead of the raw per-colour total.
+    gameCount: trie.gameCount,
+    // The section's own W/D/L, so anything quoting a colour (share text) reads the
+    // same set as the header instead of the all-speed profile stats.
+    colorWdl,
+    // The selector's input, kept so the path guard can run on exactly these lines.
     gamePlanSource,
     gradedLines: graded,
     weaknessTargets: prepTargets,
@@ -1390,7 +1408,7 @@ export function buildScoutSectionReport(
   const prepareAll = html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`;
 
   const trending = profile.recentlyChanged[oppColor]
-    ? html`<span class="scout-trending kchip k-due" title="Their recent games show a different opening">⚡ Recently changed</span>`
+    ? html`<span class="scout-trending kchip k-due" title="Their recent games show a different opening">Recently changed</span>`
     : "";
 
   const firstMoves = scoutDisplayDistribution(trie, scoutModule.moveDistribution)
@@ -1413,14 +1431,14 @@ export function buildScoutSectionReport(
             <span class="scout-sub-label">${who}'s first moves</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
           </div>`;
-  const listHead = html`<div class="scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
+  const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
   const prepPanel = prepRows.length
     ? html`<div class="scout-game-plan plan">
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
           ${listHead}
-          <div class="scout-lines scout-ranked-list lines" role="list">${prepRows}</div>
+          <div class="scout-lines scout-ranked-list lines" role="list" data-ui>${prepRows}</div>
           ${rankedNote}
         </div>`
     : html`<div class="scout-game-plan plan">
@@ -1472,12 +1490,13 @@ export function mergeEnginePatternsIntoSections(sections, engineByColor, { speed
 }
 
 export function buildScoutShareText({ username, profile, sections, activeSpeed }) {
-  const lines = [`# Scout: ${username}`, "", `${countOf(profile.total, "game")} · filter: ${activeSpeed}`, ""];
+  const analyzed = Object.values(sections || {}).reduce((n, s) => n + (s?.gameCount || 0), 0);
+  const lines = [`# Scout: ${username}`, "", `${countOf(analyzed, "game")} · filter: ${activeSpeed}`, ""];
   for (const color of ["white", "black"]) {
     const section = sections[color];
     if (!section) continue;
     const heading = color === "white" ? "With White" : "With Black";
-    const stats = profile.colorStats?.[color];
+    const stats = section.colorWdl;
     lines.push(`## ${heading}`);
     if (stats) {
       lines.push(`Overall: ${stats.scorePct}% (W${stats.w}/D${stats.d}/L${stats.l}, n=${stats.games})`);
@@ -1488,7 +1507,7 @@ export function buildScoutShareText({ username, profile, sections, activeSpeed }
       for (const t of prep) {
         const their = scoutLineText(t.sans);
         const reply = t.suggestedReply?.uci ? ` → your move ${t.suggestedReply.uci}` : t.needsPrep ? " → no answer in your prep" : "";
-        let row = `- After ${their}${reply} — ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
+        let row = `- After ${their}${reply}: ${Math.round(t.share * 100)}% of their games, they score ${t.scorePct}% (${t.games} game${t.games === 1 ? "" : "s"})`;
         if (t.enginePattern) {
           row += `; often …${t.enginePattern.playedSan}`;
         }

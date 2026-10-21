@@ -405,17 +405,21 @@ def _order_cards(
     candidate_by_id: Dict[str, _Candidate],
     rng: random.Random,
 ) -> List[TrainingCard]:
-    """Urgency bands (weak, due, new, polish), shuffled within each band, then
-    a greedy pass so two cards from the same opening family don't sit next to
-    each other when any alternative exists — variety is what keeps the queue
-    from feeling like the same line on repeat."""
+    """Urgency bands (weak, due, new, polish), reviews shuffled within each
+    band and new cards in plan order (shallow first), then a greedy pass so two
+    cards from the same opening family don't sit next to each other when any
+    alternative exists — variety is what keeps the queue from feeling like the
+    same line on repeat."""
     bands: Dict[str, List[TrainingCard]] = {k: [] for k in _KIND_PRIORITY}
     for card in cards:
         bands[card.kind].append(card)
     ordered: List[TrainingCard] = []
     for kind in (CARD_WEAK, CARD_DUE, CARD_NEW, CARD_POLISH):
         band = bands[kind]
-        rng.shuffle(band)
+        # A new line is taught from its first move: shuffling the new band put
+        # 3.Bc4 before 1.e4, a position the player has never been shown.
+        if kind != CARD_NEW:
+            rng.shuffle(band)
         ordered.extend(band)
 
     def family(card: TrainingCard) -> str:

@@ -9,6 +9,15 @@ const swallowClick = (event) => {
 };
 
 export function createMoveTreeRenderer() {
+  // Screen readers get the SAN alone ("e4"), which no one can act on. Name the
+  // button the way a person reads the line: move number and side, the SAN, and
+  // the grade (or "variation") when the view decorates one.
+  function moveTokenLabel(node, deco) {
+    const num = node.moveNumber == null ? "" : `${node.moveNumber}${node.side === "black" ? "..." : "."}`;
+    const side = node.side === "black" ? "Black" : "White";
+    return [`${num} ${node.san}`, side, deco.label].filter(Boolean).join(", ");
+  }
+
   function renderMoveToken(node, opts, forceNumber) {
     const isWhite = node.side === "white";
     const numHtml =
@@ -21,11 +30,16 @@ export function createMoveTreeRenderer() {
     if (node.id === opts.currentId) classes.push("is-current");
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
     const title = deco.title ? html` title="${String(deco.title)}"` : "";
+    const label = moveTokenLabel(node, deco);
     return (
-      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}</button>`
+      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}</button>`
     );
   }
 
+  // Walk the line from startNode, emitting its alternatives beside it. A
+  // variation (renderMoveVariation) starts on the branch's own first move: its
+  // next move continues just that branch, so it is never interleaved with the
+  // parent line's other branches.
   function renderMoveLine(startNode, opts) {
     const markup = [];
     let cur = startNode;
@@ -33,13 +47,17 @@ export function createMoveTreeRenderer() {
     while (cur) {
       markup.push(renderMoveToken(cur, opts, forceNumber));
       forceNumber = false;
-      const kids = cur.children || [];
-      const main = kids[0] || null;
-      for (let i = 1; i < kids.length; i += 1) {
-        markup.push(renderMoveVariation(kids[i], opts));
+      // The mainline is the continuation the repertoire marks as main
+      // (is_mainline), not whichever sibling the flat node list happens to
+      // list first: Build's fork bar and the server both call 3...Bf5 the
+      // mainline even when 3...Na6 arrives earlier in the payload. A child
+      // without the flag (Analyze's variation tree) falls back to array order.
+      const kids = mainlineFirst(cur.children || []);
+      for (const alt of kids.slice(1)) {
+        markup.push(renderMoveVariation(alt, opts));
         forceNumber = true;
       }
-      cur = main;
+      cur = kids[0] || null;
     }
     return html`${markup}`;
   }
@@ -56,6 +74,13 @@ export function createMoveTreeRenderer() {
     return html`<div class="mtree-var">${toggle}${inner}</div>`;
   }
 
+  // Build's flat payload arrives in arbitrary order (see the test next door).
+  function mainlineFirst(kids) {
+    const index = kids.findIndex((kid) => kid && kid.raw && kid.raw.is_mainline);
+    if (index <= 0) return kids;
+    return [kids[index], ...kids.slice(0, index), ...kids.slice(index + 1)];
+  }
+
   function renderMoveTree(root, opts) {
     const kids = root.children || [];
     if (!kids.length) {
@@ -63,8 +88,9 @@ export function createMoveTreeRenderer() {
         html`<div class="mtree"><div class="empty-state">${opts.emptyText || "No moves yet."}</div></div>`
       );
     }
-    const main = kids[0];
-    const alts = kids.slice(1);
+    const ordered = mainlineFirst(kids);
+    const main = ordered[0];
+    const alts = ordered.slice(1);
     const body = [renderMoveLine(main, opts), ...alts.map((alt) => renderMoveVariation(alt, opts))];
     return html`<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
   }

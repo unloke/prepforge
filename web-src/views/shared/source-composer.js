@@ -137,8 +137,13 @@ export function selectionChips(selection, linkedAccounts) {
   if (state === "all" && linked.length) {
     // Full Self collapses to one chip; Self + external keeps the collapsed
     // Self chip alongside the external chips so the tray reads as one union,
-    // matching the fetch.
-    chips.push({ kind: "self", label: `Self · ${linked.length}`, count: linked.length });
+    // matching the fetch. The number is named ("2 linked accounts"): a bare
+    // "Self · 2" left the count unexplained.
+    chips.push({
+      kind: "self",
+      label: `Self · ${linked.length} linked account${linked.length === 1 ? "" : "s"}`,
+      count: linked.length,
+    });
   } else if (state === "mixed") {
     const byId = new Map(linked.map((a) => [a.id, a]));
     for (const id of sel.accountIds) {
@@ -175,7 +180,7 @@ export function selectionChips(selection, linkedAccounts) {
 // (not a modal) with a single source list:
 //
 //   Sources
-//   Self · N
+//   Self · 2 linked accounts
 //   ─────────
 //   accountA       Primary
 //   accountB
@@ -277,6 +282,15 @@ export function openSourceComposer({
     const state = selfState();
     const checkedIds = new Set(sel.linkedMode === "subset" ? sel.accountIds : []);
     const selfChecked = linkedCount > 0 && state !== "none";
+    // The header counts the sources actually picked (linked + external), not
+    // the linked accounts on file: adding an opponent used to leave "1 account".
+    const pickedLinked =
+      sel.linkedMode === "all"
+        ? linked.length
+        : sel.linkedMode === "subset"
+          ? linked.filter((account) => checkedIds.has(account.id)).length
+          : 0;
+    const pickedCount = pickedLinked + sel.external.length;
     const linkedRows = linked
       .map((account) => {
         const checked = sel.linkedMode === "all" || checkedIds.has(account.id);
@@ -294,7 +308,7 @@ export function openSourceComposer({
         ? html`${linkedRows}${externalRows}`
         : html`<p class="muted">No sources yet — add a username below.</p>`;
     overlay.innerHTML =
-      html`<div class="src-popover" role="dialog" aria-modal="false" aria-label="${title}"><div class="src-head"><span class="src-title">${title}</span><span class="src-count">${linkedCount} account${linkedCount === 1 ? "" : "s"}</span></div><label class="src-row is-self" data-src-self><input type="checkbox" data-testid="src-self-checkbox" data-src-self-checkbox${selfChecked ? " checked" : ""}${state === "mixed" ? html` aria-checked="mixed"` : ""} /><span class="src-name">Self${linkedCount && state !== "none"
+      html`<div class="src-popover" role="dialog" aria-modal="false" aria-label="${title}"><div class="src-head"><span class="src-title">${title}</span><span class="src-count">${pickedCount} account${pickedCount === 1 ? "" : "s"}</span></div><label class="src-row is-self" data-src-self><input type="checkbox" data-testid="src-self-checkbox" data-src-self-checkbox${selfChecked ? " checked" : ""}${state === "mixed" ? html` aria-checked="mixed"` : ""} /><span class="src-name">Self${linkedCount && state !== "none"
         ? state === "mixed"
           ? html` <span class="src-self-count is-mixed">partial</span>`
           : html` <span class="src-self-count">${linkedCount}</span>`

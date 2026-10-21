@@ -53,7 +53,9 @@ describe.each(pages.map((p) => [p.name, p]))("source composer parity: %s selecti
     const sel = readStore(storage, page.source, page.external, page.self);
     const { chips, selfState } = selectionChips(sel, linked);
     expect(selfState).toBe("all");
-    expect(chips).toEqual([{ kind: "self", label: "Self · 2", count: 2 }]);
+    expect(chips).toEqual([
+      { kind: "self", label: "Self · 2 linked accounts", count: 2 },
+    ]);
     expect(pickedUsernames(storage, page, linked)).toEqual(["account_a", "account_b"]);
   });
 
