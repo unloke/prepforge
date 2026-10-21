@@ -26,6 +26,12 @@
      the game's name at x=922 and every block under it at x=924. */
   padding-inline: 14px;
 }
+/* The two actions stay in the head, not on the Coach's line. Tried both at
+   1440, 1180 and 982: on the Coach line the header row grows from 22px to
+   26px (the buttons are the tallest thing in it), and with a two-word phase
+   chip it wraps to 56px at 982, which pushes the evaluation card down — the
+   jump this lane is removing. The head keeps them on its own line, above the
+   verdict, where the row already has the height for a 26px button. */
 
 /* One filled action on the panel: the Analyze button. The report's handoff
    now lives behind the report fold, so it is only on screen while that fold is
