@@ -209,10 +209,12 @@ export function wirePhoneStudyNav() {
   });
 }
 
-// Phone sheets (Analyze's report): a [data-sheet-open] button raises the sheet
-// it names over the screen; Done, a tap outside or Escape lowers it. A
-// [data-mirror] button clicks the control its selector names (phones hide some
-// controls and offer them where the thumb is) and lowers any open sheet.
+// Phone sheets (Analyze's report and games): a [data-sheet-open] button raises
+// the sheet it names over the screen; Done, a tap outside or Escape lowers it.
+// A [data-mirror] button clicks the control its selector names (phones hide some
+// controls and offer them where the thumb is) and lowers any open sheet. A
+// [data-reveal] button opens the <details> its selector names in place, inside
+// the open sheet, and leaves the sheet up.
 export function wirePhoneSheets() {
   const close = () => {
     const open = document.querySelector(".phone-sheet.is-open");
@@ -236,6 +238,15 @@ export function wirePhoneSheets() {
     if (mirror) {
       close();
       document.querySelector(mirror.dataset.mirror)?.click();
+      return;
+    }
+    const reveal = event.target.closest?.("[data-reveal]");
+    if (reveal) {
+      const target = document.querySelector(reveal.dataset.reveal);
+      if (!target) return;
+      target.open = !target.open;
+      reveal.setAttribute("aria-expanded", String(target.open));
+      target.scrollIntoView({ block: "nearest" });
       return;
     }
     // The dim backdrop is the sheet's ::before, so a tap on it lands above the sheet's top.

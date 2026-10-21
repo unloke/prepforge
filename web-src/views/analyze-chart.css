@@ -1295,14 +1295,11 @@
   }
   #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
   #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
-  #analyze-open > .drawer > summary {
-    display: flex;
-    align-items: center;
-    min-height: 40px;
-    color: var(--text);
-    font-size: 16px;
-    font-weight: 600;
-  }
+  /* The sheet's rows are the entry points (Last game / Past analyses / Paste a
+     PGN), so a drawer's own summary would be the same action named twice. The
+     row opens the drawer; the drawer shows its content. */
+  #analyze-open > .drawer > summary { display: none; }
+  #analyze-open > .drawer:not([open]) { display: none; }
   #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
