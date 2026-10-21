@@ -33,12 +33,12 @@ function sharedRowHtml(item) {
 // An own row: name, colour dot, chips, the inline mastery bar and the queue
 // chips. The listing API carries no line count or last-trained date, so the
 // prototype's "Lines" / "Last trained" columns stay out rather than inventing
-// data. `selected` and `enter` are state, not content: neither is part of what
-// rowContent() compares.
-function ownRowHtml(item, { selected, enter = false, repSubline, teamName }) {
+// data. Selection is state, not content, so it is not part of what
+// rowContent() compares; entrance markers belong to newly created DOM nodes.
+function ownRowHtml(item, { selected, repSubline, teamName }) {
   const id = item.id;
   const active = item.is_active !== false;
-  const cls = ["lib-row", enter ? "is-enter" : "", active ? "" : "is-disabled", selected ? "is-selected" : ""]
+  const cls = ["lib-row", active ? "" : "is-disabled", selected ? "is-selected" : ""]
     .filter(Boolean)
     .join(" ");
   const chipsHtml =
@@ -102,9 +102,11 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     const repId = row.dataset.repertoireId;
     // The entrance is a one-off: the marker comes off when it ends, so
     // re-showing the view or moving the row cannot replay it.
-    row.addEventListener("animationend", (event) => {
+    const settle = (event) => {
       if (event.animationName === "row-enter") row.classList.remove("is-enter");
-    });
+    };
+    row.addEventListener("animationend", settle);
+    row.addEventListener("animationcancel", settle);
     if (row.dataset.shared) {
       const openSharedRow = () => openShared(repId);
       row.addEventListener("click", openSharedRow);
@@ -193,7 +195,6 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
               ? sharedRowHtml(entry.item)
               : ownRowHtml(entry.item, {
                   selected: String(entry.item.id) === selectedRepId,
-                  enter: true,
                   repSubline,
                   teamName,
                 }),
@@ -206,9 +207,8 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
           ? `${row.dataset.shared ? "s" : "o"}:${row.dataset.repertoireId}`
           : null;
       const doc = container.ownerDocument;
-      const canBuild = !!doc && typeof doc.createElement === "function";
-      const existing = canBuild && container.children ? [...container.children] : [];
-      const keepable = canBuild && existing.some((row) => wanted.has(keyOfNode(row)));
+      const existing = [...container.children];
+      const keepable = existing.some((row) => wanted.has(keyOfNode(row)));
       if (keepable) {
         // Rows the new list no longer holds (or holds twice) leave first, so the
         // walk below only meets rows it still wants.
@@ -227,6 +227,7 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
         const nodeFor = (markup) => {
           template.innerHTML = markup;
           const node = template.content.firstElementChild;
+          node.classList.add('is-enter');
           bindRow(node);
           return node;
         };
@@ -261,15 +262,11 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
             ? sharedRowHtml(entry.item)
             : ownRowHtml(entry.item, { selected: false, repSubline, teamName }),
         )));
-        if (canBuild) {
-          container.innerHTML = entries
-            .map((entry) => entry.markup.replace('class="lib-row', 'class="lib-row is-enter'))
-            .join("");
-          container.querySelectorAll(".lib-row").forEach(bindRow);
-        } else {
-          // Non-browser host (unit-test doubles): the same markup in one write.
-          container.innerHTML = entries.map((entry) => entry.markup).join("");
-        }
+        container.innerHTML = entries.map((entry) => entry.markup).join("");
+        container.querySelectorAll(".lib-row").forEach(row => {
+          row.classList.add('is-enter');
+          bindRow(row);
+        });
       }
       highlight(container, selectedRepId);
       // Number the rows so an entering one waits its turn in place.

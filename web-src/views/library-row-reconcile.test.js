@@ -398,6 +398,33 @@ describe("Library row reconciliation", () => {
     expect(ids()).toEqual(["rep-1", "rep-2"]);
   });
 
+  it('settles an interrupted entrance so returning quickly does not replay it', async () => {
+    payloads = [REPS(), REPS()];
+    build();
+    await view.loadDashboardRepertoires();
+    const first = rows();
+    for (const row of first) {
+      expect(row.classList.contains('is-enter')).toBe(true);
+      (row._listeners.get('animationcancel') || []).forEach(fn => fn({ animationName: 'row-enter' }));
+    }
+    await view.loadDashboardRepertoires();
+    expect(rows()[0]).toBe(first[0]);
+    expect(rows()[0].classList.contains('is-enter')).toBe(false);
+  });
+
+  it('animates a newly shared row while keeping the existing own rows settled', async () => {
+    payloads = [REPS(), { ...REPS(), shared: [{ id: 'team-1', name: 'Coach Sicilian', color: 'black' }] }];
+    build();
+    await view.loadDashboardRepertoires();
+    settle();
+    const first = rows();
+    await view.loadDashboardRepertoires();
+    expect(rows()[0]).toBe(first[0]);
+    expect(rows()[0].classList.contains('is-enter')).toBe(false);
+    expect(rows()[2].dataset.shared).toBe('1');
+    expect(rows()[2].classList.contains('is-enter')).toBe(true);
+  });
+
   it("keeps shared read-only rows beside the own ones through a refresh", async () => {
     const withShare = { ...REPS(), shared: [{ id: "team-1", name: "Coach Sicilian", color: "black" }] };
     payloads = [withShare, withShare];

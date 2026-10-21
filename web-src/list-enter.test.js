@@ -39,9 +39,7 @@ describe("list entry", () => {
     const rule = /#view-dashboard \.list-enter > \.lib-row:not\(\.is-enter\) \{([^}]*)\}/.exec(css);
     expect(rule, "the Library's settled-row opt-out is missing").toBeTruthy();
     expect(rule[1].replace(/\s/g, "")).toBe("animation:none;");
-    // Marked from the row markup, not bolted on after the write.
     const rows = fs.readFileSync(new URL("./views/library-rows.js", import.meta.url), "utf8");
-    expect(rows).toContain('enter ? "is-enter" : ""');
     expect(rows).toContain('animationName === "row-enter"');
   });
 

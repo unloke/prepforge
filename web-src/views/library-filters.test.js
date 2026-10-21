@@ -80,6 +80,7 @@ describe("library filter wiring", () => {
 
   function makeContainer() {
     return {
+      children: [],
       get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       classList: { toggle: () => {} },
       closest: () => null,
