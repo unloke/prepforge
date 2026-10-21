@@ -42,3 +42,32 @@ it("keeps every bottom bar destination at a 44px hit height", () => {
   const item = rule(".tabbar .tabbar-item {");
   expect(item).toMatch(/height:\s*56px/);
 });
+
+// Every custom property a phone rule reads must be one the app defines. The
+// disabled board pill named `--faint`, which exists nowhere: the declaration was
+// dropped at computed-value time, so the pill fell back to inherited ink and read
+// as a live button (measured at 390: rgb(27,28,30) on rgb(239,239,236)).
+it("reads only tokens the app defines, and marks a disabled pill inert", () => {
+  const tokens = new Set(
+    ["styles.css", "views/settings.css", "views/analyze-chart.css", "views/teams.css", "views/scout.css", "views/replay.css"]
+      .map((file) => readFileSync(new URL(file, import.meta.url), "utf8"))
+      .join("\n")
+      .match(/--[a-z0-9-]+\s*:/g)
+      ?.map((decl) => decl.replace(/\s*:$/, "")) || [],
+  );
+  // A property a rule sets for its own subtree (a button's own --pill-left) and
+  // anything with a fallback is legitimate; a bare read of an unknown token dies.
+  const locals = new Set(
+    (body.match(/--[a-z0-9-]+\s*:/g) || []).map((decl) => decl.replace(/\s*:$/, "")),
+  );
+  const reads = [...body.matchAll(/var\((--[a-z0-9-]+)(\s*,)?/g)];
+  const undefinedReads = [...new Set(
+    reads.filter(([, name, fallback]) => !fallback && !tokens.has(name) && !locals.has(name)).map(([, name]) => name),
+  )];
+  expect(undefinedReads).toEqual([]);
+
+  const pill = rule(":is(#run-analysis, #build-generate-node):disabled");
+  expect(pill).toMatch(/background: var\(--surface-3\)/);
+  expect(pill).toMatch(/color: var\(--label\)/);
+  expect(pill).not.toMatch(/--faint/);
+});

@@ -670,7 +670,13 @@
   :is(#run-analysis, #build-generate-node) .bl { display: inline; }
   :is(#run-analysis, #build-generate-node):hover { background: var(--accent); filter: none; }
   :is(#run-analysis, #build-generate-node):active { filter: brightness(0.92); }
-  :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--faint); }
+  /* A disabled pill reads inert: the same grey the shared `.btn:disabled` uses
+     (--label, the token for quiet affordances), so it is the fill and the ink
+     that say "not now" rather than the accent. It used to name --faint, which is
+     not defined anywhere: the declaration was dropped at computed-value time and
+     the pill fell back to inherited ink (measured at 390: rgb(27,28,30) on
+     rgb(239,239,236), which read as a live button at 55% opacity). */
+  :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--label); }
   .study:has(.pv-exit:not([hidden])) :is(#run-analysis, #build-generate-node) { display: none; }
   /* The save chip is the inspector head's (see #build-sync-head below): the
      board bar's copy would sit at the screen's bottom, far from the tree the
