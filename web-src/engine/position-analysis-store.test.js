@@ -306,6 +306,26 @@ describe("interactive lanes", () => {
     again.release();
   });
 
+  it("leaving while a search is in flight drops its worker when the search ends", async () => {
+    // releaseWarm cannot touch a lane mid-search (that search is someone's answer), and
+    // nothing comes back to call it again once the search finishes: the finished search
+    // only armed the idle window, so the whole reserved heap sat for `idleCloseMs`
+    // (measured live: 60 s after a leave that happened before the first depth landed).
+    const lease = store.acquire(A, { depth: 16 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(workers[0].close).not.toHaveBeenCalled();
+    store.releaseWarm();
+    // Still searching: the worker stays for now.
+    expect(workers[0].close).not.toHaveBeenCalled();
+    workers[0].finish();
+    await vi.advanceTimersByTimeAsync(10);
+    // Finished, and nobody is waiting for it: gone now, not after the idle window.
+    expect(workers[0].close).toHaveBeenCalledOnce();
+    // Its read is kept, so coming back answers from it.
+    expect(lease.satisfied()).toBe(true);
+    lease.release();
+  });
+
   it("a search someone still holds keeps its worker when warm workers are freed", async () => {
     // Only IDLE workers are freed: a lane mid-search is answering a lease, and
     // dropping it would turn a busy position into an error for its reader.

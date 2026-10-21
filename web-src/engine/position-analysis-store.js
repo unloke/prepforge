@@ -84,9 +84,8 @@ export function createPositionAnalysisStore({
   // is the number the budget hands out, and engine-profile.js configures it from the
   // same usable profile the lanes belong to, so reading it here is what keeps a lane
   // from existing that can never hold an engine.
-  const lanes = Array.from({ length: Math.max(1, stockfishBudget.snapshot().limit) }, (_, id) => ({
-    id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null,
-  }));
+  const newLane = () => ({ provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null });
+  const lanes = Array.from({ length: Math.max(1, stockfishBudget.snapshot().limit) }, newLane);
   let clock = 0;
   let generation = 0;
   // Whole-game passes in flight. A pass holds every worker, so the Engine card
@@ -161,12 +160,19 @@ export function createPositionAnalysisStore({
     lane.unwatch = null;
   }
 
+  // The view that owns an engine slot was left (see releaseWarm below). A lane mid-search
+  // keeps its worker — that search is someone's answer — but nothing will ask for it
+  // once it finishes, so the worker goes when the search ends instead of arming the
+  // idle window. Measured: leaving mid-search held the whole reserved heap for 60 s.
+  let abandoned = false;
+
   function armIdle(lane) {
     lane.unregisterIdle?.();
     lane.unregisterIdle = null;
     clearTimeout(lane.idleTimer);
     lane.idleTimer = null;
     if (!lane.provider || idleCloseMs <= 0) return;
+    if (abandoned) return releaseWarm(lane);
     const reclaim = () => releaseWarm(lane);
     lane.idleTimer = setTimeout(reclaim, idleCloseMs);
     // The lane is idle either way; the budget is what decides whether a warm worker
@@ -261,6 +267,8 @@ export function createPositionAnalysisStore({
       return;
     }
     const epoch = generation;
+    // Someone is asking for a read again: the view that owns an engine slot is back.
+    abandoned = false;
     lane.unregisterIdle?.();
     lane.unregisterIdle = null;
     clearTimeout(lane.idleTimer);
@@ -469,11 +477,13 @@ export function createPositionAnalysisStore({
       const entry = entries.get(positionKey(fen));
       return entry && entry.game ? { ...gameSnapshot(fen, entry.game), complete: false } : null;
     },
-    // Drop every warm worker now. The store is a page-wide singleton, so a lane a
-    // consumer left idle outlives the view that used it and its reserved heap sits
-    // for `idleCloseMs`; leaving the view is when that heap is worth nothing. Cached
-    // reads stay, so coming back is a re-boot, not a re-analysis.
+    // The view that owns an engine slot was left. Drop every warm worker now, and
+    // drop the next one as soon as whatever it is still searching for finishes: the
+    // store is a page-wide singleton, so a lane outlives the view that used it and
+    // its reserved heap would otherwise sit for `idleCloseMs` with nobody to answer.
+    // Cached reads stay, so coming back is a re-boot, not a re-analysis.
     releaseWarm() {
+      abandoned = true;
       for (const lane of lanes) releaseWarm(lane);
     },
     // A whole-game pass started (1) or ended (0). Consumers read `passing` through
@@ -585,9 +595,7 @@ export function createPositionAnalysisStore({
       clearTimeout(lane.idleTimer);
       if (lane.provider) void lane.provider.close();
     }
-    for (let id = lanes.length; id < profile.workers; id += 1) {
-      lanes.push({ id, provider: null, depth: 0, entry: null, multipv: 0, unwatch: null, idleTimer: null, startedFor: null });
-    }
+    while (lanes.length < profile.workers) lanes.push(newLane());
     // Keep leases attached while replacing all engine-derived state. In particular,
     // first-use detection must not orphan the board request that triggered it.
     for (const lane of lanes) {
