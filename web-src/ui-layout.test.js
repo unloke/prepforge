@@ -215,7 +215,7 @@ describe("workspace chrome layout", () => {
     expect(rule).toMatch(/align-items:\s*center/);
     expect(rule).not.toMatch(/flex-wrap:\s*wrap/);
     // The header is the board's top neighbour on a phone: it owns the gap.
-    expect(rule).toMatch(/margin:\s*0 0 12px/);
+    expect(rule).toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
     // The save chip lives beside the inspector tools here, not in the far-off
     // board bar.
     expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
@@ -229,9 +229,9 @@ describe("workspace chrome layout", () => {
     // Measured at 390: chips 27px, crumbs 21px, the collapse toggle 13px. The
     // chip is the action the thumb reaches for on this screen, and the trail
     // is the only way back along the line.
-    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 40px;/);
-    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 32px;/);
-    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 32px;[^}]*min-height: 32px;/);
+    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 44px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 44px;/);
+    expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
     // One line naming the action, not a paragraph about coverage: that was
     // standing explanation (AGENTS.md) and the ⓘ already carries the detail.
     expect(coverageController).toContain("Press Scan to check this line.");
@@ -500,13 +500,11 @@ describe("workspace chrome layout", () => {
     // The pill owns the bar's middle: the move label would paint under it, so
     // the phone hides it.
     expect(phoneCss).toMatch(/#view-analyze \.board-bar \.board-label \{ display: none; \}/);
-    // A phone has no room for Last game in the panel: it is a row in the Games
-    // sheet, and the pill in the thumb bar carries Analyze.
+    // Last game lives in the Games sheet; Analyze stays in the thumb bar.
     expect(phoneCss).toMatch(/#fetch-my-game \{ display: none; \}/);
-    // The coach takes its note's height and the rest of the screen goes to the
-    // score sheet, so a one-line verdict does not leave a band of empty tone.
+    // A phone has no score sheet: its room goes to the graph.
     expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*flex: 0 1 auto;/);
-    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{[^}]*flex: 1 1 0;/);
+    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
     expect(app).toContain("function wirePhoneSheets()");
   });
 

@@ -30,13 +30,21 @@
     --phone-reserve: max(180px, 32dvh);
     --phone-gutter: 16px;
     --phone-radius: 14px;
+    /* The gap between blocks on a phone. Items inside one block sit closer
+       than this, so a group reads as one unit. */
+    --phone-gap: 20px;
   }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* iOS zooms the page into any field set below 16px. */
   input:not([type="checkbox"], [type="radio"], [type="range"]),
   select,
   textarea { font-size: 16px; }
-  .btn.sm { min-height: 36px; height: 36px; }
+  /* Every control a thumb reaches is a thumb-sized target. The shared 30px
+     control height is a mouse height; `.btn.sm` was overridden to 36 here, which
+     left the Library's "Clear filter" and its "Try again" (the two buttons a
+     dead-end screen offers) 8px under the floor. Dense rows that need to stay
+     dense (the Build inspector's tools) set their own height further down. */
+  .btn.sm { min-height: 44px; height: 44px; }
 
   /* ---- Pages ------------------------------------------------------------- */
   .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
@@ -53,51 +61,57 @@
     border: 0;
     border-radius: var(--phone-radius);
   }
+  /* The header is a title row, not a hero: the page's own content is what the
+     screen is about, so the name sits at the app-title size (22px) instead of
+     a 32px display size that out-shouts the list under it. */
   .page-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 52px;
+    gap: 12px;
+    min-height: 56px;
+    margin: 0 0 var(--phone-gap);
   }
-  .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .page-head h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
   .page-head-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border: 0;
     border-radius: 50%;
     background: var(--surface-3);
-    color: var(--accent-strong);
+    color: var(--text);
   }
-  .page-head-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  .page-head-btn:active { background: var(--line-strong); }
+  .page-head-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
   /* Library: Today as one row, filter chips, the repertoire list, setup
      steps left. */
-  #view-dashboard .lib { gap: 14px; }
-  #view-dashboard .lib-grid { gap: 14px; }
-  /* The phone strip is its own composition: the streak and the action on
-     the first row, the queue on the second. The streak keeps its word - a
-     bare figure in a circle says nothing. */
+  #view-dashboard .lib { gap: var(--phone-gap); }
+  #view-dashboard .lib-grid { gap: var(--phone-gap); }
+  /* The strip answers one question — what to study next — so the queue is the
+     largest line on it and the streak is the quiet meta above. The action
+     keeps the accent and takes a thumb-sized pill. */
   #view-dashboard .today.card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "streak train"
-      "queue queue";
+      "queue  queue";
     align-items: center;
-    gap: 6px 12px;
+    gap: 4px 12px;
     min-height: 64px;
-    padding: 10px 12px 10px 14px;
+    padding: 12px 14px 14px;
     background: var(--panel);
   }
   #view-dashboard .today-streak {
     grid-area: streak;
     flex-direction: row;
     align-items: baseline;
-    gap: 6px;
+    gap: 5px;
     width: auto;
     height: auto;
     padding: 0;
@@ -106,7 +120,9 @@
     background: none;
     line-height: 1.1;
   }
-  #view-dashboard .today-count { font-size: 18px; font-weight: 700; }
+  /* A streak is a fact, not a state: it is read, not warned about, so it keeps
+     the ink and lets the queue carry the emphasis. */
+  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 650; }
   #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
   #view-dashboard .today-unit small { display: none; }
   #view-dashboard .today-note,
@@ -116,14 +132,20 @@
      leave an empty grid cell. */
   #view-dashboard .today-aside { display: none; }
   #view-dashboard .today-body { grid-area: queue; gap: 2px; min-width: 0; }
-  #view-dashboard .today-warning { font-size: 12px; }
+  #view-dashboard .today-warning { font-size: 13px; }
   /* A failed read is one card: the strip's three-column layout would clip it
      into the 40px streak slot, so it spans the full row instead. */
   #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
   #view-dashboard .today > .btn { grid-area: train; }
-  #view-dashboard .today-queue { color: var(--text); font-size: 15px; font-weight: 600; line-height: 1.3; }
+  #view-dashboard .today-queue {
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
   #view-dashboard .today-queue b { font: inherit; }
-  #view-dashboard .today .btn.lg { min-height: 40px; height: 40px; padding: 0 16px; border-radius: 20px; font-size: 14px; }
+  #view-dashboard .today .btn.lg { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   #view-dashboard .lib-list .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }
@@ -131,59 +153,62 @@
   #view-dashboard .lib-cols { display: none; }
   /* Import PGN needs its own place on a phone: the page head's + is New
      repertoire, so with the header actions hidden a phone could not add a PGN
-     at all. It sits beside the search field; New repertoire keeps the +. */
+     at all. It takes the pill of the search field beside it, so the two read
+     as one row of controls; New repertoire keeps the +. */
   #view-dashboard .lib-list .seg { grid-column: 1 / -1; }
   #view-dashboard .lib-list .search-field { grid-column: 1; }
   #view-dashboard .lib-actions { grid-column: 2; display: flex; gap: 8px; }
   #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
   #view-dashboard .lib-actions #dashboard-import-pgn {
     flex: none;
-    height: 40px;
-    padding: 0 12px;
-    border-color: transparent;
-    background: transparent;
+    height: 44px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
     color: var(--text);
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 550;
   }
+  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
+  /* Five filters must all be visible at 390px: a row that scrolls sideways
+     reads as a cut-off row, so the chips are sized to fit the width instead. */
   #view-dashboard .lib-list .seg {
     display: flex;
-    gap: 8px;
-    /* Capped to the card (which clips): the row scrolls instead of sizing to its chips. */
+    flex-wrap: wrap;
+    gap: 6px;
     max-width: 100%;
     margin: 0;
     padding: 0;
     border: 0;
     background: none;
-    overflow-x: auto;
-    scrollbar-width: none;
   }
-  #view-dashboard .lib-list .seg::-webkit-scrollbar { display: none; }
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
-    flex: none;
-    min-height: 40px;
-    height: 40px;
+    flex: 0 1 auto;
+    min-height: 44px;
+    height: 44px;
     padding: 0 14px;
     border: 0;
-    border-radius: 17px;
+    border-radius: 22px;
     background: var(--surface-3);
     color: var(--text);
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 550;
   }
-  #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--bg); }
+  #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--panel); }
   .search-field {
     width: 100%;
-    height: 40px;
+    height: 44px;
     margin: 0;
-    padding: 0 12px;
+    padding: 0 14px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: var(--surface-3);
   }
   .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
-  .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--faint); }
-  .search-field input { height: 40px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
+  .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
+  .search-field input { height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
   #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -197,7 +222,13 @@
     background: none;
     box-shadow: none;
   }
-  #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); }
+  #view-dashboard .lib-row + .lib-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  /* The open repertoire is marked with the group's own fill, not a 3px accent
+     bar: inside a rounded grouped list a bar on the first row reads as a clip
+     mark, and the accent belongs to the screen's action. */
+  #view-dashboard .lib-row.is-selected,
+  #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
+  #view-dashboard .lib-row.is-selected::before { content: none; }
   /* The skeleton row is the phone row's flex shape without the ⋯ button. */
   #view-dashboard .lib-row.is-skeleton .lib-opt,
   #view-dashboard .lib-row.is-skeleton { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
@@ -241,13 +272,13 @@
   }
   #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { padding-left: 38px; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
-  #view-dashboard .lib-row .row-menu-btn { flex: none; width: 40px; height: 40px; }
+  #view-dashboard .lib-row .row-menu-btn { flex: none; width: 44px; height: 44px; opacity: 1; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }
   #view-dashboard .steps .card-head { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-height: 0; margin: 0; padding: 8px 6px 4px 14px; }
   #view-dashboard .steps .card-head h2 { flex: 1; font-size: 15px; }
   #view-dashboard .steps .setup-bar { margin: 0 14px 4px; }
-  #view-dashboard .steps .setup-dismiss { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+  #view-dashboard .steps .setup-dismiss { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
   #view-dashboard .step.is-done { display: none; }
   #view-dashboard .step { min-height: 56px; margin: 0; padding: 8px 14px; gap: 12px; border: 0; }
   /* The phone checklist hides the finished steps, so a step's number points at
@@ -256,11 +287,11 @@
   #view-dashboard .step[data-setup-step] { grid-template-columns: minmax(0, 1fr) auto; }
   #view-dashboard .step[data-setup-step] .step-n { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
-  #view-dashboard .step .btn { min-height: 40px; height: 40px; padding: 0 16px; border: 0; border-radius: 20px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
+  #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
   /* Games and Scout: the same grouped card — where the games come from, one
      choice row, then the action across the card. */
-  #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: 14px; height: auto; }
+  #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: var(--phone-gap); height: auto; }
   #view-replay :is(.games-panel, .scout-panel) > .toolbar {
     display: flex;
     flex-direction: column;
@@ -273,35 +304,70 @@
     background: var(--panel);
     box-shadow: none;
   }
+  /* The source is two rows: its name, then the chip and Add. Three columns
+     squeezed the chip to a two-word sliver at 390px. */
   #view-replay .toolbar > .src {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 6px 8px;
-    min-height: 52px;
+    min-height: 56px;
     margin: 0;
-    padding: 10px 0;
+    padding: 8px 0;
   }
-  #view-replay .toolbar > .src > .src-label { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+  #view-replay .toolbar > .src > .src-label { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
   #view-replay .toolbar > .src > .src-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-  #view-replay .toolbar > .src > .btn { min-height: 40px; height: 40px; padding: 0 6px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
+  /* A selected source is a state, not the screen's action: it takes the
+     recessed fill and ink text like every other selected control here. */
+  #view-replay .toolbar .src-chip { background: var(--surface-3); color: var(--text); }
+  #view-replay .toolbar .src-empty { font-size: 14px; }
+  #view-replay .toolbar > .src > .btn {
+    justify-self: end;
+    min-height: 44px;
+    height: 44px;
+    margin: 0 -8px 0 0;
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  #view-replay .toolbar > .src > .btn:active { background: var(--surface-3); }
   #view-replay .toolbar > .inline-field {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    min-height: 52px;
+    min-height: 56px;
     margin: 0;
     padding: 6px 0;
-    box-shadow: inset 0 1px 0 var(--line);
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped card */
+    color: var(--text);
     font-size: 16px;
   }
-  #view-replay .toolbar > .inline-field select { width: auto; min-width: 120px; height: 40px; border: 0; background-color: var(--surface-3); }
+  #view-replay .toolbar > .inline-field select { width: auto; min-width: 120px; height: 44px; border: 0; background-color: var(--surface-3); }
   #view-replay .toolbar > .spacer { display: none; }
-  #view-replay .toolbar > :is(#lichess-compare-btn, #scout-btn) { justify-content: center; width: 100%; min-height: 46px; margin: 4px 0 14px; border-radius: 12px; font-size: 16px; }
-  #view-replay .toolbar > #scout-reset-btn:not([hidden]) { min-height: 40px; margin: -8px 0 10px; border: 0; color: var(--accent-strong); }
+  #view-replay .toolbar > :is(#lichess-compare-btn, #scout-btn) {
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    margin: 10px 0 14px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  #view-replay .toolbar > #scout-reset-btn:not([hidden]) { min-height: 44px; margin: -8px 0 10px; border: 0; color: var(--text); }
   #view-replay .toolbar > .counter { margin: -6px 0 12px; color: var(--muted); font-size: 13px; text-align: center; }
   #view-replay .toolbar > .sum-chips:not([hidden]) { padding-bottom: 12px; }
+  /* The empty answer is a card of its own under the control card, sized to
+     its message: on Games and Scout the tab has either rows or nothing, and
+     both read the same way. Games' ledger already carries the frame. */
+  #view-replay .scout-empty.empty-state.big {
+    padding: 40px 24px;
+    border-radius: var(--phone-radius);
+    background: var(--panel);
+  }
+  #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
 
   /* Settings: one grouped list per section, like the iOS Settings app. Every
      row is 48px, actions are tinted text, sliders get the row's full width. */
@@ -436,8 +502,9 @@
   .study .engine-banner { order: 0; flex: none; }
   /* A diagnostic does not get a fifth of the screen above the board. Same one
      line as the desktop panel: the cause and the fix are behind the action's
-     tooltip, which the row itself is. */
-  #view-build .engine-banner { gap: 0 6px; padding: 6px 12px 8px; margin: 0; }
+     tooltip, which the row itself is. It keeps the phone gutter so its words
+     sit on the same edge as the repertoire's name under it. */
+  #view-build .engine-banner { gap: 0 6px; padding: 6px var(--phone-gutter) 8px; margin: 0; }
   #view-build .engine-banner :is(.engine-banner-title, .engine-banner-action) { font-size: 13px; line-height: 1.4; }
   /* The scroller under the board. */
   :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) {
@@ -608,7 +675,13 @@
   :is(#run-analysis, #build-generate-node) .bl { display: inline; }
   :is(#run-analysis, #build-generate-node):hover { background: var(--accent); filter: none; }
   :is(#run-analysis, #build-generate-node):active { filter: brightness(0.92); }
-  :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--faint); }
+  /* A disabled pill reads inert: the same grey the shared `.btn:disabled` uses
+     (--label, the token for quiet affordances), so it is the fill and the ink
+     that say "not now" rather than the accent. It used to name --faint, which is
+     not defined anywhere: the declaration was dropped at computed-value time and
+     the pill fell back to inherited ink (measured at 390: rgb(27,28,30) on
+     rgb(239,239,236), which read as a live button at 55% opacity). */
+  :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--label); }
   .study:has(.pv-exit:not([hidden])) :is(#run-analysis, #build-generate-node) { display: none; }
   /* The save chip is the inspector head's (see #build-sync-head below): the
      board bar's copy would sit at the screen's bottom, far from the tree the
@@ -715,11 +788,33 @@
   .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   .sheet-row svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--accent-strong); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
   .sheet-row:active { background: var(--line); }
+  /* A row that opens something in place carries the mark for it, so the sheet
+     says which rows are lists and which are actions. It points down while the
+     list is showing and turns up when it is put away. */
+  .sheet-row[aria-expanded]::after {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-left: auto;
+    border: solid var(--muted);
+    border-width: 0 1.6px 1.6px 0;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .sheet-row[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
 
   /* ---- Repertoire ------------------------------------------------------
      Header (back, name, size, ⋯) over the board; under it the Explorer with
-     the next moves, yours dotted, a tap adds one, then the line tree. */
-  #view-build { --phone-reserve: max(244px, 40dvh); }
+     the next moves, yours dotted, a tap adds one, then the line tree.
+     With nothing open the panel is the empty card, and that card is 170px of
+     content in a panel with 10+16px of padding and a 10px gap: 196px of room,
+     or its second action row is cut off by the thumb bar. The reserve was
+     244px, which left the body 156px at 390x660 (measured: the card's bottom at
+     628 under a bar whose top is 604). 304px is the smallest reserve that fits
+     the card whole at 390x660, 430x740 and 390x844, and the board still comes
+     out 300/380/390px wide. */
+  #view-build { --phone-reserve: max(304px, 40dvh); }
   /* Header (back, name, ⋯) over the board: the board's top neighbour here (the
      board bar is the thumb bar below). Flow layout, one line, vertically
      centred; the tree's totals close the panel underneath the dock. */
@@ -728,27 +823,31 @@
     flex: none;
     display: flex;
     align-items: center;
-    column-gap: 4px;
-    min-height: 52px;
-    margin: 0 0 12px;
-    padding: 2px 4px;
+    column-gap: 8px;
+    min-height: 56px;
+    margin: 0 0 var(--phone-gap);
+    padding: 0;
     border: 0;
     background: var(--bg);
   }
+  /* The repertoire's name is this screen's title: it takes the shell's title
+     size and ink, at the same left edge as the board under it. */
   #build-rep-header .rep-name {
     flex: 1 1 0;
     min-width: 0;
     height: 24px;
-    font-size: 17px;
-    font-weight: 700;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   #build-rep-header .rep-color-sub { display: none; }
-  #build-rep-header .phone-back { color: var(--accent-strong); }
-  #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-  #build-rep-header #build-menu { grid-column: 3; }
+  #build-rep-header .phone-back { margin-left: -8px; color: var(--text); }
+  #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  #build-rep-header #build-menu { grid-column: 3; margin-right: -8px; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
   /* Under the board one pane at a time (the line tree, Explorer or Coverage)
@@ -812,31 +911,55 @@
      only way back along the line: both get a real target. The move tokens
      stay dense like a score sheet, but their rows get a gap so neighbours do
      not fuse. */
-  #view-build .fork-chip { min-height: 40px; padding: 0 14px; }
+  #view-build .fork-chip { min-height: 44px; padding: 0 14px; }
   #view-build .fork-chip small { font-size: var(--fs-s); }
-  #view-build .mtree-crumb { min-height: 32px; padding: 0 6px; }
-  #view-build .mtree-collapse { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
-  #view-build .build-empty { padding: 24px 16px; }
-  #view-build .build-empty .row { flex-wrap: wrap; justify-content: center; gap: 8px; }
-  #view-build .build-empty .btn { min-height: 40px; height: 40px; }
+  #view-build .mtree-crumb { min-height: 44px; padding: 0 6px; }
+  #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
+  /* The empty answer is a card under the board. Three buttons side by side
+     clipped "New repertoire" at 390px, so the one action gets the row and the
+     two alternatives share the row under it. It is padded to fit the panel a
+     740px screen leaves (188px measured): the shared 48px padding put the
+     action row under the thumb bar. */
+  #view-build .build-empty { padding: 10px 20px; gap: 2px; }
+  #view-build .build-empty .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: stretch;
+    justify-content: stretch;
+    gap: 8px;
+  }
+  #view-build .build-empty .btn { min-height: 44px; height: 44px; padding: 0 12px; border-radius: 12px; font-size: 15px; }
+  #view-build .build-empty .btn.primary { flex: 1 1 100%; }
+  #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; border: 0; background: var(--surface-3); }
 
   /* ---- Train -------------------------------------------------------------
      The prompt over the board, the session card under it. Modes lead while
      setting up and drop to the bar's edge during a session. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
+  /* Setting up is reading the card, not playing, so the board has to leave the
+     setup card on screen: at 430x740 the full-width board left the panel 146px
+     and pushed Start's top to 785 under a 740px screen, so the board yields 400px
+     of height while the card is up. That is the card (285px), the mode row over
+     it and the gap between them — measured, not the card alone: 285px of reserve
+     leaves Start at 798 on a 740px screen, 400px puts it at 683. It is a token
+     like every other state's reserve so the board rule is one formula; a
+     hard-coded 400px in that rule overrode the token and the two could drift. */
+  #view-train:has(.train-sidebar[data-session-state="setup"]) { --phone-reserve: 400px; }
+  /* The screen's name, at the size the shell uses for one: the coach icon is
+     a mark, not a picture, so it is small and in ink. */
   #view-train .train-coach {
     order: 0;
     flex: none;
     height: auto;
-    min-height: 60px;
+    min-height: 56px;
     margin: 0;
-    padding: 8px var(--phone-gutter);
-    gap: 12px;
+    padding: 6px var(--phone-gutter);
+    gap: 10px;
     border: 0;
     background: var(--bg);
   }
-  #view-train .train-coach-icon { width: 36px; height: 36px; flex: none; }
-  #view-train .train-coach-title { font-size: 17px; font-weight: 700; }
+  #view-train .train-coach-icon { width: 28px; height: 28px; flex: none; }
+  #view-train .train-coach-title { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
   #view-train .train-sidebar > .panel-head {
@@ -844,13 +967,30 @@
     flex: none;
     min-height: 0;
     margin: 0;
-    padding: 10px 12px 0;
+    padding: 12px var(--phone-gutter) 0;
     border: 0;
     background: var(--bg);
   }
-  #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 2px; border: 0; border-radius: 9px; background: var(--surface-3); }
-  #view-train #train-modes .seg-btn { flex: 1 1 0; min-width: 0; min-height: 44px; height: 44px; padding: 0 4px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
-  #view-train #train-modes .seg-btn.is-active { background: var(--line-strong); color: var(--text); }
+  /* The modes sit on the page ground, where the recessed track was the same
+     tone as the ground and disappeared: the track is the panel fill and the
+     chosen mode takes the recessed step. */
+  #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 3px; border: 0; border-radius: 11px; background: var(--panel); }
+  #view-train #train-modes .seg-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
+    height: 44px;
+    padding: 0 4px;
+    border: 0;
+    border-radius: 9px;
+    background: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 550;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); font-weight: 650; }
   #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
   /* A 38x22 switch is the right size to look at and the wrong size to hit. The
      tap area grows to the 44px a thumb needs without moving the switch. */
@@ -901,6 +1041,11 @@
   }
   #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   #view-train .train-start-row .btn { flex: 1 1 140px; min-height: 46px; border-radius: 12px; }
+  /* Setting up is reading the card, not playing, so the board has to leave the
+     setup card on screen (see --phone-reserve above). */
+  #view-train:has(.train-sidebar[data-session-state="setup"]) .board-stack {
+    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
+  }
 
   /* Session card: progress, then one row each for stats and up next. */
   #view-train .train-progress-panel { display: flex; flex-direction: column; gap: 10px; }
@@ -989,8 +1134,19 @@
   .notice-stop { height: 34px; padding: 0 12px; font-size: 13px; }
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
-  /* The tab bar. */
-  .tabbar { height: calc(56px + env(safe-area-inset-bottom)); }
-  .tabbar .tabbar-item { min-height: 0; height: 56px; gap: 3px; font-size: 12px; font-weight: 600; }
+  /* The tab bar is chrome: it is the same white as the cards and sits on the
+     page ground, told apart by a tone step rather than a shadow. */
+  .tabbar { height: calc(56px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); box-shadow: none; }
+  .tabbar .tabbar-item {
+    min-height: 0;
+    height: 56px;
+    gap: 3px;
+    color: var(--label);
+    font-size: 12px;
+    font-weight: 500;
+  }
   .tabbar .tabbar-item svg { width: 22px; height: 22px; }
+  /* The open destination is ink, not the accent: the accent belongs to the one
+     action on the screen. */
+  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
 }
