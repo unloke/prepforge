@@ -14,6 +14,7 @@
 | Generate | 棋譜右上 Generate | 棋譜標題列 Generate |
 | Coverage 掃描、補法預覽與新增 | Inspector → Coverage | Coverage 分頁 |
 | Smart queue、提示、跳過、Blitz、摘要 | Train → Smart queue | Train → Smart queue |
+| 本機訓練紀錄（Smart queue／Blitz） | Train → History，或完成後 → History | 相同入口 |
 | Line rehearsal、錯題重練 | Train → Line rehearsal | Train → Line rehearsal |
 | Practice game、悔棋、認輸與轉分析 | Train → Practice game | Train → Practice game |
 | Analyze：輸入 PGN、檔案、最近分析、上一局 | Analyze 的來源與 Games 面板 | Analyze 底部 Games 資料夾按鈕 |
@@ -96,6 +97,8 @@
 6. 卡片完成後查看 Session complete；New session 開新一輪。
 
 完成判準：到達摘要，看到第一次答對、失誤（提示後答對也算失誤）與跳過數；結束後不再顯示待走方。
+
+**History 試用版**：在開始畫面或完成摘要按 History，查看這個帳號在此瀏覽器完成的 Smart queue／Blitz 紀錄。每筆包含棋譜、完成時間、完成卡數、首次作答的答對數／作答數、失誤與跳過數；示範著法與跳過的手不列入首次作答分母。重新開分頁仍保留，清除網站儲存空間會刪除紀錄。此版不跨裝置同步，不記錄 Line rehearsal／Practice game，也不補入之前的訓練。
 
 ## 7. Line rehearsal
 
