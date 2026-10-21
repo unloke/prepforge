@@ -535,4 +535,36 @@ describe("Analyze on a phone", () => {
     expect(graph[0]).toMatch(/min-height: 84px/);
     expect(graph[0]).toMatch(/max-height: 34dvh/);
   });
+
+  // One left edge for the whole column. The engine line, the job dock and the
+  // coach were indented 10/12/14px by three rules written at different times, so
+  // the graph and the eval row sat at 16 while everything under them started
+  // somewhere else (measured at 390x844: 16, 10, 12, 14).
+  it("keeps every band under the board on the phone gutter", () => {
+    for (const selector of ["#analysis-engine-slot", "#analysis-job-dock", "#analysis-explain"]) {
+      const start = phone.indexOf(`${selector} {`);
+      expect(start, selector).toBeGreaterThan(-1);
+      const body = phone.slice(phone.indexOf("{", start), phone.indexOf("}", start));
+      expect(body, selector).toMatch(/padding: [^;]*var\(--phone-gutter\)/);
+    }
+  });
+
+  // Report and Engine are the two controls in the row a thumb reaches; they were
+  // 32px, the one place on a phone a control may not be dense.
+  it("gives the eval row's two pills a 44px target", () => {
+    const engine = phone.match(/#analysis-eval-card \.ev-engine \{[^}]*\}/);
+    expect(engine).not.toBeNull();
+    expect(engine[0]).toMatch(/height: 44px/);
+    const report = phone.match(/#view-analyze:has\(#analysis-results:not\(\[hidden\]\)\) \.ev-report \{[^}]*\}/);
+    expect(report).not.toBeNull();
+    expect(report[0]).toMatch(/height: 44px/);
+  });
+
+  // The win meter repeated the graph above it — the same win-chance series, at
+  // 12px instead of the graph's 277 — and at 64px plus its gap it squeezed the
+  // position's name into 43px, where it wrapped mid-word. The eval figure beside
+  // it already names the point.
+  it("does not repeat the graph's win share in the eval row", () => {
+    expect(phone).toMatch(/#analysis-eval-card \.ev-meter \{ display: none; \}/);
+  });
 });

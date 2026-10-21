@@ -1177,7 +1177,7 @@
     height: auto;
     min-height: 0;
     margin: 0;
-    padding: 8px 14px 10px;
+    padding: 8px var(--phone-gutter) 10px;
     border: 0;
     border-radius: 0;
     background: var(--panel-soft);
@@ -1269,7 +1269,13 @@
   }
   #analysis-eval-card .ev-title { color: var(--muted); font-weight: 600; }
   #analysis-eval-card .eval-now { min-width: 62px; color: var(--text); font-size: 18px; font-weight: 650; }
-  #analysis-eval-card .ev-meter { flex: none; width: 64px; }
+  /* Eval, the position's name, Report, Engine. The win meter is not here: the
+graph above it is the same win-chance series at 277px, so a 64px bar repeating
+the current point cost the row 74px — and with the two pills at their 44px target
+the position's name was squeezed into 43px and wrapped mid-word. The eval's own
+figure ("+0.25") already names the point; the row gives its room back to the
+name. */
+  #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .ev-move {
     display: block;
     flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
@@ -1283,14 +1289,17 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  #analysis-eval-card .ev-engine { flex: none; height: 32px; padding: 0 12px 0 10px; font-size: 14px; }
+  /* Report and Engine are the two controls in the row a thumb reaches, so they
+     take the same 44px box as every other phone control; the 52px row holds them
+     with 4px to spare. */
+  #analysis-eval-card .ev-engine { flex: none; height: 44px; padding: 0 14px 0 12px; font-size: 14px; }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
   #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
     display: inline-flex;
     flex: none;
     align-items: center;
-    height: 32px;
-    padding: 0 12px;
+    height: 44px;
+    padding: 0 14px;
     border: 0;
     border-radius: 999px;
     background: var(--panel-soft);
@@ -1299,7 +1308,12 @@
     font-size: 14px;
     font-weight: 650;
   }
-  #analysis-engine-slot { display: block; padding: 0 12px 4px 10px; }
+  /* The engine's best line, the job dock and the coach all sit on the phone
+     gutter, the same left edge as the graph and the eval row above them. They
+     were indented 10/12/14px by three rules written at different times, so the
+     screen carried four left edges down one column (measured at 390x844: graph
+     and eval at 16, engine line at 10, dock at 12, coach prose at 14). */
+  #analysis-engine-slot { display: block; padding: 0 var(--phone-gutter) 4px; }
   #analysis-engine-slot > .engine-window:not([hidden]) { display: block; }
   #analysis-engine-slot .engine-window-head,
   #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting) { display: none; }
@@ -1308,9 +1322,9 @@
   #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 28px; font-size: 14px; }
   #analysis-engine-slot .engine-pv-line { line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #analysis-job-dock:empty { display: none; }
-  #analysis-job-dock { padding: 0 12px 4px; }
+  #analysis-job-dock { padding: 0 var(--phone-gutter) 4px; }
   .analysis-retry-save:not([hidden]),
-  .analysis-import-picker:not([hidden]) { margin: 0 12px 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
+  .analysis-import-picker:not([hidden]) { margin: 0 var(--phone-gutter) 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
 
   /* Report sheet: move quality and the handoff. Games sheet: where games
      come from. */
