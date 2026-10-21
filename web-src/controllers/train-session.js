@@ -7,13 +7,12 @@ import { isAuthError } from "../auth-gate.js";
 import { isStartFen, localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { watchMaiaInit } from "../maia-init-notice.js";
-import { describeMove } from "../explain.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
 import { countOf } from "../plural.js";
-import { coachTipMayReplace, wrongMoveTip } from "../train-hint.js";
+import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveTip } from "../train-hint.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
-import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, startNotice, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
+import { isNothingToTrainError, queueRepertoireForStart, rehearsalStartBlockReason, rememberFinishedQueueScope, startNotice, trainStartBlockReason, trainStartDisabled } from "../train-start.js";
 
 let accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo, boards,
   currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView, flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze, loadPhaseCoach,
@@ -1448,10 +1447,14 @@ async function submitTrainingMove(playedUci) {
   }
   const prompt = currentTrainingPrompt();
   if (!prompt || !playedUci || appState.trainBusy) return;
-  // A mode switch replaces appState.training; every await below re-checks it so
-  // an abandoned session never paints onto the new mode's board.
+  // A mode switch, another account, or a smart session replaces the training
+  // state; every await below re-checks it so an abandoned rehearsal never paints
+  // onto whatever took the board (a late failure included).
   const training = appState.training;
-  const superseded = () => appState.training !== training || appState.smart;
+  const owner = currentOwnerId();
+  const mode = appState.trainMode;
+  const superseded = () => appState.training !== training || appState.smart
+    || currentOwnerId() !== owner || appState.trainMode !== mode;
   // Land the dragged move on the board right away; the server response below
   // decides whether it advances (correct) or resets (wrong), and its right/wrong
   // cue covers the move, so the landing itself stays quiet.
@@ -1470,7 +1473,19 @@ async function submitTrainingMove(playedUci) {
       }),
     });
   } catch (error) {
+    // The answer was not graded, so the card is still the same one: put the
+    // board back on the position it asks about and let the player answer again.
+    // Without this the optimistic move stayed on a locked board (legalMoves: [])
+    // under a "Your move" banner — a rehearsal the player could not continue.
+    if (superseded()) return;
+    boards.train.setPosition({
+      fen: prompt.fen_before,
+      legalMoves: prompt.legal_moves || [],
+      lastMove: null,
+    });
+    setTrainBanner("move", "Your move", "That answer didn't save. Play it again.");
     setStatusError(error.message);
+    syncTrainSessionControls();
     return;
   }
   if (result.day_streak) appState.dayStreak = result.day_streak;
@@ -1736,27 +1751,6 @@ function currentTrainingPrompt() {
   return appState.training ? appState.training.prompt : null;
 }
 
-// "Why this move", engine-free, for the moments the answer is on screen (teach
-// cards and the second-miss reveal). The repertoire author's own annotation wins;
-// otherwise describe what the move actually does on the board (chess.js only, so
-// Train keeps needing no engine); the server's generic heuristic is the last resort.
-function teachWhy(prompt, fallback) {
-  const hint = (prompt && prompt.hint) || {};
-  if (hint.annotated && hint.strategy) return hint.strategy;
-  const did = describeMove(prompt.fen_before, prompt.expected_uci, prompt.expected_san);
-  if (did) return `${did.charAt(0).toUpperCase()}${did.slice(1)}.`;
-  return hint.strategy || fallback;
-}
-
-// Teach/reveal explanation: the move's own description (teachWhy) plus the phase
-// coach's note only when that note is specific to the position (model.generic marks
-// the canned phase advice, which is dropped instead of repeated on every card).
-function trainTeachLine(prompt, model) {
-  const parts = [teachWhy(prompt, "")];
-  if (model && model.tip && !model.generic) parts.push(model.tip);
-  return parts.filter(Boolean).join(" ");
-}
-
 function setSmartPanelsHidden() {
   const queue = document.getElementById("train-queue");
   if (queue) queue.hidden = true;
@@ -1900,6 +1894,8 @@ async function startSmartTraining(options = {}) {
     const repertoireId = queueRepertoireForStart({
       requested: options.repertoireId,
       current: appState.smart,
+      previous: appState.finishedQueueScope,
+      state: appState,
       fresh,
     });
     payload = await postJson("/api/train/smart/start", {
@@ -2144,7 +2140,7 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     board.setEngineArrow(prompt.expected_uci);
     clearBlitzTimer(); // learning is never against the clock
   } else {
-    const cueSan = smartPromptCueSan(smart, prompt);
+    const cueSan = promptCueSan(smart, prompt);
     setTrainBanner(
       "move",
       "Your move",
@@ -2157,23 +2153,6 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
     nodeId: prompt.expected_node_id, fen: prompt.fen_before });
   prefetchTrainCoach(prompt);
   syncTrainSessionControls();
-}
-
-// The opponent move this card answers ("answer 3...Nf6"), from the run-in or the
-// previous step of the same card. "" when the card starts from the initial position.
-function smartPromptCueSan(smart, prompt) {
-  const runIn = prompt.run_in || [];
-  let san = runIn.length ? runIn[runIn.length - 1].san : "";
-  if (!san) {
-    const card = smart.queue[smart.cardIndex];
-    const prev = card && smart.targetIndex > 0 ? card.targets[smart.targetIndex - 1] : null;
-    san = prev && prev.reply ? prev.reply.san : "";
-  }
-  if (!san) return "";
-  const parts = String(prompt.fen_before || "").split(" ");
-  const num = Number(parts[5]) || 1;
-  // The cue was played by the other side: number it from the prompt's position.
-  return parts[1] === "w" ? `${num - 1}...${san}` : `${num}.${san}`;
 }
 
 function prefetchTrainCoach(prompt) {
@@ -2479,6 +2458,10 @@ function showSmartSummary(smart, stats) {
 async function finishSmartSession() {
   const smart = appState.smart;
   if (!smart) return;
+  // The summary's "New session" must build another queue like this one. The live
+  // session is released below (it no longer describes what is on screen), so its
+  // scope is remembered here, for this owner, before it goes.
+  appState.finishedQueueScope = rememberFinishedQueueScope(appState, smart);
   const stats = appState.trainStats || {};
   smart.prompt = null;
   trainSessionMemo?.finishSmartSessionMemo(currentOwnerId(), smart, stats);

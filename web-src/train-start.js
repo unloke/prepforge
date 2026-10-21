@@ -52,9 +52,52 @@ export function startNotice(resumed) {
 // like this one: a queue drilled for one repertoire (a Train link, the
 // repertoire's own Train action) must not silently widen to every active
 // repertoire, and a mixed queue stays mixed. An explicit request always wins.
-export function queueRepertoireForStart({ requested = null, current = null, fresh = false } = {}) {
+//
+// `current` is the LIVE queue; `previous` is the scope a FINISHED queue left in
+// state (finishSmartSession releases appState.smart before its summary paints, so
+// the summary's restart has nothing live to read). `state` fences that scope: see
+// finishedQueueScopeFor.
+export function queueRepertoireForStart({ requested = null, current = null, previous = null, state = null, fresh = false } = {}) {
   if (requested) return requested;
   if (!fresh) return null;
-  if (current && !current.mixed && current.repertoireId) return current.repertoireId;
+  const scope = current || (state ? finishedQueueScopeFor(previous, state) : previous);
+  if (scope && !scope.mixed && (scope.repertoireId || scope.repertoire_id)) {
+    return scope.repertoireId || scope.repertoire_id;
+  }
   return null;
+}
+
+// The scope a finished queue leaves for the next Start: which repertoires it
+// drilled, for whom, and under which owner generation.
+export function rememberFinishedQueueScope(state, smart) {
+  if (!smart) return null;
+  return {
+    ownerId: state.accountUserId || null,
+    generation: state.ownerGeneration,
+    mixed: !!smart.mixed,
+    repertoireId: smart.repertoireId || null,
+  };
+}
+
+// That remembered scope, fenced to the state it was remembered in: another
+// account, a reloaded generation, or a repertoire deleted/disabled since all
+// answer null, so the next Start falls back to the mode's own default instead of
+// inheriting a stranger's or a dead repertoire.
+export function finishedQueueScopeFor(scope, state = {}) {
+  if (!scope || !scope.ownerId || scope.ownerId !== (state.accountUserId || null)) return null;
+  if (scope.generation !== state.ownerGeneration) return null;
+  if (scope.mixed || !scope.repertoireId) return scope;
+  // An empty listing means "not loaded yet", not "gone": the server still owns
+  // the real answer. A loaded listing that no longer carries the repertoire as
+  // active (deleted, disabled, or waiting on its delete) does answer.
+  const listing = Array.isArray(state.repertoireList) ? state.repertoireList : [];
+  if (listing.length) {
+    const pending = state.pendingRepDeletes || new Set();
+    const trainable = listing.some(
+      (rep) => String(rep.id) === String(scope.repertoireId)
+        && rep.is_active !== false && !pending.has(String(rep.id)),
+    );
+    if (!trainable) return null;
+  }
+  return scope;
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { queueRepertoireForStart, startNotice } from "./train-start.js";
+import { queueRepertoireForStart, rememberFinishedQueueScope, startNotice } from "./train-start.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
@@ -221,6 +221,7 @@ describe("Smart memo integration at Start", () => {
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
       syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), updateTrainTurnBadge: vi.fn(),
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
+      rememberFinishedQueueScope,
     });
     await h.start();
     h.appState.smart.blitz = false;
@@ -253,7 +254,7 @@ describe("Smart memo integration at Start", () => {
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
       syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(),
       localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
-      smartSessionOutcomeText: () => "",
+      smartSessionOutcomeText: () => "", rememberFinishedQueueScope,
     });
     h.appState.smart.cardIndex = h.appState.smart.queue.length;
     h.appState.smart.cardsDone = 3;
