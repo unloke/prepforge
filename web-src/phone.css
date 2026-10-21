@@ -929,6 +929,15 @@
      The prompt over the board, the session card under it. Modes lead while
      setting up and drop to the bar's edge during a session. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
+  /* Setting up is reading the card, not playing, so the board has to leave the
+     setup card on screen: at 430x740 the full-width board left the panel 146px
+     and pushed Start's top to 785 under a 740px screen, so the board yields 400px
+     of height while the card is up. That is the card (285px), the mode row over
+     it and the gap between them — measured, not the card alone: 285px of reserve
+     leaves Start at 798 on a 740px screen, 400px puts it at 683. It is a token
+     like every other state's reserve so the board rule is one formula; a
+     hard-coded 400px in that rule overrode the token and the two could drift. */
+  #view-train:has(.train-sidebar[data-session-state="setup"]) { --phone-reserve: 400px; }
   /* The screen's name, at the size the shell uses for one: the coach icon is
      a mark, not a picture, so it is small and in ink. */
   #view-train .train-coach {
@@ -1025,13 +1034,10 @@
   }
   #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
   #view-train .train-start-row .btn { flex: 1 1 140px; min-height: 46px; border-radius: 12px; }
-  /* Setting up is reading the card, not playing: on a short phone the
-     full-width board left the panel 146px and pushed Start under the thumb
-     bar (measured at 430x740: Start's top at 785 under a 740px screen). The
-     setup card is 285px, so the board yields exactly that; on a tall phone
-     (390x844) the sum still leaves it full width. */
+  /* Setting up is reading the card, not playing, so the board has to leave the
+     setup card on screen (see --phone-reserve above). */
   #view-train:has(.train-sidebar[data-session-state="setup"]) .board-stack {
-    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - 400px));
+    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
   }
 
   /* Session card: progress, then one row each for stats and up next. */
