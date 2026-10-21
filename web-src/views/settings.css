@@ -18,8 +18,8 @@
   }
   #view-settings .page-head h1 {
     margin: 0;
-    /* The phone header sets 32px for every page, so the desktop title keeps
-       the same size: one type size for the title at every width. */
+    /* The desktop page has no rail title above it, so its h1 carries the size;
+       the phone's is the shell's 22px title row. */
     font-size: 32px;
     font-weight: 800;
     letter-spacing: -0.02em;

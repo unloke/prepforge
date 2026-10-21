@@ -103,11 +103,13 @@ const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
 // Recent analyses now starts collapsed, so recalling a saved game from it
-// means opening it first. Phones raise the sources as a sheet; a wide panel
-// has them inline.
+// means opening it first. Phones raise the sources as a sheet, where one row
+// opens the list in place; a wide panel has the drawer inline.
 async function openGamesSheet(page) {
   const button = page.locator('#view-analyze [data-sheet-open="analyze-open"]');
   if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  const reveal = page.locator('#analyze-open [data-reveal="#history-drawer"]');
+  if (await reveal.isVisible() && (await reveal.getAttribute("aria-expanded")) !== "true") await reveal.click();
   await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
 }
 
@@ -149,27 +151,22 @@ async function runViewport(vp) {
               Math.min(pill.bottom, r.bottom) - Math.max(pill.top, r.top) > 0.5;
           })
           .map((el) => el.id || el.className);
-        // The game's name is the board bar's slot, which the phone hides: the
-        // eval row names the position instead.
+        // The desktop caption is hidden on phones; the eval row names the position.
         const caption = document.getElementById("analysis-board-caption");
         const captionVisible = !!caption && caption.getBoundingClientRect().width > 0 &&
           getComputedStyle(caption).display !== "none";
-        // The eval row is the phone's copy of the position (the bar's slot is
-        // hidden), so it must be on screen and saying what the board holds.
         const moveRow = document.getElementById("analysis-ev-move");
         const moveShown = !!moveRow && moveRow.getBoundingClientRect().width > 0 &&
           getComputedStyle(moveRow).display !== "none";
+        const rows = [...document.querySelectorAll("#analyze-open .sheet-row")].map((el) => el.textContent.trim());
         return { inBar: pill.width > 0 && pill.top >= bar.top - 1 && pill.bottom <= bar.bottom + 1 && pill.left >= bar.left && pill.right <= bar.right,
-          lastGame: !!document.querySelector('#analyze-open [data-mirror="#fetch-my-game"]'), covered, overText, captionVisible, moveShown,
+          rows, covered, overText, captionVisible, moveShown,
           moveText: (moveRow?.textContent || "").trim(), pill: pill.toJSON() };
       });
-      // Nothing paints over a control or a word, the bar's game-name slot stays
-      // hidden, and the eval row carries the position in its place.
-      // The bar's game-name slot is the desktop's; a phone reads the position in
-      // the eval row instead, which the next check measures once a move is on
-      // the board (the start position names nothing).
-      check(phone.inBar && phone.lastGame && phone.covered.length === 0 && phone.overText.length === 0 && !phone.captionVisible,
-        `${state}: Analyze must sit in the thumb bar with every control and every word tappable, and the game name in the bar's hidden slot: ${JSON.stringify(phone)}`);
+      const wantsRows = ["Last game", "Past analyses"];
+      check(phone.inBar && wantsRows.every((label) => phone.rows.includes(label)) &&
+        phone.covered.length === 0 && phone.overText.length === 0 && !phone.captionVisible,
+        `${state}: Analyze must sit in the thumb bar with no overlap, the desktop caption hidden, and one sheet carrying Last game and Past analyses: ${JSON.stringify(phone)}`);
       return phone.pill;
     }
     const layout = await page.evaluate(() => {
@@ -317,6 +314,47 @@ async function runViewport(vp) {
   const historyRows = await page.locator("#history-drawer .history-item").count();
   check(historyRows === 2, `recent analyses should list the 2 fixture games once opened, got ${historyRows}`);
   await page.locator("#history-drawer").evaluate((d) => { d.open = false; });
+  if (vp.width <= 760) {
+    // The one bottom button: both rows open their view inside the sheet, and
+    // neither lowers it, so a thumb picks a game without losing the screen.
+    const sheetRows = await page.evaluate(() => {
+      const rows = [...document.querySelectorAll("#analyze-open .sheet-row")];
+      const row = (label) => rows.find((el) => el.textContent.trim() === label);
+      const sheet = document.getElementById("analyze-open");
+      // With no game loaded the sources sit inline under the board; with one
+      // they are a sheet over it. Either way the rows are on screen.
+      const sheetShown = () => {
+        const r = sheet.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      };
+      const before = sheetShown();
+      const out = {};
+      for (const [label, drawer] of [["Past analyses", "history-drawer"], ["Paste a PGN", "pgn-drawer"]]) {
+        const button = row(label);
+        button.click();
+        const target = document.getElementById(drawer);
+        const r = target.getBoundingClientRect();
+        out[label] = {
+          expanded: button.getAttribute("aria-expanded"),
+          open: target.open,
+          shown: r.width > 0 && r.height > 0,
+          sheetUp: sheetShown(),
+        };
+        button.click();
+      }
+      // Last game is a mirror: it closes the sheet and clicks the control.
+      out["Last game"] = { mirror: row("Last game")?.dataset.mirror };
+      return { before, out };
+    });
+    check(sheetRows.before, "the games button should show its rows");
+    for (const label of ["Past analyses", "Paste a PGN"]) {
+      const state = sheetRows.out[label];
+      check(state.expanded === "true" && state.open && state.shown && state.sheetUp,
+        `"${label}" should open its view in place and leave the sheet up: ${JSON.stringify(state)}`);
+    }
+    check(sheetRows.out["Last game"].mirror === "#fetch-my-game",
+      `"Last game" should load the latest game: ${JSON.stringify(sheetRows.out["Last game"])}`);
+  }
   const pgnOpen = await page.locator("#pgn-drawer").evaluate((d) => d.open);
   check(!pgnOpen, "the PGN source drawer should start collapsed (prototype)");
   const toolButtons = await page.evaluate(() =>
@@ -528,15 +566,15 @@ async function runViewport(vp) {
     check(variation.blackAligned, "Black moves should stay in one column around a variation");
   }
   if (vp.width <= 760) {
-    // The phone's screen is one column: chart, board, eval row, coach, score
-    // sheet, thumb bar. The coach takes its note's height, and the sheet takes
-    // the rest, so no dead tone sits under a one-line verdict.
+    // The phone's screen is one column: chart, board, eval row, coach, thumb
+    // bar. A phone has no move list, so the chart is the way to walk the game
+    // and it takes the room the list held.
     const stack = await page.evaluate(() => {
       const box = (sel) => {
         const el = document.querySelector(sel);
         if (!el) return null;
         const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 ? { top: Math.round(r.top), bottom: Math.round(r.bottom) } : null;
+        return r.width > 0 && r.height > 0 ? { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height) } : null;
       };
       const coach = document.querySelector("#analysis-explain");
       const prose = document.getElementById("coach-prose");
@@ -550,20 +588,20 @@ async function runViewport(vp) {
         moves: box("#analysis-moves"),
         barTop: Math.round(bar.top),
         coachDead: Math.round(coach.getBoundingClientRect().bottom - prose.getBoundingClientRect().bottom),
-        movesScrolls: moves.scrollHeight > moves.clientHeight + 1 ||
-          getComputedStyle(moves).overflowY === "auto",
         pageScrolls: document.getElementById("view-analyze").scrollHeight >
           document.getElementById("view-analyze").clientHeight + 1,
       };
     });
     const inOrder = stack.chart.bottom <= stack.board.top + 1 &&
       stack.board.bottom <= stack.coach.top + 1 &&
-      stack.coach.bottom <= stack.moves.top + 1 &&
-      stack.moves.bottom <= stack.barTop + 1;
-    check(inOrder, `phone stack must be chart, board, coach, score sheet, thumb bar: ${JSON.stringify(stack)}`);
+      stack.coach.bottom <= stack.barTop + 1;
+    check(inOrder, `phone stack must be chart, board, coach, thumb bar: ${JSON.stringify(stack)}`);
+    check(stack.moves === null, `a phone Analyze screen must have no move list: ${JSON.stringify(stack.moves)}`);
+    // The graph is the scrubber now: it holds the room the list had (the phone
+    // used to draw an 84px strip and a 32px-pitch sheet).
+    check(stack.chart.height > 84, `the phone graph must take the room the move list had, got ${stack.chart.height}px`);
     // A one-line verdict leaves at most a line of breathing room, not a band.
     check(stack.coachDead <= 40, `the coach band must not keep an empty band under its note: ${stack.coachDead}px`);
-    check(stack.movesScrolls, "the phone's score sheet must take the remaining height and scroll");
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
   await page.evaluate(() => document.getElementById("analysis-start").click());

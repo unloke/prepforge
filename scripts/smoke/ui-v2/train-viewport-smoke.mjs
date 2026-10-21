@@ -202,6 +202,34 @@ async function runViewport(vp) {
   });
   await page.waitForTimeout(300);
   check((await startState()).disabled === false, "rehearsal Start should come back with a trainable repertoire");
+
+  // While setting up, Start is the screen's one action and it has to be on the
+  // screen: the board used to take the full width and push it under the thumb
+  // bar (Start's top was 785 in a 740px viewport). Measured from the real boxes,
+  // not from the CSS — a rule that names a reserve proves nothing on its own.
+  const startGeometry = await page.evaluate(() => {
+    const box = (el) => (el ? el.getBoundingClientRect().toJSON() : null);
+    const start = box(document.getElementById("start-train"));
+    const bar = box(document.querySelector("#view-train .board-bar"));
+    const board = box(document.querySelector("#view-train .board-stack"));
+    const card = box(document.querySelector("#view-train .train-sidebar .tcard"));
+    return {
+      start, bar, board, card,
+      vh: window.innerHeight,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      pageScroll: document.documentElement.scrollHeight - window.innerHeight,
+    };
+  });
+  const aboveBar = startGeometry.bar ? startGeometry.start.bottom <= startGeometry.bar.top + 1 : startGeometry.start.bottom <= startGeometry.vh;
+  check(!!startGeometry.start && aboveBar,
+    `Start must sit above the thumb bar while setting up: ${JSON.stringify({ start: startGeometry.start, bar: startGeometry.bar, vh: startGeometry.vh })}`);
+  check(startGeometry.start.height >= (vp.width <= 760 ? 44 : 30), `Start must be a thumb target on a phone and at least a control height on a desktop, got ${startGeometry.start.height}`);
+  check(!!startGeometry.card && startGeometry.card.bottom <= (startGeometry.bar ? startGeometry.bar.top : startGeometry.vh),
+    `the setup card must be whole above the bar: ${JSON.stringify({ card: startGeometry.card, bar: startGeometry.bar })}`);
+  check(startGeometry.board && startGeometry.board.width <= startGeometry.vh && startGeometry.board.height <= startGeometry.vh,
+    `the setup board must fit the screen: ${JSON.stringify(startGeometry.board)}`);
+  check(startGeometry.overflow <= 0, `no horizontal overflow while setting up, got ${startGeometry.overflow}px`);
+  check(startGeometry.pageScroll <= 0, `the setup screen must not scroll the page, got ${startGeometry.pageScroll}px over`);
   await page.evaluate(() => document.querySelector('#train-modes .train-mode[data-mode="smart"]').click());
   await page.waitForTimeout(300);
 
@@ -335,6 +363,10 @@ try {
     { name: "desktop-1440", width: 1440, height: 900 },
     { name: "laptop-1180", width: 1180, height: 900 },
     { name: "mobile-390", width: 390, height: 844 },
+    // The short phone is where Start's geometry broke: the full-width board left
+    // the setup panel 146px and put Start under the bar. It needs its own run.
+    { name: "phone-430x740", width: 430, height: 740 },
+    { name: "phone-390x660", width: 390, height: 660 },
   ]) await runViewport(vp);
 } finally {
   await browser.close();
@@ -345,4 +377,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("[train-smoke] ok — all three viewports render Train (setup + live session) from fixture state with no overflow and no console errors.");
+console.log("[train-smoke] ok — every viewport renders Train (setup + live session) from fixture state with no overflow and no console errors, and Start sits above the thumb bar with its setup card.");
