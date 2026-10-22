@@ -1,13 +1,15 @@
 ﻿import { expect, it } from "vitest";
 import { runInNewContext } from "node:vm";
+import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
 
 // The phone bottom bar's tab is labelled Games: it is lit on Games only. Scout
 // lives in the More sheet, so More is what lights up on Scout (and on Teams
 // and Settings); the bar always has exactly the open destination lit.
 const source = appSource();
-const SET_REPLAY_SECTION = source.slice(
-  source.indexOf("// Phone bottom bar: the tab labelled Games"),
+const PHONE_TABS = readFileSync(new URL("./phone-tabs.js", import.meta.url), "utf8").replace(/^export /m, "");
+const SET_REPLAY_SECTION = PHONE_TABS + source.slice(
+  source.indexOf("function setReplaySection("),
   source.indexOf("\n// Top-bar title follows"),
 );
 const DRIVER = `

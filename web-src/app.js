@@ -6,6 +6,8 @@ import "./styles.css";
 import "./phone.css";
 import "./touch.css";
 import { resetViewScroll } from "./view-scroll.js";
+import { paintPhoneTabs } from "./phone-tabs.js";
+import { maybeWelcome } from "./welcome-entry.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";
 import { createBook, ensureBookLoaded, invalidateBook, updateBookline } from "./analyze-book-state.js";
@@ -433,19 +435,6 @@ async function handleWorkspacePopstate() {
   if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
     await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
   }
-}
-
-// Phone bottom bar: the tab labelled Games is lit on Games only; More is lit
-// for the destinations its sheet carries (Scout, Teams, Settings), so the bar
-// never names a page the user is not on.
-function paintPhoneTabs(view, section) {
-  const mark = (button, active) => {
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-current", active ? "page" : "false");
-  };
-  document.querySelectorAll("[data-review-tab]").forEach((button) => mark(button, view === "replay" && section !== "scout"));
-  const moreBtn = document.getElementById("more-nav-btn");
-  if (moreBtn) mark(moreBtn, ["teams", "settings"].includes(view) || (view === "replay" && section === "scout"));
 }
 
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
@@ -1508,9 +1497,8 @@ function bindEvents() {
   bindScoutSource();
   // Static host in the Build panel, so one binding at init covers both states.
   document.getElementById("shared-fork-btn")?.addEventListener("click", forkReadableRepertoire);
-  document.getElementById("shared-train-btn")?.addEventListener("click", () => {
-    if (appState.build?.repertoire_id) void trainRepertoire(appState.build.repertoire_id);
-  });
+  document.getElementById("shared-train-btn")?.addEventListener("click",
+    () => { if (appState.build?.repertoire_id) void trainRepertoire(appState.build.repertoire_id); });
   // Start is data-only. The view and its stylesheet are already loading because
   // the Scout section is on screen; this guard covers the click that lands in the
   // few ms before bindControls() attaches the real handler, so Start is never
@@ -2126,14 +2114,7 @@ async function init() {
   if (appState.signedIn) setupOnFirstVisit();
   // A guest's Lichess name (the welcome's level) stays on this device.
   else if (getStoredLichessUsername()) setLichessUsername(getStoredLichessUsername());
-  maybeWelcome();
-}
-
-// A first visit gets the welcome once; welcome.js decides and loads only then.
-function maybeWelcome() {
-  try { if (localStorage.getItem("prepforge.welcome")) return; } catch { return; }
-  void import("./welcome.js").then((welcome) => welcome.maybeWelcome({ switchView, setLichessUsername, lichessAccounts,
-    saveSettings: viaSettings("saveSettings") })).catch(() => {});
+  maybeWelcome({ switchView, setLichessUsername, lichessAccounts, saveSettings: viaSettings("saveSettings") });
 }
 
 function handleOAuthErrorFromUrl() {
