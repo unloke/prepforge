@@ -8,7 +8,7 @@ import { createDashboardView, filterLibraryRows } from "./dashboard.js";
 //    refetch, no reshaped rows;
 //  - selection follows the visible list (the selected row is gone → first
 //    shown row), preview/keyboard markup is untouched;
-//  - the shared read-only fallback survives filtering;
+//  - rows shared with the caller (at their role) survive filtering;
 //  - role="option" rows always sit in a role="listbox" container, which drops
 //    the role again for empty states.
 
@@ -18,7 +18,7 @@ const REPS = [
     name: "Caro-Kann: Advance",
     color: "black",
     is_active: true,
-    visibility: "private",
+    shared: false,
     health: null,
   },
   {
@@ -26,8 +26,7 @@ const REPS = [
     name: "London System",
     color: "white",
     is_active: true,
-    visibility: "team",
-    team_id: "t1",
+    shared: true,
     health: null,
   },
   {
@@ -35,7 +34,7 @@ const REPS = [
     name: "QGD vs 1.d4",
     color: "black",
     is_active: false,
-    visibility: "private",
+    shared: false,
     health: null,
   },
 ];
@@ -50,7 +49,7 @@ describe("filterLibraryRows (pure predicate)", () => {
     ]);
   });
 
-  it("matches Shared on team visibility and on shared fallback rows", () => {
+  it("matches Shared on own shared rows and on rows shared with the caller", () => {
     const sharedRows = [{ id: "s1", name: "Team prep", color: "white", sharedRow: true }];
     expect(filterLibraryRows(REPS, { filter: "shared" }).map((r) => r.id)).toEqual(["rep-2"]);
     expect(
@@ -219,20 +218,21 @@ describe("library filter wiring", () => {
     expect(String(container.innerHTML)).toContain('data-repertoire-id="rep-2"');
   });
 
-  it("keeps the shared read-only fallback behaviour under filters", async () => {
+  it("keeps rows shared with the caller, with their role, under filters", async () => {
     api.mockImplementation(async (url) => {
       if (String(url).startsWith("/api/teams")) return { teams: [] };
       return {
         repertoires: [],
         shared: [
-          { id: "s1", name: "Club anti-Sicilian", color: "white" },
-          { id: "s2", name: "Club endgames", color: "black" },
+          { id: "s1", name: "Club anti-Sicilian", color: "white", role: "view" },
+          { id: "s2", name: "Club endgames", color: "black", role: "edit" },
         ],
       };
     });
     await view.loadDashboardRepertoires();
     expect(String(container.innerHTML)).toContain('data-shared="1"');
-    expect(String(container.innerHTML)).toContain("read-only");
+    expect(String(container.innerHTML)).toContain("White · View only");
+    expect(String(container.innerHTML)).toContain("Black · Can edit");
     expect(container.innerHTML.match(/class="lib-row[ "]/g) || []).toHaveLength(2);
 
     view.setLibraryFilter("shared");

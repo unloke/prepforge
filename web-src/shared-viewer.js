@@ -1,10 +1,11 @@
 import { appState } from "./core/state.js";
 import { api, postJson, setStatus, setStatusError } from "./core/api.js";
 import { showConfirmModal } from "./core/modals.js";
+import { buildRole, canCopy, roleLabel } from "./share-roles.js";
 
 // The shared-repertoire viewer (?shared=<token>): a guest-readable, mutation-free
-// Build view of someone else's repertoire, the read-only banner both shared
-// states use, "Copy to my account", share links and team joins.
+// Build view of someone else's repertoire, the role banner every shared state
+// uses, "Copy to my account", share links and team joins.
 
 let requireSignIn, editRepertoire, refreshDashboardRepertoires, switchView, loadTeams,
   hydrateBuild, removeReadOnlyBanner, syncCoverageReadOnlyState, syncViewHeads, openAuthModal;
@@ -70,7 +71,7 @@ export async function maybeHandleJoinLink() {
     title: preview.already_member ? `Open ${preview.name}?` : `Join ${preview.name}?`,
     body: preview.already_member
       ? "You're already a member of this team."
-      : `Join "${preview.name}" (${members})? You'll get read-only access to repertoires shared with the team.`,
+      : `Join "${preview.name}" (${members})?`,
     okLabel: preview.already_member ? "Open" : "Join",
     cancelLabel: "Cancel",
   });
@@ -105,11 +106,16 @@ function clearJoinParam() {
 // Both states only change its text and visibility — no element is created,
 // prepended, or re-rendered here, so the shared state renders in exactly the
 // same panel composition as the writable one.
+// The banner names the caller's role; Copy shows only where the owner allows it.
 export function renderReadOnlyBanner(payload) {
   const banner = document.getElementById("shared-banner");
   if (!banner) return;
+  const role = buildRole(payload);
   const title = document.getElementById("shared-banner-title");
-  if (title) title.textContent = `Read-only · ${payload.name} · shared with you`;
+  if (title) title.textContent = `${roleLabel(role)} · shared with you`;
+  const fork = document.getElementById("shared-fork-btn");
+  if (fork) fork.hidden = !canCopy(role);
+  banner.dataset.role = role;
   banner.hidden = false;
   syncViewHeads();
 }
@@ -117,8 +123,8 @@ export function renderReadOnlyBanner(payload) {
 
 export async function forkReadableRepertoire() {
   const viaToken = !!appState.sharedToken;
-  const viaTeam = appState.build && appState.build.writable === false;
-  if (!viaToken && !viaTeam) return;
+  const viaGrant = !!appState.build && buildRole(appState.build) !== "owner";
+  if ((!viaToken && !viaGrant) || !canCopy(buildRole(appState.build))) return;
   if (!requireSignIn("Sign in (or create an account) to copy this repertoire")) return;
   try {
     const result = viaToken
