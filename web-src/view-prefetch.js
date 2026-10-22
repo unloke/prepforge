@@ -7,9 +7,9 @@
 // views still build themselves on first entry.
 const CHUNKS = {
   dashboard: () => [import("./views/dashboard.js")],
-  build: () => [import("./views/build.js"), import("./controllers/build-session.js"), import("./explorer.js")],
-  analyze: () => [import("./views/analyze.js"), import("./controllers/analyze-session.js"), import("./coach/bundle.js")],
-  train: () => [import("./views/train.js"), import("./controllers/train-session.js"), import("./train-resume.js")],
+  build: () => [import("./views/build.js"), import("./controllers/build-session.js"), import("./explorer.js"), import("./engine/position-analysis-store.js")],
+  analyze: () => [import("./views/analyze.js"), import("./controllers/analyze-session.js"), import("./coach/bundle.js"), import("./analyze-book.js"), import("./engine/position-analysis-store.js")],
+  train: () => [import("./views/train.js"), import("./controllers/train-session.js"), import("./train-resume.js"), import("./engine/position-analysis-store.js")],
   games: () => [import("./views/games-controller.js"), import("./views/replay.js")],
   scout: () => [import("./views/scout-controller.js"), import("./views/scout.js")],
   teams: () => [import("./views/teams-controller.js"), import("./views/teams.js")],
