@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from "node:url";
 import { readdirSync, rmSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { stockfishIdentity } from "./scripts/sync-stockfish.mjs";
+import { precompressPlugin } from "./scripts/precompress.mjs";
 
 // ORT's threaded WASM runtime does import('/engine/ort/ort-wasm-simd-threaded.asyncify.mjs')
 // at runtime. In Vite dev mode, Vite's module resolver intercepts this *before* any
@@ -118,17 +119,17 @@ function harnessInputs() {
 // That dir is build output: git ignores it. Docker runs this build in a Node
 // stage, CI runs it before the tests and smokes, and a developer runs it before
 // starting the local server.
+const OUT_DIR = fileURLToPath(new URL("./src/prepforge_chess/web/static", import.meta.url));
+
 export default defineConfig({
   root: "web-src",
   base: "/static/",
   define: {
     "globalThis.__STOCKFISH__": JSON.stringify(stockfishIdentity()),
   },
-  plugins: [publicMjsPlugin(), trimDeployAssets()],
+  plugins: [publicMjsPlugin(), trimDeployAssets(), precompressPlugin(OUT_DIR)],
   build: {
-    outDir: fileURLToPath(
-      new URL("./src/prepforge_chess/web/static", import.meta.url),
-    ),
+    outDir: OUT_DIR,
     emptyOutDir: true,
     // Source maps are OFF for the deploy build: they would add ~1.6 MB of .map
     // files to the image and wheel (index ~1 MB, maia3-worker ~0.5 MB), be served

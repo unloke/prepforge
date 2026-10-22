@@ -319,3 +319,85 @@ def test_gzip_skips_engine_binaries():
     assert "content-encoding" not in client.get("/stockfish.wasm", headers=headers).headers
     assert "content-encoding" not in client.get("/model.onnx", headers=headers).headers
     assert client.get("/index.js", headers=headers).headers["content-encoding"] == "gzip"
+
+
+def _brotli_tree(tmp_path, monkeypatch):
+    """A static tree with an identity file and its build-time brotli twin."""
+    monkeypatch.setattr(static_mod, "STATIC_DIR", tmp_path)
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    (assets / "app-AbCdEf12.js").write_bytes(b"// identity " + b"x" * 4096)
+    (assets / "app-AbCdEf12.js.br").write_bytes(b"BROTLI-TWIN")
+    engine = tmp_path / "engine" / "ort"
+    engine.mkdir(parents=True)
+    (engine / "runtime.wasm").write_bytes(b"\x00asm" + b"\x00" * 4096)
+    (engine / "runtime.wasm.br").write_bytes(b"BROTLI-WASM")
+    return "/static/assets/app-AbCdEf12.js", "/static/engine/ort/runtime.wasm"
+
+
+def test_brotli_twin_served_when_accepted(client, tmp_path, monkeypatch):
+    js, wasm = _brotli_tree(tmp_path, monkeypatch)
+    for path, mime, twin in ((js, "text/javascript", b"BROTLI-TWIN"), (wasm, "application/wasm", b"BROTLI-WASM")):
+        resp = client.get(path, headers={"Accept-Encoding": "gzip, deflate, br"})
+        assert resp.status_code == 200
+        assert resp.headers["content-encoding"] == "br"
+        assert resp.headers["vary"] == "Accept-Encoding"
+        assert resp.headers["content-type"].startswith(mime)
+        assert resp.headers["content-length"] == str(len(twin))
+        assert resp.headers["cross-origin-resource-policy"] == "same-origin"
+        # httpx has no brotli decoder here, so the body arrives as sent.
+        assert resp.content == twin
+
+
+def test_brotli_twin_not_served_without_br(client, tmp_path, monkeypatch):
+    js, wasm = _brotli_tree(tmp_path, monkeypatch)
+    for accept in ("gzip", "identity", "br;q=0, gzip"):
+        resp = client.get(js, headers={"Accept-Encoding": accept})
+        assert resp.content.startswith(b"// identity")
+        assert resp.headers.get("content-encoding") in (None, "gzip")
+        assert resp.headers["vary"] == "Accept-Encoding"
+    # The gzip middleware skips wasm, so its identity reply names Vary itself.
+    resp = client.get(wasm, headers={"Accept-Encoding": "gzip"})
+    assert "content-encoding" not in resp.headers
+    assert resp.headers["vary"] == "Accept-Encoding"
+    assert resp.content.startswith(b"\x00asm")
+
+
+def test_brotli_twin_has_its_own_etag_and_304(client, tmp_path, monkeypatch):
+    js, _ = _brotli_tree(tmp_path, monkeypatch)
+    br = client.get(js, headers={"Accept-Encoding": "br"})
+    plain = client.get(js, headers={"Accept-Encoding": "identity"})
+    assert br.headers["etag"] != plain.headers["etag"]
+    again = client.get(js, headers={"Accept-Encoding": "br", "If-None-Match": br.headers["etag"]})
+    assert again.status_code == 304
+    assert again.headers["vary"] == "Accept-Encoding"
+    assert "content-encoding" not in again.headers
+    # A validator for one representation never revalidates the other.
+    cross = client.get(js, headers={"Accept-Encoding": "identity", "If-None-Match": br.headers["etag"]})
+    assert cross.status_code == 200
+    assert cross.content.startswith(b"// identity")
+
+
+def test_brotli_twin_never_double_encoded_by_gzip(client, tmp_path, monkeypatch):
+    js, _ = _brotli_tree(tmp_path, monkeypatch)
+    resp = client.get(js, headers={"Accept-Encoding": "gzip, br"})
+    assert resp.headers["content-encoding"] == "br"
+    assert resp.content == b"BROTLI-TWIN"
+
+
+def test_range_request_skips_the_brotli_twin(client, tmp_path, monkeypatch):
+    js, _ = _brotli_tree(tmp_path, monkeypatch)
+    resp = client.get(js, headers={"Accept-Encoding": "br", "Range": "bytes=0-10"})
+    assert resp.status_code == 206
+    assert resp.content == b"// identity"
+    assert "content-encoding" not in resp.headers
+
+
+@requires_built_spa
+def test_build_writes_brotli_twins_for_text_and_wasm():
+    static = static_mod.STATIC_DIR
+    entry = next((static / "assets").glob("index-*.js"))
+    assert entry.with_name(entry.name + ".br").is_file()
+    ort = static / "engine" / "ort" / "ort-wasm-simd-threaded.asyncify.wasm"
+    if ort.is_file():
+        assert ort.with_name(ort.name + ".br").stat().st_size < ort.stat().st_size / 3
