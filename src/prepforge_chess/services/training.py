@@ -50,7 +50,7 @@ class TrainingAttemptResult:
     expected_san: str
     completed_line: bool
     session: TrainingSession
-    progress: TrainingProgress
+    progress: Optional[TrainingProgress]  # None for an ungraded retry
     next_prompt: Optional[TrainingPrompt]
     # Intermediate positions so the UI can play the player's move and the
     # opponent's reply as two distinct, animated steps (set only when correct).
@@ -174,10 +174,11 @@ class TrainingService:
         return self._prompt_for_session(repertoire, updated)
 
     def submit_move(
-        self, session_id: str, played_uci: str, *, hinted: bool = False
+        self, session_id: str, played_uci: str, *, hinted: bool = False, attempt: int = 1
     ) -> TrainingAttemptResult:
         """Grade a move. A correct move after a hint advances the line and
-        grades Hard: recalled, with help."""
+        grades Hard: recalled, with help. Only the first attempt at a prompt
+        is graded (same rule as the smart queue); a retry only moves on."""
         with self.repository.engine.begin() as conn:
             session = self.repository.lock_training_session(conn, session_id=session_id)
             if session is None:
@@ -189,19 +190,22 @@ class TrainingService:
             if prompt is None:
                 raise ValueError("training session has no current prompt")
 
-            progress = self.repository.lock_training_progress(
-                conn, repertoire_id=repertoire.id,
-                node_id=prompt.expected_node_id,
-                owner_user_id=self._owner_or_raise(),
-            )
             correct = played_uci == prompt.expected_move_uci
-            updated_session, updated_progress = record_attempt(
-                session=session,
-                progress=progress,
-                node_id=prompt.expected_node_id,
-                correct=correct,
-                hinted=hinted,
-            )
+            graded = attempt <= 1
+            updated_session, updated_progress = session, None
+            if graded:
+                progress = self.repository.lock_training_progress(
+                    conn, repertoire_id=repertoire.id,
+                    node_id=prompt.expected_node_id,
+                    owner_user_id=self._owner_or_raise(),
+                )
+                updated_session, updated_progress = record_attempt(
+                    session=session,
+                    progress=progress,
+                    node_id=prompt.expected_node_id,
+                    correct=correct,
+                    hinted=hinted,
+                )
 
             completed_line = False
             if correct:
@@ -235,13 +239,15 @@ class TrainingService:
                 )
 
             self.repository.write_training_session(conn, updated_session)
-            self.repository.write_training_progress(
-                conn, repertoire_id=repertoire.id, progress=updated_progress, owner_user_id=self._owner_or_raise()
-            )
-            self.repository.write_review(
-                conn, owner_user_id=self._owner_or_raise(), node_id=prompt.expected_node_id,
-                rating=rating_for(correct, hinted=hinted), reviewed_at=updated_progress.last_reviewed_at,
-            )
+            if updated_progress is not None:
+                self.repository.write_training_progress(
+                    conn, repertoire_id=repertoire.id, progress=updated_progress,
+                    owner_user_id=self._owner_or_raise(),
+                )
+                self.repository.write_review(
+                    conn, owner_user_id=self._owner_or_raise(), node_id=prompt.expected_node_id,
+                    rating=rating_for(correct, hinted=hinted), reviewed_at=updated_progress.last_reviewed_at,
+                )
 
         # Surface the player's move result and the opponent's single reply so
         # the UI can animate them as two separate steps instead of jumping the

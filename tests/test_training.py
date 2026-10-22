@@ -157,3 +157,30 @@ def test_training_service_wrong_then_correct_attempt_updates_queue_and_prompt():
     assert correct_result.progress.correct_attempts == 1
     assert correct_result.next_prompt is not None
     assert correct_result.next_prompt.expected_node_id != prompt.expected_node_id
+
+
+def test_rehearsal_grades_only_the_first_attempt_at_a_prompt():
+    """Line rehearsal shares the smart queue's wrong-move rule: a retry (and the
+    move played after the reveal) moves on without another SR write."""
+    from prepforge_chess.core.models import Color
+    from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
+    from prepforge_chess.services.training import TrainingService
+    from prepforge_chess.storage.database import apply_schema, connect_database
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+
+    connection = connect_database()
+    apply_schema(connection)
+    repository = WorkspaceRepository(connection)
+    builder = OpeningBuilderService(repository)
+    rep = builder.create_repertoire(CreateRepertoireRequest(name="R", color=Color.WHITE))
+    e4 = builder.add_move(rep.id, rep.root_node.id, "e2e4", is_user_prepared_move=True)
+    builder.add_move(rep.id, e4.id, "e7e5")
+    service = TrainingService(repository, "owner")
+    session = service.start_or_resume_session(rep.id)
+    assert service.submit_move(session.id, "d2d4", attempt=1).progress.attempts == 1
+    retry = service.submit_move(session.id, "d2d4", attempt=2)
+    assert retry.progress is None and retry.correct is False
+    done = service.submit_move(session.id, "e2e4", attempt=3)
+    assert done.correct and done.progress is None
+    stored = repository.load_training_progress(rep.id, e4.id, owner_user_id="owner")
+    assert (stored.attempts, stored.correct_attempts) == (1, 0)

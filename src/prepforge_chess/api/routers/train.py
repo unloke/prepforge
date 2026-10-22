@@ -638,6 +638,8 @@ class MoveBody(BaseModel):
     played_uci: str
     # A hint was shown before this answer: a correct one advances and grades Hard.
     hinted: bool = False
+    # 1 = first (graded) answer; retries and the play-after-reveal move are not.
+    attempt: int = 1
     # Same daily-streak day hint as SmartMoveBody — rehearsal counts as training.
     local_date: str | None = None
 
@@ -653,7 +655,7 @@ def move(
     _owned_session(repo, body.session_id, owner)
     try:
         result = TrainingService(repo, owner).submit_move(
-            body.session_id, body.played_uci, hinted=body.hinted
+            body.session_id, body.played_uci, hinted=body.hinted, attempt=max(1, body.attempt)
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -666,7 +668,9 @@ def move(
         "day_streak": _touch_streak(repo, owner, body.local_date),
         "mistakes": result.session.mistakes,
         "current_index": result.session.current_index,
-        "progress": {
+        "progress": None
+        if result.progress is None
+        else {
             "node_id": result.progress.node_id,
             "attempts": result.progress.attempts,
             "correct_attempts": result.progress.correct_attempts,
