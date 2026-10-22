@@ -53,7 +53,8 @@ function modalHarness() {
   const body = fakeEl();
   let document_ = { body, createElement: () => overlay, addEventListener() {}, removeEventListener() {} };
   const showInputModal = compileFunction("function showInputModal(", {
-    html, document: document_, activateModal: () => () => {},
+    html, document: document_, modalDialog: () => overlay,
+    openModal: (el) => { body.appendChild(el); return () => el.remove(); },
   });
   return { overlay, okBtn, cancelBtn, nameField, colorField, showInputModal };
 }
@@ -101,9 +102,9 @@ describe("create dialogs hold a pending state while the request runs", () => {
   });
 
   it("a second Enter while the request runs does not send it twice", async () => {
-    // Two quick Enters on Create sent two POSTs: the keydown handler sits on
-    // document, so the second Enter lands before the dialog is gone and the
-    // button's disabled state does not stop a keyboard submit.
+    // Two quick Enters on Create sent two POSTs: the second Enter lands before
+    // the dialog is gone and the button's disabled state does not stop a
+    // keyboard submit.
     const h = modalHarness();
     let release;
     const done = new Promise((resolve) => { release = resolve; });
@@ -166,10 +167,8 @@ describe("create dialogs hold a pending state while the request runs", () => {
   });
 
   it("Enter submits through the same pending path, not the old close()", () => {
-    const handler = source.slice(
-      source.indexOf("const onKey = (event) =>"),
-      source.indexOf("document.addEventListener(\"keydown\", onKey)"),
-    );
+    const start = source.indexOf("overlay.addEventListener(\"keydown\"", source.indexOf("function showInputModal("));
+    const handler = source.slice(start, source.indexOf("data-action=\"cancel\"", start));
     expect(handler).toMatch(/submit\(\)/);
     expect(handler).not.toMatch(/close\(collect\(\)\)/);
   });
@@ -193,7 +192,8 @@ describe("input modal renders group labels and stat rows", () => {
     };
     let document_ = { body, createElement: () => overlay, addEventListener() {}, removeEventListener() {} };
     const showInputModal = compileFunction("function showInputModal(", {
-      html, document: document_, activateModal: () => () => {},
+      html, document: document_, modalDialog: () => overlay,
+      openModal: (el) => { body.appendChild(el); return () => el.remove(); },
     });
     return { show: showInputModal({ title: "T", fields }), overlay };
   }

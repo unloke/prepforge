@@ -547,7 +547,7 @@ export function createSettingsView({
         const row = event.target.closest("[data-account-id]");
         if (!button || !row) return;
         const accountId = row.dataset.accountId;
-        const menu = row.querySelector(".conn-menu");
+        const menu = row.querySelector?.(".conn-menu");
         if (button.dataset.connAction === "menu") {
           if (!menu) return;
           if (isPopoverOpen(menu)) return menu.hidePopover();

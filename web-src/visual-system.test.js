@@ -187,10 +187,9 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('role="combobox"');
     expect(html).toContain('aria-controls="palette-results"');
     expect(html).toContain('aria-label="Notifications"');
-    expect(app).toContain("function activateModal");
-    // A dialog that is not a direct body child must not inert its ancestor.
-    expect(app).toContain("if (!child.contains(overlay)) child.inert = true;");
-    expect(app).toContain('event.key !== "Tab"');
+    // Dialogs are native: showModal does the inert page and the focus trap.
+    expect(app).toContain("dialog.showModal()");
+    expect(app).not.toContain("child.inert = true");
   });
 
   it("keeps the Train setup order: modes, repertoire picker, blitz, SRS start", () => {

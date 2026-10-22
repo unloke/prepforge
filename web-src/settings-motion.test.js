@@ -39,7 +39,7 @@ describe("settings motion", () => {
 
   it("opens the connection menu with a fade instead of a jump", () => {
     expect(settings).toMatch(/\.conn-menu \{[^}]*transition:\s*opacity[^}]*translate/);
-    expect(settings).toMatch(/@starting-style \{\s*\.conn-menu:not\(\[hidden\]\) \{[^}]*opacity: 0;/);
+    expect(settings).toMatch(/@starting-style \{\s*\.conn-menu:popover-open \{[^}]*opacity: 0;/);
   });
 
   it("draws the danger zone marker and turns it when the zone opens", () => {

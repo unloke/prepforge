@@ -200,7 +200,7 @@ describe("source composer popover", () => {
     }
   });
 
-  it("esc closes, focus returns to the opener", async () => {
+  it("esc (the popover's light dismiss) closes, focus returns to the opener", async () => {
     const { doc, overlay, listeners, docListeners, restore } = makeDoc();
     const opener = { focus: vi.fn() };
     overlay.querySelector = (sel) => {
@@ -218,12 +218,11 @@ describe("source composer popover", () => {
         linkedAccounts: linked,
         onClose: (sel) => closed.push(sel),
       });
-      listeners.keydown({ key: "Escape", preventDefault: vi.fn(), stopPropagation: vi.fn() });
-      docListeners.keydown({
-        key: "Escape",
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      });
+      void docListeners;
+      // The browser hides the popover on Escape and fires toggle; a second
+      // close is a no-op.
+      listeners.toggle({ newState: "closed" });
+      listeners.toggle({ newState: "closed" });
       expect(opener.focus).toHaveBeenCalled();
       expect(closed).toHaveLength(1);
       expect(handle.getSelection()).toEqual({ linkedMode: "all", accountIds: [], external: [] });

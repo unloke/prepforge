@@ -5723,7 +5723,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  *::backdrop {
     animation-duration: 0.001ms !important;
     animation-delay: 0.001ms !important;
     animation-iteration-count: 1 !important;

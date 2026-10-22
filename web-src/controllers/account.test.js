@@ -138,7 +138,7 @@ describe("sign-in gate", () => {
     };
     globalThis.document = {
       getElementById: () => null,
-      querySelector: (sel) => (sel === ".modal-overlay.auth-overlay" ? overlays.find((o) => !o.removed) || null : null),
+      querySelector: (sel) => (sel === "dialog.auth-modal" ? overlays.find((o) => !o.removed) || null : null),
       createElement: () => {
         const listeners = {};
         const overlay = {
@@ -147,6 +147,11 @@ describe("sign-in gate", () => {
           get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
           removed: false,
           listeners,
+          attrs: {},
+          setAttribute(name, value) { this.attrs[name] = value; },
+          showPopover() { this.open = true; },
+          hidePopover() { this.open = false; },
+          contains: () => false,
           addEventListener: (name, fn) => {
             listeners[name] = fn;
           },
@@ -334,6 +339,26 @@ describe("sign-in gate", () => {
   });
 });
 
+// A fake [popover]: showPopover/hidePopover and the toggle event openPopover listens for.
+function popoverize(el) {
+  const listeners = {};
+  el.open = false;
+  el.isConnected = true;
+  el.hasAttribute ??= () => true;
+  el.setAttribute ??= () => {};
+  el.closest = () => null;
+  el.matches = (sel) => sel === ":popover-open" && el.open;
+  el.addEventListener = (name, fn) => (listeners[name] ||= new Set()).add(fn);
+  el.removeEventListener = (name, fn) => listeners[name]?.delete(fn);
+  el.showPopover = () => { el.open = true; };
+  el.hidePopover = () => {
+    el.open = false;
+    for (const fn of [...(listeners.toggle || [])]) fn({ newState: "closed" });
+  };
+  el.contains = (node) => node === el || node?.inMenu === true;
+  return el;
+}
+
 // M2: the account menu opened from the mobile More sheet takes focus, marks
 // its trigger expanded, and hands focus back to that trigger on Escape-close.
 describe("account menu focus", () => {
@@ -353,6 +378,7 @@ describe("account menu focus", () => {
       hasAttribute: (k) => attrs.has(k),
       getBoundingClientRect: () => ({ left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 100 }),
       getClientRects: () => (visible ? [{}] : []),
+      isConnected: true,
       focus: vi.fn(),
     };
   }
@@ -361,9 +387,8 @@ describe("account menu focus", () => {
   let menu;
   let firstItem;
   beforeEach(() => {
-    firstItem = { focus: vi.fn(), addEventListener: vi.fn(), dataset: {} };
-    menu = el("account-menu");
-    menu.hidden = true;
+    firstItem = { focus: vi.fn(), addEventListener: vi.fn(), dataset: {}, inMenu: true };
+    menu = popoverize(el("account-menu"));
     menu.querySelector = () => firstItem;
     menu.querySelectorAll = () => [firstItem];
     els = new Map(
@@ -414,13 +439,15 @@ describe("account menu focus", () => {
     appState.signedIn = true;
     const item = els.get("sheet-account");
     controller.onAccountChipClick(null, { trigger: item });
-    expect(menu.hidden).toBe(false);
+    expect(menu.open).toBe(true);
     expect(firstItem.focus).toHaveBeenCalled();
     expect(item.getAttribute("aria-expanded")).toBe("true");
     expect(controller.isAccountMenuOpen()).toBe(true);
 
-    controller.closeAccountMenu({ restoreFocus: true });
-    expect(menu.hidden).toBe(true);
+    // Escape: the browser hides the popover with focus still in it.
+    document.activeElement = firstItem;
+    menu.hidePopover();
+    expect(menu.open).toBe(false);
     expect(item.getAttribute("aria-expanded")).toBe("false");
     expect(item.focus).toHaveBeenCalledTimes(1);
   });
@@ -430,13 +457,16 @@ describe("account menu focus", () => {
     appState.signedIn = true;
     const item = els.get("sheet-account");
     controller.onAccountChipClick(null, { trigger: item });
-    controller.closeAccountMenu();
+    // A press outside already moved focus where it landed.
+    document.activeElement = { inMenu: false };
+    menu.hidePopover();
     expect(item.focus).not.toHaveBeenCalled();
 
     const hiddenItem = el("sheet-account", { visible: false });
     els.set("sheet-account", hiddenItem);
     controller.onAccountChipClick(null, { trigger: hiddenItem });
-    controller.closeAccountMenu({ restoreFocus: true });
+    document.activeElement = firstItem;
+    controller.closeAccountMenu();
     expect(hiddenItem.focus).not.toHaveBeenCalled();
     expect(hiddenItem.getAttribute("aria-expanded")).toBe("false");
   });
@@ -480,15 +510,14 @@ describe("account menu follows the rail", () => {
       focus: vi.fn(),
     };
     const firstItem = { focus: vi.fn(), addEventListener: vi.fn(), dataset: {} };
-    menu = {
+    menu = popoverize({
       id: "account-menu",
-      hidden: true,
       get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
       style: {},
       getBoundingClientRect: () => ({ width: 200, height: 160 }),
       querySelector: () => firstItem,
       querySelectorAll: () => [firstItem],
-    };
+    });
     const els = new Map([["account-chip", chip], ["account-menu", menu]]);
     globalThis.document = { getElementById: (id) => els.get(id) || null };
     globalThis.window = { innerWidth: 1440, innerHeight: 900 };
