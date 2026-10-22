@@ -221,15 +221,17 @@ export function createAccountSection({
     bound = true;
     const onClick = (event) => {
       const button = event.target.closest("[data-acct]");
-      if (!button || button.disabled) return;
+      if (!button || button.disabled || button.getAttribute("aria-busy") === "true") return;
       const run = ACTIONS[button.dataset.acct];
       if (!run) return;
-      button.disabled = true;
+      // Busy, not disabled: a disabled button drops focus, and the dialog it
+      // opens hands focus back to it on close.
+      button.setAttribute("aria-busy", "true");
       Promise.resolve()
         .then(run)
         .catch((error) => setStatus(error.message || String(error), { severity: "error" }))
         .finally(() => {
-          button.disabled = false;
+          button.removeAttribute("aria-busy");
         });
     };
     el.addEventListener("click", onClick);
