@@ -26,7 +26,7 @@ from prepforge_chess.core.models import (
     Repertoire,
 )
 from prepforge_chess.services.browser_compute import validate_int
-from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
+from prepforge_chess.storage.repositories.repertoires import NodeGone, RepertoireRepository
 
 
 MAINLINE_THRESHOLD = 0.10
@@ -402,6 +402,9 @@ class OpeningBuilderService:
 
         temp_to_node: dict = {}
         seen_temp_ids: set = set()
+        # Moves whose line was deleted by a write this batch was not built on
+        # (the parent is gone): the delete wins, they are skipped, not rejected.
+        self.dropped_temp_ids: list = []
         # Batch-relative depth: every already-persisted node is a valid anchor at
         # depth 0, so the cap bounds only how deep THIS batch extends a line. A
         # long pre-existing repertoire line is never penalised, but a hostile
@@ -421,6 +424,11 @@ class OpeningBuilderService:
             )
             seen_temp_ids.add(temp_id)
             parent_ref = move.get("parentRef")
+            if isinstance(parent_ref, str) and parent_ref not in temp_to_node and parent_ref not in nodes_by_id and (
+                not parent_ref.startswith("tmp-") or parent_ref in self.dropped_temp_ids
+            ):
+                self.dropped_temp_ids.append(temp_id)
+                continue
             parent = self._resolve_plan_parent(parent_ref, nodes_by_id, temp_to_node)
 
             is_prepared = parent.side_to_move is repertoire.color
@@ -991,7 +999,7 @@ class OpeningBuilderService:
     def _find_node_or_raise(self, root: OpeningNode, node_id: str) -> OpeningNode:
         found = self._find_node(root, node_id)
         if found is None:
-            raise ValueError("opening node not found: {0}".format(node_id))
+            raise NodeGone(node_id)
         return found
 
     def _find_node(self, root: OpeningNode, node_id: str) -> Optional[OpeningNode]:

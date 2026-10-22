@@ -11,7 +11,7 @@ Covers the acceptance paths the review named explicitly:
 * A-02  effective-enabled traversal: health trainable == scheduler candidates
         in the disabled-ancestor / enabled-descendant boundary state
 * D-01  listing due counts track the clock, not the cached health blob
-* D-02  stale base_revision → 409, fresh one → mutation lands
+* D-02  concurrent writers both land (server-side rebase)
 * D-05  keyset paging has no gaps or repeats at equal timestamps
 * D-06  reclaim is dry-run first and receipts outlive the offline retry window
 * F-01  share links: revoke / rotate / expire kill old links, team share is
@@ -331,7 +331,7 @@ def test_listing_due_counts_track_the_clock_not_the_cache(client):
     assert row2["health"]["computed_at"]
 
 
-def test_stale_base_revision_conflicts_and_fresh_one_lands(client):
+def test_concurrent_writers_both_land_by_server_rebase(client):
     _register(client, "d2@example.com")
     create = client.post(
         "/api/repertoires/create",
@@ -340,38 +340,18 @@ def test_stale_base_revision_conflicts_and_fresh_one_lands(client):
     ).json()
     rep_id = create["repertoire_id"]
     root_id = create["selected_node_id"]
-    load = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()
-    base = load["revision"]
-
-    # First mutation with the fresh revision lands and bumps the revision.
-    ok = client.post(
-        "/api/build/add-move",
-        json={
-            "repertoire_id": rep_id,
-            "parent_node_id": root_id,
-            "move_uci": "e2e4",
-            "base_revision": base,
-        },
-        headers=csrf_headers(client),
-    )
-    assert ok.status_code == 200, ok.text
-    assert ok.json()["revision"] == base + 1
-
-    # A second writer still holding the old revision gets 409 + the current one.
-    conflict = client.post(
-        "/api/build/add-move",
-        json={
-            "repertoire_id": rep_id,
-            "parent_node_id": root_id,
-            "move_uci": "d2d4",
-            "base_revision": base,
-        },
-        headers=csrf_headers(client),
-    )
-    assert conflict.status_code == 409
-    detail = conflict.json()["detail"]
-    assert detail["error"] == "revision_conflict"
-    assert detail["current_revision"] == base + 1
+    base = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()["revision"]
+    # Two writers that both last saw ``base``: each edit runs on the current tree.
+    for move in ("e2e4", "d2d4"):
+        ok = client.post(
+            "/api/build/add-move",
+            json={"repertoire_id": rep_id, "parent_node_id": root_id, "move_uci": move},
+            headers=csrf_headers(client),
+        )
+        assert ok.status_code == 200, ok.text
+    loaded = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()
+    assert loaded["revision"] == base + 2
+    assert {n["uci"] for n in loaded["nodes"] if n["parent_id"] == root_id} == {"e2e4", "d2d4"}
 
 
 def test_analyses_pagination_has_no_gaps_or_repeats(client):
@@ -888,7 +868,7 @@ def test_listing_due_count_ignores_subtrees_behind_a_disabled_ancestor(client):
         json={
             "repertoire_id": rep_id,
             "node_id": reply,
-            "action": "disable_branch",
+            "action": "enable_branch",
         },
         headers=csrf_headers(client),
     )

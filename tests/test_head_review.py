@@ -98,35 +98,41 @@ def test_equivalent_fen_spellings_with_identical_scores_are_accepted(client):
     assert response.status_code == 200, response.text
 
 
-def test_parallel_build_writers_cannot_both_commit_the_same_revision(client, monkeypatch):
+def test_parallel_build_writers_both_commit_on_consecutive_revisions(client, monkeypatch):
+    """Both requests read the same revision, then race to commit. The fence lets
+    one through; the other is rebased (re-run on the newer tree) instead of lost."""
     from concurrent.futures import ThreadPoolExecutor
-    from threading import Barrier
+    from threading import Barrier, Lock
     from fastapi.testclient import TestClient
     from api_helpers import csrf_headers
-    from prepforge_chess.api.routers import workspace
+    from prepforge_chess.services.opening_builder import OpeningBuilderService
 
     _register(client, "race@example.com")
     headers = csrf_headers(client)
     created = client.post("/api/repertoires/create", headers=headers,
                           json={"name": "Before", "color": "white"}).json()
-    barrier = Barrier(2)
-    check = workspace._check_base_revision
-    def simultaneous_check(*args):
-        check(*args)
-        barrier.wait(timeout=5)
-    monkeypatch.setattr(workspace, "_check_base_revision", simultaneous_check)
+    barrier, lock, first_calls = Barrier(2), Lock(), []
+    original = OpeningBuilderService.rename_repertoire
+    def simultaneous(self, repertoire_id, name):
+        with lock:
+            first = len(first_calls) < 2
+            first_calls.append(name)
+        if first:
+            barrier.wait(timeout=5)
+        return original(self, repertoire_id, name)
+    monkeypatch.setattr(OpeningBuilderService, "rename_repertoire", simultaneous)
     def rename(name):
         with TestClient(client.app) as tab:
             tab.cookies.update(client.cookies)
             return tab.post("/api/build/rename", headers=headers, json={
-                "repertoire_id": created["repertoire_id"], "name": name,
-                "base_revision": created["revision"],
-            })
+                "repertoire_id": created["repertoire_id"], "name": name})
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(rename, ["Tab A", "Tab B"]))
-    assert sorted(r.status_code for r in results) == [200, 409]
+    assert [r.status_code for r in results] == [200, 200]
+    assert len(first_calls) == 3  # the loser re-ran once
     loaded = client.get("/api/build/load", params={"repertoire_id": created["repertoire_id"]}).json()
-    assert loaded["revision"] == created["revision"] + 1
+    assert loaded["revision"] == created["revision"] + 2
+    assert loaded["name"] == first_calls[-1]
 
 
 def test_parallel_password_resets_consume_a_link_only_once(client, monkeypatch):
@@ -212,7 +218,7 @@ def test_build_reply_does_not_stamp_a_stale_tree_with_a_later_writer_revision(cl
     monkeypatch.setattr(WorkspaceRepository, "save_changed_nodes", writer_interleaves)
     response = client.post("/api/build/add-move", headers=headers, json={
         "repertoire_id": created["repertoire_id"], "parent_node_id": created["selected_node_id"],
-        "move_uci": "e2e4", "base_revision": created["revision"],
+        "move_uci": "e2e4",
     })
     assert response.status_code == 200
     assert response.json()["revision"] == created["revision"] + 1

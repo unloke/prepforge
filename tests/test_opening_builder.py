@@ -593,13 +593,17 @@ def test_add_moves_batch_rejects_illegal_move_without_persisting():
     assert repository.load_repertoire(rep.id).root_node.children == []
 
 
-def test_add_moves_batch_rejects_unknown_parent():
+def test_add_moves_batch_drops_moves_under_a_missing_parent():
+    """A parent that is not in the tree was deleted by a write this batch was not
+    built on: the delete wins, the move and its batch children are skipped."""
     repository, builder = _builder()
     rep = _white_repertoire(builder)
-    with pytest.raises(ValueError):
-        builder.add_moves_batch(
-            rep.id, [{"tempId": "tmp-1", "parentRef": "does-not-exist", "uci": "e2e4"}]
-        )
+    _rep, _summary, id_map = builder.add_moves_batch(rep.id, [
+        {"tempId": "tmp-1", "parentRef": "does-not-exist", "uci": "e2e4"},
+        {"tempId": "tmp-2", "parentRef": "tmp-1", "uci": "e7e5"},
+    ])
+    assert id_map == {}
+    assert builder.dropped_temp_ids == ["tmp-1", "tmp-2"]
     assert repository.load_repertoire(rep.id).root_node.children == []
 
 

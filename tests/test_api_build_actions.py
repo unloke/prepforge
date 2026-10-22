@@ -518,8 +518,7 @@ def test_import_pgn_obeys_free_repertoire_quota(client):
 def test_build_response_lost_retries_recover_add_ids_and_delete_receipt(client):
     _register(client, "recovery@example.com")
     rep, root, e4 = _create_with_move(client)
-    revision = client.get(f"/api/build/load?repertoire_id={rep}").json()["revision"]
-    body = {"repertoire_id": rep, "base_revision": revision,
+    body = {"repertoire_id": rep,
             "moves": [{"tempId": "tmp-recovery", "parentRef": e4, "uci": "e7e5"}]}
     first = client.post("/api/build/add-moves", json=body, headers=csrf_headers(client))
     assert first.status_code == 200
@@ -527,7 +526,7 @@ def test_build_response_lost_retries_recover_add_ids_and_delete_receipt(client):
     assert retry.status_code == 200, retry.text
     assert retry.json()["id_map"] == first.json()["id_map"]
     assert retry.json()["revision"] == first.json()["revision"]
-    deletion = {"repertoire_id": rep, "base_revision": retry.json()["revision"], "node_ids": [e4]}
+    deletion = {"repertoire_id": rep, "node_ids": [e4]}
     first_delete = client.post("/api/build/delete-nodes", json=deletion, headers=csrf_headers(client))
     assert first_delete.status_code == 200
     again = client.post("/api/build/delete-nodes", json=deletion, headers=csrf_headers(client))
@@ -536,24 +535,13 @@ def test_build_response_lost_retries_recover_add_ids_and_delete_receipt(client):
     assert again.json()["revision"] == first_delete.json()["revision"]
 
 
-def test_build_different_stale_batch_remains_a_conflict(client):
-    _register(client, "conflict@example.com")
-    rep, root, e4 = _create_with_move(client)
-    revision = client.get(f"/api/build/load?repertoire_id={rep}").json()["revision"]
-    body = {"repertoire_id": rep, "base_revision": revision,
-            "moves": [{"tempId": "tmp-one", "parentRef": e4, "uci": "e7e5"}]}
-    assert client.post("/api/build/add-moves", json=body, headers=csrf_headers(client)).status_code == 200
-    body["moves"] = [{"tempId": "tmp-other", "parentRef": root, "uci": "d2d4"}]
-    assert client.post("/api/build/add-moves", json=body, headers=csrf_headers(client)).status_code == 409
-
-
 def test_build_receipt_failure_rolls_back_the_tree_and_revision(client, monkeypatch):
     import pytest
     from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
     _register(client, "atomic-receipt@example.com")
     rep, root, e4 = _create_with_move(client)
     before = client.get(f"/api/build/load?repertoire_id={rep}").json()
-    body = {"repertoire_id": rep, "base_revision": before["revision"],
+    body = {"repertoire_id": rep,
             "moves": [{"tempId": "tmp-atomic", "parentRef": e4, "uci": "e7e5"}]}
     write = WorkspaceRepository.write_user_setting
     def fail_receipt(repo, conn, owner, key, value):
@@ -571,21 +559,19 @@ def test_build_receipt_failure_rolls_back_the_tree_and_revision(client, monkeypa
     assert retry.status_code == 200, retry.text
     assert "tmp-atomic" in retry.json()["id_map"]
 
-def test_annotations_foreign_node_and_revision_conflict_do_not_modify_tree(client):
+def test_annotations_foreign_node_is_gone_and_concurrent_drawings_are_last_writer_wins(client):
     _register(client, "annotation-check@example.com")
     rep_id, _root, node_id = _create_with_move(client)
     _other_rep, _other_root, other_node = _create_with_move(client)
-    loaded = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()
-    revision = loaded["revision"]
+    revision = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()["revision"]
     foreign = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
-        "node_id": other_node, "arrows": ["Ga1a2"], "base_revision": revision}, headers=csrf_headers(client))
-    assert foreign.status_code == 400
+        "node_id": other_node, "arrows": ["Ga1a2"]}, headers=csrf_headers(client))
+    assert foreign.status_code == 409
+    assert foreign.json()["detail"]["error"] == "node_deleted"
     assert client.get("/api/build/load", params={"repertoire_id": rep_id}).json()["revision"] == revision
-    saved = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
-        "node_id": node_id, "arrows": ["Ga1a2"], "base_revision": revision}, headers=csrf_headers(client))
-    assert saved.status_code == 200
-    stale = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
-        "node_id": node_id, "arrows": ["Ga1a3"], "base_revision": revision}, headers=csrf_headers(client))
-    assert stale.status_code == 409
+    for arrows in (["Ga1a2"], ["Ga1a3"]):
+        saved = client.post("/api/build/annotations", json={"repertoire_id": rep_id,
+            "node_id": node_id, "arrows": arrows}, headers=csrf_headers(client))
+        assert saved.status_code == 200
     nodes = client.get("/api/build/load", params={"repertoire_id": rep_id}).json()["nodes"]
-    assert next(n for n in nodes if n["id"] == node_id)["arrows"] == ["Ga1a2"]
+    assert next(n for n in nodes if n["id"] == node_id)["arrows"] == ["Ga1a3"]

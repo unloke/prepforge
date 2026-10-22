@@ -21,10 +21,21 @@ class RevisionConflict(RuntimeError):
         self.current_revision = current_revision
 
 
+class NodeGone(LookupError):
+    """An edit names a node that no longer exists: another device or editor
+    deleted it first. The delete wins; the API answers 409 ``node_deleted``."""
+
+
 class RepertoireQuotaExceeded(RuntimeError):
     def __init__(self, limit: int):
         super().__init__("owner already has {0} repertoires".format(limit))
         self.limit = limit
+
+
+# Writes kept in repertoire_ops per repertoire. A device further behind than
+# this reloads the tree instead of catching up op by op.
+OPS_KEPT = 500
+OPS_TRIM_EVERY = 100
 
 
 class RepertoireRepository(EvaluationRepository, TrainingRepository):
@@ -32,22 +43,53 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         """Fence a request's writes at commit, not just at its earlier HTTP read."""
         self._expected_revisions[repertoire_id] = revision
 
-    def _bump_revision(self, conn: Connection, repertoire_id: str) -> None:
-        """D-02: every tree/metadata mutation bumps the repertoire revision, so a
-        client holding ``base_revision`` can detect stale writes (409)."""
+    def _bump_revision(
+        self, conn: Connection, repertoire_id: str, *,
+        nodes: Iterable[str] = (), removed: Iterable[str] = (),
+        meta: bool = False, reset: bool = False,
+    ) -> int:
+        """Every tree/metadata write bumps the repertoire revision and appends the
+        ``repertoire_ops`` row for it, in the same transaction. A fenced request
+        (``expect_repertoire_revision``) raises ``RevisionConflict`` when another
+        write committed since its read, which rolls this transaction back."""
         stmt = update(t.repertoires).where(t.repertoires.c.id == repertoire_id)
         expected = self._expected_revisions.get(repertoire_id)
         if expected is not None:
             stmt = stmt.where(t.repertoires.c.revision == expected)
-        changed = conn.execute(stmt.values(revision=t.repertoires.c.revision + 1))
+        current = conn.scalar(
+            stmt.values(revision=t.repertoires.c.revision + 1).returning(t.repertoires.c.revision)
+        )
         if expected is not None:
-            if changed.rowcount != 1:
-                current = conn.scalar(select(t.repertoires.c.revision).where(
-                    t.repertoires.c.id == repertoire_id
+            if current is None:
+                raise RevisionConflict(conn.scalar(
+                    select(t.repertoires.c.revision).where(t.repertoires.c.id == repertoire_id)
                 ))
-                # Raising here rolls back the node/metadata writes in this transaction.
-                raise RevisionConflict(current)
-            self._expected_revisions[repertoire_id] = expected + 1
+            self._expected_revisions[repertoire_id] = current
+        op = {"nodes": sorted(set(nodes)), "removed": sorted(set(removed)), "meta": meta, "reset": reset}
+        conn.execute(t.repertoire_ops.insert().values(
+            repertoire_id=repertoire_id, revision=current, actor_user_id=self.op_actor,
+            client_id=self.op_client, kind=self.op_kind,
+            op_json=_json_dump({key: value for key, value in op.items() if value}),
+            created_at=datetime.now(timezone.utc),
+        ))
+        if current % OPS_TRIM_EVERY == 0:
+            conn.execute(delete(t.repertoire_ops).where(
+                t.repertoire_ops.c.repertoire_id == repertoire_id,
+                t.repertoire_ops.c.revision <= current - OPS_KEPT,
+            ))
+        return current
+
+    def repertoire_ops_since(self, repertoire_id: str, since: int) -> List[Dict[str, Any]]:
+        """The logged writes after ``since``, oldest first."""
+        ops = t.repertoire_ops
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(ops.c.revision, ops.c.actor_user_id, ops.c.client_id, ops.c.kind, ops.c.op_json)
+                .where(ops.c.repertoire_id == repertoire_id, ops.c.revision > since)
+                .order_by(ops.c.revision)
+            ).mappings().all()
+        return [{**{key: row[key] for key in ("revision", "actor_user_id", "client_id", "kind")},
+                 **_json_load(row["op_json"], {})} for row in rows]
 
     def repertoire_revision(self, repertoire_id: str) -> Optional[int]:
         """Current mutation revision, or None when the repertoire is absent."""
@@ -110,7 +152,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             pos_cache: Dict[str, int] = {}
             for node in self._walk_nodes(repertoire.root_node):
                 self._save_opening_node(conn, node, pos_cache)
-            self._bump_revision(conn, repertoire.id)
+            self._bump_revision(conn, repertoire.id, reset=True)
 
     def update_opening_nodes(self, repertoire_id: str, changes: List[Dict[str, Any]]) -> None:
         """Update only the supplied fields on existing nodes in one transaction."""
@@ -130,7 +172,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     .where(t.opening_nodes.c.repertoire_id == repertoire_id)
                     .values(**group["values"])
                 )
-            self._bump_revision(conn, repertoire_id)
+            self._bump_revision(conn, repertoire_id, nodes=[change["id"] for change in changes])
 
     def set_node_annotations(self, repertoire_id: str, node_id: str, arrows: List[str], circles: List[str]) -> None:
         with self.engine.begin() as conn:
@@ -142,8 +184,8 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 circles_json=_json_dump(circles) if circles else None,
             ))
             if changed.rowcount != 1:
-                raise ValueError("node not found in repertoire")
-            self._bump_revision(conn, repertoire_id)
+                raise NodeGone(node_id)
+            self._bump_revision(conn, repertoire_id, nodes=[node_id])
 
     def save_changed_nodes(self, repertoire_id: str, nodes: List[OpeningNode], *, receipt: Optional[tuple] = None) -> None:
         """Persist changed or new nodes without walking the rest of the tree."""
@@ -164,7 +206,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 set_={name: stmt.excluded[name] for name in rows[0] if name != "id"},
             )
             conn.execute(stmt, rows)
-            self._bump_revision(conn, repertoire_id)
+            self._bump_revision(conn, repertoire_id, nodes=[node.id for node in nodes])
             if receipt is not None:
                 self.write_user_setting(conn, *receipt)
 
@@ -179,7 +221,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 .where(t.repertoires.c.id == repertoire_id)
                 .values(**fields, updated_at=datetime.now(timezone.utc))
             )
-            self._bump_revision(conn, repertoire_id)
+            self._bump_revision(conn, repertoire_id, meta=True)
 
     def _repertoire_from_rows(
         self,
@@ -680,7 +722,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     t.opening_nodes.c.id.in_(node_ids),
                 )
             )
-            self._bump_revision(conn, repertoire_id)
+            self._bump_revision(conn, repertoire_id, removed=node_ids)
             if receipt is not None:
                 self.write_user_setting(conn, *receipt)
             self._archive_reviews(conn, reviewed, week_ago)

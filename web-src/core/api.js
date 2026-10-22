@@ -4,7 +4,7 @@ import { createCsrfTokenSource, headersWithCsrf } from "../csrf.js";
 import { withRequestDeadline } from "../sync-queue.js";
 import { apiErrorMessage } from "../api-errors.js";
 import { AUTH_REQUIRED_MESSAGE, isAuthRequiredMessage, isSessionAuthFailure } from "../auth-gate.js";
-import { advanceBuildRevision, withBuildRevision } from "../build-revision.js";
+import { BUILD_MUTATIONS, announceBuildWrite } from "../build-live.js";
 
 // Shown when a browser-only compute action (whole-game Analyze, Build → Generate)
 // can't run because the browser engine is unavailable (page not cross-origin
@@ -63,7 +63,7 @@ export async function api(path, options = {}) {
   // FastAPI backend 403s any unsafe request that doesn't echo the cookie.
   const headers = await headersWithCsrf(
     method,
-    { "Content-Type": "application/json", ...(options.headers || {}) },
+    { "Content-Type": "application/json", [CLIENT_ID_HEADER]: OUTBOX_TAB_ID, ...(options.headers || {}) },
     getCsrfToken,
   );
   signal.throwIfAborted();
@@ -119,6 +119,8 @@ export async function api(path, options = {}) {
 // identity survives (Build temp ids, Train attempt UUIDs) — replays after a
 // lost response are recognized server-side instead of double-counted.
 export const OUTBOX_TAB_ID = Math.random().toString(36).slice(2);
+// Sent on every request, so the server can tell which tab made each write.
+const CLIENT_ID_HEADER = "X-PF-Client";
 
 export function currentOwnerId() {
   return appState.accountUserId || null;
@@ -170,21 +172,22 @@ export async function postJson(path, body, options = {}) {
   const build = appState.build;
   const owner = currentOwnerId();
   const generation = appState.ownerGeneration;
-  const requestBody = withBuildRevision(path, body, build);
-  const before = build?.revision;
-  const mutation = requestBody?.base_revision !== undefined;
+  // Build writes run one at a time so each is applied on top of the last.
+  // The server rebases every edit onto the current tree, so none carries the
+  // revision it was made on.
+  const mutation = BUILD_MUTATIONS.has(path);
   const previous = mutation ? appState.buildMutationSaving : null;
   const task = (async () => {
     if (previous) await previous.catch(() => {});
     if (owner !== currentOwnerId() || generation !== appState.ownerGeneration) throw new Error("Account changed");
-    // A queued request may follow our own acknowledged write. Preserve older
-    // conflict bases; rebase only the revision current when this call was made.
-    if (mutation && build === appState.build && requestBody.repertoire_id === build?.repertoire_id && requestBody.base_revision === before) {
-      requestBody.base_revision = build.revision;
-    }
-    const payload = await api(path, { method: "POST", body: JSON.stringify(requestBody || {}), ...options });
-    if (mutation && requestBody.repertoire_id === build?.repertoire_id && appState.build === build && owner === currentOwnerId() && generation === appState.ownerGeneration) {
-      advanceBuildRevision(build, payload, [...appState.buildPending, ...appState.buildPendingDeletes]);
+    const before = build?.revision;
+    const payload = await api(path, { method: "POST", body: JSON.stringify(body || {}), ...options });
+    if (mutation && body?.repertoire_id === build?.repertoire_id) {
+      // Exactly the next revision means nobody else wrote in between, so the
+      // open tree (which already shows this edit) is now at that revision.
+      // Otherwise the change feed fills the gap.
+      if (appState.build === build && payload?.revision === before + 1) build.revision = payload.revision;
+      announceBuildWrite(body.repertoire_id);
     }
     return payload;
   })();
