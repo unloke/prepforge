@@ -105,7 +105,7 @@ function harness() {
   const view = createAnalyzeView({ appState: viewState, START_FEN });
   // The view's RENDERERS paint into the real DOM; the parse/tree/serialize code is
   // what this test exercises, so rendering is recorded rather than drawn.
-  for (const name of ["renderAnalysisTree", "renderEvalChart", "renderClassificationBars", "renderAnalysis", "liveEvalChart"]) {
+  for (const name of ["renderAnalysisTree", "renderEvalChart", "renderReport", "renderAnalysis", "liveEvalChart"]) {
     view[name] = vi.fn(() => vi.fn());
   }
   const input = { value: "" };

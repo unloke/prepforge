@@ -16,7 +16,7 @@ function render(quality) {
     selectAnalysisNode: () => {},
     revealAnalysisResults: () => {},
   });
-  view.renderClassificationBars([{ side: "white", classification: "best" }]);
+  view.renderReport([{ side: "white", classification: "best" }]);
   return host.innerHTML;
 }
 
@@ -37,13 +37,13 @@ describe("analysis quality summary", () => {
     delete globalThis.document;
   });
 
-  it("never prints search coverage under the class bars", () => {
+  it("never prints search coverage in the report", () => {
     for (const quality of [
       { ...BASE, completeness: "no-maia" },
       { ...BASE, search: "partial-shallow", shallow_positions: 2, completeness: "partial-shallow,no-maia" },
     ]) {
       const html = render(quality);
-      expect(String(html)).toMatch(/class-bars/);
+      expect(String(html)).toMatch(/rp-counts/);
       expect(String(html)).not.toMatch(/quality-note|below depth|partial-shallow|no-maia/);
     }
   });
