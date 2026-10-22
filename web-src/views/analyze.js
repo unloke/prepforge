@@ -47,7 +47,7 @@ export function createAnalyzeView({
   // with the first render that happens to follow the coach's own read.
   ensureBookLoaded = async () => {},
 }) {
-  const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
+  const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
   // The pillars' tabs and the evaluation card's place (beside or under the board).
   const panes = typeof document !== "undefined"
@@ -401,6 +401,35 @@ export function createAnalyzeView({
 
   function renderMovePairs(moves) {
     renderAnalysisTree(moves);
+  }
+
+  // Stepping the game (a click on a move, ← / →, the chart, the report's key
+  // moments) moves the mark and the on-path trail; it does not change the tree.
+  // That used to be a whole `innerHTML` swap plus 6 listeners per move on every
+  // step. Structure — a loaded game, a new branch, a finished analysis — still
+  // goes through renderAnalysisTree, the only path that writes the container.
+  function updateAnalysisTreeSelection() {
+    const container = document.getElementById("analysis-moves");
+    const tree = appState.analysisTree;
+    if (!container || !tree) {
+      // No tree on screen yet: the first paint of one is a render.
+      renderAnalysisTree();
+      return;
+    }
+    const moved = updateMoveTreeSelection(container, {
+      // The start position is not a move: the sheet then marks none, as a
+      // render of it does.
+      currentId: appState.analysisCurrentNodeId === "root" ? null : appState.analysisCurrentNodeId,
+      pathIds: analysisPathIds(appState.analysisCurrentNodeId, tree),
+    });
+    // Not on screen (a tree built but never painted, or a node inside a
+    // collapsed branch): only a render can put the mark there.
+    if (!moved) {
+      renderAnalysisTree();
+      return;
+    }
+    const focus = container.querySelector(".mtree-move.is-current");
+    if (focus) scrollIntoViewWithin(container, focus);
   }
 
   function rescaleEvalMarkers() {
@@ -944,6 +973,7 @@ export function createAnalyzeView({
     renderReport,
     renderEvalChart,
     renderAnalysisTree,
+    updateAnalysisTreeSelection,
     buildAnalysisTree,
     serializeAnalysisPgn,
     adaptParsedTree,

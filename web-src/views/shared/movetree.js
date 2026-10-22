@@ -27,7 +27,8 @@ export function createMoveTreeRenderer() {
     const deco = (opts.decorate && opts.decorate(node)) || {};
     const classes = ["mtree-move"];
     if (deco.classes) classes.push(...deco.classes);
-    if (node.id === opts.currentId) classes.push("is-current");
+    const isCurrent = node.id === opts.currentId;
+    if (isCurrent) classes.push("is-current");
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
     const title = deco.title ? html` title="${String(deco.title)}"` : "";
     const label = moveTokenLabel(node, deco);
@@ -35,7 +36,7 @@ export function createMoveTreeRenderer() {
     // hovered. Keyboards reach the same menu with the context-menu key.
     const more = opts.moveMenu ? html`<span class="mtree-more" aria-hidden="true">⋯</span>` : "";
     return (
-      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}${more}</button>${deco.after || ""}`
+      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}${isCurrent ? html` aria-current="true"` : ""}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}${more}</button>${deco.after || ""}`
     );
   }
 
@@ -68,13 +69,20 @@ export function createMoveTreeRenderer() {
   function renderMoveVariation(firstNode, opts) {
     const collapsed =
       opts.collapsible && opts.isCollapsed && opts.isCollapsed(firstNode);
+    // The variation that leads to the shown move carries the accent rail. It is
+    // decided here, while the node's place in the line is known: asking CSS
+    // instead (`:has(> .mtree-move.is-current)`) made every class change on a
+    // move re-evaluate a subtree selector over the whole tree — 96 ms per
+    // navigation at 10,000 moves, against 0.4 ms with the rule gone.
+    const onPath = opts.pathIds && opts.pathIds.has(firstNode.id);
+    const leads = firstNode.id === opts.currentId || onPath;
     const toggle = opts.collapsible
       ? html`<button class="mtree-collapse" type="button" data-collapse-id="${String(firstNode.id)}" title="${collapsed ? "Expand" : "Collapse"} variation">${collapsed ? "▸" : "▾"}</button>`
       : "";
     const inner = collapsed
       ? html`<span class="mtree-collapsed">…</span>`
       : renderMoveLine(firstNode, opts);
-    return html`<div class="mtree-var">${toggle}${inner}</div>`;
+    return html`<div class="mtree-var${leads ? " is-on-path" : ""}">${toggle}${inner}</div>`;
   }
 
   // Build's flat payload arrives in arbitrary order (see the test next door).
@@ -125,57 +133,139 @@ export function createMoveTreeRenderer() {
 
   // Touch screens have no right-click (iOS fires no contextmenu at all), so a
   // long press, or a tap on the move already shown, opens the move menu there.
+  //
+  // One set of listeners on the container, not six closures per move button: the
+  // tree is re-rendered on every structural change and used to bind 6N listeners
+  // each time (60,000 on a 10,000-move tree). Handlers read the move from
+  // event.target, so a re-render needs no new bindings at all.
+  const delegated = new WeakSet();
   function bindMoveTreeClicks(container, onSelect, onContext) {
-    container.querySelectorAll(".mtree-move[data-node-id]").forEach((button) => {
+    // A full render keeps the container element, so a second call for the same
+    // container would stack a second handler and fire every action twice.
+    if (delegated.has(container)) return;
+    delegated.add(container);
+    let pressTimer = null;
+    let pressedId = null;
+    let pointerStart = null;
+
+    const moveOf = (event) => event.target?.closest?.(".mtree-move[data-node-id]") || null;
+    const endPress = () => {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+      pointerStart = null;
+    };
+
+    container.addEventListener("click", (event) => {
+      const button = moveOf(event);
+      if (!button) return;
       const id = button.dataset.nodeId;
-      let press = 0;
-      let pressed = false;
-      let start = null;
-      button.addEventListener("click", (event) => {
-        if (onContext && event.target?.closest?.(".mtree-more")) {
-          event.stopPropagation();
-          onContext(event, id);
-          return;
-        }
-        if (onContext && lastPointer === "touch" && button.classList.contains("is-current")) {
-          // The menu's outside-click close listens on document; keep this tap off it.
-          event.stopPropagation();
-          onContext(event, id);
-          return;
-        }
-        onSelect(id);
-        event.currentTarget.blur();
-      });
-      if (!onContext) return;
-      // The move menu has no visible button; the tooltip says where it is.
-      if (!button.title) button.title = "Right-click for move options";
-      button.addEventListener("contextmenu", (event) => {
-        if (pressed) event.preventDefault();
-        else onContext(event, id);
-      });
-      button.addEventListener("pointerdown", (event) => {
-        lastPointer = event.pointerType;
-        pressed = false;
-        if (event.pointerType !== "touch") return;
-        clearTimeout(press);
-        start = event;
-        press = setTimeout(() => {
-          pressed = true;
-          // Letting go clicks wherever the finger is (the tree may have
-          // redrawn under it); that click must not close the menu it opened.
-          document.addEventListener("click", swallowClick, { capture: true, once: true });
-          setTimeout(() => document.removeEventListener("click", swallowClick, true), 1000);
-          onContext(start, id);
-        }, 450);
-      });
-      for (const type of ["pointerup", "pointercancel", "pointermove"]) {
-        button.addEventListener(type, (event) => {
-          if (type === "pointermove" && start && Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) < 8) return;
-          clearTimeout(press);
-        });
+      if (onContext && event.target.closest(".mtree-more")) {
+        event.stopPropagation();
+        onContext(event, id);
+        return;
       }
+      if (onContext && lastPointer === "touch" && button.classList.contains("is-current")) {
+        // The menu's outside-click close listens on document; keep this tap off it.
+        event.stopPropagation();
+        onContext(event, id);
+        return;
+      }
+      onSelect(id);
+      button.blur();
     });
+
+    if (!onContext) return;
+
+    container.addEventListener("contextmenu", (event) => {
+      const button = moveOf(event);
+      if (!button) return;
+      if (pressedId === button.dataset.nodeId) event.preventDefault();
+      else onContext(event, button.dataset.nodeId);
+    });
+
+    container.addEventListener("pointerdown", (event) => {
+      const button = moveOf(event);
+      if (!button) return;
+      lastPointer = event.pointerType;
+      pressedId = null;
+      if (event.pointerType !== "touch") return;
+      endPress();
+      pointerStart = event;
+      const id = button.dataset.nodeId;
+      pressTimer = setTimeout(() => {
+        pressTimer = null;
+        pressedId = id;
+        // Letting go clicks wherever the finger is (the tree may have
+        // redrawn under it); that click must not close the menu it opened.
+        document.addEventListener("click", swallowClick, { capture: true, once: true });
+        setTimeout(() => document.removeEventListener("click", swallowClick, true), 1000);
+        onContext(pointerStart, id);
+      }, 450);
+    });
+
+    // The 8px rule: a finger that slides further than that is scrolling the
+    // tree, not pressing a move, so the long press is cancelled.
+    container.addEventListener("pointermove", (event) => {
+      if (!pointerStart || !moveOf(event)) return;
+      if (Math.hypot(event.clientX - pointerStart.clientX, event.clientY - pointerStart.clientY) < 8) return;
+      endPress();
+    });
+    container.addEventListener("pointerup", endPress);
+    container.addEventListener("pointercancel", endPress);
   }
 
-  return { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks };
+  // Selection-only update: the old and new current move, the on-path trail and
+  // the variation rails. The nodes are the ones already in the DOM, so no markup
+  // is rebuilt and no listener is bound. Structure changes still go through
+  // renderMoveTree.
+  //
+  // Returns false when the wanted move is not on screen (a collapsed branch, or
+  // a tree that was never painted): the caller then renders, because there is
+  // nothing here to move the mark onto. `currentId: null` means no move is
+  // current (the start position) and clears the mark.
+  function updateMoveTreeSelection(container, { currentId, pathIds = null }) {
+    if (!container) return false;
+    const previous = container.querySelector(".mtree-move.is-current");
+    const want = currentId == null ? null : String(currentId);
+    const moves = container.querySelectorAll(".mtree-move[data-node-id]");
+    let next = null;
+    for (const el of moves) {
+      if (el.dataset.nodeId === want) {
+        next = el;
+        break;
+      }
+    }
+    if (!next && want !== null) return false;
+    if (previous === next && !pathIds) return true;
+    if (previous && previous !== next) {
+      previous.classList.remove("is-current");
+      previous.removeAttribute("aria-current");
+    }
+    if (next) {
+      next.classList.add("is-current");
+      next.setAttribute("aria-current", "true");
+    }
+    // The trail is the new ancestor chain (Analyze); Build passes none and marks
+    // only the shown move. A variation's rail follows the rule the render uses:
+    // it is on while the variation's own first move is current or on the trail.
+    // `moves` is in document order, so the first move met inside a variation is
+    // that variation's first move — one pass, and nothing searched per variation.
+    const rails = new Map();
+    for (const el of moves) {
+      const on = el !== next && !!pathIds && pathIds.has(el.dataset.nodeId);
+      if (on !== el.classList.contains("on-path")) el.classList.toggle("on-path", on);
+      const parent = el.parentElement;
+      if (parent && parent.classList.contains("mtree-var") && !rails.has(parent)) {
+        rails.set(parent, el.classList.contains("is-current") || el.classList.contains("on-path"));
+      }
+    }
+    for (const [variation, leads] of rails) {
+      if (leads !== variation.classList.contains("is-on-path")) {
+        variation.classList.toggle("is-on-path", leads);
+      }
+    }
+    return true;
+  }
+
+  return { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection };
 }

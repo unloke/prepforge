@@ -713,8 +713,7 @@ function setBuildLoading(on, { restore = true } = {}) {
   // (nothing here is settled yet, so it cannot apply).
   paintGenerateVisibility();
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
-  const empty = document.getElementById("build-empty");
-  if (empty) empty.hidden = true;
+  paintBuildEmpty();
   const nameEl = document.getElementById("build-rep-name");
   if (nameEl) {
     nameEl.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%"></span>`;
@@ -1042,7 +1041,7 @@ function loadAnalyzeSession() {
       engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
       importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
       maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-      refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
+      refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
       sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
       showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
       syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline,
@@ -1154,10 +1153,21 @@ async function ensureBuildView() {
 function renderBuildRepHeader() {
   const nameEl = document.getElementById("build-rep-name");
   if (!nameEl) return;
-  const empty = document.getElementById("build-empty");
-  if (empty) empty.hidden = !!appState.build;
+  paintBuildEmpty();
   if (buildView) return buildView.renderBuildRepHeader();
   void ensureBuildView().then((view) => view.renderBuildRepHeader()).catch(() => {});
+}
+
+// "Start a repertoire" replaces the panel's bands while no repertoire is open.
+// A class on the sidebar says so instead of a `:has(#build-empty:not([hidden]))`
+// rule: that selector sat on an ancestor of the whole panel, so any crumb
+// rebuilt during navigation re-styled the page (95 ms per step at 10,000
+// moves). Every place that shows or hides the empty state goes through here.
+function paintBuildEmpty() {
+  const empty = document.getElementById("build-empty");
+  const sidebar = document.getElementById("build-sidebar");
+  if (empty) empty.hidden = !!appState.build;
+  if (sidebar) sidebar.classList.toggle("is-empty", !appState.build);
 }
 
 // Generate's head button has exactly one rule, and it lives in the build view

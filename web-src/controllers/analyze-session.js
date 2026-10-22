@@ -31,7 +31,7 @@ let accountService, activeViewName, analysisSelfSide, analysisStore, api, appSta
   engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
   importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
   maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-  refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
+  refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
   sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
   showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
   syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline;
@@ -44,7 +44,7 @@ export function createAnalyzeSession(deps) {
     engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
     importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
     maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-    refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
+    refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
     sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
     showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
     syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline,
@@ -1644,11 +1644,13 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sour
   return true;
 }
 
-// Highlight the active move + sync the eval-chart cursor. The list itself is
-// re-rendered from appState.analysisCurrentNodeId so highlighting and variation
-// structure can never drift apart.
+// Highlight the active move + sync the eval-chart cursor. The tree keeps its
+// markup: only the current mark and the on-path trail change when the selection
+// moves, and a structural change (a new branch, a loaded game) re-renders the
+// list through renderAnalysisTree.
 function highlightCurrentMove() {
-  renderAnalysisTree();
+  if (analyzeView) analyzeView.updateAnalysisTreeSelection();
+  else void ensureAnalyzeView().then((view) => view.updateAnalysisTreeSelection()).catch(() => {});
   updateEvalChartCursor();
 }
 
