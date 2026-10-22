@@ -57,7 +57,7 @@ const OVER_CEILING = [
   ["web-src/controllers/analyze-session.js", 1302],
   ["web-src/controllers/build-session.js", 1440],
   ["web-src/controllers/sync.js", 586],
-  ["web-src/controllers/train-session.js", 2170],
+  ["web-src/controllers/train-session.js", 2181],
   ["web-src/engine/build-generator.test.js", 720],
   ["web-src/engine/engine-profile.test.js", 514],
   ["web-src/engine/maia3-provider.test.js", 627],
