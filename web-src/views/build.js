@@ -278,15 +278,17 @@ export function createBuildView({
       ? html`${renderBuildBreadcrumb()}<span class="build-opening" id="build-opening" hidden></span>`
       : "";
     renderBuildOpening();
-    // A trail wider than its room scrolls; keep its shown move, the end, in view.
-    const crumbs = meta.querySelector?.(".crumbs");
-    if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});
         event.currentTarget.blur();
       });
     });
+    // The trail is one scrolling row ending at the current move; the opening
+    // label beside it gives way first (styles.css), then the trail scrolls:
+    // keep its end, the shown move, in view.
+    const crumbs = meta.querySelector?.(".crumbs");
+    if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
   }
 
   function renderBuilderTree() {

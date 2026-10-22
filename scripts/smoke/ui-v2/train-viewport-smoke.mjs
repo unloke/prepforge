@@ -162,8 +162,10 @@ async function runViewport(vp) {
   // during a session. Assert the actual named controls, not idle label text.
   const bannerState = await page.locator("#train-banner").getAttribute("data-state").catch(() => "");
   check(!!bannerState, "coach banner should carry a data-state");
-  check(await page.locator("#view-train").getByRole("button", { name: "Flip board", exact: true }).count() === 1, "board flip must have an accessible name");
-  check(await page.locator("#view-train").getByRole("button", { name: "Show hint", exact: true }).isDisabled(), "hints should be disabled before a session starts");
+  // A phone hides the board bar while choosing what to train, so name the
+  // controls by id rather than through the accessibility tree.
+  check(await page.locator("#train-flip").getAttribute("aria-label") === "Flip board", "board flip must have an accessible name");
+  check(await page.locator("#train-hint").isDisabled(), "hints should be disabled before a session starts");
   // Optional review screenshots (UI_V2_SHOTS=<dir> UI_V2_TAG=before|after).
   const shot = async (state) => {
     if (process.env.UI_V2_SHOTS) {
@@ -217,7 +219,7 @@ async function runViewport(vp) {
   // bar (Start's top was 785 in a 740px viewport). Measured from the real boxes,
   // not from the CSS — a rule that names a reserve proves nothing on its own.
   const startGeometry = await page.evaluate(() => {
-    const box = (el) => (el ? el.getBoundingClientRect().toJSON() : null);
+    const box = (el) => (el && el.getClientRects().length ? el.getBoundingClientRect().toJSON() : null);
     const start = box(document.getElementById("start-train"));
     const bar = box(document.querySelector("#view-train .board-bar"));
     const board = box(document.querySelector("#view-train .board-stack"));
@@ -233,7 +235,9 @@ async function runViewport(vp) {
   check(!!startGeometry.start && aboveBar,
     `Start must sit above the thumb bar while setting up: ${JSON.stringify({ start: startGeometry.start, bar: startGeometry.bar, vh: startGeometry.vh })}`);
   check(startGeometry.start.height >= (vp.width <= 760 ? 44 : 30), `Start must be a thumb target on a phone and at least a control height on a desktop, got ${startGeometry.start.height}`);
-  check(!!startGeometry.card && startGeometry.card.bottom <= (startGeometry.bar ? startGeometry.bar.top : startGeometry.vh),
+  // A phone lays setup out as a page (the card's box dissolves into it) with
+  // Start docked, so there the card check is Start's own above.
+  check(vp.width <= 760 || (!!startGeometry.card && startGeometry.card.bottom <= (startGeometry.bar ? startGeometry.bar.top : startGeometry.vh)),
     `the setup card must be whole above the bar: ${JSON.stringify({ card: startGeometry.card, bar: startGeometry.bar })}`);
   check(startGeometry.board && startGeometry.board.width <= startGeometry.vh && startGeometry.board.height <= startGeometry.vh,
     `the setup board must fit the screen: ${JSON.stringify(startGeometry.board)}`);

@@ -20,11 +20,11 @@
 
 /* The More sheet belongs to the phone layout: a bar that is gone must not leave
    it as a full-width bottom sheet over the desktop board. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .sheet-scrim:not([hidden]) { display: none; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   :root {
     --phone-bar-h: 56px;
     --phone-reserve: max(180px, 32dvh);
@@ -300,7 +300,16 @@
      a list the phone never drew: one visible step was left reading "2". The
      title leads instead. */
   #view-dashboard .step[data-setup-step] { grid-template-columns: minmax(0, 1fr) auto; }
-  #view-dashboard .step[data-setup-step] .step-n { display: none; }
+  #view-dashboard .step .step-n { display: none; }
+  /* A first-run step (signed out, or nothing built yet) is a short paragraph
+     and its action: the action goes under the words, so the title is not
+     squeezed into a 120px column beside a 150px pill. */
+  #view-dashboard .step:not([data-setup-step]) { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 14px 14px; }
+  #view-dashboard .step:not([data-setup-step]) .btn { justify-self: start; }
+  /* The empty card carries Import PGN itself; the header's copy above it was a
+     lone pill floating over the page. */
+  #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .lib-actions { display: none; }
+  #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .card-head { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
   #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
@@ -386,6 +395,65 @@
   }
   #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
 
+  /* The page's one action docks above the tab bar, where the thumb rests:
+     Check on Games, Start on Scout. Up in the source card it sat in the top
+     third of the screen, the hardest place to reach one-handed. The page keeps
+     room under its last row for it. */
+  #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn) {
+    position: fixed;
+    z-index: 30;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
+    width: auto;
+    min-height: 50px;
+    height: 50px;
+    margin: 0;
+    border-radius: 25px;
+    box-shadow: 0 0 0 12px var(--bg); /* taste-skill-ignore: the ground around a docked button, so rows pass under it cleanly */
+  }
+  .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
+  #view-replay .toolbar > .counter { margin: 10px 0 12px; }
+
+  /* Teams: rows in the directory and the incoming shares are thumb rows. */
+  #view-teams :is(.team-row, .mem-row, .shared-rep-row) { min-height: 52px; align-items: center; }
+  #view-teams .card { border-radius: var(--phone-radius); }
+  /* The open team's header is one row, like a pushed screen's: back on the
+     left, the name (cut first) and role, then whatever actions the role has.
+     Wrapped, the actions took a second line, and a member's lone × sat on a
+     line of its own. */
+  #view-teams .team-detail .card-head {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 6px 6px 6px 2px;
+  }
+  #view-teams .team-detail .card-head .spacer { flex: 1 1 0; flex-basis: 0; height: auto; min-width: 0; }
+  #view-teams .team-detail .card-head h2 {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 17px;
+  }
+  #view-teams .team-detail .card-head .team-role-badge { flex: none; }
+  #view-teams .team-detail .card-head .btn { flex: none; }
+  #view-teams .team-detail .card-head .btn.icon { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+  #view-teams .team-detail .card-head #team-detail-invite { height: 40px; min-height: 40px; padding: 0 14px; border-radius: 20px; }
+  #team-detail-close { order: -1; font-size: 0; color: var(--text); }
+  #team-detail-close::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border: solid currentColor;
+    border-width: 0 0 2.2px 2.2px;
+    transform: translateX(2px) rotate(45deg);
+  }
+
+
   /* Settings: one grouped list per section, like the iOS Settings app. Every
      row is 48px, actions are tinted text, sliders get the row's full width. */
   #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
@@ -393,50 +461,61 @@
      there, and it holds while the cards scroll. Six sections do not fit one
      row at 390px; wrapped into two rows they took 100px of a sticky strip on
      every scroll. The strip is one row that scrolls sideways inside itself
-     (never the page), its right edge fades to say there is more, and the open
-     section is scrolled into view whenever it changes (settings.js). */
+     (never the page); a cut-off word at the edge says there is more, and the
+     open section is scrolled into view whenever it changes (settings.js). */
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
     width: auto;
     max-width: none;
     flex-wrap: nowrap;
-    gap: 6px;
-    margin: 0 calc(-1 * var(--phone-gutter)) 10px;
-    padding: 6px 0 8px var(--phone-gutter);
+    gap: 0;
+    margin: 0 calc(-1 * var(--phone-gutter)) 12px;
+    padding: 0 var(--phone-gutter);
     border-radius: 0;
     background: var(--bg);
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--phone-gutter);
     scrollbar-width: none;
-    /* Cards pass under the strip while the page scrolls; the edge says the
-       strip ends there instead of the card looking cut. */
-    border-bottom: 1px solid var(--line);
+    /* Cards pass under the strip while the page scrolls; the hairline says
+       the strip ends there, and the open tab's bar sits on it. */
+    box-shadow: inset 0 -1px 0 var(--line);
   }
   #view-settings .settings-nav::-webkit-scrollbar { display: none; }
-  /* The fade is painted in the ground colour over the strip's right edge (a
-     mask would also clear the strip's own ground and show the cards passing
-     under it); it rides the scroll edge and leaves room after the last link. */
-  #view-settings .settings-nav::after {
-    content: "";
-    position: sticky;
-    right: 0;
-    flex: none;
-    width: 28px;
-    margin-left: -6px;
-    background: linear-gradient(to right, transparent, var(--bg) 70%);
-  }
+  /* A row of text tabs, like a native segmented header: the open one is ink
+     with a bar under it, the rest are muted words. Pills on pills read as six
+     buttons competing with the cards' own buttons. */
   #view-settings .settings-nav-link {
+    position: relative;
     flex: none;
     min-height: 44px;
-    padding: 0 14px;
-    border-radius: 10px;
-    background: var(--panel);
+    padding: 0 12px;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
     font-size: 15px;
   }
-  #view-settings .settings-nav-link.is-active { background: var(--text); color: var(--panel); }
+  #view-settings .settings-nav-link:hover { background: none; color: var(--text); }
+  #view-settings .settings-nav-link.is-active { background: none; color: var(--text); }
+  #view-settings .settings-nav-link::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--text);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  #view-settings .settings-nav-link.is-active::after { opacity: 1; }
   /* The heading names the open section on the title's line. */
-  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; }
+  /* Title and section share a baseline, so the row sizes itself (the 56px box
+     left the title at its top with 30px of air under it); the tab strip
+     follows straight on as the title's own sub-header. */
+  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; min-height: 0; margin-bottom: 0; padding: 14px 0 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
   #view-settings .settings-here::before { margin-right: 8px; }
   /* A jump lands the card below the sticky strip. */
@@ -713,11 +792,15 @@
     text-overflow: ellipsis;
   }
   #run-analysis { --pill-left: 154px; }
-  #build-generate-node { --pill-left: 106px; }
+  /* Repertoire has its own way out (the header's back button), so its bar
+     drops Views: Flip, the Generate pill, and the move arrows. */
+  #view-build .board-bar .bb-views { display: none; }
+  #view-build .board-bar { grid-template-columns: 44px minmax(0, 1fr) 52px 52px; }
+  #build-generate-node { --pill-left: 58px; }
   /* Under 360px the icons and arrows leave the pill too little room for its
      name (Analyze kept 44px): tighten the bar so the action stays readable. */
   @media (max-width: 359px) {
-    #view-build .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px; }
+    #view-build .board-bar { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar .btn.icon { width: 40px; }
     .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
@@ -1018,15 +1101,11 @@
      The prompt over the board, the session card under it. Modes lead while
      setting up and drop to the bar's edge during a session. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
-  /* Setting up is reading the card, not playing, so the board has to leave the
-     setup card on screen: at 430x740 the full-width board left the panel 146px
-     and pushed Start's top to 785 under a 740px screen, so the board yields 400px
-     of height while the card is up. That is the card (285px), the mode row over
-     it and the gap between them — measured, not the card alone: 285px of reserve
-     leaves Start at 798 on a 740px screen, 400px puts it at 683. It is a token
-     like every other state's reserve so the board rule is one formula; a
-     hard-coded 400px in that rule overrode the token and the two could drift. */
-  #view-train:has(.train-sidebar[data-session-state="setup"]) { --phone-reserve: 400px; }
+  /* Setting up is reading a short form whose Start is docked under it, so the
+     board yields only the room for the mode row, one grouped field and the dock
+     (300px): at 360x740 the board stays full width and Start stays above the
+     tab bar. A Practice game in progress is play, so it takes the play reserve. */
+  #view-train:has(.train-sidebar[data-session-state="setup"]:not([data-play-live])) { --phone-reserve: 300px; }
   /* The screen's name, at the size the shell uses for one: the coach icon is
      a mark, not a picture, so it is small and in ink. */
   #view-train .train-coach {
@@ -1123,7 +1202,7 @@
   #view-train .train-start-row .btn { flex: 1 1 140px; height: 46px; min-height: 46px; border-radius: 12px; }
   /* Setting up is reading the card, not playing, so the board has to leave the
      setup card on screen (see --phone-reserve above). */
-  #view-train:has(.train-sidebar[data-session-state="setup"]) .board-stack {
+  #view-train:has(.train-sidebar[data-session-state="setup"]:not([data-play-live])) .board-stack {
     width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
   }
 
@@ -1137,6 +1216,99 @@
   #view-train .train-progress-panel .upnext { min-height: 0; }
   #view-train .train-progress-panel > .row { justify-content: flex-start; }
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
+
+  /* ---- Train: setup is a page, a session is the board ------------------
+     Choosing what to train (setup, and a result) is not play: the thumb bar's
+     hint, skip and flip have nothing to act on, so the tab bar stays up there
+     and the bar comes back with the first card. The panel's own action row
+     docks to the bottom of the scroller, right above whichever bar is showing,
+     so Start, New session and a game's Resign are always where the thumb is.
+     The setup fields are grouped rows on the ground, like Settings. */
+  #view-train:has(.train-sidebar:is([data-session-state="setup"]:not([data-play-live]), [data-session-state="summary"])) .board-bar { display: none; }
+  #view-train:has(.train-sidebar:is([data-session-state="setup"]:not([data-play-live]), [data-session-state="summary"])) .study {
+    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+  }
+  body:has(#view-train.is-active .train-sidebar:is([data-session-state="setup"]:not([data-play-live]), [data-session-state="summary"])) .tabbar {
+    bottom: 0;
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+  /* A Practice game has no hint and no skip. */
+  #view-train:has(.train-sidebar[data-play-live]) .board-bar :is(#train-hint, #train-skip) { visibility: hidden; }
+
+  #view-train .train-sidebar[data-session-state="setup"] > .panel-scroll { gap: 8px; padding-bottom: 0; }
+  #view-train .train-sidebar[data-session-state="setup"] .train-setup,
+  #view-train .train-sidebar[data-session-state="setup"] #train-play-setup:not([hidden]) { display: contents; }
+  #view-train .train-sidebar[data-session-state="setup"] :is(.train-brief:not([hidden]), #train-srs-picker:not([hidden]), .train-blitz-row:not([hidden]), #train-play-setup > .field:not([hidden]), .train-play-trail) {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: var(--phone-radius);
+    background: var(--panel);
+  }
+  #view-train .train-sidebar[data-session-state="setup"] .train-blitz-row:not([hidden]) {
+    align-items: center;
+    min-height: 52px;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+  }
+  #view-train .train-sidebar[data-session-state="setup"] .train-picker-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+  #view-train .train-sidebar[data-session-state="setup"] :is(.train-setup select, .train-repertoire-summary) {
+    height: 44px;
+    border: 0;
+    border-radius: 10px;
+    background-color: var(--surface-3);
+    font-size: 16px;
+  }
+  #view-train .train-sidebar[data-session-state="setup"] #train-play-color .seg-btn { min-height: 44px; height: 44px; }
+  #view-train .train-sidebar[data-session-state="setup"] .train-play-trail { min-height: 48px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 15px; }
+  #view-train .train-sidebar[data-session-state="setup"] .train-empty:not([hidden]) { padding: 4px 2px; }
+
+  /* The docked row: on the ground, full width, the primary action as the
+     wide pill and History as a quiet companion. */
+  #view-train .train-sidebar[data-session-state="setup"] .train-start-row:not([hidden]) {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    margin-top: auto;
+    padding: 10px 0 12px;
+    background: var(--bg);
+  }
+  #view-train .train-sidebar[data-session-state="setup"] .train-start-row { flex-wrap: nowrap; gap: 8px; }
+  #view-train .train-sidebar[data-session-state="setup"] .train-start-row .btn {
+    flex: 0 0 auto;
+    height: 50px;
+    min-height: 50px;
+    padding: 0 16px;
+    border-radius: 25px;
+    font-size: 16px;
+  }
+  #view-train .train-sidebar[data-session-state="setup"] .train-start-row .btn.primary { flex: 1 1 auto; }
+  #view-train .train-sidebar[data-session-state="setup"] .train-start-row .btn:not(.primary) { border: 0; background: var(--surface-3); color: var(--text); }
+  /* A Practice game set up but not started: the game's controls are all off,
+     so only History stays in that row, as a quiet line above the dock. A game
+     in progress turns it round: the setup fields leave, the moves and the
+     game's controls stay, and the controls take the dock. */
+  #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child { position: static; margin-top: 0; padding: 0; }
+  #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child > .btn:disabled { display: none; }
+  #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child > [data-train-history] { flex: 1 1 auto; height: 44px; min-height: 44px; background: none; color: var(--accent-strong); }
+  #view-train .train-sidebar[data-play-live] #train-play-setup > :is(.field, .note, .train-play-chip:empty) { display: none; }
+  /* New game rides on top of the dock, centred, so it reads with the game's
+     controls instead of floating under the moves. */
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) { position: sticky; bottom: 66px; justify-content: center; margin-top: auto; padding: 0; }
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:last-child { margin-top: 0; padding-top: 4px; }
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) > .btn:disabled { display: none; }
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) > .btn { flex: none; height: 44px; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
+  /* A game in progress is played, not set up: the modes leave with the form. */
+  #view-train .train-sidebar[data-play-live] #train-modes { display: none; }
+  #view-train .train-sidebar[data-play-live] > .panel-head { display: none; }
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:last-child > .btn { flex: 1 1 0; padding: 0 8px; }
+  #view-train .train-sidebar[data-session-state="summary"] #train-summary-new { height: 50px; min-height: 50px; margin-top: 8px; padding: 0; border-radius: 25px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
   .context-menu:not([hidden], .account-menu) {
@@ -1164,6 +1336,37 @@
   .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
   .context-menu .context-section { display: none; }
   .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+
+  /* ---- Dialogs: bottom sheets ------------------------------------------
+     Sign in, confirm, share and invite rise from the bottom edge like every
+     other phone sheet, full width, with 48px fields and thumb-sized buttons.
+     A 380px card floating at the top left its Sign in button in the hardest
+     place to reach, and its 32px fields under the iOS 44px floor. */
+  .modal-overlay { place-items: end stretch; padding: 0; }
+  .modal {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 18px 18px 0 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  @starting-style {
+    .modal-overlay:not([hidden]) .modal { transform: translateY(24%); }
+  }
+  .modal-title { display: flex; align-items: center; min-height: 56px; padding: 6px 8px 6px var(--phone-gutter); font-size: 18px; }
+  .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
+  .modal-field > span { font-size: 13px; }
+  .modal-field :is(input, select) { height: 48px; padding: 0 14px; border-radius: 12px; }
+  .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
+  .modal-footer .btn { flex: 1 1 0; min-height: 50px; height: 50px; border-radius: 25px; font-size: 16px; }
+  .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
+  .auth-modal .auth-google { min-height: 50px; border-radius: 25px; font-size: 16px; }
+  .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
+  .auth-footer { flex-direction: column-reverse; align-items: stretch; }
+  .auth-footer .btn { flex: none; width: 100%; }
+  .auth-footer .auth-switch { align-self: center; font-size: 15px; }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
   .sheet-scrim { background: rgba(0, 0, 0, 0.45); }
@@ -1233,4 +1436,22 @@
   /* The open destination is ink, not the accent: the accent belongs to the one
      action on the screen. */
   .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
+  /* The open destination also sits on a recessed pill behind its icon, so it
+     reads at a glance and not only by the weight of a 12px label. */
+  .tabbar .tabbar-item { position: relative; isolation: isolate; }
+  .tabbar .tabbar-item::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 4px;
+    left: 50%;
+    width: 52px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--surface-3);
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.6);
+    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  .tabbar .tabbar-item.is-active::before { opacity: 1; transform: translateX(-50%); }
 }

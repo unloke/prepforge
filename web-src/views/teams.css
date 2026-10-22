@@ -265,7 +265,7 @@ select.team-role-select {
 
 /* ---- Responsive --------------------------------------------------------- */
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .teams .btn.sm,
   .teams .btn.icon,
   .team-role-select,

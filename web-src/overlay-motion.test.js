@@ -24,7 +24,7 @@ describe("things that open", () => {
     expect(rule(".context-menu")).toMatch(/transition:\s*opacity[\s\S]*translate/);
     // Desktop only: on a phone the same element is an action sheet and rises
     // from the thumb (phone.css), so the two entrances must not stack.
-    expect(css).toMatch(/@media \(min-width: 761px\) \{\s*\n\s*@starting-style \{\s*\n\s*\.context-menu:not\(\[hidden\]\) \{\s*\n\s*opacity: 0;\s*\n\s*translate: 0 -4px;/);
+    expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\s*\n\s*@starting-style \{\s*\n\s*\.context-menu:not\(\[hidden\]\) \{\s*\n\s*opacity: 0;\s*\n\s*translate: 0 -4px;/);
   });
 
   it("brings the command sheet down from its field", () => {

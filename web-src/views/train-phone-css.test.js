@@ -45,15 +45,12 @@ it("every Train control is a thumb-sized target on a phone", () => {
   expect(Number(size[1]) + 2 * Number(hit[1])).toBeGreaterThanOrEqual(44);
 });
 
-// Setting up is a card to read, so Start must be on screen with it. At
-// 430x740 the full-width board left the panel 146px and pushed Start's top to
-// 785 under a 740px screen: the board yields 400px of height there. The board
-// rule is the one formula every other phone board uses — the screen's height
-// less the bar and --phone-reserve — and the setup state is what sets that
-// token; a hard-coded 400px in the rule overrode the token, so the two values
-// could drift apart.
+// Setting up is a form to read, so Start must be on screen with it: it docks
+// to the bottom of the scroller. The board rule is the one formula every other
+// phone board uses — the screen's height less the bar and --phone-reserve —
+// and the setup state is what sets that token.
 it("keeps the setup card and Start on screen at 430x740", () => {
-  const rule = phone.match(/#view-train:has\(\.train-sidebar\[data-session-state="setup"\]\) \.board-stack \{[^}]*\}/);
+  const rule = phone.match(/#view-train:has\(\.train-sidebar\[data-session-state="setup"\]:not\(\[data-play-live\]\)\) \.board-stack \{[^}]*\}/);
   expect(rule, "the setup board cap").not.toBeNull();
   expect(rule[0]).toMatch(/width:\s*min\(100vw/);
   expect(rule[0]).toMatch(/var\(--phone-bar-h\)/);
@@ -62,7 +59,10 @@ it("keeps the setup card and Start on screen at 430x740", () => {
   expect(rule[0]).not.toMatch(/\d+px/);
   // The 400px lives on the state, where it was measured: 285px of reserve
   // leaves Start at 798 on a 740px screen (under the bar), 400px puts it at 683.
-  const state = phone.match(/:has\(\.train-sidebar\[data-session-state="setup"\]\) \{ --phone-reserve:[^}]*\}/);
+  const state = phone.match(/:has\(\.train-sidebar\[data-session-state="setup"\]:not\(\[data-play-live\]\)\) \{ --phone-reserve:[^}]*\}/);
   expect(state, "the setup reserve").not.toBeNull();
-  expect(state[0]).toMatch(/--phone-reserve:\s*400px/);
+  expect(state[0]).toMatch(/--phone-reserve:\s*300px/);
+  // Start does not depend on the reserve any more: it docks to the bottom of
+  // the scroller, above the tab bar, whatever the card above it holds.
+  expect(phone).toMatch(/\.train-start-row:not\(\[hidden\]\) \{\s*position: sticky;\s*bottom: 0;/);
 });
