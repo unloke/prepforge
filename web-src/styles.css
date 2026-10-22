@@ -150,6 +150,7 @@
   /* -- Radii, elevation, control sizes ------------------------------------ */
   --radius: 6px;      /* controls, small chips */
   --radius-card: 10px; /* cards, popovers, dialogs */
+  --radius-chip: 4px; /* status and kind pills: one step under a control */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
   --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
   --switch-h: 20px;
@@ -1513,10 +1514,27 @@ h2 {
   border-top-color: transparent;
 }
 
-@keyframes btn-spin {
-  to {
-    transform: rotate(360deg);
-  }
+/* ---- One pill ------------------------------------------------------------
+   Status and kind labels that sit inside a row or beside a value: one height,
+   one radius, one weight, sentence case. Each class only sets its colours (a
+   pale tint with dark text of the same hue); a view may set the text size. */
+.status-pill,
+.team-role-badge,
+.lib-chip,
+.kchip,
+.kind-badge,
+.train-play-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
 }
 
 .link {
@@ -1870,12 +1888,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .rep-sub { color: var(--label); font-size: var(--fs-xs); }
 .lib-chip {
   flex: none;
-  padding: 1px 6px;
-  border-radius: 4px;
   background: var(--surface-3);
   color: var(--label);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
 }
 /* A shared tag is a tag, not a micro-label: it sits at the size of the other
    chips instead of a 10px tracked cap, and says "shared" in lower case. */
@@ -1926,16 +1940,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
 }
 /* Queue chips reuse the mastery-kind colours (colour means chess). */
-.kchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  white-space: nowrap;
-}
 .kchip::before {
   content: "";
   width: 6px;
@@ -3534,12 +3538,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-play-chip {
   align-self: flex-start;
   margin: 0;
-  padding: 2px 8px;
-  border-radius: 10px;
   background: var(--warn-soft);
   color: var(--warn-text);
   font-size: var(--fs);
-  font-weight: 650;
 }
 
 /* Progress */
@@ -4585,16 +4586,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-style: italic;
 }
 
-.tag {
-  border: 1px solid var(--line); /* taste-skill-ignore: a chip needs its own edge */
-  border-radius: 3px;
-  padding: 1px 5px;
-  font-size: 10px;
-  color: var(--muted);
-  background: var(--panel);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 
 /* Context menu — all chrome uses theme tokens so light/dark stay consistent. */
 

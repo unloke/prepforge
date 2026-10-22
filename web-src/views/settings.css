@@ -143,12 +143,8 @@
 .settings-error { word-break: break-word; }
 
 .status-pill {
-  padding: 1px 8px;
-  border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 700;
 }
 .status-pill.ok { background: var(--good-soft); color: var(--good-text); }
 .status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }

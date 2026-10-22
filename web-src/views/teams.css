@@ -90,14 +90,9 @@
 
 .team-role-badge {
   flex: none;
-  padding: 1px 7px;
-  border-radius: 4px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 700;
   text-transform: capitalize;
-  white-space: nowrap;
 }
 .team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
 .team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent); }

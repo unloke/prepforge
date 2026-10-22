@@ -14,7 +14,6 @@
   .sum-chip, .queued, .src-label, .inline-field, .lr.head, .card-head h2, .faint) {
   font-size: 13px;
 }
-#view-replay .kind-badge { padding: 1px 6px; }
 #view-replay .inline-field select { font-size: 13px; }
 #view-replay .queued { color: var(--muted); }/* "No repertoire" is a real outcome, not a disabled control: the shared
    `--none` grey lands at 3.5:1 on its own tint. */
@@ -164,16 +163,7 @@
   aspect-ratio: 1;
   border-radius: 6px;
   background: var(--surface-3);
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
-}
-.kind-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: var(--fs-xs);
-  font-style: normal;
-  font-weight: 650;
-  white-space: nowrap;
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 .kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
 .kind-badge.t-bad { background: var(--danger-soft); color: var(--danger-strong); }
