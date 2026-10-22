@@ -124,12 +124,14 @@ async function loadTrainRepertoireOptions() {
   const select = document.getElementById("train-repertoire-select");
   if (!select && !document.getElementById("train-play-repertoire-picker")) return;
   let active = [];
+  let shared = appState.sharedRepertoireList || [];
   try {
     // Signed out there is no owner-scoped listing: the picker shows its empty
     // option instead of surfacing the API's 401 as a sticky top-bar error.
     if (!appState.signedIn) throw Object.assign(new Error("signed out"), { signedOut: true });
     const payload = await api("/api/repertoires");
     appState.repertoireList = payload.repertoires || [];
+    appState.sharedRepertoireList = shared = payload.shared || [];
     active = appState.repertoireList.filter(
       (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
     );
@@ -140,12 +142,15 @@ async function loadTrainRepertoireOptions() {
     );
   }
   if (select) {
-    const previous = appState.trainingRepertoireId || (active.length ? active[0].id : "");
-    const options = active.length
-      ? active.map(
-          (r) =>
-            html`<option value="${r.id}">${r.name} (${r.color})</option>`,
-        )
+    // Line rehearsal also walks repertoires shared with the user, on their own progress.
+    const trainable = [...active, ...shared];
+    const previous = appState.trainingRepertoireId || (trainable.length ? trainable[0].id : "");
+    const option = (r) => html`<option value="${r.id}">${r.name} (${r.color})</option>`;
+    const options = trainable.length
+      ? [
+        ...active.map(option),
+        shared.length ? html`<optgroup label="Shared with you">${shared.map(option)}</optgroup>` : "",
+      ]
       : [
         // Three states, not two: the session may be UNREAD (a reload before
         // /api/auth/me lands). Reading that as "signed out" is what flashed
@@ -157,8 +162,8 @@ async function loadTrainRepertoireOptions() {
             : html`<option value="" disabled selected>Loading…</option>`,
       ];
     select.innerHTML = html`${options}`;
-    const valid = new Set(active.map((r) => r.id));
-    select.value = valid.has(previous) ? previous : active.length ? active[0].id : "";
+    const valid = new Set(trainable.map((r) => r.id));
+    select.value = valid.has(previous) ? previous : trainable.length ? trainable[0].id : "";
     appState.trainingRepertoireId = select.value || null;
   }
   const preferenceKey = playRepertoireStorageKey();

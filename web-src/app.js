@@ -1289,7 +1289,9 @@ async function refreshRepertoireHead() {
       reloadOpenBuildTree(),
     ]);
   } else if (appState.signedIn) {
-    appState.repertoireList = ((await api("/api/repertoires")).repertoires || []);
+    const listing = await api("/api/repertoires");
+    appState.repertoireList = listing.repertoires || [];
+    appState.sharedRepertoireList = listing.shared || [];
   }
   renderBuildRepHeader();
   syncViewHeads();
@@ -1502,6 +1504,9 @@ function bindEvents() {
   bindScoutSource();
   // Static host in the Build panel, so one binding at init covers both states.
   document.getElementById("shared-fork-btn")?.addEventListener("click", forkReadableRepertoire);
+  document.getElementById("shared-train-btn")?.addEventListener("click", () => {
+    if (appState.build?.repertoire_id) void trainRepertoire(appState.build.repertoire_id);
+  });
   // Start is data-only. The view and its stylesheet are already loading because
   // the Scout section is on screen; this guard covers the click that lands in the
   // few ms before bindControls() attaches the real handler, so Start is never

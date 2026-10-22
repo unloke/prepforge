@@ -622,6 +622,7 @@ export function createDashboardView({
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
+    appState.sharedRepertoireList = payload.shared || [];
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
     );

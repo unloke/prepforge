@@ -90,12 +90,14 @@ export function finishedQueueScopeFor(scope, state = {}) {
   // An empty listing means "not loaded yet", not "gone": the server still owns
   // the real answer. A loaded listing that no longer carries the repertoire as
   // active (deleted, disabled, or waiting on its delete) does answer.
+  // A repertoire shared with the user stays trainable while it is still shared.
   const listing = Array.isArray(state.repertoireList) ? state.repertoireList : [];
-  if (listing.length) {
+  const shared = Array.isArray(state.sharedRepertoireList) ? state.sharedRepertoireList : [];
+  if (listing.length || shared.length) {
     const pending = state.pendingRepDeletes || new Set();
-    const trainable = listing.some(
-      (rep) => String(rep.id) === String(scope.repertoireId)
-        && rep.is_active !== false && !pending.has(String(rep.id)),
+    const id = String(scope.repertoireId);
+    const trainable = shared.some((rep) => String(rep.id) === id) || listing.some(
+      (rep) => String(rep.id) === id && rep.is_active !== false && !pending.has(String(rep.id)),
     );
     if (!trainable) return null;
   }

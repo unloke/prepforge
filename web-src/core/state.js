@@ -6,6 +6,8 @@ export const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 export const appState = {
   currentView: "dashboard",
   repertoireList: [],
+  // Repertoires others shared with the user, at the user's role (Train drills them too).
+  sharedRepertoireList: [],
   analysis: null,
   // Raw PGN from the most recent in-session Analyze run (not history recall):
   // the SELECTED game's own text, never a multi-game paste.
