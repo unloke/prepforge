@@ -66,4 +66,9 @@ describe("summaryStatCells", () => {
       .toEqual([[4, "cards"], ["75%", "first try"], [2, "best in a row"], [2, "skipped"]]);
     expect(summaryStatCells({ cardsDone: 0 }, {}).length).toBe(3);
   });
+
+  it("counts learned moves instead of an empty first-try score in a session of only new moves", () => {
+    expect(summaryStatCells({ cardsDone: 3 }, { correct: 0, mistakes: 0, best: 0, learned: 3 }))
+      .toEqual([[3, "cards"], [3, "learned"]]);
+  });
 });
