@@ -55,3 +55,28 @@ describe("closing the open repertoire", () => {
     expect(body.indexOf("appState.trainingRepertoireId = null")).toBeLessThan(body.indexOf("closeOpenBuild()"));
   });
 });
+
+describe("Recent analyses follow the signed-in owner", () => {
+  const drawerFn = (appState, drawer, load) =>
+    compile("function syncAnalysisHistoryDrawer(", { appState, document: { getElementById: () => drawer }, loadAnalysisHistory: load });
+
+  it("shows and loads the open drawer once signed in on Analyze", () => {
+    const drawer = { hidden: true, open: true }, load = vi.fn();
+    drawerFn({ signedIn: true, currentView: "analyze" }, drawer, load)();
+    expect(drawer.hidden).toBe(false);
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it("hides it and never loads while signed out", () => {
+    const drawer = { hidden: false, open: true }, load = vi.fn();
+    drawerFn({ signedIn: false, currentView: "analyze" }, drawer, load)();
+    expect(drawer.hidden).toBe(true);
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("runs on sign-in and the toggle needs a signed-in owner", () => {
+    const signIn = source.slice(source.indexOf("async function loadSignedInWorkspace("));
+    expect(signIn.slice(0, signIn.indexOf("\n}\n"))).toContain("syncAnalysisHistoryDrawer();");
+    expect(source).toContain("if (historyDrawer.open && appState.signedIn) loadAnalysisHistory();");
+  });
+});

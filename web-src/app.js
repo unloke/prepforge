@@ -384,6 +384,16 @@ function shownOrLoadingRepertoireId() {
   return appState.buildLoading ? appState.buildLoadTarget : appState.build?.repertoire_id;
 }
 
+// Recent analyses are the owner's: shown and (when open) loaded only while
+// signed in. Runs on entering Analyze and whenever the signed-in owner changes,
+// so a sign-in made on the page lists that account's analyses at once.
+function syncAnalysisHistoryDrawer() {
+  const drawer = document.getElementById("history-drawer");
+  if (!drawer) return;
+  drawer.hidden = !appState.signedIn;
+  if (appState.signedIn && drawer.open && appState.currentView === "analyze") loadAnalysisHistory();
+}
+
 // In-page route changes (back/forward and location.hash) take the same path as
 // boot restore: switch the view, then rebuild Train's queue for the URL's
 // repertoire. Without this, ?rep= only took effect on a full reload. Coming
@@ -593,13 +603,7 @@ function switchView(name, { fromUrl = false } = {}) {
   // can be matched without waiting on the lazy load.
   // Recent analyses are owner-scoped: signed out the drawer is absent; signed
   // in it ships open, so it loads on entry (not only on a manual toggle).
-  if (name === "analyze") {
-    const historyDrawer = document.getElementById("history-drawer");
-    if (historyDrawer) {
-      historyDrawer.hidden = !appState.signedIn;
-      if (appState.signedIn && historyDrawer.open) loadAnalysisHistory();
-    }
-  }
+  if (name === "analyze") syncAnalysisHistoryDrawer();
   if (name === "analyze" && appState.signedIn) {
     ensureBookLoaded()
       .then(() => updateBookline())
@@ -1529,7 +1533,7 @@ function bindEvents() {
   const historyDrawer = document.getElementById("history-drawer");
   if (historyDrawer) {
     historyDrawer.addEventListener("toggle", () => {
-      if (historyDrawer.open) loadAnalysisHistory();
+      if (historyDrawer.open && appState.signedIn) loadAnalysisHistory();
     });
   }
   // Coverage scan: explicit button — never runs implicitly (it's a Maia batch).
@@ -2310,6 +2314,7 @@ async function loadSignedInWorkspace() {
     .then(() => trainSessionLoading?.then((train) => train.syncTrainPickerVisibility()))
     .catch(() => {});
   syncReplayControls();
+  syncAnalysisHistoryDrawer();
   // Boards are already seeded with the start position in init() (browser-computed),
   // so signing in doesn't need to re-fetch them.
   renderBuilderTree();
