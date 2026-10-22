@@ -88,7 +88,21 @@
 #coverage-drawer [data-unlock-place] { margin: 2px 0 8px; }
 .scout-main > [data-unlock-place] { max-width: 720px; margin-bottom: 12px; }
 
+/* A phone stacks the action under the text, so the gain reads on one or two
+   lines instead of a narrow column beside the button. */
 @media (max-width: 760px) {
-  .unlock:not(.is-inline) { min-height: 56px; }
-  .unlock:not(.is-inline) .unlock-x { width: 40px; height: 40px; }
+  .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 4px; padding: 10px 4px 12px 12px; }
+  .unlock:not(.is-inline) .unlock-x { grid-column: 2; grid-row: 1; align-self: start; width: 40px; height: 40px; margin-top: -6px; }
+  .unlock:not(.is-inline) > .btn { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+}
+
+/* The engine card on a phone is a short band over the board: its row stays one
+   line, the gain clipping first, so the band grows by one line and no more. */
+@media (max-width: 760px) {
+  .engine-window-unlock .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 0; padding: 4px 0 4px 10px; gap: 6px; }
+  .engine-window-unlock .unlock:not(.is-inline) .unlock-text { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; overflow: hidden; }
+  .engine-window-unlock .unlock:not(.is-inline) .unlock-line { overflow: hidden; text-overflow: ellipsis; }
+  .engine-window-unlock .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; }
+  .engine-window-unlock .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
+  .unlock.is-inline .unlock-size { display: none; }
 }
