@@ -14,7 +14,7 @@ import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { isNothingToTrainError } from "../train-start.js";
-import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, syncTrainScreen, trainRowError } from "./train-home.js";
+import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
 import { saveRun } from "../train-history.js";
 
@@ -260,28 +260,8 @@ function renderPlayTrail() {
     : "";
   el.hidden = !play;
   el.innerHTML = text ? html`<span class="play-trail-sans">${text}</span>` : "";
-  const chip = document.getElementById("train-play-chip");
-  if (chip) {
-    const reason = play && play.luckyReason;
-    if (reason) {
-      chip.hidden = false;
-      chip.textContent =
-        reason === "miss"
-          ? "Engine miss"
-          : reason === "departure"
-            ? "Left prep"
-            : reason === "fork"
-              ? "Repertoire fork"
-                : reason === "db-critical"
-                  ? `Master game · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
-                : reason === "titled-game"
-                  ? `${play && String(play.luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"} · ${play && play.luckyPhase ? play.luckyPhase : "critical"}`
-                  : reason;
-    } else {
-      chip.hidden = true;
-      chip.textContent = "";
-    }
-  }
+  // A Feeling Lucky game names where its position came from in the scope chip.
+  if (play && play.luckyReason) document.getElementById("train-scope-chip").textContent = trainScopeLabel();
   syncTrainSessionControls();
 }
 

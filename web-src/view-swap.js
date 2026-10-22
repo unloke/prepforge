@@ -33,6 +33,9 @@ export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) 
     apply();
     next.classList.add("is-arriving");
   });
+  // A newer switch skips this one; Chrome reports the skipped `ready` as an
+  // unhandled rejection unless someone listens.
+  transition.ready.catch(() => {});
   transition.finished.finally(() => {
     if (token === seq) next.classList.remove("is-arriving");
   });

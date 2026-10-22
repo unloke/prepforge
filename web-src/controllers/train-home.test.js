@@ -58,6 +58,12 @@ describe("openTrain", () => {
     expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null, targetNodeIds: [] });
   });
 
+  it("a Feeling Lucky game names its source in the scope chip", () => {
+    const play = { book: "maia", userColor: "white", luckyReason: "titled-game", luckyPhase: "middlegame", luckySource: "lichess-tv" };
+    expect(trainScopeLabel({ trainMode: "play", play })).toBe("Live Lichess game · middlegame");
+    expect(trainScopeLabel({ trainMode: "play", play: { ...play, luckyReason: "db-critical", luckyPhase: null } })).toBe("Master game · critical");
+  });
+
   it("picked targets always build a fresh queue", async () => {
     const { deps } = setup();
     await createTrainHome(deps).openTrain({ mode: "smart", repertoireId: "r1", targets: ["n1", "n2"] });

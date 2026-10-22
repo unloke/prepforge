@@ -68,6 +68,7 @@ export function withTrainTransition(update, { from = null, to = null } = {}) {
     const target = typeof to === "function" ? to() : to;
     if (target) target.style.viewTransitionName = "train-mode-title";
   });
+  transition.ready.catch(() => {}); // skipped by a newer transition: not an error
   transition.finished.finally(() => {
     root.classList.remove("train-vt");
     if (from) from.style.viewTransitionName = "";
@@ -111,6 +112,7 @@ export function trainScopeLabel(state = d.appState) {
   const mode = state.trainMode || "smart";
   if (mode === "play") {
     const play = state.play;
+    if (play?.luckyReason) return luckyLabel(play);
     const book = play?.book || playBook();
     const color = (play?.userColor || playPickerColor()) === "black" ? "Black" : "White";
     return `vs ${BOOK_NAMES[book]} · ${color}`;
@@ -118,6 +120,16 @@ export function trainScopeLabel(state = d.appState) {
   if (mode === "all_lines") return state.training?.repertoire_name || repertoireName(state.trainingRepertoireId) || "";
   if (state.smart) return state.smart.scopeLabel;
   return state.trainScope?.label || dueScopeLabel();
+}
+
+function luckyLabel(play) {
+  const phase = play.luckyPhase || "critical";
+  if (play.luckyReason === "miss") return "Engine miss";
+  if (play.luckyReason === "departure") return "Left prep";
+  if (play.luckyReason === "fork") return "Repertoire fork";
+  if (play.luckyReason === "db-critical") return `Master game · ${phase}`;
+  if (play.luckyReason === "titled-game") return `${String(play.luckySource || "").startsWith("lichess-") ? "Live Lichess game" : "Titled reference"} · ${phase}`;
+  return play.luckyReason;
 }
 
 function paintHead(screen, mode) {

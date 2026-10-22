@@ -27,8 +27,11 @@ function withTransitions({ reduce = false } = {}) {
     startViewTransition(update) {
       let done;
       const finished = new Promise((resolve) => { done = resolve; });
+      let skip;
+      const ready = new Promise((_, reject) => { skip = reject; });
       pending.push(() => { update(); done(); });
-      return { finished };
+      pending.skips = [...(pending.skips || []), () => skip(new Error("Transition was skipped"))];
+      return { finished, ready };
     },
   });
   return pending;
@@ -91,5 +94,16 @@ describe("route view swap", () => {
     expect(css).toMatch(/\.workspace \{[^}]*view-transition-name:\s*view/);
     expect(css).not.toMatch(/board[^{]*\{[^}]*view-transition-name/);
     expect(css).not.toMatch(/\.view\.is-active \{[^}]*animation:/);
+  });
+
+  it("a transition skipped by a newer one is not an unhandled rejection", async () => {
+    const pending = withTransitions();
+    const unhandled = vi.fn();
+    globalThis.process.on("unhandledRejection", unhandled);
+    swapView([view("view-a", true), view("view-b")], "view-b");
+    pending.skips[0]();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    globalThis.process.off("unhandledRejection", unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
   });
 });
