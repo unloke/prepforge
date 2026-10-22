@@ -8,6 +8,7 @@ import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { staggerRows } from "../list-enter.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
+import { canCopy, roleLabel } from "../share-roles.js";
 
 export function createTeamsView({
   appState,
@@ -250,10 +251,13 @@ export function createTeamsView({
         const color = item.color;
         const owner = item.owner_display_name || "member";
         const isMine = item.owner_user_id === appState.accountUserId;
-        // Your own shared rep: Unshare. Someone else's: Copy to your account (fork).
+        // Your own shared rep: Unshare. Someone else's: Copy to your account
+        // (fork), where the team's role allows it.
         const action = isMine
           ? html`<button type="button" class="btn sm team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
-          : html`<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>`;
+          : canCopy(item.role)
+            ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>`
+            : "";
         return html`
         <div class="mem-row team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
           <span class="color-dot ${color}"></span>
@@ -261,7 +265,7 @@ export function createTeamsView({
             <span class="name">${name}</span>
             <span class="sub">· ${owner}</span>
           </span>
-          <span class="team-member-tail">${action}</span>
+          <span class="team-member-tail"><span class="team-role-badge share-role-badge">${roleLabel(item.role)}</span>${action}</span>
         </div>`;
       })}`;
     container.querySelectorAll(".team-shared-rep-row").forEach((row) => {

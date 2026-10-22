@@ -4,6 +4,7 @@ import { api, currentOwnerId, postJson, setStatus, setStatusError } from "../cor
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./team-skeleton.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
+import { GRANT_ROLES, canCopy, roleLabel } from "../share-roles.js";
 
 // Teams: the caller's teams, one team's members and roles, team share links,
 // and the repertoires shared to the caller. Lazy-loaded with the Teams view;
@@ -221,7 +222,12 @@ async function openTeamDetail(teamId) {
   renderTeamSharedRepertoires(teamId, detail.shared_repertoires || []);
 }
 
+// The last repertoires seen shared with each team, so "Share a repertoire"
+// offers only the ones not there yet.
+const teamSharedById = new Map();
+
 function renderTeamSharedRepertoires(teamId, sharedReps) {
+  teamSharedById.set(teamId, sharedReps);
   if (teamsView) return teamsView.renderTeamSharedRepertoires(teamId, sharedReps);
   void ensureTeamsView()
     .then((view) => view.renderTeamSharedRepertoires(teamId, sharedReps))
@@ -231,18 +237,18 @@ function renderTeamSharedRepertoires(teamId, sharedReps) {
 async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
   const confirmed = await showConfirmModal({
     title: `Stop sharing "${name}"?`,
-    body: "Team members will lose read access. You can share it again later.",
+    body: "Team members lose access to it. You can share it again later.",
     okLabel: "Unshare",
     cancelLabel: "Cancel",
     tone: "danger",
   });
   if (!confirmed) return;
   try {
-    await postJson("/api/repertoires/share", {
+    await postJson("/api/repertoires/access/revoke", {
       repertoire_id: repertoireId,
-      visibility: "private",
+      team_id: teamId,
     });
-    setStatus(`"${name}" is private again`);
+    setStatus(`Stopped sharing "${name}" with the team`);
     await refreshDashboardRepertoires();
     await openTeamDetail(teamId);
   } catch (error) {
@@ -442,8 +448,7 @@ async function teamInvite(teamId) {
 }
 
 // In-team "add a repertoire": share one of the caller's OWN repertoires with this
-// team. A repertoire can be shared with one team at a time, so picking one already
-// shared elsewhere moves it here.
+// team at a role every member gets. The repertoire's Share dialog changes it later.
 async function shareRepertoireIntoTeam(teamId) {
   let reps = [];
   try {
@@ -453,7 +458,8 @@ async function shareRepertoireIntoTeam(teamId) {
     setStatusError(error.message);
     return;
   }
-  const candidates = reps.filter((r) => !(r.visibility === "team" && r.team_id === teamId));
+  const already = new Set((teamSharedById.get(teamId) || []).map((r) => r.id));
+  const candidates = reps.filter((r) => !already.has(r.id));
   if (!candidates.length) {
     setStatus(
       reps.length ? "All your repertoires are already shared here" : "You have no repertoires to share"
@@ -469,23 +475,23 @@ async function shareRepertoireIntoTeam(teamId) {
         label: "Repertoire",
         type: "select",
         default: candidates[0].id,
-        options: candidates.map((r) => ({
-          value: r.id,
-          label: r.visibility === "team" ? `${r.name} (shared elsewhere → moves here)` : r.name,
-        })),
+        options: candidates.map((r) => ({ value: r.id, label: r.name })),
       },
       {
-        type: "note",
-        label: "Members get read-only access. A repertoire can be shared with one team at a time.",
+        name: "role",
+        label: "Members",
+        type: "select",
+        default: "view",
+        options: GRANT_ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
       },
     ],
   });
   if (!result || !result.repertoire) return;
   try {
-    await postJson("/api/repertoires/share", {
+    await postJson("/api/repertoires/access", {
       repertoire_id: result.repertoire,
       team_id: teamId,
-      visibility: "team",
+      role: result.role || "view",
     });
     setStatus("Shared with the team");
     await refreshDashboardRepertoires();
@@ -531,18 +537,18 @@ async function loadSharedRepertoires() {
         const id = item.id;
         const name = item.name;
         const color = item.color || "white";
-        const team = teamById(item.team_id);
-        const via = `via ${team ? team.name : "a team"}`;
+        const team = item.team_id ? teamById(item.team_id) : null;
+        const via = item.team_id ? `via ${team ? team.name : "a team"}` : item.owner_display_name || "";
         return html`
           <div class="mem-row shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
             <span class="color-dot ${color}"></span>
             <span class="mem-id">
               <span class="name">${name}</span>
-              <span class="sub">${via}</span>
+              ${via ? html`<span class="sub">${via}</span>` : ""}
             </span>
             <span class="team-member-tail">
-              <span class="team-role-badge">read-only</span>
-              <button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>
+              <span class="team-role-badge share-role-badge">${roleLabel(item.role)}</span>
+              ${canCopy(item.role) ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>` : ""}
             </span>
           </div>`;
       })}`;
@@ -576,77 +582,6 @@ async function openSharedRepertoire(repertoireId) {
   await editRepertoire(repertoireId);
 }
 
-// Rep context-menu action: share (or unshare) one of the caller's OWN repertoires
-// with a team. Needs the caller's team list; if they have none, nudge them to the
-// Teams view to make one first.
-async function shareRepertoireWithTeam(repertoireId) {
-  try {
-    if (!appState.teams.length) {
-      const payload = await api("/api/teams");
-      appState.teams = payload.teams || [];
-    }
-  } catch (_) {
-    /* fall through with whatever we have */
-  }
-  if (!appState.teams.length) {
-    const go = await showConfirmModal({
-      title: "No teams yet",
-      body: "You need a team to share a repertoire with. Create one now?",
-      okLabel: "Go to Teams",
-      cancelLabel: "Cancel",
-    });
-    if (go) {
-      switchView("teams");
-      loadTeams();
-    }
-    return;
-  }
-  const result = await showInputModal({
-    title: "Share with team",
-    okLabel: "Apply",
-    fields: [
-      {
-        name: "team",
-        label: "Share with",
-        type: "select",
-        default: appState.teams[0].id,
-        options: [
-          { value: "", label: "Private (don't share)" },
-          ...appState.teams.map((tm) => ({
-            value: tm.id,
-            label: tm.name,
-          })),
-        ],
-      },
-      {
-        type: "note",
-        label:
-          "Members get read-only access. A repertoire can be shared with one team at a time.",
-      },
-    ],
-  });
-  if (!result) return;
-  try {
-    if (result.team) {
-      await postJson("/api/repertoires/share", {
-        repertoire_id: repertoireId,
-        team_id: result.team,
-        visibility: "team",
-      });
-      const team = appState.teams.find((tm) => tm.id === result.team);
-      setStatus(`Shared with ${team ? team.name : "team"}`);
-    } else {
-      await postJson("/api/repertoires/share", {
-        repertoire_id: repertoireId,
-        visibility: "private",
-      });
-      setStatus("Repertoire is now private");
-    }
-  } catch (error) {
-    setStatusError(error.message);
-  }
-}
-
   return {
     invalidateRequests: () => { teamDetailSeq++; sharedRepertoiresSeq++; },
     teamRoleLabel,
@@ -671,6 +606,5 @@ async function shareRepertoireWithTeam(repertoireId) {
     copySharedRepertoire,
     loadSharedRepertoires,
     openSharedRepertoire,
-    shareRepertoireWithTeam,
   };
 }
