@@ -10,6 +10,7 @@ can still read. The owner's progress is never read or written for anyone else.
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, time, timedelta, timezone
 from typing import Any, Literal
 
 import chess
@@ -26,7 +27,7 @@ from prepforge_chess.core.models import (
     TrainingSession,
 )
 from prepforge_chess.services import streak
-from prepforge_chess.services.progress import compute_health, due_forecast
+from prepforge_chess.services.progress import compute_health, due_forecast, due_outlook
 from prepforge_chess.services.srs import review
 from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.scheduler import CARD_KINDS
@@ -331,6 +332,7 @@ def smart_start(
         "repertoire_name": "All repertoires" if body.mixed else repertoire.name,
         "color": repertoire.color.value,
         "mixed": body.mixed,
+        "scope": session.scope,
         "session_id": session.id,
         "seed": session.seed,
         "mode": TrainingMode.SMART.value,
@@ -355,28 +357,51 @@ def smart_start(
     }
 
 
+def _outlook(
+    repo: WorkspaceRepository, reps: list[Repertoire], owner: str, utc_offset: int
+) -> dict[str, int]:
+    """Due now / by the end of the player's local day / this week, over the scope."""
+    now = datetime.now(timezone.utc)
+    offset = timedelta(minutes=max(-840, min(840, utc_offset)))
+    local = now + offset
+    day_end = datetime.combine(local.date() + timedelta(days=1), time.min, timezone.utc) - offset
+    total = {"now": 0, "today": 0, "week": 0}
+    for rep in reps:
+        progress_by_id = {
+            p.node_id: p for p in repo.list_training_progress(rep.id, owner_user_id=owner)
+        }
+        part = due_outlook(rep.root_node, rep.color, progress_by_id, now=now, day_end=day_end)
+        for key in total:
+            total[key] += part[key]
+    return total
+
+
 @router.get("/smart/summary")
 def smart_summary(
     repertoire_id: str | None = None,
     mixed: bool = False,
     preview: bool = False,
     local_date: str | None = None,
+    utc_offset: int = 0,
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Fresh health + tomorrow's due forecast for the end-of-session screen.
-    ``mixed=true`` aggregates over all the caller's active repertoires;
-    ``preview=true`` adds ``next_session``, the card counts a mixed Start serves.
+    ``mixed=true`` aggregates over all the caller's active repertoires.
+    ``preview=true`` (Train Home) adds ``next_session`` — the card counts a
+    Start of the same scope serves, and whether it resumes — and ``outlook``,
+    reviews due now / today / this week (``utc_offset`` = the player's minutes
+    east of UTC, for "today").
 
     Carries the authoritative ``day_streak`` so the summary screen renders the
     server's truth rather than a possibly-stale client cache: the final sync
     before this fetch usually writes no new attempts, so ``/smart/sync`` returns
     ``day_streak: null`` and never refreshes the client value."""
+    service = SmartTrainingService(repo, owner)
     if mixed:
-        service = SmartTrainingService(repo, owner)
-        payload = _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
-        if preview:
-            payload["next_session"] = service.next_session_counts(owner)
+        reps = service.active_repertoires(owner)
+        payload = _mixed_summary_payload(repo, reps, owner)
+        scope_id = None
     elif not repertoire_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -384,10 +409,15 @@ def smart_summary(
         )
     else:
         owned = _trainable_repertoire(repo, repertoire_id, owner)["role"] == "owner"
-        repertoire = repo.load_repertoire(repertoire_id)
+        repertoire = service.repertoire(repertoire_id)
         if repertoire is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+        reps = [repertoire]
         payload = _smart_summary_payload(repo, repertoire, owner, owned=owned)
+        scope_id = repertoire_id
+    if preview:
+        payload["next_session"] = service.preview(owner, scope_id)
+        payload["outlook"] = _outlook(repo, reps, owner, utc_offset)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(
         repo.get_user_setting(owner, streak.STREAK_KEY), day

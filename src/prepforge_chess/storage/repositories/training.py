@@ -207,6 +207,7 @@ class TrainingRepository(SettingsRepository):
                 "repertoire_id": session.repertoire_id,
                 "owner_user_id": session.owner_user_id,
                 "mode": session.mode.value,
+                "scope": session.scope,
                 "line_order_json": _json_dump(session.line_order),
                 "current_index": session.current_index,
                 "current_node_id": session.current_node_id,
@@ -237,6 +238,7 @@ class TrainingRepository(SettingsRepository):
         repertoire_id: str,
         owner_user_id: str,
         mode: Optional[TrainingMode] = None,
+        scope: Optional[str] = None,
     ) -> Optional[TrainingSession]:
         stmt = (
             select(t.training_sessions)
@@ -249,6 +251,8 @@ class TrainingRepository(SettingsRepository):
         )
         if mode is not None:
             stmt = stmt.where(t.training_sessions.c.mode == mode.value)
+        if scope is not None:
+            stmt = stmt.where(t.training_sessions.c.scope == scope)
         with self.engine.connect() as conn:
             row = conn.execute(stmt).mappings().first()
         return self._training_session_from_row(row) if row is not None else None
@@ -423,6 +427,7 @@ class TrainingRepository(SettingsRepository):
             repertoire_id=row["repertoire_id"],
             owner_user_id=row["owner_user_id"],
             mode=TrainingMode(row["mode"]),
+            scope=row["scope"],
             line_order=_json_load(row["line_order_json"], []),
             current_index=row["current_index"],
             current_node_id=row["current_node_id"],

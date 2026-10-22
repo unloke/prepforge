@@ -12,7 +12,7 @@ It is intentionally pure (no DB, no engine) so it is cheap to unit-test.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Optional, Set
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
@@ -151,6 +151,31 @@ def due_forecast(
         if now < due_at and (due_at - now).total_seconds() <= horizon_hours * 3600:
             count += 1
     return count
+
+
+def due_outlook(
+    root: OpeningNode,
+    color: Color,
+    progress_by_id: Dict[str, TrainingProgress],
+    *,
+    now: datetime,
+    day_end: datetime,
+) -> Dict[str, int]:
+    """Reviewed moves due by now, by the end of the player's day and within a
+    week (cumulative) — Train Home's FSRS outlook."""
+    week_end = now + timedelta(days=7)
+    out = {"now": 0, "today": 0, "week": 0}
+    for node in _walk(root):
+        if not _is_trainable(node, color):
+            continue
+        progress = progress_by_id.get(node.id)
+        if progress is None or progress.attempts <= 0 or progress.due_at is None:
+            continue
+        due_at = progress.due_at
+        out["now"] += due_at <= now
+        out["today"] += due_at <= day_end
+        out["week"] += due_at <= week_end
+    return out
 
 
 @dataclass(frozen=True)

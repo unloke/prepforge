@@ -166,10 +166,9 @@ def test_targeted_practice_opens_on_the_requested_move():
     # folded into an earlier card on the same path or shuffled behind review.
     rep, ids = _build_wide_tree()
     progress = {node_id: _progress(node_id, **WEAK) for node_id in ids.values()}
-    for seed in range(20):
-        plan = build_session_plan(rep.root_node, rep.color, progress, seed=seed,
-                                  target_node_ids=[ids["bb5"]], now=NOW)
-        assert plan.cards[0].first_target_id == ids["bb5"]
+    plan = build_session_plan(rep.root_node, rep.color, progress,
+                              target_node_ids=[ids["bb5"]], now=NOW)
+    assert plan.cards[0].first_target_id == ids["bb5"]
 
 
 def test_targeted_practice_rejects_opponent_and_disabled_nodes():
@@ -188,14 +187,16 @@ def test_targeted_practice_rejects_opponent_and_disabled_nodes():
 
 
 def test_card_codec_round_trips():
-    card = TrainingCard(kind=CARD_DUE, first_target_id="a-1", last_target_id="b-2", repertoire_id="rep")
+    card = TrainingCard(kind=CARD_DUE, repertoire_id="rep", target_ids=("a-1", "b-2"))
+    assert encode_card(card) == "due:rep:a-1,b-2"
     assert decode_card(encode_card(card)) == card
 
 
 def test_decode_rejects_garbage():
     assert decode_card("not-a-card") is None
     assert decode_card("badkind:a:b") is None
-    assert decode_card("due:a:b") is None
+    assert decode_card("due:a:b,") is None
+    assert decode_card("due:a:b:c") is None
     assert decode_card("due:a") is None
     assert decode_card(None) is None
     assert decode_card("due::b") is None
@@ -206,34 +207,29 @@ def test_decode_rejects_garbage():
 
 def test_untrained_repertoire_yields_new_cards_shallow_first():
     repertoire, ids = _build_tree()
-    plan = build_session_plan(repertoire.root_node, Color.WHITE, {}, seed=1, new_cap=3)
-    assert _kinds(plan) == [CARD_NEW] * 3
+    plan = build_session_plan(repertoire.root_node, Color.WHITE, {}, new_cap=3)
+    assert _kinds(plan) == [CARD_NEW] * 2
     # Shallow lines are introduced first: the cap admits both ply-1 moves and
     # the earliest ply-3 move, leaving the deeper material for later sessions.
-    targets = {card.first_target_id for card in plan.cards}
-    assert targets == {ids["e4"], ids["d4"], ids["nf3"]}
+    assert [card.target_ids for card in plan.cards] == [(ids["e4"], ids["nf3"]), (ids["d4"],)]
 
 
-def test_new_cards_follow_the_line_not_the_seed():
+def test_new_cards_follow_the_line():
     """New material is introduced in the order a line is played: 1.e4 before
-    2.Nf3 before 3.Bc4. Shuffling the new band dealt 3.Bc4 as card 1, which
-    tests a position the player has not been shown."""
+    2.Nf3 before 3.Bb5, never a position the player has not been shown."""
     repertoire, ids = _build_tree()
-    for seed in range(12):
-        plan = build_session_plan(
-            repertoire.root_node, Color.WHITE, {}, seed=seed, new_cap=3,
-            session_size=12, max_targets_per_card=1,
-        )
-        order = [card.first_target_id for card in plan.cards]
-        # Each card that is in the plan sits in the order the line is played
-        # (the d4 family's cards may fill the other slots).
-        line = [node for node in order if node in (ids["e4"], ids["nf3"], ids["bb5"])]
-        assert line == sorted(line, key=(ids["e4"], ids["nf3"], ids["bb5"]).index), (seed, order)
+    plan = build_session_plan(
+        repertoire.root_node, Color.WHITE, {}, new_cap=3,
+        session_size=12, max_targets_per_card=1,
+    )
+    order = [card.first_target_id for card in plan.cards]
+    line = [node for node in order if node in (ids["e4"], ids["nf3"], ids["bb5"])]
+    assert line == sorted(line, key=(ids["e4"], ids["nf3"], ids["bb5"]).index), order
 
 
 def test_new_cap_limits_introductions():
     repertoire, _ = _build_tree()
-    plan = build_session_plan(repertoire.root_node, Color.WHITE, {}, seed=1, new_cap=2)
+    plan = build_session_plan(repertoire.root_node, Color.WHITE, {}, new_cap=2)
     assert plan.counts[CARD_NEW] == 2
     assert plan.counts["cards"] == 2  # nothing else to schedule
 
@@ -248,7 +244,7 @@ def test_weak_outranks_due_outranks_new():
         # e4/bb5/c4 untrained -> new
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, new_cap=1, now=NOW
+        repertoire.root_node, Color.WHITE, progress, new_cap=1, now=NOW
     )
     kinds = _kinds(plan)
     assert kinds[0] == CARD_WEAK
@@ -278,7 +274,7 @@ def test_weak_pool_capped_so_due_and_new_reach_the_queue():
         ids["d4"]: _progress(ids["d4"], **DUE),
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=5,
+        repertoire.root_node, Color.WHITE, progress, session_size=5,
         max_targets_per_card=1, now=NOW,
     )
     assert plan.counts[CARD_DUE] == 1, "due must reach the queue alongside weak"
@@ -298,7 +294,7 @@ def test_weak_only_session_still_fills_with_weak():
         for node in (ids["e4"], ids["nf3"], ids["bb5"], ids["d4"], ids["c4"])
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=4,
+        repertoire.root_node, Color.WHITE, progress, session_size=4,
         max_targets_per_card=1, now=NOW,
     )
     assert plan.counts["targets"] == 4
@@ -315,7 +311,7 @@ def test_new_cap_still_limits_introductions_with_weak_present():
     }
     # e4, d4 remain untrained -> new; new_cap=1 keeps only one of them.
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=5,
+        repertoire.root_node, Color.WHITE, progress, session_size=5,
         new_cap=1, max_targets_per_card=1, now=NOW,
     )
     assert plan.counts[CARD_NEW] == 1
@@ -335,7 +331,7 @@ def test_session_fills_when_candidates_are_sufficient():
         ids["d4"]: _progress(ids["d4"], **MASTERED),
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=5,
+        repertoire.root_node, Color.WHITE, progress, session_size=5,
         max_targets_per_card=1, now=NOW,
     )
     assert plan.counts["targets"] == 5
@@ -354,7 +350,7 @@ def test_small_session_weak_share_never_drops_due():
         ids["d4"]: _progress(ids["d4"], **DUE),
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=2,
+        repertoire.root_node, Color.WHITE, progress, session_size=2,
         max_targets_per_card=1, now=NOW,
     )
     assert plan.counts[CARD_WEAK] == 1
@@ -383,7 +379,7 @@ def test_crowded_weak_due_and_new_pools_split_the_session_by_share():
         # ba4, a4, qd2 untrained → new pool of 3
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=8,
+        repertoire.root_node, Color.WHITE, progress, session_size=8,
         new_cap=2, max_targets_per_card=1, now=NOW,
     )
     assert max(1, int(8 * WEAK_SHARE)) == 4
@@ -400,7 +396,7 @@ def test_session_size_caps_targets():
         for node in (ids["e4"], ids["nf3"], ids["bb5"], ids["d4"], ids["c4"])
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=2,
+        repertoire.root_node, Color.WHITE, progress, session_size=2,
         max_targets_per_card=1, now=NOW,
     )
     assert plan.counts["targets"] == 2
@@ -415,7 +411,7 @@ def test_polish_fills_leftover_room_soonest_due_first():
     # e4 is due sooner than the others -> it should head the polish band.
     progress[ids["e4"]] = _progress(ids["e4"], attempts=5, correct=5, due_at=NOW + timedelta(days=1), stability=30.0)
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=3,
+        repertoire.root_node, Color.WHITE, progress,
         max_targets_per_card=1, now=NOW,
     )
     assert all(kind == CARD_POLISH for kind in _kinds(plan))
@@ -426,9 +422,9 @@ def test_each_node_targeted_at_most_once():
     repertoire, _ = _build_tree()
     progress = {}
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, new_cap=10, session_size=30
+        repertoire.root_node, Color.WHITE, progress, new_cap=10, session_size=30
     )
-    targets = [card.first_target_id for card in plan.cards]
+    targets = [node for card in plan.cards for node in card.target_ids]
     assert len(targets) == len(set(targets)) == 5
 
 
@@ -438,7 +434,7 @@ def test_empty_tree_yields_empty_plan():
     repertoire = builder.create_repertoire(
         CreateRepertoireRequest(name="Empty", color=Color.WHITE)
     )
-    plan = build_session_plan(repertoire.root_node, Color.WHITE, {}, seed=1)
+    plan = build_session_plan(repertoire.root_node, Color.WHITE, {})
     assert plan.cards == []
     assert plan.counts["cards"] == 0
 
@@ -456,7 +452,7 @@ def test_consecutive_due_targets_merge_into_one_card():
         ids["c4"]: _progress(ids["c4"], **MASTERED),
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=3, now=NOW
+        repertoire.root_node, Color.WHITE, progress, session_size=3, now=NOW
     )
     merged = [c for c in plan.cards if c.kind == CARD_DUE]
     assert len(merged) == 1
@@ -471,7 +467,7 @@ def test_merge_respects_max_targets_per_card():
         for node in (ids["e4"], ids["nf3"], ids["bb5"])
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=3,
+        repertoire.root_node, Color.WHITE, progress, session_size=3,
         max_targets_per_card=2, new_cap=0, now=NOW,
     )
     due_cards = [c for c in plan.cards if c.kind == CARD_DUE]
@@ -481,9 +477,9 @@ def test_merge_respects_max_targets_per_card():
     assert (ids["bb5"], ids["bb5"]) in spans
 
 
-def test_gap_in_selection_splits_cards():
-    """e4 due, Nf3 mastered (not selected), Bb5 due -> two single cards, not a
-    merged one spanning the unselected middle move."""
+def test_line_card_autoplays_the_known_move_between_targets():
+    """e4 due, Nf3 mastered (not selected), Bb5 due -> ONE line card that
+    prompts e4 and Bb5; Nf3 is auto-played, never graded."""
     repertoire, ids = _build_tree()
     progress = {
         ids["e4"]: _progress(ids["e4"], **DUE),
@@ -493,21 +489,95 @@ def test_gap_in_selection_splits_cards():
         ids["c4"]: _progress(ids["c4"], **MASTERED),
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=2, now=NOW
+        repertoire.root_node, Color.WHITE, progress, session_size=2, now=NOW
     )
-    due_cards = [c for c in plan.cards if c.kind == CARD_DUE]
-    assert {(c.first_target_id, c.last_target_id) for c in due_cards} == {
-        (ids["e4"], ids["e4"]),
-        (ids["bb5"], ids["bb5"]),
-    }
+    assert [c.target_ids for c in plan.cards] == [(ids["e4"], ids["bb5"])]
 
 
-def test_new_cards_never_merge():
-    repertoire, _ = _build_tree()
+def test_new_moves_of_one_line_are_taught_in_one_card():
+    repertoire, ids = _build_tree()
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, {}, seed=1, new_cap=10, session_size=30
+        repertoire.root_node, Color.WHITE, {}, new_cap=10, session_size=30
     )
-    assert all(card.first_target_id == card.last_target_id for card in plan.cards)
+    assert [c.target_ids for c in plan.cards] == [
+        (ids["e4"], ids["nf3"], ids["bb5"]),
+        (ids["d4"], ids["c4"]),
+    ]
+
+
+def test_new_and_review_moves_never_share_a_line_card():
+    repertoire, ids = _build_tree()
+    progress = {ids["e4"]: _progress(ids["e4"], **DUE)}
+    plan = build_session_plan(
+        repertoire.root_node, Color.WHITE, progress, new_cap=10, session_size=30, now=NOW
+    )
+    assert plan.cards[0].target_ids == (ids["e4"],)
+    assert all(card.kind == CARD_NEW for card in plan.cards[1:])
+
+
+def _sibling_tree():
+    """root ─ e4 ─ e5 ─ Nf3 ─ Nc6 ─ Bb5 ─ a6 ─ Ba4
+                          ├ Nf6 ─ Nxe5
+                          └ d6  ─ d4
+             └ d4 ─ d5 ─ c4"""
+    repository = _repository()
+    builder = OpeningBuilderService(repository)
+    rep = builder.create_repertoire(CreateRepertoireRequest(name="Sib", color=Color.WHITE))
+    add = lambda parent, uci: builder.add_move(rep.id, parent, uci, is_user_prepared_move=True)  # noqa: E731
+    e4 = add(rep.root_node.id, "e2e4")
+    e5 = add(e4.id, "e7e5")
+    nf3 = add(e5.id, "g1f3")
+    nc6 = add(nf3.id, "b8c6")
+    bb5 = add(nc6.id, "f1b5")
+    a6 = add(bb5.id, "a7a6")
+    ba4 = add(a6.id, "b5a4")
+    nf6 = add(nf3.id, "g8f6")
+    nxe5 = add(nf6.id, "f3e5")
+    d6 = add(nf3.id, "d7d6")
+    d4b = add(d6.id, "d2d4")
+    d4 = add(rep.root_node.id, "d2d4")
+    d5 = add(d4.id, "d7d5")
+    c4 = add(d5.id, "c2c4")
+    loaded = repository.load_repertoire(rep.id)
+    return loaded, dict(e4=e4.id, nf3=nf3.id, bb5=bb5.id, ba4=ba4.id, nxe5=nxe5.id,
+                        d4b=d4b.id, d4=d4.id, c4=c4.id)
+
+
+def test_sibling_branches_are_served_back_to_back():
+    """Lines follow the tree (DFS): the three replies to 2...Nc6 / 2...Nf6 /
+    2...d6 come one after the other, and the unrelated 1.d4 line never sits
+    between them, whatever order FSRS made them due in."""
+    rep, ids = _sibling_tree()
+    progress = {node: _progress(node, **MASTERED) for node in ids.values()}
+    progress[ids["c4"]] = _progress(ids["c4"], attempts=3, correct=3,
+                                    due_at=NOW - timedelta(days=3), stability=3.0)
+    for key in ("ba4", "nxe5", "d4b"):
+        progress[ids[key]] = _progress(ids[key], **DUE)
+    plan = build_session_plan(rep.root_node, Color.WHITE, progress, session_size=4, now=NOW)
+    assert [c.target_ids for c in plan.cards] == [
+        (ids["ba4"],), (ids["nxe5"],), (ids["d4b"],), (ids["c4"],),
+    ]
+
+
+def test_weak_lines_lead_then_reviews_in_tree_order():
+    rep, ids = _sibling_tree()
+    progress = {node: _progress(node, **MASTERED) for node in ids.values()}
+    progress[ids["ba4"]] = _progress(ids["ba4"], **DUE)
+    progress[ids["c4"]] = _progress(ids["c4"], **WEAK)
+    progress[ids["d4b"]] = _progress(ids["d4b"], **DUE)
+    plan = build_session_plan(rep.root_node, Color.WHITE, progress, session_size=3, now=NOW)
+    assert [c.kind for c in plan.cards] == [CARD_WEAK, CARD_DUE, CARD_DUE]
+    assert [c.target_ids for c in plan.cards] == [(ids["c4"],), (ids["ba4"],), (ids["d4b"],)]
+
+
+def test_line_groups_due_moves_down_one_path_and_siblings_replay_the_prefix():
+    rep, ids = _sibling_tree()
+    progress = {node: _progress(node, **MASTERED) for node in ids.values()}
+    for key in ("nf3", "ba4", "nxe5"):
+        progress[ids[key]] = _progress(ids[key], **DUE)
+    plan = build_session_plan(rep.root_node, Color.WHITE, progress, session_size=3, now=NOW)
+    # Nf3 + Ba4 on the first path (Bb5 auto-played); Nxe5's line replays 1.e4 2.Nf3.
+    assert [c.target_ids for c in plan.cards] == [(ids["nf3"], ids["ba4"]), (ids["nxe5"],)]
 
 
 def test_branch_off_a_merging_path_splits_cards_at_the_fork():
@@ -549,7 +619,7 @@ def test_branch_off_a_merging_path_splits_cards_at_the_fork():
         for node in (ids["e4"], ids["nf3"], ids["bb5"], ids["bc4"])
     }
     plan = build_session_plan(
-        loaded.root_node, Color.WHITE, progress, seed=1, session_size=4,
+        loaded.root_node, Color.WHITE, progress, session_size=4,
         max_targets_per_card=3, now=NOW,
     )
     due_cards = [c for c in plan.cards if c.kind == CARD_DUE]
@@ -575,7 +645,7 @@ def test_weak_kind_wins_in_a_merged_card():
         ids["c4"]: _progress(ids["c4"], **MASTERED),
     }
     plan = build_session_plan(
-        repertoire.root_node, Color.WHITE, progress, seed=1, session_size=2, now=NOW
+        repertoire.root_node, Color.WHITE, progress, session_size=2, now=NOW
     )
     card = plan.cards[0]
     assert card.kind == CARD_WEAK
@@ -585,21 +655,20 @@ def test_weak_kind_wins_in_a_merged_card():
 # ---- determinism ------------------------------------------------------------
 
 
-def test_same_seed_same_plan_different_seed_can_differ():
+def test_planning_is_deterministic():
     repertoire, ids = _build_tree()
     progress = {
         node: _progress(node, **DUE)
         for node in (ids["e4"], ids["nf3"], ids["bb5"], ids["d4"], ids["c4"])
     }
     kwargs = dict(session_size=5, max_targets_per_card=1, now=NOW)
-    a = build_session_plan(repertoire.root_node, Color.WHITE, progress, seed=7, **kwargs)
-    b = build_session_plan(repertoire.root_node, Color.WHITE, progress, seed=7, **kwargs)
+    a = build_session_plan(repertoire.root_node, Color.WHITE, progress, **kwargs)
+    b = build_session_plan(repertoire.root_node, Color.WHITE, progress, **kwargs)
     assert a.cards == b.cards
 
 
-def test_weak_share_policy_keeps_seed_deterministic():
-    """The weak-share selection must stay seed-deterministic: mixed weak/due/new
-    pools, same seed twice → identical plans (cards are compared including order)."""
+def test_weak_share_policy_is_deterministic():
+    """Mixed weak/due/new pools planned twice → identical plans (order included)."""
     repertoire, ids = _build_tree()
     progress = {
         ids["nf3"]: _progress(ids["nf3"], **WEAK),
@@ -609,7 +678,7 @@ def test_weak_share_policy_keeps_seed_deterministic():
         # c4 untrained -> new
     }
     kwargs = dict(session_size=5, max_targets_per_card=1, new_cap=DEFAULT_NEW_CAP, now=NOW)
-    a = build_session_plan(repertoire.root_node, Color.WHITE, progress, seed=42, **kwargs)
-    b = build_session_plan(repertoire.root_node, Color.WHITE, progress, seed=42, **kwargs)
+    a = build_session_plan(repertoire.root_node, Color.WHITE, progress, **kwargs)
+    b = build_session_plan(repertoire.root_node, Color.WHITE, progress, **kwargs)
     assert a.cards == b.cards
     assert a.counts == b.counts

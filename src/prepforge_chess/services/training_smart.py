@@ -4,10 +4,12 @@ Orchestrates ``TrainingMode.SMART`` sessions over the card queues built by
 ``services/scheduler.py``. Kept separate from ``TrainingService`` on purpose:
 line rehearsal uses its own service.
 
-Session state reuses the existing ``TrainingSession`` row unchanged:
-- ``line_order``       — encoded cards (``kind:first:last``), not leaf ids,
+Session state lives on the ``TrainingSession`` row:
+- ``line_order``       — encoded line cards (``kind:repertoire:t1,t2,…``),
 - ``current_index``    — which card,
-- ``current_node_id``  — the pending target inside the card (None = first).
+- ``current_node_id``  — the pending target inside the card (None = first),
+- ``scope``            — all repertoires, one repertoire, or picked targets;
+                         Start resumes only a session of the same scope.
 
 Grading contract: the client reports an ``attempt`` number per prompt and the
 server writes spaced-repetition progress **only for attempt 1** — retries and
@@ -42,7 +44,6 @@ from prepforge_chess.core.models import (
 from prepforge_chess.services.scheduler import (
     DEFAULT_NEW_CAP,
     DEFAULT_SESSION_SIZE,
-    RUN_IN_PLIES,
     SessionPlan,
     TrainingCard,
     build_session_plan,
@@ -53,6 +54,7 @@ from prepforge_chess.services.scheduler import (
     mix_plans,
     own_move_nodes_on,
     path_to_node,
+    preorder_index,
 )
 from prepforge_chess.services.srs import rating_for
 from prepforge_chess.services.training import record_attempt
@@ -63,6 +65,11 @@ from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 # the position is still warm, far enough that it's recall rather than echo.
 # Sent in the smart-session payload for local requeues.
 REQUEUE_GAP = 3
+
+# Session scopes (TrainingSession.scope). Start resumes only the same scope.
+SCOPE_ALL = "all"
+SCOPE_REPERTOIRE = "repertoire"
+SCOPE_TARGETS = "targets"
 
 @dataclass(frozen=True)
 class SmartPrompt:
@@ -174,52 +181,20 @@ class SmartTrainingService:
         seed: Optional[int] = None,
         target_node_ids: Optional[List[str]] = None,
     ) -> TrainingSession:
-        """Resume an unfinished, still-intact smart session, else build a new
-        queue from current mastery. ``fresh`` forces a rebuild (the explicit
-        "start over" button)."""
+        """Resume this repertoire's unfinished, still-intact session, else
+        build a new queue. Picked targets always build a fresh ``targets``
+        session of their own; ``fresh`` forces a rebuild."""
         self.resumed = False
         repertoire = self._load_repertoire_or_raise(repertoire_id)
-        existing = self.repository.load_latest_training_session(
-            repertoire_id, self._owner_or_raise(), TrainingMode.SMART
-        )
-        if existing is not None and not fresh and not target_node_ids and self._resumable(existing, repertoire):
+        scope = SCOPE_TARGETS if target_node_ids else SCOPE_REPERTOIRE
+        existing = self._latest(repertoire_id, scope)
+        if existing is not None and not fresh and scope == SCOPE_REPERTOIRE and self._resumable(existing, [repertoire]):
             self.resumed = True
             return existing
-
-        actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-        plan = self._plan_single(
-            repertoire, actual_seed, session_size, new_cap, target_node_ids
-        )
+        plan = self._plan_single(repertoire, session_size, new_cap, target_node_ids)
         if not plan.cards:
             raise ValueError("repertoire has no trainable moves yet")
-
-        line_order = [encode_card(card) for card in plan.cards]
-        if existing is not None:
-            session = replace(
-                existing,
-                line_order=line_order,
-                current_index=0,
-                current_node_id=None,
-                mistakes=[],
-                mastered_nodes=[],
-                seed=actual_seed,
-                created_at=_utc_now(),
-                updated_at=_utc_now(),
-            )
-        else:
-            session = TrainingSession(
-                id=str(uuid.uuid4()),
-                repertoire_id=repertoire_id,
-                owner_user_id=self._owner_or_raise(),
-                mode=TrainingMode.SMART,
-                line_order=line_order,
-                current_index=0,
-                seed=actual_seed,
-            )
-        self.repository.restart_training_session(session, self.owner_user_id)
-        return session
-
-    # --------------------------------------------------------- mixed sessions
+        return self._install(existing, repertoire_id, scope, plan, seed)
 
     def active_repertoires(self, owner_user_id: str) -> List[Repertoire]:
         """The owner's active repertoires, full trees. Decides "which" from
@@ -247,36 +222,38 @@ class SmartTrainingService:
         """One smart session across ALL of the owner's active repertoires.
 
         The session row needs a real repertoire (FK), so it anchors on the
-        active repertoire with the smallest id — stable across restarts — and
-        mixedness lives in the cards themselves (4-part ``kind:rep:first:last``
-        encoding). With a single active repertoire this simply delegates to the
-        plain per-repertoire start."""
+        active repertoire with the smallest id; its ``scope`` is ``all``, so it
+        never resumes (or is resumed as) that repertoire's own session."""
         self.resumed = False
         reps = self.active_repertoires(owner_user_id)
         if not reps:
             raise ValueError("no active repertoires to train")
-        if len(reps) == 1:
-            return self.start_or_resume(
-                reps[0].id,
-                fresh=fresh,
-                session_size=session_size,
-                new_cap=new_cap,
-                seed=seed,
-            )
         anchor = min(reps, key=lambda rep: rep.id)
-        existing = self.repository.load_latest_training_session(
-            anchor.id, self._owner_or_raise(), TrainingMode.SMART
-        )
-        if existing is not None and not fresh and self._resumable_mixed(existing, reps):
+        existing = self._latest(anchor.id, SCOPE_ALL)
+        if existing is not None and not fresh and self._resumable(existing, reps):
             self.resumed = True
             return existing
-
-        actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
-        mixed = self._plan_mixed(reps, actual_seed, session_size, new_cap)
-        if not mixed.cards:
+        plan = self._plan_mixed(reps, session_size, new_cap)
+        if not plan.cards:
             raise ValueError("repertoires have no trainable moves yet")
+        return self._install(existing, anchor.id, SCOPE_ALL, plan, seed)
 
-        line_order = [encode_card(card) for card in mixed.cards]
+    def _latest(self, repertoire_id: str, scope: str) -> Optional[TrainingSession]:
+        return self.repository.load_latest_training_session(
+            repertoire_id, self._owner_or_raise(), TrainingMode.SMART, scope=scope
+        )
+
+    def _install(
+        self,
+        existing: Optional[TrainingSession],
+        repertoire_id: str,
+        scope: str,
+        plan: SessionPlan,
+        seed: Optional[int],
+    ) -> TrainingSession:
+        """Write a freshly planned queue, reusing the scope's session row."""
+        actual_seed = seed if seed is not None else random.SystemRandom().randint(1, 2**31 - 1)
+        line_order = [encode_card(card) for card in plan.cards]
         if existing is not None:
             session = replace(
                 existing,
@@ -292,9 +269,10 @@ class SmartTrainingService:
         else:
             session = TrainingSession(
                 id=str(uuid.uuid4()),
-                repertoire_id=anchor.id,
+                repertoire_id=repertoire_id,
                 owner_user_id=self._owner_or_raise(),
                 mode=TrainingMode.SMART,
+                scope=scope,
                 line_order=line_order,
                 current_index=0,
                 seed=actual_seed,
@@ -313,7 +291,6 @@ class SmartTrainingService:
     def _plan_single(
         self,
         repertoire: Repertoire,
-        seed: int,
         session_size: Optional[int] = None,
         new_cap: Optional[int] = None,
         target_node_ids: Optional[List[str]] = None,
@@ -322,7 +299,6 @@ class SmartTrainingService:
             repertoire.root_node,
             repertoire.color,
             self._progress_by_id(repertoire.id),
-            seed=seed,
             session_size=session_size if session_size is not None else DEFAULT_SESSION_SIZE,
             new_cap=new_cap if new_cap is not None else DEFAULT_NEW_CAP,
             target_node_ids=target_node_ids,
@@ -331,7 +307,6 @@ class SmartTrainingService:
     def _plan_mixed(
         self,
         reps: List[Repertoire],
-        seed: int,
         session_size: Optional[int] = None,
         new_cap: Optional[int] = None,
     ) -> SessionPlan:
@@ -342,72 +317,62 @@ class SmartTrainingService:
         # repertoires never decides how long the session is.
         remaining_size = max(0, session_size if session_size is not None else DEFAULT_SESSION_SIZE)
         remaining_new = max(0, new_cap if new_cap is not None else DEFAULT_NEW_CAP)
-        plans: List[tuple[str, SessionPlan, int, int]] = []
+        plans: List[tuple[Repertoire, SessionPlan, int, int]] = []
         for index, rep in enumerate(reps):
             remaining_reps = len(reps) - index
             size = -(-remaining_size // remaining_reps)
             new = -(-remaining_new // remaining_reps)
-            plan = self._plan_single(rep, seed + index, size, new)
-            plans.append((rep.id, plan, size, new))
+            plan = self._plan_single(rep, size, new)
+            plans.append((rep, plan, size, new))
             remaining_size -= plan.counts.get("targets", 0)
             remaining_new -= plan.counts.get("new", 0)
-        for index, (rep_id, plan, size, new) in enumerate(plans):
+        for index, (rep, plan, size, new) in enumerate(plans):
             if remaining_size <= 0:
                 break
             targets, fresh = plan.counts.get("targets", 0), plan.counts.get("new", 0)
             if targets < size and fresh < new:
                 continue  # already took everything it had
-            more = self._plan_single(
-                reps[index], seed + index, targets + remaining_size, fresh + max(0, remaining_new)
-            )
+            more = self._plan_single(rep, targets + remaining_size, fresh + max(0, remaining_new))
             remaining_size -= more.counts.get("targets", 0) - targets
             remaining_new -= more.counts.get("new", 0) - fresh
-            plans[index] = (rep_id, more, size, new)
-        return mix_plans([(rep_id, plan) for rep_id, plan, _, _ in plans], seed=seed)
-
-    def next_session_counts(self, owner_user_id: str) -> Dict[str, int]:
-        """Card counts of the queue a plain Start would serve: what is left of
-        a resumable session, else a freshly planned one. Planning is
-        deterministic in everything but card order, so the counts match."""
-        reps = self.active_repertoires(owner_user_id)
-        if not reps:
-            return {**card_counts([]), "resumed": 0}
-        anchor = reps[0] if len(reps) == 1 else min(reps, key=lambda rep: rep.id)
-        existing = self.repository.load_latest_training_session(anchor.id, self._owner_or_raise(), TrainingMode.SMART)
-        resumable = existing is not None and (
-            self._resumable(existing, anchor) if len(reps) == 1
-            else self._resumable_mixed(existing, reps)
+            plans[index] = (rep, more, size, new)
+        return mix_plans(
+            [(rep.id, plan, preorder_index(rep.root_node, rep.color)) for rep, plan, _, _ in plans]
         )
-        if resumable:
-            counts = card_counts(
-                decode_card(raw) for raw in existing.line_order[existing.current_index:]
-            )
-        else:
-            plan = self._plan_single(anchor, 0) if len(reps) == 1 else self._plan_mixed(reps, 0)
-            counts = card_counts(plan.cards)
-        return {**counts, "resumed": int(resumable)}
 
-    def _resumable_mixed(
-        self, session: TrainingSession, reps: List[Repertoire]
-    ) -> bool:
+    def preview(self, owner_user_id: str, repertoire_id: Optional[str] = None) -> Dict[str, int]:
+        """Card counts of the queue a plain Start of this scope would serve:
+        what is left of a resumable session of the SAME scope, else a freshly
+        planned one (planning is deterministic, so the counts match).
+        ``resumed`` says which, ``left`` how many cards remain."""
+        if repertoire_id is None:
+            reps = self.active_repertoires(owner_user_id)
+            if not reps:
+                return {**card_counts([]), "resumed": 0, "left": 0}
+            existing = self._latest(min(reps, key=lambda rep: rep.id).id, SCOPE_ALL)
+        else:
+            reps = [self._load_repertoire_or_raise(repertoire_id)]
+            existing = self._latest(repertoire_id, SCOPE_REPERTOIRE)
+        if existing is not None and self._resumable(existing, reps):
+            cards = [decode_card(raw) for raw in existing.line_order[existing.current_index:]]
+            counts = card_counts(cards)
+            return {**counts, "resumed": 1, "left": counts["cards"]}
+        plan = self._plan_single(reps[0]) if repertoire_id else self._plan_mixed(reps)
+        counts = card_counts(plan.cards)
+        return {**counts, "resumed": 0, "left": counts["cards"]}
+
+    def _resumable(self, session: TrainingSession, reps: List[Repertoire]) -> bool:
+        """An unfinished session whose every card still resolves to nodes of
+        the scope's repertoires (O(cards) membership on the cached indexes)."""
         if not session.line_order or session.current_index >= len(session.line_order):
             return False
-        # Reuse the per-request node indexes (built when each rep was loaded);
-        # the check is then O(cards) membership instead of a full-tree DFS per
-        # repertoire on every resume.
         index_by_rep = {rep.id: self._node_index(rep.id) for rep in reps}
         for raw in session.line_order:
             card = decode_card(raw)
-            # A 3-part card means this is a plain single-repertoire session
-            # parked on the anchor — never resume it as a mixed one.
             if card is None:
                 return False
             node_ids = index_by_rep.get(card.repertoire_id)
-            if (
-                node_ids is None
-                or card.first_target_id not in node_ids
-                or card.last_target_id not in node_ids
-            ):
+            if node_ids is None or any(target not in node_ids for target in card.target_ids):
                 return False
         return True
 
@@ -440,20 +405,6 @@ class SmartTrainingService:
 
     def counts(self, session: TrainingSession) -> Dict[str, int]:
         return card_counts(decode_card(raw) for raw in session.line_order)
-
-    def _resumable(self, session: TrainingSession, repertoire: Repertoire) -> bool:
-        if not session.line_order or session.current_index >= len(session.line_order):
-            return False
-        # The node index was built when the repertoire was loaded; resuming is
-        # then an O(cards) membership check, not a whole-tree walk.
-        node_ids = self._node_index(repertoire.id)
-        for raw in session.line_order:
-            card = decode_card(raw)
-            if card is None:
-                return False
-            if card.first_target_id not in node_ids or card.last_target_id not in node_ids:
-                return False
-        return True
 
     # ----------------------------------------------------------------- prompt
 
@@ -521,14 +472,8 @@ class SmartTrainingService:
             )
         except ValueError:
             return None
-        own = own_move_nodes_on(path, repertoire.color)
-        first_index = next(
-            (i for i, node in enumerate(own) if node.id == card.first_target_id), None
-        )
-        if first_index is None:
-            return None
-        targets = own[first_index:]
-        if not targets:
+        targets = line_targets(path, repertoire.color, card)
+        if targets is None:
             return None
         expected_target_index = next(
             (i for i, node in enumerate(targets) if node.id == session.current_node_id),
@@ -550,12 +495,7 @@ class SmartTrainingService:
     def _prompt_from_context(self, context: _CardContext) -> SmartPrompt:
         expected = context.expected
         move = expected.move
-        path_pos = next(i for i, node in enumerate(context.path) if node.id == expected.id)
-        run_in = [
-            node
-            for node in context.path[max(0, path_pos - RUN_IN_PLIES) : path_pos]
-            if node.move is not None
-        ]
+        run_in = target_run_in(context.path, context.targets, context.expected_target_index)
         start_fen = run_in[0].move.fen_before if run_in else move.fen_before
         piece = piece_name_at(move.fen_before, move.uci)
         annotation = (
@@ -610,24 +550,14 @@ class SmartTrainingService:
                 )
             except ValueError:
                 continue
-            own = own_move_nodes_on(path, card_rep.color)
-            first_index = next(
-                (i for i, node in enumerate(own) if node.id == card.first_target_id),
-                None,
-            )
-            if first_index is None:
+            line = line_targets(path, card_rep.color, card)
+            if line is None:
                 continue
             targets = []
-            for node in own[first_index:]:
+            for target_index, node in enumerate(line):
                 move = node.move
-                if move is None:
-                    continue
                 path_pos = next(i for i, p in enumerate(path) if p.id == node.id)
-                run_in = [
-                    p
-                    for p in path[max(0, path_pos - RUN_IN_PLIES) : path_pos]
-                    if p.move is not None
-                ]
+                run_in = target_run_in(path, line, target_index)
                 piece = piece_name_at(move.fen_before, move.uci)
                 annotation = (
                     node.strategic_idea or node.typical_plan or (node.comment or "")
@@ -1024,6 +954,32 @@ class SmartTrainingService:
         if not self.owner_user_id:
             raise ValueError("training service requires an owner")
         return self.owner_user_id
+
+
+def line_targets(
+    path: List[OpeningNode], color, card: TrainingCard
+) -> Optional[List[OpeningNode]]:
+    """The card's targets as live nodes on its path, in path order; None when
+    an edit in Build moved any of them off the line."""
+    own = {node.id: node for node in own_move_nodes_on(path, color)}
+    targets = [own.get(target_id) for target_id in card.target_ids]
+    if any(node is None or node.move is None for node in targets):
+        return None
+    order = [next(i for i, node in enumerate(path) if node.id == t.id) for t in targets]
+    return targets if order == sorted(order) else None
+
+
+def target_run_in(
+    path: List[OpeningNode], targets: List[OpeningNode], index: int
+) -> List[OpeningNode]:
+    """Moves auto-played before a target's prompt: from move 1 for the line's
+    first target, else from after the previous target's reply. Own moves that
+    are not due play themselves here instead of being asked."""
+    pos = next(i for i, node in enumerate(path) if node.id == targets[index].id)
+    start = 0
+    if index > 0:
+        start = next(i for i, node in enumerate(path) if node.id == targets[index - 1].id) + 2
+    return [node for node in path[start:pos] if node.move is not None]
 
 
 def _numbered_line(nodes: List[OpeningNode]) -> str:

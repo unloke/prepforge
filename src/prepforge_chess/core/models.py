@@ -212,6 +212,8 @@ class TrainingSession:
     mode: TrainingMode
     line_order: List[str]
     current_index: int = 0
+    # Smart queue scope: "all" repertoires, one "repertoire", or picked "targets".
+    scope: str = "repertoire"
     current_node_id: Optional[str] = None
     mistakes: List[str] = field(default_factory=list)
     mastered_nodes: List[str] = field(default_factory=list)

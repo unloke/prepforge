@@ -363,6 +363,8 @@ training_sessions = Table(
     # Whose session: anyone with access to a repertoire trains it on their own.
     Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_sessions_owner_user_id"), nullable=False),
     Column("mode", Text, nullable=False),
+    # Smart queue scope: "all" repertoires, one "repertoire", or picked "targets".
+    Column("scope", Text, nullable=False, server_default="repertoire"),
     Column("line_order_json", Text, nullable=False),
     Column("current_index", Integer, nullable=False),
     Column("current_node_id", Text, ForeignKey("opening_nodes.id")),

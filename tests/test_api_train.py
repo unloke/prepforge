@@ -197,9 +197,56 @@ def test_smart_summary_preview_counts_the_next_queue(client):
     _white_repertoire_with_e4(client)
     body = client.get("/api/train/smart/summary?mixed=true&preview=true").json()
     assert body["next_session"] == {
-        "weak": 0, "due": 0, "new": 1, "polish": 0, "cards": 1, "resumed": 0,
+        "weak": 0, "due": 0, "new": 1, "polish": 0, "cards": 1, "resumed": 0, "left": 1,
     }
-    assert "next_session" not in client.get("/api/train/smart/summary?mixed=true").json()
+    assert body["outlook"] == {"now": 0, "today": 0, "week": 0}
+    plain = client.get("/api/train/smart/summary?mixed=true").json()
+    assert "next_session" not in plain and "outlook" not in plain
+
+
+def test_smart_summary_preview_is_per_scope(client):
+    """Home's Due row reads the scope it will start: a started one-repertoire
+    queue resumes there, while the all-repertoires preview still plans afresh."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    started = client.post(
+        "/api/train/smart/start", json={"repertoire_id": rep, "seed": 3},
+        headers=csrf_headers(client),
+    ).json()
+    assert started["scope"] == "repertoire"
+    one = client.get(f"/api/train/smart/summary?repertoire_id={rep}&preview=true").json()
+    assert one["next_session"]["resumed"] == 1
+    every = client.get("/api/train/smart/summary?mixed=true&preview=true").json()
+    assert every["next_session"]["resumed"] == 0
+    mixed = client.post(
+        "/api/train/smart/start", json={"mixed": True, "seed": 4}, headers=csrf_headers(client),
+    ).json()
+    assert mixed["scope"] == "all" and mixed["resumed"] is False
+    assert mixed["session_id"] != started["session_id"]
+
+
+def test_outlook_counts_reviews_due_now_today_and_this_week(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = client.post(
+        "/api/train/smart/start", json={"repertoire_id": rep, "seed": 3},
+        headers=csrf_headers(client),
+    ).json()
+    node = start["cards"][0]["targets"][0]["node_id"]
+    synced = client.post("/api/train/smart/sync", json={
+        "session_id": start["session_id"], "session_generation": start["session_generation"],
+        "attempts": [{"node_id": node, "correct": False, "attempt_uuid": "o-1"}],
+    }, headers=csrf_headers(client))
+    assert synced.status_code == 200
+    from datetime import datetime, timezone
+
+    utc = datetime.now(timezone.utc)
+    noon = 720 - (utc.hour * 60 + utc.minute)  # the player's clock reads ~noon
+    outlook = client.get(
+        f"/api/train/smart/summary?repertoire_id={rep}&preview=true&utc_offset={noon}"
+    ).json()["outlook"]
+    # A miss relearns within minutes: due today and this week, not yet now.
+    assert outlook == {"now": 0, "today": 1, "week": 1}
 
 
 def test_hint_reveals_expected_move(client):
