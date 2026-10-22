@@ -74,12 +74,12 @@ export function wilsonInterval(w, d, l, tail, z = 1.96) {
   return tail === "upper" ? (center + margin) / denom : (center - margin) / denom;
 }
 
-/** Wilson lower bound of score% (draw = 0.5). Used for ranking, not display. */
+/** Wilson lower bound of score% (draw = 0.5). Used for display, not ranking. */
 export function wilsonScorePct(w, d, l) {
   return Math.round(wilsonInterval(w, d, l, "lower") * 100);
 }
 
-/** Wilson upper bound — weakness must clear this to count as a proven attack target. */
+/** Wilson upper bound; kept for the archived research prior (`research/scout-legacy-prior.js`). */
 export function wilsonScoreUpperPct(w, d, l) {
   return Math.round(wilsonInterval(w, d, l, "upper") * 100);
 }
@@ -697,24 +697,6 @@ function nodeScorePct(node) {
   return node.count > 0 ? Math.round((node.score / node.count) * 100) : 0;
 }
 
-function nodeToLineGroup(root, node, sans, ucis, pathKey) {
-  return {
-    line: pathKey,
-    sans: [...sans],
-    ucis: [...ucis],
-    games: node.gameCount,
-    w: node.w,
-    d: node.d,
-    l: node.l,
-    scorePct: nodeScorePct(node),
-    share: root.count > 0 ? node.count / root.count : 0,
-    // Raw (un-decayed) proportion for DISPLAY — recency-weighted `share`/`count`
-    // collapse to ~0 for old lines, which renders as a misleading "0% · n=0".
-    rawShare: root.gameCount > 0 ? node.gameCount / root.gameCount : 0,
-    count: node.count,
-  };
-}
-
 /**
  * Transparent down-weight for non-representative games. A game the scouted opponent LOST
  * by early resignation while still holding a healthy share of their clock is a one-off
@@ -808,133 +790,23 @@ export function buildOpeningTrie(
   return root;
 }
 
-// Walk the trie to first-move families plus distinct lines at 2–4 plies.
-export function openingBreakdown(root, { minGames = 1 } = {}) {
-  const groups = [];
-  const seen = new Set();
-
-  const add = (node, sans, ucis, pathKey) => {
-    if (node.gameCount < minGames) return;
-    if (seen.has(pathKey)) return;
-    seen.add(pathKey);
-    groups.push(nodeToLineGroup(root, node, sans, ucis, pathKey));
-  };
-
-  for (const [key, child] of root.children) {
-    const [uci, san] = key.split("|");
-    add(child, [san], [uci], key);
-  }
-
-  const walk = (node, depth, sans, ucis, pathKeys) => {
-    if (depth >= 2 && depth <= 4) {
-      add(node, sans, ucis, pathKeys.join(">"));
-    }
-    if (depth >= 4) return;
-    for (const [key, child] of node.children) {
-      const [uci, san] = key.split("|");
-      walk(child, depth + 1, [...sans, san], [...ucis, uci], [...pathKeys, key]);
-    }
-  };
-  walk(root, 0, [], [], []);
-
-  return groups;
-}
-
-// Two lines are nested when one's move path is a prefix of the other's (e.g. "1.e4 c5"
-// and "1.e4 c5 2.Nf3" are the same Sicilian seen at different depths). We compare on the
-// ">"-joined uci path so a partial-uci coincidence can't false-match.
-export function isNestedLine(a, b) {
-  const x = a.line || branchPathKey(a.ucis || []);
-  const y = b.line || branchPathKey(b.ucis || []);
-  return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
-}
-
-// A line only earns the "Attack" badge when they sit MEANINGFULLY below their own
-// baseline — either Wilson-confidently (upper bound still under baseline) or by a clear
-// raw margin on a real sample. A line a couple of points under baseline is neither a
-// weakness to punish nor a weapon to fear, so it stays neutral (no badge, not a target).
+// A line earns the weak-spot badge when Maia rates their play from its end
+// clearly below their usual result. A line a couple of points under baseline is
+// neither a weakness to punish nor a weapon to fear, so it stays neutral.
 export const SCOUT_ATTACK_MIN_MARGIN = 6;
-// Fewer games than this can't make a line "main" or a raw-margin weak spot:
-// one loss is not a pattern.
-export const SCOUT_BADGE_MIN_GAMES = 3;
 
 export function enrichPrepTarget(g, baselineScorePct, { maiaScorePct = null } = {}) {
-  const useMaia = maiaScorePct != null;
-  // A game-plan row is judged on its anchor, not the single game that played the whole line.
-  const r = g.routeWdl ? { ...g.routeWdl, scorePct: g.routeScorePct, games: g.routeSupportGames } : g;
-  const scoreForBadge = useMaia ? maiaScorePct : r.scorePct;
-  const wilsonLower = wilsonScorePct(r.w ?? 0, r.d ?? 0, r.l ?? 0);
-  const wilsonUpper = wilsonScoreUpperPct(r.w ?? 0, r.d ?? 0, r.l ?? 0);
-  const below = baselineScorePct - scoreForBadge;
-  const wilsonMargin = useMaia ? 0 : Math.max(0, baselineScorePct - wilsonUpper);
-  const realSample = useMaia || (r.games ?? 0) >= SCOUT_BADGE_MIN_GAMES;
-  const isAttack =
-    below > 0 && (wilsonMargin > 0 || (below >= SCOUT_ATTACK_MIN_MARGIN && realSample));
-  const isWeapon = !isAttack && realSample && scoreForBadge >= baselineScorePct;
-  const opportunity =
-    g.share *
-    (wilsonMargin > 0 ? wilsonMargin : below >= SCOUT_ATTACK_MIN_MARGIN ? below * 0.25 : 0);
+  const maia = maiaScorePct ?? g.maiaScorePct ?? null;
+  const below = maia == null ? 0 : baselineScorePct - maia;
+  const isAttack = below >= SCOUT_ATTACK_MIN_MARGIN;
+  const isWeapon = !isAttack && maia != null && below <= -SCOUT_ATTACK_MIN_MARGIN;
   return {
     ...g,
-    maiaScorePct: useMaia ? maiaScorePct : g.maiaScorePct,
-    wilsonScorePct: wilsonLower,
-    wilsonScoreUpperPct: wilsonUpper,
+    maiaScorePct: maia,
     belowBaseline: isAttack ? below : 0,
-    opportunity,
+    opportunity: g.share * (isAttack ? below * 0.25 : 0),
     prepCategory: isAttack ? "attack" : isWeapon ? "weapon" : "neutral",
   };
-}
-
-// Rank by recency-weighted share × Wilson-below-baseline; collapse nested lines; split
-// attack targets (below baseline) from main-weapon lines (high share, at/above baseline).
-export function recommendTargets(
-  breakdown,
-  baselineScorePct,
-  {
-    limit = 8,
-    minGames = WEAKNESS_MIN_GAMES,
-    oppColor = null,
-    weaponShareMin = 0.12,
-    attackLimit = 5,
-    weaponLimit = 3,
-  } = {},
-) {
-  const eligible = breakdown
-    .filter((g) => (g.routeSupportGames ?? g.games) >= minGames)
-    .map((g) => {
-      if (!oppColor) return enrichPrepTarget(g, baselineScorePct);
-      const normalized = normalizeToOpponentTerminal(g.ucis, g.sans, oppColor);
-      if (!normalized) return null;
-      // Refresh `line` to the normalised path: two deeper lines can truncate to the same
-      // opponent-terminal move (e.g. "1.d4 Nf6" and "1.d4 g6" → "1.d4"), and the nested
-      // dedup below keys off `line`, so a stale original path would leak duplicate rows.
-      return enrichPrepTarget(
-        { ...g, ucis: normalized.ucis, sans: normalized.sans, line: triePathKey(normalized.ucis) },
-        baselineScorePct,
-      );
-    })
-    .filter(Boolean);
-
-  const attacks = eligible
-    .filter((g) => g.prepCategory === "attack")
-    .sort((a, b) => b.opportunity - a.opportunity);
-  const weapons = eligible
-    .filter((g) => g.prepCategory === "weapon" && g.share >= weaponShareMin)
-    .sort((a, b) => b.share - a.share || b.games - a.games);
-
-  const chosen = [];
-  const pickFrom = (list, cap) => {
-    let n = 0;
-    for (const g of list) {
-      if (chosen.some((c) => isNestedLine(c, g))) continue;
-      chosen.push(g);
-      n += 1;
-      if (n >= cap || chosen.length >= limit) break;
-    }
-  };
-  pickFrom(attacks, attackLimit);
-  if (chosen.length < limit) pickFrom(weapons, weaponLimit);
-  return chosen;
 }
 
 const openingPhaseCache = new Map();
@@ -1325,14 +1197,12 @@ export function rankGamePlan(
   } else {
     selected = selectPreparationRoutes(eligible, { baseline: baselineScorePct, limit });
   }
-  // The weak-spot label is exactly the selection's weak-spot test; a Maia estimate
-  // changes the shown score, never the category.
-  for (const route of selected) if (route.prepCategory === "attack" && !(route.preparationEvidence.value > 0)) {
-    route.prepCategory = "neutral";
-    route.belowBaseline = 0;
-  } else if (route.preparationEvidence.value > 0 && route.prepCategory !== "attack") {
-    route.prepCategory = "attack";
-    route.belowBaseline = Math.max(1, Math.round(baselineScorePct - (route.routeScorePct ?? route.scorePct)));
+  // The weak-spot label is exactly the selection's weak-spot test: a positive
+  // utility is Maia rating their play from this leaf below their usual result.
+  for (const route of selected) {
+    const weak = route.preparationEvidence.value > 0;
+    route.prepCategory = weak ? "attack" : route.prepCategory === "attack" ? "neutral" : route.prepCategory;
+    route.belowBaseline = weak ? Math.max(1, Math.round(baselineScorePct - route.preparationEvidence.maiaScore * 100)) : 0;
   }
   if (oppColor && games && lineLastSeen) {
     for (const route of selected) if (!route.lastSeen) {

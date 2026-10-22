@@ -32,25 +32,21 @@ export function opponentOnlyReach(route) {
       ? Math.min(1, (d.moveWeight ?? d.moveGames) / (d.parentWeight ?? d.parentGames)) : 0), 1);
 }
 
-/** Baseline-centred W/D/L posterior; Maia is supplemental, never a pseudo-game. */
+/**
+ * One line's preparation value. Reach and engine safety are the only evidence
+ * about the opponent; the weakness it exploits is Maia's leaf score for how they
+ * play from there, never their whole-game results.
+ *
+ * A candidate with no Maia read has no weakness signal, so it is not eligible
+ * (it can still fill a slot through `softValue`). Maia's probability is used as a
+ * probability: it is never added to the W/D/L counts as a pseudo-game.
+ */
 export function preparationValue(route, baseline = 50) {
   const support = Math.max(0, route.routeSupportGames ?? route.games ?? 0);
   const total = Math.max(support, route.evidenceGames ?? support);
   const coverage = opponentMoveProbability(support, total, "wilson");
-  const rawWdl = route.routeWdl ?? ((route.w ?? 0) + (route.d ?? 0) + (route.l ?? 0) === support ? route : null);
-  const rawScore = rawWdl && support > 0 ? ((rawWdl.w ?? 0) + 0.5 * (rawWdl.d ?? 0)) / support
-    : (route.routeScorePct ?? route.scorePct ?? baseline) / 100;
-  const x = route.selectionWdl ?? { w: rawWdl?.w ?? support * rawScore,
-    d: rawWdl?.d ?? 0, l: rawWdl?.l ?? support * (1 - rawScore), weight: support, weightSquared: support };
-  const weightedSupport = x.weight;
-  const effectiveSupport = x.weightSquared > 0 ? weightedSupport ** 2 / x.weightSquared : 0;
   const b = route.selectionBaseline?.score ?? baseline / 100;
-  const q = route.selectionBaseline?.prior ?? { w: b, d: 0, l: 1 - b };
-  const aw = x.w + 8 * q.w, ad = x.d + 8 * q.d, al = x.l + 8 * q.l;
-  const a = aw + ad + al;
-  const shrunkScore = a > 0 ? (aw + 0.5 * ad) / a : b;
-  const sigma = Math.sqrt(Math.max(0, ((aw + 0.25 * ad) / a - shrunkScore ** 2) / (a + 1)));
-  const weakness = Math.max(0, b - shrunkScore - 0.5 * sigma);
+  const maiaScore = Number.isFinite(route.maiaScorePct) ? route.maiaScorePct / 100 : null;
   const cp = route.prefilterScore;
   const engine = route.mateIn > 0 ? 1 : Number.isFinite(cp)
     ? Math.max(0, cp) / (100 + Math.max(0, cp)) : 0.1;
@@ -62,15 +58,16 @@ export function preparationValue(route, baseline = 50) {
   const cost = 1 + 0.03 * Math.max(0, Math.ceil((route.evidencePlies ?? route.ucis?.length ?? 0) / 2) - 4);
   const opportunity = 1 + 0.2 * engine;
   const engineOk = !(route.userMate < 0) && !(Number.isFinite(cp) && cp < -75);
-  const eligible = support >= 3 && effectiveSupport >= 2 && reach >= 0.1 &&
+  const supported = support >= 3 && reach >= 0.1 &&
     (route.routeReach == null || route.routeReach >= 0.1) && engineOk;
-  const value = eligible ? reach * weakness * opportunity / cost : 0;
-  // Fills the remaining slots once weak spots run out: likely lines first,
-  // tilted toward where they score below their usual result. Always >= 0.
-  const softValue = b > 0 ? reach * Math.max(0, 1 + (b - shrunkScore - 0.5 * sigma) / b) * opportunity / cost : 0;
-  return { support, total, coverage, rawScore, weightedSupport, effectiveSupport, shrunkScore, sigma,
-    baseline: b, weakness, engine, engineOk, cost, conditionalReach: reach, rawReach: decisions.at(-1)?.reach ?? null,
-    decisionCoverage, opportunity, terminalValue: value, value, softValue };
+  const weakness = maiaScore == null ? 0 : Math.max(0, b - maiaScore);
+  const value = supported && maiaScore != null ? reach * weakness * opportunity / cost : 0;
+  // Fills the remaining slots once weak spots run out: the lines they reach
+  // most often first, tilted toward the ones Maia rates below their usual level.
+  const softValue = reach * Math.max(0, 1 + (b - (maiaScore ?? b)) / (b || 1)) * opportunity / cost;
+  return { support, total, coverage, maiaScore, baseline: b, weakness, engine, engineOk, cost,
+    conditionalReach: reach, rawReach: decisions.at(-1)?.reach ?? null, decisionCoverage, opportunity,
+    terminalValue: value, value, softValue };
 }
 
 const MIN_ROW_PLIES = 8;
@@ -123,20 +120,18 @@ export function selectPreparationRoutes(routes, { limit = 12, baseline = 50 } = 
     return b.share - a.share || routeKey(a.route).localeCompare(routeKey(b.route));
   };
   // Pass 1: one line per anchor, best anchor first: the most common observed
-  // line through it. Every row keeps its own (most specific) evidence, so a weak
-  // anchor is shown by a line that stays weak, never one that runs into a
-  // sub-branch where they do well.
+  // line through it. A weak anchor is shown by a line that is itself weak (its
+  // own Maia leaf), never by a continuation where they do well.
   const anchorRows = new Map();
   for (const row of rows) if (!anchorRows.has(row.anchor)) anchorRows.set(row.anchor, row);
   for (const anchorRow of anchorRows.values()) {
     if (picked.length >= budget) break;
-    const weak = anchorRow.evidence.value > 0;
     // A branch already shown by a picked line needs no second row.
     if (picked.some(route => anchorRow.anchorUcis.every((move, i) => route.ucis[i] === move))) continue;
     const through = rows.filter(row => full(row) && free(row) && distinct(row) &&
-      (row.anchor === anchorRow.anchor || (weak ? row.evidence.value > 0 : true)) &&
       anchorRow.anchorUcis.every((move, i) => row.route.ucis[i] === move));
-    const line = through.sort(typical(anchorRow.anchorUcis.length))[0];
+    const weakThrough = through.filter(row => row.evidence.value > 0);
+    const line = (weakThrough.length ? weakThrough : through).sort(typical(anchorRow.anchorUcis.length))[0];
     if (line) take(line);
   }
   // Pass 2: further lines, strongest evidence first; then shorter ones.
