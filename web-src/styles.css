@@ -437,7 +437,6 @@ h2 {
   transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
-.rail:not(.is-nav-collapsed):hover,
 .rail:has(:focus-visible) {
   width: var(--rail-open);
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
@@ -518,15 +517,30 @@ h2 {
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-.rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span),
 .rail:has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
   opacity: 1;
   transition-delay: 90ms;
 }
 
-.rail:not(.is-nav-collapsed):hover .nav-group-label::after,
 .rail:has(:focus-visible) .nav-group-label::after {
   opacity: 0;
+}
+
+/* Hover opens the rail only where there is a pointer that hovers. A touch
+   screen wide enough for the rail (a phone on its side, a tablet) keeps :hover
+   after a tap, so a tap on the rail's edge or a group label left the 204px
+   overlay open over the board and the panel until the next tap elsewhere. */
+@media (hover: hover) {
+  .rail:not(.is-nav-collapsed):hover {
+    width: var(--rail-open);
+    box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
+    transition-delay: 60ms;
+  }
+  .rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span) {
+    opacity: 1;
+    transition-delay: 90ms;
+  }
+  .rail:not(.is-nav-collapsed):hover .nav-group-label::after { opacity: 0; }
 }
 
 .rail-foot {
@@ -2178,7 +2192,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   max-height: var(--study-h);
   overflow: hidden;
 }
-@media (min-width: 861px) {
+@media (min-width: 861px), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
   #analyze-sidebar {
     height: auto;
     align-self: start;
@@ -3286,7 +3300,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
-@media (max-width: 860px) {
+@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
   .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
   .dock { flex: none !important; }
@@ -3318,7 +3332,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    state, and the eye read that ground as content that failed to load. Long
    setup content (Practice game's pickers) still caps at the viewport and
    scrolls inside. */
-@media (min-width: 861px) {
+@media (min-width: 861px), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
   #view-train .train-sidebar { height: auto; align-self: start; }
 }
 #view-train .board-area { position: relative; }
@@ -3705,7 +3719,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    under the session card. */
 #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
-@media (max-width: 860px) {
+@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
 }
@@ -4923,7 +4937,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Responsive */
 
-@media (max-width: 860px) {
+/* The study screens stack at ≤860px, except a short landscape screen (a
+   phone on its side, 761-860 x ≤520): stacked there, the board shrank to 55vh
+   (about 210px at 844x390) and the panel started under the fold. It keeps the
+   two columns instead, the board sized by the height term of --board-size.
+   The same split is on the other ≤860 / ≥861 study rules. */
+@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
      normally, because a fixed height here would crush the board on a phone. Two
      columns hold down to 860px (see .study --study-panel-min), so this only
@@ -5356,7 +5375,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 /* Engine on in Build: the inspector takes more of the column so the lines and
    the Explorer both fit; the (mostly short) move tree scrolls instead. */
-@media (min-width: 861px) {
+@media (min-width: 861px), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
   .dock:has(#explorer-rows.has-eval) { flex-basis: clamp(300px, 58%, 520px); }
 }
 

@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "styles.css"), "utf8");
 
 it("the desktop panel ends at its content instead of stretching to the board", () => {
-  const desktop = css.match(/@media \(min-width: 861px\) \{\s*#view-train \.train-sidebar \{[^}]*\}\s*\}/);
+  const desktop = css.match(/@media \(min-width: 861px\)[^{]*\{\s*#view-train \.train-sidebar \{[^}]*\}\s*\}/);
   expect(desktop, "desktop Train panel rule").not.toBeNull();
   expect(desktop[0]).toMatch(/height: auto/);
   expect(desktop[0]).toMatch(/align-self: start/);
