@@ -97,14 +97,15 @@
   .set-row,
   .set .pf-row {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 190px minmax(0, 1fr);
     align-items: center;
+    justify-items: start;
     gap: 24px;
     padding: 8px 0;
   }
   .set-row > span:first-child,
   .set .pf-row-text {
-    max-width: 220px;
+    max-width: 190px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
