@@ -317,6 +317,19 @@ def list_repertoires(
     }
 
 
+def _build_view(repo: WorkspaceRepository, meta: dict[str, Any], user_id: str) -> dict[str, Any]:
+    """The Build payload of a readable repertoire as this user sees it: editors
+    get ``writable``; a reader gets the tree without the owner's training colour."""
+    payload = build_workspace_payload(repo, meta["id"], owner_user_id=meta["owner_user_id"])
+    payload["writable"] = can_edit(user_id, meta)
+    if not payload["writable"]:
+        _strip_readonly_build_payload(payload)
+        payload["shared"] = True
+        if meta.get("visibility") == "team" and meta.get("team_id"):
+            payload["share_team_id"] = meta["team_id"]
+    return payload
+
+
 @router.get("/build/load")
 def build_load(
     repertoire_id: str,
@@ -329,14 +342,50 @@ def build_load(
     can write; a team member can read one shared to their team (``writable=false``).
     Computes no chess — pure serialization of the stored tree + training progress."""
     meta = _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
-    payload = build_workspace_payload(repo, repertoire_id, owner_user_id=meta["owner_user_id"])
-    payload["writable"] = meta["owner_user_id"] == owner
-    if not payload["writable"]:
-        _strip_readonly_build_payload(payload)
-        payload["shared"] = True
-        if meta.get("visibility") == "team" and meta.get("team_id"):
-            payload["share_team_id"] = meta["team_id"]
-    return payload
+    return _build_view(repo, meta, owner)
+
+
+@router.get("/build/changes")
+def build_changes(
+    repertoire_id: str,
+    since: int = Query(ge=0),
+    user: User = Depends(current_user),
+    owner: str = Depends(current_owner),
+    repo: WorkspaceRepository = Depends(get_repository),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """What changed in a readable repertoire after revision ``since``: the current
+    state of every node written since then, the ids deleted since then, the name,
+    and one entry per write (kind, author, client) so the viewer can say what
+    happened. Polled by every open Build view; an unchanged repertoire costs one
+    indexed read. ``reset`` means the log no longer reaches back to ``since``
+    (or the tree was replaced): reload it with ``/build/load``."""
+    meta = _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
+    revision = meta["revision"]
+    if since >= revision:
+        return {"revision": revision}
+    ops = repo.repertoire_ops_since(repertoire_id, since)
+    if not ops or ops[0]["revision"] != since + 1 or any(op.get("reset") for op in ops):
+        return {"revision": revision, "reset": True}
+    view = _build_view(repo, meta, owner)
+    removed = {node_id for op in ops for node_id in op.get("removed", ())}
+    written = {node_id for op in ops for node_id in op.get("nodes", ())} - removed
+    nodes = [node for node in view["nodes"] if node["id"] in written]
+    # A written node that is gone now went with a deleted ancestor.
+    removed |= written - {node["id"] for node in nodes}
+    return {
+        # The tree was read after these ops, so it holds at least all of them.
+        "revision": ops[-1]["revision"],
+        "name": view["name"],
+        "nodes_total": view["nodes_total"],
+        "health": view.get("health"),
+        "nodes": nodes,
+        "removed": sorted(removed),
+        "ops": [
+            {key: op[key] for key in ("revision", "kind", "actor_user_id", "client_id")}
+            for op in ops
+        ],
+    }
 
 
 class ShareRepertoireBody(BaseModel):
