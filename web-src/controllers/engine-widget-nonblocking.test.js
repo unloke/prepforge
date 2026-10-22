@@ -73,7 +73,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze" } = {
     // The real painter fills every slot under the card; this one fills the card's.
     paintUnlocks: () => {
       row.hidden = choiceNow !== "ask";
-      row.innerHTML = choiceNow === "ask" ? `<div class="unlock" data-place="${row.dataset.unlockPlace}">Full Stockfish</div>` : "";
+      row.innerHTML = choiceNow === "ask" ? html`<div class="unlock" data-place="${row.dataset.unlockPlace}">Full Stockfish</div>` : "";
     },
     createPassFeed, hooks,
     clampPly, moveLineHtml, walkLine, boardLine: { open: vi.fn(), step: () => false, exit: vi.fn() },

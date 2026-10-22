@@ -6094,7 +6094,3 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .pgn-file-row {
   margin-top: 6px;
 }
-
-/* The full net's question: one row above the card's lines, in flow, so the search
-   below it keeps its rows and its height while the row waits for an answer. */
-

@@ -133,7 +133,7 @@ async function browserChecks() {
     if (!onnxHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
       fail(`Maia ONNX was not observed from the pinned HF base (seen: ${onnxHits.join(", ") || "none"})`);
     }
-    ok(`Maia3 inference available (${maiaState.note || "session loaded"})`);
+    ok("Maia3 inference available");
     ok("ORT .wasm and Maia ONNX were fetched through the production worker");
   } finally {
     await browser.close();
