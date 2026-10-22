@@ -432,6 +432,19 @@ async function handleWorkspacePopstate() {
   }
 }
 
+// Phone bottom bar: the tab labelled Games is lit on Games only; More is lit
+// for the destinations its sheet carries (Scout, Teams, Settings), so the bar
+// never names a page the user is not on.
+function paintPhoneTabs(view, section) {
+  const mark = (button, active) => {
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-current", active ? "page" : "false");
+  };
+  document.querySelectorAll("[data-review-tab]").forEach((button) => mark(button, view === "replay" && section !== "scout"));
+  const moreBtn = document.getElementById("more-nav-btn");
+  if (moreBtn) mark(moreBtn, ["teams", "settings"].includes(view) || (view === "replay" && section === "scout"));
+}
+
 function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
   const next = section === "scout" ? "scout" : "games";
   // Games ↔ Scout is a page change for the user even though both live in the
@@ -444,15 +457,14 @@ function setReplaySection(section, { focus = false, syncUrl = true } = {}) {
     panel.hidden = !active;
     panel.setAttribute("aria-hidden", String(!active));
   });
-  // The rail's Games/Scout entries are per-section; the phone bar's Review
-  // tab names the whole Review destination, so switchView's data-review-tab
-  // branch owns it. Without the skip this per-section loop would switch the
-  // Review tab off on Scout and leave the bottom bar with nothing lit.
+  // The rail's Games/Scout entries are per-section; the phone bar is painted
+  // by paintPhoneTabs, which knows Scout lives behind More.
   document.querySelectorAll(".tab[data-replay-section]:not([data-review-tab])").forEach((button) => {
     const active = button.dataset.replaySection === next;
     button.classList.toggle("is-active", active && appState.currentView === "replay");
     button.setAttribute("aria-current", active && appState.currentView === "replay" ? "page" : "false");
   });
+  paintPhoneTabs(appState.currentView, next);
   syncPageTitle();
   // Scout is a section of Replay, and its view chunk carries its own stylesheet
   // (views/scout.css). Load it as soon as the section is shown so the pre-Start
@@ -563,19 +575,7 @@ function switchView(name, { fromUrl = false } = {}) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-current", active ? "page" : "false");
   });
-  // Mobile bottom bar: Review lights up on either replay section (Games or
-  // Scout); More lights up for the destinations its sheet carries.
-  document.querySelectorAll("[data-review-tab]").forEach((button) => {
-    const active = name === "replay";
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-current", active ? "page" : "false");
-  });
-  const moreBtn = document.getElementById("more-nav-btn");
-  if (moreBtn) {
-    const active = ["analyze", "teams", "settings"].includes(name);
-    moreBtn.classList.toggle("is-active", active);
-    moreBtn.setAttribute("aria-current", active ? "page" : "false");
-  }
+  paintPhoneTabs(name, appState.replaySection);
   syncPageTitle();
   resetViewScroll();
   document.querySelectorAll(".view").forEach((view) => {
