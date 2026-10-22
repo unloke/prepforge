@@ -40,6 +40,7 @@ export const appState = {
   evalChartPoints: [],
   build: null,
   buildLoading: false,
+  buildLoadTarget: null,
   buildNodeById: new Map(),
   buildCurrentNodeId: null,
   buildBranchChoiceId: null,

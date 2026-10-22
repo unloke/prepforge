@@ -157,7 +157,7 @@ function openBuildMenu(event) {
   // The shown move's own menu, for screens without a right-click.
   const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
   const items = [
-    ...(node?.san ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
+    ...(node?.parent_id ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
     ...buildMenuItems({ hasRep, isActive }),
   ];
   menu.innerHTML = html`${items

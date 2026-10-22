@@ -378,6 +378,12 @@ async function restoreWorkspaceLocation() {
   }
 }
 
+// The repertoire Build shows, or the one it is loading (A → B → A while B is
+// still loading must open A again, not let B land).
+function shownOrLoadingRepertoireId() {
+  return appState.buildLoading ? appState.buildLoadTarget : appState.build?.repertoire_id;
+}
+
 // In-page route changes (back/forward and location.hash) take the same path as
 // boot restore: switch the view, then rebuild Train's queue for the URL's
 // repertoire. Without this, ?rep= only took effect on a full reload. Coming
@@ -390,7 +396,7 @@ async function handleWorkspacePopstate() {
   // Back/forward (or an edited hash) naming another repertoire opens it: the
   // editor showing a different tree than its URL survived only until a reload.
   if (loc.view === "build" && loc.repertoireId && appState.signedIn &&
-      loc.repertoireId !== appState.build?.repertoire_id) {
+      loc.repertoireId !== shownOrLoadingRepertoireId()) {
     await editRepertoire(loc.repertoireId);
     return;
   }
@@ -653,6 +659,9 @@ async function editRepertoire(repertoireId, nodeId = null) {
   // The Repertoire view opens NOW with a skeleton; the tree fills in when the
   // load lands (it used to sit on the previous page for seconds).
   const loadSeq = ++buildLoadSeq;
+  // The repertoire this load opens. Until it lands appState.build is still the
+  // previous tree, so a route back to that tree must not read as "already open".
+  appState.buildLoadTarget = repertoireId;
   setBuildLoading(true);
   try {
     await hardFlushBuild();

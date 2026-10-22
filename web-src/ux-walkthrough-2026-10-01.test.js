@@ -151,9 +151,11 @@ describe("Train save chip names training progress (P2-7)", () => {
 
 describe("Repertoire node menu names its move (P2-8)", () => {
   it("labels white and black moves with their move number", () => {
-    expect(nodeMenuHeading({ san: "Bxe6", move_number: 8, move_side: "white" })).toBe("8. Bxe6");
-    expect(nodeMenuHeading({ san: "c5", move_number: 1, move_side: "black" })).toBe("1… c5");
+    expect(nodeMenuHeading({ parent_id: "p", san: "Bxe6", move_number: 8, move_side: "white" })).toBe("8. Bxe6");
+    expect(nodeMenuHeading({ parent_id: "p", san: "c5", move_number: 1, move_side: "black" })).toBe("1… c5");
     expect(nodeMenuHeading({ san: null, move_number: 0 })).toBe("Start position");
+    // The server's root row is named "root": still the start position.
+    expect(nodeMenuHeading({ parent_id: null, san: "root", move_number: 1 })).toBe("Start position");
   });
 
   it("the menu renders the heading and clears the tree outline on close", () => {
