@@ -1958,6 +1958,9 @@ async function startSmartTraining(options = {}) {
   appState.smart = {
     sessionId: mapped.sessionId,
     generation: mapped.generation,
+    // The position sync's token: without it the server never applies the
+    // session's position, so a finished queue resumed from its first card.
+    stateVersion: mapped.stateVersion,
     seed: mapped.seed,
     repertoireId: mapped.repertoireId,
     repertoireName: mapped.repertoireName,
