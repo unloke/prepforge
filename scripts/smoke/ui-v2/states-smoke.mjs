@@ -444,8 +444,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.close();
 }
 
-// A Train navigation while auth is pending must enter with the real session,
-// including the auto-start normally performed by the URL restore path.
+// A Train navigation while auth is pending lands on Train Home once the real
+// session is in: Home is where a run starts, so nothing starts on its own.
 for (const width of [1440, 390]) {
   const S = `boot-train-${width}`;
   let releaseAuth, sawAuth;
@@ -462,10 +462,10 @@ for (const width of [1440, 390]) {
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await authRequested;
   await page.locator('.tab[data-view="train"]:visible').first().click();
-  check(S, !apiCalls.includes("/api/train/smart/start"), "Train must wait for the session");
-  const started = page.waitForRequest("**/api/train/smart/start", { timeout: 5000 }).then(() => true, () => false);
   releaseAuth();
-  check(S, await started, "Train selected during boot should auto-start after auth");
+  const home = await page.locator("#train-home:visible").waitFor({ timeout: 5000 }).then(() => true, () => false);
+  check(S, home, "Train selected during boot should land on Train Home after auth");
+  check(S, !apiCalls.includes("/api/train/smart/start"), "Train Home must not start a session on its own");
   check(S, await page.locator("#view-train.is-active").count() === 1, "boot must keep Train selected");
   await page.close();
 }

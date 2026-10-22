@@ -262,7 +262,7 @@ def test_health_and_scheduler_agree_on_disabled_ancestor_trees():
 
     # Effective-enabled: a disabled node makes its whole subtree unreachable.
     health = compute_health(root, Color.WHITE, {})
-    plan = build_session_plan(root, Color.WHITE, {}, seed=1)
+    plan = build_session_plan(root, Color.WHITE, {})
     assert health.trainable == 0
     assert plan.cards == []
 
@@ -270,7 +270,7 @@ def test_health_and_scheduler_agree_on_disabled_ancestor_trees():
     # so the boundary state cannot persist invisibly.
     parent.is_enabled = True
     health2 = compute_health(root, Color.WHITE, {})
-    plan2 = build_session_plan(root, Color.WHITE, {}, seed=1)
+    plan2 = build_session_plan(root, Color.WHITE, {})
     assert health2.trainable == 1
     assert len(plan2.cards) == 1
 

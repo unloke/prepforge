@@ -1152,8 +1152,9 @@
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
   .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
   .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
-  /* The picker is a bottom sheet at the thumb. */
-  .train-picker {
+  /* The picker is a bottom sheet at the thumb. train-shell.css arrives later
+     with Train's chunk, so these rules carry :root to win over its popover. */
+  :root .train-picker {
     top: auto;
     left: 8px;
     right: 8px;
@@ -1161,7 +1162,7 @@
     width: auto;
     max-height: 70dvh;
   }
-  .train-pick { min-height: 48px; font-size: 16px; }
+  :root .train-pick { min-height: 48px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
   .context-menu:not(.account-menu) {

@@ -90,6 +90,8 @@ export function syncTrainScreen() {
     document.getElementById("train-home").hidden = screen !== "home";
     document.getElementById("train-progress-panel").hidden = screen !== "session";
     document.getElementById("train-summary").hidden = screen !== "result";
+    // A finished game's move trail belongs to that game only.
+    if (mode !== "play" || !state.play) document.getElementById("train-play-trail").hidden = true;
     paintHead(screen, mode);
     paintActions(screen, mode);
     if (screen === "home") void paintTrainHome();

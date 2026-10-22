@@ -732,8 +732,8 @@ async function trainTakeback(page) {
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.locator("#dashboard-repertoires .lib-row").first().waitFor({ state: "visible", timeout: 20000 });
   await openView(page, "train");
-  await page.locator('[data-mode="play"]').click();
-  await page.locator("#train-play-book").selectOption("explorer");
+  await page.locator("#train-play-book").click();
+  await page.locator('.train-picker .train-pick[data-id="explorer"]').click();
   await page.locator("#start-play").click();
   // The session is up once the board carries a position and the takeback is
   // still disabled (there is nothing to take back yet).

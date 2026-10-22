@@ -17,7 +17,7 @@ function score(run) {
 
 const pctText = (run, scored) => (run.mode === 'play' ? runSummary(run) : scored.pct === null ? '—' : `${scored.pct}%`);
 // A run of new moves only has no first answers; it still taught something.
-const scoreLabel = (run, scored) => run.mode === 'play' ? `${run.cards} moves`
+const scoreLabel = (run, scored) => run.mode === 'play' ? `${run.cards} move${run.cards === 1 ? '' : 's'}`
   : scored.label ? `${scored.label} first try` : run.learned ? `${run.learned} learned` : 'no first answers';
 
 function runName(run) {
@@ -33,16 +33,17 @@ function lead(run) {
     <h3 class="th-name" title="${runName(run)}">${runName(run)}</h3>
     <div class="th-figures">
       <div class="th-figure is-lead"><b data-history-first-try>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>
-      ${figure(run.cards, 'cards', 'data-history-cards')}
+      ${run.mode === 'play' ? '' : html`${figure(run.cards, 'cards', 'data-history-cards')}
       ${figure(run.mistakes, 'missed', 'data-history-missed', run.mistakes ? 'is-missed' : '')}
-      ${figure(run.skipped, 'skipped', 'data-history-skipped')}
+      ${figure(run.skipped, 'skipped', 'data-history-skipped')}`}
     </div>
   </section>`;
 }
 
 const row = run => {
   const scored = score(run);
-  return html`<li class="th-run" title="${run.cards} cards · ${scoreLabel(run, scored)} · ${run.mistakes} missed · ${run.skipped} skipped">
+  const tip = run.mode === 'play' ? scoreLabel(run, scored) : `${run.cards} cards · ${scoreLabel(run, scored)} · ${run.mistakes} missed · ${run.skipped} skipped`;
+  return html`<li class="th-run" title="${tip}">
     <div class="th-run-main"><b class="th-name" title="${runName(run)}">${runName(run)}</b>
       <span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
     <div class="th-run-score"><b>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>

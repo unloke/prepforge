@@ -223,6 +223,8 @@ async function runViewport(vp) {
   check(rows >= 1, `game plan should list line rows, got ${rows}`);
   const sideOpen = await page.locator("#scout-side").evaluate((el) => !el.hidden && !!el.querySelector(".line-title") && !!el.querySelector(".scout-miniboard"));
   check(sideOpen, "line-detail card should show the first plan row with a board");
+  // The card paints inside the route's View Transition; give it the fade to land.
+  await page.locator("#scout-side .scout-action-analyze").waitFor({ state: "visible", timeout: 3000 }).catch(() => {});
   const sideActions = await page.locator("#scout-side .scout-action-analyze").boundingBox().catch(() => null);
   check(!!sideActions && sideActions.height > 10, `line-detail card should show its Analyze action, got ${JSON.stringify(sideActions)} :: ${(await page.locator("#scout-side").innerHTML()).replace(/s+/g, " ").slice(0, 600)}`);
   if (rows >= 2) {
