@@ -1291,3 +1291,32 @@ def test_line_card_autoplays_known_moves_and_grades_only_its_targets():
         for node_id in graded
     }
     assert attempts == {ids["e4"]: 4, ids["nf3"]: 5, ids["bb5"]: 4}
+
+
+def test_another_repertoire_move_is_not_a_miss_and_bundle_lists_it():
+    """e4 and d4 are both White first moves here: on a card drilling one, the
+    other is accepted ungraded and the card stays; the bundle lists it so the
+    local session answers the same way."""
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    service = SmartTrainingService(repository, "t-owner")
+    session = service.start_or_resume(repertoire.id, seed=5)
+    prompt = service.current_prompt(session.id)
+    first = {ids["e4"]: "d2d4", ids["d4"]: "e2e4"}
+    if prompt.expected_node_id not in first:
+        pytest.skip("first card is not a first-move card")
+    result = service.submit_move(session.id, first[prompt.expected_node_id], attempt=1)
+    assert result.alternative is True and result.correct is False
+    assert result.sr_written is False and result.progress is None
+    assert result.session.mistakes == []
+    assert result.next_prompt.expected_node_id == prompt.expected_node_id
+    bundle = service.session_card_bundle(session, repertoire)
+    target = next(
+        t for card in bundle for t in card["targets"] if t["node_id"] == prompt.expected_node_id
+    )
+    assert [a["uci"] for a in target["alternatives"]] == [first[prompt.expected_node_id]]
+    nf3 = next(
+        (t for card in bundle for t in card["targets"] if t["node_id"] == ids["nf3"]), None
+    )
+    if nf3 is not None:
+        assert nf3["alternatives"] == []

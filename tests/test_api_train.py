@@ -199,7 +199,7 @@ def test_smart_summary_preview_counts_the_next_queue(client):
     assert body["next_session"] == {
         "weak": 0, "due": 0, "new": 1, "polish": 0, "cards": 1, "resumed": 0, "left": 1,
     }
-    assert body["outlook"] == {"now": 0, "today": 0, "week": 0}
+    assert body["outlook"] == {"now": 0, "today": 0, "week": 0, "next": None}
     plain = client.get("/api/train/smart/summary?mixed=true").json()
     assert "next_session" not in plain and "outlook" not in plain
 
@@ -246,7 +246,9 @@ def test_outlook_counts_reviews_due_now_today_and_this_week(client):
         f"/api/train/smart/summary?repertoire_id={rep}&preview=true&utc_offset={noon}"
     ).json()["outlook"]
     # A miss relearns within minutes: due today and this week, not yet now.
-    assert outlook == {"now": 0, "today": 1, "week": 1}
+    assert {k: outlook[k] for k in ("now", "today", "week")} == {"now": 0, "today": 1, "week": 1}
+    soon = datetime.fromisoformat(outlook["next"]) - utc
+    assert 0 < soon.total_seconds() < 3600
 
 
 def test_hint_reveals_expected_move(client):

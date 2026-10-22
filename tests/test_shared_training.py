@@ -100,12 +100,27 @@ def test_revoking_the_share_ends_training(world):
     assert _smart_start(c["view"], rep).status_code == 404
 
 
-def test_the_mixed_queue_draws_only_on_your_own_repertoires(world):
-    c = world["c"]
-    # The viewer owns nothing; a shared repertoire is trained on its own.
+def test_the_mixed_queue_includes_repertoires_shared_with_you(world):
+    rep, c, ids = world["rep"], world["c"], world["ids"]
+    # The viewer owns nothing: All repertoires is the shared one, on their own progress.
     mixed = _post(c["view"], "/api/train/smart/start", {"mixed": True})
-    assert mixed.status_code == 400
-    assert "no active repertoires" in mixed.json()["detail"]
+    assert mixed.status_code == 200, mixed.text
+    body = mixed.json()
+    assert body["mixed"] is True and body["scope"] == "all"
+    assert {card["repertoire_id"] for card in body["cards"]} == {rep}
+    assert body["health"]["untrained"] == body["health"]["trainable"] == 1
+    owner_badge = next(r for r in c["owner"].get("/api/repertoires").json()["repertoires"] if r["id"] == rep)["health"]
+    sync = _sync_correct(c["view"], body)
+    assert sync.status_code == 200, sync.text
+    summary = c["view"].get("/api/train/smart/summary?mixed=true&preview=true").json()
+    assert summary["health"]["trainable"] == 1
+    # The trainee's run never rewrites the owner's Library badge.
+    after = next(r for r in c["owner"].get("/api/repertoires").json()["repertoires"] if r["id"] == rep)["health"]
+    assert after == owner_badge
+    # Revoked: the share leaves All repertoires.
+    _post(c["owner"], "/api/repertoires/access/revoke", {"repertoire_id": rep, "user_id": ids["view"]})
+    gone = _post(c["view"], "/api/train/smart/start", {"mixed": True, "fresh": True})
+    assert gone.status_code == 400
 
 
 def test_deleting_the_shared_repertoire_counts_the_trainees_sessions_for_them(world):

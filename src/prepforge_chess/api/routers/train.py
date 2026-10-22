@@ -253,14 +253,14 @@ def _smart_summary_payload(
 
 
 def _mixed_summary_payload(
-    repo: WorkspaceRepository, reps: list[Repertoire], owner: str
+    repo: WorkspaceRepository, reps: list[Repertoire], owner: str, shared_ids: set[str]
 ) -> dict[str, Any]:
     """The mixed-session bookend: per-repertoire health summed into one view
     (mastery_pct recomputed over the combined trainable count)."""
     health: dict[str, int] = {}
     due_tomorrow = 0
     for rep in reps:
-        part = _smart_summary_payload(repo, rep, owner)
+        part = _smart_summary_payload(repo, rep, owner, owned=rep.id not in shared_ids)
         for key, value in part["health"].items():
             health[key] = health.get(key, 0) + value
         due_tomorrow += part["due_tomorrow"]
@@ -279,9 +279,9 @@ def smart_start(
 ) -> dict[str, Any]:
     """Begin (or resume) a card-queue session and return the queue composition
     plus the first card prompt. ``mixed=True`` builds one interleaved queue
-    over ALL of the caller's active repertoires."""
+    over ALL of the caller's active repertoires and those shared with them."""
     service = SmartTrainingService(repo, owner)
-    owned = True  # a mixed queue draws only on the caller's own repertoires
+    owned = True
     try:
         if body.mixed:
             if body.target_node_ids:
@@ -323,7 +323,9 @@ def smart_start(
             detail="repertoire has no trainable moves yet",
         )
     summary = (
-        _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
+        _mixed_summary_payload(
+            repo, service.active_repertoires(owner), owner, service.shared_ids
+        )
         if body.mixed
         else _smart_summary_payload(repo, repertoire, owner, owned=owned)
     )
@@ -359,13 +361,15 @@ def smart_start(
 
 def _outlook(
     repo: WorkspaceRepository, reps: list[Repertoire], owner: str, utc_offset: int
-) -> dict[str, int]:
-    """Due now / by the end of the player's local day / this week, over the scope."""
+) -> dict[str, Any]:
+    """Due now / by the end of the player's local day / this week, over the
+    scope, and ``next``: when the soonest later review falls due (ISO, or None)."""
     now = datetime.now(timezone.utc)
     offset = timedelta(minutes=max(-840, min(840, utc_offset)))
     local = now + offset
     day_end = datetime.combine(local.date() + timedelta(days=1), time.min, timezone.utc) - offset
-    total = {"now": 0, "today": 0, "week": 0}
+    total: dict[str, Any] = {"now": 0, "today": 0, "week": 0}
+    soonest = None
     for rep in reps:
         progress_by_id = {
             p.node_id: p for p in repo.list_training_progress(rep.id, owner_user_id=owner)
@@ -373,6 +377,9 @@ def _outlook(
         part = due_outlook(rep.root_node, rep.color, progress_by_id, now=now, day_end=day_end)
         for key in total:
             total[key] += part[key]
+        if part["next"] is not None and (soonest is None or part["next"] < soonest):
+            soonest = part["next"]
+    total["next"] = soonest.isoformat() if soonest is not None else None
     return total
 
 
@@ -400,7 +407,7 @@ def smart_summary(
     service = SmartTrainingService(repo, owner)
     if mixed:
         reps = service.active_repertoires(owner)
-        payload = _mixed_summary_payload(repo, reps, owner)
+        payload = _mixed_summary_payload(repo, reps, owner, service.shared_ids)
         scope_id = None
     elif not repertoire_id:
         raise HTTPException(
@@ -470,6 +477,7 @@ def smart_move(
         "reply_uci": result.reply_uci,
         "reply_san": result.reply_san,
         "fen_after_reply": result.fen_after_reply,
+        "alternative": result.alternative,
     }
 
 
@@ -683,4 +691,5 @@ def move(
         "reply_uci": result.reply_uci,
         "reply_san": result.reply_san,
         "fen_after_reply": result.fen_after_reply,
+        "alternative": result.alternative,
     }

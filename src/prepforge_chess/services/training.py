@@ -14,6 +14,7 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
+from prepforge_chess.services.scheduler import sibling_moves
 from prepforge_chess.services.srs import rating_for, review
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
@@ -59,6 +60,9 @@ class TrainingAttemptResult:
     reply_uci: Optional[str] = None
     reply_san: Optional[str] = None
     fen_after_reply: Optional[str] = None
+    # The move is another repertoire move at this position: not graded, not a
+    # miss; the prompt stays and the player tries again for the drilled move.
+    alternative: bool = False
 
 
 def _utc_now() -> datetime:
@@ -191,6 +195,22 @@ class TrainingService:
                 raise ValueError("training session has no current prompt")
 
             correct = played_uci == prompt.expected_move_uci
+            if not correct:
+                alternative = self._alternative(repertoire, session, prompt, played_uci)
+                if alternative is not None:
+                    return TrainingAttemptResult(
+                        correct=False,
+                        played_uci=played_uci,
+                        expected_uci=prompt.expected_move_uci,
+                        expected_san=prompt.expected_move_san,
+                        completed_line=False,
+                        session=session,
+                        progress=None,
+                        next_prompt=prompt,
+                        played_san=alternative.move.san,
+                        fen_after_player=alternative.move.fen_after,
+                        alternative=True,
+                    )
             graded = attempt <= 1
             updated_session, updated_progress = session, None
             if graded:
@@ -280,6 +300,23 @@ class TrainingService:
             reply_uci=reply_uci,
             reply_san=reply_san,
             fen_after_reply=fen_after_reply,
+        )
+
+    def _alternative(
+        self,
+        repertoire: Repertoire,
+        session: TrainingSession,
+        prompt: TrainingPrompt,
+        played_uci: str,
+    ) -> Optional[OpeningNode]:
+        path = self._path_to_node(repertoire.root_node, session.line_order[session.current_index])
+        expected = next((node for node in path if node.id == prompt.expected_node_id), None)
+        if expected is None:
+            return None
+        return next(
+            (node for node in sibling_moves(repertoire.root_node, path, expected)
+             if node.move.uci == played_uci),
+            None,
         )
 
     def _reply_after(

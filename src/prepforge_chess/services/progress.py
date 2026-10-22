@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
 from prepforge_chess.services.srs import is_mastered, is_weak
@@ -160,11 +160,12 @@ def due_outlook(
     *,
     now: datetime,
     day_end: datetime,
-) -> Dict[str, int]:
+) -> Dict[str, Any]:
     """Reviewed moves due by now, by the end of the player's day and within a
-    week (cumulative) — Train Home's FSRS outlook."""
+    week (cumulative) — Train Home's FSRS outlook — plus ``next``, the soonest
+    review still ahead (None when none is scheduled)."""
     week_end = now + timedelta(days=7)
-    out = {"now": 0, "today": 0, "week": 0}
+    out: Dict[str, Any] = {"now": 0, "today": 0, "week": 0, "next": None}
     for node in _walk(root):
         if not _is_trainable(node, color):
             continue
@@ -175,6 +176,8 @@ def due_outlook(
         out["now"] += due_at <= now
         out["today"] += due_at <= day_end
         out["week"] += due_at <= week_end
+        if due_at > now and (out["next"] is None or due_at < out["next"]):
+            out["next"] = due_at
     return out
 
 

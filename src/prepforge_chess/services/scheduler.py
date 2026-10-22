@@ -137,6 +137,18 @@ def index_nodes(root: OpeningNode) -> Dict[str, OpeningNode]:
     return out
 
 
+def sibling_moves(
+    root: OpeningNode, path: List[OpeningNode], node: OpeningNode
+) -> List[OpeningNode]:
+    """Other enabled moves the repertoire keeps at ``node``'s position (its
+    siblings). Playing one is in the repertoire, just not the move being drilled."""
+    pos = next((i for i, p in enumerate(path) if p.id == node.id), None)
+    if pos is None:
+        return []
+    parent = path[pos - 1] if pos > 0 else root
+    return [c for c in parent.children if c.id != node.id and c.is_enabled and c.move is not None]
+
+
 def path_to_node(
     root: OpeningNode,
     node_id: str,

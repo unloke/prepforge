@@ -55,6 +55,7 @@ from prepforge_chess.services.scheduler import (
     own_move_nodes_on,
     path_to_node,
     preorder_index,
+    sibling_moves,
 )
 from prepforge_chess.services.srs import rating_for
 from prepforge_chess.services.training import record_attempt
@@ -115,6 +116,8 @@ class SmartMoveResult:
     reply_uci: Optional[str] = None
     reply_san: Optional[str] = None
     fen_after_reply: Optional[str] = None
+    # Another repertoire move at this position: ungraded, the card stays.
+    alternative: bool = False
 
 
 @dataclass(frozen=True)
@@ -137,6 +140,7 @@ class SmartTrainingService:
         self.repository = repository
         self.owner_user_id = owner_user_id
         self.resumed = False
+        self.shared_ids: set[str] = set()  # set by active_repertoires
         # Per-request caches. A service instance is created fresh per request
         # (see api/routers/train.py), so a repertoire and its node index are
         # loaded/built at most once even though /smart/start touches the same
@@ -197,18 +201,32 @@ class SmartTrainingService:
         return self._install(existing, repertoire_id, scope, plan, seed)
 
     def active_repertoires(self, owner_user_id: str) -> List[Repertoire]:
-        """The owner's active repertoires, full trees. Decides "which" from
-        lightweight metas (no tree load for inactive ones) and loads each active
-        tree through the per-request cache, so the second call in a request (the
-        mixed summary) reuses the trees the first call already loaded."""
+        """Every repertoire the mixed queue draws on: the owner's active ones,
+        then those shared with them (progress is per user, so a share trains
+        like an own repertoire). Decides "which" from lightweight metas and
+        loads each tree through the per-request cache, so the second call in a
+        request (the mixed summary) reuses the trees the first call loaded.
+        ``shared_ids`` names the shared ones (their health badge is not ours)."""
         reps: List[Repertoire] = []
+        self.shared_ids = set()
         for meta in self.repository.list_repertoire_metas(owner_user_id=owner_user_id):
             if not meta.get("is_active", True):
                 continue
             rep = self.repertoire(meta["id"])
             if rep is not None:
                 reps.append(rep)
+        for meta in self.repository.list_shared_with(owner_user_id):
+            rep = self.repertoire(meta["id"])
+            if rep is not None:
+                reps.append(rep)
+                self.shared_ids.add(rep.id)
         return reps
+
+    def _anchor(self, reps: List[Repertoire]) -> Repertoire:
+        """The mixed session's FK anchor: the smallest own id, so a new share
+        never orphans the running session; a shared one only when none is own."""
+        own = [rep for rep in reps if rep.id not in self.shared_ids]
+        return min(own or reps, key=lambda rep: rep.id)
 
     def start_or_resume_mixed(
         self,
@@ -228,7 +246,7 @@ class SmartTrainingService:
         reps = self.active_repertoires(owner_user_id)
         if not reps:
             raise ValueError("no active repertoires to train")
-        anchor = min(reps, key=lambda rep: rep.id)
+        anchor = self._anchor(reps)
         existing = self._latest(anchor.id, SCOPE_ALL)
         if existing is not None and not fresh and self._resumable(existing, reps):
             self.resumed = True
@@ -349,7 +367,7 @@ class SmartTrainingService:
             reps = self.active_repertoires(owner_user_id)
             if not reps:
                 return {**card_counts([]), "resumed": 0, "left": 0}
-            existing = self._latest(min(reps, key=lambda rep: rep.id).id, SCOPE_ALL)
+            existing = self._latest(self._anchor(reps).id, SCOPE_ALL)
         else:
             reps = [self._load_repertoire_or_raise(repertoire_id)]
             existing = self._latest(repertoire_id, SCOPE_REPERTOIRE)
@@ -385,8 +403,8 @@ class SmartTrainingService:
     ) -> Optional[Repertoire]:
         """Resolve the repertoire a card's targets live in. Foreign-repertoire
         cards (mixed sessions) are honoured only when the session's own user
-        owns that repertoire — a tampered synced queue must never read or
-        write another user's data."""
+        owns that repertoire or it is shared with them — a tampered synced
+        queue must never read or write data they cannot see."""
         rep_id = card.repertoire_id
         if rep_id in cache:
             return cache[rep_id]
@@ -395,7 +413,10 @@ class SmartTrainingService:
             rep = self.repertoire(rep_id, conn=conn)
         else:
             meta = self.repository.repertoire_meta(rep_id, conn=conn)
-            if meta is not None and meta["owner_user_id"] == session.owner_user_id:
+            if meta is not None and (
+                meta["owner_user_id"] == session.owner_user_id
+                or self.repository.access_role(rep_id, session.owner_user_id)[1] is not None
+            ):
                 # Only cache the tree globally once ownership is cleared; a
                 # rejected foreign rep stays out of the per-request rep cache and
                 # is memoised as None in the caller's local ``cache`` instead.
@@ -563,6 +584,7 @@ class SmartTrainingService:
                     node.strategic_idea or node.typical_plan or (node.comment or "")
                 ).strip()
                 reply = self._reply_after(path, node)
+                others = sibling_moves(card_rep.root_node, path, node)
                 targets.append(
                     {
                         "node_id": node.id,
@@ -575,6 +597,10 @@ class SmartTrainingService:
                         "line": _numbered_line(path[:path_pos]),
                         "run_in": [
                             {"uci": p.move.uci, "san": p.move.san} for p in run_in
+                        ],
+                        # Other repertoire moves here: played, they are not misses.
+                        "alternatives": [
+                            {"uci": o.move.uci, "san": o.move.san} for o in others
                         ],
                         "hint": {
                             "strategy": annotation
@@ -821,6 +847,29 @@ class SmartTrainingService:
             expected = context.expected
             move = expected.move
             correct = played_uci == move.uci
+            other = None if correct else next(
+                (node for node in sibling_moves(card_rep.root_node, context.path, expected)
+                 if node.move.uci == played_uci),
+                None,
+            )
+            if other is not None:
+                return SmartMoveResult(
+                    correct=False,
+                    attempt=attempt,
+                    sr_written=False,
+                    played_uci=played_uci,
+                    expected_uci=move.uci,
+                    expected_san=move.san,
+                    card_completed=False,
+                    session_completed=False,
+                    requeued=False,
+                    session=session,
+                    progress=None,
+                    next_prompt=self._prompt_from_context(context),
+                    played_san=other.move.san,
+                    fen_after_player=other.move.fen_after,
+                    alternative=True,
+                )
 
             progress: Optional[TrainingProgress] = None
             sr_written = attempt <= 1

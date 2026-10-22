@@ -184,3 +184,27 @@ def test_rehearsal_grades_only_the_first_attempt_at_a_prompt():
     assert done.correct and done.progress is None
     stored = repository.load_training_progress(rep.id, e4.id, owner_user_id="owner")
     assert (stored.attempts, stored.correct_attempts) == (1, 0)
+
+
+def test_rehearsal_accepts_another_repertoire_move_without_grading():
+    """1.e4 and 1.d4 are both in the repertoire: playing d4 on the e4 line is not
+    a miss. Nothing is graded, the prompt stays, and the next try still grades."""
+    repository = _training_repository()
+    repertoire = _training_repertoire(repository)
+    service = TrainingService(repository, "t-owner")
+    session = service.start_or_resume_session(repertoire.id, seed=1)
+    prompt = service.current_prompt(session.id)
+    other = "d2d4" if prompt.expected_move_uci == "e2e4" else "e2e4"
+
+    result = service.submit_move(session.id, other, attempt=1)
+
+    assert result.alternative is True and result.correct is False
+    assert result.progress is None
+    assert result.session.mistakes == []
+    assert result.played_san in {"d4", "e4"}
+    assert result.next_prompt.expected_node_id == prompt.expected_node_id
+    assert repository.load_training_progress(
+        repertoire.id, prompt.expected_node_id, owner_user_id="t-owner"
+    ) is None
+    graded = service.submit_move(session.id, prompt.expected_move_uci, attempt=1)
+    assert graded.correct and graded.progress.attempts == 1
