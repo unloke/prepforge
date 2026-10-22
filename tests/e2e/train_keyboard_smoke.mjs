@@ -151,9 +151,9 @@ async function main() {
       .catch(() => fail("some square keeps aria-pressed=true after the move"));
 
     // A new move's demonstration is not a recall, so it leaves the first-try count alone.
-    const statsCorrect = ((await page.locator('#train-stat-correct').textContent()) || "").trim();
-    if (statsCorrect !== "0") {
-      fail(`a demonstrated new move must not count as first-try correct (got: ${statsCorrect || "(empty)"})`);
+    const statsLine = ((await page.locator("#train-stats-line").textContent()) || "").trim();
+    if (/in a row/.test(statsLine)) {
+      fail(`a demonstrated new move must not count toward the run (got: ${statsLine})`);
     }
 
     // --- Roving focus: the board is ONE tab stop, never 64. ---
