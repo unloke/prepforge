@@ -394,9 +394,13 @@ training_progress = Table(
     Column("attempts", Integer, nullable=False),
     Column("correct_attempts", Integer, nullable=False),
     Column("last_reviewed_at", UTCDateTime()),
-    Column("spaced_repetition_score", Float, nullable=False),
     Column("due_at", UTCDateTime()),
-    Column("is_mastered", Integer, nullable=False),
+    # FSRS memory state (services/srs.py): 0 new, 1 learning, 2 review, 3 relearning.
+    Column("state", Integer, nullable=False, server_default="0"),
+    Column("step", Integer),
+    Column("stability", Float),
+    Column("difficulty", Float),
+    Column("lapses", Integer, nullable=False, server_default="0"),
     # The node leads so deleting a node (a cascade lookup by ``node_id``, see
     # d4e6f8a0b2c3) seeks the primary key instead of scanning the table.
     PrimaryKeyConstraint("node_id", "owner_user_id"),
@@ -404,4 +408,17 @@ training_progress = Table(
     Index("idx_training_progress_due", "due_at"),
     # Account export streams every row of one owner.
     Index("idx_training_progress_owner", "owner_user_id"),
+)
+
+# One row per graded Train answer: the history FSRS parameters are fitted from.
+train_reviews = Table(
+    "train_reviews",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("node_id", Text, ForeignKey("opening_nodes.id", ondelete="CASCADE"), nullable=False),
+    Column("rating", Integer, nullable=False),  # FSRS: 1 again, 2 hard, 3 good, 4 easy
+    Column("reviewed_at", UTCDateTime(), nullable=False),
+    Index("idx_train_reviews_node", "node_id"),
+    Index("idx_train_reviews_owner", "owner_user_id"),
 )

@@ -60,13 +60,13 @@ def test_node_mastery_states():
     assert node_mastery(
         TrainingProgress(
             node_id="n", attempts=5, correct_attempts=5,
-            spaced_repetition_score=8.0, is_mastered=True,
+            state=2, stability=30.0, difficulty=5.0,
         ),
         now=now,
     ) == MASTERY_MASTERED
     due = TrainingProgress(
         node_id="n", attempts=2, correct_attempts=2,
-        due_at=now - timedelta(days=1), spaced_repetition_score=2.0,
+        due_at=now - timedelta(days=1), state=2, stability=2.0, difficulty=5.0,
     )
     assert node_mastery(due, now=now) == MASTERY_DUE
 
@@ -78,14 +78,14 @@ def test_compute_health_counts_each_state():
 
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["e4"], attempts=5, correct_attempts=5,
-        spaced_repetition_score=8.0, is_mastered=True,
+        state=2, stability=30.0, difficulty=5.0,
     ), owner_user_id="t-owner")
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["d4"], attempts=4, correct_attempts=1,
     ), owner_user_id="t-owner")
     repository.save_training_progress(repertoire.id, TrainingProgress(
         node_id=ids["nf3"], attempts=2, correct_attempts=2,
-        due_at=past, spaced_repetition_score=2.0,
+        due_at=past, state=2, stability=2.0, difficulty=5.0,
     ), owner_user_id="t-owner")
 
     progress = {p.node_id: p for p in repository.list_training_progress(repertoire.id, owner_user_id="t-owner")}

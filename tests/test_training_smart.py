@@ -60,9 +60,10 @@ def _due(node_id):
         attempts=3,
         correct_attempts=3,
         last_reviewed_at=PAST,
-        spaced_repetition_score=3.0,
         due_at=PAST,
-        is_mastered=False,
+        state=2,
+        stability=3.0,
+        difficulty=5.0,
     )
 
 
@@ -72,9 +73,10 @@ def _mastered(node_id):
         attempts=5,
         correct_attempts=5,
         last_reviewed_at=PAST,
-        spaced_repetition_score=8.0,
         due_at=NOW + timedelta(days=5),
-        is_mastered=True,
+        state=2,
+        stability=30.0,
+        difficulty=5.0,
     )
 
 
@@ -173,7 +175,7 @@ def test_dashboard_due_matches_trainable_personal_reviews(excluded):
     progress = _due(ids["bb5"])
     if excluded == "weak":
         progress.correct_attempts = 0
-        progress.spaced_repetition_score = 0
+        progress.stability = 0.5
     _seed_progress(repository, repertoire.id, [progress],
                    owner="other" if excluded == "other-owner" else "t-owner")
     if excluded == "disabled":
@@ -1214,7 +1216,7 @@ def test_due_windows_equal_two_mastery_queries_in_one_statement():
     rows[1].due_at = NOW + timedelta(hours=12)
     rows[2].due_at = NOW + timedelta(hours=30)
     rows[3].correct_attempts = 0  # weak takes priority over due
-    rows[3].spaced_repetition_score = 0
+    rows[3].stability = 0.5
     _seed_progress(repository, repertoire.id, rows)
     repository.update_opening_nodes(repertoire.id, [{"id": ids["d5"], "is_enabled": False}])
     expected_now = repository.due_counts_by_repertoire("t-owner", now=NOW)

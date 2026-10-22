@@ -8,6 +8,7 @@ input validation, and multi-tenant isolation. The unauthenticated demo
 """
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api_helpers import csrf_headers
@@ -164,7 +165,17 @@ def test_wrong_move_is_marked_incorrect(client):
     assert body["mistakes"]
 
 
-def test_hinted_correct_move_advances_but_grades_as_a_miss(client):
+def _reviews():
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+    from sqlalchemy import select
+    with db.get_engine().connect() as conn:
+        return [tuple(row) for row in conn.execute(
+            select(t.train_reviews.c.node_id, t.train_reviews.c.rating).order_by(t.train_reviews.c.id)
+        )]
+
+
+def test_hinted_correct_move_advances_and_grades_hard(client):
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _start(client, rep).json()["session_id"]
@@ -177,6 +188,8 @@ def test_hinted_correct_move_advances_but_grades_as_a_miss(client):
     assert body["completed_line"] is True
     assert body["progress"]["attempts"] == 1
     assert body["progress"]["correct_attempts"] == 0
+    assert body["progress"]["stability"] == pytest.approx(1.2931)  # FSRS w1: first Hard
+    assert _reviews() == [(body["progress"]["node_id"], 2)]
 
 
 def test_smart_summary_preview_counts_the_next_queue(client):
@@ -321,7 +334,7 @@ def test_smart_start_returns_queue_and_prompt(client):
     from prepforge_chess.services.training_smart import REQUEUE_GAP
     assert body["requeue_gap"] == REQUEUE_GAP
     assert body["card_kinds"] == [
-        {"key": "weak", "label": "Weak spot", "title": "Missed more than answered"},
+        {"key": "weak", "label": "Weak spot", "title": "Missed recently"},
         {"key": "due", "label": "Due review", "title": "Spaced repetition says now"},
         {"key": "new", "label": "New move", "title": "Shown once, then tested"},
         {"key": "polish", "label": "Polish", "title": "Kept warm with an occasional rep"},
@@ -456,8 +469,8 @@ def test_smart_start_ships_health_snapshot(client):
 
 
 def test_smart_summary_reflects_graded_session(client):
-    """After a graded correct answer the node leaves "untrained" and its next
-    review (one day out) shows up in the tomorrow forecast."""
+    """After a graded correct answer the node leaves "untrained"; FSRS puts a
+    new move's first Good two days out, past the tomorrow forecast."""
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _smart_start(client, rep, seed=5).json()["session_id"]
@@ -471,7 +484,7 @@ def test_smart_summary_reflects_graded_session(client):
     body = r.json()
     assert body["health"]["untrained"] == 0
     assert body["health"]["learning"] == 1
-    assert body["due_tomorrow"] == 1
+    assert body["due_tomorrow"] == 0
 
 
 def test_smart_summary_requires_auth(client):
@@ -559,8 +572,8 @@ def test_smart_start_fresh_rebuilds_from_current_tree(client):
 
 def test_smart_sync_replays_graded_attempts(client):
     """A synced correct attempt writes the same spaced-repetition progress a
-    per-move /smart/move would have: the node leaves untrained and lands in
-    tomorrow's forecast. The batch also touches the day streak exactly once."""
+    per-move /smart/move would have: the node leaves untrained, two days out
+    (FSRS first Good). The batch also touches the day streak exactly once."""
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     start = _smart_start(client, rep, seed=5).json()
@@ -578,7 +591,36 @@ def test_smart_sync_replays_graded_attempts(client):
     summary = client.get(f"/api/train/smart/summary?repertoire_id={rep}").json()
     assert summary["health"]["untrained"] == 0
     assert summary["health"]["learning"] == 1
-    assert summary["due_tomorrow"] == 1
+    assert summary["due_tomorrow"] == 0
+    assert _reviews() == [(node_id, 3)]
+
+
+def test_smart_sync_grades_each_answer_into_fsrs(client):
+    """Hinted-correct = Hard (stays learning), unaided = Good (graduates),
+    wrong = Again (lapses back to relearning); every answer is logged."""
+    from prepforge_chess.api import db
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+
+    owner = _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    node_id = start["cards"][0]["targets"][0]["node_id"]
+    repo = WorkspaceRepository(db.get_engine())
+
+    def answer(uuid, **attempt):
+        r = _smart_sync(client, start["session_id"],
+                        attempts=[{"node_id": node_id, "attempt_uuid": uuid, **attempt}])
+        assert r.status_code == 200, r.text
+        return repo.load_training_progress(rep, node_id, owner_user_id=owner)
+
+    hard = answer("u1", correct=True, hinted=True)
+    assert (hard.state, hard.correct_attempts) == (1, 0)
+    good = answer("u2", correct=True)
+    assert (good.state, good.correct_attempts, good.lapses) == (2, 1, 0)
+    again = answer("u3", correct=False)
+    assert (again.state, again.lapses, again.attempts) == (3, 1, 3)
+    assert again.stability < good.stability
+    assert _reviews() == [(node_id, 2), (node_id, 3), (node_id, 1)]
 
 
 def test_smart_sync_skips_unknown_nodes_and_spares_the_streak(client):

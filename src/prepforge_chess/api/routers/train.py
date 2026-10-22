@@ -13,6 +13,7 @@ from dataclasses import replace
 from typing import Any, Literal
 
 import chess
+from fsrs import Rating
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -26,7 +27,8 @@ from prepforge_chess.core.models import (
 )
 from prepforge_chess.services import streak
 from prepforge_chess.services.progress import compute_health, due_forecast
-from prepforge_chess.services.training import TrainingService, update_spaced_repetition
+from prepforge_chess.services.srs import review
+from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.scheduler import CARD_KINDS
 from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
@@ -165,12 +167,14 @@ def record_miss(
         progress = repo.lock_training_progress(
             conn, repertoire_id=body.repertoire_id, node_id=body.node_id, owner_user_id=owner
         )
-        updated = update_spaced_repetition(progress, correct=False)
+        updated = review(progress, Rating.Again)
         # A miss spotted in Analyze is due in the very next session.
         updated = replace(updated, due_at=updated.last_reviewed_at)
         repo.write_training_progress(
             conn, repertoire_id=body.repertoire_id, progress=updated, owner_user_id=owner
         )
+        repo.write_review(conn, owner_user_id=owner, node_id=body.node_id,
+                          rating=Rating.Again, reviewed_at=updated.last_reviewed_at)
     return {"recorded": True, "node_id": body.node_id}
 
 
@@ -194,6 +198,8 @@ class SmartMoveBody(BaseModel):
     played_uci: str
     # 1 = first (graded) answer; 2+ = retry / play-after-reveal, never graded.
     attempt: int = 1
+    # A hint was shown before the graded answer: a correct one grades Hard.
+    hinted: bool = False
     # The player's local calendar date (YYYY-MM-DD) for the daily streak; the
     # server clamps it and falls back to UTC today (see services/streak.py).
     local_date: str | None = None
@@ -401,7 +407,7 @@ def smart_move(
     _owned_session(repo, body.session_id, owner)
     try:
         result = SmartTrainingService(repo, owner).submit_move(
-            body.session_id, body.played_uci, attempt=max(1, body.attempt)
+            body.session_id, body.played_uci, attempt=max(1, body.attempt), hinted=body.hinted
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -425,8 +431,8 @@ def smart_move(
             "node_id": result.progress.node_id,
             "attempts": result.progress.attempts,
             "correct_attempts": result.progress.correct_attempts,
-            "spaced_repetition_score": result.progress.spaced_repetition_score,
-            "is_mastered": result.progress.is_mastered,
+            "stability": result.progress.stability,
+            "due_at": result.progress.due_at,
         },
         "prompt": smart_prompt_to_json(result.next_prompt, _CHESS),
         "played_san": result.played_san,
@@ -440,6 +446,8 @@ def smart_move(
 class SmartSyncAttempt(BaseModel):
     node_id: str
     correct: bool
+    # A hint was shown first: a correct answer grades Hard instead of Good.
+    hinted: bool = False
     # Client-minted idempotency key, reused across retries of the same attempt.
     attempt_uuid: str = Field(min_length=1, max_length=64)
 
@@ -598,7 +606,7 @@ def session_state(
 class MoveBody(BaseModel):
     session_id: str
     played_uci: str
-    # A hint was shown before this answer: it advances but grades as a miss.
+    # A hint was shown before this answer: a correct one advances and grades Hard.
     hinted: bool = False
     # Same daily-streak day hint as SmartMoveBody — rehearsal counts as training.
     local_date: str | None = None
@@ -632,8 +640,8 @@ def move(
             "node_id": result.progress.node_id,
             "attempts": result.progress.attempts,
             "correct_attempts": result.progress.correct_attempts,
-            "spaced_repetition_score": result.progress.spaced_repetition_score,
-            "is_mastered": result.progress.is_mastered,
+            "stability": result.progress.stability,
+            "due_at": result.progress.due_at,
         },
         "prompt": prompt_to_json(result.next_prompt, _CHESS),
         "played_san": result.played_san,

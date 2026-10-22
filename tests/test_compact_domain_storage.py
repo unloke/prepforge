@@ -67,7 +67,7 @@ def test_training_progress_is_keyed_by_node_and_owner(migrated):
     inspector = sa.inspect(engine)
     assert _columns(inspector, "training_progress") == {
         "owner_user_id", "repertoire_id", "node_id", "attempts", "correct_attempts",
-        "last_reviewed_at", "spaced_repetition_score", "due_at", "is_mastered",
+        "last_reviewed_at", "due_at", "state", "step", "stability", "difficulty", "lapses",
     }
     assert inspector.get_pk_constraint("training_progress")["constrained_columns"] == [
         "node_id", "owner_user_id",
