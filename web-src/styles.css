@@ -1012,10 +1012,17 @@ h2 {
   gap: 12px;
   min-width: 0;
 }
+/* One column keeps the strip's order: Board, which the markup places with the
+   other personal cards for the two-column page, reads last. */
+@media (max-width: 1199px) {
+  .settings-content > #set-board { order: 1; }
+}
 /* Six cards in one column ran 1.6 screens on a wide window and left a third
-   of the page empty. Two columns fit the page on one screen; the cards keep
-   their reading order down the first column and into the second, the way a
-   printed page reads. */
+   of the page empty. Two columns fit the page on one screen and read down the
+   first and into the second: you and your board (Account, Appearance, Board),
+   then the engines (Engine, Maia3, Playing strength). Grouped that way the two
+   columns also end within a card of each other; the strip's order put the tall
+   Engine card under Account and left the right column 250px short. */
 @media (min-width: 1200px) {
   .settings-content {
     display: block;
@@ -1537,34 +1544,39 @@ h2 {
 }
 .teams {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 330px;
   gap: 12px;
   align-items: start;
 }
-/* Directory, detail and incoming shares share one row height: a short card
-   (an empty directory) used to leave the row ragged. */
-.teams > .card { align-self: stretch; }
 
-/* Teams is a work surface: the open team's panel takes the height of the
-   view, the way the Library table does, and the two short lists beside it
-   keep their own height at the top. Before this, every card was sized by its
-   content, so the page showed three short strips over half a screen of
-   empty ground. */
+/* Desktop: the two lists (directory, incoming shares) stack in a narrow column
+   and the team takes the rest. An open team is a work surface and takes the
+   view's height; the placeholder card spans the list column and ends where it
+   ends, so a short directory never leaves a screen-tall blank card beside two
+   strips. With no team yet (or signed out) the directory has nothing to list:
+   the placeholder is the first-run panel with its own New team, and the shares
+   card sits beside it at the same height. */
 @media (min-width: 1021px) {
-  .teams { min-height: 100%; grid-template-rows: minmax(0, 1fr); }
+  .teams { grid-template-columns: 300px minmax(0, 1fr); }
   .teams > .card.dir,
-  .teams > .card.incoming { align-self: start; }
+  .teams > .card.incoming { grid-column: 1; }
+  .teams > .team-detail,
+  .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
+  .teams:has(> .team-detail:not([hidden])) { min-height: 100%; grid-template-rows: auto minmax(0, 1fr); }
   .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
   .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: stretch; }
+  .teams[data-empty="signed-out"] > .team-empty { grid-column: 1 / -1; } /* a guest has no shares card */
+}
+#team-empty-new { display: none; }
+@media (min-width: 1021px) {
+  .teams[data-empty="no-teams"] #team-empty-new { display: inline-flex; }
 }
 
-@media (max-width: 1279px) {
-  .teams { grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-  .incoming { grid-column: 2; }
-}
 @media (max-width: 1020px) {
   .teams { grid-template-columns: minmax(0, 1fr); }
-  .incoming { grid-column: auto; }
 }
 @media (max-width: 760px) {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -3791,6 +3803,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 
+/* Desktop Games and Scout: the page names itself, as Settings does, and the
+   controls sit on the title's row instead of in a white strip of their own. The
+   strip was a 48px band of 13px controls over the whole width, which read as a
+   cramped form line; on the title row they read as the page's own controls and
+   the results get the height. */
+@media (min-width: 861px) {
+  .review > :is(.games-panel, .scout-panel):not([hidden]) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px 24px;
+  }
+  .review > section > .page-head { display: block; align-self: center; }
+  .review > section > .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
+  .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
+  /* An empty Scout is a card the report lands in, the way the Games ledger is
+     before its first Check, not a line of text floating on the page ground. */
+  .scout-panel .scout-empty { border-radius: var(--radius-card); background: var(--panel); }
+}
+
 /* ===========================================================================
    Scout: Opus prototype composition (skeleton; the report itself is styled in
    views/scout.css). Toolbar card, then a grid: scrolling main column (profile,
@@ -5354,10 +5387,24 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-/* Engine on in Build: the inspector takes more of the column so the lines and
-   the Explorer both fit; the (mostly short) move tree scrolls instead. */
-@media (min-width: 861px) {
-  .dock:has(#explorer-rows.has-eval) { flex-basis: clamp(300px, 58%, 520px); }
+
+/* A short desktop window (a laptop with its browser chrome, ~530px tall): the
+   panel is barely taller than the board, and five engine lines over the Explorer
+   left the inspector 80px short of its rows with the tree at its floor. The panel
+   tightens its bands instead of scrolling them: rows a few px shorter, the fork
+   bar on one line. Pitches stay at or above 23px, so rows remain easy targets. */
+@media (min-width: 861px) and (max-height: 640px) {
+  .forkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px var(--build-pad, 12px); }
+  .fork-head { margin-bottom: 0; }
+  .fork-chip { padding-top: 2px; padding-bottom: 2px; }
+  .dock-tabs button { padding-top: 5px; padding-bottom: 5px; }
+  .dock-body { padding-top: 6px; padding-bottom: 6px; }
+  .dock-tools { margin-bottom: 4px; }
+  #explorer-engine-slot { top: -6px; margin-top: -6px; margin-bottom: 4px; padding-top: 2px; }
+  .engine-window.is-docked .engine-pv { height: 23px; min-height: 23px; }
+  .engine-window.is-docked .engine-pv-line { line-height: 21px; }
+  .explorer-head { padding-top: 1px; padding-bottom: 1px; }
+  .explorer-row { padding-top: 2px; padding-bottom: 2px; }
 }
 
 /* ---- Slim header: meta on the left, controls on the right -------------- */

@@ -360,12 +360,11 @@ describe("workspace chrome layout", () => {
     expect(fit).toContain('dock.querySelector(".dock-body")');
     expect(fit).toContain("scrollHeight");
     expect(fit).toContain("paddingTop");
-    // Every Explorer render (and unfolding) refits; coverage repaints refit too.
-    expect(session).toMatch(/requestAnimationFrame\(\(\) => fitBuildDock\(\)\)/);
+    // Any drawer or panel band changing height refits the dock before the frame
+    // paints (a ResizeObserver), so no paint path has to remember to ask; unfolding
+    // refits too.
+    expect(session).toMatch(/new ResizeObserver\(\(\) => fitBuildDock\(\)\)/);
     expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
-    // Coverage repaints refit the dock through coverage-entry.js, which takes
-    // the fit as a dep.
-    expect(app).toContain("fitDock: () => buildSession?.fitBuildDock()");
     // A height the user dragged is not overwritten by the next repaint.
     expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
     expect(session).toMatch(/if \(dock\.dataset\.dockPinned\) return;/);
@@ -514,9 +513,8 @@ describe("workspace chrome layout", () => {
     // Two tabs over one panel, counts on the tabs, invite status as a footer line.
     expect(view).toContain('class="tabs" role="tablist"');
     expect(view).toContain('id="team-invite-foot"');
-    // Page grid in the eager sheet; collapses to 2 columns then 1.
-    expect(css).toMatch(/\.teams\s*\{[^}]*grid-template-columns:\s*260px\s+minmax\(0,\s*1fr\)\s+330px/);
-    expect(css).toMatch(/max-width:\s*1279px\)\s*\{\s*\.teams\s*\{[^}]*250px/);
+    // Page grid in the eager sheet: the lists beside the team, then one column.
+    expect(css).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); \}/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
     expect(teamsCss).toContain(".team-row.is-selected");
     // The old page intro, stacked-card chrome and generic list rows are gone.

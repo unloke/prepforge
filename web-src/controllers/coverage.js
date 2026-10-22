@@ -16,7 +16,7 @@ function formatMass(value) {
 // state and its gaps. The controls are the source of truth for scope/horizon.
 export function createCoverageController({
   getContext, getProvider, selectNode, getBoard,
-  previewReplies, getJob, onError, onPaint = () => {},
+  previewReplies, getJob, onError,
 }) {
   let result = null;
   let identity = null;
@@ -174,7 +174,6 @@ export function createCoverageController({
       body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Press Scan to check this line.</p>`;
     }
     el.innerHTML = body;
-    onPaint();
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];
     const selectAll = el.querySelector("#coverage-selectall");
     const complete = el.querySelector("#coverage-complete");
