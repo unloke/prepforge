@@ -1,7 +1,7 @@
 /* Smart queue history: the latest run as the one block that answers "how did
    the last session go", earlier runs as a scannable list. Achromatic: the only
    ink step is the lead figure, and missed answers keep the app's danger tint.
-   A real dialog, so the shared .modal overlay shadow is the one elevation. */
+   A real dialog, so the shared .modal shadow is the one elevation. */
 .modal.training-history {
   /* Meta text: the lead's label, the timestamps, the figure labels, the list
      heading and the footer. Desktop reads it at the app's 11px extra-small;
@@ -10,10 +10,10 @@
   --th-meta: var(--fs-xs);
   width: min(560px, calc(100vw - 24px));
   max-height: min(78svh, 640px);
-  display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+.modal.training-history[open] { display: flex; }
 
 .th-head {
   display: flex;

@@ -18,12 +18,6 @@
 .phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
 .phone-sheet { display: contents; }
 
-/* The More sheet belongs to the phone layout: a bar that is gone must not leave
-   it as a full-width bottom sheet over the desktop board. */
-@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
-  .sheet-scrim:not([hidden]) { display: none; }
-}
-
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   :root {
     --phone-bar-h: 56px;
@@ -543,17 +537,14 @@
     font-size: 16px;
   }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
-  /* Settings is a thumb target: its row buttons keep the quiet ghost look but
-     take a 40px box (they were 36px, and "Edit" only 34x36). */
-  #view-settings .set :is(.btn, .btn.sm):not(.primary) {
+  /* Settings is a thumb target: its row buttons take a 40px box (they were
+     36px, and "Edit" only 34x36) and keep their own look, the same .btn as
+     everywhere else. Bare accent text read as a link, not as Detect or Sign out. */
+  #view-settings .set :is(.btn, .btn.sm) {
     min-height: 40px;
     height: 40px;
-    padding: 0 8px;
-    border: 0;
-    background: none;
-    color: var(--accent-strong);
+    padding: 0 14px;
     font-size: 15px;
-    font-weight: 600;
   }
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
   /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
@@ -561,8 +552,8 @@
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
-  /* Sign out takes its own line under the identity, on the text's edge (its
-     8px padding pulled back): beside the name it left the name and its Edit
+  /* Sign out takes its own line under the identity, on the text's edge:
+     beside the name it left the name and its Edit
      167px, which cut the name to "onlyformu…" with space to spare below. */
   #view-settings .acct-id { gap: 4px 12px; padding: 12px 0; flex-wrap: wrap; }
   #view-settings .acct-id-text { flex: 1 1 calc(100% - 60px); }
@@ -571,11 +562,9 @@
      at the thumb like every other phone menu, not a 132px popover over the
      row under it. */
   #view-settings .conn-menu-btn { min-width: 44px; height: 44px; font-size: 18px; }
-  #view-settings .conn-menu:not([hidden]) {
-    position: fixed;
-    z-index: var(--z-menu, 80);
-    top: auto;
-    left: 8px;
+  #view-settings .conn-menu {
+    top: auto !important;
+    left: 8px !important;
     right: 8px;
     bottom: calc(8px + env(safe-area-inset-bottom));
     gap: 0;
@@ -583,9 +572,10 @@
     padding: 6px 0;
     border: 0;
     border-radius: 16px;
-    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
+    box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
+  .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   #view-settings .conn-menu-item { min-height: 48px; padding: 0 18px; border-radius: 0; font-size: 16px; }
   #view-settings .conn-menu-item + .conn-menu-item { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
   #view-settings .acct-block { margin-top: 0; }
@@ -1311,7 +1301,7 @@
   #view-train .train-sidebar[data-session-state="summary"] #train-summary-new { height: 50px; min-height: 50px; margin-top: 8px; padding: 0; border-radius: 25px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
-  .context-menu:not([hidden], .account-menu) {
+  .context-menu:not(.account-menu) {
     top: auto !important;
     left: 8px !important;
     right: 8px;
@@ -1323,9 +1313,10 @@
     padding: 6px 0;
     border: 0;
     border-radius: 16px;
-    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
+    box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
+  .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   .context-menu button {
     min-height: 44px;
     padding: 0 18px;
@@ -1335,25 +1326,31 @@
   /* Groups split by a rule instead of a caption, so Delete stays in view. */
   .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
   .context-menu .context-section { display: none; }
-  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+  /* Only between groups: a rule at the top of the menu splits nothing. */
+  .context-menu button ~ .context-section + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
 
   /* ---- Dialogs: bottom sheets ------------------------------------------
      Sign in, confirm, share and invite rise from the bottom edge like every
      other phone sheet, full width, with 48px fields and thumb-sized buttons.
      A 380px card floating at the top left its Sign in button in the hardest
      place to reach, and its 32px fields under the iOS 44px floor. */
-  .modal-overlay { place-items: end stretch; padding: 0; }
-  .modal {
+  /* :root + element: beats a dialog's own desktop width (.share-modal,
+     .welcome, .modal.training-history) wherever its CSS loads. The More
+     sheet keeps its floating inset (below). */
+  :root dialog.modal:not(.sheet) {
+    inset: auto 0 0;
+    margin: auto 0 0;
     width: 100%;
     max-width: none;
+  }
+  .modal {
     max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
     padding-bottom: env(safe-area-inset-bottom);
     border-radius: 18px 18px 0 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
   }
+  .modal:not([open], :popover-open) { transform: translateY(24%); }
   @starting-style {
-    .modal-overlay:not([hidden]) .modal { transform: translateY(24%); }
+    .modal:is([open], :popover-open) { transform: translateY(24%); }
   }
   .modal-title { display: flex; align-items: center; min-height: 56px; padding: 6px 8px 6px var(--phone-gutter); font-size: 18px; }
   .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
@@ -1369,12 +1366,15 @@
   .auth-footer .auth-switch { align-self: center; font-size: 15px; }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
-  .sheet-scrim { background: rgba(0, 0, 0, 0.45); }
+  .sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
   .sheet {
     display: flex;
     flex-direction: column;
     gap: 0;
-    margin: 0 8px calc(8px + env(safe-area-inset-bottom));
+    inset: auto 0 0;
+    width: auto;
+    max-width: none;
+    margin: auto 8px calc(8px + env(safe-area-inset-bottom));
     padding: 6px 0;
     border-radius: 16px;
   }

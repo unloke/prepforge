@@ -164,7 +164,7 @@
                   <header class="cc-head">
                     <b>Coach</b>
                     <span class="phase-chip" id="coach-phase" data-testid="coach-phase" hidden></span>
-                    <button type="button" class="pf-switch is-on" id="explain-engine-toggle" role="switch" aria-checked="true" aria-label="Grade moves" title="Grade each move with Stockfish"><span class="pf-knob"></span></button>
+                    <label class="cc-switch-label" id="explain-engine-label" for="explain-engine-toggle">Grade moves</label><button type="button" class="pf-switch is-on" id="explain-engine-toggle" role="switch" aria-checked="true" aria-labelledby="explain-engine-label" title="Grade each move with Stockfish"><span class="pf-knob"></span></button>
                     <span class="panel-actions" id="analyze-actions">
                       <button class="btn sm" id="fetch-my-game" data-testid="fetch-my-game" aria-label="Last game" title="Load and analyze your latest Lichess game"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span class="bl">Last game</span></button>
                       <button class="btn sm primary" id="run-analysis" data-testid="run-analysis"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l5-6 4 3 7-9"/><circle cx="20" cy="6" r="1.2"/></svg><span class="bl">Analyze</span></button>
@@ -866,44 +866,42 @@
       </button>
     </nav>
 
-    <div class="sheet-scrim" id="more-sheet" hidden>
-      <div class="sheet" role="dialog" aria-modal="true" aria-label="More">
-        <div class="sheet-grab" aria-hidden="true"></div>
-        <button class="sheet-item" type="button" id="sheet-lib-import" data-lib-mirror="dashboard-import-pgn" hidden>
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>
-          <span>Import PGN</span>
-        </button>
-        <button class="sheet-item" type="button" data-nav-mirror="replay:scout">
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="15" r="3.5"/><circle cx="17" cy="15" r="3.5"/><path d="M10.5 15h3M5 11.5 7.5 5h2l1 6M19 11.5 16.5 5h-2l-1 6"/></svg>
-          <span>Scout</span>
-        </button>
-        <button class="sheet-item" type="button" data-nav-mirror="teams">
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.4 4.5 4"/></svg>
-          <span>Teams</span>
-        </button>
-        <button class="sheet-item" type="button" data-nav-mirror="settings">
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
-          <span>Settings</span>
-        </button>
-        <button class="sheet-item" type="button" id="sheet-account" data-testid="sheet-account">
-          <span class="avatar sm" id="sheet-account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
-          <span id="sheet-account-label">Sign in</span>
-        </button>
-        <button class="sheet-item" type="button" id="sheet-theme" data-testid="sheet-theme">
-          <svg class="ic theme-ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>
-          <svg class="ic theme-ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
-          <span>Theme</span>
-        </button>
-        <button class="sheet-item" type="button" id="sheet-palette">
-          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
-          <span>Command palette</span>
-        </button>
-      </div>
-    </div>
+    <dialog class="modal sheet" id="more-sheet" aria-label="More">
+      <div class="sheet-grab" aria-hidden="true"></div>
+      <button class="sheet-item" type="button" id="sheet-lib-import" data-lib-mirror="dashboard-import-pgn" hidden>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>
+        <span>Import PGN</span>
+      </button>
+      <button class="sheet-item" type="button" data-nav-mirror="replay:scout">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="15" r="3.5"/><circle cx="17" cy="15" r="3.5"/><path d="M10.5 15h3M5 11.5 7.5 5h2l1 6M19 11.5 16.5 5h-2l-1 6"/></svg>
+        <span>Scout</span>
+      </button>
+      <button class="sheet-item" type="button" data-nav-mirror="teams">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.4 4.5 4"/></svg>
+        <span>Teams</span>
+      </button>
+      <button class="sheet-item" type="button" data-nav-mirror="settings">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+        <span>Settings</span>
+      </button>
+      <button class="sheet-item" type="button" id="sheet-account" data-testid="sheet-account">
+        <span class="avatar sm" id="sheet-account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
+        <span id="sheet-account-label">Sign in</span>
+      </button>
+      <button class="sheet-item" type="button" id="sheet-theme" data-testid="sheet-theme">
+        <svg class="ic theme-ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>
+        <svg class="ic theme-ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
+        <span>Theme</span>
+      </button>
+      <button class="sheet-item" type="button" id="sheet-palette">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+        <span>Command palette</span>
+      </button>
+      </dialog>
 
-    <div class="context-menu" id="node-context-menu" hidden></div>
-    <div class="context-menu" id="repertoire-context-menu" role="menu" aria-label="Repertoire actions" hidden></div>
-    <div class="context-menu account-menu" id="account-menu" role="menu" hidden></div>
+    <div class="context-menu" id="node-context-menu" popover></div>
+    <div class="context-menu" id="repertoire-context-menu" role="menu" aria-label="Repertoire actions" popover></div>
+    <div class="context-menu account-menu" id="account-menu" role="menu" popover></div>
 
     <div class="engine-window" id="engine-window" data-testid="engine-window" hidden>
       <header class="engine-window-head" id="engine-window-head">
@@ -934,12 +932,10 @@
 
     <div class="notices" id="notices" data-testid="notices" role="region" aria-label="Notifications"></div>
 
-    <div class="palette" id="command-palette" data-testid="command-palette" hidden role="dialog" aria-modal="true" aria-label="Command palette">
-      <div class="palette-panel">
-        <input class="palette-input" id="palette-input" data-testid="palette-input" type="text" role="combobox" aria-autocomplete="list" aria-controls="palette-results" aria-expanded="false" autocomplete="off" spellcheck="false" placeholder="Go to a view, repertoire, or action…" aria-label="Filter commands" />
-        <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
-      </div>
-    </div>
+    <dialog class="palette" id="command-palette" data-testid="command-palette" aria-label="Command palette">
+      <input class="palette-input" id="palette-input" data-testid="palette-input" type="text" role="combobox" aria-autocomplete="list" aria-controls="palette-results" aria-expanded="false" autocomplete="off" spellcheck="false" placeholder="Go to a view, repertoire, or action…" aria-label="Filter commands" />
+      <div class="palette-results" id="palette-results" data-testid="palette-results" role="listbox" aria-label="Commands"></div>
+    </dialog>
 
     <script type="module" src="/app.js"></script>
   </body>

@@ -78,18 +78,19 @@ describe("shared promotion picker wiring", () => {
   });
 
   it("does not auto-commit a piece: cancel resolves null, choice explicit", () => {
-    expect(app).toContain("dismiss(null)");
-    expect(app).toContain("dismiss(btn.dataset.uci)");
+    const picker = app.slice(app.indexOf("function showPromotionPicker("));
+    // Every close (light dismiss included) resolves what was picked: nothing
+    // until a button sets it.
+    expect(picker).toContain("let choice = null;");
+    expect(picker).toContain("resolve(choice)");
+    expect(picker).toContain("choice = btn.dataset.uci;");
   });
 
   it("focuses Queen first but never submits without a player choice", () => {
     const picker = app.slice(app.indexOf("function showPromotionPicker("));
-    const focusAt = picker.indexOf("queenBtn.focus(");
-    const clickAt = picker.indexOf("dismiss(btn.dataset.uci)");
-    expect(focusAt).toBeGreaterThan(-1);
-    expect(clickAt).toBeGreaterThan(-1);
     // Queen is option[0] in q/r/b/n order, so focusing buttons[0] is Queen.
-    expect(picker).toContain("const queenBtn = buttons[0]");
+    expect(picker).toContain("buttons[0]?.focus(");
+    expect(picker.indexOf("choice = btn.dataset.uci;")).toBeGreaterThan(-1);
   });
 
   it("keeps the promotion UCI intact through history-relevant shapes", () => {
@@ -114,11 +115,10 @@ describe("promotion picker styles and markup", () => {
     const picker = app.slice(app.indexOf("function showPromotionPicker("));
     // Mouse/touch: real buttons with click handlers.
     expect(picker).toContain('class="promotion-option"');
-    expect(picker).toContain('role="dialog"');
     expect(picker).toContain('aria-label="Promote to');
-    // Keyboard: Queen auto-focus + Escape cancels.
-    expect(picker).toContain("queenBtn.focus(");
-    expect(picker).toContain('"Escape"');
+    // Keyboard: Queen auto-focus; Escape is the popover's light dismiss.
+    expect(picker).toContain("buttons[0]?.focus(");
+    expect(picker).toContain('overlay.popover = "auto"');
   });
 });
 

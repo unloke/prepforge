@@ -51,15 +51,17 @@ describe("analysis quality summary", () => {
 
 // The Coach head's Engine-review switch. On phones the head floats beside the
 // coach text, so the switch is a 22px control in a touch context: it must be a
-// 44px target (measured live at 390x660: 38x22 before, 44x44 after) and name
-// itself without a hidden label taking up row space.
+// 44px target (measured live at 390x660: 38x22 before, 44x44 after), named by
+// its label, which a phone shows beside it (the head drops "Coach" there, so a
+// bare switch read as nothing).
 describe("coach engine-review switch", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const css = readFileSync(new URL("./analyze-chart.css", import.meta.url), "utf8");
 
   it("is labelled and titled in place, with no standing description", () => {
     const tag = html.match(/<button[^>]*id="explain-engine-toggle"[^>]*>/)[0];
-    expect(tag).toContain('aria-label="Grade moves"');
+    expect(html).toContain('<label class="cc-switch-label" id="explain-engine-label" for="explain-engine-toggle">Grade moves</label>');
+    expect(tag).toContain('aria-labelledby="explain-engine-label"');
     // Not a second "Engine" control: the eval card's Engine button is the live lines.
     expect(tag).not.toMatch(/aria-label="[^"]*Engine/);
     expect(tag).toContain("title=");

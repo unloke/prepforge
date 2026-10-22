@@ -188,8 +188,8 @@ export function selectionChips(selection, linkedAccounts) {
 }
 
 // Shared Source Composer popover — one surface both Games and Scout open from
-// their collapsed chip row. Renders into document.body as an anchored popover
-// (not a modal) with a single source list:
+// their collapsed chip row. A native [popover="auto"] in document.body (not a
+// modal): Escape and a press outside close it. One source list:
 //
 //   Sources
 //   Self · 2 linked accounts
@@ -213,7 +213,7 @@ export function selectionChips(selection, linkedAccounts) {
 // the anchor; clamped to viewport edges; re-run on resize/scroll.
 //
 // Keyboard / focus / ARIA: Enter/Space toggle rows natively (checkboxes +
-// buttons), Esc closes, focus returns to the opener, the Self checkbox uses
+// buttons), Esc (the popover's own) closes, focus returns to the opener, the Self checkbox uses
 // aria-checked="mixed" for partial selection, and every chip-remove button
 // carries an accessible label.
 const POPOVER_GAP = 6;
@@ -281,6 +281,7 @@ export function openSourceComposer({
 
   const overlay = doc.createElement("div");
   overlay.className = "src-composer-overlay";
+  overlay.setAttribute?.("popover", "auto");
   const linkedCount = linked.length;
 
   let popoverEl = null;
@@ -343,26 +344,23 @@ export function openSourceComposer({
 
   render();
   doc.body.appendChild(overlay);
+  // The anchor is the popover's source: pressing it again is not an outside press.
+  try {
+    overlay.showPopover?.(opener ? { source: opener } : undefined);
+  } catch {
+    overlay.showPopover?.();
+  }
   popoverEl = overlay.querySelector(".src-popover");
   place();
-
-  doc.addEventListener?.("keydown", onDocKeydown, true);
-  function onDocKeydown(event) {
-    if (event.key === "Escape" && doc.body.contains?.(overlay)) {
-      event.preventDefault();
-      event.stopPropagation?.();
-      close(true);
-    }
-  }
+  // Escape and a press outside (the browser's light dismiss) keep the picks.
+  overlay.addEventListener("toggle", (event) => {
+    if (event.newState === "closed") close(true);
+  });
 
   const close = (result) => {
     if (overlay.dataset.closed === "1") return;
     overlay.dataset.closed = "1";
-    try {
-      doc.removeEventListener?.("keydown", onDocKeydown, true);
-    } catch {
-      /* ignore */
-    }
+    if (overlay.matches?.(":popover-open")) overlay.hidePopover();
     try {
       globalThis.removeEventListener?.("resize", place);
       globalThis.removeEventListener?.("scroll", place, true);
@@ -421,10 +419,6 @@ export function openSourceComposer({
   };
 
   overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) {
-      close(true);
-      return;
-    }
     if (event.target.closest("[data-src-done]")) {
       close(true);
       return;
@@ -550,12 +544,6 @@ export function openSourceComposer({
   });
 
   overlay.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      close(true);
-      return;
-    }
     if (event.key === "Enter" && event.target?.matches?.("[data-src-add]")) {
       event.preventDefault();
       void commitExternalFromInput();

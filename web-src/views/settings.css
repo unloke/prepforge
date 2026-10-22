@@ -198,11 +198,12 @@
    the glyph is a little larger and the button stays lit while its menu is open. */
 .conn-menu-btn { font-size: 15px; }
 .conn-menu-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
+/* A [popover] placed under its ⋯ (settings.js). */
 .conn-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 20;
+  inset: auto;
+  margin: 0;
+  border: 0;
+  color: var(--text);
   display: grid;
   gap: 2px;
   min-width: 132px;
@@ -216,9 +217,9 @@
   translate: 0 0;
   transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
-.conn-menu[hidden] { display: none; }
+.conn-menu:not(:popover-open) { display: none; }
 @starting-style {
-  .conn-menu:not([hidden]) {
+  .conn-menu:popover-open {
     opacity: 0;
     translate: 0 -4px;
   }
@@ -495,7 +496,10 @@
 @media (prefers-reduced-motion: reduce) {
   .dl-bar.is-busy i { animation: none; width: 100% !important; opacity: 0.5; }
 }
+/* Narrow: the state goes under the name, so the action keeps the row's right
+   edge like every other Settings row instead of taking a line of its own. */
 @media (max-width: 760px) {
-  .dl-head { grid-template-columns: minmax(0, 1fr) auto; }
-  .dl-head .btn { grid-column: 1 / -1; justify-self: start; }
+  .dl-head { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; }
+  .dl-head .status-pill { grid-row: 2; justify-self: start; }
+  .dl-head .btn { grid-column: 2; grid-row: 1 / span 2; }
 }

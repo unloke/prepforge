@@ -12,10 +12,10 @@ import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 // the functions stay at module level and createTeamsController binds the
 // shell's state and helpers they share, once.
 
-let switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn, activateModal;
+let switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn;
 
 export function createTeamsController(deps) {
-  ({ switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn, activateModal } = deps);
+  ({ switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn } = deps);
 
 
 const TEAM_ROLE_LABELS = { owner: "Owner", admin: "Admin", member: "Member" };
@@ -58,7 +58,6 @@ async function ensureTeamsView() {
       postJson,
       setStatus,
       setStatusError,
-      activateModal,
       showConfirmModal,
       requireSignIn,
     });
@@ -455,7 +454,6 @@ async function teamInvite(teamId) {
   // is repainted from the dialog's last known status after that read, not before.
   let status = null;
   const ui = createInviteDialogUi({
-    activateModal,
     onInviteStatus: (next) => { status = next; renderTeamInviteFooter(next); },
   });
   try {

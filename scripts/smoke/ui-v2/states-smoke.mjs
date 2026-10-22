@@ -9,9 +9,10 @@
 //      first-list failure keeps available statistics. Retry reloads the failed
 //      resource and returns to a usable table and non-error status.
 //   4. a window resize outside Analyze never loads the Analyze chunk / CSS
-//   5. mobile More → account: focus moves into the menu, Escape returns it to
-//      #sheet-account (aria-haspopup / aria-expanded), next Escape closes the
-//      sheet back to the More button
+//   5. mobile More → account: the More sheet is a native modal dialog that
+//      keeps Tab inside; focus moves into the account menu, Escape returns it
+//      to #sheet-account (aria-haspopup / aria-expanded), a second trigger
+//      press closes the menu, next Escape closes the sheet to the More button
 //   6. empty account → "Link Lichess" lands on Settings → Connections
 //   7. desktop rail account menu re-anchors to the collapsed rail trigger
 //
@@ -278,13 +279,21 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   const item = page.locator("#sheet-account");
   await tap(page.locator("#more-nav-btn"));
   await page.waitForTimeout(150);
-  check(S, await page.evaluate(() => document.querySelector("main")?.closest("[inert]") != null), "More should make the workspace inert");
+  // A modal <dialog>: the browser makes everything behind it inert.
+  check(S, await page.evaluate(() => document.getElementById("more-sheet")?.matches("dialog:modal") === true), "More should open as a modal dialog");
   const visibleItems = page.locator("#more-sheet button:visible");
+  const isActive = (locator) => locator.evaluate((node) => node === document.activeElement);
+  // Tab stays in the sheet. A native modal may hand focus to the browser's own
+  // UI once on the way round, so allow one extra press before it wraps.
+  const wraps = async (key, to) => {
+    await page.keyboard.press(key);
+    if (!(await isActive(to))) await page.keyboard.press(key);
+    return isActive(to);
+  };
   await visibleItems.last().focus();
-  await page.keyboard.press("Tab");
-  check(S, await visibleItems.first().evaluate((node) => node === document.activeElement), "Tab wraps to the first sheet control");
-  await page.keyboard.press("Shift+Tab");
-  check(S, await visibleItems.last().evaluate((node) => node === document.activeElement), "Shift+Tab wraps to the last sheet control");
+  check(S, await wraps("Tab", visibleItems.first()), "Tab wraps to the first sheet control");
+  check(S, await wraps("Shift+Tab", visibleItems.last()), "Shift+Tab wraps to the last sheet control");
+  check(S, await page.evaluate(() => !document.activeElement?.closest("main")), "Tab never reaches the workspace behind the sheet");
   check(S, (await attr(item, "aria-haspopup")) === "menu", "signed-in #sheet-account should have aria-haspopup=menu");
   check(S, (await attr(item, "aria-expanded")) === "false", "#sheet-account should start aria-expanded=false");
   await tap(item);
@@ -309,7 +318,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   check(S, await page.evaluate(() => document.activeElement?.id === "sheet-account"), "focus should return to #sheet-account");
   check(S, (await attr(item, "aria-expanded")) === "false", "#sheet-account should be aria-expanded=false after close");
 
-  // Toggling closed by the trigger also restores focus to it.
+  // A second press of the trigger closes the menu (the press light-dismisses
+  // it and the click must not reopen it) and leaves focus on the trigger.
   await tap(item);
   await page.waitForTimeout(100);
   await tap(item);
@@ -319,7 +329,9 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
 
   await page.keyboard.press("Escape");
   await page.waitForTimeout(150);
-  check(S, !(await page.locator("#more-sheet").isVisible()), "the next Escape should close the More sheet");
+  // The sheet closes at once and stays painted through its exit transition.
+  check(S, await page.evaluate(() => !document.getElementById("more-sheet").open), "the next Escape should close the More sheet");
+  check(S, await page.locator("#more-sheet").waitFor({ state: "hidden", timeout: 2000 }).then(() => true, () => false), "the closed More sheet should leave the screen");
   check(S, await page.evaluate(() => document.activeElement?.id === "more-nav-btn"), "focus should return to the More button");
 
   // A menu action closes both layers.

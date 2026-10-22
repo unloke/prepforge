@@ -1,5 +1,5 @@
 import { html } from '../html.js';
-import { activateModal } from '../core/modals.js';
+import { modalDialog, openModal } from '../core/dialog.js';
 import { HISTORY_LIMITS, readTrainingHistory } from '../train-history.js';
 import './train-history.css';
 
@@ -67,9 +67,7 @@ const retentionNote = `Keeps up to ${HISTORY_LIMITS.runs} recent runs within ${M
 export function openTrainingHistory(ownerId) {
   if (!ownerId) return;
   document.getElementById('training-history-dialog')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'training-history-dialog';
-  overlay.className = 'modal-overlay';
+  const overlay = modalDialog('training-history', { id: 'training-history-dialog' });
   let content, foot;
   try {
     const runs = readTrainingHistory(ownerId);
@@ -80,18 +78,11 @@ export function openTrainingHistory(ownerId) {
       <p>Allow site storage for this site, then reopen History.</p></div>`;
     foot = '';
   }
-  overlay.innerHTML = html`<section class="modal training-history" role="dialog" aria-modal="true" aria-labelledby="training-history-title">
-    <header class="th-head"><div class="th-titles">
+  overlay.innerHTML = html`<header class="th-head"><div class="th-titles">
         <h2 class="modal-title" id="training-history-title">Training history</h2>
         <span class="th-scope">Smart queue and Blitz · this browser</span></div>
       <button class="btn sm" type="button" data-close>Close</button></header>
-    <div class="th-body">${content}</div>${foot}</section>`;
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.querySelector('[data-close]').addEventListener('click', close);
-  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
-  overlay.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.stopPropagation(); close(); }
-  });
-  activateModal(overlay, { initialFocus: overlay.querySelector('[data-close]') });
+    <div class="th-body">${content}</div>${foot}`;
+  const close = openModal(overlay, { initialFocus: overlay.querySelector('[data-close]') });
+  overlay.querySelector('[data-close]').addEventListener('click', () => close());
 }

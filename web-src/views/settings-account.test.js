@@ -135,6 +135,10 @@ describe("Settings → Account", () => {
       querySelector: vi.fn(() => nodeStub()),
       querySelectorAll: vi.fn(() => []),
       addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      setAttribute: vi.fn(),
+      hasAttribute: () => true,
+      showModal: vi.fn(),
       remove: vi.fn(),
     };
     globalThis.document = {
@@ -143,7 +147,7 @@ describe("Settings → Account", () => {
         created.push(overlay);
         return overlay;
       },
-      body: { appendChild: vi.fn() },
+      body: { append: vi.fn() },
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     };

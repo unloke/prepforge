@@ -21,6 +21,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { routeLichessProfile } from "./lichess-profile-route.mjs";
 import { Chess } from "chess.js";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -848,6 +849,7 @@ const VIEWPORTS = [
 for (const vp of VIEWPORTS) {
   console.log(`[board-rewind] ${vp.name} ${vp.width}x${vp.height}`);
   const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+  await routeLichessProfile(context);
   for (const [label, scenario] of vp.scenarios) {
     const page = await context.newPage();
     const consoleErrors = [];

@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { isPopoverOpen, menuKeys, modalDialog, openPopover } from "../core/dialog.js";
 import {
   AUTH_REQUIRED_MESSAGE,
   clearPendingAction,
@@ -206,7 +207,7 @@ export function createAccountController({
   let authDismissedAt = 0;
 
   function isAuthModalOpen() {
-    return typeof document !== "undefined" && !!document.querySelector?.(".modal-overlay.auth-overlay");
+    return typeof document !== "undefined" && !!document.querySelector?.("dialog.auth-modal");
   }
 
   // An API call answered 401: show the sign-in modal with an explanation
@@ -257,7 +258,7 @@ export function createAccountController({
   };
 
   function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null, onDismiss = null } = {}) {
-    const existing = document.querySelector(".modal-overlay.auth-overlay");
+    const existing = document.querySelector("dialog.auth-modal");
     if (existing) {
       // The modal registers a document-level keydown listener on open, so a bare
       // remove() here would orphan it. Replacing it is not a user dismissal:
@@ -275,8 +276,9 @@ export function createAccountController({
     }
     // Dismissing hands focus back to whatever opened the modal.
     const opener = existing ? null : document.activeElement;
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay auth-overlay";
+    // A manual popover, not a modal: the rail and tab bar stay usable through
+    // its dim (styles.css), so it keeps its own Escape and outside press.
+    const overlay = modalDialog("auth-modal", { popover: "manual", "aria-labelledby": "auth-modal-title" });
     const providers = appState.authProviders || { google: false, password: true };
     let token = resetToken;
     let renderSeq = 0;
@@ -335,9 +337,8 @@ export function createAccountController({
           ? html`<p class="auth-reason" data-auth="reason">${authReasonFor(currentMode, reason)}</p>`
           : "";
       overlay.innerHTML = html`
-      <div class="modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
         <div class="modal-title auth-modal-title">
-          <span id="auth-modal-title">${spec.title}</span>
+          <h2 id="auth-modal-title">${spec.title}</h2>
           <button class="auth-close" data-action="close" type="button" aria-label="Close" title="Close">×</button>
         </div>
         <div class="modal-body">
@@ -352,8 +353,7 @@ export function createAccountController({
         <div class="modal-footer auth-footer">
           <button class="auth-link auth-switch" data-action="toggle" type="button">${secondary}</button>
           <button class="btn primary" data-action="submit" type="button">${spec.submit}</button>
-        </div>
-      </div>`;
+        </div>`;
       overlay.dataset.mode = currentMode;
       overlay.querySelector("input")?.focus();
     };
@@ -361,7 +361,8 @@ export function createAccountController({
     // the recovery screens fall back to the plain notice slot.
     render(mode, { message: mode === "login" || mode === "register" ? "" : reason });
     document.body.appendChild(overlay);
-    // render() runs before the overlay is attached, so focus again now.
+    overlay.showPopover?.();
+    // render() runs before the dialog is shown, so focus again now.
     overlay.querySelector("input")?.focus();
 
     // `signedIn`: closing because the sign-in succeeded (keep the pending
@@ -374,6 +375,7 @@ export function createAccountController({
       requestController = null;
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onOutsidePointer, true);
+      overlay.hidePopover?.();
       overlay.remove();
       if (!signedIn && !replaced) {
         clearPendingAction();
@@ -462,22 +464,19 @@ export function createAccountController({
         submit();
       }
     };
-    // The overlay itself is click-through (styles.css: rail tabs stay usable
-    // behind the dim layer), so "click the backdrop to close" is detected at
-    // the document: a press outside the dialog dismisses it, and the press
-    // still reaches whatever it landed on.
+    // The backdrop is click-through (styles.css: rail tabs stay usable behind
+    // the dim), so "click the backdrop to close" is detected at the document:
+    // a press outside the dialog dismisses it, and the press still reaches
+    // whatever it landed on.
     const onOutsidePointer = (event) => {
-      const dialog = overlay.querySelector(".auth-modal");
-      if (dialog && event.target && typeof dialog.contains === "function" && !dialog.contains(event.target)) {
-        close();
-      }
+      if (event.target && !overlay.contains(event.target)) close();
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onOutsidePointer, true);
     overlay.addEventListener("click", (event) => {
       const action = event.target?.dataset?.action;
       const currentMode = overlay.dataset.mode;
-      if (event.target === overlay || action === "close") {
+      if (action === "close") {
         close();
       } else if (action === "google") {
         // The Google round trip lands on "/?signed_in=1"; the pending action
@@ -521,9 +520,6 @@ export function createAccountController({
     return true;
   }
 
-  // The control that opened the menu (rail chip or the More sheet's account
-  // item): it carries aria-expanded and gets focus back on Escape.
-  let menuTrigger = null;
   // What the open menu is positioned against, and the observer that keeps it
   // there while the hover/focus rail grows or collapses underneath it.
   let menuAnchor = null;
@@ -533,7 +529,7 @@ export function createAccountController({
   // Mobile (rail hidden, opened from the More sheet): sit above the tab bar.
   function positionAccountMenu() {
     const menu = document.getElementById("account-menu");
-    if (!menu || menu.hidden || !menuAnchor) return;
+    if (!isPopoverOpen(menu) || !menuAnchor) return;
     const rect = menu.getBoundingClientRect();
     const cr = menuAnchor.getBoundingClientRect();
     let left;
@@ -592,10 +588,10 @@ export function createAccountController({
     if (!chip || !menu) return;
     const name = appState.accountUsername || appState.lichessUsername || "your account";
     const lichessItem = appState.lichessUsername
-      ? html`<div class="context-section">Lichess: ${appState.lichessUsername}</div>`
+      ? html`<div class="context-section">Lichess<span class="context-who">${appState.lichessUsername}</span></div>`
       : html`<button type="button" role="menuitem" data-action="connect-lichess">Connect Lichess</button>`;
     const items = [
-      html`<div class="context-section">Signed in as ${name}</div>`,
+      html`<div class="context-section">Signed in as<span class="context-who">${name}</span></div>`,
       lichessItem,
       // One entry: "Account" and "Settings" used to open the same page (the
       // Account card is the top of Settings), which read as a duplicate.
@@ -603,45 +599,38 @@ export function createAccountController({
       html`<button type="button" role="menuitem" data-action="signout">Sign out</button>`,
     ];
     menu.innerHTML = html`${items}`;
-    menu.hidden = false;
-    if (menuTrigger && menuTrigger !== (trigger || chip)) {
-      menuTrigger.setAttribute("aria-expanded", "false");
-    }
-    menuTrigger = trigger || chip;
-    menuTrigger.setAttribute("aria-expanded", "true");
+    const opener = trigger || chip;
+    const close = openPopover(menu, {
+      opener,
+      onClose: () => {
+        stopFollowingRail();
+        menuAnchor = null;
+        chip.setAttribute("aria-expanded", "false");
+      },
+    });
     menuAnchor = anchor || chip;
     positionAccountMenu();
     followRailWidth(menuAnchor);
     menu.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => handleAccountMenuAction(button.dataset.action));
     });
+    menuKeys(menu, close);
     menu.querySelector('[role="menuitem"]')?.focus();
   }
 
-  // restoreFocus (Escape / explicit toggle) returns focus to the trigger when
-  // it is still on screen; outside clicks and menu actions leave focus alone.
-  function closeAccountMenu({ restoreFocus = false } = {}) {
+  // A popover: Escape and a press outside close it natively, handing focus
+  // back to the opener when it was in the menu.
+  function closeAccountMenu() {
     const menu = document.getElementById("account-menu");
-    const wasOpen = !!menu && !menu.hidden;
-    if (menu) menu.hidden = true;
-    stopFollowingRail();
-    menuAnchor = null;
-    const chip = document.getElementById("account-chip");
-    if (chip) chip.setAttribute("aria-expanded", "false");
-    const trigger = menuTrigger;
-    menuTrigger = null;
-    if (!trigger) return;
-    trigger.setAttribute("aria-expanded", "false");
-    if (wasOpen && restoreFocus && trigger.getClientRects?.().length) trigger.focus();
+    if (isPopoverOpen(menu)) menu.hidePopover();
   }
 
   function isAccountMenuOpen() {
-    const menu = document.getElementById("account-menu");
-    return !!menu && !menu.hidden;
+    return isPopoverOpen(document.getElementById("account-menu"));
   }
 
   function toggleAccountMenu(anchor = null, { trigger = null } = {}) {
-    if (isAccountMenuOpen()) closeAccountMenu({ restoreFocus: true });
+    if (isAccountMenuOpen()) closeAccountMenu();
     else openAccountMenu(anchor, { trigger });
   }
 

@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { modalDialog, openModal } from "../core/dialog.js";
 // Settings → Account: the self-service side of the account backend — profile,
 // password, plan/billing, data export and account deletion. The card reads top
 // to bottom as "who you are → the chess accounts that are you → your data":
@@ -220,15 +221,17 @@ export function createAccountSection({
     bound = true;
     const onClick = (event) => {
       const button = event.target.closest("[data-acct]");
-      if (!button || button.disabled) return;
+      if (!button || button.disabled || button.getAttribute("aria-busy") === "true") return;
       const run = ACTIONS[button.dataset.acct];
       if (!run) return;
-      button.disabled = true;
+      // Busy, not disabled: a disabled button drops focus, and the dialog it
+      // opens hands focus back to it on close.
+      button.setAttribute("aria-busy", "true");
       Promise.resolve()
         .then(run)
         .catch((error) => setStatus(error.message || String(error), { severity: "error" }))
         .finally(() => {
-          button.disabled = false;
+          button.removeAttribute("aria-busy");
         });
     };
     el.addEventListener("click", onClick);
@@ -239,17 +242,15 @@ export function createAccountSection({
   // wrong current password (etc.) is shown in place instead of closing it.
   function formModal({ title, fields, okLabel = "OK", tone = "primary", validate = () => "", submit = null }) {
     return new Promise((resolve) => {
-      const overlay = document.createElement("div");
-      overlay.className = "modal-overlay";
+      const overlay = modalDialog();
       overlay.innerHTML =
-        html`<div class="modal" role="dialog" aria-modal="true" aria-label="${title}"><div class="modal-title">${title}</div><div class="modal-body">${fields
+        html`<h2 class="modal-title">${title}</h2><div class="modal-body">${fields
           .map(
             (f) =>
               html`<label class="modal-field"><span>${f.label}</span><input name="${f.name}" type="${f.type === "password" ? "password" : "text"}" value="${f.value || ""}"${f.maxLength ? html` maxlength="${f.maxLength}"` : ""} autocomplete="${f.autocomplete || "off"}" /></label>`,
-          )}<p class="auth-error" data-form-error role="alert" hidden></p></div><div class="modal-footer"><button class="btn ghost" data-form="cancel" type="button">Cancel</button><button class="btn ${tone === "danger" ? "danger" : "primary"}" data-form="ok" type="button">${okLabel}</button></div></div>`;
-      document.body.appendChild(overlay);
+          )}<p class="auth-error" data-form-error role="alert" hidden></p></div><div class="modal-footer"><button class="btn ghost" data-form="cancel" type="button">Cancel</button><button class="btn ${tone === "danger" ? "danger" : "primary"}" data-form="ok" type="button">${okLabel}</button></div>`;
       const first = overlay.querySelector("input");
-      first?.focus();
+      const close = openModal(overlay, { initialFocus: first, onDismiss: () => finish(null) });
       first?.select?.();
       const errorEl = overlay.querySelector("[data-form-error]");
       const okBtn = overlay.querySelector('[data-form="ok"]');
@@ -264,9 +265,11 @@ export function createAccountSection({
         });
         return values;
       };
+      let finished = false;
       const finish = (values) => {
-        document.removeEventListener("keydown", onKey);
-        overlay.remove();
+        if (finished) return;
+        finished = true;
+        close();
         resolve(values);
       };
       const confirm = async () => {
@@ -283,21 +286,14 @@ export function createAccountSection({
           okBtn.disabled = false;
         }
       };
-      const onKey = (event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          finish(null);
-        } else if (event.key === "Enter") {
+      overlay.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && event.target.tagName === "INPUT") {
           event.preventDefault();
           confirm();
         }
-      };
-      document.addEventListener("keydown", onKey);
+      });
       overlay.querySelector('[data-form="cancel"]').addEventListener("click", () => finish(null));
       okBtn.addEventListener("click", confirm);
-      overlay.addEventListener("click", (event) => {
-        if (event.target === overlay) finish(null);
-      });
     });
   }
 

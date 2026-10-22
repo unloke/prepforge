@@ -1,7 +1,7 @@
 // UI v2 viewport smoke suite — single runner.
 //
-// Runs the eight per-view Playwright viewport smokes plus the cross-view
-// states smoke (each serves the built
+// Runs the per-view Playwright viewport smokes plus the cross-view states
+// and dialogs smokes (each serves the built
 // static/ tree with real-shape /api/* fixtures at 1440x900 / 1180x900 /
 // 390x844) sequentially and reports one summary. The smokes were promoted
 // from throwaway tmp/ scripts after they caught regressions during the
@@ -47,6 +47,9 @@ const SUITE = [
   // Cross-view states: signed out, Library load errors, resize chunk hygiene,
   // mobile account-menu focus, Link Lichess → Connections.
   ["States", "states-smoke.mjs"],
+  // Every dialog and menu is native: one modal, Tab kept inside, Escape closes
+  // and hands focus back, phone dialogs on the bottom edge.
+  ["Dialogs", "dialogs-smoke.mjs"],
 ];
 
 // Each smoke serves its own port, so a few run side by side; output is held

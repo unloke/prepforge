@@ -166,8 +166,9 @@ describe("Repertoire node menu names its move (P2-8)", () => {
     // The repertoire (Library) menu has no tree node to outline.
     const repMenu = app.slice(app.indexOf('["toggle-active"'));
     expect(repMenu.slice(0, repMenu.indexOf("\nfunction "))).not.toMatch(/markNodeMenuTarget/);
-    const close = app.slice(app.indexOf("function closeNodeContextMenu("));
-    expect(close.slice(0, close.indexOf("\n}"))).toMatch(/markNodeMenuTarget\(null\)/);
+    // However the popover closes (Escape, outside press, an action), its
+    // onClose clears the outline.
+    expect(openBody).toMatch(/onClose: \(\) => markNodeMenuTarget\(null\)/);
   });
 });
 
@@ -184,8 +185,8 @@ describe("command palette scrim matches modals in both themes (P2-3)", () => {
   };
 
   it("does not derive the backdrop from the text color (light in dark mode)", () => {
-    expect(bg(".palette")).toBeTruthy();
-    expect(bg(".palette")).not.toMatch(/--text/);
-    expect(bg(".palette")).toBe(bg(".modal-overlay"));
+    expect(bg(".palette::backdrop")).toBeTruthy();
+    expect(bg(".palette::backdrop")).not.toMatch(/--text/);
+    expect(bg(".palette::backdrop")).toBe(bg(".modal::backdrop"));
   });
 });

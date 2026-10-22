@@ -2,7 +2,7 @@ import { html } from "./html.js";
 import { appState } from "./core/state.js";
 import { activeViewName, api } from "./core/api.js";
 import { isBuildReadOnly } from "./build-entry.js";
-import { activateModal } from "./core/modals.js";
+import { openModal } from "./core/dialog.js";
 import { buildPaletteItems, filterPaletteItems, paletteScrollTop, renderPaletteItems } from "./command-palette.js";
 
 // The command palette (Ctrl/Cmd-K): the item list, its highlight and scrolling,
@@ -11,7 +11,7 @@ import { buildPaletteItems, filterPaletteItems, paletteScrollTop, renderPaletteI
 
 let paletteItems = [];
 let paletteActive = 0;
-let paletteA11yCleanup = null;
+let closePaletteDialog = null;
 
 // What an item runs: navigation, a repertoire, a training start, the theme.
 // These are the shell's (and its views'), so they arrive once at bind time.
@@ -37,18 +37,14 @@ function paletteItemsNow(repertoires) {
 }
 
 export function paletteIsOpen() {
-  const el = document.getElementById("command-palette");
-  return !!(el && !el.hidden);
+  return !!document.getElementById("command-palette")?.open;
 }
 
 export function closePalette() {
-  const el = document.getElementById("command-palette");
-  if (el) {
-    el.hidden = true;
-    document.getElementById("palette-input")?.setAttribute("aria-expanded", "false");
-  }
-  if (paletteA11yCleanup) paletteA11yCleanup();
-  paletteA11yCleanup = null;
+  document.getElementById("palette-input")?.setAttribute("aria-expanded", "false");
+  const close = closePaletteDialog;
+  closePaletteDialog = null;
+  close?.();
 }
 
 function paintPalette() {
@@ -77,19 +73,18 @@ function paintPalette() {
 
 export function openPalette() {
   const el = document.getElementById("command-palette");
-  if (!el) return;
+  if (!el || el.open) return;
   // Open from what is already here: the keypress must not wait on a network
   // round trip. Repertoires arrive (or stay missing) behind it.
   paletteItems = filterPaletteItems(paletteItemsNow(appState.repertoireList), "");
   paletteActive = 0;
-  el.hidden = false;
   const input = document.getElementById("palette-input");
   if (input) {
     input.value = "";
     input.setAttribute("aria-expanded", "true");
   }
+  closePaletteDialog = openModal(el, { initialFocus: input, keep: true, onDismiss: closePalette });
   paintPalette();
-  paletteA11yCleanup = activateModal(el, { initialFocus: input });
   void refreshPaletteRepertoires();
 }
 
@@ -118,7 +113,7 @@ export function dismissTransientOverlays() {
   // Tab/command-palette navigation always wins over transient overlays: the
   // overlay click / Escape paths share this teardown so no orphaned keydown
   // listener survives a navigation-driven dismissal.
-  const overlay = document.querySelector(".modal-overlay.auth-overlay");
+  const overlay = document.querySelector("dialog.auth-modal");
   if (overlay) {
     if (typeof overlay._closeAuthModal === "function") overlay._closeAuthModal();
     else overlay.remove();
@@ -194,16 +189,10 @@ async function runPaletteItem(item) {
 }
 
 export function bindCommandPalette() {
-  const root = document.getElementById("command-palette");
   const input = document.getElementById("palette-input");
   const results = document.getElementById("palette-results");
   const opener = document.getElementById("open-palette");
   if (opener) opener.addEventListener("click", () => openPalette());
-  if (root) {
-    root.addEventListener("click", (event) => {
-      if (event.target === root) closePalette();
-    });
-  }
   if (input) {
     input.addEventListener("input", () => {
       paletteItems = filterPaletteItems(
@@ -228,9 +217,6 @@ export function bindCommandPalette() {
         // (sign-in submits on Enter); this keystroke must not reach it.
         event.stopPropagation();
         runPaletteItem(paletteItems[paletteActive]);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        closePalette();
       }
     });
   }

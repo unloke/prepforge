@@ -19,33 +19,35 @@ function rule(selector, from = 0) {
   return css.slice(open, css.indexOf("}", open));
 }
 
+const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
+
 describe("things that open", () => {
   it("drops a context menu in from its trigger", () => {
     expect(rule(".context-menu")).toMatch(/transition:\s*opacity[\s\S]*translate/);
     // Desktop only: on a phone the same element is an action sheet and rises
     // from the thumb (phone.css), so the two entrances must not stack.
-    expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\s*\n\s*@starting-style \{\s*\n\s*\.context-menu:not\(\[hidden\]\) \{\s*\n\s*opacity: 0;\s*\n\s*translate: 0 -4px;/);
+    expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\s*\n\s*@starting-style \{\s*\n\s*\.context-menu:popover-open \{\s*\n\s*opacity: 0;\s*\n\s*translate: 0 -4px;/);
   });
 
   it("brings the command sheet down from its field", () => {
-    expect(rule(".palette")).toMatch(/transition:\s*opacity/);
-    expect(css).toMatch(/@starting-style \{\s*\n\s*\.palette:not\(\[hidden\]\) \{ opacity: 0; \}/);
-    expect(rule(".palette-panel")).toMatch(/transition:\s*transform/);
+    expect(rule(".palette")).toMatch(/transition:[\s\S]*transform[\s\S]*opacity/);
+    expect(css).toMatch(/@starting-style \{\s*\n\s*\.palette\[open\] \{ opacity: 0; transform: translateY\(-8px\) scale\(0\.985\); \}/);
     // It opens where the input is: the top of the sheet, not its centre.
-    expect(rule(".palette-panel")).toMatch(/transform-origin:\s*50% 0/);
+    expect(rule(".palette")).toMatch(/transform-origin:\s*50% 0/);
   });
 
-  it("dims with the dialog instead of behind it", () => {
-    expect(rule(".modal-overlay")).toMatch(/transition:\s*opacity/);
-    expect(css).toMatch(/@starting-style \{\s*\n\s*\.modal-overlay:not\(\[hidden\]\) \{ opacity: 0; \}/);
-    // .modal also appears as ".modal-overlay.auth-overlay .modal": start at the
-    // bare rule.
-    expect(rule("\n.modal", css.indexOf("/* Modal */"))).toMatch(/transition:\s*transform/);
+  it("dims with the dialog instead of behind it, and leaves the same way", () => {
+    expect(rule(".modal::backdrop")).toMatch(/transition:\s*\n?\s*opacity/);
+    expect(css).toMatch(/@starting-style \{\s*\n\s*\.modal:is\(\[open\], :popover-open\)::backdrop \{ opacity: 0; \}/);
+    expect(rule("\n.modal", css.indexOf("/* A .modal is a native <dialog>"))).toMatch(/transition:\s*\n?\s*transform/);
+    // The exit plays: display and overlay flip only after the transition.
+    expect(rule("\n.modal", css.indexOf("/* A .modal is a native <dialog>"))).toMatch(/display var\(--dur\) allow-discrete/);
+    expect(rule("\n.modal", css.indexOf("/* A .modal is a native <dialog>"))).toMatch(/overlay var\(--dur\) allow-discrete/);
   });
 
-  it("raises the phone sheet from the edge it lives on", () => {
-    expect(rule(".sheet")).toMatch(/transition:\s*transform/);
-    expect(css).toMatch(/\.sheet-scrim:not\(\[hidden\]\) \.sheet \{ transform: translateY\(24%\); \}/);
+  it("raises every phone dialog, the More sheet included, from the bottom edge", () => {
+    expect(phone).toMatch(/@starting-style \{\s*\n\s*\.modal:is\(\[open\], :popover-open\) \{ transform: translateY\(24%\); \}/);
+    expect(readFileSync(new URL("./index.html", import.meta.url), "utf8")).toMatch(/<dialog class="modal sheet" id="more-sheet"/);
   });
 
   it("never scales in from nothing", () => {
@@ -53,6 +55,10 @@ describe("things that open", () => {
     const starts = css.slice(css.indexOf("@starting-style"));
     expect(starts).not.toMatch(/scale\(0\)|scale\(0\.0\d?\)[^)]*\)/);
     expect(starts).toMatch(/scale\(0\.98\)/);
+  });
+
+  it("collapses every entrance under reduced motion", () => {
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\n\s*\*,\s*\n\s*\*::before,\s*\n\s*\*::after,\s*\n\s*\*::backdrop \{[\s\S]*?transition-duration: 0\.001ms !important;/);
   });
 
   it("uses no transform on a menu it cannot animate", () => {

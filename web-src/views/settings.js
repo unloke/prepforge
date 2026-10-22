@@ -2,6 +2,7 @@ import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfil
   engineSetupState, subscribeEngineSetup, engineWorkerChoices } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
+import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
 import { createSettingsDownloads } from "./settings-downloads.js";
 import { subscribeDownloads } from "../engine/engine-downloads.js";
 // Settings tab rendering (lazy-loaded from app.js).
@@ -294,7 +295,7 @@ export function createSettingsView({
     list.innerHTML = html`${accounts
       .map(
         (account) =>
-          html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="conn-site">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="btn ghost icon sm conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" hidden>${account.is_primary
+          html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="conn-site">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="btn ghost icon sm conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" popover>${account.is_primary
             ? ""
             : html`<button type="button" class="conn-menu-item" role="menuitem" data-conn-action="primary">Set primary</button>`}<button type="button" class="conn-menu-item is-danger" role="menuitem" data-conn-action="unlink">Unlink</button></span></span></div>`,
       )}`;
@@ -541,43 +542,30 @@ export function createSettingsView({
 
     const accountsList = document.getElementById("settings-lichess-accounts");
     if (accountsList) {
-      const closeConnMenus = (except = null) => {
-        for (const menu of accountsList.querySelectorAll(".conn-menu")) {
-          if (menu !== except) menu.hidden = true;
-        }
-        for (const btn of accountsList.querySelectorAll(".conn-menu-btn")) {
-          if (!except || btn.closest(".conn-actions")?.querySelector(".conn-menu") !== except) {
-            btn.setAttribute("aria-expanded", "false");
-          }
-        }
-      };
       accountsList.addEventListener("click", (event) => {
         const button = event.target.closest("[data-conn-action]");
         const row = event.target.closest("[data-account-id]");
         if (!button || !row) return;
         const accountId = row.dataset.accountId;
+        const menu = row.querySelector?.(".conn-menu");
         if (button.dataset.connAction === "menu") {
-          const menu = row.querySelector(".conn-menu");
           if (!menu) return;
-          const open = menu.hidden;
-          closeConnMenus(menu);
-          menu.hidden = !open;
-          button.setAttribute("aria-expanded", String(open));
-          if (open) menu.querySelector(".conn-menu-item")?.focus();
+          if (isPopoverOpen(menu)) return menu.hidePopover();
+          const close = openPopover(menu, { opener: button });
+          const anchor = button.getBoundingClientRect();
+          const width = menu.offsetWidth;
+          menu.style.left = `${Math.max(8, anchor.right - width)}px`;
+          menu.style.top = `${anchor.bottom + 4}px`;
+          menuKeys(menu, close);
+          menu.querySelector(".conn-menu-item")?.focus();
           return;
         }
-        closeConnMenus();
+        if (isPopoverOpen(menu)) menu.hidePopover();
         if (button.dataset.connAction === "primary") {
           setPrimaryAccount(accountId).catch((error) => setStatus(String(error.message || error)));
         } else if (button.dataset.connAction === "unlink") {
           unlinkAccount(accountId).catch((error) => setStatus(String(error.message || error)));
         }
-      });
-      accountsList.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") closeConnMenus();
-      });
-      document.addEventListener("click", (event) => {
-        if (!event.target.closest?.("#settings-lichess-accounts")) closeConnMenus();
       });
     }
   }

@@ -58,8 +58,9 @@ describe("move menu — entries the panel can show", () => {
     expect(source).toContain('role="menuitem"');
     expect(source).toContain('menu.setAttribute("role", "menu")');
     expect(source).toContain('menu.setAttribute("aria-label", "Move actions")');
-    expect(source).toMatch(/ArrowDown/);
-    expect(source).toContain("buttons[0]?.focus()");
+    // Arrow keys / Home / End come from the shared menu helper.
+    expect(source).toContain("menuKeys(menu, close)");
+    expect(source).toContain('menu.querySelector("button")?.focus()');
   });
 });
 

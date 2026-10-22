@@ -56,7 +56,8 @@ import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, mai
   STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "./core/prefs.js";
 import { applyTheme } from "./theme.js";
 import { settleEntrances } from "./list-enter.js";
-import { activateModal, showConfirmModal, showInputModal } from "./core/modals.js";
+import { showConfirmModal, showInputModal } from "./core/modals.js";
+import { isPopoverOpen, menuKeys, openPopover } from "./core/dialog.js";
 import { hooks } from "./core/hooks.js";
 import { PIECE_SETS, PIECE_STYLE_KEY, boardAfterMove, boardInfo, isPromotionMove, legalMoveFor,
   legalTargetsFrom, optimisticBoardMove, parseFenBoard, pieceLabel, pieceSvg,
@@ -78,7 +79,7 @@ let teamsControllerLoading = null;
 function loadTeamsController() {
   teamsControllerLoading ||= import("./views/teams-controller.js").then((mod) => {
     teamsController = mod.createTeamsController({
-      switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn, activateModal,
+      switchView, editRepertoire, refreshDashboardRepertoires, requireSignIn,
     });
     return teamsController;
   }).catch((error) => {
@@ -129,7 +130,6 @@ const refreshAuthProviders = viaAccount("refreshAuthProviders");
 const requireSignIn = viaAccount("requireSignIn");
 const openAuthModal = viaAccount("openAuthModal");
 const onAccountChipClick = viaAccount("onAccountChipClick");
-const closeAccountMenu = viaAccount("closeAccountMenu");
 const isAccountMenuOpen = viaAccount("isAccountMenuOpen");
 const refreshAuthStatus = viaAccount("refreshAuthStatus");
 const syncReplayControls = viaAccount("syncReplayControls");
@@ -783,17 +783,18 @@ async function trainRepertoire(repertoireId, options = {}) {
   await startTraining("smart", { ...options, repertoireId });
 }
 
-let repertoireMenuOpener = null;
-let repertoireMenuOpenerId = null;
+// The Library row's ⋯ and the Repertoire header's ⋯ share one popover menu.
+function closeRepertoireContextMenu() {
+  const menu = document.getElementById("repertoire-context-menu");
+  if (isPopoverOpen(menu)) menu.hidePopover();
+}
 
 function openRepertoireContextMenu(event, repertoireId, isActive) {
   event.preventDefault();
   const menu = document.getElementById("repertoire-context-menu");
-  closeRepertoireContextMenu(false);
-  repertoireMenuOpener = event.currentTarget || document.activeElement;
-  repertoireMenuOpenerId = repertoireId;
-  repertoireMenuOpener?.setAttribute("aria-expanded", "true");
-  const safeId = repertoireId;
+  // From the ⋯ button: drop down under it, right edges aligned, so the menu stays
+  // over the row instead of running past the card. A right-click opens at the cursor.
+  const opener = event.type === "contextmenu" ? null : event.currentTarget;
   const items = [
     ["train", "Start training"],
     ["edit", "Open in Repertoire"],
@@ -805,59 +806,22 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
   menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
-        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}" data-repertoire-id="${safeId}">${label}</button>`
+        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}" data-repertoire-id="${repertoireId}">${label}</button>`
     )}`;
-  menu.hidden = false;
+  const close = openPopover(menu, { opener: opener || event.currentTarget });
   const rect = menu.getBoundingClientRect();
-  // From the ⋯ button: drop down under it, right edges aligned, so the menu stays
-  // over the row instead of running past the card. A right-click opens at the cursor.
-  const opener = event.type === "contextmenu" ? null : event.currentTarget;
-  const anchor = opener && opener.getBoundingClientRect ? opener.getBoundingClientRect() : null;
+  const anchor = opener?.getBoundingClientRect?.();
   const wantLeft = anchor ? anchor.right - rect.width : event.clientX;
   const wantTop = anchor ? anchor.bottom + 4 : event.clientY;
-  const left = Math.max(8, Math.min(wantLeft, window.innerWidth - rect.width - 8));
-  const top = Math.max(8, Math.min(wantTop, window.innerHeight - rect.height - 8));
-  menu.style.left = `${left}px`;
-  menu.style.top = `${top}px`;
+  menu.style.left = `${Math.max(8, Math.min(wantLeft, window.innerWidth - rect.width - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(wantTop, window.innerHeight - rect.height - 8))}px`;
   menu.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () =>
       handleRepertoireContextAction(button.dataset.action, button.dataset.repertoireId, isActive)
     );
   });
-  const buttons = [...menu.querySelectorAll("button")];
-  menu.onkeydown = (event) => {
-    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const index = buttons.indexOf(document.activeElement);
-      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
-        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
-      buttons[next]?.focus();
-    } else if (event.key === "Escape" || event.key === "Tab") {
-      if (event.key === "Escape") event.preventDefault();
-      event.stopPropagation();
-      closeRepertoireContextMenu();
-    }
-  };
-  buttons[0]?.focus();
-}
-
-function closeRepertoireContextMenu(restoreFocus = true) {
-  const menu = document.getElementById("repertoire-context-menu");
-  if (!menu || menu.hidden) return;
-  menu.hidden = true;
-  repertoireMenuOpener?.setAttribute("aria-expanded", "false");
-  if (restoreFocus) {
-    // A list re-render replaces the ⋯ button: find its successor by repertoire id.
-    const target = repertoireMenuOpener?.isConnected
-      ? repertoireMenuOpener
-      : repertoireMenuOpenerId
-        ? [...document.querySelectorAll("[data-row-menu]")].find((el) => el.dataset.rowMenu === repertoireMenuOpenerId)
-        : null;
-    target?.focus();
-  }
-  repertoireMenuOpener = null;
-  repertoireMenuOpenerId = null;
+  menuKeys(menu, close);
+  menu.querySelector("button")?.focus();
 }
 
 async function fetchRepertoireMeta(repertoireId) {
@@ -886,7 +850,7 @@ async function openShareDialog(repertoireId) {
       if (!appState.teams.length) appState.teams = (await api("/api/teams")).teams || [];
       return appState.teams;
     },
-    ui: createShareDialogUi({ activateModal }),
+    ui: createShareDialogUi(),
   });
   if (changed) await refreshDashboardRepertoires();
 }
@@ -1838,11 +1802,8 @@ function bindEvents() {
       else openPalette();
       return;
     }
-    if (event.key === "Escape" && paletteIsOpen()) {
-      event.preventDefault();
-      closePalette();
-      return;
-    }
+    // A dialog or menu owns its keys: Escape there is the browser's close.
+    if (event.target.closest?.("dialog[open], :popover-open")) return;
     const active = document.activeElement;
     const inEditable = !!active && (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
       active.isContentEditable === true);
@@ -1862,7 +1823,7 @@ function bindEvents() {
         boardLine.step(action);
         return;
       }
-      if (event.key === "Escape" && !paletteIsOpen()) {
+      if (event.key === "Escape") {
         event.preventDefault();
         boardLine.exit();
         return;
@@ -1913,26 +1874,6 @@ function bindEvents() {
         event.preventDefault();
         board.flip();
       }
-    }
-    if (event.key === "Escape") {
-      buildSession?.closeNodeContextMenu();
-      closeRepertoireContextMenu();
-      closeAccountMenu({ restoreFocus: true });
-      closePalette();
-    }
-  });
-  document.addEventListener("click", (event) => {
-    // The node menu exists only once the Build editor has loaded.
-    if (!event.target.closest("#node-context-menu")) buildSession?.closeNodeContextMenu();
-    if (!event.target.closest("#repertoire-context-menu")) closeRepertoireContextMenu(false);
-    // The chip's own click toggles the menu; ignore it here so we don't immediately
-    // re-close what the toggle just opened.
-    if (
-      !event.target.closest("#account-menu") &&
-      !event.target.closest("#account-chip") &&
-      !event.target.closest("#sheet-account")
-    ) {
-      closeAccountMenu();
     }
   });
 }

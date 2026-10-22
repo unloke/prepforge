@@ -215,6 +215,20 @@ describe("peek", () => {
     expect(again.stopImmediatePropagation).not.toHaveBeenCalled();
   });
 
+  it("lets Escape through when the peek is only under the pointer", () => {
+    const t = token(LINE, 0);
+    vi.useFakeTimers();
+    handlers.pointerover(ev(t, { pointerType: "mouse" }));
+    vi.advanceTimersByTime(150);
+    vi.useRealTimers();
+    expect(host.hidden).toBe(false);
+    const esc = ev(t, { key: "Escape" });
+    handlers.keydown(esc); // an open dialog or menu still closes on this press
+    expect(host.hidden).toBe(true);
+    expect(esc.preventDefault).not.toHaveBeenCalled();
+    expect(esc.stopImmediatePropagation).not.toHaveBeenCalled();
+  });
+
   it("ignores hover on touch and leaves peek-only tokens' clicks to their row", () => {
     const t = token(LINE, 0, { cls: "move-peek-ref" });
     const click = ev(t);

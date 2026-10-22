@@ -60,7 +60,6 @@
 .welcome-wifi { margin: 0; color: var(--muted); font-size: var(--fs-s); line-height: 1.4; }
 
 @media (max-width: 760px) {
-  .welcome-overlay { padding-top: max(12px, env(safe-area-inset-top)); }
   .welcome-goal { min-height: 56px; }
   .welcome-engine { padding: 12px; }
 }

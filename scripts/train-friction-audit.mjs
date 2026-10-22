@@ -166,11 +166,11 @@ async function main() {
   }
 
   async function fillCreateModal(page, { name, color }) {
-    await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
-    await page.fill('.modal-overlay input[name="name"]', name);
-    if (color) await page.selectOption('.modal-overlay select[name="color"]', color);
-    await page.click('.modal-overlay [data-action="ok"]');
-    await page.locator(".modal-overlay").waitFor({ state: "hidden", timeout: 10000 });
+    await page.locator("dialog.modal[open]").waitFor({ state: "visible", timeout: 10000 });
+    await page.fill('dialog.modal[open] input[name="name"]', name);
+    if (color) await page.selectOption('dialog.modal[open] select[name="color"]', color);
+    await page.click('dialog.modal[open] [data-action="ok"]');
+    await page.locator("dialog.modal[open]").waitFor({ state: "hidden", timeout: 10000 });
   }
 
   async function createRepertoireFromDashboard(page, { name, color = "white" }) {

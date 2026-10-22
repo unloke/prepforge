@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { modalDialog, openModal } from "../core/dialog.js";
 import "./share-dialog.css";
 import { GRANT_ROLES, LINK_ROLES, roleLabel } from "../share-roles.js";
 
@@ -193,37 +194,20 @@ export async function runShareDialog(repertoireId, {
 }
 
 // DOM implementation of `ui` for runShareDialog.
-export function createShareDialogUi({ activateModal }) {
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
-  overlay.innerHTML = html`<div class="modal share-modal" role="dialog" aria-modal="true" aria-label="Share repertoire"></div>`;
-  const dialog = overlay.querySelector(".modal");
+export function createShareDialogUi() {
+  const dialog = modalDialog("share-modal", { "aria-label": "Share repertoire" });
   let pending = null;
-  let activated = false;
+  let close = null;
   const resolveWith = (value) => {
     const fn = pending;
     pending = null;
     fn?.(value);
   };
-  const onKey = (event) => {
-    // A confirm stacked on top inerts this overlay; let it handle its own Escape.
-    if (event.key === "Escape" && !overlay.inert) {
-      event.preventDefault();
-      resolveWith(null);
-    }
-  };
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) resolveWith(null);
-  });
   const field = (sel) => dialog.querySelector(sel);
   return {
     render(model) {
       // A re-render replaces the controls: keep focus on the same control.
       const focusKey = document.activeElement?.closest?.("[data-focus]")?.dataset.focus;
-      if (!overlay.isConnected) {
-        document.body.appendChild(overlay);
-        document.addEventListener("keydown", onKey);
-      }
       dialog.innerHTML = shareDialogBodyHtml(model);
       const target = field("[data-share-target]");
       const person = field("[data-share-person]");
@@ -253,11 +237,10 @@ export function createShareDialogUi({ activateModal }) {
       });
       const keep = focusKey && dialog.querySelector(`[data-focus="${focusKey}"]`);
       const done = field('[data-action="done"]');
-      if (!activated) {
-        activated = true;
+      if (!close) {
         // On a touch screen focusing the field would throw the keyboard over the dialog.
         const typing = window.matchMedia?.("(pointer: fine)").matches;
-        activateModal(overlay, { initialFocus: typing ? person : done });
+        close = openModal(dialog, { initialFocus: typing ? person : done, onDismiss: () => resolveWith(null) });
       } else {
         ((keep && !keep.hidden && keep) || (person.hidden ? done : person)).focus();
       }
@@ -273,8 +256,7 @@ export function createShareDialogUi({ activateModal }) {
       input?.select?.();
     },
     close() {
-      document.removeEventListener("keydown", onKey);
-      overlay.remove();
+      close?.();
     },
   };
 }

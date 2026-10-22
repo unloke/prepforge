@@ -436,6 +436,7 @@ async function runViewport(vp) {
   });
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
   await showPane(page, "coach", "#explain-engine-toggle");
+  await shot("coach");
   await page.locator("#explain-engine-toggle").click();
   // Use the board navigation's real async path, allowing each render to settle.
   await page.evaluate(() => document.getElementById("analysis-start").click());

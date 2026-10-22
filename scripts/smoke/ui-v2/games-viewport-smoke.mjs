@@ -11,6 +11,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { routeLichessProfile } from "./lichess-profile-route.mjs";
 import { checkGamesAnalyze } from './games-analyze.mjs';
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -94,6 +95,7 @@ const failures = [];
 
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  await routeLichessProfile(page);
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));

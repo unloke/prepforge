@@ -452,8 +452,8 @@ ${G2_PGN}`;
   expectMultiGameRefusal = true;
   await page.evaluate(() => document.getElementById("run-analysis").click());
   // The single-game flow refuses the paste and offers the batch: take it.
-  await page.waitForSelector('.modal-overlay [data-action="ok"]', { timeout: 15000 });
-  await page.locator('.modal-overlay [data-action="ok"]').click();
+  await page.waitForSelector('dialog[open] [data-action="ok"]', { timeout: 15000 });
+  await page.locator('dialog[open] [data-action="ok"]').click();
   await page.waitForTimeout(500);
   expectMultiGameRefusal = false;
   await page.waitForFunction(
