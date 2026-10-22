@@ -334,17 +334,18 @@ def build_changes(
     """What changed in a readable repertoire after revision ``since``: the current
     state of every node written since then, the ids deleted since then, the name,
     and one entry per write (kind, author, client) so the viewer can say what
-    happened. Polled by every open Build view; an unchanged repertoire costs one
+    happened, plus the caller's ``role`` so an open view follows a role change.
+    Polled by every open Build view; an unchanged repertoire costs one
     indexed read. ``reset`` means the log no longer reaches back to ``since``
     (or the tree was replaced): reload it with ``/build/load``. Anyone but the
     owner gets no training colour (health/mastery), as in ``_payload``."""
     meta = _repertoire_access(repo, repertoire_id, owner)
-    revision = meta["revision"]
+    revision, role = meta["revision"], meta["role"]
     if since >= revision:
-        return {"revision": revision}
+        return {"revision": revision, "role": role}
     ops = repo.repertoire_ops_since(repertoire_id, since)
     if not ops or ops[0]["revision"] != since + 1 or any(op.get("reset") for op in ops):
-        return {"revision": revision, "reset": True}
+        return {"revision": revision, "role": role, "reset": True}
     view = _payload(repo, meta)
     removed = {node_id for op in ops for node_id in op.get("removed", ())}
     written = {node_id for op in ops for node_id in op.get("nodes", ())} - removed
@@ -354,6 +355,7 @@ def build_changes(
     return {
         # The tree was read after these ops, so it holds at least all of them.
         "revision": ops[-1]["revision"],
+        "role": role,
         "name": view["name"],
         "nodes_total": view["nodes_total"],
         "health": view.get("health"),
@@ -428,7 +430,10 @@ def grant_access(
     if sum(bool(v) for v in (body.team_id, body.user_id, body.person and body.person.strip())) != 1:
         raise HTTPException(status_code=400, detail="name one team or one person")
     if body.team_id:
-        if body.team_id not in user_team_ids(db, user.id):
+        # A new team grant needs the owner in the team; a role change does not,
+        # so a share outlives the owner leaving and stays manageable.
+        shared = any(g.get("team_id") == body.team_id for g in repo.repertoire_grants(body.repertoire_id))
+        if not shared and body.team_id not in user_team_ids(db, user.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="team not found")
         repo.set_grant(body.repertoire_id, team_id=body.team_id, role=body.role, created_by=owner)
     elif body.user_id:  # a role change for someone already on the list
