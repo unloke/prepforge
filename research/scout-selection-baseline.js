@@ -1,5 +1,11 @@
 // Frozen 7f79e9d final ranking for reproducible comparison; never imported by runtime.
-import { GAME_PLAN_MIN_GAMES, SCOUT_GAME_PLAN_LIMIT, SCOUT_MIN_ROUTE_REACH, enrichPrepTarget, normalizeToOpponentTerminal, branchPathKey, triePathKey, isNestedLine } from "../web-src/scout.js";
+import { GAME_PLAN_MIN_GAMES, SCOUT_GAME_PLAN_LIMIT, SCOUT_MIN_ROUTE_REACH, enrichPrepTarget, normalizeToOpponentTerminal, branchPathKey, triePathKey } from "../web-src/scout.js";
+// One line is nested in another when one's move path is a prefix of the other's.
+const isNestedLine = (a, b) => {
+  const x = a.line || branchPathKey(a.ucis || []);
+  const y = b.line || branchPathKey(b.ucis || []);
+  return x === y || x.startsWith(`${y}>`) || y.startsWith(`${x}>`);
+};
 export function opponentStruggleFactor(opponentScorePct, baselineScorePct = 50) {
   if (opponentScorePct == null) return 1;
   const baseline = Math.max(baselineScorePct, 1);
