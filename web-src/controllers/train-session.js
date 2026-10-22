@@ -365,17 +365,11 @@ async function refreshTrainSessionPreview() {
   }
 
   const paint = () => {
-    // The summary answers late: a switch to another mode meanwhile owns the
-    // setup card now, and the queue's Start must not come back into it.
-    if ((appState.trainMode || "smart") !== "smart" || appState.smart?.prompt) {
-      host.hidden = true;
-      return;
-    }
     // One setup heading only: an empty queue says so in the banner instead of
     // stacking the same message above a start button.
     const empty = !!trainPreviewCache.nextSession && Number(trainPreviewCache.nextSession.cards) === 0;
     const brief = trainPreviewCache.brief;
-    host.hidden = !brief;
+    host.hidden = !brief || (appState.trainMode || "smart") !== "smart";
     const banner = document.getElementById("train-banner");
     if (banner && banner.dataset.state === "idle" && !appState.smart?.prompt) {
       setTrainBanner("idle", brief ? "Ready to train" : empty ? "No moves to train yet" : "Ready to train", "");
@@ -385,7 +379,7 @@ async function refreshTrainSessionPreview() {
     const startRow = document.getElementById("train-srs-start");
     const blitzRow = document.getElementById("train-blitz-row");
     const emptyBlock = document.getElementById("train-empty");
-    if (startRow) startRow.hidden = empty;
+    if (startRow) startRow.hidden = empty || (appState.trainMode || "smart") !== "smart"; // a late answer after a mode switch
     if (blitzRow) blitzRow.hidden = empty || (appState.trainMode || "smart") !== "smart";
     if (emptyBlock) emptyBlock.hidden = !empty;
     if (!brief) return;
@@ -466,12 +460,8 @@ function syncTrainSessionControls() {
     : !!(appState.smart?.prompt || appState.training?.prompt);
   const sidebar = document.querySelector("#view-train .train-sidebar");
   const summaryVisible = !document.getElementById("train-summary")?.hidden;
-  if (sidebar) {
-    sidebar.dataset.sessionState = !play && summaryVisible ? "summary" : !play && live ? "active" : "setup";
-    // A practice game in progress keeps the setup card (its moves and controls
-    // live there); the phone layout swaps the setup fields for the game.
-    sidebar.toggleAttribute("data-play-live", play && live);
-  }
+  if (sidebar) sidebar.dataset.sessionState = !play && summaryVisible ? "summary" : !play && live ? "active" : "setup";
+  sidebar?.toggleAttribute("data-play-live", play && live); // phone: the game replaces the setup fields
   const hint = document.getElementById("train-hint");
   const skip = document.getElementById("train-skip");
   const fresh = document.getElementById("train-fresh");
