@@ -12,7 +12,7 @@ import { ANALYSIS_ROOT_PATH } from "../analyze-node-path.js";
 import { _coachReady, analysisRecallSeq, analyzeView } from "../app.js";
 import { setPositionCaption } from "../board-caption.js";
 import { isAuthError } from "../auth-gate.js";
-import { localBoardAfterMove, localGameOver } from "../chess-local.js";
+import { localBoardAfterMove, localGameOver, pvSan } from "../chess-local.js";
 import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
@@ -533,14 +533,18 @@ class PositionCoach {
     if (!snap || snap.fen !== fen || (snap.current_depth || 0) < minDepth) return null;
     const lines = (snap.pvs || [])
       .filter((pv) => pv.pv_uci && pv.pv_uci.length)
-      .map((pv) => ({
-        uci: pv.pv_uci[0],
-        san: (pv.pv_san && pv.pv_san[0]) || pv.pv_uci[0],
-        cp: pv.score_cp ?? null,
-        mate: pv.mate_in ?? null,
-        pvUci: pv.pv_uci.slice(),
-        pvSan: (pv.pv_san || []).slice(),
-      }));
+      .map((pv) => {
+        // A live snapshot carries UCI only; this read is kept and reused, so convert once.
+        const sans = pvSan(fen, pv);
+        return {
+          uci: pv.pv_uci[0],
+          san: sans[0] || pv.pv_uci[0],
+          cp: pv.score_cp ?? null,
+          mate: pv.mate_in ?? null,
+          pvUci: pv.pv_uci.slice(),
+          pvSan: sans.slice(),
+        };
+      });
     if (!lines.length) return null;
     const result = { fen, depth: snap.current_depth || 0, lines };
     for (let need = lines.length; need >= 1; need -= 1) {

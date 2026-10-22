@@ -148,6 +148,18 @@ describe("analyzeGamePositions (worker pool)", () => {
     expect(seen.every(([, total]) => total === NON_TERMINAL.length)).toBe(true);
   });
 
+  it("stores the final PV's SAN even though the provider sends UCI only", async () => {
+    const out = await analyzeGamePositions({
+      positions: [START_FEN],
+      depth: 12,
+      concurrency: 1,
+      createProvider: makeFakeProviderFactory({ order: [START_FEN] }),
+    });
+    const ev = out.get(START_FEN);
+    expect(ev.pv).toEqual(["e2e4"]);
+    expect(ev.pv_san).toEqual(["e4"]);
+  });
+
   it("handles terminal positions without invoking the engine", async () => {
     const positions = [NON_TERMINAL[0], BLACK_MATED_FEN, NON_TERMINAL[1]];
     const out = await analyzeGamePositions({
