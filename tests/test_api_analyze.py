@@ -113,6 +113,23 @@ def test_prepare_rejects_empty_pgn(client):
 # ---- classify-save: persist + read back ------------------------------------
 
 
+def test_recall_of_a_snapshot_in_an_older_codec_asks_for_a_new_analysis(client):
+    from sqlalchemy import update
+
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables
+
+    _register(client, "old@example.com")
+    prepared = _prepare(client)
+    assert _classify_save(client, prepared).status_code == 200
+    with db.get_engine().begin() as conn:
+        conn.execute(update(sa_tables.analysis_results).values(
+            move_results_json='{"codec":"zlib-base64-v1","data":"eJyLjgUAARUAuQ=="}'))
+    recall = client.get(f"/api/analyses/{prepared['game_id']}")
+    assert recall.status_code == 409
+    assert "Analyze this game again" in recall.json()["detail"]
+
+
 def test_classify_save_persists_and_is_recallable(client):
     _register(client, "a@example.com")
     prepared = _prepare(client)
