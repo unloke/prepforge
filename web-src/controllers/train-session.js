@@ -1720,27 +1720,36 @@ async function trainHint() {
     setStatus("Start a session first");
     return;
   }
+  // One hint read per position: clicks made while it is in flight wait on the
+  // same read and each still reveals one more level.
+  let pending = appState.trainHintInfo;
+  if (!pending || pending.forFen !== prompt.fen_before) {
+    pending = appState.trainHintInfo = {
+      forFen: prompt.fen_before,
+      read: postJson("/api/train/hint", { session_id: prompt.session_id }),
+    };
+    appState.trainHintLevel = 0;
+  }
+  let info;
   try {
-    if (!appState.trainHintInfo || appState.trainHintInfo.forFen !== prompt.fen_before) {
-      const res = await postJson("/api/train/hint", { session_id: prompt.session_id });
-      appState.trainHintInfo = { ...res, forFen: prompt.fen_before };
-      appState.trainHintLevel = 0;
-    }
-    const info = appState.trainHintInfo;
-    appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
-    const level = appState.trainHintLevel;
-    if (level === 1) {
-      boards.train.setEngineArrow(null);
-      setTrainBanner("move", "Hint 1 · Idea", info.strategy || "Follow your preparation");
-    } else if (level === 2) {
-      boards.train.setEngineArrow(null);
-      setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
-    } else {
-      setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
-      if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
-    }
+    info = await pending.read;
   } catch (error) {
+    if (appState.trainHintInfo === pending) appState.trainHintInfo = null;
     setStatusError(error.message);
+    return;
+  }
+  if (appState.trainHintInfo !== pending) return;
+  appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
+  const level = appState.trainHintLevel;
+  if (level === 1) {
+    boards.train.setEngineArrow(null);
+    setTrainBanner("move", "Hint 1 · Idea", info.strategy || "Follow your preparation");
+  } else if (level === 2) {
+    boards.train.setEngineArrow(null);
+    setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
+  } else {
+    setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
+    if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
   }
 }
 
