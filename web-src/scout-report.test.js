@@ -329,6 +329,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
     });
     openScoutLine(lineEl, { ucis: ["e2e4"], games: 3 }, "prep", ctx(3));
     expect(String(sideEl.innerHTML)).toContain("seen in 3 games");
+    expect(sideEl.dataset.boardSide).toBe("black");
     // Streaming re-renders the same key/colour from a fresh line object; the
     // detail used to keep the old snapshot and disagree with the row.
     openScoutLine(lineEl, { ucis: ["e2e4"], games: 4 }, "prep", ctx(4));
@@ -451,6 +452,8 @@ describe("scout-report rendering", () => {
     );
     expect(String(html)).toContain('id="scout-section-white"');
     expect(String(html)).toContain('data-scout-color="white"');
+    // Move peeks in a section face the preparing player, like its boards.
+    expect(String(html)).toContain('data-board-side="black"');
   });
 
   it("builds Analyze PGN with the scouted player on the correct side", () => {

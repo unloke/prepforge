@@ -202,6 +202,7 @@ export function openScoutLine(lineEl, line, rowKind, ctx) {
     sideEl.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
     sideEl.dataset.lineKey = key;
     sideEl.dataset.color = color;
+    sideEl.dataset.boardSide = color === "white" ? "black" : "white";
     sideEl.hidden = false;
   }
   const ecoCached = ctx.ecoCache?.get(key);
@@ -1455,7 +1456,7 @@ export function buildScoutSectionReport(
 
   const heading = oppColor === "white" ? "With White" : "With Black";
   const markup = html`
-    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-module-b="${PRODUCTION_MODULE_B_ID}">
+    <div class="scout-section" id="scout-section-${oppColor}" data-scout-color="${oppColor}" data-board-side="${oppColor === "white" ? "black" : "white"}" data-module-b="${PRODUCTION_MODULE_B_ID}">
       <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${countOf(trie.gameCount, "game")}</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
