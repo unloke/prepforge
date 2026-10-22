@@ -1042,7 +1042,7 @@ function loadAnalyzeSession() {
       engineLifecycleMark, engineWidget, ensureAnalyzeView, hideAnalysisRetrySave,
       importRepertoireFromPgnText, invalidateAnalysisSource, notices, loadPhaseCoach,
       maiaAnalysisEnabled, postJson, pref, preloadCoach, refreshAnalysisHistoryIfOpen,
-      refreshAnalyzeRecovery, renderAnalysisTree, renderAnalysisTreeEmptyState, requireSignIn,
+      refreshAnalyzeRecovery, renderAnalysisTreeEmptyState, requireSignIn,
       sanLineFromUci, savedPvSan, setEngineBestArrow, setStatus, setStatusError,
       showAnalysisRetrySave, showConfirmModal, showInputModal, START_FEN, switchView,
       syncAnalysisEvalCard, syncPgnFromTree, syncViewHeads, syncWorkspaceUrl, updateBookline,

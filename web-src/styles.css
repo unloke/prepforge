@@ -4234,8 +4234,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--line-soft);
 }
 
-/* The variation that leads to the current move gets an accent rail. */
-.mtree-var:has(> .mtree-move.is-current, > .mtree-move.on-path)::before {
+/* The variation that leads to the current move gets an accent rail. The class
+   is set by the renderer (movetree.js): a `:has(> .mtree-move.is-current)`
+   selector here made every selection change re-evaluate a subtree selector
+   over the whole tree, which cost 96 ms per navigation at 10,000 moves. */
+.mtree-var.is-on-path::before {
   background: var(--accent-line);
 }
 
