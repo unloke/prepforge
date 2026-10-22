@@ -629,7 +629,7 @@ describe("workspace chrome layout", () => {
     expect(app).toMatch(/function refreshPaletteRepertoires\(\)/);
     expect(app).not.toMatch(/await api\("\/api\/repertoires"\);\s*\n\s*paletteItems/);
     // A query typed while the refresh was in flight survives it.
-    expect(app).toMatch(/const query = input\?\.value \|\| "";\s*\n\s*paletteItems = filterPaletteItems\(buildPaletteItems\(\{ repertoires \}\), query\)/);
+    expect(app).toMatch(/const query = input\?\.value \|\| "";\s*\n\s*paletteItems = filterPaletteItems\(paletteItemsNow\(repertoires\), query\)/);
     // Games compare aggregates self by default, narrowing only on explicit picks.
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);

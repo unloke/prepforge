@@ -35,7 +35,7 @@ import { createAnalyzeRestore } from "./controllers/analyze-restore.js";
 import { bindCommandPalette, closePalette, createPalette, dismissTransientOverlays, openPalette, paletteIsOpen } from "./palette.js";
 import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoire, buildProvisionalNode,
   isBuildReadOnly,
-  deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
+  deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient, undoLastBuildAdd,
   hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
   reapplyPendingBuildNodes, reloadOpenBuildTree, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
   setExplorerDb, startBuildLive } from "./build-entry.js";
@@ -1734,7 +1734,8 @@ function bindEvents() {
     trainFresh.addEventListener("click", () => startTraining(appState.trainMode, { fresh: true }));
   }
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
-    requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky, toggleTheme });
+    requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky, toggleTheme,
+    editBuildNote: (id) => buildSession?.handleNodeContextAction("add_comment", id) });
   bindCommandPalette();
   installMoveLinks({ selectBuildNode, selectAnalysisNode });
   window.addEventListener("popstate", () => {
@@ -1857,6 +1858,11 @@ function bindEvents() {
     // An engine line on the board: ← → step through it, Esc goes back to the game.
     // The preview belongs to a board, so it answers only on the view that owns it.
     const view = activeViewName();
+    // Ctrl/Cmd+Z takes back the last move added here (its Undo card restores it).
+    if (view === "build" && (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      return void undoLastBuildAdd();
+    }
     if (boardLine.active && (view === "analyze" || view === "build")) {
       const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
       if (action) {

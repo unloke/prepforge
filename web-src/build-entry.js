@@ -515,6 +515,22 @@ export function reapplyPendingBuildDeletes() {
   if (pruned) renderBuilderTree();
 }
 
+// Ctrl/Cmd+Z in Repertoire: take back the newest move this tab added to the
+// open repertoire through the ordinary local-first delete below (its Undo card
+// puts it back). Moves already gone, or another repertoire's, are skipped.
+export async function undoLastBuildAdd() {
+  if (!appState.build || isBuildReadOnly()) return;
+  const added = appState.buildAddedIds;
+  while (added.length) {
+    const entry = added.pop();
+    const id = resolveBuildId(entry.id);
+    if (entry.repertoireId !== appState.build.repertoire_id || !appState.buildNodeById.has(id)) continue;
+    await deleteBuildNodeLocal(id);
+    return;
+  }
+  setStatus("Nothing to undo");
+}
+
 // Local-first delete (no confirmation by design — pruning lines is a routine
 // Build edit, and the flush model makes it cheap): drop the subtree from the
 // client tree immediately, cancel any pending adds inside it, and queue the

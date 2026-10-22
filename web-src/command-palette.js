@@ -1,4 +1,5 @@
 import { html } from "./html.js";
+import { nodeMenuHeading } from "./node-menu.js";
 // Command palette (Ctrl/Cmd+K). Pure ranking lives here so vitest can drive
 // it without the DOM; createCommandPalette wires the overlay.
 
@@ -26,7 +27,20 @@ export const PALETTE_ACTIONS = [
   { id: "toggle-theme", label: "Toggle light / dark theme", keywords: ["theme", "dark", "light", "mode", "appearance"] },
 ];
 
-export function buildPaletteItems({ repertoires = [] } = {}) {
+// The shown Repertoire move's note, offered while one is on screen.
+function noteItem(node) {
+  const move = nodeMenuHeading(node);
+  return {
+    kind: "action",
+    id: "action:add-note",
+    action: "add-note",
+    label: `${node.comment ? "Edit note on" : "Add note to"} ${move}`,
+    keywords: ["note", "comment", "annotate", "annotation"],
+    group: "Actions",
+  };
+}
+
+export function buildPaletteItems({ repertoires = [], noteMove = null } = {}) {
   const views = PALETTE_VIEWS.map((view) => ({
     kind: "view",
     id: `view:${view.id}${view.section ? `:${view.section}` : ""}`,
@@ -52,7 +66,7 @@ export function buildPaletteItems({ repertoires = [] } = {}) {
     keywords: [rep.name, rep.color].filter(Boolean),
     group: "Repertoires",
   }));
-  return [...views, ...actions, ...reps];
+  return [...views, ...(noteMove ? [noteItem(noteMove)] : []), ...actions, ...reps];
 }
 
 function haystack(item) {

@@ -976,6 +976,12 @@ h2 {
   gap: 6px;
 }
 
+.src-add-error {
+  margin: 4px 0 0;
+  color: var(--danger);
+  font-size: var(--fs-s);
+}
+
 .src-add-input {
   flex: 1;
   min-width: 0;
@@ -3075,23 +3081,65 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    trail's own size, and at 10px it pulled the eye below the moves it joins. */
 .crumb-sep { color: var(--label); font-size: var(--fs-s); padding: 0 1px; }
 .crumb-empty { color: var(--label); padding: 2px 4px; }
-.build-comment {
-  flex: 1 0 100%;
-  margin: 0;
-  padding: 0 12px 8px;
+/* The named opening of the shown line, at the trail's right end. A label,
+   so it gives way (ellipsis) before the trail does. */
+.build-opening {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  padding-right: var(--build-pad, 12px);
   color: var(--muted);
   font-size: var(--fs-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A move's note, under the move: one line until it is opened. */
+.mtree-comment {
+  margin: 1px 0 3px;
+  padding: 1px 6px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-style: normal;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.mtree-comment.is-open {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.mtree-note {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-left: 3px;
-  vertical-align: super;
+/* The move menu's pointer handle: a small ⋯ badge at the hovered move's
+   corner. It floats, so showing it moves nothing around it. */
+#view-build .mtree-move { position: relative; }
+.mtree-move .mtree-more {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line);
   border-radius: 50%;
-  background: currentColor;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) {
+  #view-build .mtree-move:hover { z-index: 1; }
+  .mtree-move:hover .mtree-more {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .mtree-move .mtree-more:hover { background: var(--surface-3); }
 }
 
 .forkbar {
