@@ -34,7 +34,7 @@ export async function checkTrainingHistory(page, check, shot) {
   const footNote = await page.locator('#training-history-dialog .th-foot span').getAttribute('title');
   check(/^Keeps up to \d+ recent runs within \d+ KiB in this browser$/.test(footNote || ''), `the retention detail belongs in the footer tooltip, got "${footNote}"`);
   const overflow = await page.evaluate(async () => {
-    const dialog = document.querySelector('#training-history-dialog .modal');
+    const dialog = document.querySelector('#training-history-dialog');
     // A phone slides the sheet up; measure where it settles.
     await Promise.all(dialog.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {})));
     const box = dialog.getBoundingClientRect();
@@ -44,7 +44,8 @@ export async function checkTrainingHistory(page, check, shot) {
   await shot('history');
   if (process.env.UI_V2_SHOTS) writeFileSync(join(process.env.UI_V2_SHOTS, 'history-storage.json'), JSON.stringify(await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.startsWith('pf.trainHistory:')))), null, 2));
   await page.keyboard.press('Escape');
-  check(await page.locator('#training-history-dialog').count() === 0, 'Escape must close history');
+  // The dialog leaves the DOM once its exit transition has played.
+  check(await page.locator('#training-history-dialog').waitFor({ state: 'detached', timeout: 2000 }).then(() => true, () => false), 'Escape must close history');
   check(await page.locator('#train-summary [data-train-history]').evaluate(el => document.activeElement === el), 'closing history must restore focus');
 
   // A second page in the same browser context proves persistence through a new
@@ -87,7 +88,7 @@ export async function checkTrainingHistory(page, check, shot) {
     }));
     assert.ok(listName.lines <= 2 && listName.scrolls <= 1, `a long name must clamp, got ${JSON.stringify(listName)}`);
     const listOverflow = await reopened.evaluate(() => {
-      const dialog = document.querySelector('#training-history-dialog .modal');
+      const dialog = document.querySelector('#training-history-dialog');
       const box = dialog.getBoundingClientRect();
       return { horizontal: dialog.scrollWidth - dialog.clientWidth, right: innerWidth - box.right, left: box.left };
     });

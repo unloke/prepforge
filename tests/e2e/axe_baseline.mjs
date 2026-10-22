@@ -124,7 +124,7 @@ async function main() {
         .locator('[data-testid="dashboard-new-rep"]:visible, #dashboard-repertoires [data-lib-action="new"]:visible')
         .first()
         .click();
-      await page.locator(".modal-overlay .modal").first().waitFor({ timeout: 10_000 });
+      await page.locator("dialog.modal[open]").first().waitFor({ timeout: 10_000 });
     });
 
     console.log(JSON.stringify(results, null, 2));

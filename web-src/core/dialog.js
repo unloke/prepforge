@@ -86,12 +86,36 @@ export function openModal(dialog, { initialFocus = null, onDismiss = null, keep 
   return close;
 }
 
+// Open popovers and the controls that opened them. A press on the opener of an
+// open popover light-dismisses it, and the click that follows must not open it
+// again: that press is the toggle closing it. (showPopover's `source` says the
+// same where the browser reads it; Chromium 133 and older Safari do not.)
+const popoverOpeners = new Map();
+let swallowClickOn = null;
+function watchOpenerPresses() {
+  if (watchOpenerPresses.done) return;
+  watchOpenerPresses.done = true;
+  document.addEventListener("pointerdown", (event) => {
+    swallowClickOn = null;
+    for (const { opener } of popoverOpeners.values()) {
+      if (opener.contains?.(event.target)) swallowClickOn = opener;
+    }
+  }, true);
+  document.addEventListener("click", (event) => {
+    if (swallowClickOn?.contains(event.target)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+    swallowClickOn = null;
+  }, true);
+}
+
 // Shows a [popover] menu or picker and returns close(); the caller places it.
 // `onClose` runs once however it closed (Escape, a press outside, close()).
-// The opener is the popover's source, so pressing it again toggles instead of
-// light-dismissing and reopening.
+// Pressing the opener again closes it (see popoverOpeners).
 export function openPopover(el, { opener = null, onClose = null } = {}) {
   if (!el.hasAttribute("popover")) el.setAttribute("popover", "auto");
+  watchOpenerPresses();
   if (el.matches(":popover-open")) el.hidePopover();
   // A modal makes everything outside it inert, so a menu opened from inside
   // one (the account menu from the More sheet) has to live inside it.
@@ -103,6 +127,7 @@ export function openPopover(el, { opener = null, onClose = null } = {}) {
     if (event.newState !== "closed" || done) return;
     done = true;
     el.removeEventListener("toggle", onToggle);
+    if (popoverOpeners.get(el) === entry) popoverOpeners.delete(el);
     opener?.setAttribute?.("aria-expanded", "false");
     // Escape (or Tab out) leaves focus nowhere: give it back to the opener.
     // A press outside already put it where the press landed.
@@ -111,6 +136,8 @@ export function openPopover(el, { opener = null, onClose = null } = {}) {
     onClose?.();
   };
   el.addEventListener("toggle", onToggle);
+  const entry = { opener };
+  if (opener?.contains) popoverOpeners.set(el, entry);
   try {
     el.showPopover(opener ? { source: opener } : undefined);
   } catch {

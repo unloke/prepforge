@@ -200,10 +200,10 @@ async function main() {
       throw new Error("create-repertoire-from-game CTA not visible");
     }
     await page.click('[data-testid="create-repertoire-from-game"]');
-    await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
-    await page.fill('.modal-overlay input[name="name"]', repName);
-    await page.selectOption('.modal-overlay select[name="color"]', "white");
-    await page.click('.modal-overlay [data-action="ok"]');
+    await page.locator("dialog.modal[open]").waitFor({ state: "visible", timeout: 10000 });
+    await page.fill('dialog.modal[open] input[name="name"]', repName);
+    await page.selectOption('dialog.modal[open] select[name="color"]', "white");
+    await page.click('dialog.modal[open] [data-action="ok"]');
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 60000 });
     await page.locator("#build-rep-name", { hasText: repName }).waitFor({ timeout: 30000 });
 
