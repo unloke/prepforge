@@ -17,40 +17,40 @@
       </div>
       <div class="nav-group">
         <div class="nav-group-label"><span>Prepare</span></div>
-        <button class="tab nav-item is-active" data-view="dashboard" data-testid="nav-dashboard" aria-label="Library" title="Library" aria-current="page">
+        <button class="tab nav-item is-active" data-view="dashboard" data-testid="nav-dashboard" aria-label="Library" title="Library — your repertoires" aria-current="page">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.8l3.7-1 3.3 15.4-3.7.9z" transform="scale(.92) translate(1 1)"/></svg>
           <span class="nav-label">Library</span>
         </button>
-        <button class="tab nav-item" data-view="build" data-testid="nav-build" aria-label="Repertoire" title="Repertoire" aria-current="false">
+        <button class="tab nav-item" data-view="build" data-testid="nav-build" aria-label="Repertoire" title="Repertoire — build your lines" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 12h4a6 6 0 0 0 6 0"/></svg>
           <span class="nav-label">Repertoire</span>
         </button>
-        <button class="tab nav-item" data-view="analyze" data-testid="nav-analyze" aria-label="Analyze" title="Analyze" aria-current="false">
+        <button class="tab nav-item" data-view="analyze" data-testid="nav-analyze" aria-label="Analyze" title="Analyze — check a game" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l4-5 3 3 6-8"/><circle cx="18" cy="6" r="1.2"/></svg>
           <span class="nav-label">Analyze</span>
         </button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label"><span>Practice</span></div>
-        <button class="tab nav-item" data-view="train" data-testid="nav-train" aria-label="Train" title="Train" aria-current="false">
+        <button class="tab nav-item" data-view="train" data-testid="nav-train" aria-label="Train" title="Train — drill your openings" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/></svg>
           <span class="nav-label">Train</span>
         </button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label"><span>Review</span></div>
-        <button class="tab nav-item" data-view="replay" data-replay-section="games" data-testid="nav-replay" aria-label="Games" title="Games" aria-current="false">
+        <button class="tab nav-item" data-view="replay" data-replay-section="games" data-testid="nav-replay" aria-label="Games" title="Games — review my games" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
           <span class="nav-label">Games</span>
         </button>
-        <button class="tab nav-item" data-view="replay" data-replay-section="scout" data-testid="nav-scout" aria-label="Scout" title="Scout" aria-current="false">
+        <button class="tab nav-item" data-view="replay" data-replay-section="scout" data-testid="nav-scout" aria-label="Scout" title="Scout — prep against an opponent" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="15" r="3.5"/><circle cx="17" cy="15" r="3.5"/><path d="M10.5 15h3M5 11.5 7.5 5h2l1 6M19 11.5 16.5 5h-2l-1 6"/></svg>
           <span class="nav-label">Scout</span>
         </button>
       </div>
       <div class="nav-group">
         <div class="nav-group-label"><span>Share</span></div>
-        <button class="tab nav-item" data-view="teams" data-testid="nav-teams" aria-label="Teams" title="Teams" aria-current="false">
+        <button class="tab nav-item" data-view="teams" data-testid="nav-teams" aria-label="Teams" title="Teams — share repertoires" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.4 4.5 4"/></svg>
           <span class="nav-label">Teams</span>
         </button>
@@ -409,8 +409,8 @@
           <aside class="sidebar train-sidebar panel" data-session-state="setup">
             <div class="panel-head">
               <div class="seg" id="train-modes" role="group" aria-label="Training mode">
-                <button type="button" class="seg-btn train-mode is-active" data-mode="smart">Smart queue</button>
-                <button type="button" class="seg-btn train-mode" data-mode="all_lines">Line rehearsal</button>
+                <button type="button" class="seg-btn train-mode is-active" data-mode="smart" title="Due reviews and new moves from your repertoires, one card at a time">Smart queue</button>
+                <button type="button" class="seg-btn train-mode" data-mode="all_lines" title="Play one repertoire's lines through, move by move">Line rehearsal</button>
                 <button type="button" class="seg-btn train-mode" data-mode="play" data-testid="train-mode-play" title="Play a game from the opening against Lichess database moves or Maia">Practice game</button>
               </div>
               <button type="button" class="btn ghost sm train-back" id="train-back" data-testid="train-back" title="Back to training modes"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Modes</span></button>
@@ -593,8 +593,8 @@
                 <span class="src-chips" id="scout-source-chips" data-testid="scout-source-chips"></span>
                 <button type="button" class="btn sm ghost" id="scout-source-add" data-testid="scout-source-add" title="Add Scout source" aria-label="Add Scout source"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add</button>
               </div>
-              <label class="inline-field" for="scout-color">
-                <span>Playing as</span>
+              <label class="inline-field" for="scout-color" title="Only the games where the scouted player had this color">
+                <span>Their color</span>
                 <select id="scout-color">
                   <option value="both" selected>Both</option>
                   <option value="white">White</option>
