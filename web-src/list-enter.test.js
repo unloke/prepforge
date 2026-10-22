@@ -21,7 +21,7 @@ function fakeEl({ key = "", skeleton = false, rendered = true, viewEntering = fa
       contains: (c) => classes.has(c),
     },
     getClientRects: () => (rendered ? [{}] : []),
-    closest: () => ({ getAnimations: () => (viewEntering ? [{ animationName: "view-enter", playState: "running" }] : []) }),
+    closest: () => ({ classList: { contains: (c) => viewEntering && c === "is-arriving" } }),
     props,
   };
 }
