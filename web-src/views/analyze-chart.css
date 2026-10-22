@@ -1113,7 +1113,7 @@
    A phone has no move list: the graph is how a thumb walks the game. The report
    and the game sources are sheets; the sources fill the screen under the board
    while no game is loaded. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #view-analyze {
     --phone-chart-min: 64px;
     --phone-eval-h: 48px;

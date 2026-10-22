@@ -9,7 +9,7 @@
 
 /* The phone header is hidden on wide screens, so on desktop the page needs a
    name of its own: the title spans the width above the section strip. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   #view-settings .page-head {
     display: flex;
     align-items: baseline;
@@ -298,7 +298,7 @@
 @media (max-width: 1020px) {
   .settings-nav-link { flex: none; white-space: nowrap; }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .sw-grid { grid-template-columns: 1fr; }
   .slider input { width: 130px; }
   .set .btn.sm,
@@ -427,7 +427,7 @@
   color: var(--text);
   text-decoration: none;
 }
-@media (max-width: 760px) { .conn-user { min-height: 40px; } }
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) { .conn-user { min-height: 40px; } }
 .conn-user:hover { text-decoration: underline; }
 .acct-danger-zone { margin-top: 14px; }
 .acct-danger-zone > summary {

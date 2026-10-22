@@ -322,7 +322,7 @@
 }
 
 /* On desktop the link must clear the icon rail, or it lands on the brand mark. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .skip-link {
     left: 72px;
   }
@@ -855,7 +855,7 @@ h2 {
 /* Phone: the 20px chip × sat between the toolbar's 44px controls and was the
    only way to drop a source. The × keeps its 20px look inside a 44px target,
    and the chip itself is a 44px row like every other phone control. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .src-chip-x {
     width: 44px;
     height: 44px;
@@ -1050,7 +1050,7 @@ h2 {
     margin-bottom: 12px;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 
@@ -1597,7 +1597,7 @@ h2 {
 @media (max-width: 1020px) {
   .teams { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 .lib .card { padding: 0; }
@@ -2088,7 +2088,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-dashboard) {
     padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
   }
@@ -2209,7 +2209,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   max-height: var(--study-h);
   overflow: hidden;
 }
-@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
   #analyze-sidebar {
     height: auto;
     align-self: start;
@@ -2913,7 +2913,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* One save chip per screen. On desktop that is the board bar's, beside the
    move label that edits change; the inspector's copy exists for phones, where
    the board bar sits out of reach (phone.css). */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   #build-sync-head { display: none; }
 }
 
@@ -3317,13 +3317,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
   .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
   .dock { flex: none !important; }
   .dock-resizer { display: none; }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .tree-wrap { max-height: none; }
   .dock-tabs button { min-height: 44px; }
   /* Library's Import / New live in the More sheet on phones (prototype). */
@@ -3349,7 +3349,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    state, and the eye read that ground as content that failed to load. Long
    setup content (Practice game's pickers) still caps at the viewport and
    scrolls inside. */
-@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
   #view-train .train-sidebar { height: auto; align-self: start; }
 }
 #view-train .board-area { position: relative; }
@@ -3741,11 +3741,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    under the session card. */
 #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #view-train .seg-btn { min-height: 44px; }
   #view-train .panel-head { padding: 8px 12px; border-top: 1px solid var(--line); }
   /* Prototype: on phones the coach prompt leads the panel, above the modes. */
@@ -3940,7 +3940,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .games-panel,
   .replay-results { height: auto; }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
   .toolbar { gap: 8px; }
   .toolbar .spacer { display: none; }
@@ -4175,7 +4175,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .coverage-stale { color: var(--warn-text); }
 .coverage-gap.is-readonly { grid-template-columns: 1fr; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .coverage-gap { min-height: 56px; }
   .coverage-gap-select { min-width: 44px; }
 }
@@ -4641,7 +4641,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
      the entrance below is desktop only and the two never stack. */
   transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   @starting-style {
     .context-menu:not([hidden]) {
       opacity: 0;
@@ -5037,7 +5037,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    A portrait tablet up to 1100px wide (narrower than 5:6) stacks too: beside
    a 360px panel its board was 436px at 900x1100.
    The same split is on the other stacked / wide study rules. */
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
      normally, because a fixed height here would crush the board on a phone. Two
      columns hold down to 860px (see .study --study-panel-min), so this only
@@ -5085,7 +5085,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* Mobile: no rail — a fixed 5-item bottom tab bar (Library, Train,
      Analyze, Games, More sheet). Page scroll replaces panel scroll; the board
      is full-width and first. Touch targets are 44px; no horizontal scroll. */
@@ -5981,7 +5981,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    the current page is the active nav item, page actions live inside each
    page's own header, and Search / Theme / Account sit in the rail foot.
    =========================================================================== */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .workspace { padding-top: 18px; }
 }
 
@@ -6028,14 +6028,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
 }
 
 /* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px
    laptop viewport without a scrollbar. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
   .rail .tab,
   .rail .rail-btn { height: 34px; }

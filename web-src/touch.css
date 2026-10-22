@@ -3,11 +3,11 @@
    with a 60px mouse rail and 30px controls. The phone portrait layout is
    phone.css; this sheet only adds what these two shapes need. */
 
-/* ---- A phone on its side (761-960 x ≤520, landscape) -------------------------
+/* ---- A phone on its side (up to 960 x ≤520, landscape) -------------------------
    The board takes the full height on the left, the panel scrolls beside it, and
    navigation is the phone's own five tabs standing up as a rail at the left
    edge (the 13-row desktop rail scrolled at 390px tall). Controls are 40px. */
-@media (min-width: 761px) and (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+@media (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
   :root {
     --control-h: 40px;
     --land-rail: calc(68px + env(safe-area-inset-left));

@@ -524,7 +524,7 @@
   .scout-lines-head span:nth-child(2) { display: none; }
 }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* The first screen was the toolbar, the profile and a 150px section head; the
      first line sat 1,228px down. On a phone the lines are the page: the head
      names the player and colour, the plan follows, and the summary sentence

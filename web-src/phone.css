@@ -20,11 +20,11 @@
 
 /* The More sheet belongs to the phone layout: a bar that is gone must not leave
    it as a full-width bottom sheet over the desktop board. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .sheet-scrim:not([hidden]) { display: none; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   :root {
     --phone-bar-h: 56px;
     --phone-reserve: max(180px, 32dvh);

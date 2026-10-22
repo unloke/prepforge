@@ -68,7 +68,7 @@
 
 .modal-footer .share-reset { margin-right: auto; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .share-body input,
   .share-body select,
   .share-add .btn,

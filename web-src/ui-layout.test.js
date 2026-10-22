@@ -87,8 +87,8 @@ describe("workspace chrome layout", () => {
     const blocks = [...css.matchAll(/@media ([^{]+?) \{([\s\S]*?)\n\}/g)].map((m) => [m[1], m[2]]);
     // Stacked is ≤860, except a short landscape screen (a phone on its side),
     // which keeps two columns; a portrait tablet ≤1100 (< 5:6) stacks too.
-    const STACKED = "(max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6)";
-    const WIDE = "(min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px)";
+    const STACKED = "(max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6)";
+    const WIDE = "(min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px)";
     const stackers = blocks.filter(([, body]) => /\.study\s*\{[^}]*grid-template-columns:\s*1fr/.test(body));
     expect(stackers.map(([q]) => q)).toEqual([STACKED]);
     const stacked = stackers[0][1];
@@ -227,7 +227,7 @@ describe("workspace chrome layout", () => {
     expect(phone).toMatch(/#build-inspector \.build-sync \{/);
     // Desktop is the reverse: the board bar's chip is the only one. Both were
     // visible at 1440 (board bar + inspector tools), printing one state twice.
-    expect(css).toMatch(/@media \(min-width: 761px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
+    expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
   });
 
   it("gives the phone Repertoire's next-move chips and trail a real thumb target", () => {

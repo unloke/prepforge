@@ -268,7 +268,7 @@
 }
 /* ≤760: ledger first (reachable at the top, like the desktop column order),
    two-line rows, no column header. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .triage { display: flex; flex-direction: column; }
   .lr.head { display: none; }
   .lr {
