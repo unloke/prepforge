@@ -115,6 +115,9 @@ export function decodeLine(value) {
 // annotation marks. Bounded by non-word characters so "be5t" or "Ra1b" never match.
 const TOKEN =
   /(?<![\w.…])(?:(\d{1,3})?\s?(\.\.\.|…|\.)\s?)?(O-O-O|O-O|0-0-0|0-0|[KQRBN][a-h]?[1-8]?x?[a-h][1-8]|[a-h]x[a-h][1-8](?:=?[QRBN])?|[a-h][1-8](?:=?[QRBN])?)([+#]?[!?]{0,2})(?![\w])/g;
+// The words that make a bare square a place, not a move: "the pawn on e5",
+// "guards d5", "the d4 pawn". A coach sentence never puts a move after them.
+const SQUARE_WORD = /\b(?:on|to|of|at|from|onto|into|towards?|the|an?|guard(?:s|ed|ing)?|defend(?:s|ed|ing)?|attack(?:s|ed|ing)?|hit(?:s|ting)?|control(?:s|led|ling)?|eye(?:s|d|ing)?|cover(?:s|ed|ing)?|weaken(?:s|ed|ing)?|squares?|against)\s+$/i;
 // What may sit between two moves of one line or between a move and its alternative.
 const JOINER = /^(?:[\s,;:()[\]–—-]|\bor\b|\bthen\b|\band\b|\bafter\b)*$/i;
 
@@ -126,7 +129,10 @@ const JOINER = /^(?:[\s,;:()[\]–—-]|\bor\b|\bthen\b|\band\b|\bafter\b)*$/i;
  * unnumbered one continues the previous move, or is its alternative ("4.Nc3 or 4.f3",
  * "Rd4 … g3 was better"). A bare pawn push ("e5") links only with a number or right
  * after another move, so "the pawn on e5" stays text; a capture ("exd5") always links.
- * `ctx.pawns` lifts that for text that is only ever about moves ("New move: e4").
+ * `ctx.pawns` lifts that for text that is only ever about moves ("New move: e4");
+ * `ctx.pawns: "prose"` (the coach's sentences, which name the move played and its
+ * alternative without a number: "c6 is fine. d6 was more precise.") lifts it except
+ * after a word that makes the square a place ("on e5", "guards d5").
  * Anything illegal stays text.
  */
 export function parseMoveText(text, ctx = {}) {
@@ -147,7 +153,8 @@ export function parseMoveText(text, ctx = {}) {
     const start = m.index + lead;
     const black = dots === "..." || dots === "…";
     const adjacent = !!last && JOINER.test(source.slice(last.end, start));
-    const pawn = !ctx.pawns && /^[a-h][1-8]/.test(sanRaw);
+    const pawn = /^[a-h][1-8]/.test(sanRaw)
+      && (!ctx.pawns || (ctx.pawns === "prose" && SQUARE_WORD.test(source.slice(Math.max(0, start - 16), start))));
     const bases = [];
     if (numbered) {
       const target = (Number(num) - 1) * 2 + (black ? 1 : 0);
@@ -157,6 +164,10 @@ export function parseMoveText(text, ctx = {}) {
       const at = ctx.at?.(target);
       if (at) bases.push({ fen: at });
     } else if (last) {
+      // A coach sentence's unnumbered move after a full stop or a verb is the move
+      // it is about, or its alternative ("Nxe5 was the move"), not a reply to the
+      // line the sentence before it walked.
+      if (ctx.pawns === "prose" && !adjacent && !pawn && ctx.fen) bases.push({ fen: ctx.fen });
       if (adjacent || !pawn) {
         bases.push({ fen: last.fen, chain: last.chain, cut: last.index + 1 });
         bases.push({ fen: last.fenBefore, chain: last.chain, cut: last.index });

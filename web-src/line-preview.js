@@ -182,6 +182,11 @@ function showPeek(target, { pinned = false } = {}) {
   place(target);
 }
 
+/** Peek at `target` from code (a chart's hover readout, which takes no pointer itself). */
+export function peekAt(target) {
+  if (target?.isConnected && !peek?.pinned) showPeek(target);
+}
+
 export function hidePeek() {
   window.clearTimeout(timer);
   if (!peek) return;

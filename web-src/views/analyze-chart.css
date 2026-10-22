@@ -299,8 +299,13 @@
 .res-block[hidden] {
   display: none;
 }
-/* Evaluation card: game graph + live engine lines, between Coach and moves.
-   It is the instrument, so it sits in a recessed band with no edge of its own. */
+/* ---- The evaluation pillar ---------------------------------------------
+   The current figure and the win meter on one line, the game graph under
+   them. On a wide screen, a stacked tablet and a phone it sits under (on a
+   phone, over) the board, where the graph reads as the game's time axis; on a
+   short side-by-side panel it is the panel's second fixed block
+   (analyze-panes.js moves the one element). It keeps one height either way, so
+   stepping a game never moves the board or the panes. */
 .eval-card {
   flex: none;
   min-width: 0;
@@ -308,98 +313,178 @@
   border: 0;
   border-radius: 8px;
   background: var(--surface-3);
-  gap: 8px;
 }
-#analyze-sidebar .panel-scroll > * { min-width: 0; }
-/* Coach, evaluation and results: one column inside the scrolling panel, ahead
-   of the drawers. */
-.analyze-main {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.analyze-main > * { min-width: 0; }
-/* The two actions ride the coach's line (see .cc-head) and never wrap: they are
-   the only way to get a game, and a second row of them would move the panel.
-   They read as words, not icon + word, exactly as they did in the head strip:
-   the two glyphs added 20px to a row that has none to give, and the words are
-   the labels. The rail's icons already say where the panel is. */
-#analyze-actions { flex-wrap: nowrap; }
-#analyze-actions .btn > .bi { display: none; }
-
-/* Who scrolls. The panel body used to scroll as one sheet, so the score sheet
-   was capped at a flat 190px while the fold and the two source drawers sat
-   below the fold. Now the column above the score sheet (coach, evaluation, the
-   report fold, the sources) is fixed and the score sheet takes what is left,
-   scrolling inside itself, so a tall window buys move rows, which is what a reader
-   stepping a game wants.
-   The sheet has no floor: a minimum did keep ten pairs on a short panel, but
-   it also let the sheet paint over the fold below it (measured at 1024x768:
-   the fold's own line sat under move rows and could not be clicked).
-   A short panel (982x614 measured: 578px) has no leftover at all: the coach,
-   the instrument, the fold and the two sources need every pixel, so this
-   only applies where there is room to give: a window at least 700px tall.
-   Below that the panel scrolls as one sheet again and the sheet keeps its own
-   cap, which is the only way a reader still reaches the sources. */
-@media (min-width: 861px) and (min-height: 700px) {
-  #analyze-sidebar:has(#analysis-results:not([hidden])) .panel-scroll > .analyze-main {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-  #analyze-sidebar .panel-scroll > .analyze-main > :not(#analysis-results) {
-    flex: none;
-  }
-  #analyze-sidebar #analysis-results:not([hidden]) {
-    flex: 1 1 auto;
-    min-height: 0;
-  }
-  #analyze-sidebar #analysis-results:not([hidden]) > .moves-grid {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: none;
-  }
-}
-/* One header row: eval (or the title while there is none) | win meter | depth
-   | lines | Engine. The docked engine window and its head dissolve into the
-   card's grid (display: contents), so its depth readout and line stepper sit
-   in the header and its lines run under the chart instead of a second row.
-   The win meter is the one part that gives up width: it is a bar, and a bar
-   stays readable at 64px while a clipped readout does not.
-   On a narrow card the two readouts lose their words rather than the row
-   losing the Engine button: the card is 361px at 982x614 and the five items
-   need 381 with "Depth" and "Lines" in front of them. Each figure already
-   carries a title tooltip, and the pair reads as "16/16  − 3 +" beside the
-   meter, the same shape the floating engine panel uses. */
 #analysis-eval-card {
+  --an-eval-h: 112px;
+  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(64px, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(64px, 1fr);
+  grid-template-rows: 20px minmax(0, 1fr);
   align-items: center;
-  column-gap: 10px;
-  row-gap: 8px;
-  container-type: inline-size;
+  gap: 8px 12px;
+  height: var(--an-eval-h);
+  box-sizing: border-box;
 }
-#analysis-eval-card > :not(.ev-head):not(.engine-slot),
-#analysis-engine-slot .engine-window-body,
-#analysis-engine-slot .engine-window-unlock { grid-column: 1 / -1; }
+#analysis-eval-card > :not(.ev-head) { grid-column: 1 / -1; grid-row: 2; align-self: stretch; min-height: 0; }
 #analysis-eval-card .ev-head { display: contents; }
 .ev-title { grid-area: 1 / 1; font-size: var(--fs-s); }
 .ev-head.has-eval .ev-title { display: none; }
 #analysis-chart-caption { grid-area: 1 / 1; }
 .ev-meter { grid-area: 1 / 2; }
 .ev-move { display: none; }
-#analysis-engine-slot .engine-head-depth { grid-area: 1 / 3; }
-#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
-.ev-engine { grid-area: 1 / 5; }
+#analysis-eval-card .eval-chart-wrap,
+#analysis-eval-card .eval-live { height: 100%; }
+#analysis-eval-card .eval-chart { height: 100%; }
+/* While a run lands, its count and Stop ride the graph's top right corner. */
+#analysis-eval-card > .analysis-job-dock:not(:empty) {
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+  align-self: center;
+  z-index: 6;
+}
+.board-area > #analysis-eval-card { margin-top: 2px; }
+
+#analyze-sidebar .panel-scroll > * { min-width: 0; }
+/* The panel's column: the coach, (beside the board) the evaluation, then the
+   pillars. The panel no longer scrolls as one sheet: the coach and the
+   evaluation keep their places and each pane scrolls inside itself, so a
+   reader stepping a game never sees the panel jump. */
+#analyze-sidebar .panel-scroll { overflow: hidden; }
+.analyze-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  container: an-main / inline-size;
+}
+.analyze-main > * { min-width: 0; }
+.analyze-main > :is(.coach-card, .eval-card, .analysis-retry-save, .analysis-import-picker) { flex: none; }
+/* The two actions ride the coach's line (see .cc-head) and never wrap: they are
+   the only way to get a game, and a second row of them would move the panel.
+   They read as words, not icon + word: the words are the labels. */
+#analyze-actions { flex-wrap: nowrap; }
+#analyze-actions .btn > .bi { display: none; }
+
+/* ---- The pillars: engine, report, moves ---------------------------------
+   One pane at a time behind the tabs by default (a short or narrow panel); a
+   wide screen shows them together (see the wide band below). Which pane is
+   open is #view-analyze[data-pane], kept by analyze-panes.js, which also hides
+   the tab of a pane with nothing in it. */
+.an-panes {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.an-tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
+.an-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.an-tab:hover { color: var(--text); }
+.an-tab[aria-selected="true"] { background: var(--panel); color: var(--text); }
+.an-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.an-tab[hidden],
+.an-tab[data-pane="coach"] { display: none; }
+.an-pane {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.an-pane > * { flex: none; min-width: 0; }
+#view-analyze:not([data-pane="engine"]) .engine-pane,
+#view-analyze:not([data-pane="report"]) .report-pane,
+#view-analyze:not([data-pane="moves"]) .moves-pane,
+.an-pane[hidden] { display: none; }
+.an-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  font-size: var(--fs-s);
+}
+.an-pane-head > b { font-weight: 700; }
+/* The tabs already name the pane; its own title is for the wide band, where
+   the panes stand without tabs. */
+.report-pane > .an-pane-head { display: none; }
+
+/* The engine pane: the live lines when the engine is on, the saved run's best
+   line when it is off. One head row for both: the pane's name, the depth (the
+   saved run's or the live search's), the live search's line stepper and the
+   Live switch; the docked engine window dissolves into the pane's grid
+   (display: contents) so its head joins that row instead of adding one. Its
+   own label, eval (the evaluation pillar shows it), close and resize handle
+   are not drawn here. */
+.engine-pane {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-auto-rows: min-content;
+  align-items: center;
+  align-content: start;
+  gap: 4px 10px;
+}
+#view-analyze:not([data-pane="engine"]) .engine-pane { display: none; }
+.engine-pane > .an-pane-head,
 #analysis-engine-slot,
 #analysis-engine-slot > .engine-window:not([hidden]),
 #analysis-engine-slot .engine-window-head,
 #analysis-engine-slot .engine-head-meta,
 #analysis-engine-slot .engine-head-tools { display: contents; }
+.engine-pane .an-pane-head > b { grid-area: 1 / 1; }
+.ep-depth,
+#analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
+#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
+.engine-pane .ev-engine { grid-area: 1 / 5; }
+#analysis-engine-slot .engine-window-body,
+#analysis-engine-slot .engine-window-unlock,
+.engine-pane > .best-line { grid-column: 1 / -1; }
+.ep-depth { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+#view-analyze:has(#analysis-eval-card.is-engine) :is(#analysis-best-line, .ep-depth) { display: none; }
 #analysis-engine-slot .engine-head-label,
 #analysis-engine-slot .engine-head-eval,
 #analysis-engine-slot .engine-window-close,
-#analysis-engine-slot .engine-window-resize { display: none; }
+#analysis-engine-slot .engine-window-resize,
+#analysis-engine-slot .engine-bar { display: none; }
+#analysis-engine-slot .engine-window-body { display: block; padding: 0; }
+.best-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 6px;
+  min-height: 22px;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 22px;
+}
+/* A position the run has no line for keeps the row, so stepping never moves the
+   panes under it. */
+.best-line[hidden] { display: grid; visibility: hidden; }
+.best-line .engine-pv-eval { padding: 0; border: 0; border-radius: 0; background: none; color: var(--text); font-size: 11.5px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+.best-line .engine-pv-line { min-width: 0; overflow-wrap: anywhere; }
 
 /* The current eval as plain figures; a small disc in the leading side's colour
    says who is better (the sign says it too), so stepping through a game never
@@ -485,13 +570,6 @@
   color: var(--muted);
 }
 #analysis-engine-slot .engine-lines { gap: 2px; padding: 0; border: 0; background: none; }
-/* A narrow card keeps the figures and drops the two words: at 982x614 the card
-   is 361px and the five items need 381 with them, which pushed the Engine
-   button past the card's edge. Each figure carries its own title tooltip. */
-@container (max-width: 400px) {
-  #analysis-engine-slot .engine-head-depth::before,
-  #analysis-engine-slot .engine-lines::before { content: none; }
-}
 /* The line stepper is a control: it keeps its own edge (the engine slot is
    real interface, marked data-ui). */
 #analysis-engine-slot[data-ui] .engine-step {
@@ -749,6 +827,9 @@
    glyph takes the cell's ink instead of its grade colour. Measured after:
    5.9:1 at 1440x900. */
 .moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
+/* The mainline's trail is the sheet's own order: filling every move played so
+   far turned the sheet into two blue columns. A variation keeps its trail. */
+.moves-grid .mtree-line.is-main > .mtree-move.on-path { background: none; color: inherit; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
 /* The move list keeps the shared tree's own tiles: the selected move is filled
    and raised there too, so Analyze reads like the rest of the app. */
@@ -784,120 +865,181 @@
    the cell while the glyph's own rule painted it dark, measured at 2.9:1. */
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
-/* The report's facts: accuracy, the biggest swing, where the game left prep and
-   the opening. They are the numbers a player reads once and then leaves, so they
-   sit above the grade bars as label-and-figure rows, never as sentences or
-   cards. Two columns with the figures on one left edge, so the block reads down
-   rather than across. */
-.rpt-facts {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0 0 10px;
-}
-.rpt-fact {
+/* ---- The game report ----------------------------------------------------
+   A player's read of the game in four blocks: accuracy and the grade counts
+   (White's figures on the left, Black's on the right, the grade between
+   them), the key moments, the phases, the opening. Every figure is tabular,
+   every count and moment is a control that goes to its move, and every move
+   named is a move link. */
+.report { display: flex; flex-direction: column; gap: 16px; font-size: var(--fs); }
+.report:empty { display: none; }
+.rp-sides {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  align-items: baseline;
-  gap: 10px;
-  font-size: var(--fs);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
 }
-.rpt-fact dt {
-  color: var(--muted);
-}
-.rpt-fact dd {
-  margin: 0;
-  color: var(--text);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-/* Whose game it was. The panel head already names it on a wide panel, so it is
-   the phone's copy of that line — the only place the game is named on a phone,
-   where the head is not drawn. */
-.rpt-identity {
-  display: none;
-  margin: 2px 0 0;
+.rp-side { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rp-black { align-items: flex-end; text-align: right; }
+.rp-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--muted);
   font-size: var(--fs-s);
-  overflow-wrap: anywhere;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-/* Per-side classification bars — the at-a-glance "how did each side play"
-   summary. Segment colours reuse the move-classification palette. */
-.class-bars {
+.rp-disc, .km-disc {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--eval-side-white);
+  box-shadow: inset 0 0 0 1px var(--line-strong); /* taste-skill-ignore: a white piece's disc needs its edge on a white panel */
+}
+.rp-black .rp-disc, .km-disc.km-black { background: var(--eval-side-black); }
+.rp-black .rp-name { flex-direction: row-reverse; }
+.rp-acc {
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.rp-acc-label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 5px;
+  color: var(--muted);
+  font-size: var(--fs-s);
 }
-.cbar-row {
+.rp-result { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Grade counts: one row per grade, the two sides' counts flanking the name. */
+.rp-counts, .rp-ph { display: flex; flex-direction: column; }
+.rp-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  min-height: 26px;
+}
+.rp-row + .rp-row { border-top: 1px solid var(--rule, var(--line)); } /* taste-skill-ignore: rows of a real table (role=table) */
+.rp-grade {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: var(--fs-s);
+}
+.rp-glyph {
+  font-style: normal;
+  font-weight: 800;
+  min-width: 1.4em;
+  text-align: center;
+}
+.rp-n {
+  justify-self: stretch;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 24px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+.rp-row > .rp-n:last-child { text-align: right; }
+button.rp-n { cursor: pointer; }
+button.rp-n:hover { background: var(--surface-3); }
+button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.rp-n.is-zero { color: var(--label); font-weight: 400; }
+/* Each grade's glyph in its text-safe colour, as in the move list. */
+.g-brilliant .rp-glyph { color: var(--brilliant-text); }
+.g-great .rp-glyph { color: var(--great-text); }
+:is(.g-best, .g-good) .rp-glyph { color: var(--good-text); }
+.g-inaccuracy .rp-glyph { color: var(--inaccuracy-text); }
+.g-mistake .rp-glyph { color: var(--warn-text); }
+.g-blunder .rp-glyph { color: var(--danger); }
+.g-missed .rp-glyph { color: var(--missed); }
+/* The errors a player came for read in their grade's colour. */
+.rp-counts .g-blunder button.rp-n { color: var(--danger); }
+.rp-counts .g-mistake button.rp-n { color: var(--warn-text); }
+
+.rp-sec { display: flex; flex-direction: column; gap: 6px; }
+.rp-h { margin: 0; color: var(--text); font-size: var(--fs-s); font-weight: 700; }
+
+/* Key moments: the move (a peek inside the row's own jump), the eval it
+   swung, the win chance it cost; the better move under it as a link. */
+.rp-km { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.km { display: flex; flex-direction: column; gap: 0; border-radius: 6px; }
+.km.is-current { background: var(--accent-soft); }
+.km-go {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto 52px;
   align-items: center;
   gap: 8px;
-  font-size: var(--fs);
-}
-.cbar-track {
-  display: flex;
-  gap: 1px;
-  height: 20px;
-  overflow: hidden;
-  border-radius: 3px;
-}
-.cbar-seg {
-  /* The grade's glyph and count always fit, so a 1-move segment is never
-     squeezed to an unlabelled sliver and the grade never rests on colour. */
-  flex-basis: 0;
-  min-width: max-content;
-  padding: 0 5px;
-  white-space: nowrap;
+  min-height: 28px;
+  padding: 0 8px;
   border: 0;
-  /* The grade colours are dark in the light theme and light in the dark one,
-     so the ink on them flips with the theme (--accent-ink). */
-  color: var(--accent-ink);
-  font-size: var(--fs);
-  font-weight: 700;
-  line-height: 20px;
-  text-align: center;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: filter var(--dur-fast) var(--ease-out);
 }
-.cbar-seg:hover {
-  filter: brightness(1.08);
+.km-go:hover { background: var(--surface-3); }
+.km-move { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 650; }
+.km-eval { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.km-loss { color: var(--danger); font-size: var(--fs-s); font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
+.km.g-inaccuracy .km-loss { color: var(--inaccuracy-text); }
+.km.g-mistake .km-loss { color: var(--warn-text); }
+.km-best { padding: 0 8px 4px 25px; color: var(--muted); font-size: var(--fs-s); }
+.km-best .move-ref { color: var(--good-text); font-weight: 650; }
+
+/* Phases: each side's accuracy in it; the phase's name goes to its first move. */
+.rp-phase {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  cursor: pointer;
 }
-.cbar-seg:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.cbar-seg-n {
-  pointer-events: none;
-}
-.cbar-empty {
-  color: var(--label);
-  font-size: var(--fs);
-}
-/* The bar carries its count as text, so each fill is the grade's text-safe
-   colour: --brilliant at white ink is 4:1 and --great is 4.2:1 (measured:
-   "!! 3" and "!! 7" both under AA). The *-text tokens keep their hue and read
-   at 5.9:1 and 5.5:1 in light, and stay the fill colours in dark. */
-.seg-brilliant { background: var(--brilliant-text); }
-.seg-great { background: var(--great-text); }
-.seg-good { background: var(--good-text); }
-/* The amber is light in both themes, so it takes dark ink. */
-.seg-inaccuracy { background: var(--inaccuracy); color: #1b1c1e; }
-.seg-mistake { background: var(--warn-text); }
-.seg-blunder { background: var(--danger); }
-.seg-missed { background: var(--missed); }
+.rp-phase:hover { background: var(--surface-3); }
+.rp-span { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.rp-opening p { margin: 0; }
+.rp-opening-name { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+.rp-prep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
+.rp-prep .move-ref { color: var(--text); font-weight: 650; }
+.rp-rep { color: var(--muted); }
+.rp-rep::before { content: "· "; }
 
 .analysis-handoff {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--panel-soft);
+  padding: 0;
 }
 .analysis-handoff[hidden] {
   display: none;
@@ -926,35 +1068,61 @@
 
 /* ---- Drawers: the report, the PGN source, recent analyses ----------- */
 
-/* The panel is two groups: what the analysis says, then where the game came
-   from. The gap between the groups is the body's own 14px; inside the group of
-   folds the gaps are half that, because three collapsed one-line names read as
-   one block of three lines, not as three separate objects. */
-#analyze-sidebar .panel-scroll { gap: 8px; }
-#analyze-sidebar .panel-scroll > .analyze-main { margin-bottom: 6px; }
-#analyze-sidebar .panel-scroll > #analyze-sheet,
+/* ---- Where games come from ------------------------------------------------
+   Secondary to the pillars. With no game on the board they fill the pane area
+   (a PGN box and the recent analyses); with a game loaded they wait behind
+   the board bar's Games button and open over the panel. */
+#analyze-sidebar { position: relative; }
 #analyze-sidebar .panel-scroll > #analyze-open { margin: 0; }
-#analyze-sidebar .panel-scroll > #analyze-open > .drawer:first-of-type {
-  margin-top: 0;
+#view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
+#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes > :not(.engine-pane) { display: none; }
+#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes { flex: none; }
+#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes > .engine-pane { display: grid; flex: none; }
+#view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
 }
-
-/* The report is the game's summary, not its instrument: the grade bars, and
-   the offer to turn the game into a repertoire. It used to sit open under the
-   score sheet and take 96px of a 732px panel (1024x768) that the score sheet
-   wanted, for a tally a player reads once and then leaves. Behind its own
-   name it costs one line until asked for. */
-.report-fold {
-  flex: none;
-}
-.report-fold > summary {
-  margin-bottom: 0;
-}
-.report-fold[open] > summary {
-  margin-bottom: 10px;
-}
-/* Nothing to report yet (no game analysed): the fold is not offered. */
-.report-fold:has(#analysis-summary:empty):has(#analysis-handoff[hidden]) {
-  display: none;
+@media (min-width: 761px) {
+  #view-analyze:has(#analysis-results:not([hidden])) .board-bar .bb-sheet { display: inline-flex; }
+  #analyze-open.is-open {
+    position: absolute;
+    z-index: 30;
+    /* From the panel's foot, so the coach and Analyze stay in reach of a
+       pasted game. */
+    inset: auto 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: calc(100% - 180px);
+    padding: 6px 14px 14px;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    box-shadow: var(--shadow-2); /* taste-skill-ignore: a popover floats over the panel */
+    overflow: auto;
+  }
+  #analyze-open.is-open > .sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 36px;
+    font-size: var(--fs);
+  }
+  #analyze-open .sheet-done {
+    min-height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: var(--fs-s);
+    font-weight: 650;
+    cursor: pointer;
+  }
+  #analyze-open .sheet-done:hover { background: var(--accent-soft); }
 }
 
 .drawer {
@@ -1055,17 +1223,13 @@
   white-space: nowrap;
 }
 
-/* No layout rules here used to say "fill the visible panel": the panel now
-   ends where its content does, so the move list takes its rows' height (capped
-   at 190px, then it scrolls) and the grade bars and handoff follow it. */
-
 /* ---- Motion ------------------------------------------------------------
    This page is a tool: it moves to answer a touch, and once when a run
    lands. Feedback is under the hand, the entrances are the results
    arriving, and nothing that updates every second moves at all. */
 
 .ev-engine,
-.ev-report,
+.an-tab,
 .coach-bookaction,
 .history-item,
 .history-item .hi-open,
@@ -1078,7 +1242,7 @@
 
 /* Press: the control gives a little under the finger. */
 .ev-engine:active,
-.ev-report:active,
+.an-tab:active,
 .coach-bookaction:active,
 .history-item .hi-open:active,
 .history-item .hi-delete:active {
@@ -1097,7 +1261,7 @@
     transition: none;
   }
   .ev-engine,
-  .ev-report,
+  .an-tab,
   .coach-bookaction,
   .history-item,
   .history-item .hi-open,
@@ -1106,67 +1270,169 @@
   }
 }
 
+/* ---- Layout bands -----------------------------------------------------------
+   Side by side (761px and up, the default here): the panel fills the board's
+   column height; the coach and the evaluation are fixed and the pillars share
+   what is left behind their tabs. A wide screen puts the evaluation under the
+   board and shows the pillars together; a stacked tablet puts the panel under
+   the board in two columns; a phone pins the board and tabs every pillar. */
+#view-analyze { --an-eval-h: 112px; }
+/* The evaluation under the board takes its height out of the board's square. */
+#view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
+  --board-chrome: calc(42px + 8px + var(--an-eval-h));
+}
+@media (min-width: 761px) {
+  #analyze-sidebar { height: var(--study-h); align-self: stretch; }
+  /* A short window keeps two lines of verdict, so the panes keep their room. */
+  @media (max-height: 640px) {
+    .coach-card { --coach-line: 22px; height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2); }
+    #view-analyze { --an-eval-h: 100px; }
+  }
+}
+
+/* Wide: every pillar on screen. The engine pane spans the column under the
+   coach with three lines' room; the report and the score sheet stand side by
+   side when the column is 560px or wider, and share one tabbed pane below
+   that. A stored "engine" choice from a narrower window reads as the report. */
+@media (min-width: 1101px) and (min-height: 700px) {
+  .an-tab[data-pane="engine"] { display: none; }
+  #view-analyze .an-panes > .engine-pane { order: -1; display: grid; flex: none; max-height: 160px; }
+  #view-analyze:is([data-pane="engine"], [data-pane="coach"]) .an-panes > .report-pane { display: flex; }
+  @container an-main (min-width: 560px) {
+    .an-panes {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      gap: 12px 16px;
+    }
+    .an-panes > .engine-pane { grid-column: 1 / -1; }
+    .an-panes > .an-tabs { display: none; }
+    #view-analyze .an-panes > :is(.report-pane, .moves-pane:not([hidden])) { display: flex; }
+    .report-pane > .an-pane-head { display: flex; }
+    .moves-pane > .moves-grid { flex: 1 1 auto; max-height: none; }
+  }
+}
+
+/* Stacked tablet: the board (with the evaluation under it) is sized so the
+   panel under it keeps 300px; the panel is two columns, the coach over the
+   engine on the left, the report and the moves behind tabs on the right. One
+   screen, no page scroll. */
+@media (min-width: 761px) and (max-width: 860px) and (orientation: portrait), (min-width: 761px) and (max-width: 860px) and (min-height: 521px), (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6) {
+  #view-analyze .study {
+    --stack-w: min(100%, calc(100dvh - 36px - 42px - 8px - var(--an-eval-h) - 16px - 300px));
+    height: var(--study-h);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  #view-analyze .study > #analyze-sidebar {
+    width: 100%;
+    justify-self: stretch;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+  #analyze-sidebar .panel-scroll { overflow: hidden; }
+  .analyze-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-template-rows: 34px auto minmax(0, 1fr) auto;
+    gap: 10px 16px;
+  }
+  .analyze-main > .coach-card { grid-column: 1; grid-row: 1 / 3; }
+  .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { grid-column: 1 / -1; grid-row: 4; }
+  .an-panes { display: contents; }
+  .an-panes > .an-tabs { grid-column: 2; grid-row: 1; }
+  #view-analyze .an-panes > .engine-pane { grid-column: 1; grid-row: 3; display: grid; }
+  .an-panes > :is(.report-pane, .moves-pane) { grid-column: 2; grid-row: 2 / 4; }
+  .an-tab[data-pane="engine"] { display: none; }
+  #view-analyze:is([data-pane="engine"], [data-pane="coach"]) .an-panes > .report-pane { display: flex; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open { grid-column: 2; grid-row: 1 / 4; }
+  #view-analyze .panel-scroll > #analyze-open { min-height: 0; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll > .analyze-main { display: flex; }
+}
+
 /* ---- Phone ------------------------------------------------------------
-   Shell, thumb bar and sheets in phone.css. One screen, no page scroll, and
-   nothing above the board changes height between moves: the game graph on top,
-   the board, then the eval row and the engine's best line, and the coach last.
-   A phone has no move list: the graph is how a thumb walks the game. The report
-   and the game sources are sheets; the sources fill the screen under the board
-   while no game is loaded. */
+   Shell, thumb bar and sheets in phone.css. One screen, no page scroll: the
+   evaluation (figure and game graph) over the board, the board pinned, then
+   the open pillar, then the pillar tabs right above the thumb bar, where a
+   thumb reaches them. The coach is a tab here. The game sources are the
+   Games sheet, and fill the screen under the board while no game is loaded. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #view-analyze {
-    --phone-chart-min: 64px;
-    --phone-eval-h: 48px;
-    --phone-engine-h: 32px;
-    --phone-coach-h: 128px;
-    --phone-reserve: calc(var(--phone-chart-min) + var(--phone-eval-h) + var(--phone-engine-h) + var(--phone-coach-h));
+    --phone-eval-h: 56px;
+    --phone-tabs-h: 44px;
+    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 172px);
   }
   #view-analyze .study { height: 100svh; }
   #view-analyze .board-stack {
     width: min(100vw, calc(100svh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
   }
-  #analyze-sidebar :is(.panel-scroll, .analyze-main),
-  #analysis-eval-card,
-  #analysis-results:not([hidden]) { display: contents; }
+  #analyze-sidebar :is(.panel-scroll, .analyze-main) { display: contents; }
   #analyze-sidebar .panel-scroll > *,
-  .analyze-main > *,
-  #analysis-eval-card > *,
-  #analysis-results > * { order: 2; flex: none; min-width: 0; }
+  .analyze-main > * { order: 2; flex: none; min-width: 0; }
 
-  /* The verdict and human picks own fixed rows; only the text scrolls. The
-     book note is not reserved: a departure note is rare, so its row takes its
-     own line from the verdict when the coach has one to speak (the card's
-     height, and the board under it, stay where they are). */
-  #analysis-explain {
-    order: 3;
-    flex: none;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: minmax(0, 1fr) auto 44px;
-    gap: 4px 8px;
-    --coach-line: 21px;
-    height: var(--phone-coach-h);
-    min-height: var(--phone-coach-h);
-    max-height: var(--phone-coach-h);
+  /* The evaluation: the figure, then the game graph, one 56px band. A finger on
+     the graph scrubs the game; the band never changes height. */
+  #view-analyze #analysis-eval-card {
+    order: 0;
+    grid-template-columns: 62px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0 10px;
+    height: var(--phone-eval-h);
+    padding: 6px var(--phone-gutter);
     margin: 0;
-    padding: 8px var(--phone-gutter);
-    border: 0;
     border-radius: 0;
-    background: var(--panel-soft);
-    overflow: hidden;
+    background: var(--bg);
   }
-  /* The phone card's rhythm is its grid's own (`gap: 4px 8px`), not the wide
-     card's row margins. */
-  #analysis-explain > .coach-prose { margin: 0; }
-  #analysis-explain .cc-head {
-    grid-area: 1 / 2;
-    align-self: start;
-    flex-wrap: nowrap;
+  #analysis-eval-card > :not(.ev-head) { grid-row: 1; grid-column: 2; }
+  #analysis-eval-card .ev-title { grid-area: 1 / 1; color: var(--muted); font-weight: 600; }
+  #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 18px; font-weight: 650; }
+  #analysis-eval-card .ev-meter { display: none; }
+  #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
+  #analysis-eval-card > .analysis-job-dock:not(:empty) {
+    position: absolute;
+    top: 6px;
+    right: var(--phone-gutter);
+    padding: 0 8px;
+    border-radius: 6px;
+    background: var(--panel);
+  }
+
+  /* The coach, when its tab is open: the phase and the review switch, the
+     verdict (it scrolls inside), the human picks, the prep note. */
+  #analysis-explain {
+    order: 2;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
     gap: 6px;
+    height: auto;
     min-height: 0;
     margin: 0;
+    padding: 8px var(--phone-gutter) 4px;
+    border-radius: 0;
+    background: var(--bg);
+    overflow: hidden;
   }
+  /* Another pillar open: the coach steps aside, but its Analyze action stays in
+     the thumb bar (phone.css places it there). */
+  #view-analyze:not([data-pane="coach"]) #analysis-explain,
+  #view-analyze:not([data-pane="coach"]) #analysis-explain .cc-head { display: contents; }
+  #view-analyze:not([data-pane="coach"]) #analysis-explain > :not(.cc-head),
+  #view-analyze:not([data-pane="coach"]) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
+  #analysis-explain > * { flex: none; margin: 0; }
+  #analysis-explain .cc-head { gap: 6px; min-height: 0; }
   #analysis-explain .cc-head > b { display: none; }
+  #analysis-explain .coach-prose {
+    flex: 0 1 auto;
+    min-height: 0;
+    padding-left: 10px;
+    font-size: 15px;
+    line-height: 1.45;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
   /* On phones the coach head floats beside the text. The switch is a 22px
      control: its own padding gives it a 44px target (the border-box stays at a
      knob-tall 22px, so the header keeps its height). */
@@ -1211,177 +1477,64 @@
   @media (prefers-reduced-motion: reduce) {
     #analysis-explain .cc-head .pf-switch::after { transition: none; }
   }
-  #analysis-explain .coach-prose {
-    grid-area: 1 / 1;
+  #analysis-explain .coach-maia { height: 44px; overflow-x: auto; scrollbar-width: none; }
+  #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
+  #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
+  #analysis-explain .coach-bookline { max-height: none; }
+
+  /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
+  .an-panes {
+    order: 3;
+    flex: 1 1 0;
     min-height: 0;
-    padding-left: 10px;
-    font-size: 15px;
-    line-height: 1.4;
-    overflow: auto;
+    gap: 0;
+  }
+  #view-analyze[data-pane="coach"] .an-panes { flex: none; }
+  .an-panes > .an-tabs {
+    order: 2;
+    height: var(--phone-tabs-h);
+    box-sizing: border-box;
+    margin: 0 var(--phone-gutter) 6px;
+    padding: 3px;
+    border-radius: 12px;
+  }
+  .an-tab { height: auto; font-size: 14px; border-radius: 9px; }
+  .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
+  .an-pane {
+    padding: 8px var(--phone-gutter) 10px;
     overscroll-behavior: contain;
   }
-  #analysis-explain .coach-maia { grid-area: 3 / 1 / 4 / -1; height: 44px; margin: 0; overflow-x: auto; scrollbar-width: none; }
-  /* The pills are painted at the height of their words and keep a 44px thumb
-     target: five 44px capsules around 11px text read as the tallest row in the
-     coach, and they out-weighed the verdict above them. The hit box grows past
-     the paint instead of the paint growing to the target (the Train switch's
-     pattern), so the row still measures 44px. */
-  #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
-  #analysis-explain .hp::after {
-    content: "";
-    position: absolute;
-    inset: -8px 0;
-  }
-  #analysis-explain .coach-bookline { grid-area: 2 / 1 / 3 / -1; height: auto; margin: 0; padding: 0; overflow: auto; white-space: nowrap; }
-
-  /* No score sheet on a phone: the game graph is the only way to walk the game
-     by hand, so it takes the room the move list held and the stack's slack with
-     it. A taller field is an easier ply to hit and it is where the game's shape
-     is read; it stops at a third of the screen, where a curve stops being a
-     graph. It keeps the phone gutter so its ends line up with the eval row and
-     the coach under it — edge to edge, the first ply's cursor drew a dashed line
-     on the screen's own border, which read as a stray edge. */
-  #analysis-results:not([hidden]) > .moves-grid { display: none; }
-  #analysis-eval-card > :is(.eval-live, #analysis-eval-graph) {
-    order: 0;
-    flex: 1 1 0;
-    min-height: var(--phone-chart-min);
-    max-height: 34svh;
-    margin: 0 var(--phone-gutter);
-  }
-  #analysis-eval-card .eval-chart {
-    height: 100%;
-    border-radius: 8px;
-    touch-action: pan-y;
-  }
-
-  /* Under the board: eval, win meter, Report, Engine; then the best line.
-     The eval is the one figure the chart answers with, so it is the row's
-     largest item and takes the ink; the word "Evaluation" and the move label
-     are the quiet meta beside it. */
-  #analysis-eval-card > .ev-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: var(--phone-eval-h);
-    padding: 0 var(--phone-gutter);
-    background: var(--bg);
-  }
-  #analysis-eval-card .ev-title { color: var(--muted); font-weight: 600; }
-  #analysis-eval-card .eval-now { min-width: 62px; color: var(--text); font-size: 18px; font-weight: 650; }
-  /* Eval, the position's name, Report, Engine. The win meter is not here: the
-graph above it is the same win-chance series at 277px, so a 64px bar repeating
-the current point cost the row 74px — and with the two pills at their 44px target
-the position's name was squeezed into 43px and wrapped mid-word. The eval's own
-figure ("+0.25") already names the point; the row gives its room back to the
-name. */
-  #analysis-eval-card .ev-meter { display: none; }
-  #analysis-eval-card .ev-move {
-    display: block;
-    flex: 1 1 0; /* a zero basis: a long label shrinks instead of wrapping the row */
-    min-width: 0;
-    overflow: hidden;
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 600;
-    /* Two lines beat a clipped word: the row names the position in full. */
-    line-height: 1.15;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  /* Report and Engine are the two controls in the row a thumb reaches. They are
-     painted at 32px so the row reads as one line of controls instead of two
-     44px capsules filling it, and their hit box keeps the 44px a thumb needs
-     (the same paint/hit split as the Humans pills above). */
-  #analysis-eval-card .ev-engine { position: relative; flex: none; height: 32px; padding: 0 14px 0 12px; font-size: 14px; }
-  #analysis-eval-card .ev-engine::after { content: ""; position: absolute; inset: -6px 0; }
-  #view-analyze:has(#analysis-results:not([hidden])) .ev-report:hover { background: var(--surface-3); }
-  #view-analyze:has(#analysis-results:not([hidden])) .ev-report {
-    position: relative;
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    height: 32px;
-    padding: 0 14px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--panel-soft);
-    color: var(--text);
-    font: inherit;
-    font-size: 14px;
-    font-weight: 650;
-  }
-  #view-analyze:has(#analysis-results:not([hidden])) .ev-report::after { content: ""; position: absolute; inset: -6px 0; }
-  /* The engine's best line, the job dock and the coach all sit on the phone
-     gutter, the same left edge as the graph and the eval row above them. They
-     were indented 10/12/14px by three rules written at different times, so the
-     screen carried four left edges down one column (measured at 390x844: graph
-     and eval at 16, engine line at 10, dock at 12, coach prose at 14). */
-  #analysis-engine-slot {
-    display: block;
-    position: relative;
-    flex: none;
-    height: var(--phone-engine-h);
-    min-height: var(--phone-engine-h);
-    padding: 0 var(--phone-gutter) 4px;
-  }
-  #analysis-engine-slot > .engine-window:not([hidden]) { display: block; overflow: visible; }
-  #analysis-engine-slot .engine-window-head,
-  #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting):not(.is-pending),
-  #analysis-engine-slot .engine-pv.is-pending ~ .engine-pv.is-pending { display: none; }
-  #analysis-engine-slot .engine-pv.is-pending { display: grid; height: 28px; min-height: 28px; }
-  #analysis-engine-slot .engine-window-unlock:not([hidden]) {
-    position: absolute;
-    z-index: 20;
-    left: var(--phone-gutter);
-    right: var(--phone-gutter);
-    bottom: 100%;
-    padding: 0 0 6px;
-  }
-  /* The status line is the card's whole content while the pass runs: it stays. */
-  #analysis-engine-slot .engine-pv.is-waiting { display: grid; height: 28px; min-height: 28px; }
-  #analysis-engine-slot .engine-pv.is-top { height: 28px; min-height: 28px; font-size: 14px; }
-  #analysis-engine-slot .engine-pv-line { line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #analysis-job-dock:empty { display: none; }
-  #analysis-job-dock {
-    position: absolute;
-    z-index: 8;
-    left: var(--phone-gutter);
-    right: var(--phone-gutter);
-    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + var(--phone-coach-h) + var(--phone-engine-h) + var(--phone-eval-h));
-    padding: 0;
-  }
+  .an-pane-head { min-height: 32px; }
+  .engine-pane .an-pane-head > b { display: none; }
+  #analysis-engine-pane .ev-engine { position: relative; height: 32px; padding: 0 14px 0 12px; font-size: 14px; }
+  #analysis-engine-pane .ev-engine::after { content: ""; position: absolute; inset: -6px 0; }
+  #analysis-engine-slot .engine-pv,
+  #analysis-engine-slot .engine-pv.is-top { height: 32px; min-height: 32px; font-size: 14px; }
+  #analysis-engine-slot .engine-pv-line { line-height: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #analysis-engine-slot .engine-step { width: 32px; height: 32px; }
+  .best-line { font-size: 14px; line-height: 28px; }
+  .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
+  .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
+  .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
+  .rp-row { min-height: 36px; }
+  .rp-n, .rp-phase { height: 36px; line-height: 36px; }
+  .km-go { min-height: 44px; }
+  .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   .analysis-retry-save:not([hidden]),
-  .analysis-import-picker:not([hidden]) { margin: 0 var(--phone-gutter) 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
+  .analysis-import-picker:not([hidden]) { margin: 6px var(--phone-gutter); padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
 
-  /* Report sheet: move quality and the handoff. Games sheet: where games
-     come from. */
-  #analyze-sheet:not(.is-open),
+  /* The Games sheet: where games come from. */
   #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { visibility: hidden; }
-  #analysis-summary:empty { display: none; }
-  /* The sheet's own bar already says "Report", so the fold's name inside it
-     would be the same word twice: on a phone the sheet is the disclosure and
-     the fold is simply open. Its content is forced visible rather than set
-     open, so the state survives a collapse and re-raise of the sheet. */
-  #analyze-sheet .report-fold > summary { display: none; }
-  #analyze-sheet .report-fold::details-content { content-visibility: visible; block-size: auto; }
-  #analyze-sheet .report-fold > :not(summary) { display: block; }
-  :is(#analyze-sheet, #analyze-open) :is(#analysis-summary, #pgn-drawer, #history-drawer:not([hidden])) {
+  :is(#analyze-open) :is(#pgn-drawer, #history-drawer:not([hidden])) {
     margin: 0;
     padding: 10px 14px;
     border: 0;
     border-radius: 12px;
     background: var(--surface-3);
   }
-  #analyze-sheet .analysis-handoff { padding: 0; border: 0; background: none; }
-  /* A phone does not draw the panel head that names the game, so the report
-     carries its own copy of that line under the facts. */
-  #analyze-sheet .rpt-identity { display: block; }
-  #analyze-sheet .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   /* The sheet's rows are the entry points (Last game / Past analyses / Paste a
-     PGN), so a drawer's own summary would be the same action named twice. The
-     row opens the drawer; the drawer shows its content. */
+     PGN), so a drawer's own summary would name the same action twice. */
   #analyze-open > .drawer > summary { display: none; }
   #analyze-open > .drawer:not([open]) { display: none; }
   #pgn-input { min-height: 120px; border-radius: 10px; }
@@ -1398,7 +1551,9 @@ name. */
     opacity: 1;
   }
 
-  /* No game yet: the sources fill the screen under the board. */
+  /* No game yet: the sources fill the screen under the board, the pillars and
+     the coach step aside (Analyze stays in the thumb bar). */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes { display: none; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open {
     order: 3;
     display: flex;
@@ -1411,8 +1566,6 @@ name. */
   }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open > * { flex: none; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open :is(.sheet-rows, #pgn-drawer, #history-drawer:not([hidden])) { background: var(--panel); }
-  /* …and the coach keeps to its few lines above them. */
-  /* Keep the absolute Analyze action in the thumb bar before a game is loaded. */
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain,
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head { display: contents; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain > :not(.cc-head),

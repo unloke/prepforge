@@ -246,7 +246,7 @@ async function main() {
     await page.locator("#analysis-results").waitFor({ state: "visible", timeout });
     await page.locator("#analysis-moves > *").first().waitFor({ state: "attached", timeout });
     await page
-      .locator("#analysis-summary .class-bars, #analysis-summary .cbar-row")
+      .locator("#analysis-summary .rp-side")
       .first()
       .waitFor({ state: "attached", timeout });
   }

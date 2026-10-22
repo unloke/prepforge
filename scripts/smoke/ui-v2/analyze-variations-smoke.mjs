@@ -303,7 +303,7 @@ await page.locator("#pgn-input").evaluate((el, pgn) => {
 await page.waitForFunction(() => document.querySelectorAll("#analysis-moves .mtree-move").length >= 6, null, { timeout: 10000 });
 await page.evaluate(() => document.getElementById("run-analysis").click());
 await page.waitForFunction(
-  () => !document.getElementById("analysis-results").hidden && document.querySelectorAll("#analysis-summary .cbar-row").length > 0,
+  () => !document.getElementById("analysis-results").hidden && document.querySelectorAll("#analysis-summary .rp-side").length > 0,
   null, { timeout: 60000 },
 );
 await page.waitForTimeout(1000);
@@ -457,7 +457,7 @@ ${G2_PGN}`;
   await page.waitForTimeout(500);
   expectMultiGameRefusal = false;
   await page.waitForFunction(
-    () => !document.getElementById("analysis-results").hidden && document.querySelectorAll("#analysis-summary .cbar-row").length > 0,
+    () => !document.getElementById("analysis-results").hidden && document.querySelectorAll("#analysis-summary .rp-side").length > 0,
     null, { timeout: 60000 },
   );
   await page.waitForTimeout(1200);

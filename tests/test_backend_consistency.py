@@ -329,6 +329,19 @@ def test_legacy_analysis_does_not_borrow_shared_annotations(repo):
     assert loaded.quality["move_snapshot_missing"] is True
 
 
+def test_snapshot_in_an_older_codec_reads_as_missing(repo):
+    game = ChessCore().import_single_pgn('[Result "*"]\n\n1. e4 *')
+    result = AnalysisResult(game.id, datetime.now(timezone.utc), "engine", 12,
+                            game.moves, {"best": 1})
+    repo.save_game(game, result)
+    for stale in ('{"codec":"zlib-base64-v1","data":"eJyLjgUAARUAuQ=="}', "[]"):
+        with repo.engine.begin() as conn:
+            conn.execute(update(t.analysis_results).values(move_results_json=stale))
+        loaded = repo.load_latest_analysis_result(game.id)
+        assert loaded.move_results == []
+        assert loaded.quality["move_snapshot_missing"] is True
+
+
 def test_sync_lost_response_retry_acknowledges_identical_state_without_rewriting(repo):
     rep, ids = _build(repo)
     service = SmartTrainingService(repo, "t-owner")

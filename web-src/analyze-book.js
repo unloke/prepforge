@@ -1,4 +1,5 @@
 import { html } from "./html.js";
+import { moveTokenHtml, plyOfFen } from "./move-text.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
   bookState, appState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
@@ -78,6 +79,17 @@ function analysisNodePath(node) {
   return path.reverse();
 }
 
+// The book line names one move (the prep's or the opponent's novelty), played from
+// the position before the departure: that word becomes a move link, and the
+// repertoire's own name around it stays text even when it reads like a move.
+function sanLinked(text, san, fen, uci) {
+  const at = san && fen && uci ? text.lastIndexOf(san) : -1;
+  if (at < 0) return text;
+  const ply = plyOfFen(fen);
+  const label = `${Math.floor(ply / 2) + 1}${ply % 2 ? "..." : "."}${san}`;
+  return html`${text.slice(0, at)}${moveTokenHtml(fen, [uci], 0, san, { label })}${text.slice(at + san.length)}`;
+}
+
 function hideBookline() {
   const el = document.getElementById("coach-bookline");
   if (el) {
@@ -146,7 +158,7 @@ async function updateBookline() {
       expectedSan: prescribed.san,
     });
     el.innerHTML =
-      html`${`${text} `}<button class="coach-bookaction" type="button" data-act="train">Add to training</button>`;
+      html`${sanLinked(text, prescribed.san, node.fenBefore, prescribed.uci)} <button class="coach-bookaction" type="button" data-act="train">Add to training</button>`;
     el.hidden = false;
     el.querySelector('[data-act="train"]').addEventListener("click", async (event) => {
       const btn = event.currentTarget;
@@ -189,7 +201,7 @@ async function updateBookline() {
       repName: rep.name,
     });
     el.innerHTML =
-      html`${`${text} `}<button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
+      html`${sanLinked(text, node.san, node.fenBefore, node.uci)} <button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
     el.querySelector('[data-act="build"]').addEventListener("click", () => {
       // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
