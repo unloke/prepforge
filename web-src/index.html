@@ -130,10 +130,10 @@
             </div>
             <div class="board-bar">
               <div class="bb-nav">
-                <button class="btn icon" id="analysis-start" title="Start" aria-label="Go to start">⏮</button>
-                <button class="btn icon" id="analysis-prev" title="Previous" aria-label="Previous move">◀</button>
-                <button class="btn icon" id="analysis-next" title="Next" aria-label="Next move">▶</button>
-                <button class="btn icon" id="analysis-end" title="End" aria-label="Go to end">⏭</button>
+                <button class="btn icon" id="analysis-start" title="Start" aria-label="Go to start"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 6v12M17 6l-6 6 6 6"/></svg></button>
+                <button class="btn icon" id="analysis-prev" title="Previous" aria-label="Previous move"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+                <button class="btn icon" id="analysis-next" title="Next" aria-label="Next move"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+                <button class="btn icon" id="analysis-end" title="End" aria-label="Go to end"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 6v12M7 6l6 6-6 6"/></svg></button>
               </div>
               <!-- The bar's one text slot, directly under the board: the game
                    on the board, named. An engine line being previewed takes the
@@ -281,10 +281,10 @@
             </div>
             <div class="board-bar">
               <div class="bb-nav">
-                <button class="btn icon" id="build-root" title="Go to start" aria-label="Go to start">⏮</button>
-                <button class="btn icon" id="build-parent" title="Back one move" aria-label="Back one move">◀</button>
-                <button class="btn icon" id="build-next" title="Forward one move" aria-label="Forward one move">▶</button>
-                <button class="btn icon" id="build-end" title="To end of line" aria-label="Go to end of line">⏭</button>
+                <button class="btn icon" id="build-root" title="Go to start" aria-label="Go to start"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 6v12M17 6l-6 6 6 6"/></svg></button>
+                <button class="btn icon" id="build-parent" title="Back one move" aria-label="Back one move"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+                <button class="btn icon" id="build-next" title="Forward one move" aria-label="Forward one move"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+                <button class="btn icon" id="build-end" title="To end of line" aria-label="Go to end of line"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 6v12M7 6l6 6-6 6"/></svg></button>
               </div>
               <span class="board-label" id="build-board-label">No repertoire</span>
               <button class="pv-exit" id="build-pv-exit" type="button" title="Leave the engine line (Esc)" hidden>Exit line</button>
@@ -357,7 +357,7 @@
                     <option value="16" selected>8 moves</option>
                     <option value="24">12 moves</option>
                   </select>
-                  <button type="button" class="btn icon inspector-info" id="inspector-info" aria-label="About this panel">ⓘ</button>
+                  <button type="button" class="btn icon inspector-info" id="inspector-info" aria-label="About this panel"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
                   <span class="build-sync" id="build-sync-head" aria-live="polite" hidden></span>
                   <span class="spacer"></span>
                   <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
@@ -704,7 +704,7 @@
               <div class="acct-block" id="set-connections" data-testid="settings-connections">
                 <div class="acct-block-head">
                   <b>Chess accounts</b>
-                  <button type="button" class="pf-info" id="connections-info" aria-label="About chess accounts" title="About chess accounts" aria-expanded="false">ⓘ</button>
+                  <button type="button" class="pf-info" id="connections-info" aria-label="About chess accounts" title="About chess accounts" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
                 </div>
                 <div class="pf-info-pop" id="connections-info-pop" hidden>
                   Every linked account counts as you (Self) in Games and Scout. Narrow to one account from its source picker there.
@@ -735,7 +735,7 @@
             <section class="card set" id="set-engine">
               <h2>
                 Engine
-                <button type="button" class="pf-info" id="engine-info" aria-label="About Engine settings" title="About Engine settings" aria-expanded="false">ⓘ</button>
+                <button type="button" class="pf-info" id="engine-info" aria-label="About Engine settings" title="About Engine settings" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
                 <span class="spacer"></span>
                 <button class="btn sm" id="settings-refresh">Refresh</button>
               </h2>
@@ -777,7 +777,7 @@
             <section class="card set" id="set-maia">
               <h2>
                 Maia3
-                <button type="button" class="pf-info" id="maia-info" aria-label="About Maia3 settings" title="About Maia3 settings" aria-expanded="false">ⓘ</button>
+                <button type="button" class="pf-info" id="maia-info" aria-label="About Maia3 settings" title="About Maia3 settings" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
                 <span class="spacer"></span>
                 <button class="btn sm" id="settings-maia-retry" data-testid="settings-maia-retry">Retry</button>
                 <button class="btn sm" id="settings-maia-reset" data-testid="settings-maia-reset">Reset cache</button>
@@ -793,7 +793,7 @@
             <section class="card set" id="set-strength">
               <h2>
                 Playing strength
-                <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false">ⓘ</button>
+                <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
               </h2>
               <div class="pf-info-pop" id="strength-info-pop" hidden>
                 Stockfish depth is a target. Analyze and coach searches also stop at 1.5 million nodes per position, so tactical positions may finish below that depth. Maia3 rating shapes how human the model plays.
@@ -817,7 +817,7 @@
               <div class="pf-row">
                 <span class="pf-row-text">
                   <span class="pf-row-label" id="settings-maia-analysis-label">Maia analysis</span>
-                  <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false">ⓘ</button>
+                  <button type="button" class="pf-info pf-info-inline" id="maia-analysis-info" aria-label="About Maia analysis" title="About Maia analysis" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
                 </span>
                 <button type="button" class="pf-switch" id="settings-maia-analysis" role="switch" aria-checked="false" aria-labelledby="settings-maia-analysis-label"><span class="pf-knob"></span></button>
               </div>

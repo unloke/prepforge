@@ -1210,6 +1210,19 @@ h2 {
   outline-offset: -3px;
 }
 
+/* The ⓘ is drawn, not typed: U+24D8 is missing from the default fonts on
+   Linux and older Android, where it rendered as an empty box. */
+.info-glyph {
+  display: block;
+  width: 15px;
+  height: 15px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
 .pf-info-inline {
   width: 20px;
   height: 20px;
@@ -2985,6 +2998,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   animation: row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 40ms);
 }
+#explorer-rows.is-refresh .explorer-row { animation: none; }
 #build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 #build-branchbar .fork-chip:active { transform: scale(0.97); }
 
@@ -4217,25 +4231,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
+  /* The bar is its own 15% width, so translateX(567%) ends at the dock's right
+     edge. A full-width bar scaled to 0.15 moved 566% of the *dock* width
+     (~2400px at 430px) and, with no clipping ancestor, widened the page. */
+  width: 15%;
   height: 2px;
   z-index: 3;
   pointer-events: none;
   background: var(--accent);
-  transform: scaleX(0.15);
-  transform-origin: 0 50%;
   animation: dock-loading 1.1s var(--ease-out) infinite;
 }
 @keyframes dock-loading {
-  0% { opacity: 0.35; transform: translateX(0) scaleX(0.15); }
+  0% { opacity: 0.35; transform: translateX(0); }
   50% { opacity: 1; }
-  100% { opacity: 0.35; transform: translateX(566%) scaleX(0.15); }
+  100% { opacity: 0.35; transform: translateX(567%); }
 }
 @media (prefers-reduced-motion: reduce) {
   .dock:not(.is-folded):has(#explorer-drawer:not([hidden]) #explorer-rows.is-stale)::after {
     animation: none;
     opacity: 0.6;
-    transform: scaleX(1);
+    width: auto;
+    right: 0;
   }
 }
 

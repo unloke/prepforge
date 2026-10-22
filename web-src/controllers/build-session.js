@@ -598,6 +598,7 @@ async function refreshExplorerPanel() {
     appState.buildCurrentNodeId && appState.buildNodeById.get(appState.buildCurrentNodeId);
   const fen = node ? node.fen : null;
   if (!fen) {
+    delete rows.dataset.shownFen;
     rows.innerHTML = html`<div class="muted hint">Open a repertoire to see real-game stats.</div>`;
     // No rows can belong to a position now, so park the search instead of
     // leaving the old one burning a core at full depth.
@@ -625,10 +626,12 @@ async function refreshExplorerPanel() {
   } else {
     explorerOpeningName = "";
     rows.classList.remove("is-stale");
+    delete rows.dataset.shownFen;
     rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   }
   try {
     if (!explorerModule) {
+      delete rows.dataset.shownFen;
       rows.innerHTML = html`<div class="muted hint">Loading explorer…</div>`;
       await ensureExplorerClient();
       renderExplorerScope(); // now that ratingBucketsFor is available, show the pool
@@ -646,15 +649,18 @@ async function refreshExplorerPanel() {
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
+      delete rows.dataset.shownFen;
       rows.innerHTML = html`<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
     } else if (/link your lichess account/i.test(error.message || "")) {
       // Retrying cannot help until an account is linked: offer the link.
+      delete rows.dataset.shownFen;
       rows.innerHTML =
         html`<div class="muted hint">The ${label} explorer reads Lichess with your linked account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
       rows.querySelector("[data-explorer-link]")?.addEventListener("click", () => {
         openSettingsSection("set-connections").catch(() => {});
       });
     } else {
+      delete rows.dataset.shownFen;
       rows.innerHTML =
         html`<div class="muted hint">${label} explorer unavailable: ${error.message} <button type="button" class="btn sm ghost" data-explorer-retry>Retry</button></div>`;
       rows.querySelector("[data-explorer-retry]")?.addEventListener("click", () => refreshExplorerPanel());
@@ -673,10 +679,19 @@ function renderExplorerRows(stats, fen) {
   if (!rows) return;
   explorerOpeningName = stats.opening || "";
   paintInspectorScope();
+  // Re-rendering the position already on screen (the add-move save landing,
+  // a cached refresh) only updates the rows in place: replaying their entrance
+  // read as the Explorer animating twice.
+  const shown = rows.dataset.shownFen;
+  const samePosition = !!shown && !!fen && rows.dataset.shownDb === explorerDb && sameFenPosition(shown, fen);
+  rows.classList.toggle("is-refresh", samePosition);
+  rows.dataset.shownFen = fen || "";
+  rows.dataset.shownDb = explorerDb;
   rows.dataset.fen = fen || "";
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
   if (!stats.moves.length) {
+    delete rows.dataset.shownFen;
     rows.innerHTML = html`<div class="muted hint">No games reached this position - true novelty territory.</div>`;
     void explorerEvalEngine.sync();
     return;

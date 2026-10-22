@@ -387,6 +387,13 @@ async function handleWorkspacePopstate() {
   if (loc.view === "replay" && loc.replaySection) {
     appState.replaySection = loc.replaySection;
   }
+  // Back/forward (or an edited hash) naming another repertoire opens it: the
+  // editor showing a different tree than its URL survived only until a reload.
+  if (loc.view === "build" && loc.repertoireId && appState.signedIn &&
+      loc.repertoireId !== appState.build?.repertoire_id) {
+    await editRepertoire(loc.repertoireId);
+    return;
+  }
   switchView(loc.view, { fromUrl: true });
   // Back/forward to an Analyze position puts the board there, the same way boot does.
   // A position off the mainline has no ply, so it is what the URL names; otherwise
