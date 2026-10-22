@@ -106,6 +106,11 @@ describe("parseMoveText", () => {
     expect(labels(parseMoveText("New move: e4", { fen: START, pawns: true }))).toEqual(["1.e4"]);
   });
 
+  it("links a bare pawn capture: it never reads as a square", () => {
+    const scandi = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2";
+    expect(labels(parseMoveText("Good move. exd5 takes the pawn.", { fen: scandi }))).toEqual(["2.exd5"]);
+  });
+
   it("resolves an earlier move number through the note's path", () => {
     const at = (ply) => (ply === 0 ? START : ply === 1 ? AFTER_E4 : null);
     const segs = parseMoveText("Instead of 1...e5, 1...c5 is sharper.", { fen: AFTER_E4_E5, at });

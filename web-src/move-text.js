@@ -117,9 +117,10 @@ const JOINER = /^(?:[\s,;:()[\]–—-]|\bor\b|\bthen\b|\band\b|\bafter\b)*$/i;
  * `ctx.at(ply)` (optional) gives the position at an earlier ply on the same path, so
  * "4.Nc3" in a note on move 9 still resolves. A numbered move plays from that ply; an
  * unnumbered one continues the previous move, or is its alternative ("4.Nc3 or 4.f3",
- * "Rd4 … g3 was better"). A bare pawn move ("e5") links only with a number or right
- * after another move, so "the pawn on e5" stays text; `ctx.pawns` lifts that for text
- * that is only ever about moves ("New move: e4"). Anything illegal stays text.
+ * "Rd4 … g3 was better"). A bare pawn push ("e5") links only with a number or right
+ * after another move, so "the pawn on e5" stays text; a capture ("exd5") always links.
+ * `ctx.pawns` lifts that for text that is only ever about moves ("New move: e4").
+ * Anything illegal stays text.
  */
 export function parseMoveText(text, ctx = {}) {
   const source = String(text ?? "");
@@ -139,7 +140,7 @@ export function parseMoveText(text, ctx = {}) {
     const start = m.index + lead;
     const black = dots === "..." || dots === "…";
     const adjacent = !!last && JOINER.test(source.slice(last.end, start));
-    const pawn = !ctx.pawns && /^[a-h]/.test(sanRaw);
+    const pawn = !ctx.pawns && /^[a-h][1-8]/.test(sanRaw);
     const bases = [];
     if (numbered) {
       const target = (Number(num) - 1) * 2 + (black ? 1 : 0);
