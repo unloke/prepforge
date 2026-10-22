@@ -1012,10 +1012,17 @@ h2 {
   gap: 12px;
   min-width: 0;
 }
+/* One column keeps the strip's order: Board, which the markup places with the
+   other personal cards for the two-column page, reads last. */
+@media (max-width: 1199px) {
+  .settings-content > #set-board { order: 1; }
+}
 /* Six cards in one column ran 1.6 screens on a wide window and left a third
-   of the page empty. Two columns fit the page on one screen; the cards keep
-   their reading order down the first column and into the second, the way a
-   printed page reads. */
+   of the page empty. Two columns fit the page on one screen and read down the
+   first and into the second: you and your board (Account, Appearance, Board),
+   then the engines (Engine, Maia3, Playing strength). Grouped that way the two
+   columns also end within a card of each other; the strip's order put the tall
+   Engine card under Account and left the right column 250px short. */
 @media (min-width: 1200px) {
   .settings-content {
     display: block;

@@ -600,9 +600,13 @@ export function createSettingsView({
         // sits in the upper half of the screen.
         const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
         const probe = window.innerHeight * (atEnd ? 0.5 : 0.35);
+        // By position, not markup order: the markup groups Board with the
+        // personal cards for the two-column page, and one column shows it last.
         let current = list[0]?.id ?? null;
+        let lowest = -Infinity;
         for (const section of list) {
-          if (section.getBoundingClientRect().top <= probe) current = section.id;
+          const top = section.getBoundingClientRect().top;
+          if (top <= probe && top > lowest) { lowest = top; current = section.id; }
         }
         if (current) markActiveSection(current);
       });
