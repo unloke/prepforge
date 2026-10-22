@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const source = appSource();
 import * as phaseCoach from "./coach/phase-coach.js";
 import { appSource } from "./test-app-source.js";
+import { pvSan } from "./chess-local.js";
 function deferred() { let resolve; const promise = new Promise((yes) => { resolve = yes; }); return { promise, resolve }; }
 
 // A fake position store: each acquire returns a lease whose until() resolves when the
@@ -47,7 +48,7 @@ function harness({ reviewed = true, saved = { classification: "good" } } = {}) {
     _coachReady: moduleGate.promise, preloadCoach: () => moduleGate.promise,
     savedPositionEvalRead: () => null, savedMainlineMove: () => saved,
     previousAnalysisMove: () => null, localBoardInfo: () => ({ status: {}, legal_moves: ["a2a3", "e2e4"] }),
-    localGameOver: () => gameOver,
+    localGameOver: () => gameOver, pvSan,
     renderCoachProse: render, maiaAnalysisEnabled: () => false,
     COACH_MIN_REUSE_DEPTH: 10,
     COACH_RAPID_STEP_MS: 120, COACH_RAPID_SETTLE_MS: 160,

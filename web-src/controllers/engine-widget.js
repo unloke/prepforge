@@ -1,6 +1,6 @@
 import { html } from "../html.js";
 import { hooks } from "../core/hooks.js";
-import { localGameOver } from "../chess-local.js";
+import { localGameOver, pvSan } from "../chess-local.js";
 import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
 import { boardLine } from "../line-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
@@ -511,9 +511,10 @@ class EngineWidget {
     const previewing = this.preview && this.preview.index === index ? this.preview : null;
     const line = previewing ? previewing.pv : pv;
     const evalText = formatEngineEval(line.score_cp, line.mate_in);
-    // Tokens carry the line itself, so hovering one peeks at that position.
-    const moves = (line.pv_san || []).length
-      ? moveLineHtml(fen, line.pv_san, line.pv_uci || [], { current: previewing ? previewing.ply - 1 : -1, cls: "pv-move", focusable: false })
+    // SAN for the rows this frame actually paints, converted once per PV version (see pvSan).
+    const sans = pvSan(fen, line);
+    const moves = sans.length
+      ? moveLineHtml(fen, sans, line.pv_uci || [], { current: previewing ? previewing.ply - 1 : -1, cls: "pv-move", focusable: false })
       : "";
     let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
     if (previewing) cls += " is-previewing";

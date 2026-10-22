@@ -96,6 +96,25 @@ export function localSanLine(fen, uciLine) {
   return san;
 }
 
+// SAN for one engine PV. `pv` is a provider line ({ pv_uci }) or a bare UCI array; a line
+// that already carries SAN (a whole-game pass result, a saved analysis) is used as it is.
+// Otherwise the line is replayed once and memoised on its own move array: no long-lived
+// cache to trim, and a version converted for another position is converted again rather
+// than reused, so a PV is never shown against the wrong FEN.
+const pvSanMemo = new WeakMap();
+
+export function pvSan(fen, pv) {
+  const uci = Array.isArray(pv) ? pv : pv && pv.pv_uci;
+  if (!Array.isArray(uci) || !uci.length) return [];
+  const ready = !Array.isArray(pv) && pv.pv_san;
+  if (ready && ready.length) return ready;
+  const hit = pvSanMemo.get(uci);
+  if (hit && hit.fen === fen) return hit.san;
+  const san = localSanLine(fen, uci);
+  pvSanMemo.set(uci, { fen, san });
+  return san;
+}
+
 // Game-over state for a FEN, or null while play continues. The engine has no
 // line to show in these positions (Stockfish answers `bestmove (none)`), so the
 // UI reports the result instead of waiting on a search that never produces one.

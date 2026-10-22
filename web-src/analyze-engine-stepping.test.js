@@ -1,6 +1,7 @@
 import { html } from "./html.js";
 import { describe, expect, it, vi } from "vitest";
 import { formatEngineEval } from "./engine-eval.js";
+import { pvSan } from "./chess-local.js";
 import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
 import { createPassFeed } from "./controllers/engine-pass-feed.js";
@@ -10,7 +11,7 @@ const selectionSource = readFileSync(new URL("./controllers/analyze-selection.js
 
 function widgetHarness({ coachOn = false } = {}) {
   const deps = { html,
-    setEngineBestArrow: vi.fn(), localGameOver: () => null,
+    setEngineBestArrow: vi.fn(), localGameOver: () => null, pvSan,
     activeViewName: () => "analyze", effectiveStockfishDepth: () => 16,
     createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval,

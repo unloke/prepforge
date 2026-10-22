@@ -332,6 +332,20 @@ describe("game channel", () => {
     s.clear();
   });
 
+  it("a finished live read reused as a game eval carries SAN, not bare UCI", async () => {
+    // The provider sends UCI only; the store hands a finished live read back to the
+    // whole-game pass, which stores it — that path must attach SAN itself.
+    const lease = store.acquire(A, { depth: 16, multipv: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+    workers[0].finish(16);
+    await vi.advanceTimersByTimeAsync(60);
+    lease.release();
+    const ev = store.reusableGameEval(A, 16);
+    expect(ev.pv).toEqual(["a1a2"]);
+    expect(ev.pv_san).toEqual(["Ka2"]);
+    store.clear();
+  });
+
   it("a saved analysis' eval answers a single-line consumer without booting a worker", async () => {
     const savedEval = vi.fn((fen) => (fen === A ? { score_cp: -40, mate_in: null, pv: ["a1b1"], depth: 18 } : null));
     const s = createPositionAnalysisStore({ createProvider: fakeProvider, savedEval });

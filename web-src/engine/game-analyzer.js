@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { pvSan } from "../chess-local.js";
 import { ANALYSIS_MAX_NODES, createEngineProvider } from "./stockfish-provider.js";
 import { waitForEngineSearch } from "./engine-search-wait.js";
 import { stockfishBudget } from "./compute-budget.js";
@@ -76,6 +77,8 @@ export function terminalEval(fen) {
 // Extract a White-POV eval from the provider's snapshot, or a terminal fallback.
 // The result carries the ACTUAL depth the search reached — a timeout that
 // accepted a shallow result must never be stored/marked as the requested depth.
+// This is the final result of the position (it is what gets stored and published), so the
+// PV gets its SAN here, once — intermediate provider versions carry UCI only.
 function evalFromSnapshot(fen, snapshot) {
   const top = snapshot && snapshot.pvs && snapshot.pvs[0];
   if (!top || (top.score_cp === null && top.mate_in === null)) {
@@ -86,7 +89,7 @@ function evalFromSnapshot(fen, snapshot) {
     mate_in: top.mate_in,
     best_move_uci: top.pv_uci && top.pv_uci.length ? top.pv_uci[0] : null,
     pv: top.pv_uci ? top.pv_uci.slice() : [],
-    pv_san: top.pv_san ? top.pv_san.slice() : [],
+    pv_san: pvSan(fen, top),
     depth: (snapshot && snapshot.current_depth) || top.depth || 0,
     nodes: (snapshot && snapshot.nodes) ?? null,
     // The second line of a MultiPV >= 2 search (the best OTHER move), when there is one.
