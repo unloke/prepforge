@@ -360,12 +360,11 @@ describe("workspace chrome layout", () => {
     expect(fit).toContain('dock.querySelector(".dock-body")');
     expect(fit).toContain("scrollHeight");
     expect(fit).toContain("paddingTop");
-    // Every Explorer render (and unfolding) refits; coverage repaints refit too.
-    expect(session).toMatch(/requestAnimationFrame\(\(\) => fitBuildDock\(\)\)/);
+    // Any drawer or panel band changing height refits the dock before the frame
+    // paints (a ResizeObserver), so no paint path has to remember to ask; unfolding
+    // refits too.
+    expect(session).toMatch(/new ResizeObserver\(\(\) => fitBuildDock\(\)\)/);
     expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
-    // Coverage repaints refit the dock through coverage-entry.js, which takes
-    // the fit as a dep.
-    expect(app).toContain("fitDock: () => buildSession?.fitBuildDock()");
     // A height the user dragged is not overwritten by the next repaint.
     expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
     expect(session).toMatch(/if \(dock\.dataset\.dockPinned\) return;/);

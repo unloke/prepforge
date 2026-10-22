@@ -439,6 +439,19 @@ function initBuildDockLayout() {
   // The panel's height ceiling depends on the window, so a resize refits an
   // unpinned dock (a pinned one keeps the height the user chose).
   window.addEventListener("resize", () => fitBuildDock());
+  // The dock is its drawers' height, capped by what the panel's other bands leave
+  // the tree. Any of them changing — an Explorer row, an engine line, the fork bar
+  // coming or going — refits it before that frame paints (observers run between
+  // layout and paint). Fitting only on a paint the dock knew about left it a drawer
+  // short (an inner scrollbar) or a fork bar tall (a late jump) until some unrelated
+  // repaint caught up.
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => fitBuildDock());
+    for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);
+    for (const band of dock.parentElement.children) {
+      if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
+    }
+  }
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
   resizer.addEventListener("keydown", (event) => {
     // Up/Down are the fork picker's keys elsewhere in Build; on the focused
@@ -737,10 +750,9 @@ function renderExplorerRows(stats, fen) {
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
   // The row count is the dock's height: a position with more replies gets a
-  // taller inspector instead of an inner scrollbar inside a fixed one. The rows
-  // paint on the next frame (their animation sets the height), so the fit is
-  // read after that paint rather than against the empty host.
-  requestAnimationFrame(() => fitBuildDock());
+  // taller inspector instead of an inner scrollbar inside a fixed one. Fitted
+  // now, in the task that wrote the rows, so no frame reads them in a short dock.
+  fitBuildDock();
 }
 
 // Explorer bars are always full width: the W/D/B split is what a row is read

@@ -1951,7 +1951,7 @@ async function init() {
   });
   coverageEntry = createCoverage({
     selectBuildNode, hardFlushBuild, captureBuildContext, hydrateBuild, trainRepertoire,
-    preloadBuildGen, fitDock: () => buildSession?.fitBuildDock(),
+    preloadBuildGen,
   });
   sharedViewer = createSharedViewer({
     requireSignIn, editRepertoire, refreshDashboardRepertoires, switchView, loadTeams,

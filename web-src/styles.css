@@ -5354,10 +5354,24 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
-/* Engine on in Build: the inspector takes more of the column so the lines and
-   the Explorer both fit; the (mostly short) move tree scrolls instead. */
-@media (min-width: 861px) {
-  .dock:has(#explorer-rows.has-eval) { flex-basis: clamp(300px, 58%, 520px); }
+
+/* A short desktop window (a laptop with its browser chrome, ~530px tall): the
+   panel is barely taller than the board, and five engine lines over the Explorer
+   left the inspector 80px short of its rows with the tree at its floor. The panel
+   tightens its bands instead of scrolling them: rows a few px shorter, the fork
+   bar on one line. Pitches stay at or above 23px, so rows remain easy targets. */
+@media (min-width: 861px) and (max-height: 640px) {
+  .forkbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px var(--build-pad, 12px); }
+  .fork-head { margin-bottom: 0; }
+  .fork-chip { padding-top: 2px; padding-bottom: 2px; }
+  .dock-tabs button { padding-top: 5px; padding-bottom: 5px; }
+  .dock-body { padding-top: 6px; padding-bottom: 6px; }
+  .dock-tools { margin-bottom: 4px; }
+  #explorer-engine-slot { top: -6px; margin-top: -6px; margin-bottom: 4px; padding-top: 2px; }
+  .engine-window.is-docked .engine-pv { height: 23px; min-height: 23px; }
+  .engine-window.is-docked .engine-pv-line { line-height: 21px; }
+  .explorer-head { padding-top: 1px; padding-bottom: 1px; }
+  .explorer-row { padding-top: 2px; padding-bottom: 2px; }
 }
 
 /* ---- Slim header: meta on the left, controls on the right -------------- */

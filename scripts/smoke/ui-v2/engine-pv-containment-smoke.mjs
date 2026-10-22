@@ -20,6 +20,7 @@
 //
 // Usage: node scripts/smoke/ui-v2/engine-pv-containment-smoke.mjs
 //        ENGINE_PV_SMOKE_PORT=8796 (default) — unique port per worker.
+//        ENGINE_PV_SMOKE_ONLY=1000x528 — run only the named viewport(s).
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -28,6 +29,7 @@ import { join, extname } from "node:path";
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
 const PORT = Number(process.env.ENGINE_PV_SMOKE_PORT || 8796);
+const EXPLORER_DELAY_MS = 1500;
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -83,6 +85,9 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname === "/favicon.ico") { res.writeHead(204); res.end(); return; }
   if (url.pathname.startsWith("/api/")) {
+    // The real explorer answers after a network round trip; answering instantly would
+    // skip its loading state, which is when the inspector's rows are swapped.
+    if (url.pathname.startsWith("/api/lichess/explorer")) await new Promise((r) => setTimeout(r, EXPLORER_DELAY_MS));
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(api(url.pathname)));
     return;
@@ -165,12 +170,16 @@ async function selectNode(page, id, phone) {
 
 const VIEWPORTS = [
   { name: "1440x900", width: 1440, height: 900 },
+  // A short laptop: the panel is barely taller than the board, so the dock's
+  // ceiling is close to its content and every row change is visible.
+  { name: "1000x528", width: 1000, height: 528, dpr: 2 },
   { name: "768x900", width: 768, height: 900 },
   { name: "390x660", width: 390, height: 660 },
 ];
 
-for (const vp of VIEWPORTS) {
-  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+const ONLY = process.env.ENGINE_PV_SMOKE_ONLY; // e.g. "1000x528" while iterating
+for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.name))) {
+  const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: vp.dpr || 1 });
   // A configured device runs the real lite engine without first benchmarking
   // hardware alongside the search. This checks streamed layout, not Detect.
   await page.addInitScript(() => localStorage.setItem("prepforge.engine-profile", JSON.stringify({
@@ -280,4 +289,4 @@ if (failures.length) {
   console.error(`[engine-pv-smoke] FAIL\n - ${failures.join("\n - ")}`);
   process.exit(1);
 }
-console.log("[engine-pv-smoke] ok — the engine card's lines stay contained through MultiPV and uncached positions at all three viewports.");
+console.log("[engine-pv-smoke] ok — the engine card's lines stay contained through MultiPV and uncached positions at every viewport.");
