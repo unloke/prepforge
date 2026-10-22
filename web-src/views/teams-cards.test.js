@@ -64,3 +64,9 @@ describe("Teams is a work surface", () => {
     expect(view).toMatch(/#team-members\[data-ui\] > \.mem-row,\s*\n\s*#team-shared-repertoires\[data-ui\] > \.mem-row \{ border-top:\s*1px solid var\(--line\); \}/);
   });
 });
+
+describe("share role pill", () => {
+  it("draws nothing when the share carries no role label", () => {
+    expect(shared).toMatch(/:is\([^)]*\.team-role-badge[^)]*\):empty \{ display: none; \}/);
+  });
+});

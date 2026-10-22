@@ -1520,6 +1520,8 @@ h2 {
   line-height: 16px;
   white-space: nowrap;
 }
+/* A pill with no label (a share whose role the server did not send) draws nothing. */
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge, .train-play-chip):empty { display: none; }
 
 .link {
   border: 0;
