@@ -9,7 +9,7 @@ The product covers:
 
 - **Analyze** — PGN/Lichess import, move classification, eval graph, critical moments.
 - **Build** — repertoire trees with objective (Stockfish) and human-like (Maia3) branches.
-- **Train** — spaced repetition, mistake queues, Lichess practical-game matching.
+- **Train** — FSRS spaced repetition, mistake queues, Lichess practical-game matching.
 - **Scout** — opponent opening reach (Module A) plus production **Scout v2** route
   selection (Module B). Experimental `?scoutV12=1` / `?scoutV13=1` paths are not
   production. Current selector and runtime boundaries: `docs/scout-production-ranking.md`.

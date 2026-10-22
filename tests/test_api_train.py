@@ -864,12 +864,12 @@ def test_streak_is_per_user(client):
 
 
 def test_dashboard_reports_streak_and_due_soon(client):
-    """After a graded correct answer the dashboard shows today's streak and the
-    review that lands within 24h (due_at = now + 1 day) as due_soon."""
+    """After a graded miss the dashboard shows today's streak and the retry
+    that lands within 24h (FSRS learning step, 10 minutes) as due_soon."""
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _smart_start(client, rep, seed=5).json()["session_id"]
-    _smart_move(client, session_id, "e2e4")
+    _smart_move(client, session_id, "d2d4")
     dash = client.get("/api/dashboard").json()
     assert dash["streak"] == {"current": 1, "best": 1, "trained_today": True}
     assert dash["due_reviews"] == 0
