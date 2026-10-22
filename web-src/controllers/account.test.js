@@ -395,7 +395,7 @@ describe("account menu focus", () => {
       ["account-chip", "account-label", "sheet-account", "sheet-account-label"].map((id) => [id, el(id)]),
     );
     els.set("account-menu", menu);
-    globalThis.document = { getElementById: (id) => els.get(id) || null };
+    globalThis.document = { getElementById: (id) => els.get(id) || null, addEventListener: vi.fn() };
     globalThis.window = { innerWidth: 390, innerHeight: 844 };
   });
 
