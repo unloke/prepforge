@@ -267,8 +267,8 @@ repertoires = Table(
     Column("team_id", Text),
     Column("visibility", Text),
     Column("health_json", Text),
-    # Mutation revision (D-02): bumped on every tree/metadata write; Build
-    # mutations may send ``base_revision`` and get 409 when it is stale.
+    # Mutation revision: bumped on every tree/metadata write, and the sequence
+    # number of that write's ``repertoire_ops`` row.
     Column("revision", Integer, nullable=False, server_default="0"),
     # Public share-link governance (F-01). ``share_rev`` is mixed into the
     # token signature: rotating bumps it and kills every previously minted
@@ -278,6 +278,23 @@ repertoires = Table(
     Column("share_expires_at", UTCDateTime()),
     Index("idx_repertoires_owner", "owner_user_id"),
     Index("idx_repertoires_team", "team_id"),
+)
+
+# One row per repertoire write, keyed by the revision it produced: who wrote it,
+# from which client, what kind of edit, and which nodes it touched. Devices
+# viewing the repertoire read it (``/api/build/changes``) to catch up without a
+# reload. Only the recent tail is kept; an older ``since`` reloads the tree.
+repertoire_ops = Table(
+    "repertoire_ops",
+    metadata,
+    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="CASCADE"), primary_key=True),
+    Column("revision", Integer, primary_key=True),
+    Column("actor_user_id", Text, ForeignKey("users.id", ondelete="SET NULL", name="fk_repertoire_ops_actor_user_id")),
+    Column("client_id", Text),
+    Column("kind", Text, nullable=False),
+    # {"nodes": [ids upserted], "removed": [ids deleted], "meta": bool, "reset": bool}
+    Column("op_json", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
 )
 
 opening_nodes = Table(
