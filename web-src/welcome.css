@@ -17,7 +17,7 @@
   gap: 12px;
   min-height: 52px;
   padding: 0 12px 0 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); /* taste-skill-ignore: a choice in a modal list reads as tappable by its edge */
   border-radius: var(--radius-card);
   background: var(--panel);
   color: var(--text);
@@ -46,7 +46,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line); /* taste-skill-ignore: the checked engine shows by its edge and fill */
   border-radius: var(--radius-card);
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);

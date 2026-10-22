@@ -10,9 +10,8 @@
   gap: 2px 8px;
   min-height: 48px;
   padding: 8px 4px 8px 12px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--panel-soft);
   overflow: hidden;
 }
 .unlock[data-mode="progress"] { grid-template-columns: minmax(0, 1fr); padding-right: 12px; }
@@ -87,6 +86,8 @@
 .train-play-setup [data-unlock-place],
 #coverage-drawer [data-unlock-place] { margin: 2px 0 8px; }
 .scout-main > [data-unlock-place] { max-width: 720px; margin-bottom: 12px; }
+/* On the page ground (Scout) the row takes the card surface to stand off it. */
+.scout-main > [data-unlock-place] .unlock { background: var(--panel); }
 
 /* A phone stacks the action under the text, so the gain reads on one or two
    lines instead of a narrow column beside the button. */
