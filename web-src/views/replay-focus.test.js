@@ -227,7 +227,7 @@ describe("replay focus internals", () => {
     expect(html.match(/class="move-pair/g)).toHaveLength(2);
     expect(html).toContain('data-move="2"');
     expect(html).toMatch(/<div class="move-pair is-departure t-bad" data-move="2">/);
-    expect(html).toMatch(/<span class="ply dep t-bad" data-ply="4">d5<\/span>/);
+    expect(html).toMatch(/<span class="ply dep t-bad" data-ply="4" data-p="3">d5<\/span>/);
     expect(html).toContain('<span class="dep-note t-bad">You left prep</span>');
   });
 
@@ -382,7 +382,9 @@ describe("replay focus internals", () => {
     expect(String(html)).not.toMatch(/Ply \d/);
     expect(String(html)).not.toMatch(/plies/);
     expect(String(html)).toContain("2… d5");
-    expect(String(html)).toContain("in prep through 2. Nf3");
+    // The move is a link now; its words are unchanged.
+    expect(String(html).replace(/<[^>]+>/g, "")).toContain("in prep through 2. Nf3");
+    expect(String(html)).toMatch(/class="move-ref"[^>]*data-p="2"[^>]*>2\. Nf3<\/span>/);
   });
 
   it("badges every opponent departure by who left, not which opening", () => {

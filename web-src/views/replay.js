@@ -5,6 +5,7 @@ import { Chess } from "chess.js";
 import { buildArrowPath } from "../board-arrows.js";
 import { staggerRows } from "../list-enter.js";
 import { nounOf } from "../plural.js";
+import { START_FEN, encodeLine, moveTokenHtml } from "../move-text.js";
 import "./replay.css";
 
 // `label` reads after a count of games ("5 not covered"): a phrase, never pluralised.
@@ -169,6 +170,13 @@ export function moveNumberLabel(ply) {
   return n % 2 === 1 ? `${moveNumber}.` : `${moveNumber}…`;
 }
 
+// Half-move `ply` of the game as a move link (move-text.js): the game's own SAN
+// history is the line, so nothing is replayed until someone looks at it.
+function gamePlyHtml(game, ply, text) {
+  const history = game.move_san_history || [];
+  return Number(ply) >= 1 && Number(ply) <= history.length ? moveTokenHtml(START_FEN, history, Number(ply) - 1, text) : text;
+}
+
 // "1… c5": the move-number prefix plus the SAN played on that half-move.
 export function plyMoveLabel(ply, history) {
   const label = moveNumberLabel(ply);
@@ -288,7 +296,7 @@ export function createReplayView({
       const whiteClass = replayPlyClass(whitePly, game, tone);
       const blackSan = history[index + 1];
       rows.push(
-        html`<div class="${rowClass.join(" ")}" data-move="${moveNumber}"><span class="move-no">${moveNumber}.</span><span class="ply ${whiteClass}" data-ply="${whitePly}">${history[index]}</span>${blackSan === undefined ? html`<span class="ply is-empty" aria-hidden="true"></span>` : html`<span class="ply ${replayPlyClass(blackPly, game, tone)}" data-ply="${blackPly}">${blackSan}</span>`}${isDeparture ? html`<span class="dep-note t-${tone}">${kind.badge}</span>` : ""}</div>`,
+        html`<div class="${rowClass.join(" ")}" data-move="${moveNumber}"><span class="move-no">${moveNumber}.</span><span class="ply ${whiteClass}" data-ply="${whitePly}" data-p="${whitePly - 1}">${history[index]}</span>${blackSan === undefined ? html`<span class="ply is-empty" aria-hidden="true"></span>` : html`<span class="ply ${replayPlyClass(blackPly, game, tone)}" data-ply="${blackPly}" data-p="${blackPly - 1}">${blackSan}</span>`}${isDeparture ? html`<span class="dep-note t-${tone}">${kind.badge}</span>` : ""}</div>`,
       );
     }
     return html`${rows}`;
@@ -299,16 +307,22 @@ export function createReplayView({
     if (game.repertoire_name) {
       lines.push(
         html`Repertoire: <strong>${game.repertoire_name}</strong> · ${Number(game.matched_plies) > 0
-            ? `in prep through ${plyMoveLabel(game.matched_plies, game.move_san_history)}`
+            ? html`in prep through ${gamePlyHtml(game, game.matched_plies, plyMoveLabel(game.matched_plies, game.move_san_history))}`
             : "left prep on the first move"}`
       );
     } else {
       lines.push(html`Played as ${game.user_color}, but no active repertoire matched.`);
     }
     if (game.departure_reason === "user_left_preparation") {
-      const expected = game.expected_move_san ? html` (expected <strong>${game.expected_move_san}</strong>)` : "";
+      const dep = Number(game.departure_ply);
+      const prefix = (game.move_san_history || []).slice(0, dep - 1);
+      const expectedSan = game.expected_move_san;
+      const expectedRef = expectedSan && game.expected_move_uci && dep >= 1
+        ? moveTokenHtml(START_FEN, [...prefix, game.expected_move_uci], prefix.length, expectedSan)
+        : expectedSan;
+      const expected = expectedSan ? html` (expected <strong>${expectedRef}</strong>)` : "";
       const playedSan = replayDepartureSan(game);
-      const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
+      const played = playedSan ? html` <strong>${gamePlyHtml(game, dep, playedSan)}</strong>` : "";
       // The server records a miss only when the repertoire holds a prepared
       // move at the departure node. Without one there is nothing in the queue,
       // and claiming otherwise would be a lie the Train action then backs up.
@@ -320,7 +334,7 @@ export function createReplayView({
       lines.push(html`You diverged at ${moveNumberLabel(game.departure_ply)}${played}${expected}.${queued}`);
     } else if (game.departure_reason === "opponent_unprepared_branch") {
       const playedSan = replayDepartureSan(game);
-      const played = playedSan ? html` <strong>${playedSan}</strong>` : "";
+      const played = playedSan ? html` <strong>${gamePlyHtml(game, game.departure_ply, playedSan)}</strong>` : "";
       if (isDifferentOpening(game)) {
         lines.push(
           html`Opponent chose a different opening at ${moveNumberLabel(game.departure_ply)}${played}, before your repertoire got going.`
@@ -353,12 +367,15 @@ export function createReplayView({
       subParts.push(html`<i class="acct" title="Fetched from this linked account">${game.source_account}</i>`);
     }
     const source = subParts.length ? html`<small>${subParts.map((part, i) => html`${i ? " · " : ""}${part}`)}</small>` : "";
-    const preview = (game.move_san_history || []).slice(0, 6).join(" ");
+    // The row is the control; its moves only peek (hover), so they are not tab stops.
+    const history = game.move_san_history || [];
+    const preview = history.slice(0, 6).map((san, i) => html`${i ? " " : ""}<span data-p="${i}">${san}</span>`);
     const departure = game.departure_ply
-      ? plyMoveLabel(game.departure_ply, game.move_san_history)
+      ? html`<span data-p="${Number(game.departure_ply) - 1}">${plyMoveLabel(game.departure_ply, history)}</span>`
       : meta.departure || "–";
+    const line = encodeLine(START_FEN, history);
     return (
-      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev">${preview}${preview ? "…" : ""}</span><span class="num">${departure}</span></button>`
+      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev" data-mt="${line}">${preview}${preview.length ? "…" : ""}</span><span class="num" data-mt="${line}">${departure}</span></button>`
     );
   }
 
@@ -383,7 +400,7 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top">${boardHtml}<div class="focus-info"><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><p class="focus-line"><i class="kind-badge t-${meta.tone}">${meta.badge}</i><span class="focus-result ${replayResultClass(game)}">${displayReplayResult(game.result)}</span></p><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui>${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top">${boardHtml}<div class="focus-info"><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><p class="focus-line"><i class="kind-badge t-${meta.tone}">${meta.badge}</i><span class="focus-result ${replayResultClass(game)}">${displayReplayResult(game.result)}</span></p><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui data-mt="${encodeLine(START_FEN, game.move_san_history || [])}">${renderReplayMoveLine(game)}</div></section>`
     );
   }
 

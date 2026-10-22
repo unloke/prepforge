@@ -39,7 +39,7 @@ from prepforge_chess.api.routers import (
 )
 from prepforge_chess.api.routers import settings as settings_router
 from prepforge_chess.api.static import register_static
-from prepforge_chess.storage.repositories.repertoires import RepertoireQuotaExceeded, RevisionConflict
+from prepforge_chess.storage.repositories.repertoires import NodeGone, RepertoireQuotaExceeded, RevisionConflict
 
 
 class _TextGZipMiddleware(GZipMiddleware):
@@ -87,9 +87,15 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RevisionConflict)
     async def revision_conflict(request: Request, exc: RevisionConflict):
+        # Writes kept racing this one past every server-side rebase: retry soon.
+        return JSONResponse(status_code=503, headers={"Retry-After": "1"}, content={
+            "detail": "This repertoire is busy with other edits. Retrying."})
+
+    @app.exception_handler(NodeGone)
+    async def node_gone(request: Request, exc: NodeGone):
         return JSONResponse(status_code=409, content={"detail": {
-            "error": "revision_conflict", "current_revision": exc.current_revision,
-            "message": str(exc),
+            "error": "node_deleted", "node_id": str(exc.args[0]) if exc.args else None,
+            "message": "Line deleted elsewhere.",
         }})
 
     @app.exception_handler(RepertoireQuotaExceeded)

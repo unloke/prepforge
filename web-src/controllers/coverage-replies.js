@@ -56,7 +56,7 @@ export async function previewCoverageReplies(gaps, { isValid }, deps) {
       return renamed;
     }));
     const request = {
-      repertoire_id: snapshot.repertoire_id, base_revision: snapshot.revision,
+      repertoire_id: snapshot.repertoire_id,
       root_node_id: root.id, plan: { rootNodeId: root.id, changes },
       operation_id: crypto.randomUUID(),
     };

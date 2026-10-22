@@ -8,9 +8,9 @@ import base64
 import hmac
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Literal
+from typing import Any, Callable, Literal, TypeVar
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -40,9 +40,11 @@ from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
+from prepforge_chess.storage.repositories.repertoires import NodeGone, RevisionConflict
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 router = APIRouter(prefix="/api", tags=["workspace"])
+T = TypeVar("T")
 
 
 
@@ -74,32 +76,43 @@ _DENIED = {
 
 
 def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
-    """Owner-only actions: rename, delete, enable/disable, sharing, and Train."""
-    return _repertoire_access(repo, repertoire_id, owner, "owner")
+    """Owner-only actions: rename, delete, enable/disable, sharing, and Train.
+    Tags the writes this request makes with their author for the op log."""
+    meta = _repertoire_access(repo, repertoire_id, owner, "owner")
+    repo.op_actor = owner
+    return meta
 
 
-def _check_base_revision(
-    meta: dict[str, Any], base_revision: int | None, repo: WorkspaceRepository
-) -> None:
-    """D-02 conflict contract: a mutation may name the revision it was built on.
-    If the repertoire moved on since then, 409 (with the fresh revision) so the
-    client can reconcile instead of silently overwriting another edit. Passing
-    no base_revision accepts the current snapshot but still fences racing writes."""
-    current = meta.get("revision")
-    if current is not None:
-        repo.expect_repertoire_revision(meta["id"], int(current))
-    if base_revision is not None and current is not None and int(base_revision) != int(current):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "error": "revision_conflict",
-                "current_revision": int(current),
-                "message": (
-                    "This repertoire changed somewhere else since your copy was "
-                    "loaded. Reload it and re-apply the edit, or keep your draft."
-                ),
-            },
-        )
+def _editable_repertoire(
+    repo: WorkspaceRepository, repertoire_id: str, user_id: str, kind: str
+) -> dict[str, Any]:
+    """Edit gate for tree mutations: the owner or an ``edit`` grant (404 without
+    access, 403 below edit). Tags the writes this request makes with their author
+    and kind for the ``repertoire_ops`` log."""
+    meta = _repertoire_access(repo, repertoire_id, user_id, "edit")
+    repo.op_actor = user_id
+    repo.op_kind = kind
+    return meta
+
+
+_REBASE_ATTEMPTS = 3
+
+
+def _rebased(repo: WorkspaceRepository, meta: dict[str, Any], apply: Callable[[], T]) -> T:
+    """Server-side rebase: an edit runs against the repertoire as it is now, not
+    the revision the client last saw, so concurrent edits that do not touch the
+    same node all land. The edit's own preconditions decide (a deleted node is
+    ``NodeGone`` → 409). A write committing between this request's read and its
+    commit trips the revision fence; the edit then re-runs on the newer tree."""
+    revision = meta["revision"]
+    for attempt in range(_REBASE_ATTEMPTS):
+        repo.expect_repertoire_revision(meta["id"], revision)
+        try:
+            return apply()
+        except RevisionConflict as conflict:
+            if attempt == _REBASE_ATTEMPTS - 1:
+                raise
+            revision = conflict.current_revision
 
 
 def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
@@ -311,6 +324,48 @@ def build_load(
     return _payload(repo, _repertoire_access(repo, repertoire_id, owner))
 
 
+@router.get("/build/changes")
+def build_changes(
+    repertoire_id: str,
+    since: int = Query(ge=0),
+    owner: str = Depends(current_owner),
+    repo: WorkspaceRepository = Depends(get_repository),
+) -> dict[str, Any]:
+    """What changed in a readable repertoire after revision ``since``: the current
+    state of every node written since then, the ids deleted since then, the name,
+    and one entry per write (kind, author, client) so the viewer can say what
+    happened. Polled by every open Build view; an unchanged repertoire costs one
+    indexed read. ``reset`` means the log no longer reaches back to ``since``
+    (or the tree was replaced): reload it with ``/build/load``. Anyone but the
+    owner gets no training colour (health/mastery), as in ``_payload``."""
+    meta = _repertoire_access(repo, repertoire_id, owner)
+    revision = meta["revision"]
+    if since >= revision:
+        return {"revision": revision}
+    ops = repo.repertoire_ops_since(repertoire_id, since)
+    if not ops or ops[0]["revision"] != since + 1 or any(op.get("reset") for op in ops):
+        return {"revision": revision, "reset": True}
+    view = _payload(repo, meta)
+    removed = {node_id for op in ops for node_id in op.get("removed", ())}
+    written = {node_id for op in ops for node_id in op.get("nodes", ())} - removed
+    nodes = [node for node in view["nodes"] if node["id"] in written]
+    # A written node that is gone now went with a deleted ancestor.
+    removed |= written - {node["id"] for node in nodes}
+    return {
+        # The tree was read after these ops, so it holds at least all of them.
+        "revision": ops[-1]["revision"],
+        "name": view["name"],
+        "nodes_total": view["nodes_total"],
+        "health": view.get("health"),
+        "nodes": nodes,
+        "removed": sorted(removed),
+        "ops": [
+            {key: op[key] for key in ("revision", "kind", "actor_user_id", "client_id")}
+            for op in ops
+        ],
+    }
+
+
 # ---- Access: who a repertoire is shared with, and how -----------------------
 # Owner-only. A grant names one team (the owner must be in it) or one person
 # (found by email or Lichess username) with a role: view, copy or edit.
@@ -443,6 +498,7 @@ def set_repertoire_active(
 ) -> dict[str, Any]:
     """Toggle a repertoire's active flag (drives trainer eligibility in the SPA)."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    repo.op_kind = "set_active"
     repo.set_repertoire_active(body.repertoire_id, body.active)
     return {"id": body.repertoire_id, "name": meta["name"], "is_active": body.active}
 
@@ -468,22 +524,6 @@ def _walk_nodes(root: OpeningNode):
     yield root
     for child in root.children:
         yield from _walk_nodes(child)
-
-
-def _load_node_or_400(
-    repo: WorkspaceRepository, repertoire_id: str, node_id: str
-) -> OpeningNode:
-    """Load a repertoire and locate a node, raising 400 if either is missing — used by
-    the toggle actions that need the node's current state. (Ownership is already
-    enforced by the caller's ``_owned_repertoire`` gate.)"""
-    repertoire = repo.load_repertoire(repertoire_id)
-    node = _find_node(repertoire.root_node, node_id) if repertoire is not None else None
-    if node is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="opening node not found: {0}".format(node_id),
-        )
-    return node
 
 
 def _reassign_ids(repertoire) -> None:
@@ -759,7 +799,6 @@ def fork_repertoire(
 class RenameRepertoireBody(BaseModel):
     repertoire_id: str
     name: str = ""
-    base_revision: int | None = None
 
 
 @router.post("/build/rename")
@@ -770,9 +809,11 @@ def build_rename(
 ) -> dict[str, Any]:
     """Rename one of the caller's repertoires and return its refreshed Build payload."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
-    _check_base_revision(meta, body.base_revision, repo)
+    repo.op_kind = "rename"
     try:
-        OpeningBuilderService(repo).rename_repertoire(body.repertoire_id, body.name)
+        # Last writer wins: a concurrent rename on another device is replaced.
+        _rebased(repo, meta, lambda: OpeningBuilderService(repo).rename_repertoire(
+            body.repertoire_id, body.name))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _payload(repo, meta)
@@ -782,7 +823,6 @@ class AddMoveBody(BaseModel):
     repertoire_id: str
     parent_node_id: str
     move_uci: str
-    base_revision: int | None = None
 
 
 @router.post("/build/add-move")
@@ -794,30 +834,30 @@ def build_add_move(
     """Append a manual move under a parent node and return the refreshed Build payload.
     Classifies ownership: a move played on the owner's turn is flagged
     ``prepared``; the first enabled child of a parent becomes the mainline."""
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
-    _check_base_revision(meta, body.base_revision, repo)
-    repertoire = repo.load_repertoire(body.repertoire_id)
-    if repertoire is None:  # gate passed but row vanished — treat as not found
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    parent = _find_node(repertoire.root_node, body.parent_node_id)
-    if parent is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="opening node not found: {0}".format(body.parent_node_id),
-        )
-    is_prepared = parent.side_to_move is repertoire.color
-    is_mainline = not any(child.is_enabled for child in parent.children)
-    try:
+    meta = _editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
+
+    def apply():
+        repertoire = repo.load_repertoire(body.repertoire_id)
+        if repertoire is None:  # gate passed but row vanished — treat as not found
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+        parent = _find_node(repertoire.root_node, body.parent_node_id)
+        if parent is None:
+            raise NodeGone(body.parent_node_id)
+        is_prepared = parent.side_to_move is repertoire.color
         node = OpeningBuilderService(repo).add_move(
             body.repertoire_id,
             body.parent_node_id,
             body.move_uci,
             source=MoveSource.MANUAL,
-            is_mainline=is_mainline,
+            is_mainline=not any(child.is_enabled for child in parent.children),
             is_user_prepared_move=is_prepared,
             tags=["prepared"] if is_prepared else [],
             repertoire=repertoire,
         )
+        return repertoire, node
+
+    try:
+        repertoire, node = _rebased(repo, meta, apply)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _payload(
@@ -851,7 +891,6 @@ def _build_batch_receipt(repo, owner, kind, body):
 class AddMovesBody(BaseModel):
     repertoire_id: str
     moves: list[AddMovesItem] = Field(default_factory=list, max_length=MAX_ADD_MOVES_BATCH)
-    base_revision: int | None = None
 
 
 @router.post("/build/add-moves")
@@ -868,19 +907,19 @@ def build_add_moves(
     No compute: the service re-validates legality + parentage and recomputes the
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
+    meta = _editable_repertoire(repo, body.repertoire_id, owner, "add_moves")
     key, receipt = _build_batch_receipt(repo, owner, "adds", body)
     if receipt is not None:
         payload = _payload(repo, meta)
         payload.update(receipt)
         return payload
-    _check_base_revision(meta, body.base_revision, repo)
+    service = OpeningBuilderService(repo)
     try:
-        repertoire, summary, id_map = OpeningBuilderService(repo).add_moves_batch(
+        repertoire, summary, id_map = _rebased(repo, meta, lambda: service.add_moves_batch(
             body.repertoire_id,
             [item.model_dump() for item in body.moves],
             receipt_target=(owner, key),
-        )
+        ))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     payload = _payload(
@@ -892,13 +931,13 @@ def build_add_moves(
         },
     )
     payload["id_map"] = id_map
+    payload["dropped"] = service.dropped_temp_ids
     return payload
 
 
 class DeleteNodesBody(BaseModel):
     repertoire_id: str
     node_ids: list[str] = Field(default_factory=list, max_length=MAX_DELETE_NODES_BATCH)
-    base_revision: int | None = None
 
 
 @router.post("/build/delete-nodes")
@@ -917,18 +956,17 @@ def build_delete_nodes(
     subtree-root ids on the same debounce. Idempotent per id (an id deleted by
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
+    meta = _editable_repertoire(repo, body.repertoire_id, owner, "delete_nodes")
     key, receipt = _build_batch_receipt(repo, owner, "deletes", body)
     if receipt is not None:
         payload = _payload(repo, meta)
         payload.update(receipt)
         return payload
-    _check_base_revision(meta, body.base_revision, repo)
     service = OpeningBuilderService(repo)
     try:
-        removed = service.delete_nodes_batch(
+        removed = _rebased(repo, meta, lambda: service.delete_nodes_batch(
             body.repertoire_id, list(body.node_ids), receipt_target=(owner, key)
-        )
+        ))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     payload = _payload(repo, meta, repertoire=service.loaded_repertoire)
@@ -948,7 +986,6 @@ class ApplyPlanBody(BaseModel):
     repertoire_id: str
     root_node_id: str
     plan: dict[str, Any] | None = None
-    base_revision: int | None = None
     operation_id: uuid.UUID | None = None
 
 
@@ -967,7 +1004,7 @@ def build_apply_plan(
     anything lands. Owner-gated so a user can't apply a plan onto another's tree."""
     if not isinstance(body.plan, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
+    meta = _editable_repertoire(repo, body.repertoire_id, owner, "generate")
     receipt_target = None
     if body.operation_id is not None:
         key = "build-receipt:plan:" + str(body.operation_id)
@@ -982,12 +1019,11 @@ def build_apply_plan(
             payload["id_map"] = receipt.get("id_map", {})
             return payload
         receipt_target = (owner, key, digest)
-    _check_base_revision(meta, body.base_revision, repo)
+    builder = OpeningBuilderService(repo)
     try:
-        builder = OpeningBuilderService(repo)
-        repertoire, summary = builder.apply_generation_plan(
+        repertoire, summary = _rebased(repo, meta, lambda: builder.apply_generation_plan(
             body.repertoire_id, body.root_node_id, body.plan, receipt_target=receipt_target
-        )
+        ))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     payload = _payload(
@@ -1011,10 +1047,13 @@ def build_apply_plan(
 class NodeActionBody(BaseModel):
     repertoire_id: str
     node_id: str
+    # Each action states its result (disable vs enable), never "toggle": a
+    # rebased edit must mean the same thing on whatever tree it lands on.
     action: Literal[
         "set_mainline",
         "mark_prepared",
         "disable_branch",
+        "enable_branch",
         "delete",
         "add_comment",
         "add_tag",
@@ -1022,7 +1061,6 @@ class NodeActionBody(BaseModel):
         "mark_critical",
     ]
     value: str | None = None
-    base_revision: int | None = None
 
 
 @router.post("/build/action")
@@ -1031,42 +1069,39 @@ def build_action(
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
-    """Apply a node action (set-mainline / toggle-prepared / toggle-branch / delete /
-    comment / tag / queue / critical) and return the refreshed Build payload."""
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
-    _check_base_revision(meta, body.base_revision, repo)
-    builder = OpeningBuilderService(repo)
+    """Apply a node action (set-mainline / prepared / disable / enable / delete /
+    comment / tag / queue / critical) and return the refreshed Build payload.
+    Scalar edits are last-writer-wins; an action on a node deleted elsewhere is 409."""
     action = body.action
-    selected_node_id: str | None = body.node_id
-    try:
+    meta = _editable_repertoire(repo, body.repertoire_id, owner, action)
+    builder = OpeningBuilderService(repo)
+    rid, node_id = body.repertoire_id, body.node_id
+
+    def apply() -> str | None:
         if action == "set_mainline":
-            builder.set_as_mainline(body.repertoire_id, body.node_id)
+            builder.set_as_mainline(rid, node_id)
         elif action == "mark_prepared":
-            rep = builder._load_repertoire_or_raise(body.repertoire_id)
-            node = builder._find_node_or_raise(rep.root_node, body.node_id)
-            builder.mark_prepared(
-                body.repertoire_id, body.node_id, not node.is_user_prepared_move,
-                repertoire=rep,
-            )
+            builder.mark_prepared(rid, node_id, body.value != "false")
         elif action == "disable_branch":
-            rep = builder._load_repertoire_or_raise(body.repertoire_id)
-            node = builder._find_node_or_raise(rep.root_node, body.node_id)
-            if node.is_enabled:
-                builder.disable_branch(body.repertoire_id, body.node_id, repertoire=rep)
-            else:
-                builder.enable_branch(body.repertoire_id, body.node_id, repertoire=rep)
+            builder.disable_branch(rid, node_id)
+        elif action == "enable_branch":
+            builder.enable_branch(rid, node_id)
         elif action == "delete":
-            selected_node_id = builder.delete_node(body.repertoire_id, body.node_id)
+            return builder.delete_node(rid, node_id)
         elif action == "add_comment":
-            builder.add_comment(body.repertoire_id, body.node_id, body.value or "")
+            builder.add_comment(rid, node_id, body.value or "")
         elif action == "add_tag":
             if not body.value:
                 raise ValueError("tag is required")
-            builder.add_tag(body.repertoire_id, body.node_id, body.value)
+            builder.add_tag(rid, node_id, body.value)
         elif action == "add_training_queue":
-            builder.add_tag(body.repertoire_id, body.node_id, "training-queue")
+            builder.add_tag(rid, node_id, "training-queue")
         else:  # mark_critical
-            builder.add_tag(body.repertoire_id, body.node_id, "critical")
+            builder.add_tag(rid, node_id, "critical")
+        return node_id
+
+    try:
+        selected_node_id = _rebased(repo, meta, apply)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _payload(
@@ -1079,7 +1114,6 @@ class AnnotationsBody(BaseModel):
     node_id: str
     arrows: list[str] = Field(default_factory=list, max_length=MAX_ANNOTATIONS_PER_KIND)
     circles: list[str] = Field(default_factory=list, max_length=MAX_ANNOTATIONS_PER_KIND)
-    base_revision: int | None = None
 
 
 @router.post("/build/annotations")
@@ -1092,12 +1126,11 @@ def build_annotations(
 ) -> dict[str, Any]:
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
-    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
-    _check_base_revision(meta, body.base_revision, repo)
+    meta = _editable_repertoire(repo, body.repertoire_id, owner, "annotate")
     try:
-        OpeningBuilderService(repo).set_annotations(
+        _rebased(repo, meta, lambda: OpeningBuilderService(repo).set_annotations(
             body.repertoire_id, body.node_id, body.arrows, body.circles
-        )
+        ))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return {

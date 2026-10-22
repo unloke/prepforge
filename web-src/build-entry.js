@@ -6,6 +6,7 @@ import { isBrowserEngineAvailable, createEngineProvider } from "./engine/stockfi
 import { EXPLORER_EVAL_MAX_LINES, engineWantedIn, engineWidget } from "./core/engine.js";
 import { hooks } from "./core/hooks.js";
 import { showUndoToast } from "./undo.js";
+import { createBuildLive } from "./build-live.js";
 
 // The sync controller and the Build session are created by the shell after this
 // module binds; both arrive through hooks.build. selectBuildNode and
@@ -325,7 +326,6 @@ export function buildOpMatchesRepertoire(entry, repertoireId) {
 export function queueBuildDelete(nodeId) {
   appState.buildPendingDeletes.push({
     id: nodeId,
-    base_revision: appState.build?.revision,
     repertoire_id: appState.build ? appState.build.repertoire_id : null,
   });
 }
@@ -337,7 +337,6 @@ export function queueBuildAdd(node) {
   appState.buildNodeById.set(node.id, node);
   appState.buildPending.push({
     tempId: node.id,
-    base_revision: appState.build.revision,
     parentRef: node.parent_id,
     uci: node.uci,
     node,
@@ -392,6 +391,15 @@ export async function reloadOpenBuildTree() {
   } catch (_) {
     return false;
   }
+}
+
+// The open repertoire follows edits made on other devices and tabs.
+export function startBuildLive() {
+  createBuildLive({
+    api, appState, reload: reloadOpenBuildTree, activeView: activeViewName, notify: setStatus, tabId: OUTBOX_TAB_ID,
+    hydrate: (payload, selection) => hooks.build.session.hydrateBuild(payload, selection),
+    select: (nodeId) => hooks.build.selectBuildNode(nodeId),
+  }).start();
 }
 
 // Build a provisional Build node matching the serializer shape (workspace_view.py

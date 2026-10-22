@@ -89,3 +89,15 @@ export function playSessionPgn(play) {
   }
   return `${headers.join("\n")}\n\n${trail ? `${trail} ` : ""}${result}`;
 }
+
+// A Practice game with moves on the board is gone once it is left: nothing
+// resumes it, unlike a queue or rehearsal session the server picks back up.
+export function playGameInProgress(play) {
+  return !!(play && play.active && (play.history || []).length);
+}
+
+// Leaving a game in progress asks first. Resolves true to go ahead.
+export function confirmAbandonGame(play, showConfirmModal, title, okLabel) {
+  if (!playGameInProgress(play)) return Promise.resolve(true);
+  return showConfirmModal({ title, body: "The current game will be abandoned.", okLabel, cancelLabel: "Keep playing" });
+}

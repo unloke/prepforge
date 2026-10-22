@@ -1,7 +1,7 @@
 """Repertoire access roles: per-team and per-person grants, and a link role.
 
 Revision ID: c5d7e9f1a3b5
-Revises: b9e1f3a5c7d0
+Revises: c3e5a7b9d1f2
 Create Date: 2026-10-21 00:00:00.000000
 
 Sharing was one team per repertoire (``repertoires.team_id`` + ``visibility``),
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 
 
 revision = "c5d7e9f1a3b5"
-down_revision = "b9e1f3a5c7d0"
+down_revision = "c3e5a7b9d1f2"
 branch_labels = None
 depends_on = None
 

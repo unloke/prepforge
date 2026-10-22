@@ -1,4 +1,5 @@
 import { html } from "./html.js";
+import { confirmAbandonGame } from "./train-play.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
@@ -11,6 +12,9 @@ import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
 import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
+import { boardLine } from "./line-preview.js";
+import { installMoveLinks } from "./move-links.js";
+import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
@@ -34,11 +38,10 @@ import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoir
   deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
   hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
   reapplyPendingBuildNodes, reloadOpenBuildTree, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
-  setExplorerDb } from "./build-entry.js";
+  setExplorerDb, startBuildLive } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
-import { queuedBuildRevision, rebaseQueuedBuildRevision } from "./build-revision.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
@@ -268,10 +271,10 @@ const selectBuildNode = viaBuildSession("selectBuildNode");
 const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
 const syncController = createSyncController({
-  api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision,
-  rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes,
-  reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie,
-  CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID,
+  appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync,
+  hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode,
+  setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString,
+  OUTBOX_TAB_ID,
 });
 const {
   scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
@@ -547,7 +550,7 @@ function switchView(name, { fromUrl = false } = {}) {
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   if (name !== "analyze") analyzeSession?.positionCoach.cancel();
-  if (appState.currentView !== name && engineWidget) engineWidget.exitPreview();
+  if (appState.currentView !== name) { engineWidget.exitPreview(); boardLine.exit(); }
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -1361,9 +1364,12 @@ function setTrainBanner(state, title, sub) {
   banner.dataset.state = state;
   const titleEl = document.getElementById("train-banner-title");
   const subEl = document.getElementById("train-banner-sub");
-  titleEl.textContent = title;
+  // The coach's moves peek (Train never plays them); "1...c6" reads along the card's line.
+  const path = walkPathText(appState.smart?.prompt?.target?.line);
+  const ctx = { fen: appState.smart?.prompt?.fen_before, at: (ply) => (ply ? path?.plies[ply - 1]?.fen : START_FEN) };
+  titleEl.innerHTML = moveTextHtml(title || "", { ...ctx, pawns: true });
   titleEl.title = title || "";
-  subEl.textContent = sub || "";
+  subEl.innerHTML = moveTextHtml(sub || "", ctx);
   subEl.title = sub || "";
   banner.classList.remove("flash");
   if (!BANNER_MOTION.has(state)) return;
@@ -1484,6 +1490,7 @@ function bindEvents() {
     beaconFlushBuild();
     beaconFlushTrain();
   });
+  startBuildLive();
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());
@@ -1622,7 +1629,7 @@ function bindEvents() {
   bindEvalChart();
   // While an engine line is on the board, the board-bar arrows step through it.
   const navOrPreview = (action, nav) => () => {
-    if (engineWidget && engineWidget.stepPreview(action)) return;
+    if (boardLine.step(action)) return;
     nav();
   };
   document.getElementById("analysis-start").addEventListener("click", navOrPreview("start", () => {
@@ -1637,12 +1644,6 @@ function bindEvents() {
   document.getElementById("analysis-end").addEventListener("click", navOrPreview("end", () => {
     void analysisTreeNav("end").catch(() => {});
   }));
-  for (const id of ["analysis-pv-exit", "build-pv-exit"]) {
-    document.getElementById(id)?.addEventListener("click", () => {
-      engineWidget?.exitPreview();
-      if (id === "build-pv-exit") boards.build?.endPreview();
-    });
-  }
 
   document.getElementById("build-root").addEventListener("click", navOrPreview("start", buildGoRoot));
   document.getElementById("build-parent").addEventListener("click", navOrPreview("prev", buildGoBack));
@@ -1669,16 +1670,7 @@ function bindEvents() {
   if (startPlay) {
     startPlay.addEventListener("click", async () => {
       // Mid-game the same button starts over: ask before throwing the game away.
-      const live = appState.play && appState.play.active && (appState.play.history || []).length > 0;
-      if (live) {
-        const ok = await showConfirmModal({
-          title: "Start a new game?",
-          body: "The current game will be abandoned.",
-          okLabel: "New game",
-          cancelLabel: "Keep playing",
-        });
-        if (!ok) return;
-      }
+      if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Start a new game?", "New game"))) return;
       startPlaySessionTracked();
     });
   }
@@ -1739,6 +1731,7 @@ function bindEvents() {
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
     requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky, toggleTheme });
   bindCommandPalette();
+  installMoveLinks({ selectBuildNode, selectAnalysisNode });
   window.addEventListener("popstate", () => {
     void handleWorkspacePopstate();
   });
@@ -1791,13 +1784,16 @@ function bindEvents() {
     syncTrainPickerVisibility();
   };
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       if (appState.trainMode === btn.dataset.mode && btn.classList.contains("is-active")) return;
+      // The tabs stay up through a Practice game, and leaving it loses it.
+      if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
       selectTrainMode(btn.dataset.mode);
     });
   });
-  // The tabs leave with the setup card; the session card's mode name leads back.
-  document.getElementById("train-mode-name")?.addEventListener("click", () => {
+  // A running queue or rehearsal hides the tabs; Modes leads back. Every answer
+  // is already saved and Start resumes the session, so nothing needs a confirm.
+  document.getElementById("train-back")?.addEventListener("click", () => {
     appState.smart = null;
     appState.training = null;
     selectTrainMode(appState.trainMode || "smart");
@@ -1856,16 +1852,16 @@ function bindEvents() {
     // An engine line on the board: ← → step through it, Esc goes back to the game.
     // The preview belongs to a board, so it answers only on the view that owns it.
     const view = activeViewName();
-    if (engineWidget && engineWidget.isPreviewing() && (view === "analyze" || view === "build")) {
+    if (boardLine.active && (view === "analyze" || view === "build")) {
       const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
       if (action) {
         event.preventDefault();
-        engineWidget.stepPreview(action);
+        boardLine.step(action);
         return;
       }
       if (event.key === "Escape" && !paletteIsOpen()) {
         event.preventDefault();
-        engineWidget.exitPreview();
+        boardLine.exit();
         return;
       }
     }
@@ -1950,7 +1946,7 @@ async function init() {
   // The account entry and the Analyze entry points are needed before the first
   // paint (the chip, the auth gate, the PGN drawer), so both binds happen here.
   accountEntry = createAccountEntry({
-    switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, loadTeams,
+    switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, persistOutbox, loadTeams,
     clearCoverage: () => coverageEntry?.coverageView?.clear(),
     get dashboardView() { return libraryEntry?.dashboardView; },
     get scoutController() { return scoutController; },

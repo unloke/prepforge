@@ -165,12 +165,6 @@ function mergeById(base, incoming, idOf) {
   }
   for (const entry of incoming) {
     const id = idOf(entry);
-    if (id && seen.has(id) && Number.isInteger(entry.base_revision)) {
-      const index = out.findIndex((stored) => idOf(stored) === id);
-      if (!Number.isInteger(out[index].base_revision) || entry.base_revision > out[index].base_revision) {
-        out[index] = entry;
-      }
-    }
     if (!id || !seen.has(id)) {
       if (id) seen.add(id);
       out.push(entry);

@@ -6,7 +6,7 @@ import { html } from "../html.js";
 import { isAuthError } from "../auth-gate.js";
 import { isStartFen, localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
-import { watchMaiaInit } from "../maia-init-notice.js";
+import { maiaErrorText, watchMaiaInit } from "../maia-init-notice.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
 import { countOf } from "../plural.js";
 import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveTip } from "../train-hint.js";
@@ -558,6 +558,8 @@ function sideToMoveFromFen(fen) {
 
 async function startTraining(mode, options = {}) {
   mode = mode || appState.trainMode || "smart";
+  // Practice game starts via startPlaySession; never post "play" to /api/train/start (422).
+  if (mode === "play") return;
   appState.trainMode = mode;
   // Training runs against your own repertoires and review schedule, so a
   // guest gets the sign-in gate — not a "Nothing to train yet" that blames an
@@ -893,17 +895,6 @@ async function fetchPlayExplorer(fen) {
   }
 }
 
-// A Maia failure on the board, in the same voice as the Retry notice that
-// already showed: name the reason, and the action that clears it.
-function maiaOpponentErrorText(error) {
-  const message = String(error?.message || "");
-  if (/timed out/i.test(message)) return "Maia did not answer in time. Retry.";
-  if (/stalled/i.test(message)) return "The Maia download stopped part-way. Retry.";
-  if (/network|fetch|offline|Failed to/i.test(message)) return "The Maia download failed. Check your connection and retry.";
-  if (/size mismatch|truncated|exceeds manifest/i.test(message)) return "The Maia download was incomplete. Retry.";
-  return message || "Maia could not start. Retry.";
-}
-
 // Returns Maia's predictions, or { error } when it produced none. The caller must
 // tell the two apart: "the opponent has no legal move" is only true when the move
 // generator really came back empty, while an engine failure owes the user the
@@ -1174,7 +1165,7 @@ async function playOpponentReply() {
     if (maia.error) {
       play.active = false;
       updateTrainTurnBadge(null);
-      setTrainBanner("done", "Opponent unavailable", maiaOpponentErrorText(maia.error));
+      setTrainBanner("error", "Opponent unavailable", maiaErrorText(maia.error));
       syncTrainSessionControls();
       return;
     }
@@ -1860,7 +1851,7 @@ async function startSmartTraining(options = {}) {
   } catch (error) {
     if (!isCurrent()) return;
     setStatusError(error.message);
-    setTrainBanner("done", "Couldn't save your repertoire edits", "Try Start again in a moment.");
+    setTrainBanner("error", "Couldn't save your repertoire edits", "Try Start again in a moment.");
     return;
   }
   if (!isCurrent()) return;
@@ -1876,7 +1867,7 @@ async function startSmartTraining(options = {}) {
   if (!isCurrent()) return;
   if (!trainSynced) {
     setStatus("Couldn't sync your last session. Check your connection and try again.");
-    setTrainBanner("done", "Couldn't sync your last session", "Try Start again in a moment.");
+    setTrainBanner("error", "Couldn't sync your last session", "Try Start again in a moment.");
     return;
   }
   let payload;
@@ -1924,7 +1915,7 @@ async function startSmartTraining(options = {}) {
       return;
     }
     setStatusError(error.message);
-    setTrainBanner("done", "Couldn't build your queue", "Try Start again in a moment.");
+    setTrainBanner("error", "Couldn't build your queue", "Try Start again in a moment.");
     return;
   }
   if (!isCurrent()) return;

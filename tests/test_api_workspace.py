@@ -158,7 +158,8 @@ def test_dashboard_recap_uses_library_mastery_buckets(client):
     from dataclasses import replace
     from datetime import datetime, timedelta, timezone
 
-    from prepforge_chess.api.deps import get_repository
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     owner = _register(client, "recover@example.com", display_name="Rec")
     created = client.post(
@@ -185,7 +186,7 @@ def test_dashboard_recap_uses_library_mastery_buckets(client):
         json={"session_id": start["session_id"], "played_uci": "e2e4", "attempt": 1},
         headers=csrf_headers(client),
     )
-    repo = get_repository()
+    repo = WorkspaceRepository(get_engine())
     rep_id = created["repertoire_id"]
     (progress,) = repo.list_training_progress(rep_id, owner_user_id=owner)
     repo.save_training_progress(rep_id, replace(

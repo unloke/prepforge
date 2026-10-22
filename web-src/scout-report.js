@@ -18,8 +18,8 @@ import {
   opponentColorStats,
   scoutLineText,
 } from "./scout.js";
-import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
-import { buildScoutStats } from "./scout-stats.js";
+import { buildScoutStats, formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
+import { START_FEN, moveLineHtml, moveTextHtml, moveTokenHtml } from "./move-text.js";
 import {
   applyMaiaToLines,
   medianOpponentRating,
@@ -91,7 +91,7 @@ export function renderScoutColorTabsHtml(profile, { hidden = false, username = "
       // always-visible label made each tab ~246px wide, and the nowrap flex row
       // then pushed the whole page to 503px at 390px. Keeping it in the tooltip
       // (and the a11y name) preserves the wording without the overflow.
-      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span>${label} <small>${countOf(games, "game")}</small></button>`;
+      return html`<button type="button" class="scout-color-tab${i === 0 ? " is-active" : ""}" role="tab" data-scout-tab="${c}" aria-selected="${selected}"${tabindex} aria-controls="scout-section-${c}" title="${title}" aria-label="${title}"><span class="scout-color-dot ${c}" aria-hidden="true"></span><span class="scout-color-tab-label">${label}</span> <small>${countOf(games, "game")}</small></button>`;
     });
   return html`<div class="scout-color-tabs" role="tablist" aria-label="Colour the opponent plays" data-ui${hidden ? ' hidden' : ''}>${buttons}</div>`;
 }
@@ -347,10 +347,13 @@ function scoutWeeklyColumns(buckets, { weeks = 12, bucketDays = 7 } = {}) {
   };
 }
 
+// A date outside the current year carries its year: "Oct 30" on a 2014 history
+// read as last week.
 function formatShortDate(ms) {
   const d = new Date(ms);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+  const year = d.getFullYear() === new Date().getFullYear() ? undefined : "numeric";
+  return d.toLocaleDateString("en", { month: "short", day: "numeric", year });
 }
 
 export function scoutSvgBar(
@@ -421,7 +424,7 @@ export function renderScoutEnginePanel(engineAgg) {
       ? `: based on the latest ${engineAgg.maxGames} games`
       : "";
   const summary = worst
-    ? html`<div class="scout-engine-summary muted hint">Most mistakes after 1.${worst.san}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
+    ? html`<div class="scout-engine-summary muted hint">Most mistakes after ${moveTextHtml(`1.${worst.san}`, { fen: START_FEN })}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
     : engineAgg.scopeLimited && engineAgg.maxGames
       ? html`<div class="scout-engine-summary muted hint">Based on latest ${engineAgg.maxGames} games</div>`
       : "";
@@ -506,7 +509,7 @@ export function renderInlineRefutationCard(line, oppColor, { renderBoard } = {})
     ? html`<div class="scout-refutation-card-board">${renderBoard(replyFen, playerColor)}</div>`
     : "";
   return html`<div class="scout-refutation-card" data-testid="scout-refutation-card">
-    <div class="scout-refutation-card-copy">${recurrenceNote}${swingNote}. You answer <strong class="scout-refutation-reply-san">${replyLabel}</strong>.</div>
+    <div class="scout-refutation-card-copy">${recurrenceNote}${swingNote}. You answer <strong class="scout-refutation-reply-san">${moveTokenHtml(START_FEN, [...(line.ucis || []), ref.suggestedUci], line.ucis?.length || 0, replyLabel)}</strong>.</div>
     ${boardHtml}
   </div>`;
 }
@@ -595,7 +598,7 @@ export function buildScoutIntelligenceA11ySummary(stats) {
   if (activity?.recentWindow?.length) {
     const weeks = activity.recentBuckets || activity.recentWindow.length;
     parts.push(
-      `Activity in the last ${weeks} weeks: ${activity.recentGames ?? 0} games.`,
+      `Activity in the ${weeks} weeks before their latest game: ${countOf(activity.recentGames ?? 0, "game")}.`,
     );
   }
 
@@ -991,13 +994,13 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
     ? html`<p class="scout-line-reason note">${reason}</p>`
     : "";
   const replyNote = line.suggestedReply?.uci
-    ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${formatReplyLabel(line.suggestedReply)}</strong> (${line.suggestedReply.source || "engine"})</p>`
+    ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${moveTokenHtml(fen, [line.suggestedReply.uci], 0, formatReplyLabel(line.suggestedReply))}</strong> (${line.suggestedReply.source || "engine"})</p>`
     : line.needsPrep
       ? html`<p class="scout-line-reply note warn">No reply in your prep yet. Run Deep scan or extend the repertoire.</p>`
       : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
-      ? html`<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: …${line.enginePattern.playedSan} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
+      ? html`<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: ${moveTokenHtml(START_FEN, [...String(line.enginePattern.pathKey || "").split(">").filter(Boolean), line.enginePattern.playedUci], String(line.enginePattern.pathKey || "").split(">").filter(Boolean).length, `…${line.enginePattern.playedSan}`)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
       : line.hasEngineMistake || line.refutation
         ? html`<p class="scout-engine-note note eng">Engine refutation available</p>`
         : "";
@@ -1008,11 +1011,11 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
            .map((sub) => {
              const grey = sub.share < 0.03 ? " muted" : "";
              const pct = Math.round((sub.share || 0) * 100);
-             return html`<div class="scout-subline sv${grey}"><span>${scoutLineText(sub.sans)}</span><i style="width:${Math.max(pct, 2)}%"></i><b>${pct}%</b></div>`;
+             return html`<div class="scout-subline sv${grey}"><span>${moveLineHtml(fenAfterLine((line.ucis || []).slice(0, 1)), sub.sans, sub.ucis)}</span><i style="width:${Math.max(pct, 2)}%"></i><b>${pct}%</b></div>`;
            })}</div></div>`
       : "";
   return html`
-      <h2 class="line-title">${scoutLineText(line.sans)}</h2>
+      <h2 class="line-title">${moveLineHtml(START_FEN, line.sans, line.ucis)}</h2>
       <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
       ${reasonLine}
@@ -1102,14 +1105,15 @@ function scoutPrepFramingHtml(line) {
   const fullLine = scoutLineText(line.sans);
   const shown = scoutRowPlyLimit(line);
   const hidden = (line.sans?.length || 0) - shown;
-  const theirLine = hidden > 0 ? `${scoutLineText(line.sans.slice(0, shown))} …` : fullLine;
+  // The row is the control: its moves peek on hover and are not tab stops.
+  const theirLine = html`${moveLineHtml(START_FEN, line.sans.slice(0, shown), line.ucis, { focusable: false })}${hidden > 0 ? " …" : ""}`;
   const more = hidden > 0
     ? html` <span class="scout-line-more faint">+${Math.ceil(hidden / 2)} more move${Math.ceil(hidden / 2) === 1 ? "" : "s"}</span>`
     : "";
   const reply = line.suggestedReply;
   const when = html`<span class="when" title="${fullLine}">After <b class="scout-prep-them">${theirLine}</b>${more}</span>`;
   if (reply?.uci) {
-    const replyLabel = formatReplyLabel(reply);
+    const replyLabel = moveTokenHtml(START_FEN, [...(line.ucis || []), reply.uci], line.ucis?.length || 0, formatReplyLabel(reply), { focusable: false });
     return html`<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> your move: <b class="scout-prep-you">${replyLabel}</b></span></span>`;
   }
   if (line.needsPrep) {
@@ -1405,7 +1409,10 @@ export function buildScoutSectionReport(
   const coverageLabel = myLookups.length
     ? `your prep follows ${covPct}% of their games to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}`
     : `no ${oppColor === "white" ? "Black" : "White"} repertoire to compare`;
-  const prepareAll = html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`;
+  // Nothing to add when the plan has no rows: the button would open an empty prep.
+  const prepareAll = prepTargets.length
+    ? html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`
+    : "";
 
   const trending = profile.recentlyChanged[oppColor]
     ? html`<span class="scout-trending kchip k-due" title="Their recent games show a different opening">Recently changed</span>`
@@ -1414,9 +1421,7 @@ export function buildScoutSectionReport(
   const firstMoves = scoutDisplayDistribution(trie, scoutModule.moveDistribution)
     .map((m) => scoutDistRowHtml(m));
   const refutationGaps = collectActionableRefutationGapActions(refutations);
-  const gapActionsHtml = refutationGaps.length
-    ? renderScoutRefutationGapActions(refutationGaps)
-    : "";
+  const gapActionsHtml = refutationGaps.length ? renderScoutRefutationGapActions(refutationGaps) : "";
 
   const prepRows = prepTargets.map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline));
   const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
@@ -1427,25 +1432,25 @@ export function buildScoutSectionReport(
   const planHead = html`<div class="scout-game-plan-head plan-head">
             <b class="scout-col-label">Your game plan as ${yourSide}</b>
           </div>`;
-  const firstMovesHtml = html`<div class="scout-first-moves">
-            <span class="scout-sub-label">${who}'s first moves</span>
+  // With Black the distribution is White's (your) first moves, not theirs.
+  const firstMovesLabel = oppColor === "white" ? `${who}'s first moves` : `First moves against ${who}`;
+  const firstMovesHtml = firstMoves.length
+    ? html`<div class="scout-first-moves">
+            <span class="scout-sub-label">${firstMovesLabel}</span>
             <div class="scout-dist scout-dist-compact first-moves" data-dist-root="true">${firstMoves}</div>
-          </div>`;
+          </div>`
+    : "";
   const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
-  const prepPanel = prepRows.length
-    ? html`<div class="scout-game-plan plan">
-          ${planHead}
-          ${firstMovesHtml}
-          ${gapActionsHtml}
-          ${listHead}
+  const planBody = prepRows.length
+    ? html`${listHead}
           <div class="scout-lines scout-ranked-list lines" role="list" data-ui>${prepRows}</div>
-          ${rankedNote}
-        </div>`
-    : html`<div class="scout-game-plan plan">
+          ${rankedNote}`
+    : html`<div class="muted hint">No reachable weak spots in these games</div>`;
+  const prepPanel = html`<div class="scout-game-plan plan">
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
-          <div class="muted hint">No reachable weak spots in these games</div>
+          ${planBody}
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";

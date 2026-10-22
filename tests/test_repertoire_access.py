@@ -1,8 +1,8 @@
 """Repertoire access roles: who may read, copy and edit someone else's repertoire.
 
 The matrix under test: owner > edit > copy > view > nobody. Reads need any role,
-copies (fork / export) need copy, tree writes need edit and go through the same
-revision fence as the owner's, and sharing / rename / delete / enable / Train stay
+copies (fork / export) need copy, tree writes need edit and are rebased like the
+owner's, and sharing / rename / delete / enable / Train stay
 owner-only. A user's role is the highest of their own grant and their teams'.
 The public link grants view or copy, never edit.
 """
@@ -115,11 +115,11 @@ def test_tree_writes_need_edit(world, who, status):
         assert _post(world["c"][who], path, body).status_code == status, name
 
 
-def test_editor_writes_through_the_owner_revision_path(world):
+def test_editor_writes_through_the_owner_rebase_path(world):
     rep, root, c = world["rep"], world["root"], world["c"]
     rev = _load(c["owner"], rep).json()["revision"]
     added = _post(c["edit"], "/api/build/add-moves", {
-        "repertoire_id": rep, "base_revision": rev,
+        "repertoire_id": rep,
         "moves": [{"tempId": "tmp-1", "parentRef": root, "uci": "d2d4"}],
     })
     assert added.status_code == 200, added.text
@@ -129,13 +129,12 @@ def test_editor_writes_through_the_owner_revision_path(world):
     assert body["revision"] == rev + 1
     owner_view = _load(c["owner"], rep).json()
     assert "d4" in [n.get("san") for n in owner_view["nodes"]]
-    # A write built on the old revision is fenced exactly like the owner's.
-    stale = _post(c["owner"], "/api/build/action", {
-        "repertoire_id": rep, "node_id": world["e4"], "action": "add_comment",
-        "value": "stale", "base_revision": rev,
+    # The owner's next edit, made without seeing the editor's, is rebased onto it.
+    later = _post(c["owner"], "/api/build/action", {
+        "repertoire_id": rep, "node_id": world["e4"], "action": "add_comment", "value": "main",
     })
-    assert stale.status_code == 409
-    assert stale.json()["detail"]["error"] == "revision_conflict"
+    assert later.status_code == 200, later.text
+    assert later.json()["revision"] == rev + 2
     for name, (path, req) in _writes(world).items():
         if name in ("add-moves", "delete-nodes"):
             continue

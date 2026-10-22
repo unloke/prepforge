@@ -177,8 +177,9 @@ def test_apply_plan_rejects_root_node_mismatch(client):
     assert r.status_code == 400
 
 
-def test_apply_plan_unknown_root_node_is_400(client):
+def test_apply_plan_on_a_missing_root_node_is_node_deleted(client):
     _register(client, "a@example.com")
     rep = _create_repertoire(client)
     r = _apply_plan(client, rep["repertoire_id"], "does-not-exist", [])
-    assert r.status_code == 400
+    assert r.status_code == 409
+    assert r.json()["detail"]["error"] == "node_deleted"

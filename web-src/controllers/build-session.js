@@ -8,7 +8,7 @@ import { formatEngineEval } from "../engine-eval.js";
 
 import { _buildGenReady, buildView, coverageView } from "../app.js";
 import { buildDockTab, explorerClient, explorerDb, explorerModule } from "../build-entry.js";
-import { rebaseBuildOps } from "../build-revision.js";
+import { pokeBuildLive } from "../build-live.js";
 import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
@@ -96,7 +96,6 @@ async function hydrateBuild(payload, selectedNodeId = null) {
   }
   appState.build = payload;
   appState.buildNodeById = new Map(payload.nodes.map((node) => [node.id, node]));
-  rebaseBuildOps([...appState.buildPending, ...appState.buildPendingDeletes], payload.repertoire_id, payload.revision);
   // Derived analysis must match this exact local tree, including optimistic edits.
   coverageView?.sync();
   invalidateBook();
@@ -912,8 +911,7 @@ async function saveBuildAnnotations(arrows, circles) {
   const ownerId = currentOwnerId();
   const generation = appState.ownerGeneration;
   const isOwner = () => ownerId === currentOwnerId() && generation === appState.ownerGeneration;
-  const build = appState.build;
-  const repertoireId = build.repertoire_id;
+  const repertoireId = appState.build.repertoire_id;
   const selectedId = appState.buildCurrentNodeId;
   const idMap = appState.buildIdMap;
   const resolvedId = () => idMap?.[selectedId] || selectedId;
@@ -938,16 +936,13 @@ async function saveBuildAnnotations(arrows, circles) {
         if (!isOwner()) return;
         snapshot = slot.latest;
         slot.latest = null;
-        const current = appState.build?.repertoire_id === repertoireId;
-        const nodeId = resolvedId();
-        const payload = await postJson("/api/build/annotations", {
-          repertoire_id: repertoireId, node_id: nodeId, ...snapshot,
-          base_revision: current ? appState.build.revision : build.revision,
+        await postJson("/api/build/annotations", {
+          repertoire_id: repertoireId, node_id: resolvedId(), ...snapshot,
         });
-        if (Number.isInteger(payload?.revision)) build.revision = Math.max(build.revision || 0, payload.revision);
         slot.confirmed = snapshot;
       } catch (error) {
         if (!isOwner()) return;
+        if (error.detail?.error === "node_deleted") pokeBuildLive();
         setStatusError(`Annotations not saved: ${error.message}`);
         // A failed prerequisite flush has not consumed latest yet.
         if (!snapshot) slot.latest = null;
@@ -1403,7 +1398,6 @@ async function generateFromCurrentNode() {
 
   const jobId = `browser-generate-${Date.now()}`;
   const generatedRepertoireId = appState.build.repertoire_id;
-  const generatedBaseRevision = appState.build.revision;
   // Cancel model has two phases. GENERATION (local, before the POST) is
   // cancellable: notices's Stop aborts the controller, the recursion checks the
   // signal, and an explicit re-check below bails before the POST — so Stop here
@@ -1599,7 +1593,6 @@ async function generateFromCurrentNode() {
       "/api/build/generate/apply-plan",
       {
         repertoire_id: generatedRepertoireId,
-        base_revision: generatedBaseRevision,
         root_node_id: nodeId,
         plan,
       },
@@ -1645,7 +1638,7 @@ function openNodeContextMenu(event, nodeId) {
     [["generate", "Generate from here"]],
     [
       ...(node.is_mainline || !node.parent_id ? [] : [["set_mainline", "Set as mainline"]]),
-      ["disable_branch", node.is_enabled ? "Disable branch" : "Re-enable branch"],
+      node.is_enabled ? ["disable_branch", "Disable branch"] : ["enable_branch", "Re-enable branch"],
     ],
     [["add_comment", node.comment ? "Edit comment…" : "Add comment…"]],
     [
@@ -1772,6 +1765,7 @@ async function handleNodeContextAction(action, nodeId) {
     await hydrateBuild(payload, nodeId);
     setStatus("Node updated");
   } catch (error) {
+    if (error.detail?.error === "node_deleted") pokeBuildLive();
     setStatusError(error.message);
   }
 }
