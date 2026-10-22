@@ -512,7 +512,10 @@
   }
   #view-settings .settings-nav-link.is-active::after { opacity: 1; }
   /* The heading names the open section on the title's line. */
-  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; }
+  /* Title and section share a baseline, so the row sizes itself (the 56px box
+     left the title at its top with 30px of air under it); the tab strip
+     follows straight on as the title's own sub-header. */
+  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; min-height: 0; margin-bottom: 0; padding: 14px 0 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
   #view-settings .settings-here::before { margin-right: 8px; }
   /* A jump lands the card below the sticky strip. */
