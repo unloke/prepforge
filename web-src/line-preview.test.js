@@ -11,7 +11,7 @@ function fakeEl() {
   const attrs = {};
   const classes = new Set();
   return {
-    _html: "", hidden: false,
+    _html: "", hidden: false, parentElement: null, children: [],
     get innerHTML() { return String(this._html); }, set innerHTML(v) { this._html = v; }, style: {}, offsetWidth: 176, offsetHeight: 200, isConnected: true,
     classList: { add: (c) => classes.add(c), contains: (c) => classes.has(c), toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)) },
     setAttribute: (k, v) => { attrs[k] = String(v); }, getAttribute: (k) => attrs[k] ?? null, removeAttribute: (k) => { delete attrs[k]; },
@@ -265,6 +265,36 @@ describe("peek", () => {
       // Left gutter: 924 - 8 - 8 = 908px (enough), so peek opens left of sentence
       expect(box.x).toBe(740); // 924 - 8 - 176
       expect(inSentence(line, box)).toBe(false);
+    } finally {
+      document.documentElement.clientWidth = vw;
+      mod.hidePeek();
+    }
+  });
+
+  it("goes above the row, not beside it, when the row has cells level with the move", () => {
+    // A Scout line: the moves cell sits beside the results cell, so the space
+    // to its right is not empty and the peek may not take it.
+    const row = fakeEl();
+    row.getBoundingClientRect = () => ({ left: 0, top: 600, right: 1100, bottom: 634, width: 1100, height: 34 });
+    const moves = fakeEl();
+    moves.parentElement = row;
+    moves.getBoundingClientRect = () => ({ left: 100, top: 604, right: 420, bottom: 630, width: 320, height: 26 });
+    const results = fakeEl();
+    results.parentElement = row;
+    results.getBoundingClientRect = () => ({ left: 940, top: 604, right: 1090, bottom: 630, width: 150, height: 26 });
+    row.children = [moves, results];
+    const t = token(LINE, 0);
+    t.getBoundingClientRect = () => ({ left: 140, top: 608, right: 166, bottom: 628, width: 26, height: 20 });
+    t.closest = (sel) => (sel === "[data-mt]" || sel.includes("[data-p]") ? t : sel === "[data-board-side]" ? null : sel === "[title]" ? null : moves);
+    const vw = document.documentElement.clientWidth;
+    document.documentElement.clientWidth = 1440;
+    try {
+      handlers.focusin(ev(t));
+      const box = placed();
+      // Above the whole row (600 - 8 - 200), not over the results cell.
+      expect(box.y).toBe(392);
+      expect(box.y + box.h).toBeLessThanOrEqual(600);
+      expect(box.x + box.w).toBeLessThan(940);
     } finally {
       document.documentElement.clientWidth = vw;
       mod.hidePeek();

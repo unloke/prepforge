@@ -142,9 +142,31 @@ const GAP = 8;
 const EDGE = 8;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
 
+// Whether the space beside `block` is empty. A sentence in a card has nothing
+// level with it, so the peek can take the gutter. A move inside a row of cells
+// (a Scout line's moves beside its results, a table cell beside the next one)
+// has its neighbour there, and that neighbour is text being read too. The
+// neighbour can be a sibling of the block or of an ancestor up to the row, so
+// the walk climbs while each parent is still a row (about as tall as the block)
+// and stops at the card or panel that holds it.
+function sidesClear(block, b) {
+  const overlaps = (r) => r.bottom > b.top + 4 && r.top < b.bottom - 4;
+  const rowMax = (b.height || 0) * 2 + 8;
+  for (let node = block; node?.parentElement; node = node.parentElement) {
+    const p = node.parentElement.getBoundingClientRect?.();
+    if (!p || !overlaps(p) || p.height > rowMax) break;
+    for (const sibling of node.parentElement.children) {
+      if (sibling === node || sibling.contains?.(node)) continue;
+      const s = sibling.getBoundingClientRect?.();
+      if (!s || !s.width || !s.height || !overlaps(s)) continue;
+      return false;
+    }
+  }
+  return true;
+}
+
 function place(target) {
   const r = target.getBoundingClientRect();
-  const bottom = Number.isFinite(r.bottom) ? r.bottom : r.top + (r.height || 0);
   const w = host.offsetWidth;
   const h = host.offsetHeight;
   const vw = document.documentElement.clientWidth;
@@ -168,13 +190,18 @@ function place(target) {
   const top = clamp(r.top + (r.height || 0) / 2 - h / 2, EDGE, vh - h - EDGE);
   const block = target.closest?.(BLOCK) || target;
   const b = block === target ? r : block.getBoundingClientRect();
-  if (vw - b.right - GAP - EDGE >= w) return put(b.right + GAP, top);
-  if (b.left - GAP - EDGE >= w) return put(b.left - GAP - w, top);
-  // No gutter beside the text (full-width prose, a phone): above the word when
-  // there is more room there, so the line being read and the one after it stay.
-  const above = r.top - GAP - EDGE;
-  const below = vh - bottom - GAP - EDGE;
-  const y = above >= h || above > below ? r.top - GAP - h : bottom + GAP;
+  const clear = sidesClear(block, b);
+  if (clear) {
+    if (vw - b.right - GAP - EDGE >= w) return put(b.right + GAP, top);
+    if (b.left - GAP - EDGE >= w) return put(b.left - GAP - w, top);
+  }
+  // Nothing beside it (full-width prose, a phone, a row of cells): above or
+  // below the row it reads in, so the line being read and the one after it stay.
+  const row = clear ? r : block.parentElement?.getBoundingClientRect?.() || r;
+  const rowBottom = Number.isFinite(row.bottom) ? row.bottom : row.top + (row.height || 0);
+  const above = row.top - GAP - EDGE;
+  const below = vh - rowBottom - GAP - EDGE;
+  const y = above >= h || above > below ? row.top - GAP - h : rowBottom + GAP;
   put(clamp(r.left + (r.width || 0) / 2 - w / 2, EDGE, Math.max(EDGE, vw - w - EDGE)), clamp(y, EDGE, Math.max(EDGE, vh - h - EDGE)));
 }
 
