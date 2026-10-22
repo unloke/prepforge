@@ -243,6 +243,9 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
       return {};
     },
   });
+  // Save-Data turns off the idle warm-up of every view's chunks
+  // (view-prefetch.js), so an Analyze chunk here can only come from a resize.
+  await page.addInitScript(() => Object.defineProperty(navigator, "connection", { configurable: true, value: { saveData: true, effectiveType: "4g" } }));
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1000);
   const isAnalyze = (p) => /\/assets\/analyze-[^/]+\.(js|css)$/.test(p);

@@ -365,8 +365,10 @@ async function openBuild(page, repertoireId) {
   await row.click();
   await page.locator("#build-rep-name").filter({ hasText: byId.get(repertoireId).name })
     .waitFor({ state: "attached", timeout: 20000 });
-  // The board is painted once the load lands.
+  // The board is painted once the load lands, and measurable once the route's
+  // View Transition has swapped the view in (a frame after the click).
   await page.waitForFunction(() => document.querySelectorAll("#build-board .square .piece").length > 0);
+  await page.locator("#build-board .square").first().waitFor({ state: "visible" });
 }
 
 const nodeFen = (rep, index) => rep.nodes[index].fen;
