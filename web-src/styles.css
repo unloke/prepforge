@@ -1314,8 +1314,9 @@ h2 {
   animation: view-enter var(--dur) var(--ease-out) backwards;
 }
 
-/* One loading state: while the hold is up the default view stays hidden. */
-.boot-hold:not([hidden]) ~ .view.is-active {
+/* One loading state: until the hold leaves the DOM the default view stays
+   hidden, also before JS shows the hold, so the view paints (and enters) once. */
+.boot-hold ~ .view.is-active {
   display: none;
 }
 

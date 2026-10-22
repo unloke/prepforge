@@ -122,3 +122,12 @@ describe("entrances", () => {
     }
   });
 });
+
+describe("boot entrance", () => {
+  it("keeps the default view hidden while the boot hold is in the DOM, shown or not", () => {
+    // Under a slow JS load the view painted (and entered) before init() showed
+    // the hold, then entered again when the hold left.
+    expect(css).toContain(".boot-hold ~ .view.is-active {");
+    expect(css).not.toContain(".boot-hold:not([hidden]) ~ .view.is-active");
+  });
+});
