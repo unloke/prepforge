@@ -150,6 +150,11 @@
   gap: 8px;
 }
 .cc-head > b { flex: none; }
+/* The switch's name. On a desktop the head has no room for it beside "Coach"
+   (the switch is named through aria-labelledby, which reads it hidden); on a
+   phone it takes the place of the dropped "Coach", and a tap on it flips the
+   switch too. */
+.cc-switch-label { display: none; }
 .phase-chip {
   flex: 0 1 auto;
   min-width: 0;
@@ -1425,6 +1430,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-explain > * { flex: none; margin: 0; }
   #analysis-explain .cc-head { gap: 6px; min-height: 0; }
   #analysis-explain .cc-head > b { display: none; }
+  #analysis-explain .cc-switch-label { display: block; flex: none; color: var(--muted); font-size: 14px; white-space: nowrap; cursor: pointer; }
   #analysis-explain .coach-prose {
     flex: 0 1 auto;
     min-height: 0;
