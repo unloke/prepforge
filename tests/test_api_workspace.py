@@ -107,7 +107,7 @@ def test_repertoire_listing_carries_only_what_a_row_draws(client):
         headers=csrf_headers(client),
     )
     rep = client.get("/api/repertoires").json()["repertoires"][0]
-    assert set(rep) == {"id", "name", "color", "health", "is_active", "team_id", "visibility"}
+    assert set(rep) == {"id", "name", "color", "health", "is_active", "shared"}
     health = rep["health"]
     if health is not None:
         assert set(health) == {"trainable", "untrained", "weak", "due", "mastered", "mastery_pct", "computed_at"}
@@ -846,7 +846,7 @@ def test_fork_copies_under_caller_with_fresh_ids(client):
     create = _create_with_move(client)
     token = client.post(
         "/api/repertoires/share-link",
-        json={"repertoire_id": create["repertoire_id"]},
+        json={"repertoire_id": create["repertoire_id"], "role": "copy"},
         headers=csrf_headers(client),
     ).json()["token"]
 

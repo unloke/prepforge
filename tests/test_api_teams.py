@@ -1,7 +1,8 @@
 """Phase 5 (redesigned): teams + repertoire sharing.
 
-Security-critical invariant under test: sharing a repertoire to a team grants team
-members **read-only** access and never write access, and a non-member sees nothing.
+Security-critical invariant under test: sharing a repertoire with a team grants its
+members exactly the team's role (view here; the full role matrix is in
+test_repertoire_access.py), and a non-member sees nothing.
 Team creation is open to every signed-in user; membership/role/invite management is
 owner/admin-only. Members are added by **Lichess username** (resolved to the user
 who linked that handle) or by redeeming the team's **invite link**.
@@ -412,14 +413,14 @@ def test_team_detail_invite_visible_to_managers_only(client):
 # ---- sharing + read access (the core acceptance) ---------------------------
 
 
-def _setup_shared(owner_client, member_client):
+def _setup_shared(owner_client, member_client, role: str = "view"):
     """Owner creates a team, adds a member (by handle), creates + shares a
-    repertoire. Returns (team_id, repertoire_id)."""
+    repertoire with the team at ``role``. Returns (team_id, repertoire_id)."""
     team_id, _member_id = _setup_owner_and_member(owner_client, member_client)
     rep_id = _create_rep(owner_client, "Shared London")
     r = owner_client.post(
-        "/api/repertoires/share",
-        json={"repertoire_id": rep_id, "team_id": team_id, "visibility": "team"},
+        "/api/repertoires/access",
+        json={"repertoire_id": rep_id, "team_id": team_id, "role": role},
         headers=csrf_headers(owner_client),
     )
     assert r.status_code == 200, r.text
@@ -450,7 +451,7 @@ def test_member_cannot_mutate_shared_repertoire(client):
         json={"repertoire_id": rep_id, "name": "Hacked"},
         headers=csrf_headers(member_client),
     )
-    assert r.status_code == 404
+    assert r.status_code == 403
 
 
 def test_shared_repertoire_appears_in_member_list(client):
@@ -460,17 +461,18 @@ def test_shared_repertoire_appears_in_member_list(client):
     assert listing["repertoires"] == []  # the member owns none
     assert [s["id"] for s in listing["shared"]] == [rep_id]
     assert listing["shared"][0]["team_id"] == team_id
+    assert listing["shared"][0]["role"] == "view"
 
 
 def test_only_owner_can_share(client):
     member_client = _new_client()
     _team_id, rep_id = _setup_shared(client, member_client)
     r = member_client.post(
-        "/api/repertoires/share",
-        json={"repertoire_id": rep_id, "team_id": _team_id, "visibility": "private"},
+        "/api/repertoires/access/revoke",
+        json={"repertoire_id": rep_id, "team_id": _team_id},
         headers=csrf_headers(member_client),
     )
-    assert r.status_code == 404
+    assert r.status_code == 403
 
 
 def test_cannot_share_to_team_you_are_not_in(client):
@@ -482,8 +484,8 @@ def test_cannot_share_to_team_you_are_not_in(client):
     other_team = _create_team(other, "Other")
 
     r = client.post(
-        "/api/repertoires/share",
-        json={"repertoire_id": rep_id, "team_id": other_team, "visibility": "team"},
+        "/api/repertoires/access",
+        json={"repertoire_id": rep_id, "team_id": other_team, "role": "view"},
         headers=csrf_headers(client),
     )
     assert r.status_code == 404
@@ -491,11 +493,11 @@ def test_cannot_share_to_team_you_are_not_in(client):
 
 def test_unshare_revokes_member_access(client):
     member_client = _new_client()
-    _team_id, rep_id = _setup_shared(client, member_client)
+    team_id, rep_id = _setup_shared(client, member_client)
     assert member_client.get(f"/api/build/load?repertoire_id={rep_id}").status_code == 200
     client.post(
-        "/api/repertoires/share",
-        json={"repertoire_id": rep_id, "visibility": "private"},
+        "/api/repertoires/access/revoke",
+        json={"repertoire_id": rep_id, "team_id": team_id},
         headers=csrf_headers(client),
     )
     assert member_client.get(f"/api/build/load?repertoire_id={rep_id}").status_code == 404
@@ -515,7 +517,6 @@ def test_build_load_strips_training_state_for_member(client):
     assert payload["writable"] is False
     assert payload.get("shared") is True
     assert "health" not in payload
-    assert "summary" not in payload
     assert payload["nodes"]
     assert all("mastery" not in node for node in payload["nodes"])
 
@@ -531,7 +532,7 @@ def test_build_load_keeps_training_state_for_owner(client):
 
 def test_team_member_can_fork_shared_repertoire(client):
     member_client = _new_client()
-    _team_id, rep_id = _setup_shared(client, member_client)
+    _team_id, rep_id = _setup_shared(client, member_client, role="copy")
     r = member_client.post(
         "/api/repertoires/fork",
         json={"repertoire_id": rep_id},
@@ -548,7 +549,7 @@ def test_team_member_can_fork_shared_repertoire(client):
 
 def test_fork_shared_repertoire_non_member_404(client):
     member_client = _new_client()
-    _team_id, rep_id = _setup_shared(client, member_client)
+    _team_id, rep_id = _setup_shared(client, member_client, role="copy")
     outsider = _new_client()
     _register(outsider, "out@example.com")
     r = outsider.post(
@@ -575,6 +576,7 @@ def test_team_detail_lists_shared_repertoires(client):
     team_id, rep_id = _setup_shared(client, member_client)
     detail = client.get(f"/api/teams/{team_id}").json()
     assert [r["id"] for r in detail["shared_repertoires"]] == [rep_id]
+    assert detail["shared_repertoires"][0]["role"] == "view"
     member_detail = member_client.get(f"/api/teams/{team_id}").json()
     assert [r["id"] for r in member_detail["shared_repertoires"]] == [rep_id]
 
@@ -616,8 +618,7 @@ def test_delete_team_unshares_repertoires(client):
     assert member_client.get(f"/api/build/load?repertoire_id={rep_id}").status_code == 404
     meta = client.get("/api/repertoires").json()
     shared_rep = next(r for r in meta["repertoires"] if r["id"] == rep_id)
-    assert shared_rep["visibility"] == "private"
-    assert shared_rep["team_id"] is None
+    assert shared_rep["shared"] is False
 
 
 def test_delete_team_drops_invite(client):
@@ -644,16 +645,16 @@ def test_owned_repertoire_list_includes_sharing(client):
     team_id, rep_id = _setup_shared(client, member_client)
     listing = client.get("/api/repertoires").json()
     shared_rep = next(r for r in listing["repertoires"] if r["id"] == rep_id)
-    assert shared_rep["visibility"] == "team"
-    assert shared_rep["team_id"] == team_id
+    assert shared_rep["shared"] is True
 
 
-def test_share_bad_visibility_400(client):
+def test_share_bad_role_422(client):
     _register(client, "owner@example.com")
     rep_id = _create_rep(client, "Mine")
+    team_id = _create_team(client)
     r = client.post(
-        "/api/repertoires/share",
-        json={"repertoire_id": rep_id, "visibility": "public"},
+        "/api/repertoires/access",
+        json={"repertoire_id": rep_id, "team_id": team_id, "role": "owner"},
         headers=csrf_headers(client),
     )
     assert r.status_code == 422
@@ -672,5 +673,4 @@ def test_team_delete_failure_rolls_back_sharing(client, monkeypatch):
             client.delete(f"/api/teams/{team}", headers=csrf_headers(client))
     assert member.get(f"/api/build/load?repertoire_id={rep}").status_code == 200
     meta = next(r for r in client.get("/api/repertoires").json()["repertoires"] if r["id"] == rep)
-    assert meta["team_id"] == team
-    assert meta["visibility"] == "team"
+    assert meta["shared"] is True

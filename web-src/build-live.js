@@ -1,5 +1,5 @@
 // Live Build: the open repertoire follows edits made on other devices, other
-// tabs and (once shared editing lands) other editors, without a reload.
+// tabs and other editors (anyone the repertoire is shared with), without a reload.
 //
 // The server logs one op per write (repertoire_ops) and serves the catch-up as
 // a state delta: GET /api/build/changes?since=<revision> returns the current

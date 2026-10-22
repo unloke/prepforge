@@ -176,11 +176,11 @@ describe("Move counts (P2-4)", () => {
 });
 
 describe("Repertoire ⋯ menu matches the Library menu (P2-14)", () => {
-  const { buildMenuItems } = compile(["function buildMenuItems({ hasRep, isActive }) {"]);
+  const { buildMenuItems } = compile(["function buildMenuItems({ hasRep, isActive, isOwner = true }) {"]);
 
   it("offers the Library's repertoire actions (no redundant Open) plus page actions", () => {
     const actions = buildMenuItems({ hasRep: true, isActive: true }).map(([a]) => a);
-    for (const shared of ["train", "share-link", "share-team", "toggle-active", "delete"]) {
+    for (const shared of ["train", "share", "toggle-active", "delete"]) {
       expect(actions).toContain(shared);
     }
     expect(actions).toContain("build-rename");
@@ -188,6 +188,11 @@ describe("Repertoire ⋯ menu matches the Library menu (P2-14)", () => {
     expect(actions).not.toContain("edit");
     expect(buildMenuItems({ hasRep: true, isActive: false }).find(([a]) => a === "toggle-active")[1]).toBe("Enable");
     expect(buildMenuItems({ hasRep: false, isActive: true }).map(([a]) => a)).toEqual(["build-new-rep"]);
+  });
+
+  it("gives an editor of someone else's repertoire Export only", () => {
+    expect(buildMenuItems({ hasRep: true, isActive: true, isOwner: false }).map(([a]) => a))
+      .toEqual(["build-export-pgn", "build-new-rep"]);
   });
 
   it("retires the 'builder' name in the Library menu", () => {

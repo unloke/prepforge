@@ -39,7 +39,7 @@ const TEAM_DETAIL = {
     { user_id: "u2", display_name: "Sam", lichess_username: "samqueen", role: "member" },
   ],
   shared_repertoires: [
-    { id: "rep-9", name: "Sicilian Drain", color: "black", owner_user_id: "u2", owner_display_name: "Sam" },
+    { id: "rep-9", name: "Sicilian Drain", color: "black", owner_user_id: "u2", role: "copy", owner_display_name: "Sam" },
   ],
   invite: { exists: true, created_at: "2026-09-01T00:00:00Z", expires_at: null },
 };
@@ -52,7 +52,7 @@ const api = (path) => {
     return {
       repertoires: [],
       shared: [
-        { id: "rep-8", name: "French Fort", color: "white", team_id: "t1", owner_user_id: "u2" },
+        { id: "rep-8", name: "French Fort", color: "white", role: "view", team_id: "t1", owner_user_id: "u2" },
       ],
     };
   }

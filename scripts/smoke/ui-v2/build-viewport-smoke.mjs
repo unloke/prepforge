@@ -91,7 +91,7 @@ const api = (path) => {
   if (path.startsWith("/api/shared/")) {
     return {
       repertoire_id: "rep-shared", name: "Sicilian Najdorf (shared)", color: "black",
-      writable: false, selected_node_id: "n5", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      role: "copy", shared: true, writable: false, selected_node_id: "n5", root_fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
       nodes: BUILD_NODES,
     };
   }
