@@ -193,6 +193,14 @@ await page.route("**/api/analyze/prepare", async (route) => {
     } : undefined,
   }) });
 });
+// The saved reviews by id, as the real server keeps them: a reload recalls the
+// review it was on by game id (grades, chart) and lays the session's branches on top.
+const savedReviews = new Map();
+await page.route(/\/api\/analyses\/[^/?]+$/, async (route) => {
+  const saved = savedReviews.get(decodeURIComponent(new URL(route.request().url()).pathname.split("/").pop()));
+  if (!saved || route.request().method() !== "GET") return route.fallback();
+  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(saved) });
+});
 await page.route("**/api/analyze/classify-save", async (route) => {
   const body = JSON.parse(route.request().postData() || "{}");
   const evals = new Map((body.positions || []).map((p) => [p.fen, p]));
@@ -206,10 +214,12 @@ await page.route("**/api/analyze/classify-save", async (route) => {
   for (const p of body.positions || []) {
     position_evals[p.fen] = { score_cp: p.score_cp, mate_in: p.mate_in, best_move_uci: p.best_move_uci, pv: p.pv || [], depth: p.depth };
   }
-  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+  const saved = {
     game_id: prepared.gameId, engine: "stockfish (browser)", depth: 4, summary: {},
     position_evals, moves, eval_graph, critical_moments: [],
-  }) });
+  };
+  savedReviews.set(prepared.gameId, saved);
+  await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(saved) });
 });
 
 // The board's position, read back out of the rendered squares.

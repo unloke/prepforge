@@ -969,8 +969,14 @@
   #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 40px; height: 40px; padding: 0 12px; font-size: 14px; }
   #build-inspector .inspector-info { width: 40px; height: 40px; }
   #build-inspector .explorer-row { min-height: 46px; }
-  /* "White / Draw / Black" broke onto two lines once Eval took a column. */
-  #build-inspector .explorer-head > span { white-space: nowrap; }
+  /* "White / Draw / Black" broke onto two lines once Eval took a column. One
+     line fits a 390px pane with the eval layout's columns tightened; a narrower
+     one clips the label instead of widening the drawer. */
+  #build-inspector .explorer-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #build-inspector .explorer-rows.has-eval :is(.explorer-head, .explorer-row) {
+    grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(40px, 52px) minmax(0, 1fr);
+    column-gap: 6px;
+  }
   /* The engine's line steppers are 18px dots: the dots stay, their tap areas
      grow to 40px (the readout between them is not a target). */
   .engine-step { position: relative; }
