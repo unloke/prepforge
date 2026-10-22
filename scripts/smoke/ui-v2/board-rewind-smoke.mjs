@@ -210,12 +210,27 @@ const check = (ok, label) => {
   if (!ok) failures.push(label);
 };
 
+// --- settling --------------------------------------------------------------
+// Settled is the board's own state, not a guessed delay: a capture clone leaves
+// on its fade's finish event, a frame or more after the 140 ms slide (later on a
+// loaded CI runner). Every read of the settled DOM, and every probe of the next
+// step, waits for no clone and no running piece animation. A clone that outlives
+// the budget is a real leftover and fails the settled-DOM check.
+async function settle(page, boardSelector) {
+  await page.waitForFunction((selector) => {
+    const board = document.querySelector(selector);
+    return !board.querySelector(".piece-caught") && [...board.querySelectorAll(".piece")]
+      .every((piece) => piece.getAnimations().every((animation) => animation.playState !== "running"));
+  }, boardSelector, { polling: "raf", timeout: 1500 }).catch(() => {});
+}
+
 // --- per-frame sampling ------------------------------------------------------
 // Every frame of the transition: each square's own piece transform, its opacity,
 // how many .piece elements it holds and how many are capture clones. That is what
 // tells "the right piece travelled from the right square" apart from "something
 // ended up in the right place".
 async function startProbe(page, boardSelector) {
+  await settle(page, boardSelector);
   await page.evaluate((selector) => {
     const board = document.querySelector(selector);
     const probe = { frames: [], active: true, start: performance.now() };
@@ -275,6 +290,7 @@ function originOffset(frames, square) {
 
 // --- settled DOM == FEN ------------------------------------------------------
 async function settledDom(page, boardSelector) {
+  await settle(page, boardSelector);
   return page.evaluate((selector) => {
     const out = {};
     document.querySelectorAll(`${selector} .square`).forEach((square) => {
