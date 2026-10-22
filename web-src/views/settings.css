@@ -194,26 +194,10 @@
   position: relative;
   flex: none;
 }
-.conn-menu-btn {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
-}
-.conn-menu-btn:hover,
-.conn-menu-btn[aria-expanded="true"] {
-  background: var(--surface-3);
-  color: var(--text);
-}
-.conn-menu-btn:active { transform: scale(0.92); }
-.conn-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* The account menu opener is the shared quiet icon button (.btn.ghost.icon.sm);
+   the glyph is a little larger and the button stays lit while its menu is open. */
+.conn-menu-btn { font-size: 15px; }
+.conn-menu-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
 .conn-menu {
   position: absolute;
   top: calc(100% + 4px);

@@ -29,9 +29,11 @@ describe("settings motion", () => {
   });
 
   it("gives every settings control press feedback", () => {
-    for (const selector of [".settings-nav-link:active", ".conn-menu-btn:active"]) {
-      expect(settings).toContain(`${selector} {`);
-    }
+    expect(settings).toContain(".settings-nav-link:active {");
+    // The account menu opener is the shared quiet icon button, so it takes the
+    // .btn press, hover and focus states instead of its own copy of them.
+    const js = readFileSync(new URL("./views/settings.js", import.meta.url), "utf8");
+    expect(js).toContain('class="btn ghost icon sm conn-menu-btn"');
     expect(settings).toMatch(/\.conn-menu-item \{[^}]*transition:/);
   });
 

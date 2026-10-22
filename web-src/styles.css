@@ -5263,21 +5263,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .notice-stop { color: var(--danger); }
 .notice-stop:disabled { color: var(--muted); cursor: default; }
 
-.notice-close {
-  grid-column: 4;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-.notice-close:hover { background: var(--surface-3); color: var(--text); }
-.notice-close:focus-visible,
+/* The dismiss is the shared quiet icon button (.btn.ghost.icon.sm). */
+.notice-close { grid-column: 4; }
 .notice-action:focus-visible,
 .notice-stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Routine lines leave by themselves: × shows on hover only. */
