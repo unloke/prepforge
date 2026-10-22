@@ -16,7 +16,7 @@ def _fixture(client):
     assert response.status_code == 200, response.text
     added = response.json()
     return {"repertoire_id": added["repertoire_id"], "root_node_id": root,
-            "base_revision": added["revision"], "operation_id": str(uuid.uuid4()),
+            "operation_id": str(uuid.uuid4()),
             "plan": {"rootNodeId": root, "changes": [
                 {"action": "planned_add", "tempId": "tmp-opponent",
                  "parentRef": added["selected_node_id"], "moveUci": "e7e5",
@@ -55,9 +55,10 @@ def test_coverage_reply_and_opponent_commit_together_and_retry_once(client):
 
 def test_invalid_own_reply_cannot_leave_only_an_opponent_node(client):
     request = _fixture(client)
+    before = client.get("/api/build/load", params={"repertoire_id": request["repertoire_id"]}).json()
     request["plan"]["changes"][1]["moveUci"] = "e7e6"
     response = client.post("/api/build/generate/apply-plan", headers=csrf_headers(client), json=request)
     assert response.status_code == 400
     loaded = client.get("/api/build/load", params={"repertoire_id": request["repertoire_id"]}).json()
     assert len(loaded["nodes"]) == 2
-    assert loaded["revision"] == request["base_revision"]
+    assert loaded["revision"] == before["revision"]
