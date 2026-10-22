@@ -105,6 +105,7 @@ def export_account(
             ("games", games()),
             ("repertoires", repertoires()),
             ("training_progress", repo.iter_owner_training_progress(user.id)),
+            ("train_reviews", repo.iter_owner_train_reviews(user.id)),
             ("training_sessions", repo.iter_owner_training_sessions(user.id)),
         ]:
             yield f',"{key}":['

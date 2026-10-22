@@ -15,10 +15,8 @@ function widgetHarness({ coachOn = false } = {}) {
     createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval,
     getAnalyzeSession: () => (coachOn ? { positionCoach: { enabled: true, onWidgetSnapshot: vi.fn() } } : null),
-    // This device has already answered for the full net: nothing to ask here.
-    fullEngineChoice: () => null, chooseFullEngine: vi.fn(),
-    subscribeEngineSetup: () => () => {}, subscribeEngineProfile: () => () => {},
-    engineConsentHtml: () => html``, createPassFeed,
+    // The full net is here: no unlock row to paint.
+    paintUnlocks: () => {}, createPassFeed,
     // No whole-game pass: the card always searches for itself.
     analysisStore: async () => ({ passing: false, onPassChange: () => () => {}, passRead: () => null }),
   };

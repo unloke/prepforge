@@ -1,7 +1,8 @@
 import { html } from "./html.js";
 import { appState } from "./core/state.js";
-import { api } from "./core/api.js";
-import { activateModal } from "./core/modals.js";
+import { activeViewName, api } from "./core/api.js";
+import { isBuildReadOnly } from "./build-entry.js";
+import { openModal } from "./core/dialog.js";
 import { buildPaletteItems, filterPaletteItems, paletteScrollTop, renderPaletteItems } from "./command-palette.js";
 
 // The command palette (Ctrl/Cmd-K): the item list, its highlight and scrolling,
@@ -10,33 +11,38 @@ import { buildPaletteItems, filterPaletteItems, paletteScrollTop, renderPaletteI
 
 let paletteItems = [];
 let paletteActive = 0;
-let paletteA11yCleanup = null;
+let closePaletteDialog = null;
 
 // What an item runs: navigation, a repertoire, a training start, the theme.
 // These are the shell's (and its views'), so they arrive once at bind time.
 let switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
-  requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky,
-  toggleTheme;
+  requireSignIn, openTrain, onFeelingLucky, toggleTheme, editBuildNote;
 
 export function createPalette(deps) {
   ({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
-    requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky,
-    toggleTheme } = deps);
+    requireSignIn, openTrain, onFeelingLucky, toggleTheme, editBuildNote } = deps);
   return { paletteIsOpen, closePalette, openPalette, bindCommandPalette };
 }
+// "Add note" acts on the shown move of a repertoire open for editing in Repertoire.
+function noteTarget() {
+  if (activeViewName() !== "build" || isBuildReadOnly()) return null;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  return node?.parent_id ? node : null;
+}
+
+function paletteItemsNow(repertoires) {
+  return buildPaletteItems({ repertoires: repertoires || [], noteMove: noteTarget() });
+}
+
 export function paletteIsOpen() {
-  const el = document.getElementById("command-palette");
-  return !!(el && !el.hidden);
+  return !!document.getElementById("command-palette")?.open;
 }
 
 export function closePalette() {
-  const el = document.getElementById("command-palette");
-  if (el) {
-    el.hidden = true;
-    document.getElementById("palette-input")?.setAttribute("aria-expanded", "false");
-  }
-  if (paletteA11yCleanup) paletteA11yCleanup();
-  paletteA11yCleanup = null;
+  document.getElementById("palette-input")?.setAttribute("aria-expanded", "false");
+  const close = closePaletteDialog;
+  closePaletteDialog = null;
+  close?.();
 }
 
 function paintPalette() {
@@ -65,19 +71,18 @@ function paintPalette() {
 
 export function openPalette() {
   const el = document.getElementById("command-palette");
-  if (!el) return;
+  if (!el || el.open) return;
   // Open from what is already here: the keypress must not wait on a network
   // round trip. Repertoires arrive (or stay missing) behind it.
-  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires: appState.repertoireList || [] }), "");
+  paletteItems = filterPaletteItems(paletteItemsNow(appState.repertoireList), "");
   paletteActive = 0;
-  el.hidden = false;
   const input = document.getElementById("palette-input");
   if (input) {
     input.value = "";
     input.setAttribute("aria-expanded", "true");
   }
+  closePaletteDialog = openModal(el, { initialFocus: input, keep: true, onDismiss: closePalette });
   paintPalette();
-  paletteA11yCleanup = activateModal(el, { initialFocus: input });
   void refreshPaletteRepertoires();
 }
 
@@ -94,7 +99,7 @@ async function refreshPaletteRepertoires() {
     // A query typed while the fetch was in flight must survive the refresh.
     const input = document.getElementById("palette-input");
     const query = input?.value || "";
-    paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), query);
+    paletteItems = filterPaletteItems(paletteItemsNow(repertoires), query);
     paletteActive = 0;
     paintPalette();
   } catch (_) {
@@ -106,7 +111,7 @@ export function dismissTransientOverlays() {
   // Tab/command-palette navigation always wins over transient overlays: the
   // overlay click / Escape paths share this teardown so no orphaned keydown
   // listener survives a navigation-driven dismissal.
-  const overlay = document.querySelector(".modal-overlay.auth-overlay");
+  const overlay = document.querySelector("dialog.auth-modal");
   if (overlay) {
     if (typeof overlay._closeAuthModal === "function") overlay._closeAuthModal();
     else overlay.remove();
@@ -128,43 +133,34 @@ async function runPaletteItem(item) {
     editRepertoire(item.repertoireId);
     return;
   }
+  if (item.action === "add-note") {
+    // The palette's "Add note": the move menu's note dialog, for the shown move.
+    const node = noteTarget();
+    if (node) await editBuildNote(node.id);
+    return;
+  }
   if (item.action === "new-repertoire") {
     createRepertoirePrompt();
     return;
   }
+  // The same three starts as Train Home's rows; openTrain asks before
+  // abandoning a live game.
   if (item.action === "start-training") {
-    switchView("train");
-    // A guest gets the sign-in gate only; a live game on the board stays as it is.
     if (!appState.signedIn) {
+      switchView("train");
       requireSignIn("Sign in to start training", "train");
       return;
     }
-    const livePlay = appState.play && appState.play.active && (appState.play.history || []).length > 0;
-    if (livePlay) {
-      const ok = await showConfirmModal({
-        title: "Leave this game?",
-        body: "The current game will be abandoned.",
-        okLabel: "Start training",
-        cancelLabel: "Keep playing",
-      });
-      if (!ok) return;
-    }
-    if (appState.trainMode === "play") goToSmartTraining();
-    else startTraining();
+    await openTrain({ mode: "smart" });
     return;
   }
   if (item.action === "play-human") {
-    switchView("train");
-    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
-    if (playBtn) playBtn.click();
-    document.getElementById("start-play")?.click();
+    await openTrain({ mode: "play" });
     return;
   }
   if (item.action === "feeling-lucky") {
     dismissTransientOverlays();
-    switchView("train");
-    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
-    if (playBtn) playBtn.click();
+    await openTrain({ mode: "play", autostart: false });
     onFeelingLucky();
     return;
   }
@@ -176,20 +172,14 @@ async function runPaletteItem(item) {
 }
 
 export function bindCommandPalette() {
-  const root = document.getElementById("command-palette");
   const input = document.getElementById("palette-input");
   const results = document.getElementById("palette-results");
   const opener = document.getElementById("open-palette");
   if (opener) opener.addEventListener("click", () => openPalette());
-  if (root) {
-    root.addEventListener("click", (event) => {
-      if (event.target === root) closePalette();
-    });
-  }
   if (input) {
     input.addEventListener("input", () => {
       paletteItems = filterPaletteItems(
-        buildPaletteItems({ repertoires: appState.repertoireList || [] }),
+        paletteItemsNow(appState.repertoireList),
         input.value,
       );
       paletteActive = 0;
@@ -210,9 +200,6 @@ export function bindCommandPalette() {
         // (sign-in submits on Enter); this keystroke must not reach it.
         event.stopPropagation();
         runPaletteItem(paletteItems[paletteActive]);
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        closePalette();
       }
     });
   }

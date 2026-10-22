@@ -1,28 +1,21 @@
 ﻿import { expect, it } from "vitest";
 import { runInNewContext } from "node:vm";
+import { readFileSync } from "node:fs";
 import { appSource } from "./test-app-source.js";
 
-// The phone bottom bar's Review tab names the whole Review destination (Games
-// OR Scout). setReplaySection painted every .tab[data-replay-section] from the
-// active section only, which switched the Review tab off on Scout and left the
-// bottom bar with nothing lit after a #/scout route or a More > Scout tap.
+// The phone bottom bar's tab is labelled Games: it is lit on Games only. Scout
+// lives in the More sheet, so More is what lights up on Scout (and on Teams
+// and Settings); the bar always has exactly the open destination lit.
 const source = appSource();
-const REVIEW_PAINT = `
-  // switchView's bottom-bar branch: Review lights up for either section.
-  for (const button of document.querySelectorAll("[data-review-tab]")) {
-    const active = appState.currentView === "replay";
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-current", active ? "page" : "false");
-  }
-`;
-const SET_REPLAY_SECTION = source.slice(
+const PHONE_TABS = readFileSync(new URL("./phone-tabs.js", import.meta.url), "utf8").replace(/^export /m, "");
+const SET_REPLAY_SECTION = PHONE_TABS + source.slice(
   source.indexOf("function setReplaySection("),
   source.indexOf("\n// Top-bar title follows"),
 );
 const DRIVER = `
 globalThis.nav = (view, section) => {
   appState.currentView = view;
-  ${REVIEW_PAINT}
+  paintPhoneTabs(view, section);
   setReplaySection(section);
 };
 `;
@@ -52,7 +45,7 @@ const RAIL_GAMES = () => tab({ "data-replay-section": "games" });
 const RAIL_SCOUT = () => tab({ "data-replay-section": "scout" });
 
 // Paint a view switch to `view` plus the replay section, in app order.
-function nav(view, section, { buttons, currentView } = {}) {
+function nav(view, section, { buttons, currentView, more = null } = {}) {
   const context = {
     appState: { currentView: currentView ?? view, replaySection: section },
     notices: { clearStatusOnNavigate() {} },
@@ -69,6 +62,7 @@ function nav(view, section, { buttons, currentView } = {}) {
         return buttons;
       },
       querySelector: () => null,
+      getElementById: (id) => (id === "more-nav-btn" ? more : null),
     },
   };
   runInNewContext(`${SET_REPLAY_SECTION}\n${DRIVER}`, context);
@@ -76,26 +70,34 @@ function nav(view, section, { buttons, currentView } = {}) {
   return context;
 }
 
-it("keeps the phone bar's Review tab lit on Scout", () => {
-  const review = REVIEW(), railGames = RAIL_GAMES(), railScout = RAIL_SCOUT();
-  const ctx = nav("replay", "scout", { buttons: [review, railGames, railScout] });
+it("lights More, not the Games tab, on Scout", () => {
+  const review = REVIEW(), railGames = RAIL_GAMES(), railScout = RAIL_SCOUT(), more = tab({});
+  const ctx = nav("replay", "scout", { buttons: [review, railGames, railScout], more });
   expect(ctx.appState.replaySection).toBe("scout");
-  expect(review.classList.contains("is-active")).toBe(true);
-  expect(review.getAttribute("aria-current")).toBe("page");
+  expect(review.classList.contains("is-active")).toBe(false);
+  expect(more.classList.contains("is-active")).toBe(true);
+  expect(more.getAttribute("aria-current")).toBe("page");
   expect(railGames.classList.contains("is-active")).toBe(false);
   expect(railScout.classList.contains("is-active")).toBe(true);
 });
 
-it("keeps the Review tab lit on Games", () => {
-  const review = REVIEW();
-  nav("replay", "games", { buttons: [review, RAIL_GAMES()] });
+it("keeps the Games tab lit on Games, and More dark", () => {
+  const review = REVIEW(), more = tab({});
+  nav("replay", "games", { buttons: [review, RAIL_GAMES()], more });
   expect(review.classList.contains("is-active")).toBe(true);
   expect(review.getAttribute("aria-current")).toBe("page");
+  expect(more.classList.contains("is-active")).toBe(false);
 });
 
-it("darkens the Review tab once Review is left", () => {
+it("darkens the Games tab once Review is left", () => {
   const review = REVIEW();
   nav("train", "games", { buttons: [review] });
   expect(review.classList.contains("is-active")).toBe(false);
   expect(review.getAttribute("aria-current")).toBe("false");
+});
+
+it("never lights More beside the Analyze tab", () => {
+  const more = tab({});
+  nav("analyze", "games", { buttons: [], more });
+  expect(more.classList.contains("is-active")).toBe(false);
 });

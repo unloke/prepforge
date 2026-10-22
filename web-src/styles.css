@@ -150,7 +150,11 @@
   /* -- Radii, elevation, control sizes ------------------------------------ */
   --radius: 6px;      /* controls, small chips */
   --radius-card: 10px; /* cards, popovers, dialogs */
+  --radius-chip: 4px; /* status and kind pills: one step under a control */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
+  --switch-h: 20px;
+  --knob: 16px;
   --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);    /* resting cards */
   --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08); /* dialogs, floating tools */
   --shadow-bar: 0 -6px 18px rgba(20, 20, 30, 0.12); /* a bar that floats over scrolling content */
@@ -162,12 +166,11 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
   --ease-emphasis: cubic-bezier(0.3, 1.3, 0.4, 1); /* emphasized: a small pop */
 
-  /* -- Overlay stacking: one ordered ladder instead of ad-hoc numbers -------- */
+  /* -- In-page stacking: one ordered ladder instead of ad-hoc numbers. Dialogs,
+     menus and pickers are <dialog>/[popover] in the top layer and need none. */
   --z-chrome: 45;    /* app chrome (rail) */
-  --z-popover: 300;  /* in-page popovers (train selector, promotion picker) */
   --z-tool: 500;     /* floating tools (engine window) */
-  --z-overlay: 1000; /* modal overlay and scrims */
-  --z-menu: 1100;    /* context/account menus, command palette, drag ghost */
+  --z-menu: 1100;    /* drag ghost */
   --z-toast: 1200;   /* toast stack, confetti */
   --z-skip: 1300;    /* skip link */
 
@@ -322,7 +325,7 @@
 }
 
 /* On desktop the link must clear the icon rail, or it lands on the brand mark. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .skip-link {
     left: 72px;
   }
@@ -641,35 +644,18 @@ h2 {
   color: var(--accent-strong);
 }
 
-/* Mobile More sheet: real navigation to the secondary destinations. */
-.sheet-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  background: rgba(15, 17, 22, 0.32);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-
+/* Mobile More sheet: real navigation to the secondary destinations. A .modal
+   <dialog> like every other one; on a phone (the only place it opens) every
+   .modal rises from the bottom edge, and this one floats a little above it. */
 .sheet {
-  width: 100%;
   background: var(--panel);
   border-radius: 14px 14px 0 0;
   padding: 8px 12px calc(16px + env(safe-area-inset-bottom));
-  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the command sheet is a real overlay */
-  /* The sheet is pulled up from the edge it lives on, like the Analyze sheet
-     above it, so every bottom sheet in the app arrives the same way. */
-  transition: transform var(--dur) var(--ease-out);
 }
-@starting-style {
-  .sheet-scrim:not([hidden]) { opacity: 0; }
-  .sheet-scrim:not([hidden]) .sheet { transform: translateY(24%); }
-}
+.sheet::backdrop { background: rgba(15, 17, 22, 0.32); backdrop-filter: none; }
 
 .sheet-grab {
   grid-column: 1 / -1;
@@ -694,24 +680,7 @@ h2 {
   cursor: pointer;
 }
 
-/* Prototype top-bar icon buttons: borderless, 30px, tinted on hover. */
-.icon-btn {
-  display: inline-grid;
-  grid-auto-flow: column;
-  place-items: center;
-  gap: 6px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
-.icon-btn .ic { width: 17px; height: 17px; }
-.icon-btn kbd {
+.rail-btn kbd {
   padding: 0 5px;
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a key cap needs its own edge */
   border-radius: 4px;
@@ -761,8 +730,6 @@ h2 {
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
    action here. */
-/* On phones it opens from the More sheet (--z-overlay) and must sit above it. */
-.context-menu.account-menu { z-index: var(--z-menu); }
 .account-menu button[data-action="signout"] {
   color: var(--danger);
 }
@@ -855,7 +822,7 @@ h2 {
 /* Phone: the 20px chip × sat between the toolbar's 44px controls and was the
    only way to drop a source. The × keeps its 20px look inside a 44px target,
    and the chip itself is a 44px row like every other phone control. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .src-chip-x {
     width: 44px;
     height: 44px;
@@ -865,11 +832,15 @@ h2 {
   .src-chip { height: auto; min-height: 44px; padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
 }
 
+/* The [popover] root is only a top-layer host; .src-popover is the box. */
 .src-composer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text);
   background: transparent;
+  overflow: visible;
 }
 
 .src-popover {
@@ -976,6 +947,12 @@ h2 {
   gap: 6px;
 }
 
+.src-add-error {
+  margin: 4px 0 0;
+  color: var(--danger);
+  font-size: var(--fs-s);
+}
+
 .src-add-input {
   flex: 1;
   min-width: 0;
@@ -1050,7 +1027,7 @@ h2 {
     margin-bottom: 12px;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 
@@ -1091,8 +1068,8 @@ h2 {
 
 .pf-switch {
   position: relative;
-  width: 38px;
-  height: 22px;
+  width: var(--switch-w);
+  height: var(--switch-h);
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
   border-radius: 999px;
   background: var(--panel-soft);
@@ -1137,8 +1114,8 @@ h2 {
   position: absolute;
   top: 1px;
   left: 1px;
-  width: 18px;
-  height: 18px;
+  width: var(--knob);
+  height: var(--knob);
   border-radius: 50%;
   background: var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); /* taste-skill-ignore: the knob's depth, not a resting shadow */
@@ -1146,7 +1123,7 @@ h2 {
 }
 
 .pf-switch.is-on .pf-knob {
-  transform: translateX(16px);
+  transform: translateX(calc(var(--switch-w) - var(--knob) - 4px));
 }
 
 /* Press: the knob gives under the thumb. scale is its own property, so it
@@ -1321,11 +1298,23 @@ h2 {
 .view.is-active {
   display: block;
   height: 100%;
-  animation: view-enter var(--dur) var(--ease-out) both;
 }
 
-/* One loading state: while the hold is up the default view stays hidden. */
-.boot-hold:not([hidden]) ~ .view.is-active {
+/* A route change is a View Transition (view-swap.js): the workspace is the one
+   named element, so the rail stays put and the page cross-fades with a few px
+   of travel. The group never morphs size. */
+.workspace { view-transition-name: view; }
+::view-transition-group(view) { animation: none; }
+::view-transition-old(view) { animation: view-leave var(--dur-fast) var(--ease-out) both; }
+::view-transition-new(view) { animation: view-enter var(--dur) var(--ease-out) both; }
+
+@keyframes view-leave {
+  to { opacity: 0; }
+}
+
+/* One loading state: until the hold leaves the DOM the default view stays
+   hidden, also before JS shows the hold, so the view paints (and enters) once. */
+.boot-hold ~ .view.is-active {
   display: none;
 }
 
@@ -1496,9 +1485,9 @@ h2 {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid currentcolor;
+  border: 2px solid var(--muted);
   border-top-color: transparent;
-  animation: btn-spin 600ms linear infinite;
+  animation: spin 600ms linear infinite;
 }
 
 .btn.primary.is-loading::after,
@@ -1507,11 +1496,29 @@ h2 {
   border-top-color: transparent;
 }
 
-@keyframes btn-spin {
-  to {
-    transform: rotate(360deg);
-  }
+/* ---- One pill ------------------------------------------------------------
+   Status and kind labels that sit inside a row or beside a value: one height,
+   one radius, one weight, sentence case. Each class only sets its colours (a
+   pale tint with dark text of the same hue); a view may set the text size. */
+.status-pill,
+.team-role-badge,
+.lib-chip,
+.kchip,
+.kind-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
 }
+/* A pill with no label (a share whose role the server did not send) draws nothing. */
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge):empty { display: none; }
 
 .link {
   border: 0;
@@ -1594,7 +1601,7 @@ h2 {
 @media (max-width: 1020px) {
   .teams { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 .lib .card { padding: 0; }
@@ -1623,9 +1630,9 @@ h2 {
   line-height: 18px;
 }
 
-/* Today strip */
-#view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
-#view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
+/* Today strip. It and the next steps arrive once, when their data lands. */
+#view-dashboard .today.is-enter,
+#view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
 /* The strip is one band: what is waiting on the left, the week's history and
    the action on the right. Stacked as four lines in one narrow column, the
    queue was the second line and the card kept a hole the width of the window. */
@@ -1792,9 +1799,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: 11px;
   margin-top: 4px;
   border-radius: 50%;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
-  background-size: 200% 100%;
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+  background: var(--surface-3);
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 .skeleton-stack { display: grid; flex: 1; gap: 5px; min-width: 0; }
 .skeleton-bar.skeleton-thin { height: 8px; }
@@ -1813,25 +1819,19 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row:active { background: var(--surface-3); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
 
-/* ---- One list-entry primitive -----------------------------------------
-   A fresh list fades in item by item. `--i` is the row index; the cap keeps a
-   long list from dragging. Every row is transform/opacity only, so the rows
-   below never move. Callers: dashboard (library), teams, replay summary. */
-.list-enter > * {
+/* ---- One entrance primitive ---------------------------------------------
+   A thing enters once, when it first arrives (list-enter.js marks it
+   `.is-enter` and takes the marker off when the entrance ends). A row already
+   on screen, a skeleton, or content painted while its view is still fading in
+   never enters, so nothing on a page animates twice. Lists stagger by `--i`
+   (capped) at the container's `--stagger`; transform and opacity only, so the
+   rows below never move. */
+.list-enter > .is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
-  animation-delay: calc(min(var(--i, 0), 8) * 25ms);
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger, 25ms));
 }
-#view-dashboard .list-enter > *,
-#view-teams .list-enter > * {
-  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
-}
-/* The Library reconciles its rows instead of rewriting them, so it marks the
-   ones that actually arrived. A row that was already on screen keeps its
-   settled state: re-showing the view, filtering, or a refresh that only
-   changed another row must not replay the entrance over it. */
-#view-dashboard .list-enter > .lib-row:not(.is-enter) {
-  animation: none;
-}
+#view-dashboard .list-enter,
+#view-teams .list-enter { --stagger: 60ms; }
 @keyframes row-enter {
   from {
     opacity: 0;
@@ -1871,12 +1871,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .rep-sub { color: var(--label); font-size: var(--fs-xs); }
 .lib-chip {
   flex: none;
-  padding: 1px 6px;
-  border-radius: 4px;
   background: var(--surface-3);
   color: var(--label);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
 }
 /* A shared tag is a tag, not a micro-label: it sits at the size of the other
    chips instead of a 10px tracked cap, and says "shared" in lower case. */
@@ -1927,16 +1923,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
 }
 /* Queue chips reuse the mastery-kind colours (colour means chess). */
-.kchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  white-space: nowrap;
-}
 .kchip::before {
   content: "";
   width: 6px;
@@ -1947,35 +1933,27 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
+button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
+button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
-  width: var(--control-h);
-  min-width: var(--control-h);
-  height: var(--control-h);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--label);
   font-size: 14px;
   line-height: 1;
   opacity: 0.7;
-  /* Press feedback: same scale as .btn, on a control that is not a .btn. */
   transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
-.row-menu-btn:active {
-  transform: scale(0.97);
-}
+/* The row's ⋯ is the shared quiet icon button (.btn.ghost.icon); it only
+   stays dim until its row is hovered or selected. */
 .lib-row:hover .row-menu-btn,
 .lib-row.is-selected .row-menu-btn,
 .row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
-.row-menu-btn:hover { background: var(--surface-3); }
-.row-menu-btn:active { transform: scale(0.97); }
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 .empty-state.big {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 48px 24px;
   border: 0;
@@ -1984,7 +1962,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
 /* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
 .empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
-.empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 
 /* Side dot (repertoire colour) */
@@ -2085,7 +2063,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-dashboard) {
     padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
   }
@@ -2175,6 +2153,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   margin: 0;
 }
 
+/* Panel containers. These panels get their width from the board, the dock or a
+   side column, not from the window (the Repertoire panel is ~516px at 1440x900
+   and ~1000px at 1920x1080; the Games ledger narrows as the window gets taller),
+   so the layout switches inside them are @container rules on their own width.
+   Viewport @media stays for the page layout around them. */
+#build-sidebar { container: build-panel / inline-size; }
+#build-inspector { container: dock / inline-size; }
+.coach-card,
+.an-pane,
+#analysis-eval-card { container-type: inline-size; }
+.engine-slot { container: engine-card / inline-size; }
+/* Scout's columns (scout-main, scout-side) and the Games ledger and detail
+   (ledger, focus) name themselves in their own rules. */
+
 /* Study views claim the full workspace width so the board + sidebar fill the
    viewport instead of sitting inside the narrow list-view column. Study views
    also pin their height to the viewport (not the page scroll) so the right
@@ -2206,7 +2198,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   max-height: var(--study-h);
   overflow: hidden;
 }
-@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
   #analyze-sidebar {
     height: auto;
     align-self: start;
@@ -2630,115 +2622,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--muted);
 }
 
-.explain-review .pf-switch,
-.train-blitz-row .pf-switch {
-  width: 34px;
-  height: 20px;
-}
 
-.explain-review .pf-knob,
-.train-blitz-row .pf-knob {
-  width: 16px;
-  height: 16px;
-}
-
-.explain-review .pf-switch.is-on .pf-knob,
-.train-blitz-row .pf-switch.is-on .pf-knob {
-  transform: translateX(14px);
-}
-
-.train-repertoire-menu {
-  position: relative;
-  min-width: 0;
-}
-.train-repertoire-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-  font-size: var(--fs);
-  font-weight: 650;
-  list-style: none;
-  user-select: none;
-}
-.train-repertoire-summary::-webkit-details-marker { display: none; }
-.train-repertoire-summary:hover { border-color: var(--accent); }
-.train-repertoire-summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-}
-.train-repertoire-chevron {
-  flex: none;
-  color: var(--muted);
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.train-repertoire-menu[open] .train-repertoire-chevron { transform: rotate(180deg); }
-.train-repertoire-popover {
-  position: absolute;
-  z-index: var(--z-popover);
-  top: calc(100% + 5px);
-  left: 0;
-  right: 0;
-  display: grid;
-  gap: 2px;
-  max-height: min(280px, 45vh);
-  overflow-y: auto;
-  padding: 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  background: var(--panel);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--text) 16%, transparent);
-}
-.train-repertoire-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 5px 6px;
-  border-radius: 6px;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.25;
-}
-.train-repertoire-option:hover { background: var(--accent-soft); }
-.train-repertoire-option input {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  accent-color: var(--accent-strong);
-}
-.train-repertoire-option .rep-option-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs);
-}
-.train-repertoire-option .rep-option-color {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: var(--fs);
-  white-space: nowrap;
-}
-.train-repertoire-select-all {
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--line-soft);
-  font-size: var(--fs);
-  font-weight: 700;
-}
-.train-repertoire-empty {
-  margin: 6px 4px 4px;
-  font-size: var(--fs);
-  line-height: 1.35;
-}
 /* Confetti */
 .confetti-layer {
   position: fixed;
@@ -2910,7 +2794,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 /* One save chip per screen. On desktop that is the board bar's, beside the
    move label that edits change; the inspector's copy exists for phones, where
    the board bar sits out of reach (phone.css). */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   #build-sync-head { display: none; }
 }
 
@@ -3017,16 +2901,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    and the Explorer rows arrive after a move or a fetch, so they enter with a
    short rise and stagger; the selected move's fill eases. Transform and
    opacity only, and the global reduced-motion block turns all of it off. */
-#build-branchbar:not([hidden]) { animation: fork-enter var(--dur) var(--ease-out) both; }
+#build-branchbar.is-enter { animation: fork-enter var(--dur) var(--ease-out) both; }
 @keyframes fork-enter {
   from { opacity: 0; transform: translateY(-4px); }
 }
-#explorer-rows .explorer-row,
-#coverage-gaps .coverage-gap {
+#explorer-rows > .is-enter,
+#coverage-gaps > .coverage-gap.is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 40ms);
 }
-#explorer-rows.is-refresh .explorer-row { animation: none; }
 #build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 #build-branchbar .fork-chip:active { transform: scale(0.97); }
 
@@ -3053,7 +2936,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   align-items: center;
   gap: 1px;
   padding: 6px var(--build-pad, 12px);
-  overflow-x: auto; /* one row when it fits, wraps below 761px (phone.css) */
+  overflow-x: auto; /* one row; build.js keeps its current (last) crumb in view */
   white-space: nowrap;
   font-size: var(--fs-s);
   scrollbar-width: none;
@@ -3075,23 +2958,70 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    trail's own size, and at 10px it pulled the eye below the moves it joins. */
 .crumb-sep { color: var(--label); font-size: var(--fs-s); padding: 0 1px; }
 .crumb-empty { color: var(--label); padding: 2px 4px; }
-.build-comment {
-  flex: 1 0 100%;
-  margin: 0;
-  padding: 0 12px 8px;
+/* The named opening of the shown line, at the trail's right end. A label,
+   so it gives way (ellipsis) before the trail does: the trail sizes from its
+   content and the label's far larger shrink factor takes the squeeze first. */
+.tree-meta:has(> .build-opening:not([hidden])) { flex-wrap: nowrap; }
+.crumbs:has(+ .build-opening) { flex: 1 1 auto; }
+.build-opening {
+  flex: 0 1000 auto;
+  min-width: min(10em, 30%);
+  max-width: 45%;
+  padding-right: var(--build-pad, 12px);
   color: var(--muted);
   font-size: var(--fs-s);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A move's note, under the move: one line until it is opened. */
+.mtree-comment {
+  margin: 1px 0 3px;
+  padding: 1px 6px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-style: normal;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.mtree-comment.is-open {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.mtree-note {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-left: 3px;
-  vertical-align: super;
+/* The move menu's pointer handle: a small ⋯ badge at the hovered move's
+   corner. It floats, so showing it moves nothing around it. */
+#view-build .mtree-move { position: relative; }
+.mtree-move .mtree-more {
+  /* -4px stays inside the tree's 4px top padding, so the first row's badge
+     is not cut off by the scrolling tree. */
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line);
   border-radius: 50%;
-  background: currentColor;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) {
+  #view-build .mtree-move:hover { z-index: 1; }
+  .mtree-move:hover .mtree-more {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .mtree-move .mtree-more:hover { background: var(--surface-3); }
 }
 
 .forkbar {
@@ -3296,10 +3226,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 13px;
 }
 .inspector-info-pop {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 5;
+  inset: auto;
+  margin: 0;
+  border: 0;
   max-width: 240px;
   padding: 8px 10px;
   border-radius: var(--radius-card);
@@ -3314,13 +3243,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
   .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
   .dock { flex: none !important; }
   .dock-resizer { display: none; }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .tree-wrap { max-height: none; }
   .dock-tabs button { min-height: 44px; }
   /* Library's Import / New live in the More sheet on phones (prototype). */
@@ -3346,7 +3275,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    state, and the eye read that ground as content that failed to load. Long
    setup content (Practice game's pickers) still caps at the viewport and
    scrolls inside. */
-@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
   #view-train .train-sidebar { height: auto; align-self: start; }
 }
 #view-train .board-area { position: relative; }
@@ -3360,24 +3289,17 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow: auto;
   overscroll-behavior: contain;
 }
-#view-train .panel-head { padding: 8px 12px; }
-/* The mode tabs are the panel's first row, not a separate band: the banner's
-   tone already steps the surface below them. */
-#view-train .train-sidebar > .panel-head { border-bottom: 0; }
 /* The panel's cards are not boxes: the content sits on the panel and the
    fills inside it (chips, the up-next field, the health rows) carry the
    structure. */
 #view-train .tcard { border: 0; }
 #view-train .tcard > h3 { border-bottom: 0; font-size: var(--fs); }
-/* The counters are pills on a soft fill, like the app's other chips. */
-#view-train .stat { border: 0; }
 /* Nothing in this panel that is meant to be read sits under the body size. */
 #view-train .tcard p,
 #view-train .note { font-size: var(--fs); }
 #view-train .btn.sm { font-size: var(--fs); }
 #view-train .seg { display: flex; width: 100%; }
 #view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
-/* The mode tabs answer a press like every other control on the page. */
 #view-train .seg-btn:active:not(:disabled) { transform: scale(0.97); }
 
 .blitz-bar {
@@ -3506,10 +3428,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--panel);
 }
 .tcard p { margin: 0; font-size: var(--fs-s); }
-.tcard .field,
-.train-play-setup { display: flex; flex-direction: column; gap: 10px; }
-.tcard .field { gap: 4px; }
-.train-picker-label { color: var(--label); font-size: var(--fs); font-weight: 550; }
 /* The card's own head, in the Games ledger-head terms: title, then a hairline
    separating it from the controls below. */
 .tcard > h3 {
@@ -3520,21 +3438,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 13.5px;
   font-weight: 700;
 }
-.train-setup select {
-  width: 100%;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: inherit;
-  font: inherit;
-}
-.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
-.train-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.train-start-row .btn { flex: 1; min-width: 0; }
-/* The setup's primary action: one size taller than the Games toolbar buttons,
-   because it is the only thing the whole panel is for. */
 .btn.lg {
   height: 36px;
   min-height: 36px;
@@ -3548,35 +3451,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
   font-size: var(--fs-s);
 }
-.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
-.train-play-chip {
-  align-self: flex-start;
-  margin: 0;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: var(--warn-soft);
-  color: var(--warn-text);
-  font-size: var(--fs);
-  font-weight: 650;
-}
-
-/* Progress */
-.prog-head { display: flex; align-items: center; gap: 8px; }
-.prog-head .spacer { flex: 1; }
-.train-mode-name { color: var(--muted); font-size: var(--fs); }
-/* Choosing a mode is setup: once a session runs, or its result shows, the tabs
-   leave with the setup card and Modes leads back to them. */
-#view-train .train-sidebar:not([data-session-state="setup"]) #train-modes,
-#view-train .train-sidebar[data-session-state="setup"] #train-back { display: none; }
-#view-train .train-back { gap: 4px; padding-left: 4px; }
-#view-train .train-back .bi { display: block; }
-/* Setup-only entries leave too, and a live Practice game is still `setup` for
-   the panel (the tabs stay up), so that one is read from the game itself: Lucky
-   is disabled exactly while a game is active, which is when History must be
-   gone. A finished game re-enables it and the entry returns. Every other state
-   already hides these entries with the setup card. */
-#view-train .train-sidebar[data-session-state="setup"] #train-play-setup:has(#feeling-lucky:disabled) [data-train-history] { display: none; }
-.train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {
   display: block;
@@ -3598,78 +3472,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-line-path:hover { color: var(--text); }
 .train-line-path:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
-.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs); }
-.card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
-.card-dots i.done { background: var(--good); }
-.card-dots i.cur { background: var(--accent); }
-.card-dots span { margin-left: 6px; }
 .prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
 .prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-slow) var(--ease-out); }
-.qstrip { display: flex; flex-direction: column; gap: 6px; }
-.qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
-.qbar i { display: block; min-width: 4px; }
-.qbar i.k-weak, .tsum-row i.k-weak { background: var(--k-weak); }
-.qbar i.k-due, .tsum-row i.k-due { background: var(--k-due); }
-.qbar i.k-new, .tsum-row i.k-new { background: var(--k-new); }
-.qbar i.k-polish { background: var(--k-polish); }
-.tsum-row i.k-mastered { background: var(--k-mastered); }
-.tsum-row i.k-learning { background: var(--k-learning); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .kchip.k-learning { color: var(--accent-text); background: color-mix(in srgb, var(--k-learning) 13%, transparent); }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
-
-/* The setup briefing: the queue's size is the one number the screen is about,
-   then its make-up, then the repertoires it draws from — three shared left
-   edges, gaps between the groups wider than inside them. */
-.train-brief { display: flex; flex-direction: column; gap: 12px; }
-.train-brief-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-/* The queue size is a value the player reads, not a page headline: at display
-   size it made the coach banner above it look like a kicker. */
-.train-brief-count { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
-.train-brief-reps { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: var(--fs); }
-/* Name, then the same three columns on every row: the meters line up with each
-   other and with the numbers, so two repertoires read as one small table
-   instead of two rows placed by their own text lengths. */
-.train-source { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px 176px; align-items: center; gap: 10px; }
-.train-source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-/* Mastery is the one progress signal a player has before starting: a small
-   track on the recess, read against the number beside it. */
-.train-source-meter { display: block; width: 72px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.train-source-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
-.train-source-count { color: var(--label); white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* Nothing to train: the dead Start is replaced by the fix, not by a caption. */
-.train-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-
-/* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
-.stats { display: flex; flex-wrap: wrap; gap: 6px; }
-.stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  /* Recessed, not outlined-and-white: the same quiet fill the Games summary
-     chips and ledger rows use inside their card. */
-  background: var(--panel-soft);
-  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
-}
-.stat b { font-size: var(--fs); line-height: 1.2; }
-.stat b.good { color: var(--good-text); }
-.stat b.bad { color: var(--danger); }
-.stat span { color: var(--label); font-size: var(--fs); }
-.stat.pop { animation: streakPop var(--dur) var(--ease-emphasis); }
-.stat.milestone { border-color: var(--good); background: var(--good-soft); }
-.stat.milestone b { color: var(--good-text); }
-.stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
-.stat.at-risk span::after { content: " · at risk"; color: var(--danger); }
-.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs); }
-.pips { display: flex; flex-wrap: wrap; gap: 3px; min-height: 9px; }
-.pips i { width: 9px; height: 9px; border-radius: 2px; }
-.pips i.ok { background: var(--good); }
-.pips i.no { background: var(--danger); }
-.trail-empty { color: var(--label); font-size: var(--fs); }
 
 .upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .un-row {
@@ -3692,63 +3500,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    panel's body size rather than the app's smallest step. */
 #view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
 
-/* The result card arrives when the session ends: one rise, once. */
-#train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
-/* The session card arrives the same way when Start opens it, and only then:
-   the panel stays mounted as the queue advances, so cards never re-rise. */
-#train-progress-panel:not([hidden]) { animation: trainCardEnter var(--dur) var(--ease-out) both; }
-@keyframes trainCardEnter {
-  from { opacity: 0; transform: translateY(10px); }
-}
-
-/* Session summary. A .tcard like the rest; the stat cells are its fills. */
-/* The stat cells fill the row they are in: a session with a skip AND a day
-   streak has five of them, and a fixed four-column grid left three empty
-   columns under the last one. */
-.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
-.sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
-.sum-cells b { font-size: 18px; }
-.sum-cells span { color: var(--label); font-size: var(--fs); }
-.delta { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
-.tsum-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 40px;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: var(--fs);
-}
-.tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
-.tsum-row .num { text-align: right; }
-.tsum-row .up { color: var(--good-text); font-weight: 650; }
-.tsum-row .down { color: var(--danger); font-weight: 650; }
 .btn.block { width: 100%; }
-
 .faint { color: var(--label); }
 
-@keyframes streakPop {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.18); }
-  100% { transform: scale(1); }
-}
-
-#view-train .train-sidebar[data-session-state="active"] .train-setup,
-#view-train .train-sidebar[data-session-state="summary"] .train-setup,
-#view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
-/* The result card takes the room of the panel it fills instead of stacking
-   under the session card. */
-#view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
-}
-@media (max-width: 760px) {
-  #view-train .seg-btn { min-height: 44px; }
-  #view-train .panel-head { padding: 8px 12px; border-top: 1px solid var(--line); }
-  /* Prototype: on phones the coach prompt leads the panel, above the modes. */
-  #view-train .train-coach { order: -1; }
-  .train-start-row .btn { flex: 1 1 140px; }
-  .sum-cells { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ===========================================================================
@@ -3869,13 +3626,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    Without it those resolve against the page and, sitting deep inside the
    scrolled list, stretched the document: the whole Scout page could be
    dragged down into empty space. */
-.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
+.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; container: scout-main / inline-size; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
 /* The detail card ends with its content: a line's detail runs 448-536px tall,
    and stretching the card to the 808px grid row left a 284px white hole under
    it. It still caps at the row and scrolls if a detail runs longer. */
-.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
+.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; container: scout-side / inline-size; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
 .scout-panel:not(:has(.scout-section)) .scout-side { display: none; }
@@ -3899,11 +3656,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-skeleton .sk-line { width: 70%; height: 15px; margin-bottom: 6px; }
 .scout-skeleton .sk-row { height: 40px; border-radius: 8px; background: var(--surface-3); }
 @media (prefers-reduced-motion: no-preference) {
-  .scout-skeleton .sk { animation: scout-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+  .scout-skeleton .sk { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
   .scout-skeleton .sk-row:nth-child(3) { animation-delay: 0.1s; }
   .scout-skeleton .sk-row:nth-child(4) { animation-delay: 0.2s; }
 }
-@keyframes scout-skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 .scout-panel .scout-empty { display: none; }
 .scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
 /* "0 games fetched" before any scout has run is noise next to the empty card. */
@@ -3937,7 +3693,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .games-panel,
   .replay-results { height: auto; }
 }
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
   .toolbar { gap: 8px; }
   .toolbar .spacer { display: none; }
@@ -4172,7 +3928,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .coverage-stale { color: var(--warn-text); }
 .coverage-gap.is-readonly { grid-template-columns: 1fr; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .coverage-gap { min-height: 56px; }
   .coverage-gap-select { min-width: 44px; }
 }
@@ -4293,7 +4049,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 4px;
   background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
   background-size: 200% 100%;
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 /* A placeholder for a headline-sized element (a repertoire name, a team name):
    the same bar, taller, with its own row. */
@@ -4305,10 +4061,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 10px;
   padding: 14px 12px;
 }
-@keyframes skeleton-pulse {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
+/* The one loading pulse: a flat bar breathing, never a shimmer. */
+@keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 
 .inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 
@@ -4606,22 +4360,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-style: italic;
 }
 
-.tag {
-  border: 1px solid var(--line); /* taste-skill-ignore: a chip needs its own edge */
-  border-radius: 3px;
-  padding: 1px 5px;
-  font-size: 10px;
-  color: var(--muted);
-  background: var(--panel);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 
 /* Context menu — all chrome uses theme tokens so light/dark stay consistent. */
 
+/* A [popover]: the top layer, Escape and the outside press are the browser's. */
 .context-menu {
-  position: fixed;
-  z-index: var(--z-menu);
+  inset: auto;
+  margin: 0;
+  border: 0;
   min-width: 220px;
   max-width: min(280px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
@@ -4638,9 +4384,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
      the entrance below is desktop only and the two never stack. */
   transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   @starting-style {
-    .context-menu:not([hidden]) {
+    .context-menu:popover-open {
       opacity: 0;
       translate: 0 -4px;
     }
@@ -4658,6 +4404,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .context-section:first-child {
   padding-top: 4px;
+}
+/* The account or name under its label keeps its own case and stays on one line. */
+.context-who {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
 }
 
 /* Names the move the node menu acts on (UX walkthrough 2026-10-01 P2-8). */
@@ -4727,54 +4485,61 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Modal */
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  display: grid;
-  /* Every dialog opens at the same height (sign-in, confirm, share, invite), so
-     they don't jump between centred and top-anchored; growth extends downward. */
-  place-items: start center;
-  padding-top: min(14vh, 120px);
-  background: rgba(20, 18, 14, 0.36);
-  backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-/* The dim arrives with the dialog rather than snapping on behind it. */
-@starting-style {
-  .modal-overlay:not([hidden]) { opacity: 0; }
-}
-
-/* Sign-in gate only: top-bar tabs stay clickable above the dim layer so the
-   first tab click after a Lucky auth gate actually navigates instead of just
-   dismissing the overlay (the "bounce back to Train" report). The dialog box
-   itself keeps pointer events; every other modal (share/join/confirm) keeps
-   the default full-viewport backdrop, including click-outside-to-dismiss. */
-.modal-overlay.auth-overlay {
-  pointer-events: none;
-}
-
-.modal-overlay.auth-overlay .modal {
-  pointer-events: auto;
-}
-
+/* A .modal is a native <dialog> (core/dialog.js). The top layer replaces the
+   z-index; ::backdrop is the one scrim. Every dialog opens at the same height
+   (sign-in, confirm, share, invite), so they don't jump between centred and
+   top-anchored; growth extends downward. Open and close both transition:
+   display/overlay are discrete, so the exit plays before the box leaves. */
 .modal {
+  position: fixed;
+  inset: 0 0 auto;
+  margin: min(14vh, 120px) auto 0;
+  padding: 0;
+  border: 0;
   width: min(380px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
-  overflow: hidden;
+  max-height: calc(100dvh - min(14vh, 120px) - 12px);
+  overflow: auto;
+  overscroll-behavior: contain;
   background: var(--panel);
   color: var(--text);
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
   display: grid;
+  align-content: start;
   /* A dialog opens from the place it will be read: a short settle, no zoom. */
-  transition: transform var(--dur) var(--ease-out);
+  transition:
+    transform var(--dur) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur) allow-discrete,
+    display var(--dur) allow-discrete;
 }
+.modal:not([open], :popover-open) { display: none; opacity: 0; transform: translateY(-6px) scale(0.98); }
 @starting-style {
-  .modal-overlay:not([hidden]) .modal { transform: translateY(-6px) scale(0.98); }
+  .modal:is([open], :popover-open) { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+.modal::backdrop {
+  background: rgba(20, 18, 14, 0.36);
+  backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+/* The dim arrives with the dialog rather than snapping on behind it. */
+.modal:not([open], :popover-open)::backdrop { opacity: 0; }
+@starting-style {
+  .modal:is([open], :popover-open)::backdrop { opacity: 0; }
 }
 
+/* Sign-in gate only: a manual popover, not a modal, so the top-bar tabs stay
+   clickable through the dim. The first tab click after a Lucky auth gate
+   navigates instead of just dismissing the gate (the "bounce back to Train"
+   report). Every other dialog is modal, with click-outside-to-dismiss. */
+.modal.auth-modal::backdrop { pointer-events: none; }
+
 .modal-title {
+  margin: 0;
   padding: 14px 16px 10px;
   font-weight: 700;
   font-size: 15px;
@@ -4904,6 +4669,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
   padding-right: 8px;
 }
+.auth-modal-title h2 { margin: 0; font: inherit; }
 
 .auth-close {
   flex: none;
@@ -5034,7 +4800,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    A portrait tablet up to 1100px wide (narrower than 5:6) stacks too: beside
    a 360px panel its board was 436px at 900x1100.
    The same split is on the other stacked / wide study rules. */
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
+@media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
      normally, because a fixed height here would crush the board on a phone. Two
      columns hold down to 860px (see .study --study-panel-min), so this only
@@ -5082,7 +4848,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* Mobile: no rail — a fixed 5-item bottom tab bar (Library, Train,
      Analyze, Games, More sheet). Page scroll replaces panel scroll; the board
      is full-width and first. Touch targets are 44px; no horizontal scroll. */
@@ -5124,12 +4890,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     height: 44px;
   }
 
-  /* Train Start + board-bar icons: 44px touch targets (desktop stays 32px / 28px). */
-  #view-train #start-train {
-    min-height: 44px;
-    height: 44px;
-  }
-
+  /* Train board-bar icons: 44px touch targets (desktop stays 28px). */
   .board-bar {
     height: 52px;
   }
@@ -5150,11 +4911,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     align-items: center;
   }
   .account-btn,
-  .icon-btn {
+  .rail-btn {
     min-height: 44px;
     min-width: 44px;
   }
-  .icon-btn kbd {
+  .rail-btn kbd {
     display: none;
   }
   .btn {
@@ -5227,9 +4988,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: none;
   border: 2px solid color-mix(in srgb, var(--tone) 25%, transparent);
   border-top-color: var(--tone);
-  animation: notice-spin 900ms linear infinite;
+  animation: spin 900ms linear infinite;
 }
-@keyframes notice-spin { to { transform: rotate(360deg); } }
 /* A job that has just finished: the spinner becomes its tick in place, so the
    card settles instead of silently changing meaning. One gesture, not a loop. */
 .notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-emphasis); }
@@ -5294,21 +5054,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .notice-stop { color: var(--danger); }
 .notice-stop:disabled { color: var(--muted); cursor: default; }
 
-.notice-close {
-  grid-column: 4;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-.notice-close:hover { background: var(--surface-3); color: var(--text); }
-.notice-close:focus-visible,
+/* The dismiss is the shared quiet icon button (.btn.ghost.icon.sm). */
+.notice-close { grid-column: 4; }
 .notice-action:focus-visible,
 .notice-stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Routine lines leave by themselves: × shows on hover only. */
@@ -5745,7 +5492,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  *::backdrop {
     animation-duration: 0.001ms !important;
     animation-delay: 0.001ms !important;
     animation-iteration-count: 1 !important;
@@ -5759,7 +5507,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
   .btn:active,
   .btn.icon:active,
-  .row-menu-btn:active,
   .sheet-row:active {
     transform: none;
   }
@@ -5771,14 +5518,17 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    by the Analyze / Build / Train boards. Pops over the board stack so the
    choice reads as part of the board, not a detached modal. */
 .promotion-picker-overlay {
-  position: absolute;
   inset: 0;
-  z-index: var(--z-popover);
-  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 100%;
+  height: 100%;
   place-items: center;
   background: rgba(20, 18, 14, 0.24);
   border-radius: 4px;
 }
+.promotion-picker-overlay:popover-open { display: grid; }
 
 .promotion-picker {
   display: grid;
@@ -5877,36 +5627,44 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
 }
 
+/* The command sheet: a native <dialog> on the same ::backdrop as .modal, coming
+   down from the top edge it is anchored to, so the eye follows it to the field
+   it wants. */
 .palette {
   position: fixed;
-  inset: 0;
-  z-index: var(--z-menu);
-  /* Same scrim as .modal-overlay. Mixing var(--text) turned the backdrop a
-     light grey wash in dark mode (UX walkthrough 2026-10-01 P2-3). */
-  background: rgba(20, 18, 14, 0.36);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 12vh 16px 16px;
-  /* The sheet comes down from the top edge it is anchored to, so the eye
-     follows it to the field it wants. */
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-@starting-style {
-  .palette:not([hidden]) { opacity: 0; }
-}
-
-.palette-panel {
-  width: min(560px, 100%);
+  inset: 0 0 auto;
+  margin: 12vh auto 0;
+  padding: 0;
+  border: 0;
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(88vh - 16px);
   background: var(--panel);
+  color: var(--text);
   border-radius: var(--radius-card);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
   overflow: hidden;
   transform-origin: 50% 0;
-  transition: transform var(--dur) var(--ease-out);
+  transition:
+    transform var(--dur) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur) allow-discrete,
+    display var(--dur) allow-discrete;
 }
+.palette:not([open]) { opacity: 0; transform: translateY(-8px) scale(0.985); }
 @starting-style {
-  .palette:not([hidden]) .palette-panel { transform: translateY(-8px) scale(0.985); }
+  .palette[open] { opacity: 0; transform: translateY(-8px) scale(0.985); }
+}
+.palette::backdrop {
+  background: rgba(20, 18, 14, 0.36);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+.palette:not([open])::backdrop { opacity: 0; }
+@starting-style {
+  .palette[open]::backdrop { opacity: 0; }
 }
 
 .palette-input {
@@ -5978,12 +5736,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    the current page is the active nav item, page actions live inside each
    page's own header, and Search / Theme / Account sit in the rail foot.
    =========================================================================== */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .workspace { padding-top: 18px; }
 }
 
 
-/* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
+/* Rail foot: Search and Theme read as rail rows (icon, label on expand) on
+   the shared quiet button (.btn.ghost). */
 .rail-btn {
   position: relative;
   justify-content: flex-start;
@@ -5991,6 +5750,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   width: 100%;
   height: 38px;
   padding: 0 13px;
+  border: 0;
   white-space: nowrap;
 }
 .rail-btn .ic { width: 18px; height: 18px; }
@@ -6025,14 +5785,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 #build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
 }
 
 /* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px
    laptop viewport without a scrollbar. */
-@media (min-width: 761px) {
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
   .rail .tab,
   .rail .rail-btn { height: 34px; }
@@ -6047,9 +5807,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   box-sizing: border-box;
   height: 84px;
 }
-/* Progress card rows keep their size as the session advances: the pip row is
-   as tall as its "No moves yet" placeholder, and Up next reserves its three
-   rows, so the buttons below never creep upward card by card. */
+/* Up next reserves its three rows, so the session card never changes height
+   card by card. */
 /* A hint is asked for while looking at the board, but the hint itself is in the
    coach strip above it and the stats card renders below it; on a phone that row
    sits past the fold the moment the board is tapped. So hold the hint line at the
@@ -6068,9 +5827,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-weight: 600;
   line-height: 1.35;
 }
-#train-progress-panel .pips { min-height: 1.4em; align-content: center; }
-/* The setup card's controls stay out of the layout while it is hidden. */
-#view-train .train-play-setup[hidden] { display: none; }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
 
 @media (max-width: 1279px) {
@@ -6093,24 +5849,4 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .pgn-file-row {
   margin-top: 6px;
-}
-
-/* The full net's question: one row above the card's lines, in flow, so the search
-   below it keeps its rows and its height while the row waits for an answer. */
-.engine-consent {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 6px 6px 6px 0;
-  border-bottom: 1px solid var(--line-soft);
-  font-size: 12.5px;
-}
-.engine-window.is-docked .engine-window-consent { padding: 4px 6px 2px 0; }
-.engine-window.is-docked .engine-window-consent:not([hidden]) + .engine-window-body .engine-window-pvs { padding-top: 2px; }
-.engine-consent-actions {
-  display: inline-flex;
-  gap: 6px;
-  margin-left: auto;
 }

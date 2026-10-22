@@ -88,7 +88,7 @@ it("team detail B stays visible after slow A responds", async () => {
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
     renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton,
-    formatDay: () => "", renderTeamInviteFooter: () => {} };
+    formatDay: () => "", renderTeamInviteFooter: () => {}, enterRows: () => {} };
   const open = compile("async function openTeamDetail(", deps, "let teamDetailSeq = 0");
   const a = open("A"), b = open("B");
   second.resolve({ name: "B", role: "member", members: [] }); await b;
@@ -118,14 +118,15 @@ it("settings saves serialize patches and only publish the latest state", async (
 
 it("a legacy Train start cannot overwrite a newer session", async () => {
   const first = deferred(), second = deferred();
-  const appState = { signedIn: true, trainMode: "all_lines" };
-  const deps = { appState, currentOwnerId: () => "owner", selectedTrainRepertoireId: () => "r",
+  const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r" };
+  const deps = { appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+    setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: async () => {}, setStatusError: vi.fn(),
     loadTrainResume: async () => ({ mapTrainUiSession: (p) => p, shouldResetTrainStats: () => false }),
     postJson: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
-    renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn() };
+    renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
   const run = compile("async function startTraining(", deps, "let smartStartSeq = 0");
   const a = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(1));
   const b = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(2));

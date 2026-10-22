@@ -44,11 +44,13 @@ describe("move menu — entries the panel can show", () => {
     // The root node carries san "root", so the ⋯ menu listed "Move 1. root…".
     const open = session.slice(session.indexOf("function openBuildMenu("), session.indexOf("function openBuildMenu(") + 1600);
     expect(open).toMatch(/node\?\.san && node\.parent_id \? \[\["build-node-menu"/);
+    // "Move 3. d4…" read as the verb; the entry names the move as its object.
+    expect(open).toContain("`Options for ${nodeMenuHeading(node)}…`");
   });
 
   it("names the note entry for what it will do", () => {
     const source = menuSource();
-    expect(source).toMatch(/node\.comment \? "Edit comment…" : "Add comment…"/);
+    expect(source).toMatch(/node\.comment \? "Edit note…" : "Add note…"/);
   });
 
   it("is a keyboard menu, like the repertoire's own", () => {
@@ -56,16 +58,18 @@ describe("move menu — entries the panel can show", () => {
     expect(source).toContain('role="menuitem"');
     expect(source).toContain('menu.setAttribute("role", "menu")');
     expect(source).toContain('menu.setAttribute("aria-label", "Move actions")');
-    expect(source).toMatch(/ArrowDown/);
-    expect(source).toContain("buttons[0]?.focus()");
+    // Arrow keys / Home / End come from the shared menu helper.
+    expect(source).toContain("menuKeys(menu, close)");
+    expect(source).toContain('menu.querySelector("button")?.focus()');
   });
 });
 
 describe("move menu — the tree shows what the menu changes", () => {
-  it("dots a commented move and names the comment in its tooltip", () => {
+  it("shows a move's note under the move, through the move-text renderer", () => {
     const view = readFileSync(join(webSrc, "views", "build.js"), "utf8");
-    expect(view).toContain('class="mtree-note"');
-    expect(view).toMatch(/title="\$\{String\(b\.comment\)\}"/);
+    expect(view).toContain('class="mtree-comment${open}" data-note-for=');
+    expect(view).toContain("${noteHtml(b)}");
+    expect(view).not.toContain("mtree-note\"");
   });
 
   it("draws a disabled branch struck through", () => {

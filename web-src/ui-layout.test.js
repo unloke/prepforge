@@ -87,8 +87,8 @@ describe("workspace chrome layout", () => {
     const blocks = [...css.matchAll(/@media ([^{]+?) \{([\s\S]*?)\n\}/g)].map((m) => [m[1], m[2]]);
     // Stacked is ≤860, except a short landscape screen (a phone on its side),
     // which keeps two columns; a portrait tablet ≤1100 (< 5:6) stacks too.
-    const STACKED = "(max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6)";
-    const WIDE = "(min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px)";
+    const STACKED = "(max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6)";
+    const WIDE = "(min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px)";
     const stackers = blocks.filter(([, body]) => /\.study\s*\{[^}]*grid-template-columns:\s*1fr/.test(body));
     expect(stackers.map(([q]) => q)).toEqual([STACKED]);
     const stacked = stackers[0][1];
@@ -227,7 +227,7 @@ describe("workspace chrome layout", () => {
     expect(phone).toMatch(/#build-inspector \.build-sync \{/);
     // Desktop is the reverse: the board bar's chip is the only one. Both were
     // visible at 1440 (board bar + inspector tools), printing one state twice.
-    expect(css).toMatch(/@media \(min-width: 761px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
+    expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
   });
 
   it("gives the phone Repertoire's next-move chips and trail a real thumb target", () => {
@@ -444,18 +444,22 @@ describe("workspace chrome layout", () => {
     // The sidebar is a raised panel: the body scrolls, the head stays put.
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     const head = view.slice(view.indexOf('class="cc-head"'), view.indexOf('class="coach-prose"'));
-    // The live engine shares the Evaluation card with the game graph, after Coach:
-    // its switch sits in the card's header row beside the eval chip and win meter,
-    // and the whole-game progress docks inside the card.
+    // The Evaluation card holds the eval figure, win meter, the game graph and
+    // the whole-game progress; the live engine is its own pillar beside the
+    // report and the score sheet, all behind one tab strip.
     const body = view.slice(view.indexOf('class="panel-scroll"'));
     const card = body.slice(body.indexOf('id="analysis-eval-card"'), body.indexOf("</section>", body.indexOf('id="analysis-eval-card"')));
-    for (const id of ["analysis-chart-caption", "analysis-eval-meter", "open-engine-widget", "eval-chart-live", "analysis-job-dock", "analysis-engine-slot"]) {
+    for (const id of ["analysis-chart-caption", "analysis-eval-meter", "eval-chart-live", "eval-chart", "analysis-job-dock"]) {
       expect(card).toContain(`id="${id}"`);
     }
+    const panes = body.slice(body.indexOf('id="analyze-panes"'), body.indexOf('id="analyze-open"'));
+    for (const pane of ["coach", "engine", "report", "moves"]) expect(panes).toContain(`data-pane="${pane}"`);
+    const enginePane = panes.slice(panes.indexOf('id="analysis-engine-pane"'), panes.indexOf("</section>", panes.indexOf('id="analysis-engine-pane"')));
+    for (const id of ["open-engine-widget", "analysis-engine-slot", "analysis-best-line"]) expect(enginePane).toContain(`id="${id}"`);
+    for (const id of ["analysis-report", "analysis-summary", "analysis-handoff", "analysis-results"]) expect(panes).toContain(`id="${id}"`);
     expect(head).not.toContain('id="open-engine-widget"');
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
-    expect(body.indexOf('id="analysis-engine-slot"')).toBeGreaterThan(body.indexOf('id="eval-chart"'));
-    expect(body.indexOf('id="analysis-eval-card"')).toBeLessThan(body.indexOf('id="analysis-results"'));
+    expect(body.indexOf('id="analyze-panes"')).toBeGreaterThan(body.indexOf('id="analysis-eval-card"'));
     // The verdict scrolls inside its row; Humans/prep arrivals keep their rows.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(rule(".coach-prose")).toMatch(/min-height: 0/);
@@ -481,15 +485,12 @@ describe("workspace chrome layout", () => {
     expect(tabbar).not.toContain('data-view="build"');
     expect(html).not.toContain("phone-tabs");
     expect(html).not.toContain("data-phone-pane");
-    // Analyze: the coach under the engine; the report and the game sources
-    // are separate sheets.
-    const report = analyze.slice(analyze.indexOf('id="analyze-sheet"'), analyze.indexOf('id="analyze-open"'));
+    // Analyze: the report is a tab; the game sources are the one sheet.
+    expect(html).not.toContain('id="analyze-sheet"');
     const sources = analyze.slice(analyze.indexOf('id="analyze-open"'));
-    for (const id of ["analysis-summary", "analysis-handoff"]) expect(report).toContain(`id="${id}"`);
     for (const id of ["pgn-drawer", "history-drawer"]) expect(sources).toContain(`id="${id}"`);
-    expect(analyze).toContain('data-sheet-open="analyze-sheet"');
     expect(analyze).toContain('data-sheet-open="analyze-open"');
-    expect(analyzeCss).toMatch(/#analysis-explain \{\s*order: 3;/);
+    expect(analyzeCss).toMatch(/\.an-panes \{\s*order: 3;/);
     // Repertoire: one pane at a time under the board.
     expect(html).toContain('id="build-panes"');
     expect(phoneCss).toMatch(/\.phone-sheet \{ display: contents; \}/);
@@ -502,9 +503,8 @@ describe("workspace chrome layout", () => {
     expect(phoneCss).toMatch(/#view-analyze \.board-bar \.board-label \{ display: none; \}/);
     // Last game lives in the Games sheet; Analyze stays in the thumb bar.
     expect(phoneCss).toMatch(/#fetch-my-game \{ display: none; \}/);
-    // A phone has no score sheet: its room goes to the graph.
-    expect(analyzeCss).toMatch(/#analysis-explain \{[^}]*height: var\(--phone-coach-h\)/);
-    expect(analyzeCss).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
+    // The phone opens one pillar at a time; the coach is a tab there too.
+    expect(analyzeCss).toMatch(/\.an-tab\[data-pane="coach"\]:not\(\[hidden\]\) \{ display: block; \}/);
     expect(app).toContain("function wirePhoneSheets()");
   });
 
@@ -629,7 +629,7 @@ describe("workspace chrome layout", () => {
     expect(app).toMatch(/function refreshPaletteRepertoires\(\)/);
     expect(app).not.toMatch(/await api\("\/api\/repertoires"\);\s*\n\s*paletteItems/);
     // A query typed while the refresh was in flight survives it.
-    expect(app).toMatch(/const query = input\?\.value \|\| "";\s*\n\s*paletteItems = filterPaletteItems\(buildPaletteItems\(\{ repertoires \}\), query\)/);
+    expect(app).toMatch(/const query = input\?\.value \|\| "";\s*\n\s*paletteItems = filterPaletteItems\(paletteItemsNow\(repertoires\), query\)/);
     // Games compare aggregates self by default, narrowing only on explicit picks.
     expect(app).toMatch(/runLichessCompare[\s\S]*?gamesSourceAccountIds/);
     expect(app).toMatch(/runLichessCompare[\s\S]*?account_ids/);
@@ -747,10 +747,8 @@ describe("workspace chrome layout", () => {
     // board's height and hold hundreds of px of empty tone under a short game.
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
     expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
-    // On a wide panel the sheet is the last flexing row and the only scroller.
-    // No minimum: one let the sheet paint over the report fold below it.
-    expect(analyzeCss).toMatch(/@media \(min-width: 861px\) and \(min-height: 700px\) \{[\s\S]*?#analysis-results:not\(\[hidden\]\) > \.moves-grid \{\s*flex: 1 1 auto;\s*min-height: 0;/);
-    expect(analyzeCss).not.toMatch(/#analysis-results \.moves-grid \{ flex: 1 1 0/);
+    // On a wide panel the score sheet fills its pillar and is its only scroller.
+    expect(analyzeCss).toMatch(/@media \(min-width: 1101px\) and \(min-height: 700px\) \{[\s\S]*?\.moves-pane > \.moves-grid \{ flex: 1 1 auto; max-height: none; \}/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
@@ -852,8 +850,8 @@ describe("workspace chrome layout", () => {
     expect(coverageScan).not.toContain("maiaAnalysisEnabled");
     expect(scoutView).toContain("MAIA_ENRICH_OFF");
     expect(scoutView).toContain("maiaAnalysisEnabled");
-    // Settings status peeks instead of constructing the worker.
-    expect(settingsView).toContain("peekSharedMaia3Provider");
+    // The download status Settings shows peeks instead of constructing the worker.
+    expect(readFileSync(join(root, "engine", "engine-downloads.js"), "utf8")).toContain("peekMaia = peekSharedMaia3Provider");
     expect(settingsView).toContain("renderMaiaAnalysis");
   });
 
@@ -900,7 +898,7 @@ describe("workspace chrome layout", () => {
     // Slice from the mobile chrome block (bottom tab bar / touch targets).
     const mobile = css.slice(css.indexOf("/* Mobile: no rail"));
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
-    expect(mobile).toMatch(/\.account-btn,\s*\.icon-btn\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.account-btn,\s*\.rail-btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\.icon\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);

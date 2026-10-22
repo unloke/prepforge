@@ -367,7 +367,7 @@ def decode_analysis_moves(payload: Optional[str]) -> List[MoveRecord]:
     if payload is None:
         return []
     envelope = json.loads(payload)
-    if envelope["codec"] != ANALYSIS_SNAPSHOT_CODEC:
+    if not isinstance(envelope, dict) or envelope.get("codec") != ANALYSIS_SNAPSHOT_CODEC:
         raise ValueError("unsupported analysis snapshot codec")
     body = json.loads(zlib.decompress(base64.b64decode(envelope["data"], validate=True)))
     evals = [

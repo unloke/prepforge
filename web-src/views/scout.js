@@ -214,8 +214,7 @@ export function createScoutView(deps) {
     if (!side) return;
     side.hidden = true;
     side.innerHTML = "";
-    delete side.dataset.lineKey;
-    delete side.dataset.color;
+    for (const key of ["lineKey", "color", "boardSide"]) delete side.dataset[key];
   }
 
   // Below 1020px the detail stacks under the plan; bring it into view on select.
@@ -479,7 +478,7 @@ export function createScoutView(deps) {
     let n = 0;
     for (const row of root.querySelectorAll(".scout-weakness-row")) {
       if (before.has(`${row.dataset.color}|${row.dataset.lineKey}`)) continue;
-      row.classList.add("is-entering");
+      row.classList.add("is-enter");
       row.style.setProperty("--enter-index", String(n++));
     }
   }
@@ -523,12 +522,13 @@ export function createScoutView(deps) {
         scoutState.activeSpeed,
         {
           usernames: scoutState.usernames,
-          colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(
-              scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+          colorRecHtml: scoutState.color === "white" || scoutState.color === "black" ? "" // one colour: nothing to compare
+            : buildColorRecommendationBanner(
+              colorRecommendation(
+                scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+              ),
+              { username: scoutState.username },
             ),
-            { username: scoutState.username },
-          ),
         },
       );
       profileEl.hidden = false;
@@ -2273,14 +2273,14 @@ export function createScoutView(deps) {
   }
 
   return {
-    runScout,
-    handleScoutAction,
-    bindControls,
+    runScout, handleScoutAction, bindControls,
     __testHandleAddToPrep: scoutAddToPrep,
     onShow: syncVisibleState,
     // Sources changed under a finished or running report (app.js).
     discardReport: resetScout,
     syncSources,
+    // Maia analysis turned on: an open report takes its Maia reads now.
+    onMaiaGate() { if (scoutState?.games?.length) scheduleMaiaEnrich(); },
     ...(SCOUT_E2E_BUILD_ENABLED ? { mountE2eRefutationScenario } : {}),
     preload: () => import("../scout.js"),
   };

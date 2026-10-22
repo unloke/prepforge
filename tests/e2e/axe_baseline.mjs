@@ -62,6 +62,11 @@ async function main() {
     const scan = async (name, run) => {
       await run();
       await sleep(400);
+      // Scan settled pixels: a fade still running (the rail's labels on hover, a
+      // view transition) reads as low contrast mid-way.
+      await page.evaluate(() => Promise.all(document.getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => {}))));
       const r = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();
@@ -124,7 +129,7 @@ async function main() {
         .locator('[data-testid="dashboard-new-rep"]:visible, #dashboard-repertoires [data-lib-action="new"]:visible')
         .first()
         .click();
-      await page.locator(".modal-overlay .modal").first().waitFor({ timeout: 10_000 });
+      await page.locator("dialog.modal[open]").first().waitFor({ timeout: 10_000 });
     });
 
     console.log(JSON.stringify(results, null, 2));

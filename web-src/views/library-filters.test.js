@@ -111,7 +111,7 @@ describe("library filter wiring", () => {
       postJson: vi.fn(),
       setStatus: vi.fn(),
       localDateString: () => "2026-09-28",
-      goToSmartTraining: vi.fn(),
+      openTrain: vi.fn(),
       editRepertoire: vi.fn(),
       openRepertoireContextMenu: vi.fn(),
       createRepertoirePrompt: vi.fn(),

@@ -9,6 +9,7 @@ const FILES = [
   "./core/api.js",
   "./core/prefs.js",
   "./core/modals.js",
+  "./core/dialog.js",
   "./core/engine.js",
   "./coach/coach-loader.js",
   "./board/ui.js",

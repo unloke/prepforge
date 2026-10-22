@@ -59,4 +59,16 @@ describe("Maia init notice", () => {
     stop.succeed();
     expect(card.dismiss).not.toHaveBeenCalled();
   });
+
+  it("only clears the progress notice when the caller shows the failure itself", () => {
+    const provider = fakeProvider();
+    const card = { dismiss: vi.fn() };
+    const notices = { show: vi.fn(() => card) };
+    const stop = watchMaiaInit(provider, { notices, quietFail: true });
+
+    provider.emit({ phase: "session" });
+    stop.fail(new Error("weights unavailable"));
+    expect(notices.show).toHaveBeenCalledTimes(1);
+    expect(card.dismiss).toHaveBeenCalled();
+  });
 });

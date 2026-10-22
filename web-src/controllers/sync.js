@@ -421,12 +421,13 @@ function beaconFlushBuild() {
   }
 }
 
-function queueTrainAttempt(smart, nodeId, correct) {
+function queueTrainAttempt(smart, nodeId, correct, hinted = false) {
   appState.trainSync.pending.push({
     session_id: smart.sessionId,
     session_generation: smart.generation,
     node_id: nodeId,
     correct,
+    ...(hinted ? { hinted: true } : {}),
     attempt_uuid: crypto.randomUUID(),
   });
   setTrainSyncState("dirty");

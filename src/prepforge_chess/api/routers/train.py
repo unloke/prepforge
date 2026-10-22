@@ -1,21 +1,25 @@
 """Smart + rehearsal Train endpoints — the spaced-repetition trainer.
 
 ``TrainingService`` walks the stored repertoire tree with python-chess (move legality
-only); no Stockfish/Maia runs server-side. Ownership: ``/start`` gates the
-repertoire through ``_owned_repertoire``; the session-keyed endpoints resolve
-the session to its repertoire and reject another owner's session.
+only); no Stockfish/Maia runs server-side. Anyone who can read a repertoire (its
+owner, or a team or person it is shared with at any role) trains it with their own
+progress and sessions: ``_trainable_repertoire`` gates the starts, and the
+session-keyed endpoints accept only the caller's own session on a repertoire they
+can still read. The owner's progress is never read or written for anyone else.
 """
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, time, timedelta, timezone
 from typing import Any, Literal
 
 import chess
+from fsrs import Rating
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, get_repository
-from prepforge_chess.api.routers.workspace import _owned_repertoire
+from prepforge_chess.api.routers.workspace import _owned_repertoire, _repertoire_access
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import (
     Repertoire,
@@ -23,8 +27,9 @@ from prepforge_chess.core.models import (
     TrainingSession,
 )
 from prepforge_chess.services import streak
-from prepforge_chess.services.progress import compute_health, due_forecast
-from prepforge_chess.services.training import TrainingService, update_spaced_repetition
+from prepforge_chess.services.progress import compute_health, due_forecast, due_outlook
+from prepforge_chess.services.srs import review
+from prepforge_chess.services.training import TrainingService
 from prepforge_chess.services.scheduler import CARD_KINDS
 from prepforge_chess.services.training_smart import REQUEUE_GAP
 from prepforge_chess.services.training_smart import SmartTrainingService
@@ -53,18 +58,25 @@ def _mode_or_400(raw: str | None) -> TrainingMode:
         ) from exc
 
 
+def _trainable_repertoire(repo: WorkspaceRepository, repertoire_id: str, user: str) -> dict[str, Any]:
+    """Train gate: any role that can read the repertoire may drill it (404 without
+    access). Progress and sessions are the caller's own, so a grant's role only
+    decides what they may do to the tree, never whether they may practise it."""
+    return _repertoire_access(repo, repertoire_id, user, "view")
+
+
 def _owned_session(
     repo: WorkspaceRepository, session_id: str, owner: str
 ) -> TrainingSession:
-    """Owner gate for session-keyed endpoints. Resolves the session to its repertoire
-    and 404s when that repertoire belongs to a different user."""
+    """Gate for session-keyed endpoints: the caller's own session, on a repertoire
+    they can still read (a revoked share ends its sessions). 404 otherwise."""
     session = repo.load_training_session(session_id)
-    if session is None:
+    if session is None or session.owner_user_id != owner:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
-    meta = repo.repertoire_meta(session.repertoire_id)
-    if meta is None or meta["owner_user_id"] != owner:
+    _, role = repo.access_role(session.repertoire_id, owner)
+    if role is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
@@ -84,11 +96,11 @@ def start(
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
-    """Begin (or resume) a trainer session over the owner's repertoire and return the
-    first prompt plus the shuffled line plan."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    """Begin (or resume) the caller's trainer session over a repertoire they can read
+    and return the first prompt plus the shuffled line plan."""
+    _trainable_repertoire(repo, body.repertoire_id, owner)
     mode = _mode_or_400(body.mode)
-    # The ownership gate above permits loading the repertoire by id here.
+    # The access gate above permits loading the repertoire by id here.
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
@@ -156,12 +168,14 @@ def record_miss(
         progress = repo.lock_training_progress(
             conn, repertoire_id=body.repertoire_id, node_id=body.node_id, owner_user_id=owner
         )
-        updated = update_spaced_repetition(progress, correct=False)
+        updated = review(progress, Rating.Again)
         # A miss spotted in Analyze is due in the very next session.
         updated = replace(updated, due_at=updated.last_reviewed_at)
         repo.write_training_progress(
             conn, repertoire_id=body.repertoire_id, progress=updated, owner_user_id=owner
         )
+        repo.write_review(conn, owner_user_id=owner, node_id=body.node_id,
+                          rating=Rating.Again, reviewed_at=updated.last_reviewed_at)
     return {"recorded": True, "node_id": body.node_id}
 
 
@@ -185,6 +199,8 @@ class SmartMoveBody(BaseModel):
     played_uci: str
     # 1 = first (graded) answer; 2+ = retry / play-after-reveal, never graded.
     attempt: int = 1
+    # A hint was shown before the graded answer: a correct one grades Hard.
+    hinted: bool = False
     # The player's local calendar date (YYYY-MM-DD) for the daily streak; the
     # server clamps it and falls back to UTC today (see services/streak.py).
     local_date: str | None = None
@@ -213,7 +229,7 @@ def _touch_streak(
 
 
 def _smart_summary_payload(
-    repo: WorkspaceRepository, repertoire: Repertoire, owner: str
+    repo: WorkspaceRepository, repertoire: Repertoire, owner: str, *, owned: bool = True
 ) -> dict[str, Any]:
     """Repertoire health + tomorrow's due forecast — the smart session's
     bookends. Shipped with ``/smart/start`` (the before snapshot) and from
@@ -224,8 +240,10 @@ def _smart_summary_payload(
     health = compute_health(
         repertoire.root_node, repertoire.color, progress_by_id
     ).to_dict()
-    # Keep the dashboard's cached badge in step with post-session mastery gains.
-    repo.set_repertoire_health(repertoire.id, health)
+    # Keep the owner's cached Library badge in step with their mastery gains. The
+    # badge is the owner's alone: a shared repertoire's trainee never writes it.
+    if owned:
+        repo.set_repertoire_health(repertoire.id, health)
     return {
         "health": health,
         "due_tomorrow": due_forecast(
@@ -235,14 +253,14 @@ def _smart_summary_payload(
 
 
 def _mixed_summary_payload(
-    repo: WorkspaceRepository, reps: list[Repertoire], owner: str
+    repo: WorkspaceRepository, reps: list[Repertoire], owner: str, shared_ids: set[str]
 ) -> dict[str, Any]:
     """The mixed-session bookend: per-repertoire health summed into one view
     (mastery_pct recomputed over the combined trainable count)."""
     health: dict[str, int] = {}
     due_tomorrow = 0
     for rep in reps:
-        part = _smart_summary_payload(repo, rep, owner)
+        part = _smart_summary_payload(repo, rep, owner, owned=rep.id not in shared_ids)
         for key, value in part["health"].items():
             health[key] = health.get(key, 0) + value
         due_tomorrow += part["due_tomorrow"]
@@ -261,8 +279,9 @@ def smart_start(
 ) -> dict[str, Any]:
     """Begin (or resume) a card-queue session and return the queue composition
     plus the first card prompt. ``mixed=True`` builds one interleaved queue
-    over ALL of the caller's active repertoires."""
+    over ALL of the caller's active repertoires and those shared with them."""
     service = SmartTrainingService(repo, owner)
+    owned = True
     try:
         if body.mixed:
             if body.target_node_ids:
@@ -280,7 +299,7 @@ def smart_start(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="repertoire_id is required unless mixed=true",
                 )
-            _owned_repertoire(repo, body.repertoire_id, owner)
+            owned = _trainable_repertoire(repo, body.repertoire_id, owner)["role"] == "owner"
             session = service.start_or_resume(
                 body.repertoire_id,
                 target_node_ids=body.target_node_ids,
@@ -304,15 +323,18 @@ def smart_start(
             detail="repertoire has no trainable moves yet",
         )
     summary = (
-        _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
+        _mixed_summary_payload(
+            repo, service.active_repertoires(owner), owner, service.shared_ids
+        )
         if body.mixed
-        else _smart_summary_payload(repo, repertoire, owner)
+        else _smart_summary_payload(repo, repertoire, owner, owned=owned)
     )
     return {
         "repertoire_id": repertoire.id,
         "repertoire_name": "All repertoires" if body.mixed else repertoire.name,
         "color": repertoire.color.value,
         "mixed": body.mixed,
+        "scope": session.scope,
         "session_id": session.id,
         "seed": session.seed,
         "mode": TrainingMode.SMART.value,
@@ -337,39 +359,72 @@ def smart_start(
     }
 
 
+def _outlook(
+    repo: WorkspaceRepository, reps: list[Repertoire], owner: str, utc_offset: int
+) -> dict[str, Any]:
+    """Due now / by the end of the player's local day / this week, over the
+    scope, and ``next``: when the soonest later review falls due (ISO, or None)."""
+    now = datetime.now(timezone.utc)
+    offset = timedelta(minutes=max(-840, min(840, utc_offset)))
+    local = now + offset
+    day_end = datetime.combine(local.date() + timedelta(days=1), time.min, timezone.utc) - offset
+    total: dict[str, Any] = {"now": 0, "today": 0, "week": 0}
+    soonest = None
+    for rep in reps:
+        progress_by_id = {
+            p.node_id: p for p in repo.list_training_progress(rep.id, owner_user_id=owner)
+        }
+        part = due_outlook(rep.root_node, rep.color, progress_by_id, now=now, day_end=day_end)
+        for key in total:
+            total[key] += part[key]
+        if part["next"] is not None and (soonest is None or part["next"] < soonest):
+            soonest = part["next"]
+    total["next"] = soonest.isoformat() if soonest is not None else None
+    return total
+
+
 @router.get("/smart/summary")
 def smart_summary(
     repertoire_id: str | None = None,
     mixed: bool = False,
     preview: bool = False,
     local_date: str | None = None,
+    utc_offset: int = 0,
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
     """Fresh health + tomorrow's due forecast for the end-of-session screen.
-    ``mixed=true`` aggregates over all the caller's active repertoires;
-    ``preview=true`` adds ``next_session``, the card counts a mixed Start serves.
+    ``mixed=true`` aggregates over all the caller's active repertoires.
+    ``preview=true`` (Train Home) adds ``next_session`` — the card counts a
+    Start of the same scope serves, and whether it resumes — and ``outlook``,
+    reviews due now / today / this week (``utc_offset`` = the player's minutes
+    east of UTC, for "today").
 
     Carries the authoritative ``day_streak`` so the summary screen renders the
     server's truth rather than a possibly-stale client cache: the final sync
     before this fetch usually writes no new attempts, so ``/smart/sync`` returns
     ``day_streak: null`` and never refreshes the client value."""
+    service = SmartTrainingService(repo, owner)
     if mixed:
-        service = SmartTrainingService(repo, owner)
-        payload = _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
-        if preview:
-            payload["next_session"] = service.next_session_counts(owner)
+        reps = service.active_repertoires(owner)
+        payload = _mixed_summary_payload(repo, reps, owner, service.shared_ids)
+        scope_id = None
     elif not repertoire_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="repertoire_id is required unless mixed=true",
         )
     else:
-        _owned_repertoire(repo, repertoire_id, owner)
-        repertoire = repo.load_repertoire(repertoire_id)
+        owned = _trainable_repertoire(repo, repertoire_id, owner)["role"] == "owner"
+        repertoire = service.repertoire(repertoire_id)
         if repertoire is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-        payload = _smart_summary_payload(repo, repertoire, owner)
+        reps = [repertoire]
+        payload = _smart_summary_payload(repo, repertoire, owner, owned=owned)
+        scope_id = repertoire_id
+    if preview:
+        payload["next_session"] = service.preview(owner, scope_id)
+        payload["outlook"] = _outlook(repo, reps, owner, utc_offset)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(
         repo.get_user_setting(owner, streak.STREAK_KEY), day
@@ -389,7 +444,7 @@ def smart_move(
     _owned_session(repo, body.session_id, owner)
     try:
         result = SmartTrainingService(repo, owner).submit_move(
-            body.session_id, body.played_uci, attempt=max(1, body.attempt)
+            body.session_id, body.played_uci, attempt=max(1, body.attempt), hinted=body.hinted
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -413,8 +468,8 @@ def smart_move(
             "node_id": result.progress.node_id,
             "attempts": result.progress.attempts,
             "correct_attempts": result.progress.correct_attempts,
-            "spaced_repetition_score": result.progress.spaced_repetition_score,
-            "is_mastered": result.progress.is_mastered,
+            "stability": result.progress.stability,
+            "due_at": result.progress.due_at,
         },
         "prompt": smart_prompt_to_json(result.next_prompt, _CHESS),
         "played_san": result.played_san,
@@ -422,12 +477,15 @@ def smart_move(
         "reply_uci": result.reply_uci,
         "reply_san": result.reply_san,
         "fen_after_reply": result.fen_after_reply,
+        "alternative": result.alternative,
     }
 
 
 class SmartSyncAttempt(BaseModel):
     node_id: str
     correct: bool
+    # A hint was shown first: a correct answer grades Hard instead of Good.
+    hinted: bool = False
     # Client-minted idempotency key, reused across retries of the same attempt.
     attempt_uuid: str = Field(min_length=1, max_length=64)
 
@@ -586,8 +644,10 @@ def session_state(
 class MoveBody(BaseModel):
     session_id: str
     played_uci: str
-    # A hint was shown before this answer: it advances but grades as a miss.
+    # A hint was shown before this answer: a correct one advances and grades Hard.
     hinted: bool = False
+    # 1 = first (graded) answer; retries and the play-after-reveal move are not.
+    attempt: int = 1
     # Same daily-streak day hint as SmartMoveBody — rehearsal counts as training.
     local_date: str | None = None
 
@@ -603,7 +663,7 @@ def move(
     _owned_session(repo, body.session_id, owner)
     try:
         result = TrainingService(repo, owner).submit_move(
-            body.session_id, body.played_uci, hinted=body.hinted
+            body.session_id, body.played_uci, hinted=body.hinted, attempt=max(1, body.attempt)
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -616,12 +676,14 @@ def move(
         "day_streak": _touch_streak(repo, owner, body.local_date),
         "mistakes": result.session.mistakes,
         "current_index": result.session.current_index,
-        "progress": {
+        "progress": None
+        if result.progress is None
+        else {
             "node_id": result.progress.node_id,
             "attempts": result.progress.attempts,
             "correct_attempts": result.progress.correct_attempts,
-            "spaced_repetition_score": result.progress.spaced_repetition_score,
-            "is_mastered": result.progress.is_mastered,
+            "stability": result.progress.stability,
+            "due_at": result.progress.due_at,
         },
         "prompt": prompt_to_json(result.next_prompt, _CHESS),
         "played_san": result.played_san,
@@ -629,4 +691,5 @@ def move(
         "reply_uci": result.reply_uci,
         "reply_san": result.reply_san,
         "fen_after_reply": result.fen_after_reply,
+        "alternative": result.alternative,
     }

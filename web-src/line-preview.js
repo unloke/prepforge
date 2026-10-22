@@ -78,7 +78,7 @@ export function registerPeekSource(selector, resolve) {
 const TOKEN = "[data-mt][data-p], [data-mt] [data-p]";
 const INTENT_MS = 120;
 let host = null;
-let peek = null; // { target, pinned, title }
+let peek = null; // { target, pinned, hover, title }
 let timer = 0;
 let lastPointer = "mouse";
 let options = { apply: () => null, orientation: () => "white" };
@@ -150,7 +150,7 @@ function restoreTitle() {
   if (peek?.titled) peek.titled.setAttribute("title", peek.title);
 }
 
-function showPeek(target, { pinned = false } = {}) {
+function showPeek(target, { pinned = false, hover = false } = {}) {
   const pos = peekPosition(target);
   if (!pos || !pos.fen) {
     hidePeek();
@@ -167,16 +167,25 @@ function showPeek(target, { pinned = false } = {}) {
     peek = { target, titled, title };
   }
   peek.pinned = pinned;
+  peek.hover = hover && !pinned;
   const canApply = pinned && target.classList.contains("move-ref") && !!options.apply(target, true);
   const own = peek.titled === target ? peek.title : "";
   const note = own && own !== pos.label ? html`<span class="move-peek-note">${own}</span>` : "";
-  host.innerHTML = html`${miniBoardHtml(pos.fen, pos.lastMove, options.orientation())}<div class="move-peek-foot"><b class="move-peek-label">${pos.label || ""}</b>${canApply ? html`<button type="button" class="btn sm move-peek-go">Show on board</button>` : ""}</div>${note}`;
+  // A view whose boards face one player (a Scout colour section, a Games review)
+  // names that side on the token's container; elsewhere the active board decides.
+  const side = target.closest("[data-board-side]")?.dataset.boardSide || options.orientation();
+  host.innerHTML = html`${miniBoardHtml(pos.fen, pos.lastMove, side)}<div class="move-peek-foot"><b class="move-peek-label">${pos.label || ""}</b>${canApply ? html`<button type="button" class="btn sm move-peek-go">Show on board</button>` : ""}</div>${note}`;
   host.classList.toggle("is-pinned", pinned);
   host.setAttribute("role", pinned ? "dialog" : "tooltip");
   host.setAttribute("aria-label", pos.label ? `Position after ${pos.label}` : "Position");
   host.hidden = false;
   target.setAttribute("aria-describedby", "move-peek");
   place(target);
+}
+
+/** Peek at `target` from code (a chart's hover readout, which takes no pointer itself). */
+export function peekAt(target) {
+  if (target?.isConnected && !peek?.pinned) showPeek(target, { hover: true });
 }
 
 export function hidePeek() {
@@ -228,8 +237,8 @@ export function initMoveLinks(opts) {
     if (peek?.pinned) return;
     window.clearTimeout(timer);
     // Moving from one token to the next swaps at once; a fresh hover waits for intent.
-    if (peek) showPeek(target);
-    else timer = window.setTimeout(() => target.isConnected && showPeek(target), INTENT_MS);
+    if (peek) showPeek(target, { hover: true });
+    else timer = window.setTimeout(() => target.isConnected && showPeek(target, { hover: true }), INTENT_MS);
   });
   doc.addEventListener("pointerout", (event) => {
     if (event.pointerType === "touch") return;
@@ -255,6 +264,12 @@ export function initMoveLinks(opts) {
   }, true);
   doc.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && peek) {
+      // A peek under the pointer is not what Esc is for: it goes, and the key
+      // goes on to the dialog, menu or line it was meant for.
+      if (peek.hover) {
+        hidePeek();
+        return;
+      }
       // Before the board's own Esc (leave the line): one press closes one thing.
       event.preventDefault();
       event.stopImmediatePropagation();

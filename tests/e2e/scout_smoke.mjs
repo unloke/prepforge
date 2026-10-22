@@ -196,6 +196,15 @@ async function installScoutFixture(page) {
 
       window.fetch = async (input, init = {}) => {
         const url = typeof input === "string" ? input : input?.url || "";
+        // The source composer checks a typed name against the profile endpoint.
+        const profile = url.match(/^https:\/\/lichess\.org\/api\/user\/([^/?]+)$/);
+        if (profile) {
+          const username = decodeURIComponent(profile[1]);
+          return new Response(JSON.stringify({ id: username.toLowerCase(), username }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         if (!url.startsWith("https://lichess.org/api/games/user/")) {
           return nativeFetch(input, init);
         }

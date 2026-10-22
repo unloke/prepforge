@@ -1,0 +1,65 @@
+/* The first-visit dialog (welcome.js), on the shared .modal frame. */
+.welcome { width: min(420px, calc(100vw - 24px)); }
+.welcome-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px 0 16px;
+}
+.welcome-count { color: var(--label); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.welcome .modal-title { padding-top: 2px; font-size: 18px; }
+
+.welcome-goals { gap: 6px; padding-bottom: 16px; }
+.welcome-goal {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 12px 0 14px;
+  border: 1px solid var(--line); /* taste-skill-ignore: a choice in a modal list reads as tappable by its edge */
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.welcome-goal:hover { background: var(--panel-soft); border-color: var(--line-strong); }
+.welcome-goal:active { background: var(--surface-3); }
+.welcome-goal svg { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.welcome-goal .welcome-chev { width: 16px; height: 16px; stroke: var(--label); }
+
+.welcome-find-row { display: flex; gap: 8px; }
+.welcome-find-row input { flex: 1; min-width: 0; }
+.welcome-found { min-height: 20px; margin: -4px 0 0; color: var(--muted); font-size: var(--fs-s); }
+.welcome-found b { color: var(--text); }
+.welcome-ratings { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.welcome-ratings .seg-btn { font-variant-numeric: tabular-nums; }
+
+.welcome-engines { display: grid; gap: 6px; }
+.welcome-engine {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line); /* taste-skill-ignore: the checked engine shows by its edge and fill */
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.welcome-engine:has(input:checked) { border-color: var(--accent-line); background: var(--accent-soft); }
+.welcome-engine input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.welcome-engine-text { display: grid; gap: 2px; min-width: 0; }
+.welcome-engine-text b { font-weight: 600; }
+.welcome-engine-text span { color: var(--muted); font-size: var(--fs-s); line-height: 1.35; }
+.welcome-size { color: var(--muted); font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
+.welcome-wifi { margin: 0; color: var(--muted); font-size: var(--fs-s); line-height: 1.4; }
+
+@media (max-width: 760px) {
+  .welcome-goal { min-height: 56px; }
+  .welcome-engine { padding: 12px; }
+}

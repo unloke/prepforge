@@ -324,6 +324,7 @@ export function groupAttempts(pending, currentSessionId, currentGeneration) {
     const k = key(item.session_id, item.session_generation);
     if (!bySession.has(k)) bySession.set(k, [item.session_id, []]);
     bySession.get(k)[1].push({ node_id: item.node_id, correct: item.correct, attempt_uuid: item.attempt_uuid,
+      ...(item.hinted ? { hinted: true } : {}),
       ...(item.session_generation != null ? { session_generation: item.session_generation } : {}) });
   }
   const currentKey = key(currentSessionId, currentGeneration);

@@ -264,7 +264,7 @@ async function runViewport(vp) {
   await page.locator('[data-testid="build-menu"]').click();
   await page.waitForTimeout(150);
   const moreItems = await page.locator("#repertoire-context-menu button").allTextContents();
-  check(moreItems.some((t) => /^Move 3\./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
+  check(moreItems.some((t) => /^Options for 3\./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
   await page.keyboard.press("Escape");
   await page.evaluate(() => { const m = document.getElementById("repertoire-context-menu"); if (m) m.hidden = true; });
   await page.waitForTimeout(100);

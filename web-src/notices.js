@@ -102,7 +102,7 @@ class Notice {
     const stop = this.onCancel ? html`<button class="notice-stop" type="button">Stop</button>` : "";
     const track = this.job ? html`<div class="notice-track"><div class="notice-fill"></div></div>` : "";
     el.innerHTML =
-      html`<span class="notice-icon" aria-hidden="true"></span><div class="notice-main"><div class="notice-title"></div><div class="notice-text"></div>${track}</div><div class="notice-actions">${stop}</div><button class="notice-close" type="button" aria-label="Dismiss" title="Dismiss"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`;
+      html`<span class="notice-icon" aria-hidden="true"></span><div class="notice-main"><div class="notice-title"></div><div class="notice-text"></div>${track}</div><div class="notice-actions">${stop}</div><button class="btn ghost icon sm notice-close" type="button" aria-label="Dismiss" title="Dismiss"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`;
     this.iconEl = el.querySelector(".notice-icon");
     this.titleEl = el.querySelector(".notice-title");
     this.textEl = el.querySelector(".notice-text");

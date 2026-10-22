@@ -23,12 +23,12 @@ function ok(msg) {
 async function waitForMaiaReady(page, timeoutMs = 135_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const model = (await page.locator("#settings-maia-model").textContent().catch(() => ""))?.trim();
-    if (model === "available") return;
+    const model = (await page.locator('[data-testid="settings-dl-status-maia"]').textContent().catch(() => ""))?.trim();
+    if (model?.startsWith("Ready")) return;
     await sleep(1_000);
   }
-  const note = (await page.locator("#settings-maia-status").textContent().catch(() => ""))?.trim();
-  fail(`Maia3 retry did not become available (${note || "no status"})`);
+  const note = (await page.locator("#settings-dl-maia .dl-line").textContent().catch(() => ""))?.trim();
+  fail(`Maia3 download did not become ready (${note || "no status"})`);
 }
 
 async function checkHeaders() {
@@ -115,23 +115,17 @@ async function browserChecks() {
       ok("Stockfish .wasm loaded same-origin");
     }
 
-    // Settings exposes a guest-safe Maia retry control. Exercise it here instead of
+    // Settings exposes a guest-safe Maia download control. Exercise it here instead of
     // relying on Analyze's signed-in full-game path, which deliberately gates before
     // creating the Maia provider for guests. This makes the production ORT/HF path a
     // repeatable smoke gate while leaving product behavior unchanged.
     const moreNav = page.locator("#more-nav > summary");
     if (await moreNav.count()) await moreNav.click();
     await page.click('[data-testid="nav-settings"]');
-    await page.locator('[data-testid="settings-maia-retry"]').waitFor({ state: "visible", timeout: 15_000 });
-    await page.click('[data-testid="settings-maia-retry"]');
+    const maiaAction = page.locator('#settings-dl-maia [data-dl="get"]');
+    await maiaAction.waitFor({ state: "visible", timeout: 15_000 });
+    await maiaAction.click();
     await waitForMaiaReady(page);
-    const maiaState = await page.evaluate(() => ({
-      model: document.querySelector("#settings-maia-model")?.textContent.trim() || "",
-      note: document.querySelector("#settings-maia-status")?.textContent.trim() || "",
-    }));
-    if (maiaState.model !== "available") {
-      fail(`Maia3 retry did not become available (${maiaState.note || "no status"})`);
-    }
     const ortWasmHits = wasmHits.filter((u) => /ort-wasm/i.test(u));
     if (bases.engine && !ortWasmHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
       fail(`ORT .wasm was not observed from the pinned HF base (seen: ${ortWasmHits.join(", ") || "none"})`);
@@ -139,7 +133,7 @@ async function browserChecks() {
     if (!onnxHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
       fail(`Maia ONNX was not observed from the pinned HF base (seen: ${onnxHits.join(", ") || "none"})`);
     }
-    ok(`Maia3 inference available (${maiaState.note || "session loaded"})`);
+    ok("Maia3 inference available");
     ok("ORT .wasm and Maia ONNX were fetched through the production worker");
   } finally {
     await browser.close();

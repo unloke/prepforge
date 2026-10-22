@@ -25,12 +25,16 @@ describe("session ended", () => {
     globalThis.window = { location: { hash: "#/dashboard", href: "https://x.test/#/dashboard" } };
     globalThis.document = {
       getElementById: () => null,
-      querySelector: (sel) => (sel === ".modal-overlay.auth-overlay" ? overlays.find((o) => !o.removed) || null : null),
+      querySelector: (sel) => (sel === "dialog.auth-modal" ? overlays.find((o) => !o.removed) || null : null),
       createElement: () => {
         const overlay = {
           className: "", dataset: {}, removed: false, listeners: {},
           get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
           addEventListener(name, fn) { this.listeners[name] = fn; },
+          setAttribute() {},
+          showPopover() {},
+          hidePopover() {},
+          contains: () => false,
           querySelector: () => null,
           remove() { this.removed = true; },
         };

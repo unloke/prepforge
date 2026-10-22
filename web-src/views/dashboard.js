@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { nounOf } from "../plural.js";
 import { loadTeamDirectory } from "../team-directory.js";
-import { staggerRows } from "../list-enter.js";
+import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
@@ -58,7 +58,7 @@ export function createDashboardView({
   setStatus,
   setStatusError = (message) => setStatus(message),
   localDateString,
-  goToSmartTraining,
+  openTrain,
   editRepertoire,
   openRepertoireContextMenu,
   createRepertoirePrompt,
@@ -255,7 +255,7 @@ export function createDashboardView({
           );
         })}`,
     );
-    card.hidden = false;
+    reveal(card);
   }
 
   // Linking / unlinking Lichess happens outside the Library (Settings, OAuth
@@ -327,7 +327,7 @@ export function createDashboardView({
   function renderTodayError(message) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
-    card.hidden = false;
+    reveal(card);
     const written = paint(card, html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`);
     lastTodayPayload = null;
     if (written) card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
@@ -427,7 +427,7 @@ export function createDashboardView({
       ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
       : html`<button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
   `);
-    card.hidden = false;
+    reveal(card);
     if (!written) return;
     if (firstRun) {
       // The strip is re-rendered on every load, so it binds its own action;
@@ -435,11 +435,7 @@ export function createDashboardView({
       card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
       return;
     }
-    const trainNow = () =>
-      goToSmartTraining(
-        due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
-      );
-    document.getElementById("dashboard-train-now").addEventListener("click", trainNow);
+    document.getElementById("dashboard-train-now").addEventListener("click", () => openTrain({ mode: "smart" }));
   }
 
   // ---- Library list rendering ----------------------------------------------
@@ -459,6 +455,8 @@ export function createDashboardView({
     openShared: (repId) => editRepertoire(repId),
     openRepertoireContextMenu,
     repSubline,
+    // A weak / due / new chip trains that repertoire's Due queue.
+    trainRepertoire: (repId, chip) => openTrain && openTrain({ mode: "smart", repertoireId: repId, origin: chip }),
   });
 
   // An empty library (signed out, or no repertoires yet) is the prototype's
@@ -552,7 +550,7 @@ export function createDashboardView({
       container,
       shown.filter((item) => !item.sharedRow),
       shown.filter((item) => item.sharedRow),
-      { selectedRepId, staggerRows },
+      { selectedRepId },
     );
     // The row painter owns the nodes, so the note paint() keeps for the empty
     // states in this same container no longer describes what is there.
@@ -622,6 +620,7 @@ export function createDashboardView({
     const status = document.getElementById("library-refresh-status");
     if (status) status.hidden = true;
     appState.repertoireList = payload.repertoires || [];
+    appState.sharedRepertoireList = payload.shared || [];
     const visible = (payload.repertoires || []).filter(
       (item) => !appState.pendingRepDeletes.has(String(item.id)),
     );
@@ -717,7 +716,7 @@ export function createDashboardView({
             html`<div class="step"><span class="step-n" aria-hidden="true"></span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,
         )}`,
     );
-    card.hidden = false;
+    reveal(card);
   }
 
   // Either endpoint failing leaves the error card and rethrows, so the caller
@@ -823,7 +822,7 @@ export function createDashboardView({
           if (ok) setStatus("Ready");
         });
       } else if (action === "analyze" && goToView) goToView("analyze");
-      else if (action === "train" && goToSmartTraining) goToSmartTraining("Starting training…");
+      else if (action === "train" && openTrain) openTrain({ mode: "smart" });
       else if (action === "lichess") {
         // Linking lives in Settings → Account (Chess accounts); the app opens Settings via
         // its tab and jumps to the section once the view has rendered.

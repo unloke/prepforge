@@ -236,6 +236,7 @@ def test_training_session_and_progress_round_trip():
     session = TrainingSession(
         id="session-1",
         repertoire_id="train-rep",
+        owner_user_id="u1",
         mode=TrainingMode.ALL_LINES,
         line_order=["train-e4", "train-root"],
         current_index=1,
@@ -248,15 +249,18 @@ def test_training_session_and_progress_round_trip():
         node_id="train-e4",
         attempts=4,
         correct_attempts=2,
-        spaced_repetition_score=3.5,
-        is_mastered=False,
+        state=3,
+        step=0,
+        stability=3.5,
+        difficulty=6.2,
+        lapses=1,
     )
 
     repo.save_training_session(session)
     repo.save_training_progress("train-rep", progress, owner_user_id="u1")
 
     loaded_session = repo.load_training_session("session-1")
-    latest_session = repo.load_latest_training_session("train-rep", TrainingMode.ALL_LINES)
+    latest_session = repo.load_latest_training_session("train-rep", "u1", TrainingMode.ALL_LINES)
     loaded_progress = repo.load_training_progress(
         "train-rep", "train-e4", owner_user_id="u1"
     )
@@ -275,8 +279,8 @@ def test_training_session_and_progress_round_trip():
     assert loaded_progress.node_id == "train-e4"
     assert loaded_progress.attempts == 4
     assert loaded_progress.correct_attempts == 2
-    assert loaded_progress.spaced_repetition_score == 3.5
-    assert not loaded_progress.is_mastered
+    assert (loaded_progress.state, loaded_progress.step, loaded_progress.stability,
+            loaded_progress.difficulty, loaded_progress.lapses) == (3, 0, 3.5, 6.2, 1)
 
 
 # ---- user_settings (canonical 1:1 key/value store) ---------------------------

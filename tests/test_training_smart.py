@@ -1,9 +1,8 @@
 """SmartTrainingService (Train v2 Phase 1): card session flow over a live repo.
 
-Covers the contracts that distinguish the smart trainer from the legacy one:
-run-in context instead of replaying lines from move 1, first-attempt-only
-spaced-repetition grading, in-session re-queue after a second wrong attempt,
-multi-target cards, resume/rebuild, and stale-card skipping.
+Covers line cards played from move 1 (known moves auto-played, only targets
+graded), first-attempt-only spaced-repetition grading, in-session re-queue
+after a second wrong attempt, scoped resume/rebuild, and stale-card skipping.
 """
 from __future__ import annotations
 
@@ -60,9 +59,10 @@ def _due(node_id):
         attempts=3,
         correct_attempts=3,
         last_reviewed_at=PAST,
-        spaced_repetition_score=3.0,
         due_at=PAST,
-        is_mastered=False,
+        state=2,
+        stability=3.0,
+        difficulty=5.0,
     )
 
 
@@ -72,9 +72,10 @@ def _mastered(node_id):
         attempts=5,
         correct_attempts=5,
         last_reviewed_at=PAST,
-        spaced_repetition_score=8.0,
         due_at=NOW + timedelta(days=5),
-        is_mastered=True,
+        state=2,
+        stability=30.0,
+        difficulty=5.0,
     )
 
 
@@ -173,7 +174,7 @@ def test_dashboard_due_matches_trainable_personal_reviews(excluded):
     progress = _due(ids["bb5"])
     if excluded == "weak":
         progress.correct_attempts = 0
-        progress.spaced_repetition_score = 0
+        progress.stability = 0.5
     _seed_progress(repository, repertoire.id, [progress],
                    owner="other" if excluded == "other-owner" else "t-owner")
     if excluded == "disabled":
@@ -223,8 +224,8 @@ def test_deep_card_prompt_carries_run_in_context():
     repository = _repository()
     repertoire, ids = _build(repository)
     # Only Bb5 (ply 5) is due; everything else is mastered, so the single card
-    # targets Bb5 and the prompt must bring the player there via run-in moves
-    # rather than asking them to replay the whole line.
+    # targets Bb5 and the line plays itself from move 1 up to it: e4 and Nf3
+    # are auto-played, never asked.
     _seed_progress(
         repository,
         repertoire.id,
@@ -238,10 +239,8 @@ def test_deep_card_prompt_carries_run_in_context():
     prompt = service.current_prompt(session.id)
     assert prompt.kind == CARD_DUE
     assert prompt.expected_move_uci == "f1b5"
-    # Run-in: the last plies before the target (Nf3, Nc6 at RUN_IN_PLIES=3
-    # this is e5, Nf3, Nc6), ending at the prompt position.
     run_in_sans = [node.move.san for node in prompt.run_in]
-    assert run_in_sans == ["e5", "Nf3", "Nc6"]
+    assert run_in_sans == ["e4", "e5", "Nf3", "Nc6"]
     assert prompt.start_fen != prompt.fen_before
     assert prompt.hint_piece == "Move the bishop"
     # No author annotation on the node -> heuristic strategy, flagged as such.
@@ -293,13 +292,13 @@ def test_correct_first_attempt_writes_progress_and_advances():
     repository = _repository()
     repertoire, _ = _build(repository)
     service = SmartTrainingService(repository, "t-owner")
-    session = service.start_or_resume(repertoire.id, seed=5)
+    session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
     prompt = service.current_prompt(session.id)
     result = service.submit_move(session.id, prompt.expected_move_uci, attempt=1)
     assert result.correct is True
     assert result.sr_written is True
     assert result.progress is not None and result.progress.attempts == 1
-    assert result.card_completed is True  # untrained queue = single-target cards
+    assert result.card_completed is True  # one target in the queue
     assert result.session.current_index == 1
     assert result.played_san == prompt.expected_move_san
     assert result.fen_after_player
@@ -350,7 +349,7 @@ def test_play_after_reveal_advances_without_sr_write():
     repository = _repository()
     repertoire, _ = _build(repository)
     service = SmartTrainingService(repository, "t-owner")
-    session = service.start_or_resume(repertoire.id, seed=5)
+    session = service.start_or_resume(repertoire.id, seed=5, session_size=1)
     prompt = service.current_prompt(session.id)
     wrong = "a2a3" if prompt.expected_move_uci != "a2a3" else "h2h3"
     service.submit_move(session.id, wrong, attempt=1)
@@ -466,7 +465,7 @@ def _claim(repository, owner, *repertoires):
         repository.claim_repertoire(rep.id, owner)
 
 
-def test_mixed_session_spans_repertoires_in_chunks():
+def test_mixed_session_keeps_each_repertoire_together():
     repository = _repository()
     white, _ = _build(repository)
     black = _build_black(repository)
@@ -474,24 +473,48 @@ def test_mixed_session_spans_repertoires_in_chunks():
     _claim(repository, owner, white, black)
     service = SmartTrainingService(repository, owner)
     session = service.start_or_resume_mixed(owner, seed=5)
+    assert session.scope == "all"
     cards = [decode_card(raw) for raw in session.line_order]
     assert all(card is not None and card.repertoire_id for card in cards)
-    rep_ids = {card.repertoire_id for card in cards}
-    assert rep_ids == {white.id, black.id}
+    assert {card.repertoire_id for card in cards} == {white.id, black.id}
     # The session row anchors on the smaller repertoire id (stable home).
     assert session.repertoire_id == min(white.id, black.id)
-    # Grouped-but-mixed: never more than MIX_CHUNK consecutive same-rep cards
-    # while another repertoire still has cards pending.
-    from prepforge_chess.services.scheduler import MIX_CHUNK
+    # Untrained: one band (new), so each repertoire's lines form one stretch.
+    reps = [card.repertoire_id for card in cards]
+    switches = sum(1 for a, b in zip(reps, reps[1:]) if a != b)
+    assert switches == 1
 
-    run = 1
-    for prev, cur in zip(cards, cards[1:]):
-        run = run + 1 if cur.repertoire_id == prev.repertoire_id else 1
-        remaining_other = any(
-            c.repertoire_id != cur.repertoire_id for c in cards[cards.index(cur) :]
-        )
-        if remaining_other:
-            assert run <= MIX_CHUNK
+
+def test_all_repertoires_never_resumes_a_one_repertoire_session():
+    """P0: Library Train (all) after "Train this repertoire" must not serve the
+    one-repertoire queue, though both anchor on the same repertoire row."""
+    repository = _repository()
+    white, _ = _build(repository)
+    black = _build_black(repository)
+    owner = "owner-scope"
+    _claim(repository, owner, white, black)
+    anchor = min((white, black), key=lambda rep: rep.id)
+    service = SmartTrainingService(repository, owner)
+    scoped = service.start_or_resume(anchor.id, seed=5)
+    assert scoped.scope == "repertoire"
+    mixed = service.start_or_resume_mixed(owner, seed=6)
+    assert service.resumed is False
+    assert mixed.id != scoped.id and mixed.scope == "all"
+    assert {decode_card(raw).repertoire_id for raw in mixed.line_order} == {white.id, black.id}
+    # Each scope resumes its own session.
+    assert service.start_or_resume(anchor.id).id == scoped.id and service.resumed
+    assert service.start_or_resume_mixed(owner).id == mixed.id and service.resumed
+
+
+def test_picked_targets_never_take_over_the_repertoire_session():
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    service = SmartTrainingService(repository, "t-owner")
+    plain = service.start_or_resume(repertoire.id, seed=5)
+    picked = service.start_or_resume(repertoire.id, target_node_ids=[ids["c4"]])
+    assert picked.scope == "targets" and picked.id != plain.id
+    assert decode_card(picked.line_order[0]).first_target_id == ids["c4"]
+    assert service.start_or_resume(repertoire.id).id == plain.id
 
 
 def test_mixed_bundle_names_each_repertoire():
@@ -513,35 +536,39 @@ def test_mixed_bundle_names_each_repertoire():
         assert card["targets"]
 
 
-def test_mixed_single_active_repertoire_delegates_to_plain_start():
+def test_mixed_with_one_active_repertoire_is_still_an_all_scope():
     repository = _repository()
     white, _ = _build(repository)
     owner = "owner-3"
     _claim(repository, owner, white)
     service = SmartTrainingService(repository, owner)
     session = service.start_or_resume_mixed(owner, seed=5)
-    assert session.repertoire_id == white.id
+    assert session.repertoire_id == white.id and session.scope == "all"
     cards = [decode_card(raw) for raw in session.line_order]
     assert all(card is not None and card.repertoire_id == white.id for card in cards)
 
 
-def test_next_session_counts_match_the_queue_start_serves():
+def test_preview_counts_match_the_queue_start_serves_per_scope():
     repository = _repository()
     white, _ = _build(repository)
     black = _build_black(repository)
     owner = "owner-preview"
     _claim(repository, owner, white, black)
     service = SmartTrainingService(repository, owner)
-    preview = service.next_session_counts(owner)
+    preview = service.preview(owner)
     assert preview["resumed"] == 0
     session = service.start_or_resume_mixed(owner, seed=5)
-    assert {k: v for k, v in preview.items() if k != "resumed"} == service.counts(session)
-    # A started session is what the next Start resumes: count what is left.
+    counts = service.counts(session)
+    assert {k: v for k, v in preview.items() if k not in ("resumed", "left")} == counts
+    assert preview["left"] == counts["cards"]
+    # A started session is what the next Start of the same scope resumes.
     session = replace(session, current_index=1)
     repository.save_training_session(session)
-    left = service.next_session_counts(owner)
+    left = service.preview(owner)
     assert left["resumed"] == 1
-    assert left["cards"] == len(session.line_order) - 1
+    assert left["left"] == len(session.line_order) - 1
+    # ...but a one-repertoire preview never reports the all-scope session.
+    assert service.preview(owner, white.id)["resumed"] == 0
 
 
 def test_bundle_targets_carry_the_numbered_line_to_their_position():
@@ -1214,7 +1241,7 @@ def test_due_windows_equal_two_mastery_queries_in_one_statement():
     rows[1].due_at = NOW + timedelta(hours=12)
     rows[2].due_at = NOW + timedelta(hours=30)
     rows[3].correct_attempts = 0  # weak takes priority over due
-    rows[3].spaced_repetition_score = 0
+    rows[3].stability = 0.5
     _seed_progress(repository, repertoire.id, rows)
     repository.update_opening_nodes(repertoire.id, [{"id": ids["d5"], "is_enabled": False}])
     expected_now = repository.due_counts_by_repertoire("t-owner", now=NOW)
@@ -1232,3 +1259,64 @@ def test_due_windows_equal_two_mastery_queries_in_one_statement():
         rid: (count, expected_until[rid]) for rid, count in expected_now.items()
     }
     assert len(statements) == 1
+
+
+def test_line_card_autoplays_known_moves_and_grades_only_its_targets():
+    """e4 and Bb5 due, Nf3 known: the bundle asks e4 (from move 1), then
+    auto-plays Nf3 Nc6 after the e5 reply and asks Bb5. Nf3 is never a target,
+    so it is never graded."""
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    _seed_progress(
+        repository,
+        repertoire.id,
+        [_due(ids["e4"]), _due(ids["bb5"])] + [_mastered(ids[k]) for k in ("nf3", "d4", "c4")],
+    )
+    service = SmartTrainingService(repository, "t-owner")
+    session = service.start_or_resume(repertoire.id, seed=5, session_size=2)
+    [card] = service.session_card_bundle(session, repertoire)
+    first, second = card["targets"]
+    assert [first["san"], second["san"]] == ["e4", "Bb5"]
+    assert first["run_in"] == [] and first["reply"]["san"] == "e5"
+    assert [m["san"] for m in second["run_in"]] == ["Nf3", "Nc6"]
+    assert second["start_fen"] == first["reply"]["fen_after"]
+    # Server-graded flow: answering e4 moves straight to Bb5.
+    result = service.submit_move(session.id, "e2e4")
+    assert result.next_prompt.expected_move_san == "Bb5"
+    assert [n.move.san for n in result.next_prompt.run_in] == ["Nf3", "Nc6"]
+    service.submit_move(session.id, "f1b5")
+    graded = {ids[k] for k in ("e4", "nf3", "bb5")}
+    attempts = {
+        node_id: repository.load_training_progress(repertoire.id, node_id, owner_user_id="t-owner").attempts
+        for node_id in graded
+    }
+    assert attempts == {ids["e4"]: 4, ids["nf3"]: 5, ids["bb5"]: 4}
+
+
+def test_another_repertoire_move_is_not_a_miss_and_bundle_lists_it():
+    """e4 and d4 are both White first moves here: on a card drilling one, the
+    other is accepted ungraded and the card stays; the bundle lists it so the
+    local session answers the same way."""
+    repository = _repository()
+    repertoire, ids = _build(repository)
+    service = SmartTrainingService(repository, "t-owner")
+    session = service.start_or_resume(repertoire.id, seed=5)
+    prompt = service.current_prompt(session.id)
+    first = {ids["e4"]: "d2d4", ids["d4"]: "e2e4"}
+    if prompt.expected_node_id not in first:
+        pytest.skip("first card is not a first-move card")
+    result = service.submit_move(session.id, first[prompt.expected_node_id], attempt=1)
+    assert result.alternative is True and result.correct is False
+    assert result.sr_written is False and result.progress is None
+    assert result.session.mistakes == []
+    assert result.next_prompt.expected_node_id == prompt.expected_node_id
+    bundle = service.session_card_bundle(session, repertoire)
+    target = next(
+        t for card in bundle for t in card["targets"] if t["node_id"] == prompt.expected_node_id
+    )
+    assert [a["uci"] for a in target["alternatives"]] == [first[prompt.expected_node_id]]
+    nf3 = next(
+        (t for card in bundle for t in card["targets"] if t["node_id"] == ids["nf3"]), None
+    )
+    if nf3 is not None:
+        assert nf3["alternatives"] == []

@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { enterRows } from "../list-enter.js";
 import { roleLabel } from "../share-roles.js";
 
 // The Library table's rows and the painter that keeps them in place.
@@ -62,16 +63,13 @@ function ownRowHtml(item, { selected, repSubline }) {
     mastery =
       html`<span class="lib-mastery" title="${label}"><span class="lib-mbar" role="img" aria-label="${pct}% mastered, ${startedPct}% trained"><i class="is-started" style="width:${startedPct}%"></i><i class="is-mastered" style="width:${pct}%"></i></span><b>${pct}%</b><span class="lib-mastery-word">mastered</span></span>`;
   }
+  // Each queue chip starts this repertoire's Due queue in Train.
   const queue = [];
-  if (health && health.weak) {
-    queue.push(html`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
-  }
-  if (health && health.due) {
-    queue.push(html`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
-  }
-  if (health && health.untrained) {
-    queue.push(html`<span class="kchip k-new" title="Never trained">${health.untrained} new</span>`);
-  }
+  const chip = (kind, count, word) =>
+    html`<button type="button" class="kchip k-${kind}" data-train-chip="${kind}" title="Train ${count} ${word} in ${item.name}">${count} ${word}</button>`;
+  if (health && health.weak) queue.push(chip("weak", health.weak, "weak"));
+  if (health && health.due) queue.push(chip("due", health.due, "due"));
+  if (health && health.untrained) queue.push(chip("new", health.untrained, "new"));
   const queueHtml = queue.length ? queue : html`<span class="muted">—</span>`;
   return html`
     <div class="${cls}" tabindex="0" data-repertoire-id="${id}" data-active="${active ? "1" : "0"}" aria-selected="${selected}">
@@ -86,7 +84,7 @@ function ownRowHtml(item, { selected, repSubline }) {
         <span class="lib-cell-mastery">${mastery}</span>
         <span class="lib-cell-queue">${queueHtml}</span>
       </span>
-      <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${item.name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
+      <button type="button" class="btn ghost icon row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${item.name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
     </div>
   `;
 }
@@ -95,7 +93,7 @@ function ownRowHtml(item, { selected, repSubline }) {
 // the view above it only has to say what the listing now contains.
 // `openOwn` selects the row and opens its workspace (the production action);
 // `openShared` opens a read-only share without claiming the local selection.
-export function createLibraryRows({ openOwn, openShared, openRepertoireContextMenu, repSubline }) {
+export function createLibraryRows({ openOwn, openShared, openRepertoireContextMenu, repSubline, trainRepertoire }) {
   // Rows on screen, by key, with the content they were painted from.
   const painted = new Map();
 
@@ -103,13 +101,6 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
   // row never collects a second handler.
   function bindRow(row) {
     const repId = row.dataset.repertoireId;
-    // The entrance is a one-off: the marker comes off when it ends, so
-    // re-showing the view or moving the row cannot replay it.
-    const settle = (event) => {
-      if (event.animationName === "row-enter") row.classList.remove("is-enter");
-    };
-    row.addEventListener("animationend", settle);
-    row.addEventListener("animationcancel", settle);
     if (row.dataset.shared) {
       const openSharedRow = () => openShared(repId);
       row.addEventListener("click", openSharedRow);
@@ -125,6 +116,8 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     const open = () => openOwn(repId);
     row.addEventListener("click", (event) => {
       if (event.target.closest(".row-menu-btn")) return;
+      const chip = event.target.closest("[data-train-chip]");
+      if (chip && trainRepertoire) return trainRepertoire(repId, chip);
       open();
     });
     row.addEventListener("keydown", (event) => {
@@ -180,7 +173,7 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     // Paint `visible` (own) then `shared` (read-only) into `container`,
     // reconciling against the nodes already there. Returns the rows the
     // selection highlight has to visit.
-    render(container, visible, shared, { selectedRepId, staggerRows }) {
+    render(container, visible, shared, { selectedRepId }) {
       const entries = [
         ...visible.map((item) => ({ item, sharedRow: false })),
         ...shared.map((item) => ({ item, sharedRow: true })),
@@ -229,7 +222,6 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
         const nodeFor = (markup) => {
           template.innerHTML = markup;
           const node = template.content.firstElementChild;
-          node.classList.add('is-enter');
           bindRow(node);
           return node;
         };
@@ -265,14 +257,12 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
             : ownRowHtml(entry.item, { selected: false, repSubline }),
         )));
         container.innerHTML = entries.map((entry) => entry.markup).join("");
-        container.querySelectorAll(".lib-row").forEach(row => {
-          row.classList.add('is-enter');
-          bindRow(row);
-        });
+        container.querySelectorAll(".lib-row").forEach(bindRow);
       }
       highlight(container, selectedRepId);
-      // Number the rows so an entering one waits its turn in place.
-      staggerRows(container);
+      // Only a row the listing did not show before enters: a kept row, and a
+      // row repainted because its counts changed, stay settled.
+      enterRows(container, { key: keyOfNode });
       return container.querySelectorAll(".lib-row");
     },
   };

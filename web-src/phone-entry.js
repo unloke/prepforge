@@ -1,5 +1,5 @@
 import { appState } from "./core/state.js";
-import { activateModal } from "./core/modals.js";
+import { openModal } from "./core/dialog.js";
 import { closeSheetOffPhone } from "./phone-layout.js";
 import { disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/maia3-provider.js";
 
@@ -9,10 +9,10 @@ import { disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/ma
 // hands Maia's memory back after a tab has been parked. Bound once from the
 // shell's bindEvents.
 
-let onAccountChipClick, toggleTheme, isAccountMenuOpen;
+let onAccountChipClick, toggleTheme;
 
 export function bindPhoneChrome(deps) {
-  ({ onAccountChipClick, toggleTheme, isAccountMenuOpen } = deps);
+  ({ onAccountChipClick, toggleTheme } = deps);
   wireMobileNav();
 }
 
@@ -64,31 +64,25 @@ export function wireMobileNav() {
   const sheet = document.getElementById("more-sheet");
   const moreBtn = document.getElementById("more-nav-btn");
   if (!sheet || !moreBtn) return;
-  let sheetCleanup = null;
+  let closeOpenSheet = null;
   const closeSheet = ({ restoreFocus = true } = {}) => {
-    if (sheet.hidden) return;
-    sheet.hidden = true;
-    sheetCleanup?.({ restoreFocus: false });
-    sheetCleanup = null;
+    if (!closeOpenSheet) return;
+    const close = closeOpenSheet;
+    closeOpenSheet = null;
     moreBtn.setAttribute("aria-expanded", "false");
-    if (restoreFocus) moreBtn.focus();
+    close({ restoreFocus });
   };
   const openSheet = () => {
-    sheet.hidden = false;
     moreBtn.setAttribute("aria-expanded", "true");
-    const menu = document.getElementById("account-menu");
-    sheetCleanup = activateModal(sheet, { additionalRoots: menu ? [menu] : [] });
+    closeOpenSheet = openModal(sheet, { keep: true, onDismiss: () => closeSheet() });
   };
   moreBtn.addEventListener("click", () => {
-    if (sheet.hidden) openSheet();
-    else closeSheet();
+    if (sheet.open) closeSheet();
+    else openSheet();
   });
   // The sheet belongs to the phone layout: a bar that is gone must not leave it
   // as a full-width bottom sheet over the desktop board.
   closeSheetOffPhone(() => closeSheet({ restoreFocus: false }));
-  sheet.addEventListener("click", (event) => {
-    if (event.target === sheet) closeSheet();
-  });
   sheet.querySelectorAll("[data-nav-mirror]").forEach((item) => {
     item.addEventListener("click", () => {
       const [view, section] = item.dataset.navMirror.split(":");
@@ -106,8 +100,8 @@ export function wireMobileNav() {
     });
   });
   // Mobile account entry (the rail — and its account row — is hidden ≤ 760px).
-  // Signed in, the account menu opens over the still-open sheet with this item
-  // as its trigger, so Escape returns focus here; a guest gets the auth modal.
+  // Signed in, the account menu opens inside the still-open sheet with this
+  // item as its opener, so Escape returns focus here; a guest gets the auth modal.
   const accountItem = document.getElementById("sheet-account");
   if (accountItem) {
     accountItem.addEventListener("click", () => {
@@ -129,11 +123,6 @@ export function wireMobileNav() {
       document.getElementById("open-palette")?.click();
     });
   }
-  document.addEventListener("keydown", (event) => {
-    // Escape closes the topmost layer only: an account menu opened from the
-    // sheet closes first (the global handler), the sheet on the next Escape.
-    if (event.key === "Escape" && !sheet.hidden && !isAccountMenuOpen()) closeSheet();
-  });
   wirePhoneStudyNav();
   wirePhoneSheets();
   wireHoldRepeat();

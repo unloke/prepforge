@@ -62,7 +62,7 @@ def _children(payload, parent):
 def test_unchanged_feed_is_just_the_revision(client):
     rep, _root, _e4 = _setup(client)
     revision = _load(client, rep)["revision"]
-    assert _changes(client, rep, revision) == {"revision": revision}
+    assert _changes(client, rep, revision) == {"revision": revision, "role": "owner"}
 
 
 def test_feed_carries_written_nodes_removed_ids_name_and_authorship(client):
@@ -97,7 +97,7 @@ def test_feed_resets_when_the_log_no_longer_reaches_back(client, monkeypatch):
     start = _load(client, rep)["revision"]
     for i, uci in enumerate(("d2d4", "c2c4", "g1f3")):
         _add(client, rep, root, uci, f"tmp-a-{i + 10}")
-    assert _changes(client, rep, start) == {"revision": start + 3, "reset": True}
+    assert _changes(client, rep, start) == {"revision": start + 3, "role": "owner", "reset": True}
     assert _changes(client, rep, start + 1)["revision"] == start + 3
     # A brand-new repertoire's first op replaced the whole tree: reload it.
     assert _changes(client, rep, 0)["reset"] is True

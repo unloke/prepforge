@@ -165,6 +165,19 @@ describe("createBuildLive", () => {
     expect(h.deps.hydrate).not.toHaveBeenCalled();
   });
 
+  it("reloads when the caller's role changed, even with no new writes", async () => {
+    const h = harness({ changes: { revision: 0, role: "edit" } });
+    h.appState.build.role = "view";
+    h.appState.build.revision = 0;
+    await h.live.tick();
+    expect(h.deps.reload).toHaveBeenCalledTimes(1);
+    const same = harness({ changes: { revision: 0, role: "view" } });
+    same.appState.build.role = "view";
+    same.appState.build.revision = 0;
+    await same.live.tick();
+    expect(same.deps.reload).not.toHaveBeenCalled();
+  });
+
   it("does not poll while hidden or away from Build, and slows down when idle", async () => {
     const hidden = harness();
     hidden.deps.doc.hidden = true;

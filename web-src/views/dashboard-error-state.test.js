@@ -65,7 +65,7 @@ describe("Library error state", () => {
       setStatus: (m) => statuses.push(["status", m]),
       setStatusError: (m) => statuses.push(["error", m]),
       localDateString: () => "2026-09-29",
-      goToSmartTraining: vi.fn(),
+      openTrain: vi.fn(),
       editRepertoire: vi.fn(),
       openRepertoireContextMenu: vi.fn(),
       createRepertoirePrompt: vi.fn(),

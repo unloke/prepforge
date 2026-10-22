@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
+import { wrongMoveBanner } from "./train-hint.js";
 
 // The sounds a Train answer makes, run from the real source: the board's landing
 // must stay quiet when the graded cue follows it, and a New move's demonstration
@@ -57,6 +58,7 @@ function harness({ kind = "due", correct = true } = {}) {
     optimisticBoardMove,
     queueTrainAttempt: noop,
     trackPreparationPractice: noop,
+    wrongMoveBanner,
     renderTrainStats: async () => {},
     boardAfterMove: async (fen, uci) => ({
       board: { fen: `after-${uci}` },

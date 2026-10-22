@@ -1,0 +1,209 @@
+/* Train: one loop, Home → Session → Result (controllers/train-home.js sets
+   #view-train[data-train-screen]). Desktop first; the phone screens are in
+   phone.css. */
+
+/* ---- header: "Train" on Home; ‹ Train · mode · scope · n / N in a session */
+.train-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px 8px 14px;
+}
+.train-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.train-head-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; }
+.train-head-mode { font-weight: 650; white-space: nowrap; }
+.train-scope-chip {
+  min-width: 0;
+  overflow: hidden;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: var(--fs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.train-scope-chip:empty { display: none; }
+.train-count { margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.train-count:empty { display: none; }
+.train-history-btn { margin-left: auto; }
+#view-train .train-back { gap: 4px; padding-left: 4px; }
+#view-train .train-back .bi { display: block; }
+.train-head-prog { flex: none; margin: 0 14px 4px; }
+
+#view-train[data-train-screen="home"] :is(.train-back, .train-head-main, .train-head-prog, .train-coach),
+#view-train[data-train-screen="session"] :is(.train-title, .train-history-btn),
+#view-train[data-train-screen="result"] :is(.train-title, .train-head-prog, .train-coach, .train-count) { display: none; }
+
+/* ---- Home: the outlook, then one row per job --------------------------- */
+.train-home { display: flex; flex-direction: column; gap: 10px; }
+.train-home[hidden] { display: none; }
+.train-outlook { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.train-outlook[hidden] { display: none; }
+.train-outlook:has(> .train-outlook-quiet) { display: block; }
+.train-outlook-quiet { color: var(--label); font-size: var(--fs); }
+.train-outlook-cell {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+.train-outlook-cell b { font-size: 20px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.train-outlook-cell span { color: var(--label); font-size: var(--fs); }
+.train-outlook-cell:first-child b { color: var(--accent-text); }
+
+.train-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "text go" "opts opts";
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+}
+.train-row-text { grid-area: text; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.train-row-title { margin: 0; font-size: 15px; font-weight: 650; width: fit-content; }
+.train-row-meta { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+.train-row-meta:empty { display: none; }
+.train-row > .train-row-go,
+.train-row-actions { grid-area: go; }
+.train-row-actions { display: flex; align-items: center; gap: 6px; }
+.train-row-go { min-width: 92px; height: 34px; padding: 0 16px; font-weight: 600; }
+.train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.train-row > [data-unlock-place],
+.train-row-error { grid-column: 1 / -1; }
+.train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
+.train-row-error[hidden] { display: none; }
+.train-blitz-row { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
+#view-train .train-color { width: auto; margin-left: auto; }
+#view-train .train-color .seg-btn { flex: none; padding: 0 12px; }
+/* Maia's download row belongs to the Maia opponent only. */
+#view-train:not([data-play-book="maia"]) [data-unlock-place="train-practice"] { display: none; }
+
+.train-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.train-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.train-chip:hover:not(:disabled) { border-color: var(--accent); }
+.train-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.train-chip:disabled { color: var(--muted); cursor: default; }
+.train-chip[hidden] { display: none; }
+.train-chip-chev { flex: none; width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.train-chip[aria-expanded="true"] .train-chip-chev { transform: rotate(180deg); }
+
+/* ---- the shared picker -------------------------------------------------- */
+.train-picker {
+  position: fixed;
+  inset: auto;
+  top: var(--pick-top, 20vh);
+  left: var(--pick-left, 20px);
+  margin: 0;
+  flex-direction: column;
+  width: min(320px, calc(100vw - 16px));
+  max-height: min(420px, 60vh);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: var(--shadow-pop, 0 12px 32px rgb(0 0 0 / 0.16));
+}
+.train-picker:popover-open { display: flex; }
+.train-picker-head { padding: 6px 8px 4px; color: var(--label); font-size: var(--fs); font-weight: 600; }
+.train-picker-group { padding: 8px 8px 2px; color: var(--label); font-size: var(--fs); }
+.train-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs);
+  text-align: left;
+  cursor: pointer;
+}
+.train-pick:hover:not(:disabled),
+.train-pick:focus-visible { background: var(--accent-soft); outline: none; }
+.train-pick.is-on { font-weight: 650; }
+.train-pick:disabled { color: var(--label); cursor: default; }
+.train-pick-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.train-pick-sub { color: var(--label); font-size: var(--fs); }
+.train-pick-box { flex: none; width: 16px; height: 16px; border: 1.5px solid var(--line-strong); border-radius: 4px; }
+.train-pick.is-on .train-pick-box { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 2px var(--panel); }
+
+/* ---- Session ------------------------------------------------------------ */
+.train-session-meta { display: flex; align-items: center; gap: 8px; min-height: 20px; color: var(--muted); font-size: var(--fs); }
+.train-stats-line:empty { display: none; }
+.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
+.train-play-trail[hidden] { display: none; }
+
+/* ---- Result: fixed shape, the what-changed line reserved ---------------- */
+.train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 650; }
+.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.sum-cells div { display: flex; flex-direction: column; min-width: 0; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
+.sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sum-cells span { overflow: hidden; color: var(--label); font-size: var(--fs); text-overflow: ellipsis; white-space: nowrap; }
+.delta { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 20px; font-size: var(--fs); }
+.delta[hidden] { display: flex; visibility: hidden; }
+#view-train[data-train-mode="play"] .delta[hidden],
+#view-train[data-train-mode="all_lines"] .delta[hidden] { display: none; }
+.tsum-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.tsum-item i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.tsum-item i.k-mastered { background: var(--k-mastered); }
+.tsum-item i.k-learning { background: var(--k-learning); }
+.tsum-item i.k-due { background: var(--k-due); }
+.tsum-item i.k-weak { background: var(--k-weak); }
+.tsum-item i.k-new { background: var(--k-new); }
+.tsum-item .up { color: var(--good-text); }
+.tsum-item .down { color: var(--danger); }
+.train-summary-foot { color: var(--muted); }
+.train-summary-foot:empty { display: none; }
+.train-summary-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.train-summary-actions .btn { flex: 1 1 auto; height: 36px; }
+.train-summary-actions .btn[hidden] { display: none; }
+.train-recent { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs); }
+.train-recent[hidden] { display: none; }
+.train-recent-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
+.train-recent-name { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.train-recent-row b { font-variant-numeric: tabular-nums; }
+
+/* ---- View transitions: chrome only, never the board --------------------- */
+:root.train-vt::view-transition-old(root),
+:root.train-vt::view-transition-new(root) { animation: none; }
+::view-transition-group(train-mode-title) { animation-duration: 380ms; animation-timing-function: var(--ease-out); }
+::view-transition-old(train-body) { animation: train-vt-out 200ms var(--ease-out) both; }
+::view-transition-new(train-body) { animation: train-vt-in 380ms var(--ease-out) both; }
+/* Named only while a Train transition runs, so route-level transitions in
+   the app shell never see Train's names; and the route's own name (.workspace,
+   view-swap.js) steps aside meanwhile so the board does not fade with it. */
+:root.train-vt #view-train .panel-scroll { view-transition-name: train-body; }
+:root.train-vt .workspace { view-transition-name: none; }
+@keyframes train-vt-out { to { opacity: 0; } }
+@keyframes train-vt-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* A drill panel with nothing in it yet (a rehearsal before its first answer)
+   draws no empty box under the banner. */
+#train-progress-panel:not(:has(> :not([hidden]):not(.train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
