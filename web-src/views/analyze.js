@@ -126,15 +126,10 @@ export function createAnalyzeView({
   // from the point, so neither the column being pointed at nor the curve it
   // names is ever under it. `cursorPx` and `pointY` are in plot pixels, read off
   // the live box.
-  function placeEvalReadout(rect, cursorPx, width, height, pointY) {
-    const plotW = rect.width > 0 ? rect.width : EVAL_CHART_W;
-    const plotH = rect.height > 0 ? rect.height : EVAL_CHART_H;
+  function placeEvalReadout(plotW, plotH, cursorPx, width, height, pointY) {
     const left = cursorPx >= plotW / 2 ? cursorPx - READOUT_GAP - width : cursorPx + READOUT_GAP;
-    const below = pointY <= plotH / 2;
-    return {
-      left: Math.max(0, Math.min(left, plotW - width)),
-      top: below ? plotH - height - READOUT_EDGE : READOUT_EDGE,
-    };
+    const top = pointY <= plotH / 2 ? plotH - height - READOUT_EDGE : READOUT_EDGE;
+    return { left: Math.max(0, Math.min(left, plotW - width)), top };
   }
 
   // Engine evaluation as players read it: "+1.4" / "−0.3" in pawns (White's
@@ -725,15 +720,11 @@ export function createAnalyzeView({
     }
     // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
     tooltip.hidden = false;
-    const plotW = rect.width > 0 ? rect.width : EVAL_CHART_W;
-    const pointPx = rect.left + (x / EVAL_CHART_W) * plotW;
-    const spot = placeEvalReadout(
-      rect,
-      Number.isFinite(cursorX) ? cursorX - rect.left : pointPx - rect.left,
-      tooltip.offsetWidth || 0,
-      tooltip.offsetHeight || 0,
-      (evalChartYOf(pointWinPct(point)) / EVAL_CHART_H) * (rect.height || EVAL_CHART_H),
-    );
+    const plotW = rect.width || EVAL_CHART_W;
+    const plotH = rect.height || EVAL_CHART_H;
+    const cursorPx = Number.isFinite(cursorX) ? cursorX - rect.left : (x / EVAL_CHART_W) * plotW;
+    const pointY = (evalChartYOf(pointWinPct(point)) / EVAL_CHART_H) * plotH;
+    const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, pointY);
     tooltip.style.left = `${spot.left}px`;
     tooltip.style.top = `${spot.top}px`;
     if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"), { avoid: chart });

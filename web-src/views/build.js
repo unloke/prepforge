@@ -296,7 +296,13 @@ export function createBuildView({
     if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
   }
 
+  // The tree payload the container was last painted from. A re-read (hydrate
+  // after training, sync, reload) swaps appState.build for a new object, so a
+  // step that lands on the new payload must repaint, not move the mark.
+  let paintedTree = null;
+
   function renderBuilderTree() {
+    paintedTree = null;
     // The rule above reads the tree, so every re-render — including the ones
     // that bail before the tree renderer runs — repaints the head. Otherwise the
     // no-repertoire and root-only branches leave the previous visibility.
@@ -365,6 +371,7 @@ export function createBuildView({
     });
     renderTreeMeta();
     container.innerHTML = treeHtml;
+    paintedTree = appState.build;
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
     // is left carrying an entrance that already happened.
@@ -413,7 +420,7 @@ export function createBuildView({
     const renderer = getMoveTreeRenderer();
     // The tree renderer chunk is still loading: the first paint of this tree is
     // a render, not a mark move (renderBuilderTree waits for the chunk itself).
-    if (!container || !renderer) {
+    if (!container || !renderer || paintedTree !== appState.build) {
       renderBuilderTree();
       return;
     }
