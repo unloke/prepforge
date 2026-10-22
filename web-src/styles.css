@@ -1502,9 +1502,9 @@ h2 {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid currentcolor;
+  border: 2px solid var(--muted);
   border-top-color: transparent;
-  animation: btn-spin 600ms linear infinite;
+  animation: spin 600ms linear infinite;
 }
 
 .btn.primary.is-loading::after,
@@ -1798,9 +1798,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: 11px;
   margin-top: 4px;
   border-radius: 50%;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
-  background-size: 200% 100%;
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+  background: var(--surface-3);
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 .skeleton-stack { display: grid; flex: 1; gap: 5px; min-width: 0; }
 .skeleton-bar.skeleton-thin { height: 8px; }
@@ -3882,11 +3881,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-skeleton .sk-line { width: 70%; height: 15px; margin-bottom: 6px; }
 .scout-skeleton .sk-row { height: 40px; border-radius: 8px; background: var(--surface-3); }
 @media (prefers-reduced-motion: no-preference) {
-  .scout-skeleton .sk { animation: scout-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+  .scout-skeleton .sk { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
   .scout-skeleton .sk-row:nth-child(3) { animation-delay: 0.1s; }
   .scout-skeleton .sk-row:nth-child(4) { animation-delay: 0.2s; }
 }
-@keyframes scout-skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 .scout-panel .scout-empty { display: none; }
 .scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
 /* "0 games fetched" before any scout has run is noise next to the empty card. */
@@ -4276,7 +4274,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 4px;
   background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
   background-size: 200% 100%;
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 /* A placeholder for a headline-sized element (a repertoire name, a team name):
    the same bar, taller, with its own row. */
@@ -4288,10 +4286,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 10px;
   padding: 14px 12px;
 }
-@keyframes skeleton-pulse {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
+/* The one loading pulse: a flat bar breathing, never a shimmer. */
+@keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 
 .inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 
@@ -5210,9 +5206,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: none;
   border: 2px solid color-mix(in srgb, var(--tone) 25%, transparent);
   border-top-color: var(--tone);
-  animation: notice-spin 900ms linear infinite;
+  animation: spin 900ms linear infinite;
 }
-@keyframes notice-spin { to { transform: rotate(360deg); } }
 /* A job that has just finished: the spinner becomes its tick in place, so the
    card settles instead of silently changing meaning. One gesture, not a loop. */
 .notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-emphasis); }

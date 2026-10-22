@@ -26,9 +26,8 @@
   border-top-color: var(--accent);
   border-radius: 50%;
   vertical-align: -1px;
-  animation: scout-count-spin 0.8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
-@keyframes scout-count-spin { to { transform: rotate(360deg); } }
 
 .scout-error {
   display: flex;
