@@ -203,12 +203,13 @@ def test_long_wrong_then_recovered_is_not_weak_and_not_contradictory():
         node_id="n",
         attempts=110,
         correct_attempts=10,
-        spaced_repetition_score=10.0,
         due_at=now + timedelta(days=10),
-        is_mastered=True,
+        state=2,
+        stability=30.0,
+        difficulty=5.0,
     )
     state = node_mastery(progress, now=now)
-    # The review's repro: score=10, is_mastered=true used to display "weak".
+    # The review's repro: a stable move with a bad start used to display "weak".
     assert state != MASTERY_WEAK
     assert state == MASTERY_MASTERED
 
@@ -217,7 +218,9 @@ def test_long_wrong_then_recovered_is_not_weak_and_not_contradictory():
         node_id="n",
         attempts=10,
         correct_attempts=2,
-        spaced_repetition_score=1.0,
+        state=3,
+        stability=0.5,
+        difficulty=5.0,
         due_at=now + timedelta(minutes=10),
     )
     assert node_mastery(failing, now=now) == MASTERY_WEAK
@@ -259,7 +262,7 @@ def test_health_and_scheduler_agree_on_disabled_ancestor_trees():
 
     # Effective-enabled: a disabled node makes its whole subtree unreachable.
     health = compute_health(root, Color.WHITE, {})
-    plan = build_session_plan(root, Color.WHITE, {}, seed=1)
+    plan = build_session_plan(root, Color.WHITE, {})
     assert health.trainable == 0
     assert plan.cards == []
 
@@ -267,7 +270,7 @@ def test_health_and_scheduler_agree_on_disabled_ancestor_trees():
     # so the boundary state cannot persist invisibly.
     parent.is_enabled = True
     health2 = compute_health(root, Color.WHITE, {})
-    plan2 = build_session_plan(root, Color.WHITE, {}, seed=1)
+    plan2 = build_session_plan(root, Color.WHITE, {})
     assert health2.trainable == 1
     assert len(plan2.cards) == 1
 
@@ -307,9 +310,10 @@ def test_listing_due_counts_track_the_clock_not_the_cache(client):
                 attempts=1,
                 correct_attempts=1,
                 last_reviewed_at=now,
-                spaced_repetition_score=1.0,
                 due_at=now + timedelta(hours=6),
-                is_mastered=0,
+                state=2,
+                stability=1.5,
+                difficulty=5.0,
             )
         )
     listing = client.get("/api/repertoires").json()["repertoires"]
@@ -752,9 +756,10 @@ def _insert_progress(rep_id: str, owner: str, node_id: str, **overrides) -> None
         "attempts": 1,
         "correct_attempts": 1,
         "last_reviewed_at": now,
-        "spaced_repetition_score": 1.0,
         "due_at": (now - timedelta(minutes=1)),
-        "is_mastered": 0,
+        "state": 2,
+        "stability": 1.5,
+        "difficulty": 5.0,
     }
     values.update(overrides)
     with db.make_engine().begin() as conn:
@@ -894,18 +899,19 @@ def test_listing_due_count_respects_weak_before_due_precedence(client):
         },
         headers=csrf_headers(client),
     ).json()["selected_node_id"]
-    # 4 attempts, 1 right, recent form still low → weak, even though due.
+    # Tried 4 times and still unstable → weak, even though due.
     _insert_progress(
         rep_id,
         owner,
         node_id,
         attempts=4,
         correct_attempts=1,
-        spaced_repetition_score=1.0,
+        stability=0.5,
+        difficulty=5.0,
     )
     assert _due_listing(client, rep_id)["health"]["due"] == 0
 
-    # Same row, but with recent form (score >= WEAK_SCORE_BELOW) it reads due.
+    # Same row, but stable again (stability >= a day) it reads due.
     from prepforge_chess.api import db
     from prepforge_chess.storage import sa_tables as t
     from sqlalchemy import update
@@ -917,7 +923,7 @@ def test_listing_due_count_respects_weak_before_due_precedence(client):
                 t.training_progress.c.owner_user_id == owner,
                 t.training_progress.c.node_id == node_id,
             )
-            .values(spaced_repetition_score=6.0)
+            .values(stability=6.0)
         )
     assert _due_listing(client, rep_id)["health"]["due"] == 1
 

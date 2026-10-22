@@ -68,7 +68,9 @@ it("an untrained repertoire keeps its name whole on a phone", () => {
 it("the phone checklist shows no step number", () => {
   // A phone hides the finished steps, so the one step left wore a badge
   // reading "2" that pointed at a list the phone never drew.
-  expect(rule("#view-dashboard .step[data-setup-step] .step-n {")).toMatch(/display:\s*none/);
+  expect(rule("#view-dashboard .step .step-n {")).toMatch(/display:\s*none/);
   // The row drops the badge's column so the title gets the width.
   expect(rule("#view-dashboard .step[data-setup-step] {")).toMatch(/grid-template-columns/);
+  // A first-run step puts its action under the words instead of beside them.
+  expect(rule("#view-dashboard .step:not([data-setup-step]) {")).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\);/);
 });

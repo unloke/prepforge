@@ -36,7 +36,7 @@ beforeAll(() => {
 });
 
 // A token as move-text.js writes it: its line in data-mt, its index in data-p.
-function token(mt, p, { cls = "move-ref", title = "", parent = null } = {}) {
+function token(mt, p, { cls = "move-ref", title = "", parent = null, side = null } = {}) {
   const el = fakeEl();
   el.dataset = { mt, p: String(p) };
   el.classList.add(cls);
@@ -44,6 +44,7 @@ function token(mt, p, { cls = "move-ref", title = "", parent = null } = {}) {
   el.matches = (sel) => sel.includes("[data-p]") || sel === ":focus-visible";
   el.closest = (sel) => {
     if (sel === "[title]") return el.getAttribute("title") !== null ? el : parent?.getAttribute("title") != null ? parent : null;
+    if (sel === "[data-board-side]") return side ? { dataset: { boardSide: side } } : null;
     return sel.includes("move-ref") && cls !== "move-ref" ? null : el;
   };
   el.getBoundingClientRect = () => ({ left: 100, top: 100, bottom: 120, width: 30 });
@@ -134,6 +135,16 @@ describe("peek", () => {
     vi.useRealTimers();
   });
 
+  it("faces the side its container names, else the active board's", () => {
+    // Index of the last-move squares in the 64 drawn: the board's orientation.
+    const lastSquares = () => host.innerHTML.split("scout-minisquare").slice(1).flatMap((sq, i) => (sq.startsWith(" light last") || sq.startsWith(" dark last") ? [i] : []));
+    handlers.focusin(ev(token(LINE, 2)));
+    expect(lastSquares()).toEqual([45, 62]); // f3, g1 with White at the bottom
+    mod.hidePeek();
+    handlers.focusin(ev(token(LINE, 2, { side: "black" })));
+    expect(lastSquares()).toEqual([1, 18]); // g1, f3 with Black at the bottom
+  });
+
   it("carries a control's own tooltip in the peek and puts it back", () => {
     const t = token(LINE, 1, { title: "Due for review" });
     handlers.focusin(ev(t));
@@ -202,6 +213,20 @@ describe("peek", () => {
     const again = ev(t, { key: "Escape" });
     handlers.keydown(again); // nothing open: the board's own Esc gets it
     expect(again.stopImmediatePropagation).not.toHaveBeenCalled();
+  });
+
+  it("lets Escape through when the peek is only under the pointer", () => {
+    const t = token(LINE, 0);
+    vi.useFakeTimers();
+    handlers.pointerover(ev(t, { pointerType: "mouse" }));
+    vi.advanceTimersByTime(150);
+    vi.useRealTimers();
+    expect(host.hidden).toBe(false);
+    const esc = ev(t, { key: "Escape" });
+    handlers.keydown(esc); // an open dialog or menu still closes on this press
+    expect(host.hidden).toBe(true);
+    expect(esc.preventDefault).not.toHaveBeenCalled();
+    expect(esc.stopImmediatePropagation).not.toHaveBeenCalled();
   });
 
   it("ignores hover on touch and leaves peek-only tokens' clicks to their row", () => {

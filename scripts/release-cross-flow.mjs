@@ -165,14 +165,14 @@ async function main() {
     await page.locator("#analysis-results").waitFor({ state: "visible", timeout: ANALYSIS_TIMEOUT_MS });
     await page.locator("#analysis-moves > *").first().waitFor({ timeout: ANALYSIS_TIMEOUT_MS });
     await page
-      .locator("#analysis-summary .class-bars, #analysis-summary .cbar-row")
+      .locator("#analysis-summary .rp-side")
       .first()
       .waitFor({ timeout: ANALYSIS_TIMEOUT_MS });
 
     const analyzeSnap = await page.evaluate(() => ({
       resultsVisible: !document.getElementById("analysis-results")?.hidden,
       moveListChildCount: document.getElementById("analysis-moves")?.children.length || 0,
-      summaryHasBars: !!document.querySelector("#analysis-summary .class-bars, #analysis-summary .cbar-row"),
+      summaryHasBars: !!document.querySelector("#analysis-summary .rp-side"),
       status: document.getElementById("notices")?.textContent?.trim() || "",
       handoffVisible: !document.getElementById("analysis-handoff")?.hidden,
       repertoireCta: !!document.querySelector('[data-testid="create-repertoire-from-game"]'),
@@ -200,10 +200,10 @@ async function main() {
       throw new Error("create-repertoire-from-game CTA not visible");
     }
     await page.click('[data-testid="create-repertoire-from-game"]');
-    await page.locator(".modal-overlay").waitFor({ state: "visible", timeout: 10000 });
-    await page.fill('.modal-overlay input[name="name"]', repName);
-    await page.selectOption('.modal-overlay select[name="color"]', "white");
-    await page.click('.modal-overlay [data-action="ok"]');
+    await page.locator("dialog.modal[open]").waitFor({ state: "visible", timeout: 10000 });
+    await page.fill('dialog.modal[open] input[name="name"]', repName);
+    await page.selectOption('dialog.modal[open] select[name="color"]', "white");
+    await page.click('dialog.modal[open] [data-action="ok"]');
     await page.locator("#view-build.is-active").waitFor({ state: "attached", timeout: 60000 });
     await page.locator("#build-rep-name", { hasText: repName }).waitFor({ timeout: 30000 });
 
@@ -245,16 +245,14 @@ async function main() {
     await page.locator("#view-train.is-active").waitFor({ timeout: 10000 });
     await page.waitForTimeout(500);
 
-    await page.click('#train-modes .train-mode[data-mode="all_lines"]');
-    await page.waitForTimeout(400);
+    await page.click('[data-testid="train-due-scope"]');
+    await page.locator(".train-picker").waitFor({ timeout: 5000 });
     const picker = await page.evaluate((name) => {
-      const select = document.getElementById("train-repertoire-select");
-      const options = [...(select?.options || [])].map((o) => o.textContent.trim());
-      return { hidden: select?.hidden, options, hasRep: options.some((t) => t.includes(name)) };
+      const options = [...document.querySelectorAll(".train-picker .train-pick")].map((o) => o.textContent.trim());
+      return { options, hasRep: options.some((t) => t.includes(name)) };
     }, repName);
-
-    await page.click('#train-modes .train-mode[data-mode="smart"]');
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
 
     const startRespPromise = page.waitForResponse(
       (r) => r.url().includes("/api/train/smart/start") && r.status() === 200,

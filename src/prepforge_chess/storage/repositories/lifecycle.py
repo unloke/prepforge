@@ -38,11 +38,14 @@ class LifecycleRepository(Repository):
         an owner with any number of rows stays under the bind-parameter caps."""
         games = select(t.games.c.id).where(t.games.c.owner_user_id == owner_user_id)
         reps = select(t.repertoires.c.id).where(t.repertoires.c.owner_user_id == owner_user_id)
-        sessions = select(t.training_sessions.c.id).where(t.training_sessions.c.repertoire_id.in_(reps))
+        # The user's own sessions, and everyone's on the repertoires going away.
+        mine = (t.training_sessions.c.owner_user_id == owner_user_id) | t.training_sessions.c.repertoire_id.in_(reps)
+        sessions = select(t.training_sessions.c.id).where(mine)
         steps = (
             ("train_attempt_receipts", t.train_attempt_receipts.c.session_id.in_(sessions)),
+            ("train_reviews", t.train_reviews.c.owner_user_id == owner_user_id),
             ("training_progress", t.training_progress.c.owner_user_id == owner_user_id),
-            ("training_sessions", t.training_sessions.c.repertoire_id.in_(reps)),
+            ("training_sessions", mine),
             ("analysis_results", t.analysis_results.c.game_id.in_(games)),
             ("moves", t.moves.c.game_id.in_(games)),
             ("games", t.games.c.owner_user_id == owner_user_id),

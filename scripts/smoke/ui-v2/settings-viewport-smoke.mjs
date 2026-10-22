@@ -14,6 +14,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { routeLichessProfile } from "./lichess-profile-route.mjs";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
@@ -73,6 +74,7 @@ const failures = [];
 
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  await routeLichessProfile(page);
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
@@ -111,8 +113,8 @@ async function runViewport(vp) {
   await page.waitForFunction(
     () => {
       const v = document.getElementById("settings-stockfish-version");
-      const m = document.getElementById("settings-maia-model");
-      return v && v.textContent !== "checking…" && m && m.textContent !== "checking…";
+      const m = document.querySelector('[data-testid="settings-dl-status-maia"]');
+      return v && v.textContent !== "checking…" && m && m.textContent !== "Checking…";
     },
     null,
     { timeout: 10000 },
@@ -204,9 +206,9 @@ async function runViewport(vp) {
   const backAvailable = await page.locator("#settings-browser-engine-status").textContent();
   check(backAvailable === "available", `Refresh should see the engine available again, got "${backAvailable}"`);
 
-  // Maia3 card: a REAL state line (manifest is served, so state is on-demand/cache/off — never a canned "Ready").
-  const maiaModel = await page.locator("#settings-maia-model").textContent().catch(() => "");
-  check(maiaModel.length > 0 && maiaModel !== "checking…", `Maia3 state should render, got "${maiaModel}"`);
+  // Maia3 card: a REAL download state (the manifest is served, so it settles past "Checking").
+  const maiaModel = (await page.locator('[data-testid="settings-dl-status-maia"]').textContent({ timeout: 5000 }).catch(() => ""))?.trim();
+  check(maiaModel.length > 0 && !/^checking/i.test(maiaModel), `Maia3 state should render, got "${maiaModel}"`);
 
   // Switches: the Maia-analysis pf-switch toggles and keeps aria-checked in sync.
   const maiaSwitch = page.locator("#settings-maia-analysis");

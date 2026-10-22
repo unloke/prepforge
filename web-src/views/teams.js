@@ -6,9 +6,9 @@ import { html } from "../html.js";
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
-import { staggerRows } from "../list-enter.js";
+import { enterRows } from "../list-enter.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
-import { canCopy, roleLabel } from "../share-roles.js";
+import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 
 export function createTeamsView({
   appState,
@@ -18,12 +18,12 @@ export function createTeamsView({
   loadSharedRepertoires,
   editRepertoire,
   unshareRepertoireFromTeam,
+  changeTeamShareRole,
   copySharedRepertoire,
   teamRoleLabel,
   postJson,
   setStatus = () => {},
   setStatusError = () => {},
-  activateModal = () => {},
   showConfirmModal = async () => false,
   requireSignIn = () => false,
 }) {
@@ -106,7 +106,7 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
-    list.innerHTML = teamRowsSkeleton(3);
+    if (!list.querySelector?.(".team-row:not(.is-skeleton)")) list.innerHTML = teamRowsSkeleton(3);
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
@@ -222,7 +222,7 @@ export function createTeamsView({
           <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
       })}` : html`<div class="empty-state">No teams match your search.</div>`;
-    staggerRows(list);
+    enterRows(list, { key: (row) => row.dataset.teamId });
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);
@@ -248,30 +248,28 @@ export function createTeamsView({
       .map((item) => {
         const id = item.id;
         const name = item.name;
-        const color = item.color;
-        const owner = item.owner_display_name || "member";
         const isMine = item.owner_user_id === appState.accountUserId;
-        // Your own shared rep: Unshare. Someone else's: Copy to your account
-        // (fork), where the team's role allows it.
-        const action = isMine
-          ? html`<button type="button" class="btn sm team-unshare" data-rep-id="${id}" data-rep-name="${name}">Unshare</button>`
-          : canCopy(item.role)
-            ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>`
-            : "";
+        const owner = isMine ? "you" : item.owner_display_name || "member";
+        // Your own share: its role is a control, and Stop sharing. Someone
+        // else's: the role as a badge (what it allows on hover), and Copy where
+        // it is allowed. Only the repertoire's owner changes either (server-enforced).
+        const tail = isMine
+          ? html`<select class="team-role-select team-share-role" data-rep-id="${id}" aria-label="Role for ${name}">${GRANT_ROLES.map((r) => html`<option value="${r}"${r === item.role ? " selected" : ""}>${roleLabel(r)}</option>`)}</select><button type="button" class="btn icon team-remove team-unshare" data-rep-id="${id}" data-rep-name="${name}" title="Stop sharing" aria-label="Stop sharing ${name}"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>`
+          : html`<span class="team-role-badge share-role-badge" title="${roleAllows(item.role)}">${roleLabel(item.role)}</span>${canCopy(item.role) ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>` : ""}`;
         return html`
-        <div class="mem-row team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}">
-          <span class="color-dot ${color}"></span>
+        <div class="mem-row team-shared-rep-row" role="button" tabindex="0" data-repertoire-id="${id}" aria-label="Open ${name}">
+          <span class="color-dot ${item.color}"></span>
           <span class="mem-id">
             <span class="name">${name}</span>
             <span class="sub">· ${owner}</span>
           </span>
-          <span class="team-member-tail"><span class="team-role-badge share-role-badge">${roleLabel(item.role)}</span>${action}</span>
+          <span class="team-member-tail">${tail}</span>
         </div>`;
       })}`;
     container.querySelectorAll(".team-shared-rep-row").forEach((row) => {
       const open = () => editRepertoire(row.dataset.repertoireId);
       row.addEventListener("click", (event) => {
-        if (event.target.closest(".team-unshare") || event.target.closest(".team-copy")) return;
+        if (event.target.closest(".team-member-tail")) return;
         open();
       });
       row.addEventListener("keydown", (event) => {
@@ -281,6 +279,9 @@ export function createTeamsView({
           open();
         }
       });
+    });
+    container.querySelectorAll(".team-share-role").forEach((sel) => {
+      sel.addEventListener("change", () => changeTeamShareRole(teamId, sel.dataset.repId, sel.value));
     });
     container.querySelectorAll(".team-unshare").forEach((btn) => {
       btn.addEventListener("click", (event) => {

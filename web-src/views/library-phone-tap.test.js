@@ -51,7 +51,7 @@ it("the dead-end buttons on the Library are thumb targets", () => {
 it("source chips and their × are 44px rows on a phone", () => {
   const styles = readFileSync(join(root, "..", "styles.css"), "utf8");
   // The chip's phone block starts at the media query whose first rule is the ×.
-  const from = styles.indexOf("@media (max-width: 760px) {\n  .src-chip-x {");
+  const from = styles.indexOf("@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {\n  .src-chip-x {");
   expect(from, "the chip phone block").toBeGreaterThan(-1);
   const phoneBlock = styles.slice(from, styles.indexOf("\n}", from));
   const chip = phoneBlock.match(/\.src-chip \{[^}]*\}/);

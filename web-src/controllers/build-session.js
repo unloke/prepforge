@@ -1,5 +1,7 @@
 import { html } from "../html.js";
+import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
+import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
 
 import { formatEngineEval } from "../engine-eval.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
@@ -54,6 +56,7 @@ export function createBuildSession(deps) {
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
     paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
+    handleNodeContextAction,
   };
 }
 
@@ -155,30 +158,30 @@ function openBuildMenu(event) {
     : null;
   const isActive = !meta || meta.is_active !== false;
   // The shown move's own menu, for screens without a right-click. The start
-  // position is not a move (its node carries san "root"): the entry read
-  // "Move 1. root…" there.
+  // position is not a move (its node carries san "root"). "Move 3. d4…" read
+  // as the verb (relocate it), so the entry names the move as its object.
   const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
   const items = [
-    ...(node?.san && node.parent_id ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
+    ...(node?.san && node.parent_id ? [["build-node-menu", `Options for ${nodeMenuHeading(node)}…`]] : []),
     ...buildMenuItems({ hasRep, isActive, isOwner: buildRole(appState.build) === "owner" }),
   ];
   menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
-        html`<button type="button" data-action="${action}"${action === "build-new-rep" && hasRep ? html` class="menu-sep-before"` : ""}>${label}</button>`
+        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}"${action === "build-new-rep" && hasRep ? html` class="menu-sep-before"` : ""}>${label}</button>`
     )}`;
-  menu.hidden = false;
+  const close = openPopover(menu, { opener: event.currentTarget });
+  menuKeys(menu, close);
   const anchor = event.currentTarget.getBoundingClientRect();
   const rect = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(8, Math.min(anchor.right - rect.width, window.innerWidth - rect.width - 8))}px`;
   menu.style.top = `${Math.min(anchor.bottom + 4, window.innerHeight - rect.height - 8)}px`;
+  menu.querySelector("button")?.focus();
   menu.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", async (event) => {
+    button.addEventListener("click", async () => {
       closeRepertoireContextMenu();
       const action = button.dataset.action;
       if (action === "build-node-menu") {
-        // The document's outside-click handler would close the menu this opens.
-        event.stopPropagation();
         openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
       } else if (action === "build-rename") await renameRepertoire();
       else if (action === "build-export-pgn") await exportBuild("pgn");
@@ -573,29 +576,27 @@ function onInspectorInfo() {
   const text = inspectorScopeText();
   const info = document.getElementById("inspector-info");
   if (!info) return;
-  let pop = document.getElementById("inspector-info-pop");
-  if (pop) {
-    pop.remove();
+  const open = document.getElementById("inspector-info-pop");
+  if (open) {
+    open.hidePopover();
     return;
   }
-  pop = document.createElement("div");
+  // A [popover]: Escape and a press elsewhere close it before its 4s are up.
+  const pop = document.createElement("div");
   pop.className = "inspector-info-pop";
   pop.id = "inspector-info-pop";
   pop.setAttribute("role", "status");
   pop.textContent = text;
-  const head = document.getElementById("build-dock-tools") || info.parentElement;
-  head.appendChild(pop);
+  const close = openPopover(pop, { opener: info, onClose: () => pop.remove() });
   // Anchor under the ⓘ itself (not the toolbar's far edge), clamped so the
   // bubble never spills past the toolbar's right side.
+  const head = document.getElementById("build-dock-tools") || info.parentElement;
   const headRect = head.getBoundingClientRect();
   const infoRect = info.getBoundingClientRect();
-  const left = Math.max(
-    0,
-    Math.min(infoRect.left - headRect.left - 8, headRect.width - pop.offsetWidth)
-  );
+  const left = Math.max(headRect.left, Math.min(infoRect.left - 8, headRect.right - pop.offsetWidth));
   pop.style.left = `${Math.round(left)}px`;
-  pop.style.right = "auto";
-  window.setTimeout(() => pop?.remove(), 4000);
+  pop.style.top = `${Math.round(infoRect.bottom + 4)}px`;
+  window.setTimeout(close, 4000);
 }
 
 // Arrow-keying through a line fires selectBuildNode per ply; one trailing fetch
@@ -693,13 +694,8 @@ function renderExplorerRows(stats, fen) {
   const rows = document.getElementById("explorer-rows");
   if (!rows) return;
   explorerOpeningName = stats.opening || "";
+  if (stats.opening && fen) buildView?.nameOpening(fen, stats.opening);
   paintInspectorScope();
-  // Re-rendering the position already on screen (the add-move save landing,
-  // a cached refresh) only updates the rows in place: replaying their entrance
-  // read as the Explorer animating twice.
-  const shown = rows.dataset.shownFen;
-  const samePosition = !!shown && !!fen && rows.dataset.shownDb === explorerDb && sameFenPosition(shown, fen);
-  rows.classList.toggle("is-refresh", samePosition);
   rows.dataset.shownFen = fen || "";
   rows.dataset.shownDb = explorerDb;
   rows.dataset.fen = fen || "";
@@ -731,7 +727,7 @@ function renderExplorerRows(stats, fen) {
         const seg = (cls, label, value) =>
           html`<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
         return html`
-    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}" style="--i:${stats.moves.indexOf(m)}">
+    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}">
       <button type="button" class="explorer-pick" data-explorer-pick aria-label="${action} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
@@ -740,6 +736,10 @@ function renderExplorerRows(stats, fen) {
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })}`;
+  // Rows of the position already on screen (the add-move save landing, a
+  // cached refresh, coming back to Build) stay put; a new position's enter.
+  const position = String(fen || "").split(" ").slice(0, 4).join(" ");
+  enterRows(rows, { key: (row) => (row.dataset.uci ? `${explorerDb}|${position}|${row.dataset.uci}` : "head") });
   rows.querySelectorAll(".explorer-row").forEach((row) => {
     const uci = row.dataset.uci;
     // The whole row is the action; the Move button inside is the focusable
@@ -1062,6 +1062,7 @@ async function onBuildBoardMove(moveUci) {
 
   const node = buildProvisionalNode(parent, moveUci, after);
   appState.buildJustAddedId = node.id;
+  appState.buildAddedIds.push({ repertoireId: appState.build.repertoire_id, id: node.id });
   queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");
@@ -1640,7 +1641,7 @@ function openNodeContextMenu(event, nodeId) {
       ...(node.is_mainline || !node.parent_id ? [] : [["set_mainline", "Set as mainline"]]),
       node.is_enabled ? ["disable_branch", "Disable branch"] : ["enable_branch", "Re-enable branch"],
     ],
-    [["add_comment", node.comment ? "Edit comment…" : "Add comment…"]],
+    [["add_comment", node.comment ? "Edit note…" : "Add note…"]],
     [
       ["copy_fen", "Copy FEN"],
       ["copy_line_pgn", "Copy line PGN"],
@@ -1661,37 +1662,24 @@ function openNodeContextMenu(event, nodeId) {
     }`;
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", "Move actions");
-  menu.hidden = false;
+  // The context-menu key has no pointer position: open under the move itself.
+  const token = !event.clientX && !event.clientY && document.querySelector(`.mtree-move[data-node-id="${CSS.escape(String(nodeId))}"]`);
+  const close = openPopover(menu, { opener: token || null, onClose: () => markNodeMenuTarget(null) });
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();
-  const left = Math.max(8, Math.min(event.clientX, window.innerWidth - rect.width - 8));
-  const top = Math.max(8, Math.min(event.clientY, window.innerHeight - rect.height - 8));
-  menu.style.left = `${left}px`;
-  menu.style.top = `${top}px`;
+  const box = token ? token.getBoundingClientRect() : null;
+  const [x, y] = box ? [box.left, box.bottom + 4] : [event.clientX, event.clientY];
+  menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
   menu.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () =>
       handleNodeContextAction(button.dataset.action, button.dataset.nodeId)
     );
   });
-  // Same keyboard behaviour as the repertoire's ⋯ menu: arrows walk the items,
-  // Home/End jump, Escape or Tab leaves. The menu opens on the pointer's
-  // position, so its first item takes focus.
-  const buttons = [...menu.querySelectorAll("button")];
-  menu.onkeydown = (event) => {
-    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const index = buttons.indexOf(document.activeElement);
-      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
-        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
-      buttons[next]?.focus();
-    } else if (event.key === "Escape" || event.key === "Tab") {
-      if (event.key === "Escape") event.preventDefault();
-      event.stopPropagation();
-      closeNodeContextMenu();
-    }
-  };
-  buttons[0]?.focus();
+  // Same keyboard behaviour as the repertoire's ⋯ menu. The menu opens on the
+  // pointer's position, so its first item takes focus.
+  menuKeys(menu, close);
+  menu.querySelector("button")?.focus();
 }
 
 async function handleNodeContextAction(action, nodeId) {
@@ -1747,10 +1735,10 @@ async function handleNodeContextAction(action, nodeId) {
     let value = null;
     if (action === "add_comment") {
       const result = await showInputModal({
-        title: "Comment",
+        title: `Note on ${nodeMenuHeading(node)}`,
         okLabel: "Save",
         fields: [
-          { name: "comment", label: "Comment", type: "textarea", default: node.comment || "" },
+          { name: "comment", label: "Note", type: "textarea", default: node.comment || "" },
         ],
       });
       if (!result) return;
@@ -1770,11 +1758,10 @@ async function handleNodeContextAction(action, nodeId) {
   }
 }
 
+
 function closeNodeContextMenu() {
   const menu = document.getElementById("node-context-menu");
-  menu.hidden = true;
-  menu.onkeydown = null;
-  markNodeMenuTarget(null);
+  if (isPopoverOpen(menu)) menu.hidePopover();
 }
 
 // Outline the tree move the context menu acts on while it is open.

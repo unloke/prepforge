@@ -18,7 +18,7 @@ import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
 import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
-import { moveTextHtml } from "../move-text.js";
+import { moveTextHtml, moveTokenHtml } from "../move-text.js";
 import { analysisTextContext } from "../move-links.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
@@ -781,7 +781,9 @@ function renderInstantCoach() {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "coach-bookaction";
-      button.textContent = `Turning point ${turn.label}`;
+      // The move peeks on hover like every move the coach names; the button jumps.
+      const move = appState.analysis.moves.find((m) => Number(m.ply) === turn.ply);
+      button.innerHTML = html`Turning point ${move?.fen_before && move.uci ? moveTokenHtml(move.fen_before, [move.uci], 0, turn.label, { focusable: false }) : turn.label}`;
       button.addEventListener("click", () => void showAnalysisPly(turn.ply).catch(() => {}));
       prose?.append(" ", button);
     }
@@ -1600,7 +1602,7 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sour
         appState.analysisSourcePgn = null;
         view.renderAnalysisTree([]);
         view.renderEvalChart([]);
-        view.renderClassificationBars([]);
+        view.renderReport([]);
         hideAnalysisHandoff();
         revealAnalysisResults();
         // Use the same guarded board path as a movetext PGN or recall.
@@ -1618,7 +1620,7 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sour
     appState.analysisPly = 0;
     renderAnalysisTreeEmptyState();
     view.renderEvalChart([]);
-    view.renderClassificationBars([]);
+    view.renderReport([]);
     await showAnalysisPly(0);
     return true;
   }
@@ -1635,7 +1637,7 @@ async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sour
   appState.analysisPgnStale = false;
   view.renderAnalysisTree(moves);
   view.renderEvalChart([]);
-  view.renderClassificationBars([]);
+  view.renderReport([]);
   hideAnalysisHandoff();
   revealAnalysisResults();
   await showAnalysisPly(goToEnd ? moves.length : 0);

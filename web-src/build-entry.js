@@ -387,6 +387,8 @@ export async function reloadOpenBuildTree() {
     const selection = appState.buildCurrentNodeId;
     const kept = payload.nodes.some((node) => node.id === selection);
     await hooks.build.session.hydrateBuild(payload, kept ? selection : null);
+    // A reload after a role change: the banner and Copy follow the new role.
+    hooks.build.updateBuildReadOnlyUi?.(payload);
     return true;
   } catch (_) {
     return false;
@@ -513,6 +515,22 @@ export function reapplyPendingBuildDeletes() {
     }
   }
   if (pruned) renderBuilderTree();
+}
+
+// Ctrl/Cmd+Z in Repertoire: take back the newest move this tab added to the
+// open repertoire through the ordinary local-first delete below (its Undo card
+// puts it back). Moves already gone, or another repertoire's, are skipped.
+export async function undoLastBuildAdd() {
+  if (!appState.build || isBuildReadOnly()) return;
+  const added = appState.buildAddedIds;
+  while (added.length) {
+    const entry = added.pop();
+    const id = resolveBuildId(entry.id);
+    if (entry.repertoireId !== appState.build.repertoire_id || !appState.buildNodeById.has(id)) continue;
+    await deleteBuildNodeLocal(id);
+    return;
+  }
+  setStatus("Nothing to undo");
 }
 
 // Local-first delete (no confirmation by design — pruning lines is a routine

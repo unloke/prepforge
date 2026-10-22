@@ -5,7 +5,7 @@ import { refreshAutoMaiaRating } from "./core/prefs.js";
 import { showConfirmModal } from "./core/modals.js";
 import { setHandoffOwner } from "./handoff-context.js";
 import { createAccountController } from "./controllers/account.js";
-import { activateModal } from "./core/modals.js";
+import { modalDialog, openModal } from "./core/dialog.js";
 import { pgnHeaderTags as analyzeHeaderTags } from "./analyze-pgn.js";
 import { pgnPlayers, selfSide } from "./analyze-orient.js";
 
@@ -533,8 +533,7 @@ function chooseLichessAccount(actionLabel) {
   const accounts = lichessAccounts();
   const primary = lichessPrimaryAccount();
   return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
+    const overlay = modalDialog("account-chooser");
     const rows = accounts
       .map(
         (account) => html`
@@ -543,47 +542,32 @@ function chooseLichessAccount(actionLabel) {
       </button>`,
       );
     overlay.innerHTML = html`
-      <div class="modal account-chooser" role="dialog" aria-modal="true" aria-label="${actionLabel}">
-        <div class="modal-title">${actionLabel}</div>
-        <div class="modal-body">
-          <p class="modal-copy">Which Lichess account should this use? Primary is preselected.</p>
-          <div class="account-chooser-list">${rows}</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
-        </div>
+      <h2 class="modal-title">${actionLabel}</h2>
+      <div class="modal-body">
+        <p class="modal-copy">Which Lichess account should this use? Primary is preselected.</p>
+        <div class="account-chooser-list">${rows}</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" data-action="cancel" type="button">Cancel</button>
       </div>
     `;
-    document.body.appendChild(overlay);
-    activateModal(overlay);
-    const cleanup = () => overlay.remove();
+    let settled = false;
     const close = (value) => {
-      cleanup();
+      if (settled) return;
+      settled = true;
+      dismiss();
       resolve(value);
     };
     const primaryBtn = primary && overlay.querySelector(`[data-account-id="${primary.id}"]`);
-    if (primaryBtn) primaryBtn.focus();
+    const dismiss = openModal(overlay, { initialFocus: primaryBtn, onDismiss: () => close(null) });
     overlay.addEventListener("click", (event) => {
       const choice = event.target.closest("[data-account-id]");
       if (choice) {
         close(choice.dataset.accountId);
         return;
       }
-      if (event.target === overlay || event.target.closest('[data-action="cancel"]')) {
-        close(null);
-      }
+      if (event.target.closest('[data-action="cancel"]')) close(null);
     });
-    document.addEventListener(
-      "keydown",
-      function onKey(event) {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          document.removeEventListener("keydown", onKey);
-          close(null);
-        }
-      },
-      { once: false },
-    );
   });
 }
 

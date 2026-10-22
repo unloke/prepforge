@@ -1,69 +1,9 @@
 import { html } from "../html.js";
-
-export function activateModal(overlay, { initialFocus = null, additionalRoots = [] } = {}) {
-  const previouslyFocused = document.activeElement;
-  const background = [...document.body.children].filter(
-    (child) => child !== overlay && !additionalRoots.includes(child) && !child.inert,
-  );
-  // Only a real sibling gets inert: an ancestor would take this dialog with it.
-  for (const child of background) if (!child.contains(overlay)) child.inert = true;
-
-  const dialog = overlay.matches('[role="dialog"]')
-    ? overlay
-    : overlay.querySelector('[role="dialog"]');
-  if (dialog && !dialog.hasAttribute("aria-label") && !dialog.hasAttribute("aria-labelledby")) {
-    const title = dialog.querySelector(".modal-title");
-    if (title) {
-      title.id ||= `modal-title-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      dialog.setAttribute("aria-labelledby", title.id);
-    }
-  }
-
-  const focusable = () => [overlay, ...additionalRoots].flatMap((root) => [...root.querySelectorAll(
-    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-  )]).filter((el) => !el.hidden && el.getClientRects().length > 0);
-  const onKeyDown = (event) => {
-    if (event.key !== "Tab") return;
-    const items = focusable();
-    if (!items.length) {
-      event.preventDefault();
-      return;
-    }
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-  const keyTarget = additionalRoots.length ? document : overlay;
-  keyTarget.addEventListener("keydown", onKeyDown);
-  queueMicrotask(() => (initialFocus || focusable()[0] || dialog || overlay).focus?.());
-
-  let cleaned = false;
-  const cleanup = ({ restoreFocus = true } = {}) => {
-    if (cleaned) return;
-    cleaned = true;
-    keyTarget.removeEventListener("keydown", onKeyDown);
-    for (const child of background) if (!child.contains(overlay)) child.inert = false;
-    overlay.remove = nativeRemove;
-    if (restoreFocus && previouslyFocused?.isConnected) previouslyFocused.focus();
-  };
-  const nativeRemove = overlay.remove.bind(overlay);
-  overlay.remove = () => {
-    cleanup();
-    nativeRemove();
-  };
-  return cleanup;
-}
+import { modalDialog, openModal } from "./dialog.js";
 
 export function showInputModal({ title, fields, okLabel = "OK", onInput = null, onSubmit = null, cancel = true, dismissOnSubmit = false }) {
   return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
+    const overlay = modalDialog();
     const fieldHtml = (field) => {
         const safeName = field.name;
         const safeLabel = field.label || field.name;
@@ -125,27 +65,16 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
       inputsHtml.push(fieldHtml(field));
     }
     overlay.innerHTML = html`
-      <div class="modal" role="dialog" aria-modal="true">
-        <div class="modal-title">${title}</div>
-        <div class="modal-body">${inputsHtml}</div>
-        <div class="modal-footer">
-          ${cancel ? html`<button class="btn ghost" data-action="cancel" type="button">Cancel</button>` : ""}
-          <button class="btn primary" data-action="ok" type="button">${okLabel}</button>
-        </div>
+      <h2 class="modal-title">${title}</h2>
+      <div class="modal-body">${inputsHtml}</div>
+      <div class="modal-footer">
+        ${cancel ? html`<button class="btn ghost" data-action="cancel" type="button">Cancel</button>` : ""}
+        <button class="btn primary" data-action="ok" type="button">${okLabel}</button>
       </div>
     `;
-    document.body.appendChild(overlay);
-    activateModal(overlay);
     const firstInput = overlay.querySelector("[data-field]");
-    if (firstInput) {
-      firstInput.focus();
-      if (firstInput.select) firstInput.select();
-    }
-
-    const cleanup = () => {
-      document.removeEventListener("keydown", onKey);
-      overlay.remove();
-    };
+    const cleanup = openModal(overlay, { initialFocus: firstInput, onDismiss: () => close(null) });
+    firstInput?.select?.();
     let closed = false;
     const close = (values) => {
       if (closed) return;
@@ -208,21 +137,14 @@ export function showInputModal({ title, fields, okLabel = "OK", onInput = null, 
         .catch(() => { if (dismissOnSubmit && !closed) close(null); })
         .then(idle);
     };
-    const onKey = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close(null);
-      } else if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") {
+    overlay.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && event.target.tagName !== "TEXTAREA" && event.target.tagName !== "BUTTON") {
         event.preventDefault();
         submit();
       }
-    };
-    document.addEventListener("keydown", onKey);
+    });
     overlay.querySelector('[data-action="cancel"]')?.addEventListener("click", () => close(null));
     overlay.querySelector('[data-action="ok"]').addEventListener("click", () => submit());
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) close(null);
-    });
     if (typeof onInput === "function") {
       const fire = () => {
         try {
@@ -246,48 +168,29 @@ export function showConfirmModal({
   tone = "primary",
 }) {
   return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
+    const overlay = modalDialog("", { role: "alertdialog" });
     const okClass = tone === "danger" ? "danger" : "primary";
     overlay.innerHTML = html`
-      <div class="modal" role="dialog" aria-modal="true">
-        <div class="modal-title">${title}</div>
-        <div class="modal-body">
-          <p class="modal-copy">${body}</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn ghost" data-action="cancel" type="button">${cancelLabel}</button>
-          <button class="btn ${okClass}" data-action="ok" type="button">${okLabel}</button>
-        </div>
+      <h2 class="modal-title">${title}</h2>
+      <div class="modal-body">
+        <p class="modal-copy">${body}</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" data-action="cancel" type="button">${cancelLabel}</button>
+        <button class="btn ${okClass}" data-action="ok" type="button">${okLabel}</button>
       </div>
     `;
-    document.body.appendChild(overlay);
-    activateModal(overlay);
     const cancelBtn = overlay.querySelector('[data-action="cancel"]');
     const okBtn = overlay.querySelector('[data-action="ok"]');
-    cancelBtn.focus();
-    const cleanup = () => {
-      document.removeEventListener("keydown", onKey);
-      overlay.remove();
-    };
+    let settled = false;
     const close = (value) => {
-      cleanup();
+      if (settled) return;
+      settled = true;
+      dismiss();
       resolve(value);
     };
-    const onKey = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        close(false);
-      } else if (event.key === "Enter" && document.activeElement === okBtn) {
-        event.preventDefault();
-        close(true);
-      }
-    };
-    document.addEventListener("keydown", onKey);
+    const dismiss = openModal(overlay, { initialFocus: cancelBtn, onDismiss: () => close(false) });
     cancelBtn.addEventListener("click", () => close(false));
     okBtn.addEventListener("click", () => close(true));
-    overlay.addEventListener("click", (event) => {
-      if (event.target === overlay) close(false);
-    });
   });
 }

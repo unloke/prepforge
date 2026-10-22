@@ -115,6 +115,10 @@ export function renderReadOnlyBanner(payload) {
   if (title) title.textContent = `${roleLabel(role)} · ${payload.name} · shared with you`;
   const fork = document.getElementById("shared-fork-btn");
   if (fork) fork.hidden = !canCopy(role);
+  // Anyone it is shared with drills it on their own progress; a public link is
+  // not a share, so its viewers copy it first.
+  const train = document.getElementById("shared-train-btn");
+  if (train) train.hidden = !!appState.sharedToken;
   banner.dataset.role = role;
   banner.hidden = false;
   syncViewHeads();

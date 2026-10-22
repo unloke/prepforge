@@ -21,6 +21,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { routeLichessProfile } from "./lichess-profile-route.mjs";
 import { Chess } from "chess.js";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -365,8 +366,10 @@ async function openBuild(page, repertoireId) {
   await row.click();
   await page.locator("#build-rep-name").filter({ hasText: byId.get(repertoireId).name })
     .waitFor({ state: "attached", timeout: 20000 });
-  // The board is painted once the load lands.
+  // The board is painted once the load lands, and measurable once the route's
+  // View Transition has swapped the view in (a frame after the click).
   await page.waitForFunction(() => document.querySelectorAll("#build-board .square .piece").length > 0);
+  await page.locator("#build-board .square").first().waitFor({ state: "visible" });
 }
 
 const nodeFen = (rep, index) => rep.nodes[index].fen;
@@ -712,6 +715,9 @@ async function analyzeMainlineAndVariation(page) {
   const branchCurrent = await page.evaluate(() => document.querySelector("#analysis-moves .mtree-move.is-current")?.getAttribute("data-node-id") || "");
   check(branchCurrent.startsWith("v"), `analyze variation: the branch move is the current node (${branchCurrent})`);
   // Jump back to the mainline's 1...e5 (a different position: two pawns moved).
+  // The score sheet sits behind its tab where the panel is too narrow for both.
+  const movesTab = page.locator("#an-tab-moves");
+  if (await movesTab.isVisible()) await movesTab.click();
   await startProbe(page, "#analysis-board");
   await page.locator('#analysis-moves .mtree-move[data-node-id="m2"]').click();
   const jump = await stopProbe(page);
@@ -726,8 +732,8 @@ async function trainTakeback(page) {
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.locator("#dashboard-repertoires .lib-row").first().waitFor({ state: "visible", timeout: 20000 });
   await openView(page, "train");
-  await page.locator('[data-mode="play"]').click();
-  await page.locator("#train-play-book").selectOption("explorer");
+  await page.locator("#train-play-book").click();
+  await page.locator('.train-picker .train-pick[data-id="explorer"]').click();
   await page.locator("#start-play").click();
   // The session is up once the board carries a position and the takeback is
   // still disabled (there is nothing to take back yet).
@@ -845,6 +851,7 @@ const VIEWPORTS = [
 for (const vp of VIEWPORTS) {
   console.log(`[board-rewind] ${vp.name} ${vp.width}x${vp.height}`);
   const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+  await routeLichessProfile(context);
   for (const [label, scenario] of vp.scenarios) {
     const page = await context.newPage();
     const consoleErrors = [];

@@ -11,6 +11,8 @@
 // paused while hidden, and immediately on focus, on return to the tab, or when
 // another tab of this browser announces a write over BroadcastChannel.
 
+import { buildRole } from "./share-roles.js";
+
 export const BUILD_MUTATIONS = new Set([
   "/api/build/rename", "/api/build/add-move", "/api/build/add-moves",
   "/api/build/delete-nodes", "/api/build/generate/apply-plan",
@@ -131,7 +133,9 @@ export function createBuildLive(deps) {
     // This tab wrote, navigated or started saving meanwhile: its own reply (or
     // the next tick) carries newer truth than this delta.
     if (appState.build !== build || build.revision !== since || busy()) return;
-    if (changes.reset) {
+    // The owner changed this caller's role (or a team's): reload so the banner,
+    // Copy and editing follow it.
+    if (changes.reset || (changes.role && changes.role !== buildRole(build))) {
       lastChange = now();
       await reload();
       return;

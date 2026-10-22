@@ -1,7 +1,7 @@
 /* The Share dialog (views/share-dialog.js): an add row, the people and teams
    with access, and the link. Wider than a confirm so a row's name, role and
    remove sit on one line. */
-.share-modal { width: min(480px, calc(100vw - 24px)); }
+.share-modal { width: min(520px, calc(100vw - 24px)); }
 /* The column is the dialog's width, never its widest control's. */
 .share-body { grid-template-columns: minmax(0, 1fr); }
 
@@ -68,7 +68,7 @@
 
 .modal-footer .share-reset { margin-right: auto; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .share-body input,
   .share-body select,
   .share-add .btn,

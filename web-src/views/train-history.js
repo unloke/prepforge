@@ -1,10 +1,11 @@
 import { html } from '../html.js';
-import { activateModal } from '../core/modals.js';
-import { HISTORY_LIMITS, readTrainingHistory } from '../train-history.js';
+import { modalDialog, openModal } from '../core/dialog.js';
+import { HISTORY_LIMITS, readTrainingHistory, runSummary } from '../train-history.js';
 import './train-history.css';
 
 const DATE = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const modeLabel = run => (run.mode === 'blitz' ? 'Blitz' : 'Smart queue');
+const MODES = { smart: 'Due queue', all_lines: 'Rehearse', play: 'Practice' };
+const modeLabel = run => `${MODES[run.mode]}${run.blitz ? ' · Blitz' : ''}`;
 
 // First answers only: retried and demonstrated moves never entered `correct`
 // or `mistakes`, and skipped cards were never answered at all.
@@ -14,10 +15,13 @@ function score(run) {
     pct: attempts ? Math.round((run.correct / attempts) * 100) : null };
 }
 
-const pctText = scored => (scored.pct === null ? '—' : `${scored.pct}%`);
+const pctText = (run, scored) => (run.mode === 'play' ? runSummary(run) : scored.pct === null ? '—' : `${scored.pct}%`);
+// A run of new moves only has no first answers; it still taught something.
+const scoreLabel = (run, scored) => run.mode === 'play' ? `${run.cards} move${run.cards === 1 ? '' : 's'}`
+  : scored.label ? `${scored.label} first try` : run.learned ? `${run.learned} learned` : 'no first answers';
 
 function runName(run) {
-  return run.repertoires.length ? run.repertoires.join(' · ') : 'Smart queue';
+  return run.repertoires.length ? run.repertoires.join(' · ') : MODES[run.mode];
 }
 
 function lead(run) {
@@ -28,27 +32,28 @@ function lead(run) {
     <div class="th-lead-head"><span class="th-lead-label">Latest</span><span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
     <h3 class="th-name" title="${runName(run)}">${runName(run)}</h3>
     <div class="th-figures">
-      <div class="th-figure is-lead"><b data-history-first-try>${pctText(scored)}</b><span>${scored.label ? `${scored.label} first try` : 'no first answers'}</span></div>
-      ${figure(run.cards, 'cards', 'data-history-cards')}
+      <div class="th-figure is-lead"><b data-history-first-try>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>
+      ${run.mode === 'play' ? '' : html`${figure(run.cards, 'cards', 'data-history-cards')}
       ${figure(run.mistakes, 'missed', 'data-history-missed', run.mistakes ? 'is-missed' : '')}
-      ${figure(run.skipped, 'skipped', 'data-history-skipped')}
+      ${figure(run.skipped, 'skipped', 'data-history-skipped')}`}
     </div>
   </section>`;
 }
 
 const row = run => {
   const scored = score(run);
-  return html`<li class="th-run" title="${run.cards} cards · ${scored.label ? `${scored.label} first try` : 'no first answers'} · ${run.mistakes} missed · ${run.skipped} skipped">
+  const tip = run.mode === 'play' ? scoreLabel(run, scored) : `${run.cards} cards · ${scoreLabel(run, scored)} · ${run.mistakes} missed · ${run.skipped} skipped`;
+  return html`<li class="th-run" title="${tip}">
     <div class="th-run-main"><b class="th-name" title="${runName(run)}">${runName(run)}</b>
       <span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
-    <div class="th-run-score"><b>${pctText(scored)}</b><span>${scored.label ? `${scored.label} first try` : 'no first answers'}</span></div>
+    <div class="th-run-score"><b>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>
   </li>`;
 };
 
 function body(runs) {
   if (!runs.length) {
     return html`<div class="th-empty"><b>No runs saved yet</b>
-      <p>Finish a Smart queue or Blitz session and it lands here.</p></div>`;
+      <p>Finish a Due queue, Rehearse or Practice run and it lands here.</p></div>`;
   }
   const [latest, ...earlier] = runs;
   return html`${lead(latest)}${earlier.length ? html`<h3 class="th-list-title">Earlier runs</h3>
@@ -64,9 +69,7 @@ const retentionNote = `Keeps up to ${HISTORY_LIMITS.runs} recent runs within ${M
 export function openTrainingHistory(ownerId) {
   if (!ownerId) return;
   document.getElementById('training-history-dialog')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'training-history-dialog';
-  overlay.className = 'modal-overlay';
+  const overlay = modalDialog('training-history', { id: 'training-history-dialog' });
   let content, foot;
   try {
     const runs = readTrainingHistory(ownerId);
@@ -77,18 +80,11 @@ export function openTrainingHistory(ownerId) {
       <p>Allow site storage for this site, then reopen History.</p></div>`;
     foot = '';
   }
-  overlay.innerHTML = html`<section class="modal training-history" role="dialog" aria-modal="true" aria-labelledby="training-history-title">
-    <header class="th-head"><div class="th-titles">
+  overlay.innerHTML = html`<header class="th-head"><div class="th-titles">
         <h2 class="modal-title" id="training-history-title">Training history</h2>
-        <span class="th-scope">Smart queue and Blitz · this browser</span></div>
+        </div>
       <button class="btn sm" type="button" data-close>Close</button></header>
-    <div class="th-body">${content}</div>${foot}</section>`;
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.querySelector('[data-close]').addEventListener('click', close);
-  overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
-  overlay.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.stopPropagation(); close(); }
-  });
-  activateModal(overlay, { initialFocus: overlay.querySelector('[data-close]') });
+    <div class="th-body">${content}</div>${foot}`;
+  const close = openModal(overlay, { initialFocus: overlay.querySelector('[data-close]') });
+  overlay.querySelector('[data-close]').addEventListener('click', () => close());
 }

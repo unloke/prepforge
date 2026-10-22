@@ -24,6 +24,8 @@ const DEFAULT_PREFS = {
   // Replaces the old "Detect brilliant moves" toggle: with Maia analysis ON,
   // brilliant signals ride the analysis pipeline.
   maiaAnalysis: false,
+  // A guest's pinned Maia rating (a signed-in pin is a server setting).
+  maiaRating: null,
 };
 export const PREF_LABELS = {
   coordinates: "Board coordinates",
@@ -119,6 +121,7 @@ const MAIA_AUTO_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function effectiveMaiaRating() {
   if (Number.isFinite(appState.maiaRatingPinned)) return appState.maiaRatingPinned;
+  if (!appState.signedIn && Number.isFinite(pref("maiaRating"))) return pref("maiaRating");
   if (Number.isFinite(appState.maiaAutoRating)) return appState.maiaAutoRating;
   return MAIA_FALLBACK_RATING;
 }

@@ -6,7 +6,10 @@ import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.j
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
-import { renderReportBlock } from "./analyze-report.js";
+import { renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { installAnalyzePanes } from "./analyze-panes.js";
+import { moveLineHtml, moveTokenHtml, walkLine } from "../move-text.js";
+import { hidePeek, peekAt } from "../line-preview.js";
 
 // The board, the move list, the eval display and the engine's controls are
 // real interface: they keep their own lines, sizes and borders. The marker is
@@ -46,6 +49,10 @@ export function createAnalyzeView({
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
     createMoveTreeRenderer();
+  // The pillars' tabs and the evaluation card's place (beside or under the board).
+  const panes = typeof document !== "undefined"
+    ? installAnalyzePanes({ onEvalMoved: () => requestAnimationFrame(() => rescaleEvalMarkers()) })
+    : { select: () => {} };
 
   // Chart colours come from CSS theme tokens (styles.css, .eval-chart rules), so
   // the graph follows light/dark like the rest of the app — no hardcoded hex in
@@ -134,46 +141,60 @@ export function createAnalyzeView({
 
   // Tooltip body for one ply — move, evaluation, and classification as TEXT
   // (plus the class glyph), so the readout never depends on colour alone.
-  function evalChartTooltipHtml(point, { isCurrent = false } = {}) {
+  // With the game's move for that ply, the SAN is a move token: the chart's hover
+  // peeks at the position after it (the readout itself takes no pointer).
+  function evalChartTooltipHtml(point, { isCurrent = false, move = null } = {}) {
     if (!point) return "";
     const raw = String(point.classification || "").toLowerCase();
     const label = raw ? raw.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : "";
     const glyph = raw ? classBadgeSymbol(point.classification) : "";
     const san = String(point.san || "?");
     const moveNo = point.ply > 0 ? `${Math.ceil(point.ply / 2)}${point.ply % 2 ? "." : "…"} ` : "";
+    const sanHtml = move?.fen_before && move.uci && move.san === point.san
+      ? moveTokenHtml(move.fen_before, [move.uci], 0, san, { focusable: false })
+      : san;
     return (
-      html`${moveNo}<b>${san}</b> · ${formatPointEval(point)}${label ? ` · ${glyph} ${label}` : ""}${isCurrent ? " · current" : ""}`
+      html`${moveNo}<b>${sanHtml}</b> · ${formatPointEval(point)}${label ? ` · ${glyph} ${label}` : ""}${isCurrent ? " · current" : ""}`
     );
   }
 
-  function jumpToClassGroup(side, groupKey) {
-    const moves = appState.analysis ? appState.analysis.moves : [];
-    const current = Number(appState.analysisPly) || 0;
-    const matches = (move) =>
-      (move.side === "black" ? "black" : "white") === side &&
-      CLASS_GROUP_OF[move.classification] === groupKey;
-    const match =
-      moves.find((m) => Number(m.ply) > current && matches(m)) ||
-      moves.find((m) => Number(m.ply) <= current && matches(m));
-    if (!match) return;
-    showAnalysisPly(Number(match.ply));
-    // The bars sit below the coach: bring its read of the move into view (on
-    // phones the Report sheet covers it, so lower the sheet).
-    const sheet = document.getElementById("analyze-sheet");
-    if (sheet?.classList.contains("is-open")) sheet.querySelector("[data-sheet-close]")?.click();
-    else document.getElementById("analysis-explain")?.scrollIntoView({ block: "nearest" });
+  // The report's jumps: a move of the game, or the next move of one grade by one
+  // side (wrapping to the first). The board, coach and graph all follow the ply.
+  function jumpToPly(ply) {
+    if (Number.isFinite(ply) && ply >= 0) showAnalysisPly(ply);
   }
 
-  // The report block: the game's facts, the grade bars, and (on a phone) whose
-  // game it was. Where it came from is the PGN box's own tag block; the book is
-  // the repertoire cache the coach already walks.
-  function renderClassificationBars(moves) {
+  function jumpToGrade(side, grade) {
+    const moves = appState.analysis ? appState.analysis.moves : [];
+    const current = Number(appState.analysisPly) || 0;
+    const matches = (move) => (move.side === "black" ? "black" : "white") === side && reportGradeOf(move.classification) === grade;
+    const match = moves.find((m) => Number(m.ply) > current && matches(m)) || moves.find((m) => matches(m));
+    if (match) jumpToPly(Number(match.ply));
+  }
+
+  // The report pane: accuracy, grade counts, key moments, phases, the opening.
+  // Where the game came from is the PGN box's own tag block (or, for a recalled
+  // review, the names the history row carried); the book is the repertoire cache
+  // the coach already walks.
+  function renderReport(moves) {
+    const analysis = appState.analysis || {};
     renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
-      evalGraph: appState.analysis ? appState.analysis.eval_graph : [],
+      evalGraph: analysis.eval_graph || [],
       headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
+      names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),
-      onGrade: jumpToClassGroup,
+      onJump: jumpToPly,
+      onGrade: jumpToGrade,
+    });
+    markCurrentMoment();
+  }
+
+  // The key moment on the board is marked in the report as the reader steps.
+  function markCurrentMoment() {
+    const ply = Number(appState.analysisPly);
+    document.querySelectorAll?.("#analysis-summary [data-km-ply]").forEach((row) => {
+      row.classList.toggle("is-current", Number(row.dataset.kmPly) === ply);
     });
   }
 
@@ -548,7 +569,31 @@ export function createAnalyzeView({
     return onResult;
   }
 
+  // The engine pillar with the live engine off: the saved run's best line from
+  // the position on the board, as move links (a token peeks; a click walks the
+  // line on the board, or selects it where the game already has it).
+  function paintBestLine() {
+    const host = document.getElementById?.("analysis-best-line");
+    if (!host) return;
+    const node = appState.analysisTree?.byId.get(appState.analysisCurrentNodeId || "root");
+    const fen = node?.fenAfter;
+    const ev = fen ? appState.analysis?.position_evals?.[fen] : null;
+    const line = ev && Array.isArray(ev.pv) && ev.pv.length ? walkLine(fen, ev.pv.slice(0, 10)) : null;
+    const depth = document.getElementById("analysis-best-depth");
+    if (depth) depth.textContent = line && ev.depth ? `Depth ${ev.depth}` : "";
+    if (!line) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    const plies = line.plies;
+    host.hidden = false;
+    host.innerHTML = html`<span class="engine-pv-eval">${formatPointEval(ev)}</span><span class="engine-pv-line">${moveLineHtml(fen, plies.map((p) => p.san), plies.map((p) => p.uci))}</span>`;
+  }
+
   function updateEvalChartCursor() {
+    paintBestLine();
+    markCurrentMoment();
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;
     const dot = document.getElementById("eval-chart-cursor-dot");
@@ -599,6 +644,10 @@ export function createAnalyzeView({
   // Keyboard/hover focus ply within the chart (-1 = none). Arrows move it, Enter
   // commits it — the same call a mouse click makes.
   let evalChartFocusIdx = -1;
+  // A mouse hovering the graph peeks at the hovered ply; a finger scrubbing it
+  // moves the board itself, so it needs no peek.
+  let peekOnHover = false;
+  let tooltipMarkup = "";
 
   function showEvalChartTooltip(idx) {
     const tooltip = document.getElementById("eval-chart-tooltip");
@@ -613,12 +662,15 @@ export function createAnalyzeView({
     const x = evalChartXOf(idx, points.length);
     const rect = chart.getBoundingClientRect();
     const px = rect.width > 0 ? (x / EVAL_CHART_W) * rect.width : 0;
-    const markup = evalChartTooltipHtml(point, {
+    const move = (appState.analysis?.moves || []).find((m) => Number(m.ply) === Number(point.ply)) || null;
+    const markup = String(evalChartTooltipHtml(point, {
       isCurrent: point.ply === appState.analysisPly,
-    });
+      move,
+    }));
     // Same markup as the last move: keep the measured width instead of writing
     // content and then reading its box back on every pointermove.
-    if (tooltip.innerHTML !== markup) {
+    if (tooltip.hidden || tooltipMarkup !== markup) {
+      tooltipMarkup = markup;
       tooltip.innerHTML = markup;
       // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
       tooltip.hidden = false;
@@ -629,6 +681,7 @@ export function createAnalyzeView({
       tooltip.style.left = `${left}px`;
     }
     tooltip.hidden = false;
+    if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"));
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));
@@ -639,6 +692,7 @@ export function createAnalyzeView({
 
   function hideEvalChartTooltip() {
     const tooltip = document.getElementById("eval-chart-tooltip");
+    if (tooltip && !tooltip.hidden && tooltip.querySelector?.("[aria-describedby]")) hidePeek();
     if (tooltip) tooltip.hidden = true;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) hover.setAttribute("visibility", "hidden");
@@ -693,7 +747,9 @@ export function createAnalyzeView({
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
+      peekOnHover = true;
       showEvalChartTooltip(evalChartFocusIdx);
+      peekOnHover = false;
     });
     chart.addEventListener("pointerup", endScrub);
     chart.addEventListener("pointercancel", endScrub);
@@ -871,71 +927,21 @@ export function createAnalyzeView({
   function renderAnalysis(payload) {
     renderMovePairs(payload.moves);
     renderEvalChart(payload.eval_graph);
-    renderClassificationBars(payload.moves);
+    renderReport(payload.moves);
     // The "left prep at" row reads the repertoire trees, which load lazily:
-    // repaint once they land, so the report carries it without holding up the
-    // grade bars.
+    // repaint once they land, so the report carries it without holding it up.
     void ensureBookLoaded()
       .then(() => {
-        if (appState.analysis === payload) renderClassificationBars(payload.moves);
+        if (appState.analysis === payload) renderReport(payload.moves);
       })
       .catch(() => {});
-    // Blocks arrive one after another: the chart first, then the grade bars.
-    // The staggering is CSS (--i), capped so a long stack never drags.
-    const stack = document.getElementById("analysis-results");
-    stack?.querySelectorAll(".res-block").forEach((block, i) => {
-      block.style.setProperty("--i", String(Math.min(i, 5)));
-    });
-    countUpGradeBars();
-  }
-
-  // The grade counts brief count-up as the result lands. Runs once per result:
-  // re-rendering the same analysis (a later pass) leaves the settled numbers.
-  let countUpToken = 0;
-  function countUpGradeBars() {
-    const host = document.getElementById("analysis-summary");
-    if (!host) return;
-    const segs = [...host.querySelectorAll(".cbar-seg")];
-    if (!segs.length) return;
-    // Reduced motion: the figure is already on the bar, so it stays there.
-    const still = Boolean(
-      window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    );
-    const token = ++countUpToken;
-    segs.forEach((seg, i) => {
-      const label = seg.querySelector(".cbar-seg-n");
-      const raw = (label?.textContent || "").trim();
-      const m = /^(\S+)\s+(\d+)$/.exec(raw);
-      if (!m) return;
-      const [, glyph, endRaw] = m;
-      const end = Number(endRaw) || 0;
-      if (still) return;
-      const start = performance.now();
-      const dur = 360;
-      const delay = Math.min(i, 5) * 45;
-      label.textContent = `${glyph} 0`;
-      const tick = (now) => {
-        if (token !== countUpToken) return;
-        if (now - start < delay) {
-          requestAnimationFrame(tick);
-          return;
-        }
-        const t = Math.min(1, (now - start - delay) / dur);
-        // Ease-out: the number settles instead of stopping dead.
-        const eased = 1 - (1 - t) * (1 - t);
-        label.textContent = `${glyph} ${Math.round(end * eased)}`;
-        if (t < 1) requestAnimationFrame(tick);
-        else label.textContent = `${glyph} ${end}`;
-      };
-      requestAnimationFrame(tick);
-    });
   }
 
   return {
     renderAnalysis,
     liveEvalChart,
     paintEvalHead,
-    renderClassificationBars,
+    renderReport,
     renderEvalChart,
     renderAnalysisTree,
     buildAnalysisTree,
@@ -943,6 +949,7 @@ export function createAnalyzeView({
     adaptParsedTree,
     classBadgeSymbol,
     updateEvalChartCursor,
+    selectPane: (pane) => panes.select(pane),
     rescaleEvalMarkers,
     bindEvalChartInteractions,
     evalChartNearestIndex,

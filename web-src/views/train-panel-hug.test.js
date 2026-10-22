@@ -19,10 +19,12 @@ it("the desktop panel ends at its content instead of stretching to the board", (
   expect(base[0]).toMatch(/max-height: var\(--study-h\)/);
 });
 
-// The queue's source rows are a small table: a name, one meter column and one
-// number column, the same x on every row. With the last column sized `auto`
-// each row's meter started wherever its own text ended (7px apart at 768px).
-it("the source rows share their meter and count columns", () => {
-  const row = css.match(/\.train-source \{[^}]*\}/);
-  expect(row[0]).toMatch(/grid-template-columns: auto minmax\(0, 1fr\) 72px \d+px/);
+// A Home row is as tall as what it shows: its optional parts (Maia's download
+// row, an error) take the full width when present and leave no empty grid
+// track, so no gap is reserved under the chips when they are absent.
+it("a Home row reserves no empty track for its optional parts", () => {
+  const shell = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "train-shell.css"), "utf8");
+  const row = shell.match(/\.train-row \{[^}]*\}/)[0];
+  expect(row).toMatch(/grid-template-areas: "text go" "opts opts";/);
+  expect(shell).toMatch(/\.train-row > \[data-unlock-place\],\s*\.train-row-error \{[^}]*grid-column: 1 \/ -1;/);
 });

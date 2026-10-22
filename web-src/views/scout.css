@@ -26,9 +26,8 @@
   border-top-color: var(--accent);
   border-radius: 50%;
   vertical-align: -1px;
-  animation: scout-count-spin 0.8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
-@keyframes scout-count-spin { to { transform: rotate(360deg); } }
 
 .scout-error {
   display: flex;
@@ -515,16 +514,18 @@
 .scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
 .scout-source-warnings .btn { margin-left: auto; }
 
-/* ≤1279: the Type · last seen column folds under the line (it used to be
-   hidden while its header stayed, leaving an empty, misaligned column). */
-@media (max-width: 1279px) {
+/* A narrow plan column: the Type · last seen column folds under the line (it
+   used to be hidden while its header stayed, leaving an empty, misaligned
+   column). The column's width, not the window's: it is widest stacked at
+   1020px and narrowest beside the detail card at 1280px. */
+@container scout-main (max-width: 800px) {
   .line-row { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .line-row .lr-meta { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
   .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .scout-lines-head span:nth-child(2) { display: none; }
 }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* The first screen was the toolbar, the profile and a 150px section head; the
      first line sat 1,228px down. On a phone the lines are the page: the head
      names the player and colour, the plan follows, and the summary sentence
@@ -585,7 +586,7 @@
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
-.scout-weakness-row.is-entering {
+.scout-weakness-row.is-enter {
   animation: scout-row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--enter-index, 0), 11) * 35ms);
 }

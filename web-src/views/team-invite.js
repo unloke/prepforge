@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { modalDialog, openModal } from "../core/dialog.js";
 // Team invite-link dialog. Opening it must never rotate the link: the raw code is
 // hashed at rest (shown once, at mint time), so the dialog first reads the link's
 // *status* and only mints a new code when the manager explicitly asks — with a
@@ -213,30 +214,17 @@ export async function runInviteDialog(teamId, {
 }
 
 // DOM implementation of `ui` for runInviteDialog.
-export function createInviteDialogUi({ activateModal, onInviteStatus = () => {} }) {
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
+export function createInviteDialogUi({ onInviteStatus = () => {} } = {}) {
   // The name lives on the persistent dialog: replacing its body after a
   // generate/copy/revoke action cannot orphan an aria-labelledby reference.
-  overlay.innerHTML = html`<div class="modal invite-modal" role="dialog" aria-modal="true" aria-label="Team invite link"></div>`;
-  const dialog = overlay.querySelector(".modal");
+  const dialog = modalDialog("invite-modal", { "aria-label": "Team invite link" });
   let pending = null;
+  let close = null;
   const resolveWith = (value) => {
     const fn = pending;
     pending = null;
     fn?.(value);
   };
-  const onKey = (event) => {
-    // A confirm stacked on top inerts this overlay; let it handle its own Escape.
-    if (event.key === "Escape" && !overlay.inert) {
-      event.preventDefault();
-      resolveWith(null);
-    }
-  };
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) resolveWith(null);
-  });
-  let activated = false;
   return {
     // The caller re-reads the team while this dialog is open; its fresh link
     // status is the one the card's line must show.
@@ -244,19 +232,14 @@ export function createInviteDialogUi({ activateModal, onInviteStatus = () => {} 
       onInviteStatus(status);
     },
     render(model) {
-      if (!overlay.isConnected) {
-        // Attached on first render, so a failed status fetch never flashes an empty modal.
-        document.body.appendChild(overlay);
-        document.addEventListener("keydown", onKey);
-      }
+      // Opened on first render, so a failed status fetch never flashes an empty modal.
       dialog.innerHTML = inviteDialogBodyHtml(model);
       dialog.querySelectorAll("[data-action]").forEach((btn) => {
         btn.addEventListener("click", () => resolveWith(btn.dataset.action));
       });
       const primary = dialog.querySelector(".modal-footer .btn.primary");
-      if (!activated) {
-        activated = true;
-        activateModal(overlay, { initialFocus: primary });
+      if (!close) {
+        close = openModal(dialog, { initialFocus: primary, onDismiss: () => resolveWith(null) });
       } else {
         primary?.focus();
       }
@@ -272,8 +255,7 @@ export function createInviteDialogUi({ activateModal, onInviteStatus = () => {} 
       input?.select?.();
     },
     close() {
-      document.removeEventListener("keydown", onKey);
-      overlay.remove();
+      close?.();
     },
   };
 }

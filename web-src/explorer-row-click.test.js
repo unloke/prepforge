@@ -204,7 +204,7 @@ describe("Explorer add / mutation integration", () => {
     const parent = { id: "parent", fen, depth: 0 };
     const appState = {
       build: { repertoire_id: "rep", nodes: [parent] }, buildCurrentNodeId: parent.id,
-      buildNodeById: new Map([[parent.id, parent]]), buildPending: [], buildUndoCommitByMove: new Map(),
+      buildNodeById: new Map([[parent.id, parent]]), buildPending: [], buildUndoCommitByMove: new Map(), buildAddedIds: [],
     };
     const board = {
       fen, legalMoves: [], setPosition(next) { Object.assign(this, next); },

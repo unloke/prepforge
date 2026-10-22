@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { reveal } from "../list-enter.js";
 import { countOf } from "../plural.js";
 import { moveTextHtml, plyOfFen } from "../move-text.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
@@ -92,15 +93,17 @@ export function createBuildView({
 
   // ONE rule decides the head's Generate button, and only this function reads it:
   // it applies when a writable repertoire is loaded, its current position is
-  // settled, and no move of your own already answers it there. A repertoire
-  // that owns the reply (or a read-only share, or a tree still loading) has
-  // nothing for the button to do, so it stays out of the head. The ⋯ menu's
-  // "Move …" entry reaches Generate at any position, so hiding it here never
-  // removes the capability.
+  // settled, and either it is the start position (generating there grows the
+  // whole repertoire, so the button never leaves the place every visit
+  // begins) or no move of your own already answers it there. A position that
+  // owns the reply (or a read-only share, or a tree still loading) has nothing
+  // for the button to do, so it stays out of the head. The move menu reaches
+  // Generate at any position, so hiding it here never removes the capability.
   function generateAppliesHere() {
     if (isReadOnly()) return false;
     if (appState.buildLoading) return false;
     if (!appState.build || !appState.buildCurrentNodeId) return false;
+    if (!appState.buildNodeById.get(appState.buildCurrentNodeId)?.parent_id) return true;
     const own = appState.build.color === "black" ? "black" : "white";
     return !appState.build.nodes.some(
       (n) => n.parent_id === appState.buildCurrentNodeId && n.depth > 0 && n.move_side === own
@@ -155,6 +158,8 @@ export function createBuildView({
   // position only: stepping to another line closes it again, because the reason
   // to look at all thirty moves is the position you are standing on.
   let forkExpandedFor = null;
+  // Notes opened past their first line, by node id.
+  const openNotes = new Set();
 
   function renderBuildBranchBar() {
     const bar = document.getElementById("build-branchbar");
@@ -203,7 +208,7 @@ export function createBuildView({
       ctx.options.length > size
         ? html`<button class="fork-more" type="button" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "Show fewer" : "Show all"}</button>`
         : "";
-    bar.hidden = false;
+    reveal(bar);
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =
@@ -238,20 +243,52 @@ export function createBuildView({
     return moveTextHtml(node.comment, { fen: node.fen, at: (ply) => path.find((n) => plyOfFen(n.fen) === ply)?.fen });
   }
 
+  // The named opening of the shown line: the deepest position on the path the
+  // Explorer has named ("B20 Sicilian Defense"), so stepping past the last
+  // named move keeps the name instead of blanking it.
+  function openingName() {
+    const named = appState.buildOpeningByFen;
+    const path = buildPath(appState.buildCurrentNodeId);
+    for (let i = path.length - 1; i >= 0; i -= 1) {
+      const name = named.get(String(path[i].fen || "").split(" ").slice(0, 4).join(" "));
+      if (name) return name;
+    }
+    return "";
+  }
+
+  function nameOpening(fen, name) {
+    appState.buildOpeningByFen.set(String(fen).split(" ").slice(0, 4).join(" "), name);
+    renderBuildOpening();
+  }
+
+  function renderBuildOpening() {
+    const el = document.getElementById("build-opening");
+    if (!el) return;
+    const name = appState.build ? openingName() : "";
+    el.hidden = !name;
+    el.textContent = name;
+    el.title = name;
+  }
+
   function renderTreeMeta() {
     const meta = document.getElementById("build-tree-meta");
     if (!meta) return;
     meta.hidden = !appState.build;
-    const node = appState.build && appState.buildNodeById.get(appState.buildCurrentNodeId);
     meta.innerHTML = appState.build
-      ? html`${renderBuildBreadcrumb()}${node?.comment ? html`<p class="build-comment">${noteHtml(node)}</p>` : ""}`
+      ? html`${renderBuildBreadcrumb()}<span class="build-opening" id="build-opening" hidden></span>`
       : "";
+    renderBuildOpening();
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});
         event.currentTarget.blur();
       });
     });
+    // The trail is one scrolling row ending at the current move; the opening
+    // label beside it gives way first (styles.css), then the trail scrolls:
+    // keep its end, the shown move, in view.
+    const crumbs = meta.querySelector?.(".crumbs");
+    if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
   }
 
   function renderBuilderTree() {
@@ -308,15 +345,18 @@ export function createBuildView({
         // every own move names its real status in the tooltip, which is where
         // detail belongs, and the path is read from the trail above.
         const status = MASTERY_WORDS[b.mastery] || "";
+        // A note reads under its move, one line until it is opened.
+        const open = openNotes.has(String(b.id)) ? " is-open" : "";
         return {
           classes,
-          title: [status, b.comment, "Right-click for move options"].filter(Boolean).join(" · "),
+          title: [status, "Right-click for move options"].filter(Boolean).join(" · "),
           ...(status ? { label: status } : {}),
-          suffix: b.comment
-            ? html`<i class="mtree-note" aria-label="Has a note" title="${String(b.comment)}"></i>`
+          after: b.comment
+            ? html`<div class="mtree-comment${open}" data-note-for="${String(b.id)}">${noteHtml(b)}</div>`
             : "",
         };
       },
+      moveMenu: !isReadOnly(),
     });
     renderTreeMeta();
     container.innerHTML = treeHtml;
@@ -326,6 +366,15 @@ export function createBuildView({
     appState.buildJustAddedId = null;
     container.querySelectorAll(".mtree-move.is-added").forEach((el) => {
       el.addEventListener("animationend", () => el.classList.remove("is-added"), { once: true });
+    });
+    container.querySelectorAll(".mtree-comment[data-note-for]").forEach((note) => {
+      note.addEventListener("click", (event) => {
+        if (event.target.closest("[data-mt]")) return;
+        const id = note.dataset.noteFor;
+        if (openNotes.has(id)) openNotes.delete(id);
+        else openNotes.add(id);
+        note.classList.toggle("is-open", openNotes.has(id));
+      });
     });
     container.querySelectorAll(".mtree-collapse[data-collapse-id]").forEach((toggle) => {
       toggle.addEventListener("click", (event) => {
@@ -353,6 +402,8 @@ export function createBuildView({
     renderBuilderTree,
     renderBuildBreadcrumb,
     renderBuildBranchBar,
+    renderBuildOpening,
+    nameOpening,
     paintGenerateVisibility,
   };
 }

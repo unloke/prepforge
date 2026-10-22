@@ -8,6 +8,7 @@ input validation, and multi-tenant isolation. The unauthenticated demo
 """
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api_helpers import csrf_headers
@@ -164,7 +165,17 @@ def test_wrong_move_is_marked_incorrect(client):
     assert body["mistakes"]
 
 
-def test_hinted_correct_move_advances_but_grades_as_a_miss(client):
+def _reviews():
+    from prepforge_chess.api import db
+    from prepforge_chess.storage import sa_tables as t
+    from sqlalchemy import select
+    with db.get_engine().connect() as conn:
+        return [tuple(row) for row in conn.execute(
+            select(t.train_reviews.c.node_id, t.train_reviews.c.rating).order_by(t.train_reviews.c.id)
+        )]
+
+
+def test_hinted_correct_move_advances_and_grades_hard(client):
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _start(client, rep).json()["session_id"]
@@ -177,6 +188,8 @@ def test_hinted_correct_move_advances_but_grades_as_a_miss(client):
     assert body["completed_line"] is True
     assert body["progress"]["attempts"] == 1
     assert body["progress"]["correct_attempts"] == 0
+    assert body["progress"]["stability"] == pytest.approx(1.2931)  # FSRS w1: first Hard
+    assert _reviews() == [(body["progress"]["node_id"], 2)]
 
 
 def test_smart_summary_preview_counts_the_next_queue(client):
@@ -184,9 +197,58 @@ def test_smart_summary_preview_counts_the_next_queue(client):
     _white_repertoire_with_e4(client)
     body = client.get("/api/train/smart/summary?mixed=true&preview=true").json()
     assert body["next_session"] == {
-        "weak": 0, "due": 0, "new": 1, "polish": 0, "cards": 1, "resumed": 0,
+        "weak": 0, "due": 0, "new": 1, "polish": 0, "cards": 1, "resumed": 0, "left": 1,
     }
-    assert "next_session" not in client.get("/api/train/smart/summary?mixed=true").json()
+    assert body["outlook"] == {"now": 0, "today": 0, "week": 0, "next": None}
+    plain = client.get("/api/train/smart/summary?mixed=true").json()
+    assert "next_session" not in plain and "outlook" not in plain
+
+
+def test_smart_summary_preview_is_per_scope(client):
+    """Home's Due row reads the scope it will start: a started one-repertoire
+    queue resumes there, while the all-repertoires preview still plans afresh."""
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    started = client.post(
+        "/api/train/smart/start", json={"repertoire_id": rep, "seed": 3},
+        headers=csrf_headers(client),
+    ).json()
+    assert started["scope"] == "repertoire"
+    one = client.get(f"/api/train/smart/summary?repertoire_id={rep}&preview=true").json()
+    assert one["next_session"]["resumed"] == 1
+    every = client.get("/api/train/smart/summary?mixed=true&preview=true").json()
+    assert every["next_session"]["resumed"] == 0
+    mixed = client.post(
+        "/api/train/smart/start", json={"mixed": True, "seed": 4}, headers=csrf_headers(client),
+    ).json()
+    assert mixed["scope"] == "all" and mixed["resumed"] is False
+    assert mixed["session_id"] != started["session_id"]
+
+
+def test_outlook_counts_reviews_due_now_today_and_this_week(client):
+    _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = client.post(
+        "/api/train/smart/start", json={"repertoire_id": rep, "seed": 3},
+        headers=csrf_headers(client),
+    ).json()
+    node = start["cards"][0]["targets"][0]["node_id"]
+    synced = client.post("/api/train/smart/sync", json={
+        "session_id": start["session_id"], "session_generation": start["session_generation"],
+        "attempts": [{"node_id": node, "correct": False, "attempt_uuid": "o-1"}],
+    }, headers=csrf_headers(client))
+    assert synced.status_code == 200
+    from datetime import datetime, timezone
+
+    utc = datetime.now(timezone.utc)
+    noon = 720 - (utc.hour * 60 + utc.minute)  # the player's clock reads ~noon
+    outlook = client.get(
+        f"/api/train/smart/summary?repertoire_id={rep}&preview=true&utc_offset={noon}"
+    ).json()["outlook"]
+    # A miss relearns within minutes: due today and this week, not yet now.
+    assert {k: outlook[k] for k in ("now", "today", "week")} == {"now": 0, "today": 1, "week": 1}
+    soon = datetime.fromisoformat(outlook["next"]) - utc
+    assert 0 < soon.total_seconds() < 3600
 
 
 def test_hint_reveals_expected_move(client):
@@ -321,7 +383,7 @@ def test_smart_start_returns_queue_and_prompt(client):
     from prepforge_chess.services.training_smart import REQUEUE_GAP
     assert body["requeue_gap"] == REQUEUE_GAP
     assert body["card_kinds"] == [
-        {"key": "weak", "label": "Weak spot", "title": "Missed more than answered"},
+        {"key": "weak", "label": "Weak spot", "title": "Missed recently"},
         {"key": "due", "label": "Due review", "title": "Spaced repetition says now"},
         {"key": "new", "label": "New move", "title": "Shown once, then tested"},
         {"key": "polish", "label": "Polish", "title": "Kept warm with an occasional rep"},
@@ -456,8 +518,8 @@ def test_smart_start_ships_health_snapshot(client):
 
 
 def test_smart_summary_reflects_graded_session(client):
-    """After a graded correct answer the node leaves "untrained" and its next
-    review (one day out) shows up in the tomorrow forecast."""
+    """After a graded correct answer the node leaves "untrained"; FSRS puts a
+    new move's first Good two days out, past the tomorrow forecast."""
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _smart_start(client, rep, seed=5).json()["session_id"]
@@ -471,7 +533,7 @@ def test_smart_summary_reflects_graded_session(client):
     body = r.json()
     assert body["health"]["untrained"] == 0
     assert body["health"]["learning"] == 1
-    assert body["due_tomorrow"] == 1
+    assert body["due_tomorrow"] == 0
 
 
 def test_smart_summary_requires_auth(client):
@@ -559,8 +621,8 @@ def test_smart_start_fresh_rebuilds_from_current_tree(client):
 
 def test_smart_sync_replays_graded_attempts(client):
     """A synced correct attempt writes the same spaced-repetition progress a
-    per-move /smart/move would have: the node leaves untrained and lands in
-    tomorrow's forecast. The batch also touches the day streak exactly once."""
+    per-move /smart/move would have: the node leaves untrained, two days out
+    (FSRS first Good). The batch also touches the day streak exactly once."""
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     start = _smart_start(client, rep, seed=5).json()
@@ -578,7 +640,36 @@ def test_smart_sync_replays_graded_attempts(client):
     summary = client.get(f"/api/train/smart/summary?repertoire_id={rep}").json()
     assert summary["health"]["untrained"] == 0
     assert summary["health"]["learning"] == 1
-    assert summary["due_tomorrow"] == 1
+    assert summary["due_tomorrow"] == 0
+    assert _reviews() == [(node_id, 3)]
+
+
+def test_smart_sync_grades_each_answer_into_fsrs(client):
+    """Hinted-correct = Hard (stays learning), unaided = Good (graduates),
+    wrong = Again (lapses back to relearning); every answer is logged."""
+    from prepforge_chess.api import db
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+
+    owner = _register(client, "a@example.com")
+    rep = _white_repertoire_with_e4(client)
+    start = _smart_start(client, rep, seed=5).json()
+    node_id = start["cards"][0]["targets"][0]["node_id"]
+    repo = WorkspaceRepository(db.get_engine())
+
+    def answer(uuid, **attempt):
+        r = _smart_sync(client, start["session_id"],
+                        attempts=[{"node_id": node_id, "attempt_uuid": uuid, **attempt}])
+        assert r.status_code == 200, r.text
+        return repo.load_training_progress(rep, node_id, owner_user_id=owner)
+
+    hard = answer("u1", correct=True, hinted=True)
+    assert (hard.state, hard.correct_attempts) == (1, 0)
+    good = answer("u2", correct=True)
+    assert (good.state, good.correct_attempts, good.lapses) == (2, 1, 0)
+    again = answer("u3", correct=False)
+    assert (again.state, again.lapses, again.attempts) == (3, 1, 3)
+    assert again.stability < good.stability
+    assert _reviews() == [(node_id, 2), (node_id, 3), (node_id, 1)]
 
 
 def test_smart_sync_skips_unknown_nodes_and_spares_the_streak(client):
@@ -822,12 +913,12 @@ def test_streak_is_per_user(client):
 
 
 def test_dashboard_reports_streak_and_due_soon(client):
-    """After a graded correct answer the dashboard shows today's streak and the
-    review that lands within 24h (due_at = now + 1 day) as due_soon."""
+    """After a graded miss the dashboard shows today's streak and the retry
+    that lands within 24h (FSRS learning step, 10 minutes) as due_soon."""
     _register(client, "a@example.com")
     rep = _white_repertoire_with_e4(client)
     session_id = _smart_start(client, rep, seed=5).json()["session_id"]
-    _smart_move(client, session_id, "e2e4")
+    _smart_move(client, session_id, "d2d4")
     dash = client.get("/api/dashboard").json()
     assert dash["streak"] == {"current": 1, "best": 1, "trained_today": True}
     assert dash["due_reviews"] == 0

@@ -238,14 +238,11 @@ describe("evaluation win meter", () => {
   });
 });
 
-describe("class bars", () => {
-  it("keeps every count legible on its grade colour", () => {
-    // The grade colours are dark in the light theme and light in the dark one,
-    // so the ink on them flips with the theme. The amber is light in both, so
-    // it takes dark ink of its own.
-    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*color: var\(--accent-ink\)/);
-    expect(ALL_STYLES).toMatch(/\.seg-inaccuracy \{[^}]*color: #1b1c1e/);
-    expect(ALL_STYLES).toMatch(/\.cbar-seg \{[^}]*font-size: var\(--fs\)/);
+describe("report grades", () => {
+  it("colours each grade's glyph with its text-safe token, as the move list does", () => {
+    expect(CHART_STYLES).toMatch(/\.g-brilliant \.rp-glyph \{ color: var\(--brilliant-text\); \}/);
+    expect(CHART_STYLES).toMatch(/\.g-inaccuracy \.rp-glyph \{ color: var\(--inaccuracy-text\); \}/);
+    expect(CHART_STYLES).toMatch(/\.rp-n \{[^}]*font-variant-numeric: tabular-nums/);
   });
 
   it("gives a grade glyph a text-safe colour, not the fill", () => {
@@ -282,16 +279,11 @@ describe("coach note", () => {
 });
 
 describe("the panel's one filled action", () => {
-  it("keeps Analyze the accent and puts the handoff behind the report fold", () => {
-    // The accent used to move to "New repertoire from this game" whenever that
-    // handoff was on the panel — two filled blue actions in one column, the
-    // second one always open under an already-run report. The handoff now
-    // lives inside the report fold, so the two are never on screen together
-    // and the head's Analyze keeps the accent unconditionally.
+  it("keeps Analyze the accent; the report's handoff is a plain button", () => {
+    const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+    const handoff = html.match(/<button[^>]*id="create-repertoire-from-game"/)[0];
+    expect(handoff).not.toMatch(/primary/);
     expect(ALL_STYLES).not.toMatch(/#run-analysis \{[^}]*background:\s*transparent/);
-    expect(ALL_STYLES).not.toMatch(
-      /#analyze-sidebar:has\(#analysis-results:not\(\[hidden\]\)\)[^{]*#run-analysis \{/,
-    );
   });
 });
 
@@ -529,80 +521,51 @@ describe("eval chart helpers", () => {
   });
 });
 
-// The phone report stacks chart, board, coach and score sheet, so each one
-// shares the screen's gutter and the eval figure leads its row. The chart used
-// to run edge to edge, where the first ply's cursor drew a dashed line on the
-// screen's own border (measured at x 0-3 of a 390px screen).
+// The phone pins the board: the evaluation band over it, the open pillar under
+// it, the pillar tabs on the thumb bar. Every band shares the screen's gutter.
 describe("Analyze on a phone", () => {
   const phone = CHART_STYLES.slice(CHART_STYLES.lastIndexOf("@media (max-width: 760px)"));
 
-  it("sets the game graph on the page gutter", () => {
-    expect(phone).toMatch(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*margin: 0 var\(--phone-gutter\)/);
+  it("sets the evaluation over the board as one fixed band on the gutter", () => {
+    const band = phone.match(/#view-analyze #analysis-eval-card \{[^}]*\}/)[0];
+    expect(band).toMatch(/order: 0/);
+    expect(band).toMatch(/height: var\(--phone-eval-h\)/);
+    expect(band).toMatch(/padding: 6px var\(--phone-gutter\)/);
+    expect(phone).toMatch(/--phone-eval-h: 56px/);
   });
 
-  it("gives the eval figure the row's ink and its largest size", () => {
+  it("gives the eval figure the band's ink and its largest size", () => {
     const rule = phone.match(/#analysis-eval-card \.eval-now \{[^}]*\}/);
     expect(rule).not.toBeNull();
     expect(rule[0]).toMatch(/font-size:\s*18px/);
     expect(rule[0]).toMatch(/color:\s*var\(--text\)/);
   });
 
-  // A phone has no score sheet: the move list is gone and the graph, which is
-  // the only way to walk the game there, takes the room it held.
-  it("drops the move list and gives its room to the graph", () => {
-    expect(phone).toMatch(/#analysis-results:not\(\[hidden\]\) > \.moves-grid \{ display: none; \}/);
-    const graph = phone.match(/#analysis-eval-card > :is\(\.eval-live, #analysis-eval-graph\) \{[^}]*\}/);
-    expect(graph, "the phone graph rule").not.toBeNull();
-    expect(graph[0]).toMatch(/flex: 1 1 0/);
-    expect(graph[0]).toMatch(/min-height: var\(--phone-chart-min\)/);
-    expect(graph[0]).toMatch(/max-height: 34svh/);
+  it("keeps the pillar tabs on the thumb bar at a 44px target, the coach among them", () => {
+    expect(phone).toMatch(/--phone-tabs-h: 44px/);
+    expect(phone).toMatch(/\.an-panes > \.an-tabs \{[^}]*order: 2;[^}]*height: var\(--phone-tabs-h\)/);
+    expect(phone).toMatch(/\.an-tab\[data-pane="coach"\]:not\(\[hidden\]\) \{ display: block; \}/);
+    // The score sheet is a pane, not dropped.
+    expect(phone).toMatch(/\.moves-pane > \.moves-grid \{ max-height: none;/);
   });
 
-  // One left edge for the whole column. The engine line, the job dock and the
-  // coach were indented 10/12/14px by three rules written at different times, so
-  // the graph and the eval row sat at 16 while everything under them started
-  // somewhere else (measured at 390x844: 16, 10, 12, 14).
-  it("keeps every band under the board on the phone gutter", () => {
-    for (const selector of ["#analysis-engine-slot", "#analysis-explain"]) {
-      const start = phone.indexOf(`${selector} {`);
-      expect(start, selector).toBeGreaterThan(-1);
-      const body = phone.slice(phone.indexOf("{", start), phone.indexOf("}", start));
-      expect(body, selector).toMatch(/padding: [^;]*var\(--phone-gutter\)/);
-    }
-    expect(phone).toMatch(/#analysis-job-dock \{[^}]*left: var\(--phone-gutter\);[^}]*right: var\(--phone-gutter\)/);
+  it("keeps every pane and the coach on the phone gutter", () => {
+    expect(phone).toMatch(/\.an-pane \{[^}]*padding: 8px var\(--phone-gutter\)/);
+    expect(phone).toMatch(/#analysis-explain \{[^}]*padding: 8px var\(--phone-gutter\)/);
   });
 
-  // Report and Engine are the two controls in the row a thumb reaches; they were
-  // 32px, the one place on a phone a control may not be dense.
-  it("gives the eval row's two pills a 44px target", () => {
-    // Painted at 32px so the row reads as one line of controls; the hit box grows
-    // past the paint to the 44px a thumb needs (the Train switch's pattern).
-    const engine = phone.match(/#analysis-eval-card \.ev-engine \{[^}]*\}/);
-    expect(engine).not.toBeNull();
-    expect(engine[0]).toMatch(/height: 32px/);
-    expect(phone).toMatch(/#analysis-eval-card \.ev-engine::after \{ content: ""; position: absolute; inset: -6px 0; \}/);
-    const report = phone.match(/#view-analyze:has\(#analysis-results:not\(\[hidden\]\)\) \.ev-report \{[^}]*\}/);
-    expect(report).not.toBeNull();
-    expect(report[0]).toMatch(/height: 32px/);
-    expect(phone).toMatch(/#view-analyze:has\(#analysis-results:not\(\[hidden\]\)\) \.ev-report::after \{ content: ""; position: absolute; inset: -6px 0; \}/);
+  it("keeps Analyze in the thumb bar whichever pillar is open", () => {
+    expect(phone).toMatch(/#view-analyze:not\(\[data-pane="coach"\]\) #analysis-explain \.cc-head > :not\(#analyze-actions\) \{ display: none; \}/);
   });
 
-  // Five 44px capsules around 11px text read as the tallest row in the coach, and
-  // out-weighed the verdict above them. The paint shrinks to the words; the thumb
-  // target keeps its 44px.
   it("paints the Humans picks at their words' height with a full thumb target", () => {
     expect(phone).toMatch(/#analysis-explain \.hp \{ position: relative; flex-shrink: 0; height: 28px; \}/);
     expect(phone).toMatch(/#analysis-explain \.hp::after \{[^}]*inset: -8px 0;/);
-    // The row still measures the 44px target the picks stand in, so the coach's
-    // rows do not re-flow when the read lands.
     expect(phone).toMatch(/#analysis-explain \.coach-maia \{[^}]*height: 44px/);
   });
 
-  // The win meter repeated the graph above it — the same win-chance series, at
-  // 12px instead of the graph's 277 — and at 64px plus its gap it squeezed the
-  // position's name into 43px, where it wrapped mid-word. The eval figure beside
-  // it already names the point.
-  it("does not repeat the graph's win share in the eval row", () => {
+  // The graph beside the figure is the same win-chance series: no meter.
+  it("does not repeat the graph's win share in the band", () => {
     expect(phone).toMatch(/#analysis-eval-card \.ev-meter \{ display: none; \}/);
   });
 });

@@ -14,6 +14,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { routeLichessProfile } from "./lichess-profile-route.mjs";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
@@ -98,6 +99,7 @@ const failures = [];
 
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  await routeLichessProfile(page);
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
@@ -257,7 +259,7 @@ async function runViewport(vp) {
   await invite.getByLabel("Invite link", { exact: true }).waitFor();
   check(generated === 1, "reopening the session link must not rotate it");
   await invite.getByRole("button", { name: "Revoke link", exact: true }).click();
-  await page.getByRole("dialog", { name: "Revoke invite link?", exact: true })
+  await page.getByRole("alertdialog", { name: "Revoke invite link?", exact: true })
     .getByRole("button", { name: "Revoke link", exact: true }).click();
   await invite.getByRole("button", { name: "Generate link", exact: true }).waitFor();
   check(revoked === 1, "explicit revocation must revoke exactly once");

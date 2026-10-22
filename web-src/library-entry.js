@@ -9,14 +9,14 @@ import { pgnHeaderTags } from "./analyze-pgn.js";
 // The Library (dashboard) page: its lazy chunk, the listing load, and importing
 // a PGN as a repertoire. The view itself is views/dashboard.js.
 
-let switchView, hydrateBuild, syncViewHeads, goToSmartTraining,
+let switchView, hydrateBuild, syncViewHeads, openTrain,
   editRepertoire, openRepertoireContextMenu, createRepertoirePrompt, requireSignIn,
   openAuthModal, openSettingsSection, parseFenBoard, pieceSvg;
 
 export let dashboardView = null;
 
 export function createLibrary(deps) {
-  ({ switchView, hydrateBuild, syncViewHeads, goToSmartTraining,
+  ({ switchView, hydrateBuild, syncViewHeads, openTrain,
     editRepertoire, openRepertoireContextMenu, createRepertoirePrompt, requireSignIn,
     openAuthModal, openSettingsSection, parseFenBoard, pieceSvg } = deps);
   return { preloadDashboardView, ensureDashboardView, loadDashboard, refreshDashboardRepertoires,
@@ -47,7 +47,7 @@ export async function ensureDashboardView() {
       setStatus,
       setStatusError,
       localDateString,
-      goToSmartTraining,
+      openTrain,
       editRepertoire,
       openRepertoireContextMenu,
       createRepertoirePrompt,

@@ -84,7 +84,7 @@ it('team directory caches empty results and rejects old refreshes and owners',as
 });
 it('shared repertoire refresh ignores an older response',async()=>{
   const first=deferred(),second=deferred();const host={get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]};
-  const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null,sharedRepRowsSkeleton},'let sharedRepertoiresSeq=0;');
+  const appState={};const load=compile('async function loadSharedRepertoires(',{appState,currentOwnerId:()=> 'owner',document:{getElementById:()=>host},api:vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),teamById:()=>null,sharedRepRowsSkeleton,enterRows:()=>{}},'let sharedRepertoiresSeq=0;');
   const a=load(),b=load();second.resolve({shared:[]});await b;first.resolve({shared:[{id:'stale'}]});await a;expect(String(host.innerHTML)).not.toContain('stale');
 });
 it('discarding one recovery refreshes the remaining work',async()=>{

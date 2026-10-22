@@ -18,13 +18,7 @@
 .phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
 .phone-sheet { display: contents; }
 
-/* The More sheet belongs to the phone layout: a bar that is gone must not leave
-   it as a full-width bottom sheet over the desktop board. */
-@media (min-width: 761px) {
-  .sheet-scrim:not([hidden]) { display: none; }
-}
-
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   :root {
     --phone-bar-h: 56px;
     --phone-reserve: max(180px, 32dvh);
@@ -300,7 +294,16 @@
      a list the phone never drew: one visible step was left reading "2". The
      title leads instead. */
   #view-dashboard .step[data-setup-step] { grid-template-columns: minmax(0, 1fr) auto; }
-  #view-dashboard .step[data-setup-step] .step-n { display: none; }
+  #view-dashboard .step .step-n { display: none; }
+  /* A first-run step (signed out, or nothing built yet) is a short paragraph
+     and its action: the action goes under the words, so the title is not
+     squeezed into a 120px column beside a 150px pill. */
+  #view-dashboard .step:not([data-setup-step]) { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 14px 14px; }
+  #view-dashboard .step:not([data-setup-step]) .btn { justify-self: start; }
+  /* The empty card carries Import PGN itself; the header's copy above it was a
+     lone pill floating over the page. */
+  #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .lib-actions { display: none; }
+  #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .card-head { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
   #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
@@ -386,6 +389,65 @@
   }
   #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
 
+  /* The page's one action docks above the tab bar, where the thumb rests:
+     Check on Games, Start on Scout. Up in the source card it sat in the top
+     third of the screen, the hardest place to reach one-handed. The page keeps
+     room under its last row for it. */
+  #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn) {
+    position: fixed;
+    z-index: 30;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
+    width: auto;
+    min-height: 50px;
+    height: 50px;
+    margin: 0;
+    border-radius: 25px;
+    box-shadow: 0 0 0 12px var(--bg); /* taste-skill-ignore: the ground around a docked button, so rows pass under it cleanly */
+  }
+  .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
+  #view-replay .toolbar > .counter { margin: 10px 0 12px; }
+
+  /* Teams: rows in the directory and the incoming shares are thumb rows. */
+  #view-teams :is(.team-row, .mem-row, .shared-rep-row) { min-height: 52px; align-items: center; }
+  #view-teams .card { border-radius: var(--phone-radius); }
+  /* The open team's header is one row, like a pushed screen's: back on the
+     left, the name (cut first) and role, then whatever actions the role has.
+     Wrapped, the actions took a second line, and a member's lone × sat on a
+     line of its own. */
+  #view-teams .team-detail .card-head {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 6px 6px 6px 2px;
+  }
+  #view-teams .team-detail .card-head .spacer { flex: 1 1 0; flex-basis: 0; height: auto; min-width: 0; }
+  #view-teams .team-detail .card-head h2 {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 17px;
+  }
+  #view-teams .team-detail .card-head .team-role-badge { flex: none; }
+  #view-teams .team-detail .card-head .btn { flex: none; }
+  #view-teams .team-detail .card-head .btn.icon { width: 44px; min-width: 44px; height: 44px; padding: 0; }
+  #view-teams .team-detail .card-head #team-detail-invite { height: 40px; min-height: 40px; padding: 0 14px; border-radius: 20px; }
+  #team-detail-close { order: -1; font-size: 0; color: var(--text); }
+  #team-detail-close::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border: solid currentColor;
+    border-width: 0 0 2.2px 2.2px;
+    transform: translateX(2px) rotate(45deg);
+  }
+
+
   /* Settings: one grouped list per section, like the iOS Settings app. Every
      row is 48px, actions are tinted text, sliders get the row's full width. */
   #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
@@ -393,50 +455,61 @@
      there, and it holds while the cards scroll. Six sections do not fit one
      row at 390px; wrapped into two rows they took 100px of a sticky strip on
      every scroll. The strip is one row that scrolls sideways inside itself
-     (never the page), its right edge fades to say there is more, and the open
-     section is scrolled into view whenever it changes (settings.js). */
+     (never the page); a cut-off word at the edge says there is more, and the
+     open section is scrolled into view whenever it changes (settings.js). */
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
     width: auto;
     max-width: none;
     flex-wrap: nowrap;
-    gap: 6px;
-    margin: 0 calc(-1 * var(--phone-gutter)) 10px;
-    padding: 6px 0 8px var(--phone-gutter);
+    gap: 0;
+    margin: 0 calc(-1 * var(--phone-gutter)) 12px;
+    padding: 0 var(--phone-gutter);
     border-radius: 0;
     background: var(--bg);
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--phone-gutter);
     scrollbar-width: none;
-    /* Cards pass under the strip while the page scrolls; the edge says the
-       strip ends there instead of the card looking cut. */
-    border-bottom: 1px solid var(--line);
+    /* Cards pass under the strip while the page scrolls; the hairline says
+       the strip ends there, and the open tab's bar sits on it. */
+    box-shadow: inset 0 -1px 0 var(--line);
   }
   #view-settings .settings-nav::-webkit-scrollbar { display: none; }
-  /* The fade is painted in the ground colour over the strip's right edge (a
-     mask would also clear the strip's own ground and show the cards passing
-     under it); it rides the scroll edge and leaves room after the last link. */
-  #view-settings .settings-nav::after {
-    content: "";
-    position: sticky;
-    right: 0;
-    flex: none;
-    width: 28px;
-    margin-left: -6px;
-    background: linear-gradient(to right, transparent, var(--bg) 70%);
-  }
+  /* A row of text tabs, like a native segmented header: the open one is ink
+     with a bar under it, the rest are muted words. Pills on pills read as six
+     buttons competing with the cards' own buttons. */
   #view-settings .settings-nav-link {
+    position: relative;
     flex: none;
     min-height: 44px;
-    padding: 0 14px;
-    border-radius: 10px;
-    background: var(--panel);
+    padding: 0 12px;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
     font-size: 15px;
   }
-  #view-settings .settings-nav-link.is-active { background: var(--text); color: var(--panel); }
+  #view-settings .settings-nav-link:hover { background: none; color: var(--text); }
+  #view-settings .settings-nav-link.is-active { background: none; color: var(--text); }
+  #view-settings .settings-nav-link::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--text);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  #view-settings .settings-nav-link.is-active::after { opacity: 1; }
   /* The heading names the open section on the title's line. */
-  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; }
+  /* Title and section share a baseline, so the row sizes itself (the 56px box
+     left the title at its top with 30px of air under it); the tab strip
+     follows straight on as the title's own sub-header. */
+  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; min-height: 0; margin-bottom: 0; padding: 14px 0 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
   #view-settings .settings-here::before { margin-right: 8px; }
   /* A jump lands the card below the sticky strip. */
@@ -464,17 +537,14 @@
     font-size: 16px;
   }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
-  /* Settings is a thumb target: its row buttons keep the quiet ghost look but
-     take a 40px box (they were 36px, and "Edit" only 34x36). */
-  #view-settings .set :is(.btn, .btn.sm):not(.primary) {
+  /* Settings is a thumb target: its row buttons take a 40px box (they were
+     36px, and "Edit" only 34x36) and keep their own look, the same .btn as
+     everywhere else. Bare accent text read as a link, not as Detect or Sign out. */
+  #view-settings .set :is(.btn, .btn.sm) {
     min-height: 40px;
     height: 40px;
-    padding: 0 8px;
-    border: 0;
-    background: none;
-    color: var(--accent-strong);
+    padding: 0 14px;
     font-size: 15px;
-    font-weight: 600;
   }
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
   /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
@@ -482,8 +552,8 @@
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
-  /* Sign out takes its own line under the identity, on the text's edge (its
-     8px padding pulled back): beside the name it left the name and its Edit
+  /* Sign out takes its own line under the identity, on the text's edge:
+     beside the name it left the name and its Edit
      167px, which cut the name to "onlyformu…" with space to spare below. */
   #view-settings .acct-id { gap: 4px 12px; padding: 12px 0; flex-wrap: wrap; }
   #view-settings .acct-id-text { flex: 1 1 calc(100% - 60px); }
@@ -492,11 +562,9 @@
      at the thumb like every other phone menu, not a 132px popover over the
      row under it. */
   #view-settings .conn-menu-btn { min-width: 44px; height: 44px; font-size: 18px; }
-  #view-settings .conn-menu:not([hidden]) {
-    position: fixed;
-    z-index: var(--z-menu, 80);
-    top: auto;
-    left: 8px;
+  #view-settings .conn-menu {
+    top: auto !important;
+    left: 8px !important;
     right: 8px;
     bottom: calc(8px + env(safe-area-inset-bottom));
     gap: 0;
@@ -504,9 +572,10 @@
     padding: 6px 0;
     border: 0;
     border-radius: 16px;
-    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
+    box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
+  .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   #view-settings .conn-menu-item { min-height: 48px; padding: 0 18px; border-radius: 0; font-size: 16px; }
   #view-settings .conn-menu-item + .conn-menu-item { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
   #view-settings .acct-block { margin-top: 0; }
@@ -669,7 +738,7 @@
   .bb-views svg { fill: none; stroke: currentColor; stroke-width: 1.7; }
   .bb-views[aria-expanded="true"],
   .bb-sheet[aria-expanded="true"] { color: var(--accent-strong) !important; }
-  .study .board-bar #train-hint:disabled { opacity: 0.4; }
+  .study .board-bar :is(#train-hint, #play-takeback):disabled { opacity: 0.4; }
 
   /* Move arrows: one split control. The chevron is the button's own SVG; a
      drawn ::before chevron here doubled it once the glyphs became SVG. */
@@ -713,11 +782,15 @@
     text-overflow: ellipsis;
   }
   #run-analysis { --pill-left: 154px; }
-  #build-generate-node { --pill-left: 106px; }
+  /* Repertoire has its own way out (the header's back button), so its bar
+     drops Views: Flip, the Generate pill, and the move arrows. */
+  #view-build .board-bar .bb-views { display: none; }
+  #view-build .board-bar { grid-template-columns: 44px minmax(0, 1fr) 52px 52px; }
+  #build-generate-node { --pill-left: 58px; }
   /* Under 360px the icons and arrows leave the pill too little room for its
      name (Analyze kept 44px): tighten the bar so the action stays readable. */
   @media (max-width: 359px) {
-    #view-build .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px; }
+    #view-build .board-bar { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar .btn.icon { width: 40px; }
     .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
@@ -1014,26 +1087,35 @@
   #view-build .build-empty .btn.primary { flex: 1 1 100%; }
   #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; border: 0; background: var(--surface-3); }
 
-  /* ---- Train -------------------------------------------------------------
-     The prompt over the board, the session card under it. Modes lead while
-     setting up and drop to the bar's edge during a session. */
+  /* ---- Train: Home and Result are pages, a Session is the board ---------
+     Home and Result are read, not played on: no board, no thumb bar, the tab
+     bar stays. A Session pins the board on top, the coach line under it and
+     the board bar's action slot (Hint · Skip, or Takeback · Resign) at the
+     thumb. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
-  /* Setting up is reading the card, not playing, so the board has to leave the
-     setup card on screen: at 430x740 the full-width board left the panel 146px
-     and pushed Start's top to 785 under a 740px screen, so the board yields 400px
-     of height while the card is up. That is the card (285px), the mode row over
-     it and the gap between them — measured, not the card alone: 285px of reserve
-     leaves Start at 798 on a 740px screen, 400px puts it at 683. It is a token
-     like every other state's reserve so the board rule is one formula; a
-     hard-coded 400px in that rule overrode the token and the two could drift. */
-  #view-train:has(.train-sidebar[data-session-state="setup"]) { --phone-reserve: 400px; }
-  /* The screen's name, at the size the shell uses for one: the coach icon is
-     a mark, not a picture, so it is small and in ink. */
+  #view-train:is([data-train-screen="home"], [data-train-screen="result"]) :is(.board-stack, .board-bar, .blitz-bar) { display: none; }
+  #view-train:is([data-train-screen="home"], [data-train-screen="result"]) .study {
+    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+  }
+  body:has(#view-train.is-active:is([data-train-screen="home"], [data-train-screen="result"])) .tabbar {
+    bottom: 0;
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+  #view-train .train-head { order: 0; padding: 8px var(--phone-gutter) 4px; }
+  #view-train .train-title { font-size: 22px; }
+  #view-train[data-train-screen="session"] .train-head { order: 2; padding-top: 6px; }
+  #view-train .train-head-prog { order: 2; margin: 0 var(--phone-gutter); }
   #view-train .train-coach {
-    order: 0;
+    order: 2;
     flex: none;
     height: auto;
-    min-height: 56px;
+    min-height: 52px;
     margin: 0;
     padding: 6px var(--phone-gutter);
     gap: 10px;
@@ -1041,58 +1123,19 @@
     background: var(--bg);
   }
   #view-train .train-coach-icon { width: 28px; height: 28px; flex: none; }
-  #view-train .train-coach-title { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+  #view-train .train-coach-title { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
-  #view-train .train-sidebar > .panel-head {
-    order: 2;
-    flex: none;
-    min-height: 0;
-    margin: 0;
-    padding: 12px var(--phone-gutter) 0;
-    border: 0;
-    background: var(--bg);
-  }
-  /* The modes sit on the page ground, where the recessed track was the same
-     tone as the ground and disappeared: the track is the panel fill and the
-     chosen mode takes the recessed step. */
-  #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 3px; border: 0; border-radius: 11px; background: var(--panel); }
-  #view-train #train-modes .seg-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 44px;
-    height: 44px;
-    padding: 0 4px;
-    border: 0;
-    border-radius: 9px;
-    background: none;
-    color: var(--muted);
-    /* Three modes share 358px (328px at 360): at 14px the bold active label
-       cut to "Line rehear…" and "Practice ga…". 13px at one weight fits each
-       name on one line, and a screen narrower still wraps a name onto a second
-       line inside the 44px button rather than cutting it. The selected mode is
-       told by its fill and ink, so its weight does not change its width. */
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.15;
-    white-space: normal;
-    text-wrap: balance;
-  }
-  #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); }
-  #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
-  #view-train .prog-head { min-height: 44px; }
-  #view-train #train-back { min-height: 44px; height: 44px; }
-  #view-train #train-fresh { min-height: 44px; }
-  /* A phone row has no room for a name, a meter and a count side by side: the
-     name keeps the line, the meter and its number sit under it. */
-  /* One line per repertoire: the dot, the name (cut first) and its figures at
-     the right edge. The meter repeats the percentage the count already says,
-     and stacked under the name it wrapped the row into two misaligned lines. */
-  #view-train .train-source { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; min-height: 28px; }
-  #view-train .train-source-meter { display: none; }
-  #view-train .train-source-count { font-size: 13px; }
-  /* The up-next row cuts a long repertoire name with an ellipsis: the name was
-     a flex box, which clips its text without one. */
+  #view-train .train-back { min-height: 44px; height: 44px; }
+  #view-train .train-row { padding: 14px; border-radius: var(--phone-radius); }
+  #view-train .train-row-go { height: 44px; min-height: 44px; }
+  /* Practice has two actions: they take their own full-width line under the
+     options instead of squeezing the title. */
+  #view-train .train-row:has(> .train-row-actions) { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "go"; }
+  #view-train .train-row-actions { gap: 8px; }
+  #view-train .train-row-actions > .btn { flex: 1 1 0; height: 44px; min-height: 44px; }
+  #view-train .train-chip { min-height: 40px; font-size: 15px; }
+  #view-train .seg-btn { min-height: 40px; height: 40px; font-size: 14px; }
   #view-train .un-rep { display: block; min-width: 0; }
   #view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
   #view-train .train-sidebar .tcard {
@@ -1104,42 +1147,31 @@
     box-shadow: none;
     font-size: 14px;
   }
-  /* The card's head is above the card's body, not the same size as it. */
-  #view-train .train-sidebar .tcard > h3 { font-size: 15px; }
-  /* A result card replaces the session card in its room between the tab row
-     and the banner: as tall as its content, scrolling inside only when that
-     room is shorter. With the live board gone, a result is read, not played on. */
-  #view-train .study:has([data-session-state="summary"]) .board-stack { display: none; }
-  #view-train .train-sidebar[data-session-state="summary"] > .panel-scroll {
-    order: 2;
-    flex: 1 1 0;
-    min-height: 0;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
-  #view-train .train-start-row .btn { flex: 1 1 140px; height: 46px; min-height: 46px; border-radius: 12px; }
-  /* Setting up is reading the card, not playing, so the board has to leave the
-     setup card on screen (see --phone-reserve above). */
-  #view-train:has(.train-sidebar[data-session-state="setup"]) .board-stack {
-    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
-  }
-
-  /* Session card: progress, then one row each for stats and up next. */
-  #view-train .train-progress-panel { display: flex; flex-direction: column; gap: 10px; }
-  #view-train .train-progress-panel .prog-head { min-height: 0; gap: 8px; }
-  #view-train .train-progress-panel .qstrip { display: none; }
-  /* The stats stay one chip row; the per-move trail repeats them. */
-  #view-train .train-progress-panel .trail { display: none; }
-  #view-train .train-progress-panel .card-dots:empty { display: none; }
   #view-train .train-progress-panel .upnext { min-height: 0; }
-  #view-train .train-progress-panel > .row { justify-content: flex-start; }
-  .sum-cells { grid-template-columns: repeat(2, 1fr); }
+  #view-train .train-summary-actions .btn { height: 46px; min-height: 46px; }
+  /* Up to four result cells share one row (train-shell.css arrives later). */
+  :root .sum-cells { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); }
+  .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
+  .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
+  /* The picker is a bottom sheet at the thumb. train-shell.css arrives later
+     with Train's chunk, so these rules carry :root to win over its popover. */
+  :root .train-picker {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 70dvh;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  :root .train-picker::backdrop { background: rgba(0, 0, 0, 0.45); }
+  :root .train-pick { min-height: 48px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
-  .context-menu:not([hidden], .account-menu) {
+  .context-menu:not(.account-menu) {
     top: auto !important;
     left: 8px !important;
     right: 8px;
@@ -1151,9 +1183,10 @@
     padding: 6px 0;
     border: 0;
     border-radius: 16px;
-    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
+    box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
+  .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   .context-menu button {
     min-height: 44px;
     padding: 0 18px;
@@ -1163,15 +1196,55 @@
   /* Groups split by a rule instead of a caption, so Delete stays in view. */
   .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
   .context-menu .context-section { display: none; }
-  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+  /* Only between groups: a rule at the top of the menu splits nothing. */
+  .context-menu button ~ .context-section + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+
+  /* ---- Dialogs: bottom sheets ------------------------------------------
+     Sign in, confirm, share and invite rise from the bottom edge like every
+     other phone sheet, full width, with 48px fields and thumb-sized buttons.
+     A 380px card floating at the top left its Sign in button in the hardest
+     place to reach, and its 32px fields under the iOS 44px floor. */
+  /* :root + element: beats a dialog's own desktop width (.share-modal,
+     .welcome, .modal.training-history) wherever its CSS loads. The More
+     sheet keeps its floating inset (below). */
+  :root dialog.modal:not(.sheet) {
+    inset: auto 0 0;
+    margin: auto 0 0;
+    width: 100%;
+    max-width: none;
+  }
+  .modal {
+    max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 18px 18px 0 0;
+  }
+  .modal:not([open], :popover-open) { transform: translateY(24%); }
+  @starting-style {
+    .modal:is([open], :popover-open) { transform: translateY(24%); }
+  }
+  .modal-title { display: flex; align-items: center; min-height: 56px; padding: 6px 8px 6px var(--phone-gutter); font-size: 18px; }
+  .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
+  .modal-field > span { font-size: 13px; }
+  .modal-field :is(input, select) { height: 48px; padding: 0 14px; border-radius: 12px; }
+  .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
+  .modal-footer .btn { flex: 1 1 0; min-height: 50px; height: 50px; border-radius: 25px; font-size: 16px; }
+  .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
+  .auth-modal .auth-google { min-height: 50px; border-radius: 25px; font-size: 16px; }
+  .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
+  .auth-footer { flex-direction: column-reverse; align-items: stretch; }
+  .auth-footer .btn { flex: none; width: 100%; }
+  .auth-footer .auth-switch { align-self: center; font-size: 15px; }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
-  .sheet-scrim { background: rgba(0, 0, 0, 0.45); }
+  .sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
   .sheet {
     display: flex;
     flex-direction: column;
     gap: 0;
-    margin: 0 8px calc(8px + env(safe-area-inset-bottom));
+    inset: auto 0 0;
+    width: auto;
+    max-width: none;
+    margin: auto 8px calc(8px + env(safe-area-inset-bottom));
     padding: 6px 0;
     border-radius: 16px;
   }
@@ -1233,4 +1306,22 @@
   /* The open destination is ink, not the accent: the accent belongs to the one
      action on the screen. */
   .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
+  /* The open destination also sits on a recessed pill behind its icon, so it
+     reads at a glance and not only by the weight of a 12px label. */
+  .tabbar .tabbar-item { position: relative; isolation: isolate; }
+  .tabbar .tabbar-item::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 4px;
+    left: 50%;
+    width: 52px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--surface-3);
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.6);
+    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+  .tabbar .tabbar-item.is-active::before { opacity: 1; transform: translateX(-50%); }
 }

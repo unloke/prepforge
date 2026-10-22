@@ -55,6 +55,16 @@ const FIXTURE = {
   critical_moments: [],
 };
 
+// Poll through page.evaluate: waitForFunction re-evaluates its predicate as a
+// string, which the app's CSP (no 'unsafe-eval') refuses once it has to poll.
+async function until(page, predicate, timeout) {
+  const end = Date.now() + timeout;
+  while (!(await page.evaluate(predicate))) {
+    if (Date.now() > end) throw new Error(`timed out after ${timeout}ms: ${predicate}`);
+    await page.waitForTimeout(50);
+  }
+}
+
 async function main() {
   let chromium;
   try {
@@ -77,7 +87,7 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.goto(APP_URL, { timeout: 30_000 });
-    await page.waitForFunction(() => !!window.__prepforgeAnalyzeE2e, null, { timeout: 20_000 });
+    await until(page, () => !!window.__prepforgeAnalyzeE2e, 20_000);
 
     await page.evaluate(async (fixture) => {
       await window.__prepforgeAnalyzeE2e.seedAnalysis(fixture);
@@ -97,13 +107,13 @@ async function main() {
 
     // --- 1. Mouse hover: text tooltip (SAN, eval, classification). ---
     await page.mouse.move(xForRatio(0.75), chartBox.y + chartBox.height / 2); // ply 4
-    await page.waitForFunction(
+    await until(
+      page,
       () => {
         const t = document.getElementById("eval-chart-tooltip");
         return t && !t.hidden && t.textContent.includes("Nc6");
       },
-      null,
-      { timeout: 5_000 },
+      5_000,
     );
     const tooltipText = await page.evaluate(
       () => document.getElementById("eval-chart-tooltip").textContent,
@@ -135,10 +145,10 @@ async function main() {
 
     // --- 3. The tooltip never lingers; the chart is not a focus stop. ---
     await page.mouse.move(chartBox.x + chartBox.width / 2, chartBox.y - 120);
-    await page.waitForFunction(
+    await until(
+      page,
       () => document.getElementById("eval-chart-tooltip")?.hidden === true,
-      null,
-      { timeout: 5_000 },
+      5_000,
     );
     check(
       (await page.evaluate(() => document.getElementById("eval-chart").hasAttribute("tabindex"))) === false,

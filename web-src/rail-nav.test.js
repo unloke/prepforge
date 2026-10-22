@@ -52,7 +52,12 @@ describe("rail collapse after navigation", () => {
     expect(tabs.length).toBe(8);
     for (const [markup, label] of tabs) {
       expect(markup).toContain(`aria-label="${label}"`);
-      expect(markup).toContain(`title="${label}"`);
+      // The tooltip leads with the name, then the destination's job in a few
+      // words, so Games ("review my games") and Scout ("prep against an
+      // opponent") no longer read as the same page (Settings is its own job).
+      expect(markup).toMatch(new RegExp(`title="${label}( — [^"]+)?"`));
     }
+    expect(rail).toContain('title="Games — review my games"');
+    expect(rail).toContain('title="Scout — prep against an opponent"');
   });
 });

@@ -124,9 +124,24 @@ export function createMaia3Provider(options = {}) {
 // makes even a cold re-init skip the network. Callers MUST treat it as borrowed — do not
 // terminate it (use disposeSharedMaia3Provider for an explicit model switch / teardown).
 let sharedProvider = null;
+// Observers of the shared provider's life: told when one is made, when its state
+// changes and when it is disposed (with null), so a download status can follow a
+// load that any caller started.
+const sharedWatchers = new Set();
+const tellShared = () => {
+  for (const fn of [...sharedWatchers]) { try { fn(sharedProvider); } catch (_) { /* observer error */ } }
+};
+export function watchSharedMaia3Provider(fn) {
+  sharedWatchers.add(fn);
+  return () => sharedWatchers.delete(fn);
+}
 
 export function getSharedMaia3Provider(options = {}) {
-  if (!sharedProvider) sharedProvider = new Maia3Provider(options);
+  if (!sharedProvider) {
+    sharedProvider = new Maia3Provider(options);
+    sharedProvider._onState = tellShared;
+    tellShared();
+  }
   return sharedProvider;
 }
 
@@ -139,8 +154,10 @@ export function peekSharedMaia3Provider() {
 
 export function disposeSharedMaia3Provider() {
   if (sharedProvider) {
+    sharedProvider._onState = null;
     sharedProvider.terminate();
     sharedProvider = null;
+    tellShared();
   }
 }
 
@@ -182,6 +199,7 @@ class Maia3Provider {
     this._pending = new Map(); // request id → { resolve, reject }
     this._nextId = 1;
     this._state = "idle"; // idle | initializing | ready | unavailable
+    this._onState = null;
     this._assetBase = null; // resolved weight base (main-thread) — observable for the seam check
     this._info = null; // last successful worker init result ({ backend, file, bytes, url, cached })
     // The most recent failure that made the provider unavailable. Settings surfaces this so
@@ -202,6 +220,11 @@ class Maia3Provider {
 
   get state() {
     return this._state;
+  }
+
+  _setState(state) {
+    this._state = state;
+    this._onState?.();
   }
 
   isAvailable() {
@@ -322,7 +345,7 @@ class Maia3Provider {
     this._teardownWorker();
     this._failAllPending(new Error("Maia3 provider terminated"));
     this._ready = null;
-    this._state = "idle";
+    this._setState("idle");
     this._lastError = null;
     // Drop cached reads: a terminate means a model switch / teardown, after which the cached
     // values may no longer correspond to the loaded weights. (Crash-recovery does NOT call
@@ -358,10 +381,10 @@ class Maia3Provider {
 
   _ensureReady() {
     if (this._ready) return this._ready;
-    this._state = "initializing";
+    this._setState("initializing");
     this._ready = this._init().then(
       (value) => {
-        this._state = "ready";
+        this._setState("ready");
         this._lastError = null; // a clean init clears any prior failure
         return value;
       },
@@ -373,7 +396,7 @@ class Maia3Provider {
         this._teardownWorker();
         this._failAllPending(err);
         this._ready = null;
-        this._state = "unavailable";
+        this._setState("unavailable");
         this._recordError(err, "init");
         throw err;
       },
@@ -489,7 +512,7 @@ class Maia3Provider {
 
   _onWorkerCrash(ev) {
     const reason = (ev && (ev.message || ev.type)) || "worker crashed";
-    this._state = "unavailable";
+    this._setState("unavailable");
     this._teardownWorker();
     this._ready = null; // allow re-init on the next call
     const err = new Error(`Maia3 worker crashed: ${reason}`);

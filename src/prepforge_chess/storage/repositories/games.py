@@ -604,14 +604,20 @@ class GameRepository(EvaluationRepository):
     @staticmethod
     def _analysis_from_row(row) -> AnalysisResult:
         quality = _json_load(row["quality_json"], None)
-        if row["move_results_json"] is None:
+        # A snapshot written before the current codec cannot be read: it is as
+        # good as missing, and the run is analyzed again rather than failing.
+        try:
+            moves = codec.decode_analysis_moves(row["move_results_json"])
+        except ValueError:
+            moves = None
+        if row["move_results_json"] is None or moves is None:
             quality = dict(quality or {}, move_snapshot_missing=True)
         return AnalysisResult(
             game_id=row["game_id"],
             analyzed_at=row["analyzed_at"],
             engine=row["engine"],
             depth=row["depth"],
-            move_results=codec.decode_analysis_moves(row["move_results_json"]),
+            move_results=moves or [],
             summary=_json_load(row["summary_json"], {}),
             critical_ply=_parse_critical_ply(row["critical_ply"]),
             quality=quality,

@@ -85,6 +85,14 @@ _STATIC_MIME = {
     ".woff2": "font/woff2",
 }
 
+# The build writes a brotli twin (``name.br``) next to each compressible file
+# (scripts/precompress.mjs). Served as-is to clients that accept br, so the bytes
+# are compressed once at quality 11 instead of per request.
+_BROTLI_SUFFIX = ".br"
+# Binaries the per-request gzip middleware leaves alone (api/main.py): too large to
+# compress on every request. A precompressed twin is their only encoding.
+GZIP_SKIP_EXT = (".wasm", ".onnx")
+
 # Content-stable engine/model artifacts can be cached forever.
 _IMMUTABLE_EXT = {".wasm", ".onnx", ".nnue"}
 # Vite content-hashed bundle names, e.g. "index-D4f8aB12.js" or
@@ -121,6 +129,19 @@ def _file_etag(stat_result: os.stat_result) -> str:
     """
     seed = "{0}-{1}".format(stat_result.st_mtime, stat_result.st_size)
     return '"' + hashlib.md5(seed.encode(), usedforsecurity=False).hexdigest() + '"'
+
+
+def _accepts_br(request: Request) -> bool:
+    for coding in request.headers.get("accept-encoding", "").split(","):
+        name, _, params = coding.partition(";")
+        if name.strip().lower() != "br":
+            continue
+        q = params.strip().lower().removeprefix("q=")
+        try:
+            return not q or float(q) > 0
+        except ValueError:
+            return False
+    return False
 
 
 def _not_modified(
@@ -324,15 +345,25 @@ def _serve_asset(request: Request, rel_path: str) -> Response:
     # names are immutable so they never re-ask; the revalidating files (the two
     # manifests, icons, logos) do, on every load. A Range request is a ranged
     # read, never a cache revalidation, so it keeps streaming.
-    stat_result = target.stat()
+    #
+    # A brotli twin is a second representation of the same URL: it carries its own
+    # ETag (the twin's stat) and Content-Encoding, which the gzip middleware passes
+    # through untouched. Ranges address the identity bytes, so they skip the twin.
+    brotli = target.with_name(target.name + _BROTLI_SUFFIX)
+    has_twin = brotli.is_file()
+    ranged = "range" in request.headers
+    body = brotli if has_twin and not ranged and _accepts_br(request) else target
+    headers = {"Cache-Control": cache_control, **_ASSET_ISOLATION}
+    if body is brotli:
+        headers["Content-Encoding"] = "br"
+    if has_twin and (body is brotli or target.suffix.lower() in GZIP_SKIP_EXT):
+        # The gzip middleware adds Vary itself whenever it handles the response.
+        headers["Vary"] = "Accept-Encoding"
+    stat_result = body.stat()
     etag = _file_etag(stat_result)
-    if "range" not in request.headers and _not_modified(request, etag, stat_result.st_mtime):
+    if not ranged and _not_modified(request, etag, stat_result.st_mtime):
         return _not_modified_response(etag, cache_control, _ASSET_ISOLATION)
-    return FileResponse(
-        target,
-        media_type=_static_mime(target),
-        headers={"Cache-Control": cache_control, **_ASSET_ISOLATION},
-    )
+    return FileResponse(body, media_type=_static_mime(target), headers=headers)
 
 
 def register_static(app: FastAPI) -> None:

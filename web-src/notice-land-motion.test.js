@@ -32,7 +32,7 @@ describe("a finished job's notice", () => {
   });
 
   it("keeps the spinner as the only looping animation", () => {
-    expect(rule('.notice[data-state="running"] .notice-icon')).toMatch(/animation:\s*notice-spin 900ms linear infinite/);
+    expect(rule('.notice[data-state="running"] .notice-icon')).toMatch(/animation:\s*spin 900ms linear infinite/);
     // The landed states never animate forever.
     expect(rule('.notice[data-state="done"] .notice-icon')).not.toMatch(/infinite/);
     expect(rule('.notice[data-state="failed"] .notice-icon')).not.toMatch(/infinite/);

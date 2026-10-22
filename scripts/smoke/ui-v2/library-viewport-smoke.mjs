@@ -284,6 +284,9 @@ async function runViewport(vp) {
       if (event.target.closest("#dashboard-repertoires")) window.__entrancesBefore += 1;
     }, true);
   });
+  // The route swap lands inside a View Transition, a frame after the click: a
+  // row in a still-hidden view cannot take focus.
+  await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').waitFor({ state: "visible" });
   await page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]').focus();
   await page.evaluate(() => {
     window.__focusedLibraryRow = document.activeElement;

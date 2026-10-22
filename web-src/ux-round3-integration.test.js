@@ -21,7 +21,7 @@ function harness(realBoard = false) {
   const pending = deferred();
   const chunk = deferred();
   const view = { renderAnalysis: vi.fn(), renderAnalysisTree: vi.fn(), renderEvalChart: vi.fn(),
-    renderClassificationBars: vi.fn(), buildAnalysisTree: () => ({ root: parsePgn("1. e4").root }) };
+    renderReport: vi.fn(), buildAnalysisTree: () => ({ root: parsePgn("1. e4").root }) };
   const input = { value: "1. d4", addEventListener: vi.fn() };
   const appState = { analysis: null, analysisVarNodes: new Map() };
   const realView = createAnalyzeView({ appState, START_FEN });
@@ -220,15 +220,15 @@ describe("Boot route lifecycle", () => {
     expect(deps.hydrateBuild).not.toHaveBeenCalled();
   });
 
-  it.each([true, false])("Train picked during boot auto-starts only with a session (%s)", async (signedIn) => {
+  it.each([true, false])("Train picked during boot lands on Train Home and starts nothing (%s)", async (signedIn) => {
     const appState = { currentView: "train", signedIn, trainMode: "smart" };
-    const deps = { appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), startTraining: vi.fn(),
+    const deps = { appState, switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation };
     const restore = new Function(...Object.keys(deps), `let navigatedDuringBoot = true;
       return (${body("async function restoreWorkspaceLocation(")});`)(...Object.values(deps));
     await restore();
-    expect(deps.startTraining).toHaveBeenCalledTimes(signedIn ? 1 : 0);
-    if (signedIn) expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false });
+    expect(deps.switchView).toHaveBeenCalledWith("train");
+    expect(deps.openTrain).not.toHaveBeenCalled();
   });
 });
 

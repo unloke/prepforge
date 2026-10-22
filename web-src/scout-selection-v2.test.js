@@ -5,7 +5,10 @@ import { buildOpeningTrie, rankedOpeningBranches, rankGamePlan, fenAfterLine, op
 import { rankPrefilterCandidates } from './scout-prefilter.js';
 import { nestedRoutes, canonicalPosition } from './scout-preparation-value.js';
 
-describe('v10 observed route pipeline', () => {
+// One colour replays ~1,200 real games through chess.js cold (no memo yet): 2-4 s
+// alone, past the 5 s default once the whole suite shares the CPU. The budget is
+// the work's, not a hang guard.
+describe('v10 observed route pipeline', { timeout: 30_000 }, () => {
   it.each(['white','black'])('fills twelve full observed %s lines, weak spots first, assessed and in fallback', color => {
     const baseline = opponentColorBaseline(games,color);
     const rows = rankedOpeningBranches(games,color,{ trie: buildOpeningTrie(games,color,{ maxPlies: Infinity }),limit: 300,baselineScorePct: baseline }).branches;

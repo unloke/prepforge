@@ -49,7 +49,7 @@ try{
   assert.equal(await page.locator('#shared-banner-note').count(), 0);
   const opener=page.locator('[data-row-menu="audit-rep"]');
   await opener.focus();await opener.press('Enter');
-  results.menu=await page.locator('#repertoire-context-menu').evaluate(el=>({visible:!el.hidden,role:el.getAttribute('role'),items:[...el.querySelectorAll('button')].map(b=>b.getAttribute('role')),focus:document.activeElement?.outerHTML.slice(0,180)}));
+  results.menu=await page.locator('#repertoire-context-menu').evaluate(el=>({visible:el.matches(':popover-open'),role:el.getAttribute('role'),items:[...el.querySelectorAll('button')].map(b=>b.getAttribute('role')),focus:document.activeElement?.outerHTML.slice(0,180)}));
   assert.equal(results.menu.role, 'menu');
   assert.ok(results.menu.items.every(role => role === 'menuitem'));
   assert.match(results.menu.focus, /data-action="train"/);
@@ -60,11 +60,11 @@ try{
   await page.keyboard.press('ArrowUp');
   assert.equal(await page.evaluate(() => document.activeElement.dataset.action), 'delete');
   await page.keyboard.press('Escape');
-  results.menu.afterEscape=await page.locator('#repertoire-context-menu').evaluate(el=>({hidden:el.hidden,focus:document.activeElement?.getAttribute('data-row-menu')}));
+  results.menu.afterEscape=await page.locator('#repertoire-context-menu').evaluate(el=>({hidden:!el.matches(':popover-open'),focus:document.activeElement?.getAttribute('data-row-menu')}));
   assert.deepEqual(results.menu.afterEscape, { hidden: true, focus: 'audit-rep' });
   await opener.press('Enter');
   await page.locator('#lib-filter-search').click();
-  assert.equal(await page.locator('#repertoire-context-menu').evaluate(el=>el.hidden), true);
+  assert.equal(await page.locator('#repertoire-context-menu').evaluate(el=>!el.matches(':popover-open')), true);
   assert.equal(await page.evaluate(()=>document.activeElement.id), 'lib-filter-search');
   await page.setViewportSize({ width: 390, height: 844 });
   await opener.tap();
@@ -78,6 +78,8 @@ try{
     results.palette[query]=await page.locator('#palette-results [data-palette-id]').evaluateAll(els=>els.map(el=>({id:el.dataset.paletteId,label:el.querySelector('.palette-item-label').textContent})));
   }
   await page.locator('#palette-input').fill('game');await page.locator('#palette-input').press('Enter');
+  // A route change swaps .is-active inside its View Transition (view-swap.js).
+  await page.locator('#view-replay.is-active').waitFor({timeout:3000}).catch(()=>{});
   results.palette.gameEnter=await page.evaluate(()=>document.querySelector('.view.is-active')?.id||document.querySelector('.view:not([hidden])')?.id);
   assert.equal(results.palette.game[0].id, 'view:replay:games');
   assert.equal(results.palette.analyze.length, 1);
@@ -104,7 +106,7 @@ try{
   await page.locator('.rail [data-view="dashboard"]').click();
   await page.locator('#dashboard-repertoires .empty-state').waitFor();
   await page.locator('#dashboard-repertoires [data-lib-action="new"]').click();
-  await page.locator('[role="dialog"] .modal-title').filter({hasText:'New repertoire'}).waitFor();
+  await page.locator('dialog[open] .modal-title').filter({hasText:'New repertoire'}).waitFor();
   await page.keyboard.press('Escape');
   libraryMode='error';
   await page.reload({waitUntil:'networkidle'});

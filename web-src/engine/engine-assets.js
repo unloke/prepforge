@@ -156,6 +156,12 @@ export function createEngineAssetManager({
       return entry.promise;
     },
     removeEngineAsset: remove,
+    // Whether this net's bytes are on disk: a later visit runs it without a download.
+    async isEngineAssetCached(net) {
+      try {
+        return !!(await (await cacheStorage()?.open(CACHE_NAME))?.match(urlFor(net)));
+      } catch { return false; }
+    },
     subscribeEngineAsset(net, fn) {
       const entry = entryFor(net);
       entry.listeners.add(fn);
@@ -165,4 +171,4 @@ export function createEngineAssetManager({
   };
 }
 
-export const { loadEngineModule, removeEngineAsset, subscribeEngineAsset, engineAssetState } = createEngineAssetManager();
+export const { loadEngineModule, removeEngineAsset, subscribeEngineAsset, engineAssetState, isEngineAssetCached } = createEngineAssetManager();

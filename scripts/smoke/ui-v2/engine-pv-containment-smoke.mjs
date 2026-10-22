@@ -195,7 +195,9 @@ for (const vp of VIEWPORTS.filter((v) => !ONLY || ONLY.split(",").includes(v.nam
   await page.locator("#build-rep-name").filter({ hasText: "Caro-Kann" }).waitFor({ state: "attached", timeout: 20000 });
 
   // Phones switch panes with the segmented control; the engine switch lives on
-  // the Explorer pane at every width.
+  // the Explorer pane at every width. The route swap marks Build active only once
+  // its view transition captures the old page, so read the panes after that.
+  await page.locator("#view-build.is-active").waitFor({ timeout: 20000 });
   const pane = page.locator('#build-panes [data-pane="explorer"]');
   if (await pane.isVisible().catch(() => false)) await pane.click();
   await page.locator('[data-testid="open-engine-widget-build"]').click();

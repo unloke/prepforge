@@ -1,62 +1,44 @@
-// renderTrainStats paints every counter and the session trail from the live
-// stats; a missing element must not stop the others being painted.
+// The session shows one stats line, first answers only: the run and the misses.
+// Nothing is said before there is something to say.
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createTrainView } from "./train.js";
 
-function elements(ids) {
-  const out = {};
-  for (const id of ids) out[id] = { id, textContent: "", innerHTML: "", hidden: false, style: {}, classList: { toggle() {}, add() {}, remove() {} } };
-  out["train-stat-streak"].closest = () => null;
-  return out;
-}
-
-function view(appState, els) {
-  globalThis.document = { getElementById: (id) => els[id] || null, querySelector: () => null, querySelectorAll: () => [] };
-  return createTrainView({ appState, boards: {}, renderSyncChip: () => {}, setTrainBanner: () => {}, updateTrainTurnBadge: () => {}, onStreakRendered: () => {} });
+function view(appState, streaks = []) {
+  const line = { textContent: "" };
+  globalThis.document = { getElementById: (id) => (id === "train-stats-line" ? line : null), querySelector: () => null, querySelectorAll: () => [] };
+  const train = createTrainView({ appState, boards: {}, renderSyncChip: () => {}, setTrainBanner: () => {}, updateTrainTurnBadge: () => {}, onStreakRendered: (s) => streaks.push(s) });
+  return { train, line };
 }
 
 afterEach(() => { delete globalThis.document; });
 
 describe("renderTrainStats", () => {
-  it("paints streak, correct, missed and the trail", () => {
-    const els = elements(["train-stat-streak", "train-stat-correct", "train-stat-mistakes", "train-accuracy", "train-line-trail"]);
-    const appState = { trainStats: { correct: 2, mistakes: 1, streak: 1, best: 2, history: [true, true, false], lastStreak: 2 } };
-    view(appState, els).renderTrainStats();
-    expect(els["train-stat-streak"].textContent).toBe("1");
-    expect(els["train-stat-correct"].textContent).toBe(2);
-    expect(els["train-stat-mistakes"].textContent).toBe(1);
-    expect(String(els["train-line-trail"].innerHTML)).toContain('class="ok"');
-    expect(String(els["train-line-trail"].innerHTML)).toContain('class="no"');
+  it("says the run and the misses in one line", () => {
+    const { train, line } = view({ trainStats: { correct: 4, mistakes: 2, streak: 3 } });
+    train.renderTrainStats();
+    expect(line.textContent).toBe("3 in a row · 2 missed");
   });
 
-  it("keeps painting the later counters, which the streak repaint used to starve", () => {
-    // The bug: the streak wrote a SafeHtml object to innerHTML ("[object
-    // Object]") and re-triggered its pop on every repaint, so the lines after it
-    // (correct / missed / accuracy / trail) never ran. They must all land.
-    const els = elements(["train-stat-streak", "train-stat-correct", "train-stat-mistakes", "train-accuracy", "train-line-trail"]);
-    const appState = { trainStats: { correct: 1, mistakes: 1, streak: 0, best: 1, history: [true, false], lastStreak: 1 } };
-    view(appState, els).renderTrainStats();
-    expect(els["train-stat-streak"].textContent).toBe("0");
-    expect(els["train-stat-correct"].textContent).toBe(1);
-    expect(els["train-stat-mistakes"].textContent).toBe(1);
-    expect(els["train-accuracy"].textContent).toBe("50% first try");
+  it("leaves out a part that is zero, and says nothing at the start", () => {
+    const { train, line } = view({ trainStats: { correct: 1, mistakes: 1, streak: 0 } });
+    train.renderTrainStats();
+    expect(line.textContent).toBe("1 missed");
+    const fresh = view({ trainStats: { correct: 0, mistakes: 0, streak: 0 } });
+    fresh.train.renderTrainStats();
+    expect(fresh.line.textContent).toBe("");
   });
 
-  it("pops the streak only when it grows", () => {
-    const pops = [];
-    const els = elements(["train-stat-streak", "train-stat-correct", "train-stat-mistakes", "train-accuracy", "train-line-trail"]);
-    const host = els["train-stat-streak"];
-    host.closest = () => ({ offsetWidth: 10, classList: { toggle() {}, add: (c) => pops.push(c), remove() {} } });
-    const appState = { trainStats: { correct: 1, mistakes: 0, streak: 1, best: 1, history: [true], lastStreak: 1 } };
-    view(appState, els).renderTrainStats();
-    expect(pops).toEqual([]);
+  it("reports the streak so the board can celebrate a growing run", () => {
+    const streaks = [];
+    const { train } = view({ trainStats: { correct: 2, mistakes: 0, streak: 2 } }, streaks);
+    train.renderTrainStats();
+    expect(streaks).toEqual([2]);
   });
 
-  it("still paints the counters when the trail is missing", () => {
-    const els = elements(["train-stat-streak", "train-stat-correct", "train-stat-mistakes", "train-accuracy"]);
-    const appState = { trainStats: { correct: 1, mistakes: 0, streak: 1, best: 1, history: [true], lastStreak: 1 } };
-    expect(() => view(appState, els).renderTrainStats()).not.toThrow();
-    expect(els["train-stat-correct"].textContent).toBe(1);
+  it("survives stats that were never set", () => {
+    const { train, line } = view({});
+    train.renderTrainStats();
+    expect(line.textContent).toBe("");
   });
 });

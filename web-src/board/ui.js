@@ -3,7 +3,7 @@ import { appState, boards, files } from "../core/state.js";
 import { pref, setPref, PREF_LABELS } from "../core/prefs.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "../board-arrows.js";
 import { localBoardAfterMove, localBoardInfo } from "../chess-local.js";
-import { activateModal } from "../core/modals.js";
+import { openPopover } from "../core/dialog.js";
 
 // Piece artwork sets. Each value is the inner SVG markup for a 0 0 45 45
 // viewBox; fill/stroke come from CSS (.piece). "berlin" is a cleaner,
@@ -172,30 +172,14 @@ export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
         : anchorBoard && anchorBoard.board
           ? anchorBoard.board
           : anchorBoard || null;
-    const dismiss = (value) => {
-      document.removeEventListener("pointerdown", onOutside, true);
-      document.removeEventListener("keydown", onKey, true);
-      overlay.remove();
-      resolve(value);
-    };
-    const onOutside = (event) => {
-      if (!overlay.contains(event.target)) {
-        event.preventDefault();
-        dismiss(null);
-      }
-    };
-    const onKey = (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        dismiss(null);
-      }
-    };
+    // A [popover] laid over the board: Escape and a press off the board are the
+    // browser's light dismiss, which cancels.
     const overlay = document.createElement("div");
     overlay.className = "promotion-picker-overlay";
+    overlay.popover = "auto";
     const side = color === "black" ? "black" : "white";
     overlay.innerHTML = html`
-      <div class="promotion-picker" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
+      <div class="promotion-picker" role="group" aria-label="Choose promotion piece">
         ${options
           .map(
             (uci) => html`
@@ -207,23 +191,27 @@ export function showPromotionPicker({ from, to, moves, anchorBoard, color }) {
           )}
       </div>
     `;
+    let choice = null;
+    boardEl?.parentElement?.append(overlay);
+    const close = openPopover(overlay, {
+      onClose: () => {
+        overlay.remove();
+        resolve(choice);
+      },
+    });
+    const box = boardEl?.getBoundingClientRect();
+    if (box?.width) {
+      Object.assign(overlay.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+    }
     const buttons = [...overlay.querySelectorAll(".promotion-option")];
     buttons.forEach((btn) => {
       btn.addEventListener("click", (event) => {
         event.preventDefault();
-        dismiss(btn.dataset.uci);
+        choice = btn.dataset.uci;
+        close();
       });
     });
-    if (boardEl && boardEl.parentElement) {
-      boardEl.parentElement.appendChild(overlay);
-    } else {
-      document.body.appendChild(overlay);
-      activateModal(overlay);
-    }
-    document.addEventListener("pointerdown", onOutside, true);
-    document.addEventListener("keydown", onKey, true);
-    const queenBtn = buttons[0];
-    if (queenBtn) queenBtn.focus({ preventScroll: true });
+    buttons[0]?.focus({ preventScroll: true });
   });
 }
 

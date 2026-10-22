@@ -20,7 +20,7 @@ function runtime(extra = {}) {
     appState: { signedIn: true, currentView: "dashboard" },
     window: { location: { href: "http://local/#/analyze" } },
     parseWorkspaceLocation, loadReturnState: () => null,
-    switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), startTraining: vi.fn(),
+    switchView: vi.fn(), syncWorkspaceUrl: vi.fn(), openTrain: vi.fn(async () => {}),
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
   context.ANALYSIS_ROOT_PATH = "root";
@@ -44,29 +44,39 @@ it("restores the requested URL view", async () => {
   expect(ctx.switchView).toHaveBeenCalledWith("analyze", { fromUrl: true });
 });
 
-it("keeps a user's navigation during boot and resumes training on that page", async () => {
+it("keeps a user's navigation during boot and re-enters that page without starting anything", async () => {
   const ctx = runtime({ navigatedDuringBoot: true, appState: { signedIn: true, currentView: "train", trainMode: "smart" } });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train");
-  expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false });
+  expect(ctx.openTrain).not.toHaveBeenCalled();
 });
 
-it("starts Train with the repertoire the URL names", async () => {
+it("opens the Due queue of the repertoire the URL names", async () => {
   const ctx = runtime({
     window: { location: { href: "http://local/#/train?rep=r2" } },
     appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
   });
   await ctx.run();
-  expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: "r2" });
+  expect(ctx.openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "r2" });
 });
 
-it("starts Train mixed when the URL names no repertoire", async () => {
+it("#/train is Train Home: nothing starts by itself", async () => {
   const ctx = runtime({
     window: { location: { href: "http://local/#/train" } },
     appState: { signedIn: true, currentView: "dashboard", trainMode: "smart" },
   });
   await ctx.run();
-  expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null });
+  expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
+  expect(ctx.openTrain).not.toHaveBeenCalled();
+});
+
+it("a guest's Train link only opens Train", async () => {
+  const ctx = runtime({
+    window: { location: { href: "http://local/#/train?rep=r2" } },
+    appState: { signedIn: false, currentView: "dashboard" },
+  });
+  await ctx.run();
+  expect(ctx.openTrain).not.toHaveBeenCalled();
 });
 
 it("does not navigate after a newer navigation supersedes a pending load", async () => {
@@ -83,7 +93,7 @@ function popstateRuntime(extra = {}) {
     parseWorkspaceLocation,
     trainQueueRepertoireId,
     switchView: vi.fn(),
-    startTraining: vi.fn(async () => {}),
+    openTrain: vi.fn(async () => {}),
     // The Analyze branch compares the current position's stable path.
     selectedNodePath: () => null,
     showAnalysisPly: vi.fn(),
@@ -98,8 +108,8 @@ it("rebuilds Train's queue for an in-page ?rep change", async () => {
   const ctx = popstateRuntime();
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
-  expect(ctx.startTraining).toHaveBeenCalledTimes(1);
-  expect(ctx.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: "r2" });
+  expect(ctx.openTrain).toHaveBeenCalledTimes(1);
+  expect(ctx.openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "r2" });
 });
 
 it("keeps the live queue when the popstate names the repertoire it drills", async () => {
@@ -108,7 +118,7 @@ it("keeps the live queue when the popstate names the repertoire it drills", asyn
   });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
-  expect(ctx.startTraining).not.toHaveBeenCalled();
+  expect(ctx.openTrain).not.toHaveBeenCalled();
 });
 
 it("does not start a session on a non-Train popstate", async () => {
@@ -117,7 +127,7 @@ it("does not start a session on a non-Train popstate", async () => {
   });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("analyze", { fromUrl: true });
-  expect(ctx.startTraining).not.toHaveBeenCalled();
+  expect(ctx.openTrain).not.toHaveBeenCalled();
 });
 
 it("does not start Train from a popstate while signed out", async () => {
@@ -126,7 +136,7 @@ it("does not start Train from a popstate while signed out", async () => {
   });
   await ctx.run();
   expect(ctx.switchView).toHaveBeenCalledWith("train", { fromUrl: true });
-  expect(ctx.startTraining).not.toHaveBeenCalled();
+  expect(ctx.openTrain).not.toHaveBeenCalled();
 });
 
 it("keeps replay section restoration on popstate", async () => {
@@ -137,7 +147,7 @@ it("keeps replay section restoration on popstate", async () => {
   await ctx.run();
   expect(ctx.appState.replaySection).toBe("scout");
   expect(ctx.switchView).toHaveBeenCalledWith("replay", { fromUrl: true });
-  expect(ctx.startTraining).not.toHaveBeenCalled();
+  expect(ctx.openTrain).not.toHaveBeenCalled();
 });
 
 // ---- Analyze: the loaded game survives a reload -------------------------------

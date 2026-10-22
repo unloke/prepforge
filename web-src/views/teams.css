@@ -90,14 +90,9 @@
 
 .team-role-badge {
   flex: none;
-  padding: 1px 7px;
-  border-radius: 4px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs-xs);
-  font-weight: 700;
   text-transform: capitalize;
-  white-space: nowrap;
 }
 .team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
 .team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent); }
@@ -209,6 +204,8 @@ select.team-role-select {
 }
 .team-shared-rep-row,
 .shared-rep-row { cursor: pointer; }
+/* Rows with a role control and rows with a role badge keep one height. */
+#team-shared-repertoires > .team-shared-rep-row { min-height: calc(var(--control-h) + 16px); }
 .team-shared-rep-row:hover,
 .shared-rep-row:hover { background: var(--panel-soft); }
 .team-shared-rep-row:active,
@@ -217,15 +214,11 @@ select.team-role-select {
 .shared-rep-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* Opening a team brings its members in one after another, the way the
-   directory list arrives. The rows are written by the shell, so the order is
-   set here rather than by the list helper. */
-#team-members > .mem-row {
+   directory list arrives (list-enter.js marks the rows that are new). */
+#team-members > .mem-row.is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 3) * 60ms);
 }
-#team-members > .mem-row:nth-child(1) { animation-delay: 0ms; }
-#team-members > .mem-row:nth-child(2) { animation-delay: 60ms; }
-#team-members > .mem-row:nth-child(3) { animation-delay: 120ms; }
-#team-members > .mem-row:nth-child(n + 4) { animation-delay: 180ms; }
 
 /* Invite footer — one muted line under the panel. It carries its own fill, so
    it does not need a line above it either. */
@@ -272,7 +265,7 @@ select.team-role-select {
 
 /* ---- Responsive --------------------------------------------------------- */
 
-@media (max-width: 760px) {
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .teams .btn.sm,
   .teams .btn.icon,
   .team-role-select,

@@ -1,4 +1,5 @@
 import { html } from "../../html.js";
+import { lichessProfileUrl } from "../../lichess-profile.js";
 // Shared Source Composer selection model — one selection system for Games and
 // Scout ("pick recipients like an email"), identical on both pages. The only
 // page difference is what happens AFTER picking: Games fetches recent games
@@ -105,6 +106,17 @@ export function toggleAccount(selection, accountId) {
   };
 }
 
+// The Lichess account a typed name belongs to: its canonical spelling, or null
+// when no open account has that name. Anything else (offline, rate limit)
+// throws, so a typo never becomes a source that silently fetches nothing.
+export async function lookupLichessUser(username, fetchImpl = (...args) => fetch(...args)) {
+  const response = await fetchImpl(lichessProfileUrl(username), { headers: { Accept: "application/json" } });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Lichess responded ${response.status}`);
+  const user = await response.json();
+  return user && !user.disabled ? String(user.username || username) : null;
+}
+
 export function addExternal(selection, username) {
   const sel = normalizeSelection(selection);
   const name = normalizeUsername(username);
@@ -176,8 +188,8 @@ export function selectionChips(selection, linkedAccounts) {
 }
 
 // Shared Source Composer popover — one surface both Games and Scout open from
-// their collapsed chip row. Renders into document.body as an anchored popover
-// (not a modal) with a single source list:
+// their collapsed chip row. A native [popover="auto"] in document.body (not a
+// modal): Escape and a press outside close it. One source list:
 //
 //   Sources
 //   Self · 2 linked accounts
@@ -201,7 +213,7 @@ export function selectionChips(selection, linkedAccounts) {
 // the anchor; clamped to viewport edges; re-run on resize/scroll.
 //
 // Keyboard / focus / ARIA: Enter/Space toggle rows natively (checkboxes +
-// buttons), Esc closes, focus returns to the opener, the Self checkbox uses
+// buttons), Esc (the popover's own) closes, focus returns to the opener, the Self checkbox uses
 // aria-checked="mixed" for partial selection, and every chip-remove button
 // carries an accessible label.
 const POPOVER_GAP = 6;
@@ -253,17 +265,23 @@ export function openSourceComposer({
   title = "Sources",
   onChange,
   onClose,
+  lookupUsername = lookupLichessUser,
 }) {
   void allowExternal;
   const sel0 = normalizeSelection(selection);
   const linked = Array.isArray(linkedAccounts) ? linkedAccounts : [];
   let sel = sel0;
+  // The Add field survives re-renders: what was typed, and why it was refused.
+  let draft = "";
+  let addError = "";
+  let checking = false;
   const selfState = () => selfGroupState(sel, linked);
   const prevFocus = doc.activeElement;
   const opener = anchor && typeof anchor.focus === "function" ? anchor : prevFocus;
 
   const overlay = doc.createElement("div");
   overlay.className = "src-composer-overlay";
+  overlay.setAttribute?.("popover", "auto");
   const linkedCount = linked.length;
 
   let popoverEl = null;
@@ -312,7 +330,7 @@ export function openSourceComposer({
         ? state === "mixed"
           ? html` <span class="src-self-count is-mixed">partial</span>`
           : html` <span class="src-self-count">${linkedCount}</span>`
-        : ""}</span></label><div class="src-divider"></div><div class="src-rows" role="group" aria-label="Sources">${listBody}</div><div class="src-divider"></div><div class="src-add-row"><input type="text" class="src-add-input" data-testid="src-add-input" data-src-add placeholder="${externalPlaceholder}" aria-label="${externalPlaceholder}" /><button type="button" class="btn ghost" data-testid="src-add-btn" data-src-add-btn>Add</button></div><div class="src-foot"><button type="button" class="btn primary" data-testid="src-done" data-src-done>Done</button></div></div>`;
+        : ""}</span></label><div class="src-divider"></div><div class="src-rows" role="group" aria-label="Sources">${listBody}</div><div class="src-divider"></div><div class="src-add-row"><input type="text" class="src-add-input" data-testid="src-add-input" data-src-add placeholder="${externalPlaceholder}" aria-label="${externalPlaceholder}" value="${draft}"${addError ? html` aria-invalid="true" aria-describedby="src-add-error"` : ""} /><button type="button" class="btn ghost" data-testid="src-add-btn" data-src-add-btn${checking ? " disabled" : ""}>${checking ? "Checking…" : "Add"}</button></div>${addError ? html`<p class="src-add-error" id="src-add-error" role="alert">${addError}</p>` : ""}<div class="src-foot"><button type="button" class="btn primary" data-testid="src-done" data-src-done>Done</button></div></div>`;
     popoverEl = overlay.querySelector(".src-popover");
     const selfBox = overlay.querySelector("[data-src-self-checkbox]");
     if (selfBox && state === "mixed") selfBox.indeterminate = true;
@@ -326,26 +344,23 @@ export function openSourceComposer({
 
   render();
   doc.body.appendChild(overlay);
+  // The anchor is the popover's source: pressing it again is not an outside press.
+  try {
+    overlay.showPopover?.(opener ? { source: opener } : undefined);
+  } catch {
+    overlay.showPopover?.();
+  }
   popoverEl = overlay.querySelector(".src-popover");
   place();
-
-  doc.addEventListener?.("keydown", onDocKeydown, true);
-  function onDocKeydown(event) {
-    if (event.key === "Escape" && doc.body.contains?.(overlay)) {
-      event.preventDefault();
-      event.stopPropagation?.();
-      close(true);
-    }
-  }
+  // Escape and a press outside (the browser's light dismiss) keep the picks.
+  overlay.addEventListener("toggle", (event) => {
+    if (event.newState === "closed") close(true);
+  });
 
   const close = (result) => {
     if (overlay.dataset.closed === "1") return;
     overlay.dataset.closed = "1";
-    try {
-      doc.removeEventListener?.("keydown", onDocKeydown, true);
-    } catch {
-      /* ignore */
-    }
+    if (overlay.matches?.(":popover-open")) overlay.hidePopover();
     try {
       globalThis.removeEventListener?.("resize", place);
       globalThis.removeEventListener?.("scroll", place, true);
@@ -369,23 +384,41 @@ export function openSourceComposer({
     if (typeof onClose === "function") onClose(result ? { ...sel } : null);
   };
 
-  const commitExternalFromInput = () => {
+  const commitExternalFromInput = async () => {
     const input = overlay.querySelector("[data-src-add]");
-    if (!input) return;
-    const next = addExternal(sel, input.value);
-    if (next !== sel) {
-      sel = next;
-      emit();
+    if (!input || checking) return;
+    const name = normalizeUsername(input.value);
+    if (!name) return;
+    draft = name;
+    addError = "";
+    if (sel.external.some((x) => x.toLowerCase() === name.toLowerCase())) {
+      draft = "";
+      render();
+      overlay.querySelector("[data-src-add]")?.focus();
+      return;
     }
-    input.value = "";
-    input.focus();
+    checking = true;
+    render();
+    let found;
+    try {
+      found = await lookupUsername(name);
+      if (!found) addError = `No Lichess player named ${name}`;
+    } catch {
+      addError = `Couldn't check ${name} on Lichess. Try again.`;
+    }
+    checking = false;
+    if (overlay.dataset.closed === "1") return;
+    if (found) {
+      draft = "";
+      sel = addExternal(sel, found);
+      emit();
+    } else {
+      render();
+    }
+    overlay.querySelector("[data-src-add]")?.focus();
   };
 
   overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) {
-      close(true);
-      return;
-    }
     if (event.target.closest("[data-src-done]")) {
       close(true);
       return;
@@ -455,9 +488,13 @@ export function openSourceComposer({
     }
     const addBtn = event.target.closest("[data-src-add-btn]");
     if (addBtn) {
-      commitExternalFromInput();
+      void commitExternalFromInput();
       return;
     }
+  });
+
+  overlay.addEventListener("input", (event) => {
+    if (event.target?.matches?.("[data-src-add]")) draft = event.target.value;
   });
 
   overlay.addEventListener("change", (event) => {
@@ -507,15 +544,9 @@ export function openSourceComposer({
   });
 
   overlay.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      close(true);
-      return;
-    }
     if (event.key === "Enter" && event.target?.matches?.("[data-src-add]")) {
       event.preventDefault();
-      commitExternalFromInput();
+      void commitExternalFromInput();
     }
   });
 

@@ -6,6 +6,8 @@ export const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
 export const appState = {
   currentView: "dashboard",
   repertoireList: [],
+  // Repertoires others shared with the user, at the user's role (Train drills them too).
+  sharedRepertoireList: [],
   analysis: null,
   // Raw PGN from the most recent in-session Analyze run (not history recall):
   // the SELECTED game's own text, never a multi-game paste.
@@ -47,6 +49,10 @@ export const appState = {
   // The node a move just created, so the tree can show it arriving once. Cleared
   // on the next add (or on a fresh tree), never persisted: it is a cue, not state.
   buildJustAddedId: null,
+  // Moves this tab added, newest last, for Ctrl/Cmd+Z ({ repertoireId, id }).
+  buildAddedIds: [],
+  // Opening names the Explorer reported, by position (FEN without the clocks).
+  buildOpeningByFen: new Map(),
   // ---- Local-first Build sync (Phase 1) --------------------------------------
   // Moves land in the local tree instantly (no per-move round-trip) and flush to
   // the server in debounced batches via POST /api/build/add-moves.
