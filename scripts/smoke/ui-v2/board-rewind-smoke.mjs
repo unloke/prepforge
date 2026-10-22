@@ -712,6 +712,9 @@ async function analyzeMainlineAndVariation(page) {
   const branchCurrent = await page.evaluate(() => document.querySelector("#analysis-moves .mtree-move.is-current")?.getAttribute("data-node-id") || "");
   check(branchCurrent.startsWith("v"), `analyze variation: the branch move is the current node (${branchCurrent})`);
   // Jump back to the mainline's 1...e5 (a different position: two pawns moved).
+  // The score sheet sits behind its tab where the panel is too narrow for both.
+  const movesTab = page.locator("#an-tab-moves");
+  if (await movesTab.isVisible()) await movesTab.click();
   await startProbe(page, "#analysis-board");
   await page.locator('#analysis-moves .mtree-move[data-node-id="m2"]').click();
   const jump = await stopProbe(page);
