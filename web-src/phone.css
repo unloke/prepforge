@@ -969,6 +969,12 @@
   #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 40px; height: 40px; padding: 0 12px; font-size: 14px; }
   #build-inspector .inspector-info { width: 40px; height: 40px; }
   #build-inspector .explorer-row { min-height: 46px; }
+  /* "White / Draw / Black" broke onto two lines once Eval took a column. */
+  #build-inspector .explorer-head > span { white-space: nowrap; }
+  /* The engine's line steppers are 18px dots: the dots stay, their tap areas
+     grow to 40px (the readout between them is not a target). */
+  .engine-step { position: relative; }
+  .engine-step::after { content: ""; position: absolute; inset: -11px; }
   #view-build :is(.tree-meta, .forkbar) { font-size: 13px; }
   /* The next move is what the thumb reaches for, and the breadcrumb is the
      only way back along the line: both get a real target. The move tokens
@@ -1222,6 +1228,10 @@
     font-weight: 500;
   }
   .tabbar .tabbar-item svg { width: 22px; height: 22px; }
+  /* A touch screen keeps :hover on the last tab tapped, so the shared .tab
+     hover fill sat on it as a grey block after every switch. The press is the
+     tab's scale; the open destination is its ink. */
+  .tabbar .tabbar-item:hover { background: none; }
   /* The open destination is ink, not the accent: the accent belongs to the one
      action on the screen. */
   .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
