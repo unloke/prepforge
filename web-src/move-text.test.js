@@ -153,6 +153,21 @@ describe("parseMoveText", () => {
   });
 });
 
+describe("coach prose", () => {
+  // The coach names the move played and its alternative without a number.
+  it("links bare pawn moves, and leaves squares after a place word alone", () => {
+    const segs = parseMoveText("Best move. e4 takes the centre and eyes d5.", { fen: START, pawns: "prose" });
+    expect(tokens(segs).map((t) => t.label)).toEqual(["1.e4"]);
+    const alt = parseMoveText("c4 is fine. d4 was slightly more precise; the pawn on e4 stays.", { fen: START, pawns: "prose" });
+    expect(tokens(alt).map((t) => t.label)).toEqual(["1.c4", "1.d4"]);
+  });
+
+  it("reads a move after a full stop as the move's alternative, a move after a joiner as the line's next", () => {
+    const segs = parseMoveText("e4 allows 1...e5 Nf3. d4 was the move.", { fen: START, pawns: "prose" });
+    expect(tokens(segs).map((t) => t.label)).toEqual(["1.e4", "1...e5", "2.Nf3", "1.d4"]);
+  });
+});
+
 describe("markup", () => {
   it("escapes the prose and marks tokens as buttons with their line", () => {
     const out = String(moveTextHtml("<b>1.e4</b>", { fen: START }));

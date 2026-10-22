@@ -66,6 +66,7 @@ export function analysisTextContext() {
   for (let n = tree?.byId.get(appState.analysisCurrentNodeId || "root"); n; n = n.parent) path.push(n.fenAfter);
   return {
     fen: ctx.prevFen || ctx.fen,
+    pawns: "prose",
     at: (ply) => path.find((fen) => plyOfFen(fen) === ply) || tree?.byId.get(ply ? `m${ply}` : "root")?.fenAfter,
   };
 }
