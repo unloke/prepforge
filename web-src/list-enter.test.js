@@ -117,7 +117,7 @@ describe("entrances", () => {
   });
 
   it("gives every pressable control the same scale-down", () => {
-    for (const selector of [".mtree-move:active", ".row-menu-btn:active", ".sum-chip:active", ".tabbar-item:active"]) {
+    for (const selector of [".mtree-move:active", ".sum-chip:active", ".tabbar-item:active"]) {
       expect(css).toContain(`${selector} {`);
     }
   });

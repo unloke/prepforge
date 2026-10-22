@@ -1952,28 +1952,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
   justify-self: end;
-  width: var(--control-h);
-  min-width: var(--control-h);
-  height: var(--control-h);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--label);
   font-size: 14px;
   line-height: 1;
   opacity: 0.7;
-  /* Press feedback: same scale as .btn, on a control that is not a .btn. */
   transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
-.row-menu-btn:active {
-  transform: scale(0.97);
-}
+/* The row's ⋯ is the shared quiet icon button (.btn.ghost.icon); it only
+   stays dim until its row is hovered or selected. */
 .lib-row:hover .row-menu-btn,
 .lib-row.is-selected .row-menu-btn,
 .row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
-.row-menu-btn:hover { background: var(--surface-3); }
-.row-menu-btn:active { transform: scale(0.97); }
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 .empty-state.big {
   display: flex;
@@ -5716,7 +5704,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
   .btn:active,
   .btn.icon:active,
-  .row-menu-btn:active,
   .sheet-row:active {
     transform: none;
   }

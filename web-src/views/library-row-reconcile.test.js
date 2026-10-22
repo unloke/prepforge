@@ -152,8 +152,8 @@ class FakeNode {
     // The per-row menu button is the only child a listener is attached to; it
     // lives inside the row markup, so hand back a stub with the geometry the
     // context-menu call reads.
-    if (!this._html.includes('class="row-menu-btn"')) return null;
-    const btn = new FakeNode('<button class="row-menu-btn">x</button>');
+    if (!this._html.includes("row-menu-btn")) return null;
+    const btn = new FakeNode('<button class="btn ghost icon row-menu-btn">x</button>');
     btn.getBoundingClientRect = () => ({ left: 0, bottom: 0 });
     btn.parentNode = this;
     return btn;

@@ -87,7 +87,7 @@ function ownRowHtml(item, { selected, repSubline }) {
         <span class="lib-cell-mastery">${mastery}</span>
         <span class="lib-cell-queue">${queueHtml}</span>
       </span>
-      <button type="button" class="row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${item.name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
+      <button type="button" class="btn ghost icon row-menu-btn" data-row-menu="${id}" title="Actions (train · rename · share · delete)" aria-label="Actions for ${item.name}" aria-haspopup="menu" aria-expanded="false" aria-controls="repertoire-context-menu">⋯</button>
     </div>
   `;
 }
