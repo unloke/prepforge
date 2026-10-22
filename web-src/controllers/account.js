@@ -79,8 +79,7 @@ export function createAccountController({
   // work could NOT be saved ({ pending }). Drafts are always kept locally under
   // this owner's key — never sent as another account.
   beforeSignOut = null,
-  // An expired session can no longer flush, so it only writes the pending work
-  // to this owner's durable outbox; it replays after the next sign-in.
+  // An expired session cannot flush: this only writes the owner's outbox.
   beforeSessionEnd = null,
   onOwnerChanged = () => {},
 }) {
@@ -227,24 +226,14 @@ export function createAccountController({
     openAuthModal("login", { notice: message, onDismiss: appState.signedIn ? endExpiredSession : null });
   }
 
-  // The user closed the "session has ended" sign-in. Confirm with the server,
-  // then land in the same signed-out shell a sign-out reload shows, after the
-  // pending work is safe in the durable outbox.
+  // The user closed the "session has ended" sign-in. Once the server confirms
+  // it and the pending work is in the durable outbox, reload into the same
+  // signed-out shell a sign-out shows. Unkept work keeps the page.
   async function endExpiredSession() {
-    try {
-      await api("/api/auth/me");
-      return;
-    } catch (error) {
-      if (error?.status !== 401) return;
-    }
-    let kept = true;
-    try {
-      kept = (await beforeSessionEnd?.()) !== false;
-    } catch (_) {
-      kept = false;
-    }
+    const status = await api("/api/auth/me").then(() => 200, (error) => error?.status);
+    if (status !== 401) return;
+    const kept = await Promise.resolve(beforeSessionEnd?.()).then((ok) => ok !== false, () => false);
     if (!kept) {
-      // The work is still queued in memory; a reload is what would lose it.
       setStatus("Session ended. Unsaved changes could not be kept on this device; sign in to save them.", { severity: "error" });
       return;
     }

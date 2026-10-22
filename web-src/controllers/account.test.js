@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAccountController } from "./account.js";
 
-function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi.fn(), onReload = vi.fn(), beforeSessionEnd = null, onOwnerChanged = vi.fn() } = {}) {
+function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi.fn(), onReload = vi.fn() } = {}) {
   const appState = {
     signedIn: false,
     accountUsername: null,
@@ -19,10 +19,8 @@ function makeController({ api = vi.fn(), postJson = vi.fn(), onOpenSettings = vi
     refreshAutoMaiaRating: vi.fn(),
     onOpenSettings,
     onReload,
-    beforeSessionEnd,
-    onOwnerChanged,
   });
-  return { appState, controller, setStatus, onOpenSettings, onReload, onOwnerChanged };
+  return { appState, controller, setStatus, onOpenSettings, onReload };
 }
 
 describe("account controller", () => {
@@ -333,61 +331,6 @@ describe("sign-in gate", () => {
     controller.handleAuthRequired();
     expect(overlays).toHaveLength(1);
     expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("Sign in"), { severity: "warning" });
-  });
-
-  const unauthorized = () => Object.assign(new Error("Sign in"), { status: 401 });
-
-  it("dismissing the session-ended sign-in keeps the outbox, then reloads signed out", async () => {
-    const order = [];
-    const api = vi.fn().mockImplementation(async () => { order.push("me"); throw unauthorized(); });
-    const beforeSessionEnd = vi.fn().mockImplementation(async () => { order.push("outbox"); return true; });
-    const onReload = vi.fn(() => order.push("reload"));
-    const { appState, controller, onOwnerChanged } = makeController({ api, beforeSessionEnd, onReload });
-    Object.assign(appState, { signedIn: true, accountUserId: "u1", ownerGeneration: 3 });
-    controller.handleAuthRequired();
-    expect(String(overlays[0].innerHTML)).toContain("Your session has ended");
-    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
-    await vi.waitFor(() => expect(onReload).toHaveBeenCalledTimes(1));
-    expect(api).toHaveBeenCalledWith("/api/auth/me");
-    expect(order).toEqual(["me", "outbox", "reload"]);
-    expect(appState).toMatchObject({ signedIn: false, accountUserId: null, ownerGeneration: 4 });
-    expect(onOwnerChanged).toHaveBeenCalledTimes(1);
-  });
-
-  it("stays signed in when the server still knows the session", async () => {
-    const api = vi.fn().mockResolvedValue({ id: "u1" });
-    const beforeSessionEnd = vi.fn();
-    const { appState, controller, onReload } = makeController({ api, beforeSessionEnd });
-    appState.signedIn = true;
-    controller.handleAuthRequired();
-    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
-    await vi.waitFor(() => expect(api).toHaveBeenCalledWith("/api/auth/me"));
-    await Promise.resolve();
-    expect(beforeSessionEnd).not.toHaveBeenCalled();
-    expect(onReload).not.toHaveBeenCalled();
-    expect(appState.signedIn).toBe(true);
-  });
-
-  it("does not reload away work the outbox could not keep", async () => {
-    const api = vi.fn().mockRejectedValue(unauthorized());
-    const beforeSessionEnd = vi.fn().mockResolvedValue(false);
-    const { appState, controller, onReload, setStatus } = makeController({ api, beforeSessionEnd });
-    appState.signedIn = true;
-    controller.handleAuthRequired();
-    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
-    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith(expect.stringContaining("could not be kept"), { severity: "error" }));
-    expect(onReload).not.toHaveBeenCalled();
-    expect(appState.signedIn).toBe(true);
-  });
-
-  it("a guest closing the sign-in is not a session end", async () => {
-    const api = vi.fn();
-    const { controller, onReload } = makeController({ api });
-    controller.handleAuthRequired();
-    overlays[0].listeners.click({ target: { dataset: { action: "close" } } });
-    await Promise.resolve();
-    expect(api).not.toHaveBeenCalled();
-    expect(onReload).not.toHaveBeenCalled();
   });
 });
 
