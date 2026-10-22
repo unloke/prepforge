@@ -852,8 +852,8 @@ describe("workspace chrome layout", () => {
     expect(coverageScan).not.toContain("maiaAnalysisEnabled");
     expect(scoutView).toContain("MAIA_ENRICH_OFF");
     expect(scoutView).toContain("maiaAnalysisEnabled");
-    // Settings status peeks instead of constructing the worker.
-    expect(settingsView).toContain("peekSharedMaia3Provider");
+    // The download status Settings shows peeks instead of constructing the worker.
+    expect(readFileSync(join(root, "engine", "engine-downloads.js"), "utf8")).toContain("peekMaia = peekSharedMaia3Provider");
     expect(settingsView).toContain("renderMaiaAnalysis");
   });
 

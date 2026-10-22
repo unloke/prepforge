@@ -111,8 +111,8 @@ async function runViewport(vp) {
   await page.waitForFunction(
     () => {
       const v = document.getElementById("settings-stockfish-version");
-      const m = document.getElementById("settings-maia-model");
-      return v && v.textContent !== "checking…" && m && m.textContent !== "checking…";
+      const m = document.querySelector('[data-testid="settings-dl-status-maia"]');
+      return v && v.textContent !== "checking…" && m && m.textContent !== "Checking…";
     },
     null,
     { timeout: 10000 },

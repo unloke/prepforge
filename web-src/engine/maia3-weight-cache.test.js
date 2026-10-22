@@ -5,6 +5,7 @@ import {
   putCachedWeights,
   deleteCachedWeights,
   clearWeightCache,
+  hasCachedWeights,
 } from "./maia3-weight-cache.js";
 
 // The cache module is written against the raw IndexedDB API and is dependency-injectable
@@ -39,6 +40,14 @@ function makeFakeIndexedDB() {
             const r = { onsuccess: null };
             ops.push(() => {
               map.set(key, value);
+              if (r.onsuccess) r.onsuccess();
+            });
+            return r;
+          },
+          count(key) {
+            const r = { result: 0, onsuccess: null };
+            ops.push(() => {
+              r.result = map.has(key) ? 1 : 0;
               if (r.onsuccess) r.onsuccess();
             });
             return r;
@@ -208,5 +217,16 @@ describe("maia3 weight cache", () => {
     expect(await getCachedWeights("", { idb })).toBe(null);
     expect(await putCachedWeights("", buf([1]), { idb })).toBe(false);
     expect(await putCachedWeights("k", null, { idb })).toBe(false);
+  });
+});
+
+describe("hasCachedWeights", () => {
+  it("answers presence without a stored value read, and false when IndexedDB is missing", async () => {
+    const idb = makeFakeIndexedDB();
+    expect(await hasCachedWeights("m.onnx", { idb })).toBe(false);
+    await putCachedWeights("m.onnx", new ArrayBuffer(8), { idb });
+    expect(await hasCachedWeights("m.onnx", { idb })).toBe(true);
+    expect(await hasCachedWeights("other.onnx", { idb })).toBe(false);
+    expect(await hasCachedWeights("m.onnx", { idb: null })).toBe(false);
   });
 });
