@@ -1321,7 +1321,10 @@ h2 {
 .view.is-active {
   display: block;
   height: 100%;
-  animation: view-enter var(--dur) var(--ease-out) both;
+  /* backwards, not both: a held end transform makes the view the containing
+     block of every position: fixed child, so phone action sheets and docked
+     buttons inside a view were placed against the view, not the screen. */
+  animation: view-enter var(--dur) var(--ease-out) backwards;
 }
 
 /* One loading state: while the hold is up the default view stays hidden. */

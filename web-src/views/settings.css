@@ -281,8 +281,10 @@
 #view-settings.is-active .settings-nav-link:nth-child(4) { animation-delay: 200ms; }
 #view-settings.is-active .settings-nav-link:nth-child(5) { animation-delay: 250ms; }
 #view-settings.is-active .settings-nav-link:nth-child(6) { animation-delay: 300ms; }
+/* backwards: a held end transform would make each card the containing block
+   of its fixed phone action sheet (the linked account's ⋯ menu). */
 #view-settings.is-active .settings-content > .set {
-  animation: view-enter var(--dur) var(--ease-out) both;
+  animation: view-enter var(--dur) var(--ease-out) backwards;
 }
 #view-settings.is-active .settings-content > .set:nth-child(1) { animation-delay: 60ms; }
 #view-settings.is-active .settings-content > .set:nth-child(2) { animation-delay: 120ms; }
