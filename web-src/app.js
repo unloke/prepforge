@@ -4,6 +4,7 @@ import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
+import "./touch.css";
 import { resetViewScroll } from "./view-scroll.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
 import { countOf } from "./plural.js";

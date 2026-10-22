@@ -1,0 +1,139 @@
+/* Touch layouts above the phone breakpoint: a phone on its side and a tablet
+   held upright. Both are finger-driven screens that the desktop layout served
+   with a 60px mouse rail and 30px controls. The phone portrait layout is
+   phone.css; this sheet only adds what these two shapes need. */
+
+/* ---- A phone on its side (761-960 x ≤520, landscape) -------------------------
+   The board takes the full height on the left, the panel scrolls beside it, and
+   navigation is the phone's own five tabs standing up as a rail at the left
+   edge (the 13-row desktop rail scrolled at 390px tall). Controls are 40px. */
+@media (min-width: 761px) and (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --control-h: 40px;
+    --land-rail: calc(68px + env(safe-area-inset-left));
+  }
+  body { padding-left: var(--land-rail); padding-right: env(safe-area-inset-right); }
+  .rail { display: none; }
+  .skip-link { left: calc(var(--land-rail) + 12px); }
+
+  .tabbar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    width: var(--land-rail);
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left);
+    border-right: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .tabbar .tabbar-item {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    height: 58px;
+    min-height: 0;
+    gap: 3px;
+    border-radius: 0;
+    color: var(--label);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tabbar .tabbar-item:hover { background: none; }
+  .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
+  .tabbar .tabbar-item::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 5px;
+    left: 50%;
+    width: 48px;
+    height: 30px;
+    border-radius: 15px;
+    background: var(--surface-3);
+    opacity: 0;
+    transform: translateX(-50%);
+  }
+  .tabbar .tabbar-item.is-active::before { opacity: 1; }
+
+  /* The More sheet: the desktop hides it with the bar it belongs to. Here it
+     rises at the thumb's side, two columns so all of it fits 390px of height. */
+  .sheet-scrim:not([hidden]) { display: flex; justify-content: flex-start; padding-left: var(--land-rail); }
+  .sheet { max-width: 460px; margin: 0 0 env(safe-area-inset-bottom) 8px; border-radius: 14px 14px 0 0; }
+  .sheet-item { min-height: 48px; padding: 0 14px; font-size: 15px; }
+
+  /* Pages use the height they have: a tighter frame, nothing hidden behind it. */
+  .workspace { padding: 10px 16px 16px; }
+  .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) { padding: 8px 12px 8px 8px; }
+
+  /* Study screens: the board is as tall as the screen allows. */
+  .study {
+    --study-h: calc(100dvh - 16px);
+    --board-size: min(
+      calc(var(--study-h) - var(--board-chrome)),
+      calc(100vw - var(--land-rail) - 32px - 300px)
+    );
+    gap: 12px;
+  }
+  .board-bar { min-height: 40px; }
+  .board-bar .btn.icon { width: 40px; min-width: 40px; height: 40px; }
+  .seg-btn { min-height: 40px; }
+  .mtree-move { position: relative; }
+  .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
+  .dock-tabs button,
+  .context-menu button { min-height: 40px; }
+  .search-field input { min-height: 36px; }
+}
+
+/* ---- A tablet held upright (761-1100 wide, narrower than 5:6) ---------------
+   The stacked study screens scrolled the board away with the page: stepping
+   through a line at 768x1024 meant scrolling back up to see it. Here the board
+   is pinned at the top and only the panel under it scrolls, and every control
+   is sized for a finger. The rail stays: it fits the height. */
+@media (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6) {
+  :root { --control-h: 40px; }
+  .rail .tab,
+  .rail .rail-btn { height: 44px; }
+  .rail .account-btn { height: 44px; }
+  .seg-btn { min-height: 40px; }
+  .mtree-move { position: relative; }
+  .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
+
+  .workspace:has(> .view.is-active:is(#view-build, #view-train)) {
+    height: 100dvh;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    overflow: hidden;
+  }
+  :is(#view-build, #view-train) .study {
+    /* The board leaves the panel at least 38% of the screen. */
+    --stack-w: min(100%, calc(62dvh - 84px));
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    gap: 12px;
+  }
+  :is(#view-build, #view-train) .study > .sidebar {
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow: hidden;
+    align-self: stretch;
+  }
+  #view-build #build-sidebar > .panel-body,
+  #view-train .train-sidebar > .panel-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #view-build .tree-wrap { max-height: none; }
+  .dock-tabs button,
+  .context-menu button { min-height: 44px; }
+  .board-bar { min-height: 44px; }
+  .board-bar .btn.icon { width: 44px; min-width: 44px; height: 44px; }
+}
