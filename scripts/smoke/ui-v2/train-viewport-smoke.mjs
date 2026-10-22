@@ -325,9 +325,10 @@ async function runViewport(vp) {
   check(startBodies.length >= 2, `New session should post a start, got ${JSON.stringify(startBodies)}`);
   check(restart.fresh === true && restart.mixed === false && restart.repertoire_id === "rep-1",
     `New session should keep the finished queue's repertoire, got ${JSON.stringify({ first, restart })}`);
-  await page.locator("#train-mode-name").click();
+  check(await page.locator("#train-back").isVisible(), "a session should offer Modes");
+  await page.locator("#train-back").click();
   await page.waitForTimeout(300);
-  check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isVisible(), "the card's mode name should lead back to the mode tabs");
+  check(await page.locator("#train-modes .train-mode[data-mode=\"smart\"]").isVisible(), "Modes should lead back to the mode tabs");
   check(await page.locator("#train-summary").evaluate((el) => el.hidden), "New session should clear the result screen");
 
   // Start a fresh session for the rest of the checks.
