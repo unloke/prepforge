@@ -36,10 +36,10 @@ describe("arrow keys and the board on screen", () => {
     expect(stepsBoardBlock()).toMatch(/view === "build"/);
   });
 
-  it("does not answer an engine line left over from another view", () => {
+  it("does not answer a board line left over from another view", () => {
     // A preview belongs to a board; on a view without one it must not swallow
     // ← → (the arrows would step a hidden board).
-    const i = source.indexOf("if (engineWidget && engineWidget.isPreviewing()");
+    const i = source.indexOf("if (boardLine.active && (");
     expect(i).toBeGreaterThan(0);
     expect(source.slice(i, i + 160)).toMatch(/view === "analyze" \|\| view === "build"/);
   });

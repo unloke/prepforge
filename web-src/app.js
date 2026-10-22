@@ -11,6 +11,9 @@ import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
 import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
+import { boardLine } from "./line-preview.js";
+import { installMoveLinks } from "./move-links.js";
+import { moveTextHtml } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
@@ -547,7 +550,7 @@ function switchView(name, { fromUrl = false } = {}) {
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   if (name !== "analyze") analyzeSession?.positionCoach.cancel();
-  if (appState.currentView !== name && engineWidget) engineWidget.exitPreview();
+  if (appState.currentView !== name) { engineWidget.exitPreview(); boardLine.exit(); }
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -1367,9 +1370,11 @@ function setTrainBanner(state, title, sub) {
   banner.dataset.state = state;
   const titleEl = document.getElementById("train-banner-title");
   const subEl = document.getElementById("train-banner-sub");
-  titleEl.textContent = title;
+  // Moves in the coach's words peek at their position; Train never plays them.
+  const ctx = { fen: appState.smart?.prompt?.fen_before };
+  titleEl.innerHTML = moveTextHtml(title || "", { ...ctx, pawns: true });
   titleEl.title = title || "";
-  subEl.textContent = sub || "";
+  subEl.innerHTML = moveTextHtml(sub || "", ctx);
   subEl.title = sub || "";
   banner.classList.remove("flash");
   if (!BANNER_MOTION.has(state)) return;
@@ -1628,7 +1633,7 @@ function bindEvents() {
   bindEvalChart();
   // While an engine line is on the board, the board-bar arrows step through it.
   const navOrPreview = (action, nav) => () => {
-    if (engineWidget && engineWidget.stepPreview(action)) return;
+    if (boardLine.step(action)) return;
     nav();
   };
   document.getElementById("analysis-start").addEventListener("click", navOrPreview("start", () => {
@@ -1643,12 +1648,6 @@ function bindEvents() {
   document.getElementById("analysis-end").addEventListener("click", navOrPreview("end", () => {
     void analysisTreeNav("end").catch(() => {});
   }));
-  for (const id of ["analysis-pv-exit", "build-pv-exit"]) {
-    document.getElementById(id)?.addEventListener("click", () => {
-      engineWidget?.exitPreview();
-      if (id === "build-pv-exit") boards.build?.endPreview();
-    });
-  }
 
   document.getElementById("build-root").addEventListener("click", navOrPreview("start", buildGoRoot));
   document.getElementById("build-parent").addEventListener("click", navOrPreview("prev", buildGoBack));
@@ -1745,6 +1744,7 @@ function bindEvents() {
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
     requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky, toggleTheme });
   bindCommandPalette();
+  installMoveLinks({ selectBuildNode, selectAnalysisNode });
   window.addEventListener("popstate", () => {
     void handleWorkspacePopstate();
   });
@@ -1862,16 +1862,16 @@ function bindEvents() {
     // An engine line on the board: ← → step through it, Esc goes back to the game.
     // The preview belongs to a board, so it answers only on the view that owns it.
     const view = activeViewName();
-    if (engineWidget && engineWidget.isPreviewing() && (view === "analyze" || view === "build")) {
+    if (boardLine.active && (view === "analyze" || view === "build")) {
       const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
       if (action) {
         event.preventDefault();
-        engineWidget.stepPreview(action);
+        boardLine.step(action);
         return;
       }
       if (event.key === "Escape" && !paletteIsOpen()) {
         event.preventDefault();
-        engineWidget.exitPreview();
+        boardLine.exit();
         return;
       }
     }
