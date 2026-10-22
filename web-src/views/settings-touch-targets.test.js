@@ -32,7 +32,7 @@ describe("Settings phone touch targets", () => {
   });
 
   it("keeps row buttons and segmented choices at 40px on a phone", () => {
-    const buttons = phoneRule(phoneCss, "#view-settings .set :is(.btn, .btn.sm):not(.primary)");
+    const buttons = phoneRule(phoneCss, "#view-settings .set :is(.btn, .btn.sm)");
     expect(buttons).toMatch(/min-height: 40px/);
     expect(buttons).toMatch(/height: 40px/);
     const seg = phoneRule(phoneCss, "#view-settings .set .seg-btn");
