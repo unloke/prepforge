@@ -33,11 +33,10 @@ import { BUILD_DOCK_TABS, buildDockFolded, buildDockTab, buildOpMatchesRepertoir
   deleteBuildNodeLocal, explorerDrawerOpen, explorerEvalEngine, ensureExplorerClient,
   hasPendingBuildOpsFor, normalizeUci, queueBuildAdd, reapplyPendingBuildDeletes,
   reapplyPendingBuildNodes, reloadOpenBuildTree, renderBuilderTree, resolveBuildId, sameFenPosition, setBuildInspector,
-  setExplorerDb } from "./build-entry.js";
+  setExplorerDb, startBuildLive } from "./build-entry.js";
 import { isPendingActionId, restoredAuthHref, stripSignedInParam, takeAuthReturn, takePendingAction } from "./auth-gate.js";
 import { normalizeSelection } from "./views/shared/source-composer.js";
 import { libraryRowsSkeleton } from "./views/library-skeleton.js";
-import { queuedBuildRevision, rebaseQueuedBuildRevision } from "./build-revision.js";
 
 import { START_FEN, files, appState, boards, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, OUTBOX_TAB_ID, activeBoardController, activeViewName,
@@ -268,10 +267,10 @@ const selectBuildNode = viaBuildSession("selectBuildNode");
 const setBuildDockFolded = viaBuildSession("setBuildDockFolded");
 
 const syncController = createSyncController({
-  api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision,
-  rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes,
-  reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie,
-  CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID,
+  appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync,
+  hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode,
+  setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString,
+  OUTBOX_TAB_ID,
 });
 const {
   scheduleBuildFlush, settleBuildOutbox, hardFlushBuild, beaconFlushBuild, queueTrainAttempt,
@@ -1490,6 +1489,7 @@ function bindEvents() {
     beaconFlushBuild();
     beaconFlushTrain();
   });
+  startBuildLive();
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());
