@@ -195,13 +195,12 @@ function place(target) {
     if (vw - b.right - GAP - EDGE >= w) return put(b.right + GAP, top);
     if (b.left - GAP - EDGE >= w) return put(b.left - GAP - w, top);
   }
-  // Nothing beside it (full-width prose, a phone, a row of cells): above or
-  // below the row it reads in, so the line being read and the one after it stay.
-  const row = clear ? r : block.parentElement?.getBoundingClientRect?.() || r;
-  const rowBottom = Number.isFinite(row.bottom) ? row.bottom : row.top + (row.height || 0);
-  const above = row.top - GAP - EDGE;
-  const below = vh - rowBottom - GAP - EDGE;
-  const y = above >= h || above > below ? row.top - GAP - h : rowBottom + GAP;
+  // No gutter beside it (full-width prose, a phone, a row of cells): above or
+  // below the whole block it reads in, so neither the line it is on nor the one
+  // above or below it is covered.
+  const above = b.top - GAP - EDGE;
+  const below = vh - b.bottom - GAP - EDGE;
+  const y = above >= h || above > below ? b.top - GAP - h : b.bottom + GAP;
   put(clamp(r.left + (r.width || 0) / 2 - w / 2, EDGE, Math.max(EDGE, vw - w - EDGE)), clamp(y, EDGE, Math.max(EDGE, vh - h - EDGE)));
 }
 

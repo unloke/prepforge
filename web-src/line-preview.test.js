@@ -291,9 +291,10 @@ describe("peek", () => {
     try {
       handlers.focusin(ev(t));
       const box = placed();
-      // Above the whole row (600 - 8 - 200), not over the results cell.
-      expect(box.y).toBe(392);
-      expect(box.y + box.h).toBeLessThanOrEqual(600);
+      // Above the moves cell it reads in (604 - 8 - 200), not over the
+      // results cell beside it.
+      expect(box.y).toBe(396);
+      expect(box.y + box.h).toBeLessThanOrEqual(604);
       expect(box.x + box.w).toBeLessThan(940);
     } finally {
       document.documentElement.clientWidth = vw;
@@ -301,7 +302,7 @@ describe("peek", () => {
     }
   });
 
-  it("falls back above the word when neither side has room, inside the screen", () => {
+  it("falls back above the block when neither side has room, inside the screen", () => {
     const line = fakeEl();
     line.getBoundingClientRect = () => ({ left: 0, top: 400, right: 390, bottom: 430, width: 390, height: 30 });
     const t = token(LINE, 0);
@@ -312,10 +313,10 @@ describe("peek", () => {
     try {
       handlers.focusin(ev(t));
       const box = placed();
-      // No gutter on either side of a full-width sentence: above the word
-      // (405 - 8 - 200), and wholly on the 390px screen.
-      expect(box.y).toBe(197);
-      expect(box.y + box.h).toBeLessThanOrEqual(405);
+      // No gutter on either side of a full-width sentence: above the whole
+      // paragraph (400 - 8 - 200), and wholly on the 390px screen.
+      expect(box.y).toBe(192);
+      expect(box.y + box.h).toBeLessThanOrEqual(400);
       expect(box.x).toBeGreaterThanOrEqual(8);
       expect(box.x + box.w).toBeLessThanOrEqual(390 - 8);
       expect(inSentence(line, box)).toBe(false);
