@@ -833,3 +833,4 @@ describe("buildScoutStats", () => {
     expect(stats.scoreVsStronger).toBeUndefined();
   });
 });
+

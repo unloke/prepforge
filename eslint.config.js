@@ -57,7 +57,7 @@ const OVER_CEILING = [
   ["web-src/controllers/analyze-session.js", 1302],
   ["web-src/controllers/build-session.js", 1440],
   ["web-src/controllers/sync.js", 586],
-  ["web-src/controllers/train-session.js", 2181],
+  ["web-src/controllers/train-session.js", 2175],
   ["web-src/engine/build-generator.test.js", 720],
   ["web-src/engine/engine-profile.test.js", 514],
   ["web-src/engine/maia3-provider.test.js", 627],
@@ -65,7 +65,7 @@ const OVER_CEILING = [
   ["web-src/engine/stockfish-provider.test.js", 563],
   ["web-src/scout-prefilter.test.js", 612],
   ["web-src/scout-report.js", 1417],
-  ["web-src/scout-report.test.js", 1351],
+  ["web-src/scout-report.test.js", 1271],
   ["web-src/scout-stats.js", 905],
   ["web-src/scout-stats.test.js", 769],
   ["web-src/scout.js", 1531],
@@ -75,8 +75,8 @@ const OVER_CEILING = [
   ["web-src/ui-layout.test.js", 683],
   ["web-src/views/analyze.js", 806],
   ["web-src/views/dashboard.js", 803],
-  ["web-src/views/scout.js", 2002],
-  ["web-src/views/settings.js", 655],
+  ["web-src/views/scout.js", 1998],
+  ["web-src/views/settings.js", 652],
   ["web-src/views/teams-controller.js", 609],
 ];
 

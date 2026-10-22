@@ -57,7 +57,7 @@ export function createTrainRecovery(deps) {
       // Still unknown (offline, server down): keep the board locked and offer
       // the retry that resolves it rather than a stale card pretending to wait.
       // One actionable card, not a second status line saying the same thing.
-      setTrainBanner("done", "Couldn't confirm that answer", "Retry sync to catch up with the server.");
+      setTrainBanner("error", "Couldn't confirm that answer", "Retry sync to catch up with the server.");
       ctx.card = notices.show(error.message || "Couldn't reach the server.", {
         tone: "error",
         key: `train-sync:${ctx.prompt.session_id}`,

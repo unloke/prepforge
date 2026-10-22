@@ -39,7 +39,7 @@ it("still reports a queue failure that is not a missing-lines state", async () =
   const { run, deps } = startWith("database is down", 500);
   await run();
   expect(deps.setStatusError).toHaveBeenCalledWith("database is down");
-  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("done", "Couldn't build your queue", "Try Start again in a moment.");
+  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("error", "Couldn't build your queue", "Try Start again in a moment.");
 });
 
 // A start the server accepts but fills with no cards (a queue whose repertoires

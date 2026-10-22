@@ -132,11 +132,7 @@ function isRetryableTransportError(error) {
 export async function fetchWeightsWithProgress(url, expectedBytes, onProgress, { fetchImpl = fetch, signal = null, keepAlive = null } = {}) {
   const resp = await fetchImpl(url, { signal });
   if (!resp.ok) {
-    throw new Error(
-      `weight fetch ${resp.status} for ${url}. The ONNX weights are not under that base. ` +
-        `Point the runtime at a host that serves them (asset base is resolved on the main ` +
-        `thread and passed into this worker).`,
-    );
+    throw new Error(`weight fetch ${resp.status} for ${url}`);
   }
   const headerTotal = Number(resp.headers.get("content-length")) || 0;
   const total = expectedBytes || headerTotal || 0;

@@ -52,9 +52,8 @@ describe("maia3 health status model", () => {
     const src = loadSettingsSource();
     for (const label of [
       "Ready",
-      "Available on demand",
+      "Not downloaded",
       "Loading",
-      "Cache missing",
       "Unavailable",
       "Error",
     ]) {
@@ -68,8 +67,7 @@ describe("maia3 health status model", () => {
     expect(src).toContain("MAIA_STATUS.LOADING");
     expect(src).toContain("MAIA_STATUS.UNAVAILABLE");
     expect(src).toContain("MAIA_STATUS.ERROR");
-    expect(src).toContain("MAIA_STATUS.CACHE_MISSING");
-    expect(src).toContain("MAIA_STATUS.AVAILABLE");
+    expect(src).toContain("MAIA_STATUS.NOT_DOWNLOADED");
   });
 
   it("status render peeks only; retry constructs and verifies", async () => {
@@ -108,13 +106,70 @@ describe("maia3 health status model", () => {
     const spy = vi.spyOn(weights, "getCachedWeights").mockResolvedValue(null);
     await view.renderMaia3Status();
     expect(constructed).toBe(0);
-    expect(elements["settings-maia-model"].textContent).toBe("Cache missing");
+    expect(elements["settings-maia-model"].textContent).toBe("Not downloaded");
     // Nothing failed yet: the button offers the download, not a "Retry".
     expect(elements["settings-maia-retry"].textContent).toBe("Download");
     await view.retryMaia3();
     expect(constructed).toBe(1);
     expect(statuses).toContain("Maia3 ready");
     expect(elements["settings-maia-retry"].disabled).toBe(false);
+    spy.mockRestore();
+  });
+
+  it("shows the download progress on the card while Download runs, and a readable failure", async () => {
+    const elements = makeDom();
+    const settings = await import("./settings.js");
+    let emit;
+    let fail;
+    const provider = {
+      subscribeInitProgress: (fn) => { emit = fn; return () => { emit = null; }; },
+      predictions: () => new Promise((_, reject) => { fail = reject; }),
+    };
+    const statuses = [];
+    const view = settings.createSettingsView({
+      appState: { lichessAccounts: [] },
+      setStatus: (msg) => statuses.push(msg),
+      saveSettings: vi.fn(),
+      loadSettings: vi.fn(),
+      pref: () => false,
+      setPref: vi.fn(),
+      effectiveMaiaRating: () => 1500,
+      getSharedMaia3Provider: () => provider,
+      disposeSharedMaia3Provider: vi.fn(),
+      showConfirmModal: vi.fn(),
+      startFen: "startpos",
+      api: async () => ({}),
+      postJson: async () => ({}),
+    });
+    globalThis.fetch.mockResolvedValue({ ok: true, json: async () => ({ artifacts: { fp16: { file: "m.onnx", bytes: 46_417_576 } } }) });
+    const weights = await import("../engine/maia3-weight-cache.js");
+    const spy = vi.spyOn(weights, "getCachedWeights").mockResolvedValue(null);
+    const run = view.retryMaia3();
+    await vi.waitFor(() => expect(emit).toBeTypeOf("function"));
+    emit({ phase: "download", loaded: 23_208_788, total: 46_417_576 });
+    expect(elements["settings-maia-model"].textContent).toBe("Loading");
+    expect(elements["settings-maia-status"].textContent).toBe("Downloading Maia model · 50%");
+    fail(new Error("weight fetch 503 for https://cdn.example/m.onnx"));
+    await run;
+    expect(emit).toBeNull();
+    expect(statuses).toContain("Maia3 could not load: The Maia download failed (HTTP 503). Retry.");
+    expect(statuses.join(" ")).not.toContain("https://");
+    spy.mockRestore();
+  });
+
+  it("quotes the model size in decimal MB, as the reset dialog does", async () => {
+    const elements = makeDom();
+    const settings = await import("./settings.js");
+    const view = settings.createSettingsView({
+      appState: { lichessAccounts: [] }, setStatus: vi.fn(), saveSettings: vi.fn(), loadSettings: vi.fn(),
+      pref: () => false, setPref: vi.fn(), effectiveMaiaRating: () => 1500,
+      getSharedMaia3Provider: vi.fn(), disposeSharedMaia3Provider: vi.fn(), api: async () => ({}), postJson: async () => ({}),
+    });
+    globalThis.fetch.mockResolvedValue({ ok: true, json: async () => ({ artifacts: { fp16: { file: "m.onnx", bytes: 46_417_576 } } }) });
+    const weights = await import("../engine/maia3-weight-cache.js");
+    const spy = vi.spyOn(weights, "getCachedWeights").mockResolvedValue(new ArrayBuffer(1));
+    await view.renderMaia3Status();
+    expect(elements["settings-maia-status"].textContent).toBe("46 MB cached in this browser · fp16");
     spy.mockRestore();
   });
 
@@ -222,7 +277,8 @@ describe("maia3 health status model", () => {
     void failing;
     await view.renderMaia3Status();
     expect(elements["settings-maia-model"].textContent).toBe("Unavailable");
-    expect(elements["settings-maia-error"].textContent).toContain("boom (init)");
+    expect(elements["settings-maia-error"].textContent).toBe("Last error: boom");
+    expect(elements["settings-maia-error"].title).toBe("boom");
     peek.mockRestore();
   });
 
@@ -267,7 +323,7 @@ describe("maia3 health status model", () => {
     // A later repaint reuses the resolved manifest rather than re-reading it.
     await view.renderMaia3Status();
     expect(manifestReads()).toHaveLength(1);
-    expect(elements["settings-maia-model"].textContent).toBe("Cache missing");
+    expect(elements["settings-maia-model"].textContent).toBe("Not downloaded");
     spy.mockRestore();
   });
 
