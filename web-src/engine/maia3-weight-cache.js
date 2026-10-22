@@ -104,6 +104,20 @@ export async function getCachedWeights(key, { idb = defaultIdb() } = {}) {
   }
 }
 
+// Whether `key` is stored, without reading the ~46 MB value out of IndexedDB.
+export async function hasCachedWeights(key, { idb = defaultIdb() } = {}) {
+  if (!idb || !key) return false;
+  let db = null;
+  try {
+    db = await openDb(idb);
+    return (await runTx(db, "readonly", (store) => reqValue(store, "count", key))) > 0;
+  } catch {
+    return false;
+  } finally {
+    try { db?.close(); } catch { /* ignore */ }
+  }
+}
+
 // Delete the entry under `key` (best-effort). Used to evict a cached artifact that fails
 // the integrity gate so the worker can re-fetch instead of wedging on corrupt bytes.
 // Returns true on success, false on any IndexedDB problem (never throws).

@@ -478,3 +478,24 @@
 @media (prefers-reduced-motion: reduce) {
   .profile-progress-fill { transition: none; }
 }
+
+/* ---- Local engine downloads (settings-downloads.js) -------------------- */
+.dl-row { display: grid; gap: 6px; padding: 8px 0; }
+.dl-row:empty { display: none; }
+.dl-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+.dl-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.dl-text b { font-weight: 600; }
+.dl-size { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
+.dl-head .status-pill { font-variant-numeric: tabular-nums; }
+.dl-bar { display: block; height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.dl-bar i { display: block; height: 100%; background: var(--accent); transition: width var(--dur) var(--ease-out); }
+.dl-bar.is-busy i { width: 28% !important; animation: unlock-busy 1.1s var(--ease-out) infinite; }
+.dl-line { margin: 0; color: var(--muted); font-size: var(--fs-s); line-height: 1.4; }
+.dl-line.is-err { color: var(--danger-strong); }
+@media (prefers-reduced-motion: reduce) {
+  .dl-bar.is-busy i { animation: none; width: 100% !important; opacity: 0.5; }
+}
+@media (max-width: 760px) {
+  .dl-head { grid-template-columns: minmax(0, 1fr) auto; }
+  .dl-head .btn { grid-column: 1 / -1; justify-self: start; }
+}

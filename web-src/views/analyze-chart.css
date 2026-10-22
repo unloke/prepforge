@@ -381,7 +381,7 @@
 }
 #analysis-eval-card > :not(.ev-head):not(.engine-slot),
 #analysis-engine-slot .engine-window-body,
-#analysis-engine-slot .engine-window-consent { grid-column: 1 / -1; }
+#analysis-engine-slot .engine-window-unlock { grid-column: 1 / -1; }
 #analysis-eval-card .ev-head { display: contents; }
 .ev-title { grid-area: 1 / 1; font-size: var(--fs-s); }
 .ev-head.has-eval .ev-title { display: none; }
@@ -1330,16 +1330,13 @@ name. */
   #analysis-engine-slot .engine-pv:not(.is-top):not(.is-waiting):not(.is-pending),
   #analysis-engine-slot .engine-pv.is-pending ~ .engine-pv.is-pending { display: none; }
   #analysis-engine-slot .engine-pv.is-pending { display: grid; height: 28px; min-height: 28px; }
-  #analysis-engine-slot .engine-window-consent:not([hidden]) {
+  #analysis-engine-slot .engine-window-unlock:not([hidden]) {
     position: absolute;
     z-index: 20;
     left: var(--phone-gutter);
     right: var(--phone-gutter);
     bottom: 100%;
-    padding: 12px;
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    background: var(--panel);
+    padding: 0 0 6px;
   }
   /* The status line is the card's whole content while the pass runs: it stays. */
   #analysis-engine-slot .engine-pv.is-waiting { display: grid; height: 28px; min-height: 28px; }

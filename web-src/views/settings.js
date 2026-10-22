@@ -2,15 +2,13 @@ import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfil
   engineSetupState, subscribeEngineSetup, engineWorkerChoices } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
-import { renderFullEngineChoice, bindFullEngineChoice } from "./settings-full-engine.js";
+import { createSettingsDownloads } from "./settings-downloads.js";
+import { subscribeDownloads } from "../engine/engine-downloads.js";
 // Settings tab rendering (lazy-loaded from app.js).
 
 import "./settings.css";
-import { resolveModelBase, peekSharedMaia3Provider, loadMaia3Manifest } from "../engine/maia3-provider.js";
-import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 import { createAccountSection } from "./settings-account.js";
 import { jumpToSection } from "./settings-jump.js";
-import { maiaErrorText, maiaInitMessage } from "../maia-init-notice.js";
 
 export function createSettingsView({
   appState,
@@ -20,10 +18,7 @@ export function createSettingsView({
   pref,
   setPref,
   effectiveMaiaRating,
-  getSharedMaia3Provider,
-  disposeSharedMaia3Provider,
   showConfirmModal,
-  startFen,
   api,
   postJson,
   startLichessOAuth = () => {},
@@ -45,6 +40,7 @@ export function createSettingsView({
     openAuthModal,
     refreshAuthStatus,
   });
+  const downloads = createSettingsDownloads({ showConfirmModal, setPref });
 
   function paintSwitch(el, on) {
     if (!el) return;
@@ -133,7 +129,7 @@ export function createSettingsView({
         }
       }
     }
-    renderMaia3Status();
+    downloads.render();
   }
 
   function renderEngineProfile() {
@@ -182,9 +178,6 @@ export function createSettingsView({
         : setup.phase === "probe" ? 0.5 + setup.fraction / 2 : 0.5;
       bar.firstElementChild.style.setProperty("--progress", String(Math.max(0.03, share)));
     }
-    // The full net is this device's choice: the question until it answers, then
-    // one action that brings its 94 MB back after a step down.
-    renderFullEngineChoice();
   }
 
   async function renderStockfishVersion() {
@@ -215,7 +208,7 @@ export function createSettingsView({
     renderBrowserEngineStatus();
     renderEngineProfile();
     stockfishManifest = null;
-    await Promise.allSettled([loadSettings(), renderStockfishVersion()]);
+    await Promise.allSettled([loadSettings(), renderStockfishVersion(), downloads.refresh()]);
   }
 
   // Resolves once the async Connections list has rendered too, so callers
@@ -251,7 +244,6 @@ export function createSettingsView({
       usage.textContent = on ? "On in Analyze and Scout" : "Off in Analyze and Scout";
       usage.title = on ? "" : "Turn on Maia analysis under Playing strength";
     }
-    renderMaia3Status();
   }
 
   function connectionAccounts() {
@@ -339,167 +331,6 @@ export function createSettingsView({
     await api(`/api/lichess/${encodeURIComponent(accountId)}`, { method: "DELETE" });
     await refreshConnections();
     onAccountsChanged();
-  }
-
-  // Maia3 runtime/cache/provider state. The analysis LAYER switch (Playing
-  // strength → Maia analysis) only gates Analyze and Scout inference; health
-  // stays independently viewable. Status values:
-  //   Ready — provider ready this session, or cached weights verified present
-  //   Not downloaded — manifest reachable, nothing cached yet
-  //   Loading — provider initializing (download / verify / session progress)
-  //   Unavailable — provider init/crash failure, or manifest unreachable
-  //   Error — unexpected failure while determining the state
-  // Peek (provider + IDB presence) is free for every render; the action button
-  // performs the actual load verification (constructs the provider + runs inference).
-  const MAIA_STATUS = {
-    READY: "Ready",
-    NOT_DOWNLOADED: "Not downloaded",
-    LOADING: "Loading",
-    UNAVAILABLE: "Unavailable",
-    ERROR: "Error",
-  };
-
-  const MAIA_STATUS_TONE = {
-    [MAIA_STATUS.READY]: "ok",
-    [MAIA_STATUS.LOADING]: "warn",
-    [MAIA_STATUS.UNAVAILABLE]: "err",
-    [MAIA_STATUS.ERROR]: "err",
-  };
-
-  // The one action button runs the same load verification in every state; its
-  // label says what that means here. "Retry" over a model that was never
-  // downloaded read as if something had failed.
-  const MAIA_ACTION_LABEL = {
-    [MAIA_STATUS.READY]: "Verify",
-    [MAIA_STATUS.NOT_DOWNLOADED]: "Download",
-  };
-
-  // The model source (a full asset URL on hosted deploys) and a failure's raw
-  // worker message live in tooltips; the lines say what it means.
-  function paintMaiaStatus(model, note = "", error = null, source = "") {
-    const modelEl = document.getElementById("settings-maia-model");
-    if (!modelEl) return;
-    const noteEl = document.getElementById("settings-maia-status");
-    const errEl = document.getElementById("settings-maia-error");
-    modelEl.textContent = model;
-    modelEl.className = `status-pill ${MAIA_STATUS_TONE[model] || ""}`.trim();
-    const actionBtn = document.getElementById("settings-maia-retry");
-    if (actionBtn && model !== MAIA_STATUS.LOADING) actionBtn.textContent = MAIA_ACTION_LABEL[model] || "Retry";
-    if (noteEl) Object.assign(noteEl, { textContent: note, title: source ? `Model source: ${source}` : "" });
-    const errText = error ? `Last error: ${maiaErrorText(error)}` : "";
-    if (errEl) Object.assign(errEl, { textContent: errText, title: error?.message || "", hidden: !error });
-  }
-
-  async function renderMaia3Status() {
-    if (!document.getElementById("settings-maia-model")) return;
-    try {
-      // Peek-only: rendering the Settings status row must never construct the
-      // Maia worker — with Maia analysis OFF no provider may be initialized.
-      const provider = peekSharedMaia3Provider();
-      if (provider) {
-        if (provider.state === "ready") {
-          const info = provider.info || {};
-          paintMaiaStatus(MAIA_STATUS.READY, "Loaded this session · fp16", null, info.url || provider.assetBase || "");
-          return;
-        }
-        if (provider.state === "initializing") {
-          paintMaiaStatus(MAIA_STATUS.LOADING, maiaLoadingNote || "Preparing the model");
-          return;
-        }
-        if (provider.state === "unavailable") {
-          paintMaiaStatus(
-            MAIA_STATUS.UNAVAILABLE,
-            "Last load failed. Use Retry, or Reset cache if it keeps failing.",
-            provider.lastError || null,
-          );
-          return;
-        }
-      }
-      let manifest;
-      try {
-        manifest = await loadMaia3Manifest();
-      } catch {
-        paintMaiaStatus(MAIA_STATUS.UNAVAILABLE, "Model manifest is not reachable from this server.");
-        return;
-      }
-      const base = resolveModelBase(manifest);
-      const key =
-        (manifest.backend_artifact && manifest.backend_artifact.wasm) ||
-        (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.file) ||
-        null;
-      const bytes =
-        (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.bytes) || 0;
-      // Decimal MB, the unit the reset confirmation quotes (~46 MB).
-      const sizeMb = bytes ? `${Math.round(bytes / 1e6)} MB` : "~46 MB";
-      const cached = key ? await getCachedWeights(key) : null;
-      if (cached) {
-        paintMaiaStatus(MAIA_STATUS.READY, `${sizeMb} cached in this browser · fp16`, null, base);
-      } else {
-        paintMaiaStatus(MAIA_STATUS.NOT_DOWNLOADED, `${sizeMb} · fp16`, null, base);
-      }
-    } catch {
-      paintMaiaStatus(MAIA_STATUS.ERROR, "Could not determine the browser Maia3 state.");
-    }
-  }
-
-  // Latest cold-init progress line ("Downloading Maia model · 37%") while a
-  // verification is loading the model; null otherwise.
-  let maiaLoadingNote = null;
-
-  // Actual health/load verification: constructs the provider (unlike the
-  // peek-only status render) and runs one real inference. Always available —
-  // independent of the Maia analysis toggle, which only gates Analyze and Scout.
-  // The ~46 MB first download reports its progress on the card itself: the
-  // "Verifying" toast is gone long before a slow download finishes.
-  async function verifyMaia3() {
-    setStatus("Verifying Maia3…");
-    let stopProgress = () => {};
-    try {
-      const provider = getSharedMaia3Provider();
-      stopProgress = provider.subscribeInitProgress?.((progress) => {
-        maiaLoadingNote = maiaInitMessage(progress) || maiaLoadingNote;
-        if (maiaLoadingNote) paintMaiaStatus(MAIA_STATUS.LOADING, maiaLoadingNote);
-      }) || stopProgress;
-      renderMaia3Status();
-      await provider.predictions({ fen: startFen });
-      setStatus("Maia3 ready");
-    } catch (err) {
-      setStatus(`Maia3 could not load: ${maiaErrorText(err)}`);
-    } finally {
-      stopProgress();
-      maiaLoadingNote = null;
-      renderMaia3Status();
-    }
-  }
-
-  async function retryMaia3() {
-    const btn = document.getElementById("settings-maia-retry");
-    if (btn) btn.disabled = true;
-    try {
-      await verifyMaia3();
-    } finally {
-      if (btn) btn.disabled = false;
-    }
-  }
-
-  async function resetMaia3Cache() {
-    const confirmed = await showConfirmModal({
-      title: "Reset Maia cache?",
-      body:
-        "Deletes the cached Maia model from this browser, then reloads. The model " +
-        "(~46 MB) re-downloads on next use. Use this if Maia keeps failing to load.",
-      okLabel: "Reset & reload",
-      cancelLabel: "Cancel",
-    });
-    if (!confirmed) return;
-    setStatus("Clearing Maia cache…");
-    try {
-      disposeSharedMaia3Provider();
-    } catch {
-      /* ignore */
-    }
-    await clearWeightCache();
-    window.location.reload();
   }
 
   // One info pop is open at most: opening one closes the rest.
@@ -648,7 +479,7 @@ export function createSettingsView({
     document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
       btn.addEventListener("click", () => setEngineProfile({ net: engineProfile().net, workers: Number(btn.dataset.workers) }));
     });
-    bindFullEngineChoice();
+    unsubscribers.push(downloads.bind(), subscribeDownloads(renderMaiaAnalysis));
 
     document.getElementById("settings-detect")?.addEventListener("click", () => {
       void detectEngineProfile().catch(() => {});
@@ -668,12 +499,6 @@ export function createSettingsView({
 
     const refreshBtn = document.getElementById("settings-refresh");
     if (refreshBtn) refreshBtn.addEventListener("click", () => refreshEngineCard().catch(() => {}));
-
-    const maiaRetryBtn = document.getElementById("settings-maia-retry");
-    if (maiaRetryBtn) maiaRetryBtn.addEventListener("click", () => retryMaia3().catch(() => {}));
-
-    const maiaResetBtn = document.getElementById("settings-maia-reset");
-    if (maiaResetBtn) maiaResetBtn.addEventListener("click", () => resetMaia3Cache().catch(() => {}));
 
     const maiaToggle = document.getElementById("settings-maia-analysis");
     bindSwitch(maiaToggle, !!pref("maiaAnalysis"), (next) => {
@@ -763,16 +588,13 @@ export function createSettingsView({
     renderSettings,
     refreshEngineCard,
     renderBrowserEngineStatus,
-    renderMaia3Status,
+    renderDownloads: downloads.render,
     renderStrengthControls,
     renderThemeControl,
     renderMaiaAnalysis,
     renderConnections,
     refreshConnections,
     renderAccount: () => accountSection.render(),
-    retryMaia3,
-    verifyMaia3,
-    resetMaia3Cache,
     bindSectionNav,
     markActiveSection,
   };

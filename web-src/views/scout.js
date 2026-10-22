@@ -2273,14 +2273,14 @@ export function createScoutView(deps) {
   }
 
   return {
-    runScout,
-    handleScoutAction,
-    bindControls,
+    runScout, handleScoutAction, bindControls,
     __testHandleAddToPrep: scoutAddToPrep,
     onShow: syncVisibleState,
     // Sources changed under a finished or running report (app.js).
     discardReport: resetScout,
     syncSources,
+    // Maia analysis turned on: an open report takes its Maia reads now.
+    onMaiaGate() { if (scoutState?.games?.length) scheduleMaiaEnrich(); },
     ...(SCOUT_E2E_BUILD_ENABLED ? { mountE2eRefutationScenario } : {}),
     preload: () => import("../scout.js"),
   };

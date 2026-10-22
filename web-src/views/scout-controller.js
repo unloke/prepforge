@@ -219,5 +219,6 @@ function preloadScoutUi() {
     ensureScoutView, preloadScoutUi,
     // The linked-account list changed: the open report re-reads its sources.
     syncSources: () => scoutView?.syncSources(),
+    onMaiaGate: () => scoutView?.onMaiaGate(),
   };
 }

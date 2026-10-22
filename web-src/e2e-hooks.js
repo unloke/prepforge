@@ -79,7 +79,6 @@ function installPolishE2eHook() {
         // no /api/lichess backend, so refreshConnections() would keep the last
         // state instead of showing the seeded identities.
         await view?.renderConnections?.();
-        view?.renderMaia3Status?.();
       } catch (_) {
         /* settings view may not be loaded yet */
       }

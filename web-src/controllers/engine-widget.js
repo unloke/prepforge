@@ -4,8 +4,8 @@ import { localGameOver } from "../chess-local.js";
 import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
 import { boardLine } from "../line-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
-import { fullEngineChoice, chooseFullEngine, subscribeEngineProfile, subscribeEngineSetup } from "../engine/engine-profile.js";
-import { engineConsentHtml } from "./engine-consent.js";
+import { paintUnlocks } from "../engine-unlock.js";
+import { subscribeDownloads } from "../engine/engine-downloads.js";
 import { createPassFeed } from "./engine-pass-feed.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
@@ -51,8 +51,7 @@ class EngineWidget {
     // depth changes — so the slider in Settings actually steers the widget.
     this.engine = null;
     this.engineDepth = null;
-    this.consentEl = null;
-    this.unwatchChoice = null;
+    this.unlockEl = null;
     // While a full-game pass holds the workers, this reads the pass's own results
     // for the board instead of searching (see engine-pass-feed.js).
     this.passFeed = null;
@@ -99,7 +98,10 @@ class EngineWidget {
     this.el = document.getElementById("engine-window");
     if (!this.el) return;
     this.pvsEl = document.getElementById("engine-window-pvs");
-    this.consentEl = document.getElementById("engine-window-consent");
+    this.unlockEl = document.getElementById("engine-window-unlock");
+    // The row comes, changes and goes with the download, not only with a paint here:
+    // each change re-fits the Build dock to the card (_paintPvs).
+    subscribeDownloads(() => { if (this.open) this._paintUnlock(); });
     this.evalBarWhite = document.getElementById("engine-eval-bar-white");
     this.evalBarText = document.getElementById("engine-eval-bar-text");
     this.evalHead = document.getElementById("engine-head-eval");
@@ -128,44 +130,14 @@ class EngineWidget {
     return appState.analysisBoardFen || START_FEN;
   }
 
-  // The full net's 94 MB wait for this device's yes. The question is one row above
-  // the lines; the lite search runs and paints underneath it the whole time.
-  _paintChoice() {
-    if (!this.consentEl) return;
-    const ask = fullEngineChoice() === "ask";
-    this.consentEl.hidden = !ask;
-    this.consentEl.innerHTML = ask ? engineConsentHtml() : "";
+  // The full net's unlock row sits above the lines, named for the view it is in;
+  // the lite search runs and paints underneath it the whole time, and the usable
+  // profile moves the search onto the full net once its bytes land.
+  _paintUnlock() {
+    if (!this.unlockEl) return;
+    this.unlockEl.dataset.unlockPlace = activeViewName() === "build" ? "engine-build" : "engine-analyze";
+    paintUnlocks(this.el);
     this._paintPvs();
-  }
-
-  // Follows the answer while the card is open: a first visit's probe finishes after
-  // the panel opened, and the answer can also come from Settings. Nothing here
-  // touches the running search — only the row appears or goes.
-  _watchChoice() {
-    if (this.unwatchChoice) return;
-    const paint = () => { if (this.open) this._paintChoice(); };
-    // The question appears when the probe measures the net and goes when the
-    // answer lands, so it follows both the device's setup and its answer.
-    const offSetup = subscribeEngineSetup(paint);
-    const offProfile = subscribeEngineProfile(paint);
-    this.unwatchChoice = () => { offSetup(); offProfile(); };
-  }
-
-  _unwatchChoice() {
-    this.unwatchChoice?.();
-    this.unwatchChoice = null;
-  }
-
-  // The answer never stops the lite search: a yes fetches the net in the background
-  // and the usable profile moves every engine onto it once it is ready; a no just
-  // takes the row away.
-  async _answerFull(full) {
-    try {
-      await chooseFullEngine(full);
-    } catch {
-      /* the card keeps its place; the next open asks again */
-    }
-    if (this.open) this._paintChoice();
   }
 
   async openForCurrent() {
@@ -178,8 +150,7 @@ class EngineWidget {
     this.el.hidden = false;
     this.el.classList.add("is-visible");
     this._paintPvs(this._pendingRows(0)); // rows in the frame the card appears, not after
-    this._watchChoice();
-    this._paintChoice();
+    this._paintUnlock();
     void this._passFeed().attach();
     await this._restartForCurrentBoard();
     this._watch();
@@ -190,11 +161,11 @@ class EngineWidget {
     this.exitPreview();
     this.open = false;
     this._unwatch();
-    this._unwatchChoice();
     this.passFeed?.detach();
-    if (this.consentEl) {
-      this.consentEl.hidden = true;
-      this.consentEl.innerHTML = "";
+    if (this.unlockEl) {
+      delete this.unlockEl.dataset.unlockPlace;
+      this.unlockEl.hidden = true;
+      this.unlockEl.innerHTML = this.unlockEl.unlockMarkup = "";
     }
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
@@ -295,7 +266,7 @@ class EngineWidget {
   _paintPvs(markup) {
     if (!this.pvsEl) return;
     if (markup !== undefined) this.pvsEl.innerHTML = markup;
-    const key = `${this.pvsEl.children.length}/${this.consentEl?.hidden === false}`;
+    const key = `${this.pvsEl.children.length}/${this.unlockEl?.hidden === false && this.unlockEl.firstElementChild?.dataset.mode}`;
     if (key === this.pvsEl.dataset.rows || this.el?.hidden || activeViewName() !== "build") return;
     this.pvsEl.dataset.rows = key;
     hooks.build?.session?.fitBuildDock();
@@ -399,11 +370,6 @@ class EngineWidget {
       if (!row) return;
       const move = event.target.closest(".pv-move[data-p]");
       this._previewLine(Number(row.dataset.line), move ? Number(move.dataset.p) + 1 : null);
-    });
-    // The question's two answers; it sits above the lines and never replaces them.
-    this.consentEl?.addEventListener("click", (event) => {
-      const choice = event.target.closest("[data-choice]");
-      if (choice) void this._answerFull(choice.dataset.choice === "yes");
     });
     // The rows are real controls, so Enter/Space must work too.
     this.pvsEl.addEventListener("keydown", (event) => {
