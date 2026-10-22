@@ -318,6 +318,16 @@ describe("streaming snapshots never paint more rows than the requested MultiPV",
     expect(rowsOf(widget)).toBe(3);
   });
 
+  // Hovering a move in a row peeks at its position; a native tooltip on the row
+  // would sit over the peek.
+  it("paints rows without a native tooltip", () => {
+    const { widget } = harness({ choice: null, view: "build" });
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    widget._renderSnapshot(snap("board w - - 0 1", [line("e4")], 10));
+    expect(String(widget.pvsEl.innerHTML)).not.toMatch(/class="engine-pv[^>]*title=/);
+  });
+
   it("ignores a snapshot for a FEN the widget has already left", () => {
     const { widget } = harness({ choice: null, view: "build" });
     widget.el.hidden = false;

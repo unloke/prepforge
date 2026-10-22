@@ -36,13 +36,16 @@ beforeAll(() => {
 });
 
 // A token as move-text.js writes it: its line in data-mt, its index in data-p.
-function token(mt, p, { cls = "move-ref", title = "" } = {}) {
+function token(mt, p, { cls = "move-ref", title = "", parent = null } = {}) {
   const el = fakeEl();
   el.dataset = { mt, p: String(p) };
   el.classList.add(cls);
   if (title) el.setAttribute("title", title);
   el.matches = (sel) => sel.includes("[data-p]") || sel === ":focus-visible";
-  el.closest = (sel) => (sel.includes("move-ref") && cls !== "move-ref" ? null : el);
+  el.closest = (sel) => {
+    if (sel === "[title]") return el.getAttribute("title") !== null ? el : parent?.getAttribute("title") != null ? parent : null;
+    return sel.includes("move-ref") && cls !== "move-ref" ? null : el;
+  };
   el.getBoundingClientRect = () => ({ left: 100, top: 100, bottom: 120, width: 30 });
   el.focus = vi.fn();
   return el;
@@ -138,6 +141,21 @@ describe("peek", () => {
     expect(host.innerHTML).toContain("Due for review");
     mod.hidePeek();
     expect(t.getAttribute("title")).toBe("Due for review");
+  });
+
+  it("lifts the row's tooltip while a move in it peeks, without showing it", () => {
+    const row = fakeEl();
+    row.setAttribute("title", "1.e4 e5 2.Nf3");
+    const t = token(LINE, 1, { cls: "move-peek-ref", parent: row });
+    vi.useFakeTimers();
+    handlers.pointerover(ev(t, { pointerType: "mouse" }));
+    vi.advanceTimersByTime(150);
+    vi.useRealTimers();
+    expect(host.hidden).toBe(false);
+    expect(row.getAttribute("title")).toBe(null);
+    expect(host.innerHTML).not.toContain("move-peek-note");
+    mod.hidePeek();
+    expect(row.getAttribute("title")).toBe("1.e4 e5 2.Nf3");
   });
 
   it("applies on click or Enter where the view has a board", () => {

@@ -551,9 +551,8 @@ class EngineWidget {
       : "";
     let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
     if (previewing) cls += " is-previewing";
-    const title = previewing ? "Exit line" : "Show on board";
     return (
-      html`<div class="${cls}" data-line="${index}" role="button" tabindex="0" aria-pressed="${!!previewing}" title="${title}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
+      html`<div class="${cls}" data-line="${index}" role="button" tabindex="0" aria-pressed="${!!previewing}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );
   }
 

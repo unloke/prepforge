@@ -147,7 +147,7 @@ function place(target) {
 }
 
 function restoreTitle() {
-  if (peek?.title) peek.target.setAttribute("title", peek.title);
+  if (peek?.titled) peek.titled.setAttribute("title", peek.title);
 }
 
 function showPeek(target, { pinned = false } = {}) {
@@ -159,14 +159,17 @@ function showPeek(target, { pinned = false } = {}) {
   ensureHost();
   if (peek?.target !== target) {
     restoreTitle();
-    // A control's own tooltip would sit over the peek; the peek carries it instead.
-    const title = target.getAttribute("title") || "";
-    if (title) target.removeAttribute("title");
-    peek = { target, title };
+    // A native tooltip (the control's own, or its row's) would sit over the peek, so
+    // it is lifted while the peek shows. The peek carries the control's own.
+    const titled = target.closest("[title]");
+    const title = titled?.getAttribute("title") || "";
+    titled?.removeAttribute("title");
+    peek = { target, titled, title };
   }
   peek.pinned = pinned;
   const canApply = pinned && target.classList.contains("move-ref") && !!options.apply(target, true);
-  const note = peek.title && peek.title !== pos.label ? html`<span class="move-peek-note">${peek.title}</span>` : "";
+  const own = peek.titled === target ? peek.title : "";
+  const note = own && own !== pos.label ? html`<span class="move-peek-note">${own}</span>` : "";
   host.innerHTML = html`${miniBoardHtml(pos.fen, pos.lastMove, options.orientation())}<div class="move-peek-foot"><b class="move-peek-label">${pos.label || ""}</b>${canApply ? html`<button type="button" class="btn sm move-peek-go">Show on board</button>` : ""}</div>${note}`;
   host.classList.toggle("is-pinned", pinned);
   host.setAttribute("role", pinned ? "dialog" : "tooltip");
