@@ -63,7 +63,7 @@ describe("remoteChangeNotice", () => {
   });
 });
 
-function harness({ changes = { revision: 5 }, open = true } = {}) {
+function harness({ changes = { revision: 5 }, open = true, defaultOpen = false } = {}) {
   const pending = [];
   const timers = {
     setTimeout: vi.fn((fn, ms) => { pending.push({ fn, ms }); return pending.length; }),
@@ -84,11 +84,29 @@ function harness({ changes = { revision: 5 }, open = true } = {}) {
     tabId: "me",
     now: () => 0,
   };
+  if (defaultOpen) {
+    delete deps.isOpen;
+    deps.activeView = () => "build";
+    appState.signedIn = true;
+  }
   const live = createBuildLive(deps);
   return { live, deps, appState, pending };
 }
 
 describe("createBuildLive", () => {
+  it("follows a repertoire shared to this account at any role, but not a public link", async () => {
+    for (const shared of [{ role: "edit", writable: true }, { role: "view", writable: false }]) {
+      const h = harness({ defaultOpen: true });
+      Object.assign(h.appState.build, shared, { shared: true });
+      await h.live.tick();
+      expect(h.deps.api).toHaveBeenCalledWith("/api/build/changes?repertoire_id=r&since=5");
+    }
+    const link = harness({ defaultOpen: true });
+    link.appState.sharedToken = "tok";
+    await link.live.tick();
+    expect(link.deps.api).not.toHaveBeenCalled();
+  });
+
   it("asks for changes since the open revision and does nothing when there are none", async () => {
     const h = harness();
     await h.live.tick();
