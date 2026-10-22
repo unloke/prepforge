@@ -138,9 +138,10 @@ export function downloadText(filename, mime, content) {
   URL.revokeObjectURL(url);
 }
 
+// The route, not the painted view: during a route View Transition the old
+// view stays painted for a frame (view-swap.js).
 export function activeViewName() {
-  const el = document.querySelector(".view.is-active");
-  return el ? el.id.replace("view-", "") : "analyze";
+  return appState.currentView;
 }
 
 export function activeBoardController() {

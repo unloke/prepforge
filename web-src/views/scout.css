@@ -514,9 +514,11 @@
 .scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
 .scout-source-warnings .btn { margin-left: auto; }
 
-/* ≤1279: the Type · last seen column folds under the line (it used to be
-   hidden while its header stayed, leaving an empty, misaligned column). */
-@media (max-width: 1279px) {
+/* A narrow plan column: the Type · last seen column folds under the line (it
+   used to be hidden while its header stayed, leaving an empty, misaligned
+   column). The column's width, not the window's: it is widest stacked at
+   1020px and narrowest beside the detail card at 1280px. */
+@container scout-main (max-width: 800px) {
   .line-row { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .line-row .lr-meta { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
   .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }

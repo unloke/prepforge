@@ -11,7 +11,7 @@ describe("settings motion", () => {
     // A second rise on the title, the strip and each card read as the page
     // loading twice; only the view's cross-fade plays on a visit.
     expect(settings).not.toMatch(/#view-settings\.is-active [^{]*\{[^}]*animation:/);
-    expect(css).toMatch(/\.view\.is-active \{[^}]*animation:\s*view-enter/);
+    expect(css).toMatch(/::view-transition-new\(view\) \{[^}]*animation:\s*view-enter/);
   });
 
   it("lands a jump on its card with a ring that fades, and keeps the ring still for reduced motion", () => {

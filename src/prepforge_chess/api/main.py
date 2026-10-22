@@ -38,16 +38,17 @@ from prepforge_chess.api.routers import (
     workspace,
 )
 from prepforge_chess.api.routers import settings as settings_router
-from prepforge_chess.api.static import register_static
+from prepforge_chess.api.static import GZIP_SKIP_EXT, register_static
 from prepforge_chess.storage.repositories.repertoires import NodeGone, RepertoireQuotaExceeded, RevisionConflict
 
 
 class _TextGZipMiddleware(GZipMiddleware):
     """GZip that leaves engine/model binaries alone: compressing the 99 MB Stockfish
-    wasm on every request took 11.8 s (0.2 s plain) and serialized parallel engine loads."""
+    wasm on every request took 11.8 s (0.2 s plain) and serialized parallel engine loads.
+    Their build-time brotli twins (api/static.py) are the compressed form instead."""
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["path"].endswith((".wasm", ".onnx")):
+        if scope["type"] == "http" and scope["path"].endswith(GZIP_SKIP_EXT):
             await self.app(scope, receive, send)
             return
         await super().__call__(scope, receive, send)

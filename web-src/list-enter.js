@@ -21,9 +21,8 @@ const rowKey = (row) => row.dataset?.key ?? row.textContent ?? "";
 // cross-fading in, or it is not rendered at all.
 export function entranceCovered(node) {
   if (typeof node?.getClientRects === "function" && !node.getClientRects().length) return true;
-  const view = node?.closest?.(".view");
-  if (!view?.getAnimations) return false;
-  return view.getAnimations().some((a) => a.animationName === "view-enter" && a.playState === "running");
+  // view-swap.js marks the incoming view for the length of the route fade.
+  return Boolean(node?.closest?.(".view")?.classList?.contains("is-arriving"));
 }
 
 // A list painted (or repainted): mark the rows that are new since the last

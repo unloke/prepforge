@@ -45,8 +45,10 @@ describe("scout toolbar counter", () => {
 describe("scout game-plan rows at narrow widths", () => {
   const css = readFileSync(resolve(here, "./scout.css"), "utf8");
 
-  it("folds the meta column under the line at 1279px (header column hidden too)", () => {
-    const at = css.indexOf("@media (max-width: 1279px)");
+  it("folds the meta column under the line in a narrow plan column (header column hidden too)", () => {
+    // The plan column's own width: widest stacked at 1020px, narrowest beside the
+    // detail card at 1280px, so the window width says nothing about it.
+    const at = css.indexOf("@container scout-main (max-width: 800px)");
     expect(at).toBeGreaterThan(-1);
     const block = css.slice(at, css.indexOf("@media (max-width: 760px)"));
     expect(block).toMatch(/\.line-row \{ grid-template-columns: minmax\(0, 1fr\) 70px 72px 40px; \}/);

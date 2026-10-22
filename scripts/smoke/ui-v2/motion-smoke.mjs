@@ -155,8 +155,16 @@ function recorder() {
   const ancestors = (el) => { const out = []; for (let a = el.parentElement; a; a = a.parentElement) out.push(uid(a)); return out; };
   document.addEventListener("animationstart", (e) => {
     const el = e.target;
-    if (!el.getClientRects().length || !isEntrance(e.animationName)) return;
-    window.__anim.push({ step: window.__step, t: performance.now(), name: e.animationName, uid: uid(el), path: path(el), anc: ancestors(el), view: el.matches(".view") });
+    if (!isEntrance(e.animationName)) return;
+    // The route cross-fade is a View Transition (view-swap.js): its animation
+    // runs on a ::view-transition-* pseudo-element and covers the whole
+    // workspace, not one .view.
+    if (/^::view-transition/.test(e.pseudoElement || String(el.tagName || ""))) {
+      window.__anim.push({ step: window.__step, t: performance.now(), name: e.animationName, uid: 0, path: `::view-transition (${e.animationName})`, anc: [], view: true, route: true });
+      return;
+    }
+    if (!el.getClientRects().length) return;
+    window.__anim.push({ step: window.__step, t: performance.now(), name: e.animationName, uid: uid(el), path: path(el), anc: ancestors(el), view: el.matches(".view"), inWorkspace: Boolean(el.closest(".workspace")) });
   }, true);
   const animate = Element.prototype.animate;
   Element.prototype.animate = function (frames, options) {
@@ -179,12 +187,12 @@ function judge(vp, log) {
       byNode.set(a.uid, [...(byNode.get(a.uid) || []), a]);
       byPlace.set(a.path, [...(byPlace.get(a.path) || []), a]);
     }
-    for (const [, as] of byNode) if (as.length > 1) fail(`${as[0].path} entered ${as.length}x (${as.map((a) => a.name).join(", ")})`);
+    for (const [id, as] of byNode) if (id && as.length > 1) fail(`${as[0].path} entered ${as.length}x (${as.map((a) => a.name).join(", ")})`);
     for (const [place, as] of byPlace) if (new Set(as.map((a) => a.uid)).size > 1) fail(`${place} re-rendered and entered again`);
     const views = list.filter((a) => a.view);
     for (const a of list) {
       if (a.view) continue;
-      const host = views.find((v) => a.anc.includes(v.uid) && a.t >= v.t - 1 && a.t - v.t < 200);
+      const host = views.find((v) => (v.route ? a.inWorkspace : a.anc.includes(v.uid)) && a.t >= v.t - 1 && a.t - v.t < 200);
       if (host) fail(`${a.path} (${a.name}) stacked on its view's cross-fade`);
     }
     if (/:(refresh|return)$/.test(step)) for (const a of list) if (!a.view) fail(`${a.path} (${a.name}) entered on a ${step.split(":").pop()}`);

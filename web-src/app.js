@@ -6,6 +6,8 @@ import "./styles.css";
 import "./phone.css";
 import "./touch.css";
 import { resetViewScroll } from "./view-scroll.js";
+import { swapView } from "./view-swap.js";
+import { prefetchViews } from "./view-prefetch.js";
 import { paintPhoneTabs } from "./phone-tabs.js";
 import { maybeWelcome } from "./welcome-entry.js";
 import { oauthErrorFromUrl } from "./oauth-errors.js";
@@ -569,10 +571,7 @@ function switchView(name, { fromUrl = false } = {}) {
   });
   paintPhoneTabs(name, appState.replaySection);
   syncPageTitle();
-  resetViewScroll();
-  document.querySelectorAll(".view").forEach((view) => {
-    view.classList.toggle("is-active", view.id === `view-${name}`);
-  });
+  swapView(document.querySelectorAll(".view"), `view-${name}`, { animate: !bootHeld, onSwap: resetViewScroll });
   if (!fromUrl) syncWorkspaceUrl({ push: true });
   if (name === "replay") setReplaySection(appState.replaySection, { syncUrl: false });
   if (name === "analyze") {
@@ -2037,6 +2036,7 @@ async function init() {
   // the hold can go and the real view shows. Drop it in its own frame so the
   // paint above and the reveal never land in the same one.
   releaseBootView();
+  prefetchViews();
   // A share URL opens the read-only viewer last, so it lands on top of whatever
   // workspace state loaded — and works for signed-out visitors too.
   await sharedViewer.maybeOpenSharedView();

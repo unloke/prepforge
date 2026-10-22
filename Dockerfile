@@ -18,11 +18,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY vite.config.js ./
-COPY scripts/sync-stockfish.mjs scripts/sync-ort.mjs ./scripts/
+COPY scripts/sync-stockfish.mjs scripts/sync-ort.mjs scripts/precompress.mjs ./scripts/
 COPY web-src ./web-src
 # sync-engine writes the Stockfish wasm from node_modules; stripping it here keeps
 # the ~99 MB big net out of the copy — the image gets it from the verified fetch
-# below instead, so it never travels twice.
+# below instead, so it never travels twice. The build's brotli twins (*.br, from
+# scripts/precompress.mjs) stay: the fetched wasm is sha256-pinned to the same bytes.
 RUN npm run build \
     && rm -f src/prepforge_chess/web/static/engine/*/stockfish.wasm
 
