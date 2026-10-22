@@ -387,6 +387,8 @@ export async function reloadOpenBuildTree() {
     const selection = appState.buildCurrentNodeId;
     const kept = payload.nodes.some((node) => node.id === selection);
     await hooks.build.session.hydrateBuild(payload, kept ? selection : null);
+    // A reload after a role change: the banner and Copy follow the new role.
+    hooks.build.updateBuildReadOnlyUi?.(payload);
     return true;
   } catch (_) {
     return false;
