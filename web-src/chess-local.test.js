@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, isStartFen } from "./chess-local.js";
+import { localBoardInfo, localBoardAfterMove, localGameOver, localSanLine, pvSan, isStartFen } from "./chess-local.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -83,6 +83,37 @@ describe("localSanLine", () => {
   it("stops at the first illegal move and survives a bad FEN", () => {
     expect(localSanLine(START, ["e2e4", "e2e4", "g1f3"])).toEqual(["e4"]);
     expect(localSanLine("not a fen", ["e2e4"])).toEqual([]);
+  });
+});
+
+describe("pvSan", () => {
+  it("converts a provider line once and returns the same array on a second read", () => {
+    const pv = { pv_uci: ["e2e4", "e7e5", "g1f3"] };
+    const first = pvSan(START, pv);
+    expect(first).toEqual(["e4", "e5", "Nf3"]);
+    // A memo hit is the same instance: the widget's per-frame repaints convert nothing.
+    expect(pvSan(START, pv)).toBe(first);
+  });
+
+  it("never pairs a line with the wrong FEN: a memo for another position is not reused", () => {
+    const pv = { pv_uci: ["e2e4"] };
+    expect(pvSan(START, pv)).toEqual(["e4"]);
+    // Same move array, another position where that move is illegal: the memo made for
+    // the start position must not answer for this one.
+    const afterE4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    expect(pvSan(afterE4, pv)).toEqual([]);
+    expect(pvSan(afterE4, pv)).not.toBe(pvSan(START, pv));
+  });
+
+  it("uses SAN a line already carries (a pass result, a saved analysis) as it is", () => {
+    const ready = ["e4"];
+    expect(pvSan(START, { pv_uci: ["e2e4"], pv_san: ready })).toBe(ready);
+  });
+
+  it("accepts a bare UCI array and answers [] for an empty or missing line", () => {
+    expect(pvSan(START, ["e2e4", "e7e5"])).toEqual(["e4", "e5"]);
+    expect(pvSan(START, { pv_uci: [] })).toEqual([]);
+    expect(pvSan(START, null)).toEqual([]);
   });
 });
 
