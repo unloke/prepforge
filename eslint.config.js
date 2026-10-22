@@ -53,7 +53,7 @@ const OVER_CEILING = [
   ["web-src/board/board-controller.js", 621],
   ["web-src/coach/brilliant-assess.test.js", 667],
   ["web-src/coach/why/facts.js", 816],
-  ["web-src/controllers/account.js", 680],
+  ["web-src/controllers/account.js", 693],
   ["web-src/controllers/analyze-session.js", 1302],
   ["web-src/controllers/build-session.js", 1440],
   ["web-src/controllers/sync.js", 586],

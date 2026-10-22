@@ -2206,7 +2206,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   max-height: var(--study-h);
   overflow: hidden;
 }
-@media (min-width: 861px), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
   #analyze-sidebar {
     height: auto;
     align-self: start;
@@ -3314,7 +3314,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px) {
+@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-build .sidebar { max-height: none; overflow: hidden; }
   .tree-wrap { max-height: 60vh; overscroll-behavior: auto; }
   .dock { flex: none !important; }
@@ -3346,7 +3346,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    state, and the eye read that ground as content that failed to load. Long
    setup content (Practice game's pickers) still caps at the viewport and
    scrolls inside. */
-@media (min-width: 861px), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (min-width: 761px) and (orientation: landscape) and (max-height: 520px) {
   #view-train .train-sidebar { height: auto; align-self: start; }
 }
 #view-train .board-area { position: relative; }
@@ -3560,11 +3560,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Progress */
 .prog-head { display: flex; align-items: center; gap: 8px; }
 .prog-head .spacer { flex: 1; }
-.train-mode-name { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: var(--fs); cursor: pointer; text-decoration: underline transparent; text-underline-offset: 3px; transition: color 150ms ease, text-decoration-color 150ms ease; }
-.train-mode-name:hover, .train-mode-name:focus-visible { color: var(--text); text-decoration-color: currentColor; }
+.train-mode-name { color: var(--muted); font-size: var(--fs); }
 /* Choosing a mode is setup: once a session runs, or its result shows, the tabs
-   leave with the setup card (the card head names the mode). */
-#view-train .train-sidebar:not([data-session-state="setup"]) > .panel-head { display: none; }
+   leave with the setup card and Modes leads back to them. */
+#view-train .train-sidebar:not([data-session-state="setup"]) #train-modes,
+#view-train .train-sidebar[data-session-state="setup"] #train-back { display: none; }
+#view-train .train-back { gap: 4px; padding-left: 4px; }
+#view-train .train-back .bi { display: block; }
 /* Setup-only entries leave too, and a live Practice game is still `setup` for
    the panel (the tabs stay up), so that one is read from the game itself: Lucky
    is disabled exactly while a game is active, which is when History must be
@@ -3733,7 +3735,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    under the session card. */
 #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px) {
+@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
 }
@@ -5026,8 +5028,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    phone on its side, 761-860 x ≤520): stacked there, the board shrank to 55vh
    (about 210px at 844x390) and the panel started under the fold. It keeps the
    two columns instead, the board sized by the height term of --board-size.
-   The same split is on the other ≤860 / ≥861 study rules. */
-@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px) {
+   A portrait tablet up to 1100px wide (narrower than 5:6) stacks too: beside
+   a 360px panel its board was 436px at 900x1100.
+   The same split is on the other stacked / wide study rules. */
+@media (max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   /* Stacked: board over sidebar. Drop the one-screen fit and let the page scroll
      normally, because a fixed height here would crush the board on a phone. Two
      columns hold down to 860px (see .study --study-panel-min), so this only
@@ -5057,6 +5061,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .board-stack {
     max-width: min(55vh, 560px);
     margin: 0 auto;
+  }
+  /* A portrait tablet has the height to spare: the board takes the width up
+     to 58% of the screen (Train's Start still above the fold at 768x1024),
+     and the bar and panel line up under it. */
+  @media (min-width: 761px) {
+    .study { --stack-w: min(100%, 58vh); }
+    .board-area,
+    .study > .sidebar { width: var(--stack-w); justify-self: center; }
+    .board-stack { max-width: none; }
   }
 
   .sidebar {

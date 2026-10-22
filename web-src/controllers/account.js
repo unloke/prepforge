@@ -79,6 +79,8 @@ export function createAccountController({
   // work could NOT be saved ({ pending }). Drafts are always kept locally under
   // this owner's key — never sent as another account.
   beforeSignOut = null,
+  // An expired session cannot flush: this only writes the owner's outbox.
+  beforeSessionEnd = null,
   onOwnerChanged = () => {},
 }) {
   function getStoredLichessUsername() {
@@ -221,7 +223,25 @@ export function createAccountController({
       setStatus(message, { severity: "warning" });
       return;
     }
-    openAuthModal("login", { notice: message });
+    openAuthModal("login", { notice: message, onDismiss: appState.signedIn ? endExpiredSession : null });
+  }
+
+  // The user closed the "session has ended" sign-in. Once the server confirms
+  // it and the pending work is in the durable outbox, reload into the same
+  // signed-out shell a sign-out shows. Unkept work keeps the page.
+  async function endExpiredSession() {
+    const status = await api("/api/auth/me").then(() => 200, (error) => error?.status);
+    if (status !== 401) return;
+    const kept = await Promise.resolve(beforeSessionEnd?.()).then((ok) => ok !== false, () => false);
+    if (!kept) {
+      setStatus("Session ended. Unsaved changes could not be kept on this device; sign in to save them.", { severity: "error" });
+      return;
+    }
+    appState.signedIn = false;
+    appState.accountUserId = null;
+    appState.ownerGeneration = (appState.ownerGeneration || 0) + 1;
+    onOwnerChanged();
+    onReload();
   }
 
   // The sign-in / create-account modal. Google (when configured) is the primary
@@ -236,7 +256,7 @@ export function createAccountController({
     reset: { title: "Choose a new password", submit: "Set password" },
   };
 
-  function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null } = {}) {
+  function openAuthModal(mode = "login", { resetToken = null, notice = "", pendingAction = null, pendingData = null, onDismiss = null } = {}) {
     const existing = document.querySelector(".modal-overlay.auth-overlay");
     if (existing) {
       // The modal registers a document-level keydown listener on open, so a bare
@@ -359,6 +379,7 @@ export function createAccountController({
         clearPendingAction();
         authDismissedAt = Date.now();
         if (opener?.isConnected && opener !== document.body && opener.getClientRects?.().length) opener.focus();
+        if (onDismiss) void onDismiss();
       }
       // Abandoning a reset (Escape, overlay click, palette close) must scrub the
       // token from the URL too, or it stays bookmarkable/shareable in history.
