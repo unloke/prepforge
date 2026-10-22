@@ -203,6 +203,8 @@ class TrainingProgress:
 class TrainingSession:
     id: str
     repertoire_id: str
+    # Whose session: the owner, or anyone the repertoire is shared with.
+    owner_user_id: str
     mode: TrainingMode
     line_order: List[str]
     current_index: int = 0

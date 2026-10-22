@@ -1,9 +1,11 @@
 """Smart + rehearsal Train endpoints — the spaced-repetition trainer.
 
 ``TrainingService`` walks the stored repertoire tree with python-chess (move legality
-only); no Stockfish/Maia runs server-side. Ownership: ``/start`` gates the
-repertoire through ``_owned_repertoire``; the session-keyed endpoints resolve
-the session to its repertoire and reject another owner's session.
+only); no Stockfish/Maia runs server-side. Anyone who can read a repertoire (its
+owner, or a team or person it is shared with at any role) trains it with their own
+progress and sessions: ``_trainable_repertoire`` gates the starts, and the
+session-keyed endpoints accept only the caller's own session on a repertoire they
+can still read. The owner's progress is never read or written for anyone else.
 """
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from prepforge_chess.api.deps import current_owner, get_repository
-from prepforge_chess.api.routers.workspace import _owned_repertoire
+from prepforge_chess.api.routers.workspace import _owned_repertoire, _repertoire_access
 from prepforge_chess.core.chess_core import ChessCore
 from prepforge_chess.core.models import (
     Repertoire,
@@ -53,18 +55,25 @@ def _mode_or_400(raw: str | None) -> TrainingMode:
         ) from exc
 
 
+def _trainable_repertoire(repo: WorkspaceRepository, repertoire_id: str, user: str) -> dict[str, Any]:
+    """Train gate: any role that can read the repertoire may drill it (404 without
+    access). Progress and sessions are the caller's own, so a grant's role only
+    decides what they may do to the tree, never whether they may practise it."""
+    return _repertoire_access(repo, repertoire_id, user, "view")
+
+
 def _owned_session(
     repo: WorkspaceRepository, session_id: str, owner: str
 ) -> TrainingSession:
-    """Owner gate for session-keyed endpoints. Resolves the session to its repertoire
-    and 404s when that repertoire belongs to a different user."""
+    """Gate for session-keyed endpoints: the caller's own session, on a repertoire
+    they can still read (a revoked share ends its sessions). 404 otherwise."""
     session = repo.load_training_session(session_id)
-    if session is None:
+    if session is None or session.owner_user_id != owner:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
-    meta = repo.repertoire_meta(session.repertoire_id)
-    if meta is None or meta["owner_user_id"] != owner:
+    _, role = repo.access_role(session.repertoire_id, owner)
+    if role is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="training session not found"
         )
@@ -84,11 +93,11 @@ def start(
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
-    """Begin (or resume) a trainer session over the owner's repertoire and return the
-    first prompt plus the shuffled line plan."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    """Begin (or resume) the caller's trainer session over a repertoire they can read
+    and return the first prompt plus the shuffled line plan."""
+    _trainable_repertoire(repo, body.repertoire_id, owner)
     mode = _mode_or_400(body.mode)
-    # The ownership gate above permits loading the repertoire by id here.
+    # The access gate above permits loading the repertoire by id here.
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
@@ -213,7 +222,7 @@ def _touch_streak(
 
 
 def _smart_summary_payload(
-    repo: WorkspaceRepository, repertoire: Repertoire, owner: str
+    repo: WorkspaceRepository, repertoire: Repertoire, owner: str, *, owned: bool = True
 ) -> dict[str, Any]:
     """Repertoire health + tomorrow's due forecast — the smart session's
     bookends. Shipped with ``/smart/start`` (the before snapshot) and from
@@ -224,8 +233,10 @@ def _smart_summary_payload(
     health = compute_health(
         repertoire.root_node, repertoire.color, progress_by_id
     ).to_dict()
-    # Keep the dashboard's cached badge in step with post-session mastery gains.
-    repo.set_repertoire_health(repertoire.id, health)
+    # Keep the owner's cached Library badge in step with their mastery gains. The
+    # badge is the owner's alone: a shared repertoire's trainee never writes it.
+    if owned:
+        repo.set_repertoire_health(repertoire.id, health)
     return {
         "health": health,
         "due_tomorrow": due_forecast(
@@ -263,6 +274,7 @@ def smart_start(
     plus the first card prompt. ``mixed=True`` builds one interleaved queue
     over ALL of the caller's active repertoires."""
     service = SmartTrainingService(repo, owner)
+    owned = True  # a mixed queue draws only on the caller's own repertoires
     try:
         if body.mixed:
             if body.target_node_ids:
@@ -280,7 +292,7 @@ def smart_start(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="repertoire_id is required unless mixed=true",
                 )
-            _owned_repertoire(repo, body.repertoire_id, owner)
+            owned = _trainable_repertoire(repo, body.repertoire_id, owner)["role"] == "owner"
             session = service.start_or_resume(
                 body.repertoire_id,
                 target_node_ids=body.target_node_ids,
@@ -306,7 +318,7 @@ def smart_start(
     summary = (
         _mixed_summary_payload(repo, service.active_repertoires(owner), owner)
         if body.mixed
-        else _smart_summary_payload(repo, repertoire, owner)
+        else _smart_summary_payload(repo, repertoire, owner, owned=owned)
     )
     return {
         "repertoire_id": repertoire.id,
@@ -365,11 +377,11 @@ def smart_summary(
             detail="repertoire_id is required unless mixed=true",
         )
     else:
-        _owned_repertoire(repo, repertoire_id, owner)
+        owned = _trainable_repertoire(repo, repertoire_id, owner)["role"] == "owner"
         repertoire = repo.load_repertoire(repertoire_id)
         if repertoire is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-        payload = _smart_summary_payload(repo, repertoire, owner)
+        payload = _smart_summary_payload(repo, repertoire, owner, owned=owned)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(
         repo.get_user_setting(owner, streak.STREAK_KEY), day

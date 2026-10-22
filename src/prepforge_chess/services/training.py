@@ -68,6 +68,7 @@ def _utc_now() -> datetime:
 def create_training_session(
     *,
     repertoire_id: str,
+    owner_user_id: str,
     line_ids: Iterable[str],
     mode: TrainingMode,
     seed: Optional[int] = None,
@@ -80,6 +81,7 @@ def create_training_session(
     return TrainingSession(
         id=str(uuid.uuid4()),
         repertoire_id=repertoire_id,
+        owner_user_id=owner_user_id,
         mode=mode,
         line_order=line_order,
         current_index=0,
@@ -100,7 +102,7 @@ class TrainingService:
         seed: Optional[int] = None,
         fresh: bool = False,
     ) -> TrainingSession:
-        existing = self.repository.load_latest_training_session(repertoire_id, mode)
+        existing = self.repository.load_latest_training_session(repertoire_id, self._owner_or_raise(), mode)
         if existing is not None:
             repertoire = self._load_repertoire_or_raise(repertoire_id)
             intact = bool(existing.line_order) and all(
@@ -132,6 +134,7 @@ class TrainingService:
         line_ids = [line.line_node_id for line in self.training_lines(repertoire, mode)]
         session = create_training_session(
             repertoire_id=repertoire_id,
+            owner_user_id=self._owner_or_raise(),
             line_ids=line_ids,
             mode=mode,
             seed=seed,

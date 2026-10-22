@@ -146,15 +146,11 @@ class TrainingRepository(SettingsRepository):
                 }
 
     def iter_owner_training_sessions(self, owner_user_id: str):
-        """Session summaries across the owner's repertoires (account export, F-05)."""
+        """The user's session summaries, on their own and shared repertoires (account export, F-05)."""
         with self.engine.connect() as conn:
             rows = conn.execute(
                 select(t.training_sessions)
-                .join(
-                    t.repertoires,
-                    t.repertoires.c.id == t.training_sessions.c.repertoire_id,
-                )
-                .where(t.repertoires.c.owner_user_id == owner_user_id)
+                .where(t.training_sessions.c.owner_user_id == owner_user_id)
              .execution_options(yield_per=100)).mappings()
             for row in rows:
                 yield {
@@ -197,6 +193,7 @@ class TrainingRepository(SettingsRepository):
         values = {
                 "id": session.id,
                 "repertoire_id": session.repertoire_id,
+                "owner_user_id": session.owner_user_id,
                 "mode": session.mode.value,
                 "line_order_json": _json_dump(session.line_order),
                 "current_index": session.current_index,
@@ -209,7 +206,7 @@ class TrainingRepository(SettingsRepository):
                 "state_version": 1,
         }
         stmt = _insert(conn, t.training_sessions).values(values)
-        updates = {key: stmt.excluded[key] for key in values if key not in {"id", "state_version"}}
+        updates = {key: stmt.excluded[key] for key in values if key not in {"id", "owner_user_id", "state_version"}}
         updates["state_version"] = t.training_sessions.c.state_version + 1
         stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=updates)
         session.state_version = conn.execute(
@@ -226,11 +223,15 @@ class TrainingRepository(SettingsRepository):
     def load_latest_training_session(
         self,
         repertoire_id: str,
+        owner_user_id: str,
         mode: Optional[TrainingMode] = None,
     ) -> Optional[TrainingSession]:
         stmt = (
             select(t.training_sessions)
-            .where(t.training_sessions.c.repertoire_id == repertoire_id)
+            .where(
+                t.training_sessions.c.repertoire_id == repertoire_id,
+                t.training_sessions.c.owner_user_id == owner_user_id,
+            )
             .order_by(t.training_sessions.c.updated_at.desc())
             .limit(1)
         )
@@ -404,6 +405,7 @@ class TrainingRepository(SettingsRepository):
         return TrainingSession(
             id=row["id"],
             repertoire_id=row["repertoire_id"],
+            owner_user_id=row["owner_user_id"],
             mode=TrainingMode(row["mode"]),
             line_order=_json_load(row["line_order_json"], []),
             current_index=row["current_index"],

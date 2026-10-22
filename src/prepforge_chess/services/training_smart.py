@@ -179,7 +179,7 @@ class SmartTrainingService:
         self.resumed = False
         repertoire = self._load_repertoire_or_raise(repertoire_id)
         existing = self.repository.load_latest_training_session(
-            repertoire_id, TrainingMode.SMART
+            repertoire_id, self._owner_or_raise(), TrainingMode.SMART
         )
         if existing is not None and not fresh and not target_node_ids and self._resumable(existing, repertoire):
             self.resumed = True
@@ -209,6 +209,7 @@ class SmartTrainingService:
             session = TrainingSession(
                 id=str(uuid.uuid4()),
                 repertoire_id=repertoire_id,
+                owner_user_id=self._owner_or_raise(),
                 mode=TrainingMode.SMART,
                 line_order=line_order,
                 current_index=0,
@@ -263,7 +264,7 @@ class SmartTrainingService:
             )
         anchor = min(reps, key=lambda rep: rep.id)
         existing = self.repository.load_latest_training_session(
-            anchor.id, TrainingMode.SMART
+            anchor.id, self._owner_or_raise(), TrainingMode.SMART
         )
         if existing is not None and not fresh and self._resumable_mixed(existing, reps):
             self.resumed = True
@@ -291,6 +292,7 @@ class SmartTrainingService:
             session = TrainingSession(
                 id=str(uuid.uuid4()),
                 repertoire_id=anchor.id,
+                owner_user_id=self._owner_or_raise(),
                 mode=TrainingMode.SMART,
                 line_order=line_order,
                 current_index=0,
@@ -370,7 +372,7 @@ class SmartTrainingService:
         if not reps:
             return {**card_counts([]), "resumed": 0}
         anchor = reps[0] if len(reps) == 1 else min(reps, key=lambda rep: rep.id)
-        existing = self.repository.load_latest_training_session(anchor.id, TrainingMode.SMART)
+        existing = self.repository.load_latest_training_session(anchor.id, self._owner_or_raise(), TrainingMode.SMART)
         resumable = existing is not None and (
             self._resumable(existing, anchor) if len(reps) == 1
             else self._resumable_mixed(existing, reps)
@@ -416,9 +418,9 @@ class SmartTrainingService:
         *, conn=None,
     ) -> Optional[Repertoire]:
         """Resolve the repertoire a card's targets live in. Foreign-repertoire
-        cards (mixed sessions) are honoured only when that repertoire belongs
-        to the SAME owner as the session's anchor — a tampered synced queue
-        must never read or write another user's data."""
+        cards (mixed sessions) are honoured only when the session's own user
+        owns that repertoire — a tampered synced queue must never read or
+        write another user's data."""
         rep_id = card.repertoire_id
         if rep_id in cache:
             return cache[rep_id]
@@ -426,13 +428,8 @@ class SmartTrainingService:
         if rep_id == session.repertoire_id:
             rep = self.repertoire(rep_id, conn=conn)
         else:
-            anchor_meta = self.repository.repertoire_meta(session.repertoire_id, conn=conn)
             meta = self.repository.repertoire_meta(rep_id, conn=conn)
-            if (
-                anchor_meta is not None
-                and meta is not None
-                and meta["owner_user_id"] == anchor_meta["owner_user_id"]
-            ):
+            if meta is not None and meta["owner_user_id"] == session.owner_user_id:
                 # Only cache the tree globally once ownership is cleared; a
                 # rejected foreign rep stays out of the per-request rep cache and
                 # is memoised as None in the caller's local ``cache`` instead.

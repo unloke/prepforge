@@ -2,8 +2,8 @@
 
 The matrix under test: owner > edit > copy > view > nobody. Reads need any role,
 copies (fork / export) need copy, tree writes need edit and are rebased like the
-owner's, and sharing / rename / delete / enable / Train stay
-owner-only. A user's role is the highest of their own grant and their teams'.
+owner's, and sharing / rename / delete / enable stay owner-only (Train on a
+shared repertoire: test_shared_training.py). A user's role is the highest of their own grant and their teams'.
 The public link grants view or copy, never edit.
 """
 from __future__ import annotations
@@ -155,7 +155,6 @@ def test_owner_only_actions(world):
         ("/api/repertoires/share-link/revoke", {"repertoire_id": rep}),
         ("/api/repertoires/access", {"repertoire_id": rep, "role": "edit", "user_id": ids["view"]}),
         ("/api/repertoires/access/revoke", {"repertoire_id": rep, "user_id": ids["copy"]}),
-        ("/api/train/start", {"repertoire_id": rep}),
     ]
     for path, body in owner_only:
         assert _post(c["edit"], path, body).status_code == 403, path

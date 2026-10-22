@@ -20,6 +20,10 @@ def _upgrade(path, revision):
     assert result.returncode == 0, result.stderr
 
 
+# Sessions became per-user scratch state (e9c1d3f5a7b9): their rows are dropped.
+CLEARED_BY_LATER_MIGRATIONS = {"training_sessions", "train_attempt_receipts"}
+
+
 @pytest.mark.parametrize("seeded", [False, True])
 def test_datetime_upgrade(tmp_path, seeded):
     path = tmp_path / "timestamps.sqlite3"
@@ -81,7 +85,9 @@ def test_datetime_upgrade(tmp_path, seeded):
         for name in values:
             columns = inspect(conn).get_columns(name)
             assert all(str(c["type"]) == "DATETIME" for c in columns if c["name"].endswith("_at"))
-            if seeded:
+            if seeded and name in CLEARED_BY_LATER_MIGRATIONS:
+                assert conn.execute(select(t.metadata.tables[name])).first() is None
+            elif seeded:
                 row = conn.execute(select(t.metadata.tables[name])).mappings().one()
                 for column, value in row.items():
                     if column.endswith("_at"):

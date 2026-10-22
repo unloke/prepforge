@@ -76,7 +76,7 @@ _DENIED = {
 
 
 def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
-    """Owner-only actions: rename, delete, enable/disable, sharing, and Train.
+    """Owner-only actions: rename, delete, enable/disable, sharing.
     Tags the writes this request makes with their author for the op log."""
     meta = _repertoire_access(repo, repertoire_id, owner, "owner")
     repo.op_actor = owner
@@ -144,8 +144,8 @@ def dashboard(
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
-    """Owner-scoped counters for the home screen. Training counters reach the owner
-    through repertoire ownership (``training_sessions`` has no owner column).
+    """Owner-scoped counters for the home screen. Sessions count the caller's own,
+    shared repertoires included.
     ``local_date`` is the client's calendar day, used only to phrase the daily
     streak (is it alive? trained today?) in the player's timezone."""
     now = datetime.now(timezone.utc)
@@ -164,17 +164,16 @@ def dashboard(
         )))
         sessions = conn.execute(
             select(func.count())
-            .select_from(t.training_sessions.join(reps, reps.c.id == t.training_sessions.c.repertoire_id))
-            .where(reps.c.owner_user_id == owner)
+            .select_from(t.training_sessions)
+            .where(t.training_sessions.c.owner_user_id == owner)
         ).scalar_one()
         tp = t.training_progress
         # Moves reviewed in the last 7 days: one progress row per move, so a
         # move reviewed five times counts once.
         reviews_7d = conn.execute(
             select(func.count())
-            .select_from(tp.join(reps, reps.c.id == tp.c.repertoire_id))
+            .select_from(tp)
             .where(
-                reps.c.owner_user_id == owner,
                 tp.c.owner_user_id == owner,
                 tp.c.last_reviewed_at >= now - timedelta(days=7),
             )
