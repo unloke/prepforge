@@ -3760,21 +3760,30 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-minisquare svg, .scout-minisquare .piece { width: 80%; height: 80%; }
 
 /* Move links (move-text.js / line-preview.js): a move inside text that peeks
-   at its position. A .move-ref is its own control; a .move-peek-ref sits in a
-   control that already is one and only peeks on hover. */
-.move-ref {
+   at its position. The marker is the word's own underline — no padding, no
+   box, no border — so a linked move is exactly as wide and as tall as the word
+   it is, and a line never grows because a move in it is a link. A .move-ref is
+   its own control and says so at rest; a .move-peek-ref sits inside a control
+   that already is one (a Scout line row, a game row) and answers the pointer.
+   Hover, press and focus raise the underline's contrast; nothing moves. */
+.move-ref,
+.move-peek-ref {
   cursor: pointer;
-  border-radius: 3px;
-  text-decoration: underline dotted var(--line-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
+  text-decoration: underline;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.18em;
+  text-decoration-color: transparent;
   overflow-wrap: normal;
 }
-.move-ref:hover, .move-ref[aria-describedby] { background: var(--surface-3); text-decoration-color: var(--accent); }
+.move-ref { text-decoration-color: color-mix(in srgb, currentColor 26%, transparent); }
+.move-ref:hover,
+.move-peek-ref:hover,
+.move-ref[aria-describedby],
+.move-peek-ref[aria-describedby] { text-decoration-color: currentColor; }
+.move-ref:active,
+.move-peek-ref:active { text-decoration-color: currentColor; text-decoration-thickness: 0.16em; }
 .move-ref:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.move-peek-ref { border-radius: 3px; }
-.move-peek-ref:hover, .move-peek-ref[aria-describedby] { background: var(--surface-3); }
-.move-ref-num, .move-peek-ref-num { color: var(--muted); margin-right: 1px; }
+.move-ref-num, .move-peek-ref-num { color: var(--muted); }
 
 .move-peek {
   position: fixed;
