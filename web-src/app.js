@@ -952,20 +952,11 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       appState.buildPending = appState.buildPending.filter((m) => !doomedAdds.includes(m));
       appState.buildPendingDeletes = appState.buildPendingDeletes.filter((entry) => !doomedDeletes.includes(entry));
       void persistOutbox({ build: doomedAdds.map(buildAddId), deletes: doomedDeletes.map(buildDeleteId) });
-      if (appState.build && String(appState.build.repertoire_id) === repKey) {
-        appState.buildUndoDeletes = new Set();
-        appState.buildUndoCommitByMove = new Map();
-        appState.buildSyncState = "saved";
-        appState.build = null;
-        appState.buildNodeById = new Map();
-        appState.buildCurrentNodeId = null;
-        renderBuilderTree();
-        renderBuildSync();
-        document.getElementById("build-board-label").textContent = "No repertoire";
-      }
       if (String(appState.trainingRepertoireId) === repKey) {
         appState.trainingRepertoireId = null;
       }
+      const wasOpen = !!appState.build && String(appState.build.repertoire_id) === repKey;
+      if (wasOpen) closeOpenBuild();
       await refreshDashboardRepertoires();
       showUndoToast({
         title: "Repertoire deleted",
@@ -974,6 +965,8 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
           appState.pendingRepDeletes.delete(repKey);
           setStatus("Delete undone");
           refreshDashboardRepertoires();
+          // Put it back where it was: the Repertoire page still has nothing open.
+          if (wasOpen && !appState.build && appState.currentView === "build") void editRepertoire(repertoireId);
         },
         onCommit: () => {
           // keepalive so a commit forced by beforeunload still reaches the server.
@@ -1006,6 +999,29 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
   } catch (error) {
     setStatusError(error.message);
   }
+}
+
+// The open repertoire went away (deleted): Build shows the empty start position,
+// not the deleted tree's name, board and legal moves under "No repertoire".
+function closeOpenBuild() {
+  appState.buildUndoDeletes = new Set();
+  appState.buildUndoCommitByMove = new Map();
+  appState.buildSyncState = "saved";
+  appState.build = null;
+  appState.buildNodeById = new Map();
+  appState.buildCurrentNodeId = null;
+  if (boards.build) {
+    boards.build.setPosition({ fen: START_FEN, legalMoves: localBoardInfo(START_FEN).legal_moves, lastMove: null });
+    boards.build.setAnnotations([], []);
+  }
+  document.getElementById("build-board-label").textContent = "No repertoire";
+  renderBuildRepHeader();
+  renderBuilderTree();
+  renderBuildSync();
+  syncViewHeads();
+  syncWorkspaceUrl();
+  if (engineWidget) engineWidget.onBoardChanged();
+  scheduleExplorerRefresh();
 }
 
 // F-03: "Retry save" affordance for a finished-but-unsaved analysis.
