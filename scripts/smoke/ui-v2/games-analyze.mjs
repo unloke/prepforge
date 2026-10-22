@@ -49,9 +49,10 @@ export async function checkGamesAnalyze(page, games, check, shot) {
   });
   const loaded = await page.evaluate(() => {
     const graph = document.getElementById('analysis-eval-graph');
-    // The chart is 64px tall; a 1px sub-pixel layout (63.99998) is still the
-    // chart, so round before comparing instead of failing on the fraction.
-    return { visible: !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= 64,
+    // The chart is 64px tall, 44px in the phone's evaluation band; a 1px
+    // sub-pixel layout (63.99998) is still the chart, so round before comparing.
+    const minHeight = window.innerWidth <= 760 ? 44 : 64;
+    return { visible: !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= minHeight,
       areas: document.querySelectorAll('#eval-chart .eval-area').length,
       grades: document.querySelectorAll('#analysis-moves .mtree-glyph').length,
       pgn: document.getElementById('pgn-input').value };
