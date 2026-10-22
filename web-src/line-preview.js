@@ -134,23 +134,55 @@ function ensureHost() {
   return host;
 }
 
+// The block the token reads in (a coach sentence, a line title, a table cell).
+// The peek goes beside THAT, not beside the word: a popover centred on a word
+// covers the rest of its own sentence.
+const BLOCK = "p, li, h1, h2, h3, h4, td, th, .line-title, .scout-line-moves, .mtree-line";
+const GAP = 8;
+const EDGE = 8;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
+
 function place(target) {
   const r = target.getBoundingClientRect();
+  const bottom = Number.isFinite(r.bottom) ? r.bottom : r.top + (r.height || 0);
   const w = host.offsetWidth;
   const h = host.offsetHeight;
   const vw = document.documentElement.clientWidth;
   const vh = document.documentElement.clientHeight;
-  const below = r.bottom + 6 + h <= vh - 8 || r.top - 6 - h < 8;
-  const top = below ? Math.min(r.bottom + 6, vh - h - 8) : r.top - 6 - h;
-  const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, vw - w - 8));
-  host.style.transform = `translate(${Math.round(left)}px, ${Math.round(Math.max(8, top))}px)`;
+  const put = (x, y) => {
+    host.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  };
+  // A surface the peek must never cover (the eval chart it is reading): it goes
+  // outside that box, above or below, at the end away from the pointer.
+  const avoid = peek?.avoid?.isConnected ? peek.avoid.getBoundingClientRect() : null;
+  if (avoid) {
+    const above = avoid.top - GAP - EDGE;
+    const below = vh - avoid.bottom - GAP - EDGE;
+    const y = above >= h || above > below ? avoid.top - GAP - h : avoid.bottom + GAP;
+    const farRight = r.left + (r.width || 0) / 2 >= (avoid.left + avoid.right) / 2;
+    const x = farRight ? avoid.right - w : avoid.left;
+    put(clamp(x, EDGE, Math.max(EDGE, vw - w - EDGE)), clamp(y, EDGE, Math.max(EDGE, vh - h - EDGE)));
+    return;
+  }
+  // Level with the word it explains, kept off the screen edges.
+  const top = clamp(r.top + (r.height || 0) / 2 - h / 2, EDGE, vh - h - EDGE);
+  const block = target.closest?.(BLOCK) || target;
+  const b = block === target ? r : block.getBoundingClientRect();
+  if (vw - b.right - GAP - EDGE >= w) return put(b.right + GAP, top);
+  if (b.left - GAP - EDGE >= w) return put(b.left - GAP - w, top);
+  // No gutter beside the text (full-width prose, a phone): above the word when
+  // there is more room there, so the line being read and the one after it stay.
+  const above = r.top - GAP - EDGE;
+  const below = vh - bottom - GAP - EDGE;
+  const y = above >= h || above > below ? r.top - GAP - h : bottom + GAP;
+  put(clamp(r.left + (r.width || 0) / 2 - w / 2, EDGE, Math.max(EDGE, vw - w - EDGE)), clamp(y, EDGE, Math.max(EDGE, vh - h - EDGE)));
 }
 
 function restoreTitle() {
   if (peek?.titled) peek.titled.setAttribute("title", peek.title);
 }
 
-function showPeek(target, { pinned = false, hover = false } = {}) {
+function showPeek(target, { pinned = false, hover = false, avoid = null } = {}) {
   const pos = peekPosition(target);
   if (!pos || !pos.fen) {
     hidePeek();
@@ -166,6 +198,7 @@ function showPeek(target, { pinned = false, hover = false } = {}) {
     titled?.removeAttribute("title");
     peek = { target, titled, title };
   }
+  peek.avoid = avoid;
   peek.pinned = pinned;
   peek.hover = hover && !pinned;
   const canApply = pinned && target.classList.contains("move-ref") && !!options.apply(target, true);
@@ -183,9 +216,12 @@ function showPeek(target, { pinned = false, hover = false } = {}) {
   place(target);
 }
 
-/** Peek at `target` from code (a chart's hover readout, which takes no pointer itself). */
-export function peekAt(target) {
-  if (target?.isConnected && !peek?.pinned) showPeek(target, { hover: true });
+/**
+ * Peek at `target` from code (a chart's hover readout, which takes no pointer
+ * itself). `avoid` is a surface the peek must not cover (the chart being read).
+ */
+export function peekAt(target, { avoid = null } = {}) {
+  if (target?.isConnected && !peek?.pinned) showPeek(target, { hover: true, avoid });
 }
 
 export function hidePeek() {
