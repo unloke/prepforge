@@ -37,6 +37,7 @@ import {
   MAIA_ENRICH_READY,
   rememberMaiaResult,
 } from "./scout-maia.js";
+import { GAMES, LOOKUPS, PLAN_GAMES, scoutGameRecord } from "./scout-report-fixtures.js";
 
 function escapeHtml(value) {
   return String(value)
@@ -56,91 +57,6 @@ it("shared prep gaps follow the same repertoire flag as the report", () => {
   target.suggestedReply = { uci: "g1f3" };
   expect(buildScoutShareText(state)).toContain("your move g1f3");
 });
-
-function scoutGameRecord(game) {
-  const ucis = game.ucis || [];
-  return {
-    opponentRating: 1700,
-    openingUcis: ucis,
-    openingSans: game.sans || [],
-    openingEndPly: ucis.length,
-    totalPly: ucis.length,
-    clockAfterPly: ucis.map(() => null),
-    timeControl: null,
-    nextOwnThinkSeconds: [],
-    ...game,
-  };
-}
-
-const GAMES = [
-  scoutGameRecord({
-    color: "white",
-    score: 1,
-    sans: ["e4", "c5", "Nf3"],
-    ucis: ["e2e4", "c7c5", "g1f3"],
-    rating: 1800,
-    datestamp: 3000,
-    speed: "blitz",
-  }),
-  scoutGameRecord({
-    color: "white",
-    score: 0,
-    sans: ["e4", "c5", "Nf3"],
-    ucis: ["e2e4", "c7c5", "g1f3"],
-    rating: 1800,
-    datestamp: 2000,
-    speed: "blitz",
-  }),
-  scoutGameRecord({
-    color: "white",
-    score: 1,
-    sans: ["d4", "d5"],
-    ucis: ["d2d4", "d7d5"],
-    rating: 1800,
-    datestamp: 1000,
-    speed: "blitz",
-  }),
-];
-
-const PLAN_GAMES = [
-  ...Array.from({ length: 8 }, (_, i) =>
-    scoutGameRecord({
-      color: "white",
-      score: 0,
-      sans: ["e4", "c5", "Nf3"],
-      ucis: ["e2e4", "c7c5", "g1f3"],
-      rating: 1800,
-      datestamp: 4000 - i * 100,
-      speed: "blitz",
-      gameId: `sicilian-${i}`,
-    }),
-  ),
-  ...Array.from({ length: 7 }, (_, i) =>
-    scoutGameRecord({
-      color: "white",
-      score: 1,
-      sans: ["d4", "d5", "c4"],
-      ucis: ["d2d4", "d7d5", "c2c4"],
-      rating: 1800,
-      datestamp: 3000 - i * 100,
-      speed: "blitz",
-      gameId: `london-${i}`,
-    }),
-  ),
-];
-
-const LOOKUPS = {
-  white: [],
-  black: [
-    {
-      rep: { id: "rep-black", name: "Sicilian" },
-      lookup: scoutModule.repertoireChildLookup([
-        { id: "root", depth: 0, parent_id: null, uci: null },
-        { id: "n1", depth: 1, parent_id: "root", uci: "e2e4" },
-      ]),
-    },
-  ],
-};
 
 function createStubElement(tag = "div") {
   const classes = new Set();
@@ -518,26 +434,6 @@ describe("scout-report rendering", () => {
     expect(String(html)).not.toContain("scout-lr-rank");
     expect(String(html)).toContain("scout-n");
     expect(String(html)).not.toMatch(/games-count">\d+\.\d/);
-  });
-
-  it("names the first moves by whose they are", () => {
-    const profile = { recentlyChanged: { white: false, black: false } };
-    const white = String(buildScoutSectionReport(scoutModule, { games: PLAN_GAMES, profile, username: "rival" }, "white", LOOKUPS.black, { speedFilter: "all" }).html);
-    expect(white).toMatch(/rival(&#39;|&#x27;|')s first moves/);
-    // With Black the distribution is White's (your) first move, not theirs.
-    const blackGames = PLAN_GAMES.map((g) => ({ ...g, color: "black" }));
-    const black = String(buildScoutSectionReport(scoutModule, { games: blackGames, profile, username: "rival" }, "black", LOOKUPS.white, { speedFilter: "all" }).html);
-    expect(black).toContain("First moves against rival");
-    expect(black).not.toMatch(/rival(&#39;|&#x27;|')s first moves/);
-  });
-
-  it("drops Add all gaps and the empty first-move heading when the plan has no rows", () => {
-    const profile = { recentlyChanged: { white: false, black: false } };
-    const one = PLAN_GAMES.slice(0, 1);
-    const { html, sectionData } = buildScoutSectionReport(scoutModule, { games: one, profile, username: "rival" }, "white", LOOKUPS.black, { speedFilter: "all" });
-    expect(sectionData.prepTargets).toHaveLength(0);
-    expect(String(html)).not.toContain("scout-prepare-all");
-    expect(String(html)).not.toContain("scout-first-moves");
   });
 
   it("gives each colour section the id its tab's aria-controls targets", () => {

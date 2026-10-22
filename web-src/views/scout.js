@@ -1340,15 +1340,7 @@ export function createScoutView(deps) {
     const result = await showInputModal({
       title: "Add line to prep",
       okLabel: "Continue",
-      fields: [
-        {
-          name: "repertoire",
-          label: "Target repertoire",
-          type: "select",
-          default: reps[0]?.id || "__new__",
-          options,
-        },
-      ],
+      fields: [{ name: "repertoire", label: "Target repertoire", type: "select", default: reps[0].id, options }],
     });
     if (!result?.repertoire) return null;
     if (result.repertoire === "__new__") return createNew();

@@ -1420,9 +1420,7 @@ export function buildScoutSectionReport(
   const firstMoves = scoutDisplayDistribution(trie, scoutModule.moveDistribution)
     .map((m) => scoutDistRowHtml(m));
   const refutationGaps = collectActionableRefutationGapActions(refutations);
-  const gapActionsHtml = refutationGaps.length
-    ? renderScoutRefutationGapActions(refutationGaps)
-    : "";
+  const gapActionsHtml = refutationGaps.length ? renderScoutRefutationGapActions(refutationGaps) : "";
 
   const prepRows = prepTargets.map((t, i) => scoutWeaknessRowHtml(t, i, oppColor, baseline));
   const rankedNote = scoutMaiaRankedNote(prepTargets, maiaEnrichState, {
@@ -1442,20 +1440,16 @@ export function buildScoutSectionReport(
           </div>`
     : "";
   const listHead = html`<div class="col-head scout-lines-head" aria-hidden="true"><span>Line (both sides' moves)</span><span>Type · last seen</span><span>Their result</span><span></span><span></span></div>`;
-  const prepPanel = prepRows.length
-    ? html`<div class="scout-game-plan plan">
-          ${planHead}
-          ${firstMovesHtml}
-          ${gapActionsHtml}
-          ${listHead}
+  const planBody = prepRows.length
+    ? html`${listHead}
           <div class="scout-lines scout-ranked-list lines" role="list" data-ui>${prepRows}</div>
-          ${rankedNote}
-        </div>`
-    : html`<div class="scout-game-plan plan">
+          ${rankedNote}`
+    : html`<div class="muted hint">No reachable weak spots in these games</div>`;
+  const prepPanel = html`<div class="scout-game-plan plan">
           ${planHead}
           ${firstMovesHtml}
           ${gapActionsHtml}
-          <div class="muted hint">No reachable weak spots in these games</div>
+          ${planBody}
         </div>`;
 
   const heading = oppColor === "white" ? "With White" : "With Black";
