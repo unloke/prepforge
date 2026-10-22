@@ -1194,8 +1194,9 @@ def test_external_compare_preserves_mastery_health_and_queue(client, monkeypatch
     node = rep["add"]["selected_node_id"]
     now = datetime.now(timezone.utc)
     repo.save_training_progress(rep["repertoire_id"], TrainingProgress(
-        node_id=node, attempts=8, correct_attempts=8, is_mastered=True,
-        spaced_repetition_score=8, last_reviewed_at=now, due_at=now + timedelta(days=5),
+        node_id=node, attempts=8, correct_attempts=8, state=2,
+        stability=30.0,
+        difficulty=5.0, last_reviewed_at=now, due_at=now + timedelta(days=5),
     ), owner_user_id=owner)
     saved = repo.load_training_progress(rep["repertoire_id"], node, owner_user_id=owner)
     params = {"repertoire_id": rep["repertoire_id"]}

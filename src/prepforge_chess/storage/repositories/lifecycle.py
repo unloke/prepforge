@@ -43,6 +43,7 @@ class LifecycleRepository(Repository):
         sessions = select(t.training_sessions.c.id).where(mine)
         steps = (
             ("train_attempt_receipts", t.train_attempt_receipts.c.session_id.in_(sessions)),
+            ("train_reviews", t.train_reviews.c.owner_user_id == owner_user_id),
             ("training_progress", t.training_progress.c.owner_user_id == owner_user_id),
             ("training_sessions", mine),
             ("analysis_results", t.analysis_results.c.game_id.in_(games)),

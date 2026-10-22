@@ -194,9 +194,13 @@ class TrainingProgress:
     attempts: int = 0
     correct_attempts: int = 0
     last_reviewed_at: Optional[datetime] = None
-    spaced_repetition_score: float = 0.0
     due_at: Optional[datetime] = None
-    is_mastered: bool = False
+    # FSRS memory state (services/srs.py); state 0 = never reviewed.
+    state: int = 0
+    step: Optional[int] = None
+    stability: Optional[float] = None
+    difficulty: Optional[float] = None
+    lapses: int = 0
 
 
 @dataclass

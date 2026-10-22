@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from prepforge_chess.core.models import Color, MoveSource, TrainingMode, TrainingProgress
 from prepforge_chess.services.opening_builder import CreateRepertoireRequest, OpeningBuilderService
@@ -95,7 +95,7 @@ def test_wrong_attempt_adds_mistake_and_due_soon():
         seed=1,
     )
     progress = TrainingProgress(node_id="node")
-    now = datetime(2026, 1, 1, 12, 0, 0)
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     updated_session, updated_progress = record_attempt(
         session=session,

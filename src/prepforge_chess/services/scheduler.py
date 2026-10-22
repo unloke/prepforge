@@ -6,7 +6,7 @@ own moves merged into a multi-target card — and carries a ``kind`` saying why
 it was scheduled, so the UI can show the queue's composition and switch new
 cards into teach-then-test mode:
 
-- ``weak``   — answered wrong more often than right; leads the session but is
+- ``weak``   — missed recently and not yet stable again; leads the session but is
                capped at ``WEAK_SHARE`` of it so urgent material never starves
                due/new review (leftover weak tops the session off when the other
                pools run dry).
@@ -40,13 +40,14 @@ from prepforge_chess.services.progress import (
     effective_children,
     node_mastery,
 )
+from prepforge_chess.services.srs import retrievability
 
 CARD_WEAK = "weak"
 CARD_DUE = "due"
 CARD_NEW = "new"
 CARD_POLISH = "polish"
 CARD_KINDS = (
-    {"key": CARD_WEAK, "label": "Weak spot", "title": "Missed more than answered"},
+    {"key": CARD_WEAK, "label": "Weak spot", "title": "Missed recently"},
     {"key": CARD_DUE, "label": "Due review", "title": "Spaced repetition says now"},
     {"key": CARD_NEW, "label": "New move", "title": "Shown once, then tested"},
     {"key": CARD_POLISH, "label": "Polish", "title": "Kept warm with an occasional rep"},
@@ -270,13 +271,9 @@ def build_session_plan(
         else:
             polish.append(cand)
 
-    def recent_score(cand: _Candidate) -> float:
-        """A-01: weak ordering follows the SAME recent-form signal as the
-        mastery classification (spaced-repetition score), not the lifetime
-        ratio — a node recovering from a bad start ranks after one still
-        failing today."""
-        progress = progress_by_id.get(cand.node.id)
-        return progress.spaced_repetition_score if progress is not None else 0.0
+    def recall(cand: _Candidate) -> float:
+        """Weak ordering: the move FSRS thinks is most forgotten leads."""
+        return retrievability(progress_by_id.get(cand.node.id), now=eval_now)
 
     def due_key(cand: _Candidate) -> Tuple[datetime, int]:
         progress = progress_by_id.get(cand.node.id)
@@ -285,7 +282,7 @@ def build_session_plan(
 
     weak.sort(
         key=lambda c: (
-            recent_score(c),
+            recall(c),
             -(progress_by_id[c.node.id].attempts if c.node.id in progress_by_id else 0),
             c.order,
         )

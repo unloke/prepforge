@@ -23,7 +23,9 @@ from prepforge_chess.services.repertoire_matching import (
     RepertoireMatchResult,
     match_game_against_repertoires,
 )
-from prepforge_chess.services.training import update_spaced_repetition
+from fsrs import Rating
+
+from prepforge_chess.services.srs import review
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
@@ -692,11 +694,13 @@ def record_departure_misses(
                     owner_user_id=owner_user_id,
                 )
             progress = updates[target]
-            updated = update_spaced_repetition(progress, correct=False)
+            updated = review(progress, Rating.Again)
             # An in-session miss retries after 10 minutes; a miss from a REAL game should
             # land in the very next session, so it is due immediately.
             updated = replace(updated, due_at=updated.last_reviewed_at)
             updates[target] = updated
+            repository.write_review(conn, owner_user_id=owner_user_id, node_id=summary.expected_node_id,
+                                    rating=Rating.Again, reviewed_at=updated.last_reviewed_at)
             seen.add(summary.lichess_id)
             ingested.append(summary.lichess_id)
             summary.training_recorded = True

@@ -190,8 +190,9 @@ def test_dashboard_recap_uses_library_mastery_buckets(client):
     rep_id = created["repertoire_id"]
     (progress,) = repo.list_training_progress(rep_id, owner_user_id=owner)
     repo.save_training_progress(rep_id, replace(
-        progress, attempts=20, correct_attempts=8, spaced_repetition_score=7.0,
-        is_mastered=True, due_at=datetime.now(timezone.utc) + timedelta(days=3),
+        progress, attempts=20, correct_attempts=8, state=2,
+        stability=30.0,
+        difficulty=5.0, due_at=datetime.now(timezone.utc) + timedelta(days=3),
     ), owner_user_id=owner)
 
     recap = client.get("/api/dashboard").json()["recap"]

@@ -124,22 +124,23 @@ def _build_wide_tree():
     return loaded, ids
 
 
-def _progress(node_id, *, attempts=0, correct=0, due_at=None, score=0.0, mastered=False):
+def _progress(node_id, *, attempts=0, correct=0, due_at=None, stability=None):
     return TrainingProgress(
         node_id=node_id,
         attempts=attempts,
         correct_attempts=correct,
         last_reviewed_at=PAST,
-        spaced_repetition_score=score,
         due_at=due_at,
-        is_mastered=mastered,
+        state=2 if attempts else 0,
+        stability=stability,
+        difficulty=5.0 if attempts else None,
     )
 
 
-WEAK = dict(attempts=4, correct=1, due_at=FUTURE, score=1.0)
-DUE = dict(attempts=3, correct=3, due_at=PAST, score=3.0)
-MASTERED = dict(attempts=5, correct=5, due_at=FUTURE, score=8.0, mastered=True)
-LEARNING = dict(attempts=1, correct=1, due_at=FUTURE, score=1.0)
+WEAK = dict(attempts=4, correct=1, due_at=FUTURE, stability=0.5)
+DUE = dict(attempts=3, correct=3, due_at=PAST, stability=3.0)
+MASTERED = dict(attempts=5, correct=5, due_at=FUTURE, stability=30.0)
+LEARNING = dict(attempts=1, correct=1, due_at=FUTURE, stability=2.0)
 
 
 def _kinds(plan):
@@ -412,7 +413,7 @@ def test_polish_fills_leftover_room_soonest_due_first():
         for node in (ids["e4"], ids["nf3"], ids["bb5"], ids["d4"], ids["c4"])
     }
     # e4 is due sooner than the others -> it should head the polish band.
-    progress[ids["e4"]] = _progress(ids["e4"], attempts=5, correct=5, due_at=NOW + timedelta(days=1), score=8.0, mastered=True)
+    progress[ids["e4"]] = _progress(ids["e4"], attempts=5, correct=5, due_at=NOW + timedelta(days=1), stability=30.0)
     plan = build_session_plan(
         repertoire.root_node, Color.WHITE, progress, seed=3,
         max_targets_per_card=1, now=NOW,

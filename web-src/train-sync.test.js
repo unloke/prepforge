@@ -40,6 +40,11 @@ describe("groupAttempts", () => {
     ]);
   });
 
+  it("keeps the hint flag so a hinted answer grades Hard", () => {
+    const [[, attempts]] = groupAttempts([{ ...attempt("a", "n1"), hinted: true }, attempt("a", "n2")], "a");
+    expect(attempts.map((a) => a.hinted)).toEqual([true, undefined]);
+  });
+
   it("does not add a group when there is no current session", () => {
     expect(groupAttempts([attempt("old", "n1")], null)).toHaveLength(1);
   });

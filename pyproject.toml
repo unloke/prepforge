@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "PrepForge" }]
 dependencies = [
+    "fsrs>=6.3,<7",
     "python-chess>=1.999,<2",
 ]
 

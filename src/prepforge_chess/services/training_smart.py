@@ -54,6 +54,7 @@ from prepforge_chess.services.scheduler import (
     own_move_nodes_on,
     path_to_node,
 )
+from prepforge_chess.services.srs import rating_for
 from prepforge_chess.services.training import record_attempt
 from prepforge_chess.services.training_view import heuristic_strategy, piece_name_at
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
@@ -757,6 +758,7 @@ class SmartTrainingService:
             for item in attempts:
                 node_id = item.get("node_id")
                 correct = bool(item.get("correct"))
+                hinted = bool(item.get("hinted"))
                 attempt_uuid = item.get("attempt_uuid")
                 rep_id = rep_of_node.get(node_id)
                 if rep_id is None:
@@ -821,9 +823,14 @@ class SmartTrainingService:
                     progress=stored,
                     node_id=node_id,
                     correct=correct,
+                    hinted=hinted,
                 )
                 self.repository.write_training_progress(
                     conn, repertoire_id=rep_id, progress=progress, owner_user_id=session_owner,
+                )
+                self.repository.write_review(
+                    conn, owner_user_id=session_owner, node_id=node_id,
+                    rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
                 )
                 self.repository.write_training_session(conn, next_session)
                 session = next_session
@@ -867,7 +874,7 @@ class SmartTrainingService:
     # ------------------------------------------------------------------- move
 
     def submit_move(
-        self, session_id: str, played_uci: str, *, attempt: int = 1
+        self, session_id: str, played_uci: str, *, attempt: int = 1, hinted: bool = False
     ) -> SmartMoveResult:
         with self.repository.engine.begin() as conn:
             session = self.repository.lock_training_session(conn, session_id=session_id)
@@ -896,9 +903,14 @@ class SmartTrainingService:
                     progress=stored,
                     node_id=expected.id,
                     correct=correct,
+                    hinted=hinted,
                 )
                 self.repository.write_training_progress(
                     conn, repertoire_id=card_rep.id, progress=progress, owner_user_id=self._owner_or_raise()
+                )
+                self.repository.write_review(
+                    conn, owner_user_id=self._owner_or_raise(), node_id=expected.id,
+                    rating=rating_for(correct, hinted=hinted), reviewed_at=progress.last_reviewed_at,
                 )
 
             card_completed = False
