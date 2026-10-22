@@ -1,5 +1,5 @@
 import { html } from "./html.js";
-import { activateModal } from "./core/modals.js";
+import { modalDialog, openModal } from "./core/dialog.js";
 import { appState } from "./core/state.js";
 import { hooks } from "./core/hooks.js";
 import { maiaAnalysisEnabled, setPref } from "./core/prefs.js";
@@ -67,24 +67,13 @@ export function openWelcome({ hasLichess = () => false, setLichessUsername = () 
   let at = 0;
   let lookup = 0;
 
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay welcome-overlay";
-  overlay.innerHTML = html`<div class="modal welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title" data-testid="welcome"></div>`;
-  const dialog = overlay.firstElementChild;
-  document.body.appendChild(overlay);
-  const release = activateModal(overlay);
-
+  const dialog = modalDialog("welcome", { "aria-labelledby": "welcome-title", "data-testid": "welcome" });
   const remember = () => { try { storage.setItem(WELCOME_KEY, "done"); } catch { /* shown again next visit */ } };
+  let release = null;
   function close() {
     remember();
-    document.removeEventListener("keydown", onKey);
-    release();
-    overlay.remove();
+    release?.();
   }
-  function onKey(event) {
-    if (event.key === "Escape") { event.preventDefault(); close(); }
-  }
-  document.addEventListener("keydown", onKey);
 
   function head(title) {
     return html`<header class="welcome-head"><span class="welcome-count">${at + 1} of ${steps.length}</span><button type="button" class="btn ghost sm welcome-skip" data-welcome="skip" data-testid="welcome-skip">Skip</button></header><h2 class="modal-title" id="welcome-title">${title}</h2>`;
@@ -186,6 +175,7 @@ export function openWelcome({ hasLichess = () => false, setLichessUsername = () 
     if (name) void find(name);
   });
 
+  release = openModal(dialog, { onDismiss: close });
   paint();
   return { close };
 }

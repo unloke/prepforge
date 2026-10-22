@@ -24,7 +24,6 @@ export function createTeamsView({
   postJson,
   setStatus = () => {},
   setStatusError = () => {},
-  activateModal = () => {},
   showConfirmModal = async () => false,
   requireSignIn = () => false,
 }) {

@@ -198,11 +198,12 @@
    the glyph is a little larger and the button stays lit while its menu is open. */
 .conn-menu-btn { font-size: 15px; }
 .conn-menu-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
+/* A [popover] placed under its ⋯ (settings.js). */
 .conn-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 20;
+  inset: auto;
+  margin: 0;
+  border: 0;
+  color: var(--text);
   display: grid;
   gap: 2px;
   min-width: 132px;
@@ -216,9 +217,9 @@
   translate: 0 0;
   transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out);
 }
-.conn-menu[hidden] { display: none; }
+.conn-menu:not(:popover-open) { display: none; }
 @starting-style {
-  .conn-menu:not([hidden]) {
+  .conn-menu:popover-open {
     opacity: 0;
     translate: 0 -4px;
   }

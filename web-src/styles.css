@@ -166,12 +166,12 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);       /* standard: decelerate */
   --ease-emphasis: cubic-bezier(0.3, 1.3, 0.4, 1); /* emphasized: a small pop */
 
-  /* -- Overlay stacking: one ordered ladder instead of ad-hoc numbers -------- */
+  /* -- In-page stacking: one ordered ladder instead of ad-hoc numbers. Dialogs,
+     menus and pickers are <dialog>/[popover] in the top layer and need none. */
   --z-chrome: 45;    /* app chrome (rail) */
-  --z-popover: 300;  /* in-page popovers (train selector, promotion picker) */
+  --z-popover: 300;  /* in-page popover (train selector) */
   --z-tool: 500;     /* floating tools (engine window) */
-  --z-overlay: 1000; /* modal overlay and scrims */
-  --z-menu: 1100;    /* context/account menus, command palette, drag ghost */
+  --z-menu: 1100;    /* drag ghost */
   --z-toast: 1200;   /* toast stack, confetti */
   --z-skip: 1300;    /* skip link */
 
@@ -645,35 +645,18 @@ h2 {
   color: var(--accent-strong);
 }
 
-/* Mobile More sheet: real navigation to the secondary destinations. */
-.sheet-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  background: rgba(15, 17, 22, 0.32);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-
+/* Mobile More sheet: real navigation to the secondary destinations. A .modal
+   <dialog> like every other one; on a phone (the only place it opens) every
+   .modal rises from the bottom edge, and this one floats a little above it. */
 .sheet {
-  width: 100%;
   background: var(--panel);
   border-radius: 14px 14px 0 0;
   padding: 8px 12px calc(16px + env(safe-area-inset-bottom));
-  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the command sheet is a real overlay */
-  /* The sheet is pulled up from the edge it lives on, like the Analyze sheet
-     above it, so every bottom sheet in the app arrives the same way. */
-  transition: transform var(--dur) var(--ease-out);
 }
-@starting-style {
-  .sheet-scrim:not([hidden]) { opacity: 0; }
-  .sheet-scrim:not([hidden]) .sheet { transform: translateY(24%); }
-}
+.sheet::backdrop { background: rgba(15, 17, 22, 0.32); backdrop-filter: none; }
 
 .sheet-grab {
   grid-column: 1 / -1;
@@ -748,8 +731,6 @@ h2 {
 
 /* The account menu reuses .context-menu chrome. Sign out is the only destructive
    action here. */
-/* On phones it opens from the More sheet (--z-overlay) and must sit above it. */
-.context-menu.account-menu { z-index: var(--z-menu); }
 .account-menu button[data-action="signout"] {
   color: var(--danger);
 }
@@ -852,11 +833,15 @@ h2 {
   .src-chip { height: auto; min-height: 44px; padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
 }
 
+/* The [popover] root is only a top-layer host; .src-popover is the box. */
 .src-composer-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text);
   background: transparent;
+  overflow: visible;
 }
 
 .src-popover {
@@ -3310,10 +3295,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 13px;
 }
 .inspector-info-pop {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 5;
+  inset: auto;
+  margin: 0;
+  border: 0;
   max-width: 240px;
   padding: 8px 10px;
   border-radius: var(--radius-card);
@@ -4617,9 +4601,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Context menu — all chrome uses theme tokens so light/dark stay consistent. */
 
+/* A [popover]: the top layer, Escape and the outside press are the browser's. */
 .context-menu {
-  position: fixed;
-  z-index: var(--z-menu);
+  inset: auto;
+  margin: 0;
+  border: 0;
   min-width: 220px;
   max-width: min(280px, calc(100vw - 16px));
   max-height: calc(100vh - 16px);
@@ -4638,7 +4624,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 @media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   @starting-style {
-    .context-menu:not([hidden]) {
+    .context-menu:popover-open {
       opacity: 0;
       translate: 0 -4px;
     }
@@ -4725,54 +4711,61 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Modal */
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  display: grid;
-  /* Every dialog opens at the same height (sign-in, confirm, share, invite), so
-     they don't jump between centred and top-anchored; growth extends downward. */
-  place-items: start center;
-  padding-top: min(14vh, 120px);
-  background: rgba(20, 18, 14, 0.36);
-  backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-/* The dim arrives with the dialog rather than snapping on behind it. */
-@starting-style {
-  .modal-overlay:not([hidden]) { opacity: 0; }
-}
-
-/* Sign-in gate only: top-bar tabs stay clickable above the dim layer so the
-   first tab click after a Lucky auth gate actually navigates instead of just
-   dismissing the overlay (the "bounce back to Train" report). The dialog box
-   itself keeps pointer events; every other modal (share/join/confirm) keeps
-   the default full-viewport backdrop, including click-outside-to-dismiss. */
-.modal-overlay.auth-overlay {
-  pointer-events: none;
-}
-
-.modal-overlay.auth-overlay .modal {
-  pointer-events: auto;
-}
-
+/* A .modal is a native <dialog> (core/dialog.js). The top layer replaces the
+   z-index; ::backdrop is the one scrim. Every dialog opens at the same height
+   (sign-in, confirm, share, invite), so they don't jump between centred and
+   top-anchored; growth extends downward. Open and close both transition:
+   display/overlay are discrete, so the exit plays before the box leaves. */
 .modal {
+  position: fixed;
+  inset: 0 0 auto;
+  margin: min(14vh, 120px) auto 0;
+  padding: 0;
+  border: 0;
   width: min(380px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
-  overflow: hidden;
+  max-height: calc(100dvh - min(14vh, 120px) - 12px);
+  overflow: auto;
+  overscroll-behavior: contain;
   background: var(--panel);
   color: var(--text);
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
   display: grid;
+  align-content: start;
   /* A dialog opens from the place it will be read: a short settle, no zoom. */
-  transition: transform var(--dur) var(--ease-out);
+  transition:
+    transform var(--dur) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur) allow-discrete,
+    display var(--dur) allow-discrete;
 }
+.modal:not([open], :popover-open) { display: none; opacity: 0; transform: translateY(-6px) scale(0.98); }
 @starting-style {
-  .modal-overlay:not([hidden]) .modal { transform: translateY(-6px) scale(0.98); }
+  .modal:is([open], :popover-open) { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+.modal::backdrop {
+  background: rgba(20, 18, 14, 0.36);
+  backdrop-filter: blur(2px); /* taste-skill-ignore: the one scrim in the app */
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+/* The dim arrives with the dialog rather than snapping on behind it. */
+.modal:not([open], :popover-open)::backdrop { opacity: 0; }
+@starting-style {
+  .modal:is([open], :popover-open)::backdrop { opacity: 0; }
 }
 
+/* Sign-in gate only: a manual popover, not a modal, so the top-bar tabs stay
+   clickable through the dim. The first tab click after a Lucky auth gate
+   navigates instead of just dismissing the gate (the "bounce back to Train"
+   report). Every other dialog is modal, with click-outside-to-dismiss. */
+.modal.auth-modal::backdrop { pointer-events: none; }
+
 .modal-title {
+  margin: 0;
   padding: 14px 16px 10px;
   font-weight: 700;
   font-size: 15px;
@@ -4902,6 +4895,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
   padding-right: 8px;
 }
+.auth-modal-title h2 { margin: 0; font: inherit; }
 
 .auth-close {
   flex: none;
@@ -5754,14 +5748,17 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    by the Analyze / Build / Train boards. Pops over the board stack so the
    choice reads as part of the board, not a detached modal. */
 .promotion-picker-overlay {
-  position: absolute;
   inset: 0;
-  z-index: var(--z-popover);
-  display: grid;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 100%;
+  height: 100%;
   place-items: center;
   background: rgba(20, 18, 14, 0.24);
   border-radius: 4px;
 }
+.promotion-picker-overlay:popover-open { display: grid; }
 
 .promotion-picker {
   display: grid;
@@ -5860,36 +5857,44 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
 }
 
+/* The command sheet: a native <dialog> on the same ::backdrop as .modal, coming
+   down from the top edge it is anchored to, so the eye follows it to the field
+   it wants. */
 .palette {
   position: fixed;
-  inset: 0;
-  z-index: var(--z-menu);
-  /* Same scrim as .modal-overlay. Mixing var(--text) turned the backdrop a
-     light grey wash in dark mode (UX walkthrough 2026-10-01 P2-3). */
-  background: rgba(20, 18, 14, 0.36);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 12vh 16px 16px;
-  /* The sheet comes down from the top edge it is anchored to, so the eye
-     follows it to the field it wants. */
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-@starting-style {
-  .palette:not([hidden]) { opacity: 0; }
-}
-
-.palette-panel {
-  width: min(560px, 100%);
+  inset: 0 0 auto;
+  margin: 12vh auto 0;
+  padding: 0;
+  border: 0;
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(88vh - 16px);
   background: var(--panel);
+  color: var(--text);
   border-radius: var(--radius-card);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
   overflow: hidden;
   transform-origin: 50% 0;
-  transition: transform var(--dur) var(--ease-out);
+  transition:
+    transform var(--dur) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur) allow-discrete,
+    display var(--dur) allow-discrete;
 }
+.palette:not([open]) { opacity: 0; transform: translateY(-8px) scale(0.985); }
 @starting-style {
-  .palette:not([hidden]) .palette-panel { transform: translateY(-8px) scale(0.985); }
+  .palette[open] { opacity: 0; transform: translateY(-8px) scale(0.985); }
+}
+.palette::backdrop {
+  background: rgba(20, 18, 14, 0.36);
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    overlay var(--dur-fast) allow-discrete,
+    display var(--dur-fast) allow-discrete;
+}
+.palette:not([open])::backdrop { opacity: 0; }
+@starting-style {
+  .palette[open]::backdrop { opacity: 0; }
 }
 
 .palette-input {

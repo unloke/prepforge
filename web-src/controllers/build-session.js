@@ -1,6 +1,7 @@
 import { html } from "../html.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
+import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
 
 import { formatEngineEval } from "../engine-eval.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
@@ -167,20 +168,20 @@ function openBuildMenu(event) {
   menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
-        html`<button type="button" data-action="${action}"${action === "build-new-rep" && hasRep ? html` class="menu-sep-before"` : ""}>${label}</button>`
+        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}"${action === "build-new-rep" && hasRep ? html` class="menu-sep-before"` : ""}>${label}</button>`
     )}`;
-  menu.hidden = false;
+  const close = openPopover(menu, { opener: event.currentTarget });
+  menuKeys(menu, close);
   const anchor = event.currentTarget.getBoundingClientRect();
   const rect = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(8, Math.min(anchor.right - rect.width, window.innerWidth - rect.width - 8))}px`;
   menu.style.top = `${Math.min(anchor.bottom + 4, window.innerHeight - rect.height - 8)}px`;
+  menu.querySelector("button")?.focus();
   menu.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", async (event) => {
+    button.addEventListener("click", async () => {
       closeRepertoireContextMenu();
       const action = button.dataset.action;
       if (action === "build-node-menu") {
-        // The document's outside-click handler would close the menu this opens.
-        event.stopPropagation();
         openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
       } else if (action === "build-rename") await renameRepertoire();
       else if (action === "build-export-pgn") await exportBuild("pgn");
@@ -575,29 +576,27 @@ function onInspectorInfo() {
   const text = inspectorScopeText();
   const info = document.getElementById("inspector-info");
   if (!info) return;
-  let pop = document.getElementById("inspector-info-pop");
-  if (pop) {
-    pop.remove();
+  const open = document.getElementById("inspector-info-pop");
+  if (open) {
+    open.hidePopover();
     return;
   }
-  pop = document.createElement("div");
+  // A [popover]: Escape and a press elsewhere close it before its 4s are up.
+  const pop = document.createElement("div");
   pop.className = "inspector-info-pop";
   pop.id = "inspector-info-pop";
   pop.setAttribute("role", "status");
   pop.textContent = text;
-  const head = document.getElementById("build-dock-tools") || info.parentElement;
-  head.appendChild(pop);
+  const close = openPopover(pop, { opener: info, onClose: () => pop.remove() });
   // Anchor under the ⓘ itself (not the toolbar's far edge), clamped so the
   // bubble never spills past the toolbar's right side.
+  const head = document.getElementById("build-dock-tools") || info.parentElement;
   const headRect = head.getBoundingClientRect();
   const infoRect = info.getBoundingClientRect();
-  const left = Math.max(
-    0,
-    Math.min(infoRect.left - headRect.left - 8, headRect.width - pop.offsetWidth)
-  );
+  const left = Math.max(headRect.left, Math.min(infoRect.left - 8, headRect.right - pop.offsetWidth));
   pop.style.left = `${Math.round(left)}px`;
-  pop.style.right = "auto";
-  window.setTimeout(() => pop?.remove(), 4000);
+  pop.style.top = `${Math.round(infoRect.bottom + 4)}px`;
+  window.setTimeout(close, 4000);
 }
 
 // Arrow-keying through a line fires selectBuildNode per ply; one trailing fetch
@@ -1663,41 +1662,24 @@ function openNodeContextMenu(event, nodeId) {
     }`;
   menu.setAttribute("role", "menu");
   menu.setAttribute("aria-label", "Move actions");
-  menu.hidden = false;
-  markNodeMenuTarget(nodeId);
-  const rect = menu.getBoundingClientRect();
   // The context-menu key has no pointer position: open under the move itself.
   const token = !event.clientX && !event.clientY && document.querySelector(`.mtree-move[data-node-id="${CSS.escape(String(nodeId))}"]`);
+  const close = openPopover(menu, { opener: token || null, onClose: () => markNodeMenuTarget(null) });
+  markNodeMenuTarget(nodeId);
+  const rect = menu.getBoundingClientRect();
   const box = token ? token.getBoundingClientRect() : null;
   const [x, y] = box ? [box.left, box.bottom + 4] : [event.clientX, event.clientY];
-  const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
-  const top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8));
-  menu.style.left = `${left}px`;
-  menu.style.top = `${top}px`;
+  menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - rect.width - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - rect.height - 8))}px`;
   menu.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () =>
       handleNodeContextAction(button.dataset.action, button.dataset.nodeId)
     );
   });
-  // Same keyboard behaviour as the repertoire's ⋯ menu: arrows walk the items,
-  // Home/End jump, Escape or Tab leaves. The menu opens on the pointer's
-  // position, so its first item takes focus.
-  const buttons = [...menu.querySelectorAll("button")];
-  menu.onkeydown = (event) => {
-    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
-      event.preventDefault();
-      event.stopPropagation();
-      const index = buttons.indexOf(document.activeElement);
-      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
-        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
-      buttons[next]?.focus();
-    } else if (event.key === "Escape" || event.key === "Tab") {
-      if (event.key === "Escape") event.preventDefault();
-      event.stopPropagation();
-      closeNodeContextMenu();
-    }
-  };
-  buttons[0]?.focus();
+  // Same keyboard behaviour as the repertoire's ⋯ menu. The menu opens on the
+  // pointer's position, so its first item takes focus.
+  menuKeys(menu, close);
+  menu.querySelector("button")?.focus();
 }
 
 async function handleNodeContextAction(action, nodeId) {
@@ -1779,9 +1761,7 @@ async function handleNodeContextAction(action, nodeId) {
 
 function closeNodeContextMenu() {
   const menu = document.getElementById("node-context-menu");
-  menu.hidden = true;
-  menu.onkeydown = null;
-  markNodeMenuTarget(null);
+  if (isPopoverOpen(menu)) menu.hidePopover();
 }
 
 // Outline the tree move the context menu acts on while it is open.

@@ -62,8 +62,7 @@
 
   /* The More sheet: the desktop hides it with the bar it belongs to. Here it
      rises at the thumb's side, two columns so all of it fits 390px of height. */
-  .sheet-scrim:not([hidden]) { display: flex; justify-content: flex-start; padding-left: var(--land-rail); }
-  .sheet { max-width: 460px; margin: 0 0 env(safe-area-inset-bottom) 8px; border-radius: 14px 14px 0 0; }
+  .sheet { inset: auto auto 0 var(--land-rail); width: calc(100vw - var(--land-rail) - 16px); max-width: 460px; margin: auto 0 env(safe-area-inset-bottom) 8px; border-radius: 14px 14px 0 0; }
   .sheet-item { min-height: 48px; padding: 0 14px; font-size: 15px; }
 
   /* Pages use the height they have: a tighter frame, nothing hidden behind it. */
