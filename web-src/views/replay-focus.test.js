@@ -519,3 +519,14 @@ describe("replay failure state", () => {
     expect(markup).toContain('role="alert"');
   });
 });
+
+describe("games idle ledger", () => {
+  it("uses the shared empty state in the shipped markup and on a source reset", async () => {
+    const { readFileSync } = await import("node:fs");
+    const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+    const controller = readFileSync(new URL("./games-controller.js", import.meta.url), "utf8");
+    for (const src of [index, controller]) {
+      expect(src).toContain('<div class="ledger-empty empty-state big"><h3>No games checked yet</h3>');
+    }
+  });
+});
