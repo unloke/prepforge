@@ -1979,6 +1979,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 48px 24px;
   border: 0;
@@ -1987,7 +1988,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
 /* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
 .empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
-.empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 
 /* Side dot (repertoire colour) */

@@ -452,8 +452,9 @@ describe("replay empty states", () => {
     const markup = String(elements["replay-results"].innerHTML);
     expect(markup).toContain("Games to review");
     expect(markup).toContain("lr head col-head");
-    expect(markup).toContain('class="ledger-empty"');
-    expect(markup).not.toContain("empty-state big");
+    // The shared empty state, but inside the ledger body, never on the ground.
+    expect(markup).toMatch(/class="ledger-table"[^]*class="ledger-empty empty-state big"/);
+    expect(markup.split("empty-state big")).toHaveLength(2);
   });
 
   it("names the empty bucket and keeps the way back", () => {
@@ -514,7 +515,7 @@ describe("replay failure state", () => {
     makeView(elements).renderReplayError("Lichess is unreachable");
     const markup = String(elements["replay-results"].innerHTML);
     expect(markup).toContain("Games to review");
-    expect(markup).toContain('class="ledger-empty"');
+    expect(markup).toContain('class="ledger-empty empty-state big"');
     expect(markup).toContain('role="alert"');
   });
 });
