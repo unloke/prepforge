@@ -183,8 +183,6 @@
                     <span class="eval-now" id="analysis-chart-caption" data-side="even"></span>
                     <span class="ev-meter" id="analysis-eval-meter" title="Win chance"><i></i></span>
                     <span class="ev-move" id="analysis-ev-move" aria-hidden="true"></span>
-                    <button class="ev-report" type="button" data-sheet-open="analyze-sheet" aria-expanded="false" aria-controls="analyze-sheet">Report</button>
-                    <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Engine</button>
                   </div>
                   <div class="eval-live" id="analysis-eval-live" aria-hidden="true">
                     <svg class="eval-chart" id="eval-chart-live" viewBox="0 0 640 96" preserveAspectRatio="none"></svg>
@@ -194,7 +192,6 @@
                     <div class="eval-chart-tooltip" id="eval-chart-tooltip" aria-hidden="true" hidden></div>
                   </div>
                   <div class="job-dock analysis-job-dock" id="analysis-job-dock" data-testid="analysis-job-dock"></div>
-                  <div class="engine-slot" id="analysis-engine-slot"></div>
                 </section>
                 <!-- F-03: finished-but-unsaved analysis: the compute lives on this
                      device; Retry save re-posts it without re-analyzing. -->
@@ -206,33 +203,44 @@
                 <!-- F-04: after a batch import — what was stored, and which game
                      this report covers (switchable). -->
                 <div class="analysis-import-picker" id="analysis-import-picker" data-testid="analysis-import-picker" hidden></div>
-                <div class="res-stack" id="analysis-results" hidden>
-                  <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
-                </div>
-              </div>
-              <!-- The report, then where games come from. A phone lays each out
-                   as a bottom sheet (the sources inline while no game is
-                   loaded); a wide panel lays the same content under the score
-                   sheet as folds, closed until the reader asks for them. -->
-              <div class="phone-sheet" id="analyze-sheet">
-                <div class="sheet-bar">
-                  <b>Report</b>
-                  <button type="button" class="sheet-done" data-sheet-close>Done</button>
-                </div>
-                <details class="drawer report-fold" id="report-fold" data-testid="report-fold">
-                  <summary>Game report</summary>
-                  <section class="res-block" id="analysis-summary"></section>
-                  <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
-                    <button
-                      class="btn primary"
-                      id="create-repertoire-from-game"
-                      data-testid="create-repertoire-from-game"
-                      type="button"
-                    >
-                      New repertoire from this game
-                    </button>
+                <!-- The pillars under the coach: the engine's lines, the game
+                     report and the score sheet. A wide panel shows them all; a
+                     short or narrow one, and a phone, show one at a time behind
+                     the tabs (the phone adds the coach as a tab). -->
+                <div class="an-panes" id="analyze-panes">
+                  <div class="an-tabs" id="analyze-tabs" role="tablist" aria-label="Analysis">
+                    <button type="button" role="tab" class="an-tab" id="an-tab-coach" data-pane="coach" aria-controls="analysis-explain" aria-selected="false" tabindex="-1">Coach</button>
+                    <button type="button" role="tab" class="an-tab" id="an-tab-engine" data-pane="engine" aria-controls="analysis-engine-pane" aria-selected="false" tabindex="-1">Engine</button>
+                    <button type="button" role="tab" class="an-tab" id="an-tab-report" data-pane="report" aria-controls="analysis-report" aria-selected="true">Report</button>
+                    <button type="button" role="tab" class="an-tab" id="an-tab-moves" data-pane="moves" aria-controls="analysis-results" aria-selected="false" tabindex="-1">Moves</button>
                   </div>
-                </details>
+                  <section class="an-pane engine-pane" id="analysis-engine-pane" data-testid="analysis-engine-pane" role="tabpanel" aria-labelledby="an-tab-engine">
+                    <header class="an-pane-head">
+                      <b>Engine</b>
+                      <span class="ep-depth" id="analysis-best-depth"></span>
+                      <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Live</button>
+                    </header>
+                    <div class="engine-slot" id="analysis-engine-slot"></div>
+                    <div class="best-line" id="analysis-best-line" data-testid="analysis-best-line" hidden></div>
+                  </section>
+                  <section class="an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
+                    <header class="an-pane-head"><b>Game report</b></header>
+                    <div class="report" id="analysis-summary" data-testid="analysis-summary"></div>
+                    <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
+                      <button
+                        class="btn"
+                        id="create-repertoire-from-game"
+                        data-testid="create-repertoire-from-game"
+                        type="button"
+                      >
+                        New repertoire from this game
+                      </button>
+                    </div>
+                  </section>
+                  <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>
+                    <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
+                  </div>
+                </div>
               </div>
               <div class="phone-sheet" id="analyze-open">
                 <div class="sheet-bar">
