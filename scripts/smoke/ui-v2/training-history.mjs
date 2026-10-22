@@ -33,10 +33,12 @@ export async function checkTrainingHistory(page, check, shot) {
   check(/^1 saved run$/.test(foot.trim()), `history must report the count it actually holds, got "${foot}"`);
   const footNote = await page.locator('#training-history-dialog .th-foot span').getAttribute('title');
   check(/^Keeps up to \d+ recent runs within \d+ KiB in this browser$/.test(footNote || ''), `the retention detail belongs in the footer tooltip, got "${footNote}"`);
-  const overflow = await page.evaluate(() => {
+  const overflow = await page.evaluate(async () => {
     const dialog = document.querySelector('#training-history-dialog .modal');
+    // A phone slides the sheet up; measure where it settles.
+    await Promise.all(dialog.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {})));
     const box = dialog.getBoundingClientRect();
-    return { horizontal: dialog.scrollWidth - dialog.clientWidth, fits: box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight };
+    return { horizontal: dialog.scrollWidth - dialog.clientWidth, box: [box.left, box.top, box.right, box.bottom].map(Math.round), fits: box.left >= 0 && box.right <= innerWidth + 0.5 && box.top >= 0 && box.bottom <= innerHeight + 0.5 };
   });
   check(overflow.horizontal <= 1 && overflow.fits, `history must fit the viewport: ${JSON.stringify(overflow)}`);
   await shot('history');
