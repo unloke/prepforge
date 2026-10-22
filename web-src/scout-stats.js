@@ -873,7 +873,9 @@ export function formatLastSeenLabel(lastSeen) {
   if (days != null && days < 14) return `last played ${days} days ago`;
   const date = new Date(lastSeen.lastDatestamp);
   const month = date.toLocaleString("en", { month: "long" });
-  return `not since ${month}`;
+  // "not since October" for a game from 2014 read as this autumn.
+  const year = date.getFullYear() === new Date().getFullYear() ? "" : ` ${date.getFullYear()}`;
+  return `not since ${month}${year}`;
 }
 
 // How concentrated vs experimental their first-move mix is over chronological chunks.
