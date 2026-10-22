@@ -1,21 +1,17 @@
 // Two Train workflow fixes, tested through the real functions:
 //
-//  1. Finish -> "New session" keeps the queue's scope. finishSmartSession
-//     releases appState.smart before the summary paints, so a queue drilled for
-//     one repertoire used to restart as a MIXED queue over every active
-//     repertoire (and the Train URL lost its ?rep=). The scope is remembered for
-//     exactly that hand-off and fenced by owner + owner generation.
+//  1. Result -> "Again" keeps the run's scope. The scope is explicit state
+//     (appState.trainScope / trainingRepertoireId), so a queue drilled for one
+//     repertoire restarts on it and an all-repertoires queue stays mixed.
 //  2. Line rehearsal: a failed /api/train/move put the board back on the played
 //     (optimistic) move with no legal moves under a "Your move" banner, so the
 //     card could not be answered again. An answer the server rejected (4xx)
 //     restores the SAME prompt, and a late failure never repaints after the
 //     card/mode/owner changed. An unconfirmed result (no server answer) is
 //     reconciled instead — see train-recovery.test.js.
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  finishedQueueScopeFor, queueRepertoireForStart, rememberFinishedQueueScope,
-} from "./train-start.js";
+import { fakeDocument, setup } from "./controllers/train-home.fixture.js";
 import { appSource } from "./test-app-source.js";
 import { createTrainRecovery } from "./train-recovery.js";
 
@@ -36,97 +32,28 @@ function deferred() {
 const REP = "rep-1";
 const FEN_BEFORE = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-function state(overrides = {}) {
-  return {
-    accountUserId: "alice",
-    ownerGeneration: 3,
-    repertoireList: [
-      { id: REP, name: "Caro-Kann", is_active: true },
-      { id: "rep-2", name: "London", is_active: true },
-    ],
-    pendingRepDeletes: new Set(),
-    ...overrides,
-  };
-}
 
-describe("a new queue keeps the finished queue's scope", () => {
-  it("restarts a single-repertoire queue as the same single-repertoire queue", () => {
-    const appState = state();
-    appState.finishedQueueScope = rememberFinishedQueueScope(appState, {
-      mixed: false, repertoireId: REP,
-    });
-    expect(queueRepertoireForStart({
-      requested: null, current: null, previous: appState.finishedQueueScope, state: appState, fresh: true,
-    })).toBe(REP);
+describe("Again keeps the finished run's scope", () => {
+  let doc;
+  beforeEach(() => { doc = fakeDocument(); vi.stubGlobal("document", doc); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("restarts a one-repertoire queue on that repertoire", async () => {
+    const { deps } = setup({ currentView: "train", trainMode: "smart", trainScope: { repertoireId: REP, label: "Caro-Kann" }, trainResult: { mode: "smart" } });
+    await doc.getElementById("train-summary-new").click();
+    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: REP, targetNodeIds: [] }));
   });
 
-  it("leaves a mixed queue mixed", () => {
-    const appState = state();
-    appState.finishedQueueScope = rememberFinishedQueueScope(appState, { mixed: true, repertoireId: null });
-    expect(queueRepertoireForStart({
-      previous: appState.finishedQueueScope, state: appState, fresh: true,
-    })).toBeNull();
+  it("leaves an all-repertoires queue on all of them", async () => {
+    const { deps } = setup({ currentView: "train", trainMode: "smart", trainScope: { repertoireId: null, label: "All repertoires" }, trainResult: { mode: "smart" } });
+    await doc.getElementById("train-summary-new").click();
+    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("smart", { fresh: false, repertoireId: null, targetNodeIds: [] }));
   });
 
-  it("lets an explicit repertoire or a plain Start win over the remembered scope", () => {
-    const appState = state();
-    appState.finishedQueueScope = rememberFinishedQueueScope(appState, { mixed: false, repertoireId: REP });
-    expect(queueRepertoireForStart({
-      requested: "rep-2", previous: appState.finishedQueueScope, state: appState, fresh: true,
-    })).toBe("rep-2");
-    // A plain (non-fresh) Start still resumes whatever the server has.
-    expect(queueRepertoireForStart({
-      previous: appState.finishedQueueScope, state: appState, fresh: false,
-    })).toBeNull();
-  });
-
-  it("drops the scope on another account, another generation, or a deleted repertoire", () => {
-    const appState = state();
-    const scope = rememberFinishedQueueScope(appState, { mixed: false, repertoireId: REP });
-    expect(finishedQueueScopeFor(scope, state({ accountUserId: "bob" }))).toBeNull();
-    expect(finishedQueueScopeFor(scope, state({ ownerGeneration: 4 }))).toBeNull();
-    expect(finishedQueueScopeFor(scope, state({ repertoireList: [{ id: "rep-2", is_active: true }] }))).toBeNull();
-    expect(finishedQueueScopeFor(scope, state({
-      repertoireList: [{ id: REP, is_active: true }], pendingRepDeletes: new Set([REP]),
-    }))).toBeNull();
-    // Still the same owner/generation and still trainable: kept.
-    expect(finishedQueueScopeFor(scope, appState)).toBe(scope);
-    // The listing not loaded yet is not evidence the repertoire is gone.
-    expect(finishedQueueScopeFor(scope, state({ repertoireList: [] }))).toBe(scope);
-    // A repertoire shared with the user keeps its scope while it stays shared.
-    const shared = { ...scope, repertoireId: "rep-shared" };
-    expect(finishedQueueScopeFor(shared, state({ sharedRepertoireList: [{ id: "rep-shared", role: "view" }] }))).toBe(shared);
-    expect(finishedQueueScopeFor(shared, state({ sharedRepertoireList: [{ id: "rep-other", role: "view" }] }))).toBeNull();
-  });
-
-  it("Finish remembers the scope before releasing the live session", async () => {
-    const appState = { trainMode: "smart", trainStats: { correct: 1, mistakes: 0, skipped: 0, streak: 1, best: 1, history: [true] },
-      accountUserId: "alice", ownerGeneration: 3, repertoireList: [{ id: REP, is_active: true }],
-      smart: { sessionId: "s1", generation: "g1", mixed: false, repertoireId: REP, blitz: false, queue: [], prompt: {} } };
-    const finish = compile("async function finishSmartSession(", {
-      appState,
-      rememberFinishedQueueScope,
-      trainSessionMemo: { finishSmartSessionMemo: vi.fn() },
-      currentOwnerId: () => appState.accountUserId,
-      clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
-      updateTrainTurnBadge: vi.fn(), setTrainBanner: vi.fn(), showSmartSummary: vi.fn(),
-      invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), flushTrainSync: async () => true,
-      api: async () => null, renderSmartSummary: vi.fn(async () => {}), syncTrainSessionControls: vi.fn(),
-      refreshRepertoireHead: vi.fn(async () => {}), refreshDashboardRepertoires: vi.fn(async () => {}),
-      paintTrainStartDisabled: vi.fn(),
-      refreshTrainSessionPreview: vi.fn(async () => {}), localDateString: () => "2026-10-01",
-      smartSessionOutcomeText: () => "",
-      document: { getElementById: () => ({ style: {}, innerHTML: "", hidden: false, scrollIntoView() {} }) },
-    });
-    await finish();
-    expect(appState.smart).toBeNull();
-    expect(appState.finishedQueueScope).toEqual({
-      ownerId: "alice", generation: 3, mixed: false, repertoireId: REP,
-    });
-    // And the restart built from it stays on that repertoire.
-    expect(queueRepertoireForStart({
-      previous: appState.finishedQueueScope, state: appState, fresh: true,
-    })).toBe(REP);
+  it("rehearses the same repertoire again", async () => {
+    const { deps } = setup({ currentView: "train", trainMode: "all_lines", trainingRepertoireId: "rep-2", trainResult: { mode: "all_lines" } });
+    await doc.getElementById("train-summary-new").click();
+    await vi.waitFor(() => expect(deps.startTraining).toHaveBeenCalledWith("all_lines", expect.objectContaining({ repertoireId: "rep-2" })));
   });
 });
 

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const css = readFileSync(join(root, "styles.css"), "utf8");
+const css = readFileSync(join(root, "styles.css"), "utf8") + readFileSync(join(root, "train-shell.css"), "utf8");
 
 const rule = (selector) => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -33,7 +33,13 @@ it("the up-next is one soft field with the rows spaced inside it", () => {
   expect(rule(".un-row")).not.toMatch(/border-bottom/);
 });
 
-it("the result card's health rows are one soft field", () => {
-  expect(rule(".delta")).toMatch(/background: var\(--panel-soft\)/);
-  expect(rule(".tsum-row")).not.toMatch(/border-bottom/);
+it("the result card's cells are soft fields and what changed is one unruled line", () => {
+  expect(rule(".sum-cells div")).toMatch(/background: var\(--panel-soft\)/);
+  expect(rule(".delta")).not.toMatch(/border/);
+  expect(rule(".tsum-item")).not.toMatch(/border/);
+});
+
+it("Home's rows are cards of the app's own card primitive", () => {
+  expect(rule(".train-row")).toMatch(/border-radius: var\(--radius-card\)/);
+  expect(rule(".train-row")).toMatch(/background: var\(--panel\)/);
 });

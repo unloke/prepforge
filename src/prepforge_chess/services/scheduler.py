@@ -1,33 +1,29 @@
-"""Smart-queue card scheduler (Train v2, Phase 1).
+"""Smart-queue scheduler: which moves a session drills, and in what order.
 
-The card is the trainer's new unit of work, replacing whole leaf lines. Each
-card targets one own-move node to recall — or a short run of *consecutive*
-own moves merged into a multi-target card — and carries a ``kind`` saying why
-it was scheduled, so the UI can show the queue's composition and switch new
-cards into teach-then-test mode:
+FSRS schedules every own move (node) on its own; a session groups the chosen
+moves into *lines* (Chessable MoveTrainer / Listudy style). A card walks one
+path from move 1: own moves that are not due are auto-played, only the card's
+targets are prompted and graded. Each card carries a ``kind`` saying why it
+was scheduled, so the UI can show the queue's composition and teach new moves:
 
-- ``weak``   — answered wrong more often than right; leads the session but is
+- ``weak``   — missed recently and not yet stable again; leads the session but is
                capped at ``WEAK_SHARE`` of it so urgent material never starves
                due/new review (leftover weak tops the session off when the other
                pools run dry).
-- ``due``    — spaced repetition says review now.
+- ``due``    — FSRS says review now.
 - ``new``    — never attempted; introduced shallow-first, capped per session
                so a fresh repertoire doesn't bury the player.
 - ``polish`` — learning/mastered material used to top a session up.
 
-Like ``services/progress.py`` this module is pure (no DB, no engine): tree +
-stored ``TrainingProgress`` in, a ``SessionPlan`` out. Sessions are small
-(~12 targets) so training has a beginning and an end, not an endless grind.
-
-Cards use ``kind:repertoire_id:first:last`` strings in
-``TrainingSession.line_order``. ``mix_plans`` interleaves per-
-repertoire plans in small same-repertoire chunks: positions from one opening
-stay together (switching openings every card is exhausting), but no single
-repertoire monopolises a stretch of the queue.
+Lines are served weak first, then reviews, then new lines, each band in tree
+DFS order so sibling branches come back to back. Like ``services/progress.py``
+this module is pure (no DB, no engine): tree + stored ``TrainingProgress`` in,
+a ``SessionPlan`` out. Sessions are small (~12 targets) so training has a
+beginning and an end. Cards are stored as ``kind:repertoire_id:t1,t2,…``
+strings in ``TrainingSession.line_order``.
 """
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
@@ -40,13 +36,14 @@ from prepforge_chess.services.progress import (
     effective_children,
     node_mastery,
 )
+from prepforge_chess.services.srs import retrievability
 
 CARD_WEAK = "weak"
 CARD_DUE = "due"
 CARD_NEW = "new"
 CARD_POLISH = "polish"
 CARD_KINDS = (
-    {"key": CARD_WEAK, "label": "Weak spot", "title": "Missed more than answered"},
+    {"key": CARD_WEAK, "label": "Weak spot", "title": "Missed recently"},
     {"key": CARD_DUE, "label": "Due review", "title": "Spaced repetition says now"},
     {"key": CARD_NEW, "label": "New move", "title": "Shown once, then tested"},
     {"key": CARD_POLISH, "label": "Polish", "title": "Kept warm with an occasional rep"},
@@ -57,7 +54,7 @@ _KIND_PRIORITY = {kind["key"]: index for index, kind in enumerate(CARD_KINDS)}
 
 DEFAULT_SESSION_SIZE = 12
 DEFAULT_NEW_CAP = 4
-DEFAULT_MAX_TARGETS_PER_CARD = 3
+DEFAULT_MAX_TARGETS_PER_CARD = 4
 # Weak cards are the most urgent but not the whole story: without a cap, a pile of
 # weak targets (e.g. after a rushed first pass over an imported repertoire) can fill
 # every session forever, and due/new material never reaches the queue. Weak may claim
@@ -65,19 +62,26 @@ DEFAULT_MAX_TARGETS_PER_CARD = 3
 # filled due → new → polish, and any leftover weak targets top the session off only
 # when the other pools run dry.
 WEAK_SHARE = 0.6
-# Plies auto-played before the first prompt so the player lands in context
-# (the opponent's last move is the recall cue) without re-answering the prefix.
-RUN_IN_PLIES = 3
 
 _FAR_FUTURE = datetime.max.replace(tzinfo=timezone.utc)
 
 
 @dataclass(frozen=True)
 class TrainingCard:
+    """One line of work: the graded own moves on a single root-to-node path,
+    in path order. The session plays the line from move 1; own moves on it
+    that are not targets are auto-played."""
     kind: str
-    first_target_id: str
-    last_target_id: str
     repertoire_id: str
+    target_ids: Tuple[str, ...]
+
+    @property
+    def first_target_id(self) -> str:
+        return self.target_ids[0]
+
+    @property
+    def last_target_id(self) -> str:
+        return self.target_ids[-1]
 
 
 @dataclass(frozen=True)
@@ -89,19 +93,20 @@ class SessionPlan:
 
 
 def encode_card(card: TrainingCard) -> str:
-    return "{0}:{1}:{2}:{3}".format(
-        card.kind, card.repertoire_id, card.first_target_id, card.last_target_id
-    )
+    return "{0}:{1}:{2}".format(card.kind, card.repertoire_id, ",".join(card.target_ids))
 
 
 def decode_card(raw: object) -> Optional[TrainingCard]:
-    """Parse a four-part card; return None for malformed values."""
+    """Parse ``kind:repertoire:t1,t2,…``; return None for malformed values."""
     if not isinstance(raw, str):
         return None
     parts = raw.split(":")
-    if len(parts) == 4 and parts[0] in _KIND_PRIORITY and all(parts):
-        return TrainingCard(parts[0], parts[2], parts[3], parts[1])
-    return None
+    if len(parts) != 3 or parts[0] not in _KIND_PRIORITY or not parts[1]:
+        return None
+    targets = tuple(parts[2].split(","))
+    if not all(targets):
+        return None
+    return TrainingCard(parts[0], parts[1], targets)
 
 
 def card_counts(cards: Iterable[Optional[TrainingCard]]) -> Dict[str, int]:
@@ -130,6 +135,18 @@ def index_nodes(root: OpeningNode) -> Dict[str, OpeningNode]:
         out[node.id] = node
         stack.extend(node.children)
     return out
+
+
+def sibling_moves(
+    root: OpeningNode, path: List[OpeningNode], node: OpeningNode
+) -> List[OpeningNode]:
+    """Other enabled moves the repertoire keeps at ``node``'s position (its
+    siblings). Playing one is in the repertoire, just not the move being drilled."""
+    pos = next((i for i, p in enumerate(path) if p.id == node.id), None)
+    if pos is None:
+        return []
+    parent = path[pos - 1] if pos > 0 else root
+    return [c for c in parent.children if c.id != node.id and c.is_enabled and c.move is not None]
 
 
 def path_to_node(
@@ -234,14 +251,12 @@ def build_session_plan(
     color: Color,
     progress_by_id: Dict[str, TrainingProgress],
     *,
-    seed: Optional[int] = None,
     session_size: int = DEFAULT_SESSION_SIZE,
     new_cap: int = DEFAULT_NEW_CAP,
     max_targets_per_card: int = DEFAULT_MAX_TARGETS_PER_CARD,
     now: Optional[datetime] = None,
     target_node_ids: Optional[Sequence[str]] = None,
 ) -> SessionPlan:
-    rng = random.Random(seed)
     candidates = _collect_candidates(root, color)
     requested = set(target_node_ids or [])
     candidate_ids = {c.node.id for c in candidates}
@@ -270,13 +285,9 @@ def build_session_plan(
         else:
             polish.append(cand)
 
-    def recent_score(cand: _Candidate) -> float:
-        """A-01: weak ordering follows the SAME recent-form signal as the
-        mastery classification (spaced-repetition score), not the lifetime
-        ratio — a node recovering from a bad start ranks after one still
-        failing today."""
-        progress = progress_by_id.get(cand.node.id)
-        return progress.spaced_repetition_score if progress is not None else 0.0
+    def recall(cand: _Candidate) -> float:
+        """Weak ordering: the move FSRS thinks is most forgotten leads."""
+        return retrievability(progress_by_id.get(cand.node.id), now=eval_now)
 
     def due_key(cand: _Candidate) -> Tuple[datetime, int]:
         progress = progress_by_id.get(cand.node.id)
@@ -285,7 +296,7 @@ def build_session_plan(
 
     weak.sort(
         key=lambda c: (
-            recent_score(c),
+            recall(c),
             -(progress_by_id[c.node.id].attempts if c.node.id in progress_by_id else 0),
             c.order,
         )
@@ -330,8 +341,8 @@ def build_session_plan(
     take(polish, CARD_POLISH)
     take(weak, CARD_WEAK)  # top off with leftover weak when nothing else remains
 
-    cards = _merge_into_cards(candidates, selected_kind, max_targets_per_card, root.repertoire_id, requested)
-    ordered = _order_cards(cards, {c.node.id: c for c in candidates}, rng)
+    cards = _group_into_lines(candidates, selected_kind, max_targets_per_card, root.repertoire_id, requested)
+    ordered = order_lines(cards, {c.node.id: c.order for c in candidates})
     # Explicit practice opens the session: the move the user asked for is card 1.
     ordered.sort(key=lambda card: card.first_target_id not in requested)
     counts = card_counts(ordered)
@@ -340,153 +351,111 @@ def build_session_plan(
 
 
 @dataclass
-class _CardDraft:
+class _LineDraft:
     kind: str
-    first_target_id: str
-    last_target_id: str
-    targets: int
+    target_ids: List[str]
 
 
-def _merge_into_cards(
+def _group_into_lines(
     candidates: List[_Candidate],
     selected_kind: Dict[str, str],
     max_targets_per_card: int,
     repertoire_id: str,
     requested: Set[str] = frozenset(),
 ) -> List[TrainingCard]:
-    """Fold consecutive selected own moves on one path into multi-target cards.
+    """Group the selected own moves into lines (Chessable/Listudy style).
 
-    Candidates arrive in preorder, so an ancestor is always processed before
-    its descendants; keying drafts by their current tail means a second branch
-    hanging off the same ancestor finds the tail already moved and starts its
-    own card. ``new`` targets never merge — they are taught one at a time — and
-    a requested target always starts its own card.
+    A selected move joins the line ending at its nearest selected own-move
+    ancestor, so one card walks one path from move 1 and prompts only its
+    targets; the unselected own moves between them are auto-played.
+    Candidates arrive in preorder, so the first branch under an ancestor
+    extends its line and each sibling branch starts its own (it replays the
+    shared prefix). New moves group only with new moves (a new line is taught
+    in one pass), reviews with reviews; a requested target opens its own card.
     """
-    drafts: List[_CardDraft] = []
-    draft_by_tail: Dict[str, _CardDraft] = {}
+    by_id = {cand.node.id: cand for cand in candidates}
+    drafts: List[_LineDraft] = []
+    draft_by_tail: Dict[str, _LineDraft] = {}
     for cand in candidates:
         kind = selected_kind.get(cand.node.id)
         if kind is None:
             continue
-        draft = draft_by_tail.get(cand.prev_own_id) if cand.prev_own_id else None
+        ancestor = cand.prev_own_id
+        while ancestor is not None and ancestor not in selected_kind:
+            parent = by_id.get(ancestor)
+            ancestor = parent.prev_own_id if parent is not None else None
+        draft = draft_by_tail.get(ancestor) if ancestor is not None else None
         if (
             draft is not None
             and cand.node.id not in requested
-            and kind != CARD_NEW
-            and draft.kind != CARD_NEW
-            and draft.targets < max_targets_per_card
+            and (kind == CARD_NEW) == (draft.kind == CARD_NEW)
+            and len(draft.target_ids) < max_targets_per_card
         ):
-            del draft_by_tail[draft.last_target_id]
-            draft.last_target_id = cand.node.id
-            draft.targets += 1
+            del draft_by_tail[ancestor]
+            draft.target_ids.append(cand.node.id)
             if _KIND_PRIORITY[kind] < _KIND_PRIORITY[draft.kind]:
                 draft.kind = kind
-            draft_by_tail[cand.node.id] = draft
         else:
-            draft = _CardDraft(
-                kind=kind,
-                first_target_id=cand.node.id,
-                last_target_id=cand.node.id,
-                targets=1,
-            )
+            draft = _LineDraft(kind=kind, target_ids=[cand.node.id])
             drafts.append(draft)
-            draft_by_tail[cand.node.id] = draft
+        draft_by_tail[cand.node.id] = draft
     return [
-        TrainingCard(
-            kind=d.kind, first_target_id=d.first_target_id, last_target_id=d.last_target_id,
-            repertoire_id=repertoire_id
-        )
+        TrainingCard(kind=d.kind, repertoire_id=repertoire_id, target_ids=tuple(d.target_ids))
         for d in drafts
     ]
 
 
-def _order_cards(
-    cards: List[TrainingCard],
-    candidate_by_id: Dict[str, _Candidate],
-    rng: random.Random,
+# Session bands: weak lines lead, then reviews (due and polish), then new lines.
+_BAND = {CARD_WEAK: 0, CARD_DUE: 1, CARD_POLISH: 1, CARD_NEW: 2}
+
+
+def order_lines(
+    cards: Sequence[TrainingCard],
+    preorder: Dict[str, int],
+    repertoire_rank: Optional[Dict[str, int]] = None,
 ) -> List[TrainingCard]:
-    """Urgency bands (weak, due, new, polish), reviews shuffled within each
-    band and new cards in plan order (shallow first), then a greedy pass so two
-    cards from the same opening family don't sit next to each other when any
-    alternative exists — variety is what keeps the queue from feeling like the
-    same line on repeat."""
-    bands: Dict[str, List[TrainingCard]] = {k: [] for k in _KIND_PRIORITY}
-    for card in cards:
-        bands[card.kind].append(card)
-    ordered: List[TrainingCard] = []
-    for kind in (CARD_WEAK, CARD_DUE, CARD_NEW, CARD_POLISH):
-        band = bands[kind]
-        # A new line is taught from its first move: shuffling the new band put
-        # 3.Bc4 before 1.e4, a position the player has never been shown.
-        if kind != CARD_NEW:
-            rng.shuffle(band)
-        ordered.extend(band)
+    """Order lines by urgency band, then repertoire, then tree DFS position.
 
-    def family(card: TrainingCard) -> str:
-        cand = candidate_by_id.get(card.first_target_id)
-        return cand.family_id if cand is not None else card.first_target_id
-
-    for i in range(1, len(ordered)):
-        if family(ordered[i]) != family(ordered[i - 1]):
-            continue
-        for j in range(i + 1, len(ordered)):
-            if family(ordered[j]) != family(ordered[i - 1]):
-                ordered[i], ordered[j] = ordered[j], ordered[i]
-                break
-    return ordered
+    Within a band, lines follow the tree's preorder, so sibling branches come
+    one after the other and consecutive prompts share their opening moves
+    instead of jumping between unrelated positions."""
+    rank = repertoire_rank or {}
+    return sorted(
+        cards,
+        key=lambda card: (
+            _BAND[card.kind],
+            rank.get(card.repertoire_id, 0),
+            preorder.get(card.first_target_id, 0),
+        ),
+    )
 
 
 # --------------------------------------------------------------------------
 # Mixed sessions: one queue over several repertoires.
 
-# Consecutive same-repertoire cards per stretch. Two is the sweet spot the UX
-# asks for: positions from one opening stay together briefly (a switch every
-# card is exhausting — different repertoires mean very different positions),
-# yet no repertoire monopolises the queue long enough to feel like a grind.
-MIX_CHUNK = 2
-
 
 def mix_plans(
-    plans: Sequence[Tuple[str, SessionPlan]],
-    *,
-    seed: Optional[int] = None,
-    chunk_size: int = MIX_CHUNK,
+    plans: Sequence[Tuple[str, SessionPlan, Dict[str, int]]],
 ) -> SessionPlan:
-    """Interleave per-repertoire plans into one queue.
-
-    Each plan keeps its internal urgency order (weak → due → new → polish, as
-    ``build_session_plan`` emitted it); cards get tagged with their repertoire
-    id. The queue then round-robins ``chunk_size``-card stretches across the
-    repertoires, starting with the one holding the most urgent head card, so a
-    weak spot anywhere still leads the session."""
-    rng = random.Random(seed)
-    queues: List[List[TrainingCard]] = []
-    for repertoire_id, plan in plans:
+    """Merge per-repertoire plans into one queue: band by band, each
+    repertoire's lines stay together in tree order, and the repertoire with
+    the most urgent head goes first."""
+    cards: List[TrainingCard] = []
+    preorder: Dict[str, int] = {}
+    heads = []
+    for repertoire_id, plan, order in plans:
         if not plan.cards:
             continue
-        queues.append(
-            [
-                TrainingCard(
-                    kind=card.kind,
-                    first_target_id=card.first_target_id,
-                    last_target_id=card.last_target_id,
-                    repertoire_id=repertoire_id,
-                )
-                for card in plan.cards
-            ]
-        )
-    rng.shuffle(queues)  # tie-break order between equally urgent repertoires
-    queues.sort(key=lambda cards: _KIND_PRIORITY[cards[0].kind])
-
-    ordered: List[TrainingCard] = []
-    chunk = max(1, chunk_size)
-    while queues:
-        cards = queues.pop(0)
-        ordered.extend(cards[:chunk])
-        rest = cards[chunk:]
-        if rest:
-            queues.append(rest)
-
+        cards.extend(plan.cards)
+        preorder.update(order)
+        heads.append((min(_BAND[card.kind] for card in plan.cards), len(heads), repertoire_id))
+    rank = {repertoire_id: index for index, (_, _, repertoire_id) in enumerate(sorted(heads))}
+    ordered = order_lines(cards, preorder, rank)
     counts = card_counts(ordered)
-    counts["targets"] = sum(plan.counts.get("targets", 0) for _, plan in plans)
+    counts["targets"] = sum(plan.counts.get("targets", 0) for _, plan, _ in plans)
     return SessionPlan(cards=ordered, counts=counts)
+
+
+def preorder_index(root: OpeningNode, color: Color) -> Dict[str, int]:
+    """Own-move node id -> DFS preorder position (the order lines are served)."""
+    return {cand.node.id: cand.order for cand in _collect_candidates(root, color)}

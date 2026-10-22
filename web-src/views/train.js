@@ -1,55 +1,8 @@
 import { html } from "../html.js";
 import { enterRows } from "../list-enter.js";
-import { countOf, nounOf } from "../plural.js";
 import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
 import { START_FEN, moveLineHtml, moveTextHtml, walkPathText } from "../move-text.js";
 // Train tab rendering (lazy-loaded from app.js).
-
-// The result screen's stat cells: [value, label]. Counts read "1 card" / "3 cards".
-export function summaryStatCells(smart = {}, stats = {}) {
-  const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
-  const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
-  // A session of only new moves has no first tries to score: it says what it taught.
-  const cells = !firstTries && stats.learned
-    ? [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [stats.learned, "learned"]]
-    : [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [acc, "first try"], [stats.best || 0, "best in a row"]];
-  if (stats.skipped) cells.push([stats.skipped, "skipped"]);
-  return cells;
-}
-
-// The setup briefing: how big the queue Start will serve is, what it is made
-// of, and (when it mixes several repertoires) which ones it draws from. The
-// size is the one number a player checks before starting, so it leads.
-export function sessionBrief(next) {
-  const cards = Number(next?.cards) || 0;
-  if (!cards) return null;
-  return {
-    cards,
-    label: `${nounOf(cards, "card")}${next.resumed ? " left" : " to train"}`,
-    kinds: ["weak", "due", "new", "polish"]
-      .map((kind) => [kind, Number(next[kind]) || 0])
-      .filter(([, count]) => count > 0),
-  };
-}
-
-// Where the queue draws from: one row per repertoire the Start would drill,
-// with the mastery it has reached and how much is left. An empty repertoire
-// contributes no cards, so it is not a source.
-export function queueSources(reps = [], pendingDeletes = new Set()) {
-  return reps
-    .filter(
-      (rep) => rep.is_active !== false
-        && !pendingDeletes.has(String(rep.id))
-        && !(rep.health && Number(rep.health.trainable) === 0),
-    )
-    .map((rep) => ({
-      name: rep.name,
-      black: rep.color === "black",
-      trainable: Number(rep.health?.trainable) || 0,
-      mastered: Number(rep.health?.mastered) || 0,
-      pct: Math.max(0, Math.min(100, Math.round(Number(rep.health?.mastery_pct) || 0))),
-    }));
-}
 
 // The last plies of a numbered line ("1.e4 c6 2.d4 d5" → "2.d4 d5"): which
 // position a card asks about, without its answer.
@@ -100,50 +53,28 @@ export function createTrainView({
     if (quiet) el.textContent = "";
   }
 
+  // One stats line: the run and the misses, first answers only.
   function renderTrainStats() {
-    const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0, history: [], lastStreak: 0 };
-    const streakEl = document.getElementById("train-stat-streak");
-    // Write only the number: assigning a SafeHtml object to innerHTML stores
-    // "[object Object]", and the "1" -> "[object Object]" change on every repaint
-    // re-triggered the streak pop (classList.remove/add + offsetWidth reads) on
-    // every answer, which starved the later stats lines. They never repainted.
-    streakEl.textContent = String(s.streak);
-    const chip = streakEl.closest(".stat");
-    if (chip) {
-      chip.classList.toggle(
-        "at-risk",
-        !!(appState.trainReview && appState.trainReview.savedStreak > 0 && s.streak === 0)
-      );
-    }
-    // The pop fires only when the streak grows, from a number that is actually
-    // on screen (a SafeHtml object here stringified to "[object Object]").
-    const grew = !!chip && typeof s.lastStreak === "number" && s.streak > s.lastStreak;
-    if (grew) {
-      chip.classList.remove("pop");
-      void chip.offsetWidth;
-      chip.classList.add("pop");
-      chip.classList.toggle("milestone", s.streak > 0 && s.streak % 5 === 0);
-    }
+    const s = appState.trainStats || { correct: 0, mistakes: 0, streak: 0 };
     onStreakRendered(s.streak);
-    document.getElementById("train-stat-correct").textContent = s.correct;
-    document.getElementById("train-stat-mistakes").textContent = s.mistakes;
-    const total = s.correct + s.mistakes;
-    // Labelled, not a bare "67%": first-try accuracy for this session.
-    document.getElementById("train-accuracy").textContent = total
-      ? `${Math.round((s.correct / total) * 100)}% first try`
-      : "";
-    const trail = document.getElementById("train-line-trail");
-    if (!trail) return;
-    if (!s.history.length) {
-      trail.innerHTML = html`<span class="trail-empty">No moves yet</span>`;
-    } else {
-      trail.innerHTML = html`${s.history
-        .slice(-26)
-        .map((ok) => html`<i class="${ok ? "ok" : "no"}"></i>`)}`;
-    }
+    const parts = [];
+    if (s.streak) parts.push(`${s.streak} in a row`);
+    if (s.mistakes) parts.push(`${s.mistakes} missed`);
+    document.getElementById("train-stats-line").textContent = parts.join(" · ");
   }
 
-  function renderTraining(prompt) {
+  // The header's one progress figure and the one bar under it.
+  function paintProgress(done, total) {
+    total = Math.max(1, total);
+    document.getElementById("train-line-label").textContent = `${Math.min(done + 1, total)} / ${total}`;
+    document.getElementById("train-progress-fill").style.width = `${Math.round((done / total) * 100)}%`;
+    const bar = document.getElementById("train-progress");
+    bar.setAttribute("aria-valuemin", "0");
+    bar.setAttribute("aria-valuemax", String(total));
+    bar.setAttribute("aria-valuenow", String(Math.max(0, Math.min(done, total))));
+  }
+
+  function renderTraining(prompt, { keepBanner = false } = {}) {
     if (!prompt) return;
     boards.train.setEngineArrow(null);
     // The opponent's reply stays highlighted as the cue while the board is
@@ -155,58 +86,17 @@ export function createTrainView({
       lastMove: board.fen === prompt.fen_before ? board.lastMove || null : null,
     });
     const side = (prompt.fen_before || "").split(" ")[1] === "b" ? "black" : "white";
-    setTrainBanner("move", "Your move", "Play your prepared idea on the board");
+    if (!keepBanner) setTrainBanner("move", "Your move", "");
     updateTrainTurnBadge(side);
-    const total = prompt.total_lines || 1;
-    document.getElementById("train-line-label").textContent =
-      `Line ${(prompt.current_index || 0) + 1} / ${total}`;
     paintCardKind(null);
     renderLinePath("");
     // Rehearsal has no queue: drop a smart session's "Up next" rows.
     const upnext = document.getElementById("train-upnext");
     if (upnext) upnext.hidden = true;
-    document.getElementById("train-progress-fill").style.width =
-      `${Math.round(((prompt.current_index || 0) / Math.max(1, total)) * 100)}%`;
-    const progress = document.getElementById("train-progress");
-    progress?.setAttribute("aria-valuemin", "0");
-    progress?.setAttribute("aria-valuemax", String(total));
-    progress?.setAttribute("aria-valuenow", String(prompt.current_index || 0));
-    progress?.setAttribute("aria-label", "Lines done this session");
+    paintProgress(prompt.current_index || 0, prompt.total_lines || 1);
     const name = (appState.training && appState.training.repertoire_name) || "Repertoire";
     const color = (appState.training && appState.training.color) || "white";
     document.getElementById("train-board-label").textContent = `${name} · you play ${color}`;
-  }
-
-  function renderSmartQueueStrip() {
-    const smart = appState.smart;
-    const wrap = document.getElementById("train-queue");
-    if (!wrap) return;
-    const counts = smart && smart.counts;
-    const kinds = Object.keys(smart?.cardKinds || {}).filter((k) => counts && counts[k] > 0);
-    if (!kinds.length) {
-      wrap.hidden = true;
-      return;
-    }
-    wrap.hidden = false;
-    // One progress bar only (cards done, above). The queue's make-up is told by the
-    // labelled chips; a second, always-full composition bar read as an unlabeled
-    // duplicate progress bar (UX 2026-09-30 P2-10).
-    const bar = document.getElementById("train-queue-bar");
-    if (bar) {
-      bar.hidden = true;
-      bar.innerHTML = "";
-    }
-    const cluster = smart.phaseCluster;
-    const phaseChip =
-      cluster && cluster.total
-        ? html`<span class="kchip phase" title="Most cards sit in ${cluster.majorityLabel.toLowerCase()}">${cluster.majorityLabel} coach · ${cluster.counts[cluster.majority]}/${cluster.total}</span>`
-        : "";
-    document.getElementById("train-queue-legend").innerHTML =
-      html`${kinds
-        .map(
-          (k) =>
-            html`<span class="kchip k-${k}" title="${smart.cardKinds[k].title || ""}">${counts[k]} ${k}</span>`
-        )}${phaseChip}`;
   }
 
   // "Up next" preview: the next few cards in the real queue, so a mixed session
@@ -258,13 +148,15 @@ export function createTrainView({
     enterRows(host);
   }
 
-  // Card kind chip beside the counter (smart queue only; rehearsal has none).
+  // Card kind chip beside the stats (smart queue only; rehearsal has none). A
+  // new move's banner already says "New move", so the chip names reviews only.
   function paintCardKind(kind) {
     const chip = document.getElementById("train-card-kind");
     if (!chip) return;
+    if (kind === "new") kind = null;
     chip.hidden = !kind;
     chip.className = kind ? `kchip k-${kind}` : "kchip";
-    chip.textContent = kind ? appState.smart.cardKinds[kind]?.label || kind : "";
+    chip.textContent = kind ? appState.smart?.cardKinds[kind]?.label || kind : "";
   }
 
   // How the card's position arose. One line showing its end; a tap shows it all.
@@ -280,97 +172,15 @@ export function createTrainView({
 
   function renderSmartProgress(prompt) {
     renderLinePath(prompt.target?.line || "");
-    const total = Math.max(1, prompt.total_cards);
-    document.getElementById("train-line-label").textContent =
-      `Card ${Math.min(prompt.card_index + 1, total)} / ${total}`;
+    paintProgress(prompt.card_index, prompt.total_cards);
     paintCardKind(prompt.kind);
     renderUpNext();
-    document.getElementById("train-progress-fill").style.width =
-      `${Math.round((prompt.card_index / total) * 100)}%`;
-    const progress = document.getElementById("train-progress");
-    progress?.setAttribute("aria-valuemin", "0");
-    progress?.setAttribute("aria-valuemax", String(total));
-    progress?.setAttribute("aria-valuenow", String(Math.max(0, Math.min(prompt.card_index, total))));
-    progress?.setAttribute("aria-label", "Cards done this session");
-    const dots = document.getElementById("train-card-dots");
-    if (dots) {
-      dots.innerHTML =
-        prompt.targets_total > 1
-          ? html`${Array.from({ length: prompt.targets_total }, (_, i) => {
-              const cls = i < prompt.target_index ? "done" : i === prompt.target_index ? "cur" : "";
-              return html`<i class="${cls}"></i>`;
-            })}<span class="faint">move ${prompt.target_index + 1} of ${prompt.targets_total} in this card</span>`
-          : "";
-    }
-  }
-
-  // The result cells, painted the moment the session ends (the health delta and
-  // the day streak arrive with the server summary).
-  function renderSmartSummaryStats(smart, stats) {
-    const host = document.getElementById("train-summary-stats");
-    if (!host) return;
-    host.innerHTML = html`${summaryStatCells(smart, stats)
-      .map(
-        ([value, label]) =>
-          html`<div><b>${value}</b><span>${label}</span></div>`
-      )}`;
-  }
-
-  function renderSmartSummary(smart, stats, after, dayStreak) {
-    const panel = document.getElementById("train-summary");
-    if (!panel) return;
-    const queue = document.getElementById("train-queue");
-    if (queue) queue.hidden = true;
-    renderSmartSummaryStats(smart, stats);
-    const day = dayStreak;
-    if (day && day.current > 0) {
-      document.getElementById("train-summary-stats").insertAdjacentHTML(
-        "beforeend",
-        html`<div><b>${day.current}</b><span>day streak</span></div>`,
-      );
-    }
-    const deltaEl = document.getElementById("train-summary-delta");
-    const footEl = document.getElementById("train-summary-foot");
-    const before = smart.healthBefore;
-    if (before && after && after.health) {
-      deltaEl.hidden = false;
-      deltaEl.innerHTML = html`${[
-        ["mastered", "Mastered", "mastered", 1],
-        ["learning", "Learning", "learning", 0],
-        ["due", "Due", "due", -1],
-        ["weak", "Weak", "weak", -1],
-        ["untrained", "New", "new", -1],
-      ]
-        .map(([key, label, kind, goodDir]) => {
-          const now = after.health[key] || 0;
-          const diff = now - (before[key] || 0);
-          const tone = diff * goodDir > 0 ? "up" : diff * goodDir < 0 ? "down" : "";
-          const delta = diff === 0 ? "" : `${diff > 0 ? "+" : "−"}${Math.abs(diff)}`;
-          return (
-            html`<div class="tsum-row"><span><i class="k-${kind}"></i>${label}</span><span class="num">${now}</span><span class="num ${tone}">${delta}</span></div>`
-          );
-        })}`;
-      footEl.textContent =
-        after.due_tomorrow > 0
-          ? `${countOf(after.due_tomorrow, "review")} due tomorrow`
-          : "Nothing due tomorrow. The queue is clear.";
-    } else {
-      // Without a before/after pair there is nothing to compare: an empty
-      // tinted strip reads as a chart that failed to load.
-      deltaEl.hidden = true;
-      deltaEl.innerHTML = "";
-      footEl.textContent = "";
-    }
-    panel.hidden = false;
   }
 
   return {
     renderTrainSync,
     renderTrainStats,
     renderTraining,
-    renderSmartQueueStrip,
     renderSmartProgress,
-    renderSmartSummary,
-    renderSmartSummaryStats,
   };
 }

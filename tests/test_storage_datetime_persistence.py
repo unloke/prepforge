@@ -42,7 +42,9 @@ def test_training_progress_round_trips_aware_datetimes():
         attempts=2,
         correct_attempts=2,
         last_reviewed_at=reviewed,
-        spaced_repetition_score=4.0,
+        state=2,
+        stability=4.0,
+        difficulty=5.0,
         due_at=due,
     )
     repo.save_training_progress(rep.id, progress, owner_user_id="user-dt")

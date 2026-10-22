@@ -96,7 +96,7 @@ describe("dashboard setup checklist", () => {
       postJson: noop,
       setStatus: noop,
       localDateString: () => "2026-09-25",
-      goToSmartTraining: noop,
+      openTrain: noop,
       editRepertoire: noop,
       openRepertoireContextMenu: noop,
       createRepertoirePrompt: noop,

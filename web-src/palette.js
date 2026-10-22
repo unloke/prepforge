@@ -16,13 +16,11 @@ let closePaletteDialog = null;
 // What an item runs: navigation, a repertoire, a training start, the theme.
 // These are the shell's (and its views'), so they arrive once at bind time.
 let switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
-  requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky,
-  toggleTheme, editBuildNote;
+  requireSignIn, openTrain, onFeelingLucky, toggleTheme, editBuildNote;
 
 export function createPalette(deps) {
   ({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
-    requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky,
-    toggleTheme, editBuildNote } = deps);
+    requireSignIn, openTrain, onFeelingLucky, toggleTheme, editBuildNote } = deps);
   return { paletteIsOpen, closePalette, openPalette, bindCommandPalette };
 }
 // "Add note" acts on the shown move of a repertoire open for editing in Repertoire.
@@ -145,39 +143,24 @@ async function runPaletteItem(item) {
     createRepertoirePrompt();
     return;
   }
+  // The same three starts as Train Home's rows; openTrain asks before
+  // abandoning a live game.
   if (item.action === "start-training") {
-    switchView("train");
-    // A guest gets the sign-in gate only; a live game on the board stays as it is.
     if (!appState.signedIn) {
+      switchView("train");
       requireSignIn("Sign in to start training", "train");
       return;
     }
-    const livePlay = appState.play && appState.play.active && (appState.play.history || []).length > 0;
-    if (livePlay) {
-      const ok = await showConfirmModal({
-        title: "Leave this game?",
-        body: "The current game will be abandoned.",
-        okLabel: "Start training",
-        cancelLabel: "Keep playing",
-      });
-      if (!ok) return;
-    }
-    if (appState.trainMode === "play") goToSmartTraining();
-    else startTraining();
+    await openTrain({ mode: "smart" });
     return;
   }
   if (item.action === "play-human") {
-    switchView("train");
-    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
-    if (playBtn) playBtn.click();
-    document.getElementById("start-play")?.click();
+    await openTrain({ mode: "play" });
     return;
   }
   if (item.action === "feeling-lucky") {
     dismissTransientOverlays();
-    switchView("train");
-    const playBtn = document.querySelector('#train-modes .train-mode[data-mode="play"]');
-    if (playBtn) playBtn.click();
+    await openTrain({ mode: "play", autostart: false });
     onFeelingLucky();
     return;
   }

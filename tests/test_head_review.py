@@ -57,7 +57,7 @@ def test_mixed_budget_left_by_a_small_repertoire_goes_to_the_others():
     _claim(repository, "fill-owner", white, black)
     service = SmartTrainingService(repository, "fill-owner")
     for reps in ([white, black], [black, white]):
-        plan = service._plan_mixed(reps, 5, session_size=7, new_cap=7)
+        plan = service._plan_mixed(reps, session_size=7, new_cap=7)
         assert _targets(repository, plan.cards) == 7
 
 

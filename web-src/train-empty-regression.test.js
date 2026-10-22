@@ -1,6 +1,9 @@
+// A Start with nothing to serve is a state of the Due row, not a fault: the
+// reason lands in that row (and its Start already reads "Open Repertoire"),
+// with no toast repeating it and no generic error banner.
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
-import { isNothingToTrainError, queueRepertoireForStart, startNotice } from "./train-start.js";
+import { isNothingToTrainError } from "./train-start.js";
 
 const source = appSource();
 
@@ -10,76 +13,64 @@ function startSmartTrainingSource() {
   return source.slice(start, end);
 }
 
-function startWith(message, status = 400) {
-  const code = startSmartTrainingSource();
+function harness(postJson, resume = {}) {
   const deps = {
-    appState: { trainMode: "smart" }, currentOwnerId: () => "owner",
-    setStatus: vi.fn(), setStatusError: vi.fn(), setTrainBanner: vi.fn(),
-    hardFlushBuild: async () => {}, flushTrainSync: async () => true,
-    loadTrainResume: async () => ({}), isAuthError: () => false, isNothingToTrainError, queueRepertoireForStart,
-    postJson: async () => { throw Object.assign(new Error(message), { status }); },
+    appState: { trainMode: "smart", trainStarting: true }, currentOwnerId: () => "owner",
+    setStatus: vi.fn(), setStatusError: vi.fn(), setTrainBanner: vi.fn(), trainRowError: vi.fn(),
+    syncTrainSessionControls: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
+    loadTrainResume: async () => resume, isAuthError: () => false, isNothingToTrainError, postJson,
+    trainStatsReset: vi.fn(), invalidateTrainPreview: vi.fn(), clearBlitzTimer: vi.fn(),
+    accountService: () => ({ handleAuthRequired: vi.fn() }),
   };
-  const run = new Function(...Object.keys(deps), `let smartStartSeq = 0; ${code}\nreturn startSmartTraining;`)(...Object.values(deps));
+  const run = new Function(...Object.keys(deps), `let smartStartSeq = 0, trainSessionMemo = {}; ${startSmartTrainingSource()}\nreturn startSmartTraining;`)(...Object.values(deps));
   return { run, deps };
 }
+
+const rejecting = (message, status = 400) => async () => { throw Object.assign(new Error(message), { status }); };
 
 it.each([
   "no active repertoires to train",
   "repertoire has no trainable moves yet",
   "repertoires have no trainable moves yet",
   "repertoire has no trainable lines yet",
-])("a start with '%s' leaves the disabled Start as the only signal", async (message) => {
-  const { run, deps } = startWith(message);
+])("a start with '%s' says so in the Due row only", async (message) => {
+  const { run, deps } = harness(rejecting(message));
   await run();
-  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("idle", "No moves to train yet", "");
+  expect(deps.trainRowError).toHaveBeenCalledWith("smart", "Nothing to train here. Add lines in Repertoire.");
   expect(deps.setStatusError).not.toHaveBeenCalled();
-});
-
-it("still reports a queue failure that is not a missing-lines state", async () => {
-  const { run, deps } = startWith("database is down", 500);
-  await run();
-  expect(deps.setStatusError).toHaveBeenCalledWith("database is down");
-  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("error", "Couldn't build your queue", "Try Start again in a moment.");
-});
-
-// A start the server accepts but fills with no cards (a queue whose repertoires
-// all went empty between the preview and the click) used to raise a toast that
-// repeated the banner word for word. The setup screen already carries both the
-// reason and the fix, so the start must leave it as the only signal.
-it("a start that builds an empty queue leaves the banner as the only signal", async () => {
-  const deps = {
-    appState: { trainMode: "smart" },
-    currentOwnerId: () => "owner",
-    setStatus: vi.fn(), setStatusError: vi.fn(), setTrainBanner: vi.fn(),
-    hardFlushBuild: async () => {}, flushTrainSync: async () => true,
-    loadTrainResume: async () => ({ mapTrainUiSession: () => ({ queue: [], sessionId: "s1" }) }),
-    isAuthError: () => false, isNothingToTrainError,
-    queueRepertoireForStart: () => null,
-    postJson: async () => ({ card_kinds: [], requeue_gap: 3 }),
-    trainStatsReset: vi.fn(), invalidateTrainSessionPreview: vi.fn(), clearBlitzTimer: vi.fn(),
-  };
-  const run = new Function(
-    ...Object.keys(deps),
-    `let smartStartSeq = 0, trainSessionMemo = null; ${startSmartTrainingSource()}\nreturn startSmartTraining;`,
-  )(...Object.values(deps));
-  await run();
   expect(deps.setStatus).not.toHaveBeenCalled();
-  expect(deps.setStatusError).not.toHaveBeenCalled();
-  expect(deps.setTrainBanner).toHaveBeenLastCalledWith("idle", "No moves to train yet", "");
-});
-// The card head reads "Card 2 / 5" and the setup brief named the queue's size,
-// so a started queue raised a toast saying one of those a second time. The
-// accepted start must consult startNotice instead of formatting a count.
-it("an accepted start asks startNotice rather than printing the count", () => {
-  const code = startSmartTrainingSource();
-  expect(code).toMatch(/const startMsg = startNotice\(mapped\.resumed\);/);
-  expect(code).toMatch(/if \(startMsg\) setStatus\(startMsg\);/);
-  expect(code).not.toMatch(/Queue ready/);
-  expect(code).not.toMatch(/Resumed queue: card/);
+  expect(deps.appState.trainStarting).toBe(false);
 });
 
-it("startNotice keeps the notice for a resume and drops it for a fresh queue", () => {
-  expect(startNotice(false)).toBe("");
-  expect(startNotice(undefined)).toBe("");
-  expect(startNotice(true)).toBe("Picked up your last queue where you left off");
+it("a real failure is named as one, still in the row", async () => {
+  const { run, deps } = harness(rejecting("database is down", 500));
+  await run();
+  expect(deps.trainRowError).toHaveBeenCalledWith("smart", "Couldn't build your queue. Try again in a moment.");
+  expect(deps.setStatusError).not.toHaveBeenCalled();
+});
+
+it("a start the server accepts but fills with no cards goes back to Home with the reason", async () => {
+  const { run, deps } = harness(async () => ({ card_kinds: [], requeue_gap: 3 }),
+    { mapTrainUiSession: () => ({ queue: [], sessionId: "s1" }) });
+  await run();
+  expect(deps.trainRowError).toHaveBeenCalledWith("smart", "Nothing to train here. Add lines in Repertoire.");
+  expect(deps.setStatus).not.toHaveBeenCalled();
+  expect(deps.appState.trainStarting).toBe(false);
+});
+
+it("posts the scope it was given: one repertoire, or all of them", async () => {
+  const post = vi.fn(rejecting("stop"));
+  const { run, deps } = harness(post);
+  await run({ repertoireId: "r1" });
+  expect(post).toHaveBeenLastCalledWith("/api/train/smart/start", { mixed: false, fresh: false, repertoire_id: "r1" });
+  deps.appState.trainScope = { repertoireId: null };
+  await run({});
+  expect(post).toHaveBeenLastCalledWith("/api/train/smart/start", { mixed: true, fresh: false });
+  await run({ repertoireId: "r1", targetNodeIds: ["n1"] });
+  expect(post).toHaveBeenLastCalledWith("/api/train/smart/start", { mixed: false, fresh: true, repertoire_id: "r1", target_node_ids: ["n1"] });
+});
+
+it("a resumed queue raises no toast: Home already said Resume", () => {
+  const code = startSmartTrainingSource();
+  expect(code).not.toMatch(/setStatus\(/);
 });

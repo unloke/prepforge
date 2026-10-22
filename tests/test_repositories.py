@@ -249,8 +249,11 @@ def test_training_session_and_progress_round_trip():
         node_id="train-e4",
         attempts=4,
         correct_attempts=2,
-        spaced_repetition_score=3.5,
-        is_mastered=False,
+        state=3,
+        step=0,
+        stability=3.5,
+        difficulty=6.2,
+        lapses=1,
     )
 
     repo.save_training_session(session)
@@ -276,8 +279,8 @@ def test_training_session_and_progress_round_trip():
     assert loaded_progress.node_id == "train-e4"
     assert loaded_progress.attempts == 4
     assert loaded_progress.correct_attempts == 2
-    assert loaded_progress.spaced_repetition_score == 3.5
-    assert not loaded_progress.is_mastered
+    assert (loaded_progress.state, loaded_progress.step, loaded_progress.stability,
+            loaded_progress.difficulty, loaded_progress.lapses) == (3, 0, 3.5, 6.2, 1)
 
 
 # ---- user_settings (canonical 1:1 key/value store) ---------------------------

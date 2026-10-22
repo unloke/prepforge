@@ -16,7 +16,8 @@ function makeElements() {
     "train-upnext": makeHost(),
     "train-line-label": { textContent: "" },
     "train-progress-fill": { style: {} },
-    "train-card-dots": { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } },
+    "train-progress": { setAttribute() {} },
+    "train-card-kind": { hidden: true, className: "", textContent: "" },
   };
 }
 
@@ -136,6 +137,15 @@ describe("train up-next preview", () => {
     // "Start" was the Start button's word in a row that has no button.
     expect(html).toContain(">First move<");
     expect(html).not.toContain(">Start<");
+  });
+
+  it("names the card's kind once: the chip for a review, the banner for a new move", () => {
+    const appState = { smart: { cardIndex: 0, repertoireName: "Italian", queue: [card("weak", "Italian", "white", "c3")] } };
+    const view = makeView(appState, elements);
+    view.renderSmartProgress({ total_cards: 1, card_index: 0, kind: "weak" });
+    expect(elements["train-card-kind"]).toMatchObject({ hidden: false, className: "kchip k-weak", textContent: "Weak spot" });
+    view.renderSmartProgress({ total_cards: 1, card_index: 0, kind: "new" });
+    expect(elements["train-card-kind"].hidden).toBe(true);
   });
 
   it("lineTail keeps the move number of a black move", () => {

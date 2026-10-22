@@ -1,8 +1,8 @@
 """Derive human-facing training signals from stored TrainingProgress.
 
-The `training_progress` table already records attempts, accuracy, spaced-
-repetition score, and a `due_at` timestamp per node — but nothing surfaced it.
-This module turns that raw data into two things the UI can show:
+The `training_progress` table records attempts, accuracy, the FSRS memory
+state and a `due_at` timestamp per node. This module turns that into two
+things the UI can show:
 
 - a per-node *mastery* state (the Build/Train heatmap), and
 - a per-repertoire *health* summary (Dashboard badge + Build header strip).
@@ -12,15 +12,15 @@ It is intentionally pure (no DB, no engine) so it is cheap to unit-test.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional, Set
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Iterable, List, Optional, Set
 
-from prepforge_chess.core.sr_config import SR_CONFIG
 from prepforge_chess.core.models import Color, OpeningNode, TrainingProgress
+from prepforge_chess.services.srs import is_mastered, is_weak
 
 
 # Mastery states, worst-to-best urgency order for the heatmap legend.
-MASTERY_WEAK = "weak"          # low accuracy — most alarming (red)
+MASTERY_WEAK = "weak"          # currently failing — most alarming (red)
 MASTERY_DUE = "due"            # spaced-repetition says review now (amber)
 MASTERY_LEARNING = "learning"  # tried, not yet solid (neutral)
 MASTERY_MASTERED = "mastered"  # solid (green)
@@ -35,18 +35,10 @@ MASTERY_STATES = (
 )
 
 # A-01: ONE effective-mastery signal shared by display (heatmap / health) and
-# scheduling (session plan) — they can no longer disagree about a node being
-# "mastered" and "weak" at the same time.
-#
-# The spaced-repetition score is the recent-form signal ( +1 on a hit, halved
-# on a miss, capped at 10), so recent recovery can override a bad start:
-# ``SR_CONFIG.weak_score_below`` consecutive-hit-worth of recent form lifts a node out of
-# weak, and ``SR_CONFIG.mastered_score_at`` mirrors ``TrainingProgress.is_mastered``.
-# Lifetime accuracy stays as history only — early failures must not mask
-# recent progress forever. This is derived state (no new columns), so old
-# progress rows convert by simply being read; the version stamp documents
-# which rules produced a shown state.
-MASTERY_ALGORITHM_VERSION = "mastery-v2"
+# scheduling (session plan), read from the FSRS memory state (services/srs.py):
+# weak = tried twice and stability still under a day, or lapsed and relearning;
+# mastered = in review with stability of three weeks or more.
+MASTERY_ALGORITHM_VERSION = "mastery-fsrs"
 
 
 def _now() -> datetime:
@@ -63,17 +55,11 @@ def node_mastery(progress: Optional[TrainingProgress], *, now: Optional[datetime
     if progress is None or progress.attempts <= 0:
         return MASTERY_UNTRAINED
     now = now or _now()
-    score = progress.spaced_repetition_score
-    ratio = progress.correct_attempts / progress.attempts if progress.attempts else 0.0
-    # Weak = CURRENTLY failing: lifetime evidence of trouble AND no recent
-    # recovery. A node that used to be wrong but has since built up recent form
-    # (score >= SR_CONFIG.weak_score_below, roughly that many consecutive correct
-    # reviews) leaves weak even if its lifetime ratio is still under 50%.
-    if progress.attempts >= 2 and ratio < 0.5 and score < SR_CONFIG.weak_score_below:
+    if is_weak(progress):
         return MASTERY_WEAK
     if progress.due_at is not None and progress.due_at <= now:
         return MASTERY_DUE
-    if progress.is_mastered or score >= SR_CONFIG.mastered_score_at:
+    if is_mastered(progress):
         return MASTERY_MASTERED
     return MASTERY_LEARNING
 
@@ -165,6 +151,34 @@ def due_forecast(
         if now < due_at and (due_at - now).total_seconds() <= horizon_hours * 3600:
             count += 1
     return count
+
+
+def due_outlook(
+    root: OpeningNode,
+    color: Color,
+    progress_by_id: Dict[str, TrainingProgress],
+    *,
+    now: datetime,
+    day_end: datetime,
+) -> Dict[str, Any]:
+    """Reviewed moves due by now, by the end of the player's day and within a
+    week (cumulative) — Train Home's FSRS outlook — plus ``next``, the soonest
+    review still ahead (None when none is scheduled)."""
+    week_end = now + timedelta(days=7)
+    out: Dict[str, Any] = {"now": 0, "today": 0, "week": 0, "next": None}
+    for node in _walk(root):
+        if not _is_trainable(node, color):
+            continue
+        progress = progress_by_id.get(node.id)
+        if progress is None or progress.attempts <= 0 or progress.due_at is None:
+            continue
+        due_at = progress.due_at
+        out["now"] += due_at <= now
+        out["today"] += due_at <= day_end
+        out["week"] += due_at <= week_end
+        if due_at > now and (out["next"] is None or due_at < out["next"]):
+            out["next"] = due_at
+    return out
 
 
 @dataclass(frozen=True)

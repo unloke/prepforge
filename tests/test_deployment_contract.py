@@ -164,7 +164,7 @@ def test_package_data_ships_the_whole_static_tree() -> None:
         for path in static.rglob("*")
         if path.is_file()
         and path.suffix != ".map"
-        and (path.parent.name != "maia3" or path.name == "maia3.manifest.json")
+        and (path.parent.name != "maia3" or path.name in {"maia3.manifest.json", "maia3.manifest.json.br"})
     }
     missing = sorted(str(p.relative_to(static)) for p in wanted - shipped)
     assert not missing, f"left out of the wheel: {missing}"

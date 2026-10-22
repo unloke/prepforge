@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { queueRepertoireForStart, rememberFinishedQueueScope, startNotice } from "./train-start.js";
 import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
 import { readTrainingHistory } from './train-history.js';
-import { smartSessionOutcomeText } from "./train-outcome.js";
+import { smartResult } from "./train-result.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -41,8 +40,8 @@ function harness(overrides = {}) {
     loadTrainResume: async () => ({ mapTrainUiSession, shouldResetTrainStats }),
     currentOwnerId: () => appState.accountUserId,
     trainStatsReset: () => { appState.trainStats = mapTrainUiSession(payload).stats; },
-    invalidateTrainSessionPreview: () => {},
-    queueRepertoireForStart, startNotice,
+    invalidateTrainPreview: vi.fn(), trainRowError: vi.fn(), smartResult,
+    home: { showTrainResult: vi.fn((result) => { appState.trainResult = result; }) },
     setStatus: vi.fn(), setTrainBanner: vi.fn(), hardFlushBuild: async () => {}, flushTrainSync: async () => true,
     postJson: vi.fn(async () => payload), clearBlitzTimer: vi.fn(), blitzEnabled: () => true,
     pendingHandoffs: () => [], setBlitzBarVisible: vi.fn(), boards: {},
@@ -57,12 +56,7 @@ function harness(overrides = {}) {
     playSound: vi.fn(),
     reveal: (el) => { el.hidden = false; },
   };
-  deps.setSmartPanelsHidden = compile("function setSmartPanelsHidden(", deps);
-  deps.renderSmartSummaryStats = vi.fn();
-  deps.paintTrainStartDisabled = vi.fn();
   deps.syncTrainSessionControls = vi.fn();
-  deps.showSmartSummary = compile("function showSmartSummary(", deps);
-  deps.smartSessionOutcomeText = smartSessionOutcomeText;
   deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
   return { appState, deps, start: compile("async function startSmartTraining(", deps), present, phase, payload };
@@ -196,55 +190,56 @@ describe("Smart memo integration at Start", () => {
     expect(h.present).not.toHaveBeenCalled();
     expect(loadSessionMemo("alice", "session", "start-1")).toBeNull();
   });
-  it("a new queue clears the last session's result cells", async () => {
+  it("a new queue drops the last run's Result", async () => {
     const h = harness();
-    const cells = { innerHTML: "old cells" };
-    const delta = { innerHTML: "old delta" };
-    const foot = { textContent: "old foot" };
-    const els = { "train-summary-stats": cells, "train-summary-delta": delta, "train-summary-foot": foot };
-    // The clear lives in setSmartPanelsHidden; call it as Start does.
-    const dom = { getElementById: (id) => els[id] || null };
-    const clear = compile("function setSmartPanelsHidden(", { ...h.deps, document: dom });
-    clear();
-    expect(String(cells.innerHTML)).toBe("");
-    expect(String(delta.innerHTML)).toBe("");
-    expect(foot.textContent).toBe("");
+    h.appState.trainResult = { mode: "smart", title: "Queue complete" };
+    await h.start();
+    expect(h.appState.trainResult).toBeNull();
+    expect(h.deps.invalidateTrainPreview).toHaveBeenCalled();
   });
 
-  it("the finished session speaks without exclamation marks", async () => {
+  it("Finish shows the Result at once, then fills in what changed, without exclamation marks", async () => {
     const h = harness();
-    const setAttribute = vi.fn();
-    const node = { style: {}, innerHTML: "", textContent: "", setAttribute, hidden: false, className: "", appendChild() {}, remove() {}, scrollIntoView() {} };
-    const el = () => node;
-    const fakeDoc = { getElementById: el, createElement: () => node };
+    const node = { style: {}, innerHTML: "", textContent: "", setAttribute: vi.fn(), hidden: false, className: "", appendChild() {}, remove() {}, scrollIntoView() {} };
+    const fakeDoc = { getElementById: () => node, createElement: () => node };
     h.deps.celebrate = compile("function celebrate(", { ...h.deps, document: fakeDoc, window: { setTimeout: () => {} } });
+    const after = { health: { new: 16, learning: 2 }, due_tomorrow: 2 };
     const finish = compile("async function finishSmartSession(", {
       ...h.deps, document: fakeDoc,
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
-      syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), updateTrainTurnBadge: vi.fn(),
-      localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
-      rememberFinishedQueueScope,
+      updateTrainTurnBadge: vi.fn(), localDateString: () => "2026-10-01", api: async () => after,
     });
     await h.start();
     h.appState.smart.blitz = false;
     await finish();
-    // The session moved spaced-repetition state: the "to train" counts are stale.
-    // The live session is released once the report owns the screen, so the setup
-    // screen and Start describe the queue as it now stands.
+    const shown = h.deps.home.showTrainResult.mock.calls.map((call) => call[0]);
+    expect(shown).toHaveLength(2);
+    expect(shown[0].foot).toBe("");
+    expect(shown[1].foot).toBe("2 reviews due tomorrow");
+    for (const result of shown) expect(result.title).toBe("Queue complete");
+    for (const result of shown) expect(JSON.stringify(result)).not.toContain("!");
+    // The live session is released once the report owns the screen, and every
+    // cached count of what is left to train is refreshed.
     expect(h.appState.smart).toBeNull();
-    await vi.waitFor(() => expect(h.deps.refreshRepertoireHead).toHaveBeenCalled());
+    expect(h.deps.refreshRepertoireHead).toHaveBeenCalled();
     expect(h.deps.refreshDashboardRepertoires).toHaveBeenCalled();
-    expect(h.deps.paintTrainStartDisabled).toHaveBeenCalled();
-    // The report is on screen before the flush and the summary fetch answer.
-    expect(h.deps.renderSmartSummaryStats).toHaveBeenCalled();
-    expect(h.deps.renderSmartSummaryStats.mock.calls[0][0].sessionId).toBe("session");
-    const titles = h.deps.setTrainBanner.mock.calls.map((call) => call[1]);
-    expect(titles.filter((title) => /session complete/i.test(title))).toEqual(["Session complete"]);
-    for (const title of titles) expect(title).not.toContain("!");
-    // The end label names the position in a few words: the phone's thumb bar
-    // ellipsized "Final position of the last card". The fixture cards carry no
-    // fen_after, so the label is cleared here.
-    expect(String(node.textContent)).toBe("");
+  });
+
+  it("a Result the player already left is not repainted when the summary lands", async () => {
+    const h = harness();
+    const late = deferred();
+    const finish = compile("async function finishSmartSession(", {
+      ...h.deps, document: { getElementById: () => ({ style: {}, textContent: "" }) },
+      boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } }, celebrate: vi.fn(),
+      updateTrainTurnBadge: vi.fn(), localDateString: () => "2026-10-01", api: () => late.promise,
+    });
+    await h.start();
+    const done = finish();
+    await vi.waitFor(() => expect(h.deps.home.showTrainResult).toHaveBeenCalledTimes(1));
+    h.appState.trainResult = null; // ‹ Train
+    late.resolve({ due_tomorrow: 1 });
+    await done;
+    expect(h.deps.home.showTrainResult).toHaveBeenCalledTimes(1);
   });
 
   it("Finish clears only this owner/session's memo", async () => {
@@ -254,9 +249,7 @@ describe("Smart memo integration at Start", () => {
     const finish = compile("async function finishSmartSession(", {
       ...h.deps, document: { getElementById: () => ({ style: {}, innerHTML: "", scrollIntoView() {} }) },
       boards: { train: { setEngineArrow: vi.fn(), setPosition: vi.fn() } },
-      syncTrainSessionControls: vi.fn(), invalidateTrainSessionPreview: vi.fn(), celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(),
-      localDateString: () => "2026-10-01", api: async () => null, renderSmartSummary: async () => {},
-      smartSessionOutcomeText: () => "", rememberFinishedQueueScope,
+      celebrate: vi.fn(), updateTrainTurnBadge: vi.fn(), localDateString: () => "2026-10-01", api: async () => null,
     });
     h.appState.smart.cardIndex = h.appState.smart.queue.length;
     h.appState.smart.cardsDone = 3;

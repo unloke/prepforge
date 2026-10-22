@@ -7,14 +7,16 @@ from typing import Any, Dict, List, Mapping, Optional
 from sqlalchemy import or_, and_, case, func, literal, select, update
 from sqlalchemy.engine import Connection
 from prepforge_chess.core.models import TrainingMode, TrainingProgress, TrainingSession
+from prepforge_chess.core.sr_config import SR_CONFIG, STATE_RELEARNING, STATE_REVIEW
 from prepforge_chess.storage import sa_tables as t
-from prepforge_chess.storage.repositories.common import _bool_to_int, _insert, _int_to_bool, _json_dump, _json_load, _upsert
+from prepforge_chess.storage.repositories.common import _insert, _json_dump, _json_load, _upsert
 from prepforge_chess.storage.repositories.settings import SettingsRepository
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY
 
 
 # Collected once: the row's shape does not depend on the caller's lookup.
 _PROGRESS_COLUMNS = tuple(t.training_progress.c)
+_FSRS_COLUMNS = ("state", "step", "stability", "difficulty", "lapses")
 
 
 class TrainingRepository(SettingsRepository):
@@ -42,8 +44,6 @@ class TrainingRepository(SettingsRepository):
         Match node_mastery precedence over reachable own-side nodes. Only static
         tree coverage (shallow_lines) remains cached in the listing.
         """
-        from prepforge_chess.core.sr_config import SR_CONFIG
-
         tp = t.training_progress
         nodes = t.opening_nodes
         now = now or datetime.now(timezone.utc)
@@ -78,20 +78,20 @@ class TrainingRepository(SettingsRepository):
             # for each parent in the recursive step.
             .where(nodes.c.repertoire_id == blocked.c.repertoire_id)
         )
-        # weak, in SQL: attempts >= 2 and lifetime accuracy below half and the
-        # recent-form score still low. correct*2 < attempts avoids the
-        # integer/float division difference between SQLite and Postgres.
+        # srs.is_weak / srs.is_mastered, in SQL.
+        stability = func.coalesce(tp.c.stability, 0.0)
         is_weak = and_(
             tp.c.attempts >= 2,
-            tp.c.correct_attempts * 2 < tp.c.attempts,
-            tp.c.spaced_repetition_score < SR_CONFIG.weak_score_below,
+            or_(tp.c.state == STATE_RELEARNING, stability < SR_CONFIG.weak_stability_days),
         )
+        is_mastered = and_(tp.c.state == STATE_REVIEW, stability >= SR_CONFIG.mastered_stability_days)
+
         def state_at(deadline):
             return case(
                 (or_(tp.c.attempts.is_(None), tp.c.attempts <= 0), "untrained"),
                 (is_weak, "weak"),
                 (tp.c.due_at <= deadline, "due"),
-                (or_(tp.c.is_mastered == 1, tp.c.spaced_repetition_score >= SR_CONFIG.mastered_score_at), "mastered"),
+                (is_mastered, "mastered"),
                 else_="learning",
             )
 
@@ -140,10 +140,22 @@ class TrainingRepository(SettingsRepository):
                     "attempts": row["attempts"],
                     "correct_attempts": row["correct_attempts"],
                     "last_reviewed_at": row["last_reviewed_at"],
-                    "spaced_repetition_score": row["spaced_repetition_score"],
                     "due_at": row["due_at"],
-                    "is_mastered": _int_to_bool(row["is_mastered"]),
+                    **{name: row[name] for name in _FSRS_COLUMNS},
                 }
+
+    def iter_owner_train_reviews(self, owner_user_id: str):
+        """Every graded answer, oldest first (account export, F-05)."""
+        tr = t.train_reviews
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(tr.c.node_id, tr.c.rating, tr.c.reviewed_at)
+                .where(tr.c.owner_user_id == owner_user_id)
+                .order_by(tr.c.id)
+                .execution_options(yield_per=100)
+            ).mappings()
+            for row in rows:
+                yield dict(row)
 
     def iter_owner_training_sessions(self, owner_user_id: str):
         """The user's session summaries, on their own and shared repertoires (account export, F-05)."""
@@ -195,6 +207,7 @@ class TrainingRepository(SettingsRepository):
                 "repertoire_id": session.repertoire_id,
                 "owner_user_id": session.owner_user_id,
                 "mode": session.mode.value,
+                "scope": session.scope,
                 "line_order_json": _json_dump(session.line_order),
                 "current_index": session.current_index,
                 "current_node_id": session.current_node_id,
@@ -225,6 +238,7 @@ class TrainingRepository(SettingsRepository):
         repertoire_id: str,
         owner_user_id: str,
         mode: Optional[TrainingMode] = None,
+        scope: Optional[str] = None,
     ) -> Optional[TrainingSession]:
         stmt = (
             select(t.training_sessions)
@@ -237,6 +251,8 @@ class TrainingRepository(SettingsRepository):
         )
         if mode is not None:
             stmt = stmt.where(t.training_sessions.c.mode == mode.value)
+        if scope is not None:
+            stmt = stmt.where(t.training_sessions.c.scope == scope)
         with self.engine.connect() as conn:
             row = conn.execute(stmt).mappings().first()
         return self._training_session_from_row(row) if row is not None else None
@@ -308,16 +324,22 @@ class TrainingRepository(SettingsRepository):
                 "attempts": progress.attempts,
                 "correct_attempts": progress.correct_attempts,
                 "last_reviewed_at": progress.last_reviewed_at,
-                "spaced_repetition_score": progress.spaced_repetition_score,
                 "due_at": progress.due_at,
-                "is_mastered": _bool_to_int(progress.is_mastered),
+                **{name: getattr(progress, name) for name in _FSRS_COLUMNS},
             },
             conflict=[t.training_progress.c.owner_user_id, t.training_progress.c.node_id],
             update_cols=(
-                "repertoire_id", "attempts", "correct_attempts", "last_reviewed_at",
-                "spaced_repetition_score", "due_at", "is_mastered",
+                "repertoire_id", "attempts", "correct_attempts", "last_reviewed_at", "due_at", *_FSRS_COLUMNS,
             ),
         )
+
+    def write_review(
+        self, conn: Connection, *, owner_user_id: str, node_id: str, rating: int, reviewed_at: datetime,
+    ) -> None:
+        """Log one graded answer in the caller's transaction."""
+        conn.execute(t.train_reviews.insert().values(
+            owner_user_id=owner_user_id, node_id=node_id, rating=int(rating), reviewed_at=reviewed_at,
+        ))
 
     def lock_training_progress(
         self,
@@ -346,9 +368,7 @@ class TrainingRepository(SettingsRepository):
                 attempts=0,
                 correct_attempts=0,
                 last_reviewed_at=None,
-                spaced_repetition_score=0.0,
                 due_at=None,
-                is_mastered=0,
             )
             .on_conflict_do_nothing(
                 index_elements=[t.training_progress.c.owner_user_id, t.training_progress.c.node_id]
@@ -407,6 +427,7 @@ class TrainingRepository(SettingsRepository):
             repertoire_id=row["repertoire_id"],
             owner_user_id=row["owner_user_id"],
             mode=TrainingMode(row["mode"]),
+            scope=row["scope"],
             line_order=_json_load(row["line_order_json"], []),
             current_index=row["current_index"],
             current_node_id=row["current_node_id"],
@@ -424,7 +445,6 @@ class TrainingRepository(SettingsRepository):
             attempts=row["attempts"],
             correct_attempts=row["correct_attempts"],
             last_reviewed_at=row["last_reviewed_at"],
-            spaced_repetition_score=row["spaced_repetition_score"],
             due_at=row["due_at"],
-            is_mastered=_int_to_bool(row["is_mastered"]),
+            **{name: row[name] for name in _FSRS_COLUMNS},
         )

@@ -3,10 +3,9 @@ from __future__ import annotations
 import random
 import uuid
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Iterable, List, Optional, Tuple
 
-from prepforge_chess.core.sr_config import SR_CONFIG
 from prepforge_chess.core.models import (
     MoveRecord,
     OpeningNode,
@@ -15,6 +14,8 @@ from prepforge_chess.core.models import (
     TrainingProgress,
     TrainingSession,
 )
+from prepforge_chess.services.scheduler import sibling_moves
+from prepforge_chess.services.srs import rating_for, review
 from prepforge_chess.storage.repositories.repertoires import RepertoireRepository
 
 
@@ -50,7 +51,7 @@ class TrainingAttemptResult:
     expected_san: str
     completed_line: bool
     session: TrainingSession
-    progress: TrainingProgress
+    progress: Optional[TrainingProgress]  # None for an ungraded retry
     next_prompt: Optional[TrainingPrompt]
     # Intermediate positions so the UI can play the player's move and the
     # opponent's reply as two distinct, animated steps (set only when correct).
@@ -59,6 +60,9 @@ class TrainingAttemptResult:
     reply_uci: Optional[str] = None
     reply_san: Optional[str] = None
     fen_after_reply: Optional[str] = None
+    # The move is another repertoire move at this position: not graded, not a
+    # miss; the prompt stays and the player tries again for the drilled move.
+    alternative: bool = False
 
 
 def _utc_now() -> datetime:
@@ -174,10 +178,11 @@ class TrainingService:
         return self._prompt_for_session(repertoire, updated)
 
     def submit_move(
-        self, session_id: str, played_uci: str, *, hinted: bool = False
+        self, session_id: str, played_uci: str, *, hinted: bool = False, attempt: int = 1
     ) -> TrainingAttemptResult:
-        """Grade a move. A correct move after a hint still advances the line,
-        but spaced repetition records it as a miss: it was not recalled."""
+        """Grade a move. A correct move after a hint advances the line and
+        grades Hard: recalled, with help. Only the first attempt at a prompt
+        is graded (same rule as the smart queue); a retry only moves on."""
         with self.repository.engine.begin() as conn:
             session = self.repository.lock_training_session(conn, session_id=session_id)
             if session is None:
@@ -189,18 +194,38 @@ class TrainingService:
             if prompt is None:
                 raise ValueError("training session has no current prompt")
 
-            progress = self.repository.lock_training_progress(
-                conn, repertoire_id=repertoire.id,
-                node_id=prompt.expected_node_id,
-                owner_user_id=self._owner_or_raise(),
-            )
             correct = played_uci == prompt.expected_move_uci
-            updated_session, updated_progress = record_attempt(
-                session=session,
-                progress=progress,
-                node_id=prompt.expected_node_id,
-                correct=correct and not hinted,
-            )
+            if not correct:
+                alternative = self._alternative(repertoire, session, prompt, played_uci)
+                if alternative is not None:
+                    return TrainingAttemptResult(
+                        correct=False,
+                        played_uci=played_uci,
+                        expected_uci=prompt.expected_move_uci,
+                        expected_san=prompt.expected_move_san,
+                        completed_line=False,
+                        session=session,
+                        progress=None,
+                        next_prompt=prompt,
+                        played_san=alternative.move.san,
+                        fen_after_player=alternative.move.fen_after,
+                        alternative=True,
+                    )
+            graded = attempt <= 1
+            updated_session, updated_progress = session, None
+            if graded:
+                progress = self.repository.lock_training_progress(
+                    conn, repertoire_id=repertoire.id,
+                    node_id=prompt.expected_node_id,
+                    owner_user_id=self._owner_or_raise(),
+                )
+                updated_session, updated_progress = record_attempt(
+                    session=session,
+                    progress=progress,
+                    node_id=prompt.expected_node_id,
+                    correct=correct,
+                    hinted=hinted,
+                )
 
             completed_line = False
             if correct:
@@ -234,9 +259,15 @@ class TrainingService:
                 )
 
             self.repository.write_training_session(conn, updated_session)
-            self.repository.write_training_progress(
-                conn, repertoire_id=repertoire.id, progress=updated_progress, owner_user_id=self._owner_or_raise()
-            )
+            if updated_progress is not None:
+                self.repository.write_training_progress(
+                    conn, repertoire_id=repertoire.id, progress=updated_progress,
+                    owner_user_id=self._owner_or_raise(),
+                )
+                self.repository.write_review(
+                    conn, owner_user_id=self._owner_or_raise(), node_id=prompt.expected_node_id,
+                    rating=rating_for(correct, hinted=hinted), reviewed_at=updated_progress.last_reviewed_at,
+                )
 
         # Surface the player's move result and the opponent's single reply so
         # the UI can animate them as two separate steps instead of jumping the
@@ -269,6 +300,23 @@ class TrainingService:
             reply_uci=reply_uci,
             reply_san=reply_san,
             fen_after_reply=fen_after_reply,
+        )
+
+    def _alternative(
+        self,
+        repertoire: Repertoire,
+        session: TrainingSession,
+        prompt: TrainingPrompt,
+        played_uci: str,
+    ) -> Optional[OpeningNode]:
+        path = self._path_to_node(repertoire.root_node, session.line_order[session.current_index])
+        expected = next((node for node in path if node.id == prompt.expected_node_id), None)
+        if expected is None:
+            return None
+        return next(
+            (node for node in sibling_moves(repertoire.root_node, path, expected)
+             if node.move.uci == played_uci),
+            None,
         )
 
     def _reply_after(
@@ -435,9 +483,11 @@ def record_attempt(
     progress: TrainingProgress,
     node_id: str,
     correct: bool,
+    hinted: bool = False,
     now: Optional[datetime] = None,
 ) -> Tuple[TrainingSession, TrainingProgress]:
     timestamp = now or _utc_now()
+    recalled = correct and not hinted
 
     mistakes = list(session.mistakes)
     mastered = list(session.mastered_nodes)
@@ -445,13 +495,13 @@ def record_attempt(
     if correct:
         if node_id in mistakes:
             mistakes.remove(node_id)
-        if node_id not in mastered and progress.correct_attempts + 1 >= 3:
+        if recalled and node_id not in mastered and progress.correct_attempts + 1 >= 3:
             mastered.append(node_id)
     else:
         if node_id not in mistakes:
             mistakes.append(node_id)
 
-    updated_progress = update_spaced_repetition(progress, correct=correct, now=timestamp)
+    updated_progress = review(progress, rating_for(correct, hinted=hinted), now=timestamp)
     updated_session = replace(
         session,
         mistakes=mistakes,
@@ -460,32 +510,3 @@ def record_attempt(
         updated_at=timestamp,
     )
     return updated_session, updated_progress
-
-
-def update_spaced_repetition(
-    progress: TrainingProgress,
-    *,
-    correct: bool,
-    now: Optional[datetime] = None,
-) -> TrainingProgress:
-    timestamp = now or _utc_now()
-    attempts = progress.attempts + 1
-    correct_attempts = progress.correct_attempts + (1 if correct else 0)
-
-    if correct:
-        score = min(SR_CONFIG.score_cap, progress.spaced_repetition_score + SR_CONFIG.correct_increment)
-        interval_days = max(1, int(round(score)))
-        due_at = timestamp + timedelta(days=interval_days)
-    else:
-        score = max(0.0, progress.spaced_repetition_score * SR_CONFIG.wrong_multiplier)
-        due_at = timestamp + timedelta(minutes=SR_CONFIG.retry_minutes)
-
-    return replace(
-        progress,
-        attempts=attempts,
-        correct_attempts=correct_attempts,
-        last_reviewed_at=timestamp,
-        spaced_repetition_score=score,
-        due_at=due_at,
-        is_mastered=score >= SR_CONFIG.mastered_score_at and correct_attempts >= SR_CONFIG.mastered_correct_attempts,
-    )

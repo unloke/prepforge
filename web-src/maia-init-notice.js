@@ -32,7 +32,9 @@ export function maiaErrorText(error) {
   return message || "Maia could not start. Retry.";
 }
 
-export function watchMaiaInit(provider, { notices, onRetry } = {}) {
+// `quietFail`: the caller shows the failure itself (Train's Result card), so a
+// failure only clears the progress notice.
+export function watchMaiaInit(provider, { notices, onRetry, quietFail = false } = {}) {
   if (!provider || typeof provider.subscribeInitProgress !== "function") return () => {};
   let failed = false;
   let card = null;
@@ -49,6 +51,7 @@ export function watchMaiaInit(provider, { notices, onRetry } = {}) {
   const fail = (error) => {
     failed = true;
     stop();
+    if (quietFail) { card?.dismiss(); return; }
     notices?.show(maiaErrorText(error), {
       key: MAIA_INIT_NOTICE_KEY,
       tone: "error",

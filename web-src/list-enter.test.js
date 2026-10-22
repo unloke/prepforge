@@ -111,9 +111,15 @@ describe("entrances", () => {
     // `:not([hidden])` and bare-class entrances restart whenever an ancestor
     // goes from display:none to shown — the "it animates twice" report.
     expect(css).not.toMatch(/:not\(\[hidden\]\) \{ animation:/);
-    for (const selector of ["#build-branchbar.is-enter", "#train-summary.is-enter", "#train-progress-panel.is-enter", "#view-dashboard .today.is-enter", "#explorer-rows > .is-enter"]) {
+    for (const selector of ["#build-branchbar.is-enter", "#view-dashboard .today.is-enter", "#explorer-rows > .is-enter"]) {
       expect(css).toContain(selector);
     }
+  });
+
+  it("Train's screens enter through the view transition, never a second entrance animation", () => {
+    const shell = readFileSync(new URL("./train-shell.css", import.meta.url), "utf8");
+    expect(shell).toContain("::view-transition-new(train-body)");
+    expect(css + shell).not.toMatch(/#train-(summary|progress-panel|home)[^{]*\{[^}]*animation:/);
   });
 
   it("gives every pressable control the same scale-down", () => {

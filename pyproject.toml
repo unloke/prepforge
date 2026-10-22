@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 license = { text = "AGPL-3.0-or-later" }
 authors = [{ name = "PrepForge" }]
 dependencies = [
+    "fsrs>=6.3,<7",
     "python-chess>=1.999,<2",
 ]
 
@@ -46,7 +47,7 @@ where = ["src"]
 #   static/engine/*       stockfish.manifest.json
 #   static/engine/*/*     both Stockfish builds in their content-hashed folders, and the
 #                          vendored onnxruntime-web runtime in ort/ (.asyncify.{mjs,wasm})
-#   static/maia3/maia3.manifest.json  ONLY the manifest. Listed by EXACT filename,
+#   static/maia3/maia3.manifest.json(.br)  ONLY the manifest (and its brotli twin). Listed by EXACT filename,
 #                          not a `static/maia3/*` glob: the 137 MB ONNX weights are
 #                          CDN-hosted and must NEVER enter the wheel. A glob would
 #                          repackage any .onnx that happens to sit in that dir if the
@@ -59,6 +60,7 @@ where = ["src"]
     "static/engine/*",
     "static/engine/*/*",
     "static/maia3/maia3.manifest.json",
+    "static/maia3/maia3.manifest.json.br",
 ]
 
 [tool.setuptools.exclude-package-data]

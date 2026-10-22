@@ -9,7 +9,6 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import { normalizeRepertoireColor, repertoireColorField } from "./repertoire-color.js";
-import { trainStartDisabled } from "./train-start.js";
 import { authInputError, authReasonFor, isOpeningKeystroke } from "./controllers/account.js";
 import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
 import { syncChipVariant } from "./sync-chip.js";
@@ -39,24 +38,6 @@ describe("repertoire color is a two-way choice (P0-4)", () => {
   it("no create/import dialog asks for the color as free text anymore", () => {
     expect(app).not.toMatch(/Your color \(white \/ black\)/);
     expect(app.match(/repertoireColorField\(/g) || []).toHaveLength(3);
-  });
-});
-
-describe("guest Line rehearsal Start (P0-1)", () => {
-  it("stays clickable for a guest so the click reaches the sign-in gate", () => {
-    expect(trainStartDisabled({ mode: "all_lines", signedIn: false, hasRepertoire: false })).toBe(false);
-  });
-
-  it("still waits on the picker for a signed-in user without a repertoire", () => {
-    expect(trainStartDisabled({ mode: "all_lines", signedIn: true, hasRepertoire: false })).toBe(true);
-    expect(trainStartDisabled({ mode: "all_lines", signedIn: true, hasRepertoire: true })).toBe(false);
-  });
-
-  it("never disables Smart queue or Play", () => {
-    for (const mode of ["smart", "play"]) {
-      expect(trainStartDisabled({ mode, signedIn: true, hasRepertoire: false })).toBe(false);
-      expect(trainStartDisabled({ mode, signedIn: false, hasRepertoire: false })).toBe(false);
-    }
   });
 });
 

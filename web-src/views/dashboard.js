@@ -58,7 +58,7 @@ export function createDashboardView({
   setStatus,
   setStatusError = (message) => setStatus(message),
   localDateString,
-  goToSmartTraining,
+  openTrain,
   editRepertoire,
   openRepertoireContextMenu,
   createRepertoirePrompt,
@@ -435,11 +435,7 @@ export function createDashboardView({
       card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
       return;
     }
-    const trainNow = () =>
-      goToSmartTraining(
-        due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
-      );
-    document.getElementById("dashboard-train-now").addEventListener("click", trainNow);
+    document.getElementById("dashboard-train-now").addEventListener("click", () => openTrain({ mode: "smart" }));
   }
 
   // ---- Library list rendering ----------------------------------------------
@@ -459,6 +455,8 @@ export function createDashboardView({
     openShared: (repId) => editRepertoire(repId),
     openRepertoireContextMenu,
     repSubline,
+    // A weak / due / new chip trains that repertoire's Due queue.
+    trainRepertoire: (repId, chip) => openTrain && openTrain({ mode: "smart", repertoireId: repId, origin: chip }),
   });
 
   // An empty library (signed out, or no repertoires yet) is the prototype's
@@ -824,7 +822,7 @@ export function createDashboardView({
           if (ok) setStatus("Ready");
         });
       } else if (action === "analyze" && goToView) goToView("analyze");
-      else if (action === "train" && goToSmartTraining) goToSmartTraining("Starting training…");
+      else if (action === "train" && openTrain) openTrain({ mode: "smart" });
       else if (action === "lichess") {
         // Linking lives in Settings → Account (Chess accounts); the app opens Settings via
         // its tab and jumps to the section once the view has rendered.
