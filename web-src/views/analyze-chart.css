@@ -127,6 +127,10 @@
    verdict owns the top and bottom margin (its row is the one that gives), so the
    Humans row keeps its full height and the pills are never squeezed. */
 .coach-card > .coach-prose { margin: var(--coach-gap) 0; }
+/* The row keeps its three lines so the instrument below never moves, but the
+   note's box (and its tone rule) is only as tall as what it says: a one-line
+   "Make a move…" with a 75px rule under it read as an empty field. */
+.coach-card > .coach-prose { align-self: start; max-height: 100%; }
 .coach-card > .coach-bookline { margin-top: var(--coach-gap); }
 .coach-card > * {
   min-width: 0;

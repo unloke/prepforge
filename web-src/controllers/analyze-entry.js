@@ -139,8 +139,12 @@ export async function loadAnalysisHistory() {
       for (const row of payload.analyses || []) rows.set(row.game_id, row);
       cursor = payload.next_cursor || null;
       const scroll = host.scrollTop;
+      // A game with no player names (a pasted move list) is an untitled game, not
+      // "? vs ?"; an unfinished one ("*") has no result to show.
+      const label = (a) => (a.white || a.black ? `${a.white || "?"} vs ${a.black || "?"}` : "Untitled game");
+      const meta = (a) => [a.result && a.result !== "*" ? a.result : "", localDayOf(a.analyzed_at)].filter(Boolean).join(" · ");
       host.innerHTML = html`${[...rows.values()].map((a) =>
-        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button"><span class="hi-players">${a.white || "?"} vs ${a.black || "?"}</span><span class="hi-meta">${a.result || ""} · ${localDayOf(a.analyzed_at)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${a.white || "?"} vs ${a.black || "?"}" title="Delete this analysis" aria-label="Delete analysis of ${a.white || "?"} vs ${a.black || "?"}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
+        html`<div class="history-item" data-game-id="${a.game_id}"><button class="hi-open" type="button"><span class="hi-players">${label(a)}</span><span class="hi-meta">${meta(a)}</span></button><button class="btn icon sm hi-delete" type="button" data-history-delete="${a.game_id}" data-history-label="${label(a)}" title="Delete this analysis" aria-label="Delete analysis of ${label(a)}"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>`
       )}` || html`<div class="muted hint">No saved analyses yet.</div>`;
       if (cursor) host.innerHTML += html`<button class="btn sm" data-history-more>Load more</button>`;
       host.scrollTop = scroll;

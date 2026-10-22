@@ -586,12 +586,18 @@ function switchView(name, { fromUrl = false } = {}) {
   // Warm the Analyze book (active repertoire trees) so the first explored move
   // can be matched without waiting on the lazy load.
   // Recent analyses are owner-scoped: signed out the drawer is absent; signed
-  // in it ships open, so it loads on entry (not only on a manual toggle).
+  // in it ships open on a desktop, so it loads on entry (not only on a manual
+  // toggle) and an idle panel offers the games to reopen instead of a coach
+  // line over blank tone. On a phone it lives in the Games sheet, closed.
   if (name === "analyze") {
     const historyDrawer = document.getElementById("history-drawer");
     if (historyDrawer) {
       historyDrawer.hidden = !appState.signedIn;
-      if (appState.signedIn && historyDrawer.open) loadAnalysisHistory();
+      const ship = appState.signedIn && !historyDrawer.dataset.shipped;
+      if (ship) historyDrawer.dataset.shipped = "1";
+      // Opening it fires the drawer's toggle, which loads the list.
+      if (ship && !historyDrawer.open && window.matchMedia?.("(min-width: 861px)").matches) historyDrawer.open = true;
+      else if (appState.signedIn && historyDrawer.open) loadAnalysisHistory();
     }
   }
   if (name === "analyze" && appState.signedIn) {
