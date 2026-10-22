@@ -1287,7 +1287,10 @@
   #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child > .btn:disabled { display: none; }
   #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child > [data-train-history] { flex: 1 1 auto; height: 44px; min-height: 44px; background: none; color: var(--accent-strong); }
   #view-train .train-sidebar[data-play-live] #train-play-setup > :is(.field, .note, .train-play-chip:empty) { display: none; }
-  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) { position: static; margin-top: 0; padding: 0; }
+  /* New game rides on top of the dock, centred, so it reads with the game's
+     controls instead of floating under the moves. */
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) { position: sticky; bottom: 66px; justify-content: center; margin-top: auto; padding: 0; }
+  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:last-child { margin-top: 0; padding-top: 4px; }
   #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) > .btn:disabled { display: none; }
   #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) > .btn { flex: none; height: 44px; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
   /* A game in progress is played, not set up: the modes leave with the form. */
