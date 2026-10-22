@@ -145,10 +145,7 @@ describe("scout view initialization reentrancy", () => {
     view = createScoutView({
       setStatus,
       switchView: vi.fn(),
-      api: async (url) =>
-        url === "/api/repertoires"
-          ? { repertoires: [] }
-          : { repertoires: [{ id: "rep-1", name: "Caro-Kann", color: "black", is_active: true }] },
+      api: async () => ({ repertoires: [{ id: "rep-1", name: "Caro-Kann", color: "black", is_active: true }] }),
       showInputModal,
       createRepertoirePrompt: vi.fn(),
       editRepertoire: vi.fn(),
@@ -188,6 +185,28 @@ describe("scout view initialization reentrancy", () => {
     await Promise.all([first, second]);
     expect(opened).toBe(1);
     expect(showInputModal.mock.calls.filter((c) => c[0]?.title === "Add line to prep")).toHaveLength(1);
+  });
+
+  it("goes straight to New repertoire when no repertoire has the colour", async () => {
+    // The picker's only option would be "Create new repertoire…": skip it.
+    const showInputModal = vi.fn();
+    const createRepertoirePrompt = vi.fn(async () => null);
+    view = createScoutView({
+      setStatus,
+      switchView: vi.fn(),
+      api: async () => ({ repertoires: [{ id: "w", name: "Italian", color: "white", is_active: true }] }),
+      showInputModal,
+      createRepertoirePrompt,
+      editRepertoire: vi.fn(),
+      notices: { isBusy: () => false, startJob: vi.fn(), updateJob: vi.fn(), completeJob: vi.fn() },
+      parseFenBoard: vi.fn(() => ({})),
+      pieceSvg: vi.fn(() => ""),
+      getBuildState: vi.fn(),
+      scoutPickedUsernames: () => pickedUsernames,
+    });
+    await view.__testHandleAddToPrep({ ucis: ["e2e4"], sans: ["e4"], rowKind: "line", color: "white" }, "white");
+    expect(showInputModal).not.toHaveBeenCalled();
+    expect(createRepertoirePrompt).toHaveBeenCalledWith(expect.objectContaining({ defaultColor: "black" }));
   });
 
   it("allows Start immediately after Reset without reusing the prior session", async () => {

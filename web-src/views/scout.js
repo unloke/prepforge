@@ -524,7 +524,9 @@ export function createScoutView(deps) {
         {
           usernames: scoutState.usernames,
           colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(scoutModule.analyzedGames(scoutState.games)),
+            colorRecommendation(
+              scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+            ),
             { username: scoutState.username },
           ),
         },
@@ -1319,6 +1321,18 @@ export function createScoutView(deps) {
       setStatus(error.message);
       return null;
     }
+    const createNew = async () => {
+      const created = await createRepertoirePrompt({
+        title: "New repertoire for scout prep",
+        defaultName: scoutState?.username ? `vs ${scoutState.username}` : "Opponent prep",
+        defaultColor: myColor,
+        openAfter: false,
+      });
+      return created?.repertoire_id || null;
+    };
+    // No repertoire of this colour: a picker whose only choice is "Create new"
+    // is a step that decides nothing.
+    if (!reps.length) return createNew();
     const options = [
       ...reps.map((r) => ({ value: r.id, label: `${r.name} (${r.color})` })),
       { value: "__new__", label: "Create new repertoire…" },
@@ -1337,15 +1351,7 @@ export function createScoutView(deps) {
       ],
     });
     if (!result?.repertoire) return null;
-    if (result.repertoire === "__new__") {
-      const created = await createRepertoirePrompt({
-        title: "New repertoire for scout prep",
-        defaultName: scoutState?.username ? `vs ${scoutState.username}` : "Opponent prep",
-        defaultColor: myColor,
-        openAfter: false,
-      });
-      return created?.repertoire_id || null;
-    }
+    if (result.repertoire === "__new__") return createNew();
     return result.repertoire;
   }
 
