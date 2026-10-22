@@ -4,7 +4,7 @@ import { api, currentOwnerId, postJson, setStatus, setStatusError } from "../cor
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./team-skeleton.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
-import { GRANT_ROLES, canCopy, roleLabel } from "../share-roles.js";
+import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 
 // Teams: the caller's teams, one team's members and roles, team share links,
 // and the repertoires shared to the caller. Lazy-loaded with the Teams view;
@@ -51,6 +51,7 @@ async function ensureTeamsView() {
       loadSharedRepertoires,
       editRepertoire,
       unshareRepertoireFromTeam,
+      changeTeamShareRole,
       copySharedRepertoire,
       teamRoleLabel,
       postJson,
@@ -232,6 +233,32 @@ function renderTeamSharedRepertoires(teamId, sharedReps) {
   void ensureTeamsView()
     .then((view) => view.renderTeamSharedRepertoires(teamId, sharedReps))
     .catch(() => {});
+}
+
+// The owner changes what the team may do with one of their repertoires. The
+// row already shows the new role (the select); a failure puts the old one back.
+// Writes to one share run in order, so the last choice is the one that stays.
+const roleWrites = new Map();
+async function changeTeamShareRole(teamId, repertoireId, role) {
+  const key = `${teamId}:${repertoireId}`;
+  const list = teamSharedById.get(teamId) || [];
+  const item = list.find((r) => r.id === repertoireId);
+  if (!item || item.role === role) return;
+  const before = item.role;
+  item.role = role;
+  const write = (roleWrites.get(key) || Promise.resolve()).then(async () => {
+    try {
+      await postJson("/api/repertoires/access", { repertoire_id: repertoireId, team_id: teamId, role });
+      setStatus(`Team role for "${item.name}": ${roleLabel(role)}`);
+    } catch (error) {
+      if (item.role === role) item.role = before;
+      setStatusError(error.message);
+      if (appState.selectedTeamId === teamId) renderTeamSharedRepertoires(teamId, list);
+    }
+  });
+  roleWrites.set(key, write);
+  await write;
+  if (roleWrites.get(key) === write) roleWrites.delete(key);
 }
 
 async function unshareRepertoireFromTeam(teamId, repertoireId, name) {
@@ -479,7 +506,7 @@ async function shareRepertoireIntoTeam(teamId) {
       },
       {
         name: "role",
-        label: "Members",
+        label: "Team members",
         type: "select",
         default: "view",
         options: GRANT_ROLES.map((r) => ({ value: r, label: roleLabel(r) })),
@@ -547,8 +574,8 @@ async function loadSharedRepertoires() {
               ${via ? html`<span class="sub">${via}</span>` : ""}
             </span>
             <span class="team-member-tail">
-              <span class="team-role-badge share-role-badge">${roleLabel(item.role)}</span>
-              ${canCopy(item.role) ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}">Copy</button>` : ""}
+              <span class="team-role-badge share-role-badge" title="${roleAllows(item.role)}">${roleLabel(item.role)}</span>
+              ${canCopy(item.role) ? html`<button type="button" class="btn sm team-copy" data-rep-id="${id}" title="Copy to my account">Copy</button>` : ""}
             </span>
           </div>`;
       })}`;
@@ -595,6 +622,7 @@ async function openSharedRepertoire(repertoireId) {
     openTeamDetail,
     renderTeamSharedRepertoires,
     unshareRepertoireFromTeam,
+    changeTeamShareRole,
     createTeam,
     renameTeam,
     deleteTeam,
