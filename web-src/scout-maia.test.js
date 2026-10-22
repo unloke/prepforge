@@ -320,7 +320,10 @@ describe("scoutMaiaRankedNote", () => {
   it("leaves loading feedback to the shared inline state", () => {
     expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "loading"))).toBe("");
     expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "idle", { prefilterState: "loading" }))).toBe("");
-    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "maia-off"))).toBe("");
+    // Maia off is a blocked state, not a ranking explanation: it names the fix.
+    expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "maia-off"))).toContain(
+      "Turn on Maia analysis in Settings",
+    );
     expect(String(scoutMaiaRankedNote([{ scorePct: 50 }], "loading"))).not.toContain(
       "score/WDL are Maia estimates",
     );

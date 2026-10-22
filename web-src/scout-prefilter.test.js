@@ -57,15 +57,16 @@ function evalMapForLine(ucis, oppColor, { cpLoss = 30, bestUci = null, complete 
 
 describe("scout-prefilter scoring", () => {
   it("recomputes materialized ordering after the same row objects change", () => {
-    const a = { ucis: ['a'], games: 20, conditionalReach: 0.5, scorePct: 0, prefilterScore: 0 };
-    const b = { ...a, ucis: ['b'], prefilterScore: 1000 };
+    // Before Maia reads land the queue follows how reliably they reach each line;
+    // a later re-rank carries Maia's weakness through the same objects.
+    const a = { ucis: ['a'], games: 20, conditionalReach: 0.2, scorePct: 0, prefilterScore: 0 };
+    const b = { ...a, ucis: ['b'], conditionalReach: 0.8 };
     const ranked = { white: [{ line: a }, { line: b }] };
     expect(mergeGlobalPrefilterRanked(ranked)[0].line).toBe(b);
-    a.prefilterScore = 1000;
-    b.prefilterScore = 0;
+    a.conditionalReach = 0.9;
     expect(mergeGlobalPrefilterRanked(ranked)[0].line).toBe(a);
-    a.conditionalReach = 0.1;
-    expect(mergeGlobalPrefilterRanked(ranked)[0].line).toBe(b);
+    a.maiaScorePct = 20;
+    expect(preparationValue(a, 50).value).toBeGreaterThan(0);
   });
   it("treats a missing-evaluation cache marker as unavailable, not as a position without a reply", () => {
     const line = { ucis: ['e2e4'], sans: ['e4'], games: 1 };
@@ -441,24 +442,11 @@ describe("runStockfishPrefilter limits", () => {
     expect(new Set(maia.map((l) => l.line)).size).toBe(SCOUT_MAIA_PREFILTER_LIMIT);
   });
 
-  it("prefilterPoolLines ranks the higher-prior line above a rare strong-edge line", () => {
-    // Reproducibility now lives in the engine-free exploitabilityPrior (annotated upstream by
-    // rankedOpeningBranches), not in the post-Stockfish rank. The reproducible main system
-    // (high prior) must still outrank a rare line with a bigger raw leaf edge.
-    const frequentWeak = {
-      ucis: ["e2e4", "e7e5", "g1f3"],
-      sans: ["e4", "e5", "Nf3"],
-      games: 20,
-      share: 0.8,
-      exploitabilityPrior: 4,
-    };
-    const rareStrong = {
-      ucis: ["d2d4", "d7d5", "c2c4"],
-      sans: ["d4", "d5", "c4"],
-      games: 1,
-      share: 0.01,
-      exploitabilityPrior: 0.5,
-    };
+  it("orders the Maia queue by how reliably they reach each line, not by history", () => {
+    // Maia reads the top of the queue: a rare strong-edge line must not push out
+    // the line they actually play, and whole-game results must not order it either.
+    const frequentWeak = { ucis: ["e2e4", "e7e5", "g1f3"], sans: ["e4", "e5", "Nf3"], games: 20, routeReach: 0.9, conditionalReach: 0.9, scorePct: 90 };
+    const rareStrong = { ucis: ["d2d4", "d7d5", "c2c4"], sans: ["d4", "d5", "c4"], games: 4, routeReach: 0.3, conditionalReach: 0.3, scorePct: 0 };
     const evalMap = new Map([
       ...evalMapForLine(rareStrong.ucis, "white", { cpLoss: 50, bestUci: "e7e6" }),
       ...evalMapForLine(frequentWeak.ucis, "white", { cpLoss: 40, bestUci: "b8c6" }),
@@ -474,6 +462,12 @@ describe("runStockfishPrefilter limits", () => {
     });
     const pool = prefilterPoolLines(ranked, 2);
     expect(pool.map((line) => line.ucis)).toEqual([frequentWeak.ucis, rareStrong.ucis]);
+    // The same lines with the historical results swapped keep that order.
+    const swapped = rankPrefilterCandidates(
+      [{ ...frequentWeak, scorePct: 0 }, { ...rareStrong, scorePct: 90 }], evalMap,
+      { fenAfterLine, oppColor: "white", ancestorFreq },
+    );
+    expect(prefilterPoolLines(swapped, 2).map((line) => line.ucis)).toEqual(pool.map((line) => line.ucis));
   });
 
   it("deduplicates a shared leaf FEN across branches", () => {
