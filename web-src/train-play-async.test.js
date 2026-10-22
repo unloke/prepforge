@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { localBoardAfterMove, localBoardInfo } from "./chess-local.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote } from "./train-opponent.js";
 import { appSource } from "./test-app-source.js";
+import { maiaErrorText } from "./maia-init-notice.js";
 
 const source = appSource();
 function compile(marker, deps) {
@@ -35,30 +37,34 @@ function harness() {
     setTrainBanner: (state, title, sub) => { banner.title = title; banner.sub = sub; },
     paintPlayPosition: (next) => { board.setPosition(next); banner.title = next.banner; },
     updateTrainTurnBadge: vi.fn(), syncTrainSessionControls: vi.fn(),
-    maiaOpponentErrorText: (error) => String(error?.message || "Maia could not start."),
+    maiaErrorText: (error) => String(error?.message || "Maia could not start."),
   };
   const reply = compile("async function playOpponentReply(", deps);
   return { play, appState, board, banner, explorer, deps, reply };
 }
 
 describe("Play opponent response ownership", () => {
-  function loadMaiaErrorText() {
-    const start = source.indexOf("function maiaOpponentErrorText(");
-    const end = source.indexOf("\n}\n", start) + 3;
-    // eslint-disable-next-line no-new-func
-    return new Function("return (" + source.slice(start, end) + ");")();
-  }
-
   it("names the real reason on the board, and says to retry", () => {
-    const reason = loadMaiaErrorText();
+    const reason = maiaErrorText;
     expect(reason(new Error("weight size mismatch: download truncated"))).toContain("incomplete");
     // The stall case is its own message: a download that stopped part-way is not
     // the same problem as a download that failed.
     expect(reason(new Error("weight download stalled: no bytes from /m.onnx for 20s"))).toContain("stopped part-way");
     expect(reason(new Error("Maia3 predict timed out after 20000ms"))).toContain("in time");
     expect(reason(new Error("Failed to fetch"))).toContain("download failed");
+    // A server status names the status, never the raw URL.
+    expect(reason(new Error("weight fetch 503 for https://cdn/x.onnx"))).toBe("The Maia download failed (HTTP 503). Retry.");
+    expect(reason(new Error("weight fetch 404 for https://cdn/x.onnx"))).not.toContain("https://");
+    expect(reason(new Error("sha256 mismatch for x.onnx: got ab != manifest cd"))).toContain("corrupted");
     expect(reason(new Error("Maia3 worker request failed"))).toBe("Maia3 worker request failed");
     expect(reason(undefined)).toContain("could not start");
+  });
+
+  it("paints an unavailable opponent as an error, not a finished session", () => {
+    // "done" carries the green star: a Maia failure read as a success.
+    expect(source).toContain('setTrainBanner("error", "Opponent unavailable"');
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    expect(css).toMatch(/#train-banner\[data-state="error"\] \{ --cb: var\(--danger\)/);
   });
 
   it("routes the palette practice action through the New game confirmation button", async () => {

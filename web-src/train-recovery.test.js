@@ -141,7 +141,7 @@ describe("reconciling an unconfirmed answer", () => {
     await attempt;
     // No dead "Your move" on a card the server may have advanced past.
     expect(h.deps.setTrainBanner).toHaveBeenCalledWith(
-      "done", "Couldn't confirm that answer", "Retry sync to catch up with the server.",
+      "error", "Couldn't confirm that answer", "Retry sync to catch up with the server.",
     );
     expect(h.appState.trainBusy).toBe(true);
     const [, options] = h.notices.show.mock.calls[0];

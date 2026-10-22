@@ -3412,6 +3412,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #train-banner[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
 #train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
 #train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
+/* A failure (opponent unavailable, a sync that did not land) is not a finish:
+   it kept the green star and read as success. */
+#train-banner[data-state="error"] { --cb: var(--danger); --g: "!"; }
 #train-banner[data-state="runin"] { --g: "…"; }
 /* Idle has nothing to signal; a ▶ in a circle read as a play button. */
 #train-banner[data-state="idle"] { grid-template-columns: minmax(0, 1fr) auto; }
