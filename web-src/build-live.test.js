@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  LIVE_IDLE_POLL_MS, LIVE_POLL_MS, applyBuildChanges, createBuildLive, remoteChangeNotice,
+  LIVE_IDLE_POLL_MS, LIVE_POLL_MS, announceBuildWrite, applyBuildChanges, createBuildLive, remoteChangeNotice,
 } from "./build-live.js";
 
 const node = (id, parent_id, extra = {}) => ({ id, parent_id, uci: id, is_mainline: false, comment: "", ...extra });
@@ -163,6 +163,19 @@ describe("createBuildLive", () => {
     clock = 120000;
     await live.tick();
     expect(idle.pending.at(-1).ms).toBe(LIVE_IDLE_POLL_MS);
+  });
+
+  it("this tab's own write checks at once and keeps the fast rate while others are quiet", async () => {
+    let clock = 0;
+    const h = harness();
+    const live = createBuildLive({ ...h.deps, now: () => clock });
+    live.start();
+    clock = 120000;
+    announceBuildWrite("r");
+    expect(h.pending.at(-1).ms).toBe(0);
+    await live.tick();
+    expect(h.pending.at(-1).ms).toBe(LIVE_POLL_MS);
+    live.stop();
   });
 
   it("checks at once when another tab of this browser announces a write to the open tree", () => {

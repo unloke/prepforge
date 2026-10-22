@@ -25,9 +25,12 @@ const LIVE_BUSY_RETRY_MS = 500;
 const channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("prepforge-build") : null;
 let active = null;
 
-// Tell this browser's other tabs that the repertoire just changed.
+// This tab just wrote: tell this browser's other tabs, and catch up now (an
+// edit from elsewhere may have landed just before ours). Editing also keeps
+// polling at the fast rate while collaborators are quiet.
 export function announceBuildWrite(repertoireId) {
   try { channel?.postMessage({ repertoire_id: repertoireId }); } catch (_) { /* best effort */ }
+  active?.poke();
 }
 
 // Check for remote changes now (a 409 node_deleted means the tree is stale).
