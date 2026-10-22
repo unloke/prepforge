@@ -162,6 +162,25 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
   });
 
 
+  it("your own team share has a role control and Stop sharing; someone else's is a badge", () => {
+    const { view, byId } = makeHarness({
+      appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: "t1", accountUserId: "u1" },
+    });
+    view.renderTeamSharedRepertoires("t1", [
+      { id: "r1", name: "KP", color: "white", owner_user_id: "u1", owner_display_name: "Me", role: "copy" },
+      { id: "r2", name: "KID", color: "black", owner_user_id: "u2", owner_display_name: "Sam", role: "view" },
+    ]);
+    const [mine, theirs] = String(byId("team-shared-repertoires").innerHTML).split('class="mem-row').slice(1);
+    expect(mine).toContain('class="team-role-select team-share-role"');
+    expect(mine).toContain('<option value="copy" selected>Can copy</option>');
+    expect(mine).toContain('aria-label="Stop sharing KP"');
+    expect(mine).toContain("· you");
+    expect(mine).not.toContain("share-role-badge");
+    expect(theirs).not.toContain("<select");
+    expect(theirs).not.toContain("team-unshare");
+    expect(theirs).toContain('title="Open and read"');
+  });
+
   it("does not auto-open when there are several teams", async () => {
     const opened = [];
     const hidden = [];

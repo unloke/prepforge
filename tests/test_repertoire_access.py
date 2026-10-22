@@ -262,3 +262,57 @@ def test_deleting_the_repertoire_or_the_grantee_removes_grants(world):
     assert count() == 2
     assert _post(c["owner"], "/api/repertoires/delete", {"repertoire_id": rep}).status_code == 200
     assert count() == 0
+
+
+def test_only_the_repertoire_owner_manages_a_team_share(world):
+    """Team managers run the team, never someone else's repertoire: a team admin
+    or member can neither change a team grant's role nor stop it. The owner can,
+    and the change reaches every member on their next request (and in the open
+    Build view, which reads ``role`` from ``/build/changes``)."""
+    rep, c, ids = world["rep"], world["c"], world["ids"]
+    team = _create_team(c["owner"])
+    _link_lichess(ids["outsider"], "AdminHandle")
+    _link_lichess(ids["view"], "MemberHandle")
+    assert _add_member(c["owner"], team, "AdminHandle", role="admin").status_code == 200
+    assert _add_member(c["owner"], team, "MemberHandle").status_code == 200
+    _post(c["owner"], "/api/repertoires/access/revoke", {"repertoire_id": rep, "user_id": ids["view"]})
+    _grant(c["owner"], rep, "view", team_id=team)
+    admin, member = c["outsider"], c["view"]
+    for who in (admin, member):
+        assert _post(who, "/api/repertoires/access", {"repertoire_id": rep, "team_id": team, "role": "edit"}).status_code == 403
+        assert _post(who, "/api/repertoires/access/revoke", {"repertoire_id": rep, "team_id": team}).status_code == 403
+    since = _load(member, rep).json()["revision"]
+    changes = lambda: member.get("/api/build/changes", params={"repertoire_id": rep, "since": since}).json()  # noqa: E731
+    assert changes()["role"] == "view"
+    _grant(c["owner"], rep, "edit", team_id=team)
+    assert changes()["role"] == "edit"
+    assert _load(member, rep).json()["writable"] is True
+    detail = admin.get(f"/api/teams/{team}").json()
+    assert [(r["id"], r["role"]) for r in detail["shared_repertoires"]] == [(rep, "edit")]
+    _grant(c["owner"], rep, "view", team_id=team)
+    write = _post(member, "/api/build/add-move", {"repertoire_id": rep, "parent_node_id": world["root"], "move_uci": "d2d4"})
+    assert write.status_code == 403
+    assert _post(c["owner"], "/api/repertoires/access/revoke", {"repertoire_id": rep, "team_id": team}).status_code == 200
+    assert _load(member, rep).status_code == 404
+
+
+def test_owner_who_left_the_team_still_manages_its_share(world):
+    rep, c = world["rep"], world["c"]
+    other = c["edit"]
+    team = _create_team(other, "Club")
+    _link_lichess(world["ids"]["edit"], "EditHandle")
+    _link_lichess(_owner_id(c["owner"]), "OwnerHandle")
+    assert _add_member(other, team, "OwnerHandle").status_code == 200
+    _grant(c["owner"], rep, "copy", team_id=team)
+    me = _owner_id(c["owner"])
+    assert c["owner"].request("DELETE", f"/api/teams/{team}/members/{me}", headers=csrf_headers(c["owner"])).status_code == 200
+    # Still shared; the owner changes its role and stops it without rejoining.
+    state = _grant(c["owner"], rep, "view", team_id=team)
+    assert [(g.get("team_id"), g["role"]) for g in state["grants"] if g.get("team_id")] == [(team, "view")]
+    assert _post(c["owner"], "/api/repertoires/access/revoke", {"repertoire_id": rep, "team_id": team}).status_code == 200
+    # A new grant to a team the owner is not in is still refused.
+    assert _post(c["owner"], "/api/repertoires/access", {"repertoire_id": rep, "team_id": team, "role": "view"}).status_code == 404
+
+
+def _owner_id(client: TestClient) -> str:
+    return client.get("/api/auth/me").json()["id"]

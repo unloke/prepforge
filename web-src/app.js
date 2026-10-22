@@ -1996,7 +1996,7 @@ async function init() {
     get coverageView() { return coverageEntry?.coverageView; },
     ensureBuildView, paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     ensureCoverageView: () => coverageEntry.ensureCoverageView(),
-    paintGenerateVisibility, syncViewHeads,
+    paintGenerateVisibility, syncViewHeads, updateBuildReadOnlyUi,
   };
   // First paint reads the stored theme; it never writes, so opening the app
   // does not fabricate a pref blob.

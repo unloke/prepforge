@@ -209,6 +209,8 @@ select.team-role-select {
 }
 .team-shared-rep-row,
 .shared-rep-row { cursor: pointer; }
+/* Rows with a role control and rows with a role badge keep one height. */
+#team-shared-repertoires > .team-shared-rep-row { min-height: calc(var(--control-h) + 16px); }
 .team-shared-rep-row:hover,
 .shared-rep-row:hover { background: var(--panel-soft); }
 .team-shared-rep-row:active,
