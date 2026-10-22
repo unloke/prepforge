@@ -2313,7 +2313,9 @@ async function loadSignedInWorkspace() {
 // binding, so it is registered once here, after every binding exists.
 hooks.settingsPainted = () => settingsController?.renderThemeControl();
 hooks.strengthPainted = () => settingsController?.renderStrengthControls();
-hooks.authRequired = () => accountEntry?.handleAuthRequired();
+// The handler lives on the account service, not on the entry object: calling
+// it on the entry threw on every 401 and the sign-in dialog never opened.
+hooks.authRequired = () => accountEntry && accountService().handleAuthRequired();
 hooks.explorerEvals = explorerEvalEngine;
 hooks.analyzeSession = () => analyzeSession;
 // The one pref change a view has to react to: Coverage only shows in the
