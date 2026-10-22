@@ -304,19 +304,22 @@ export function createDashboardView({
   // Queue line for the Today strip. "Queue is clear" next to a "41 new" row
   // read as a contradiction (UX walkthrough P1-4): reviews and never-trained
   // moves are reported separately.
-  function todayQueueText(due, soon, newMoves, weak = 0, unopened = 0) {
-    const bits = [];
-    if (due > 0) bits.push(html`<b>${due} due now</b>`);
-    else if (weak > 0) bits.push(html`<b>${weak} weak spot${weak === 1 ? "" : "s"} to review</b>`);
-    else if (unopened > 0) bits.push(html`<b>${unopened} repertoire${unopened === 1 ? "" : "s"} not opened yet</b>`);
-    else bits.push("Reviews clear");
-    if (newMoves > 0) {
-      const label = `${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`;
-      bits.push(due > 0 || weak > 0 ? label : html`<b>${label}</b>`);
-    }
-    if (soon > 0) bits.push(`${soon} coming up in 24h`);
-    if (bits.length === 1 && due === 0 && weak === 0 && newMoves === 0 && unopened === 0) return "Queue is clear";
-    return html`${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}`;
+  //
+  // The strip answers one question — what to study next — so the queue's first
+  // fact is its headline and the rest is one quieter line under it. Run as a
+  // single 13px sentence, the fact the Train button turns on was the third item
+  // in a list of four.
+  function todayQueue(due, soon, newMoves, weak = 0, unopened = 0) {
+    let primary;
+    if (due > 0) primary = `${due} due now`;
+    else if (weak > 0) primary = `${weak} weak spot${weak === 1 ? "" : "s"} to review`;
+    else if (unopened > 0) primary = `${unopened} repertoire${unopened === 1 ? "" : "s"} not opened yet`;
+    else primary = "Reviews clear";
+    const more = [];
+    if (newMoves > 0) more.push(`${newMoves} new move${newMoves === 1 ? "" : "s"} to learn`);
+    if (soon > 0) more.push(`${soon} coming up in 24h`);
+    if (!more.length && primary === "Reviews clear") primary = "Queue is clear";
+    return { primary, more };
   }
 
   let lastTodayPayload = null;
@@ -340,14 +343,10 @@ export function createDashboardView({
     const streak = payload.streak || { current: 0, best: 0, trained_today: false };
     const due = payload.due_reviews || 0;
     const soon = payload.due_soon || 0;
-    // `repertoires` on this payload is a COUNT. Hiding Today when it is 0
-    // buried Train now for new accounts. Always show the strip once we have a
-    // dashboard payload.
-    const note = streak.trained_today
-      ? `Trained today - day ${streak.current}`
-      : streak.current > 0
-        ? `Train today to keep your ${streak.current}-day streak`
-        : "Train today to start a streak";
+    // A streak-at-risk notice is the one line here that asks for something
+    // now, so it takes the strip's second line in place of the week's summary.
+    // "Train today to keep your 5-day streak" is not that: it restates the
+    // figure beside it and the button under it.
     let warningHtml = "";
     if (!streak.trained_today && streak.current > 0) {
       const now = new Date();
@@ -357,7 +356,7 @@ export function createDashboardView({
         const h = Math.floor(msLeft / 3600000);
         const m = Math.floor((msLeft % 3600000) / 60000);
         const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        warningHtml = html`<div class="today-warning" role="alert">${left} left to keep your ${streak.current}-day streak — one card is enough</div>`;
+        warningHtml = html`<p class="today-warning" role="alert">${left} left to keep your ${streak.current}-day streak</p>`;
       }
     }
     const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
@@ -371,34 +370,31 @@ export function createDashboardView({
     const firstRun = ownRepertoireCount() === 0;
     // "Queue is clear" is a claim about a queue. With no repertoire there is
     // no queue at all, so the line says what is missing instead.
-    const queueText = firstRun
-      ? "No repertoire to train yet"
-      : todayQueueText(due, soon, newMoves, weak, unopened);
+    const queue = firstRun
+      ? { primary: "No repertoire to train yet", more: [] }
+      : todayQueue(due, soon, newMoves, weak, unopened);
     // Nothing due but new moves waiting: the smart queue teaches them, so say so.
     const learnNew = due === 0 && weak === 0 && newMoves > 0;
     const recap = payload.recap || null;
     let recapHtml = "";
     if (recap && (recap.moves_reviewed_7d > 0 || recap.mastered_now > 0 || recap.weak_now > 0)) {
-      const delta = (n, goodWhenUp) => {
-        if (!n) return "";
-        const cls = (n > 0) === goodWhenUp ? "up" : "down";
-        return html` <span class="${cls}">(${n > 0 ? "+" : ""}${n})</span>`;
-      };
+      // Colour says good or bad, not up or down: two more mastered moves is
+      // progress and one fewer weak spot is progress, so both read green.
+      const signed = (n) => (n > 0 ? `+${n}` : `−${Math.abs(n)}`);
+      const delta = (n, goodWhenUp) =>
+        n ? html` <span class="${(n > 0) === goodWhenUp ? "up" : "down"}">${signed(n)}</span>` : "";
       const bits = [
-        `${recap.moves_reviewed_7d} move${recap.moves_reviewed_7d === 1 ? "" : "s"} reviewed · 7d`,
-        html`${recap.mastered_now} mastered${delta(recap.mastered_delta, true)}`,
+        html`<b>${recap.moves_reviewed_7d}</b> reviewed in 7 days`,
+        html`<b>${recap.mastered_now}</b> mastered${delta(recap.mastered_delta, true)}`,
       ];
       if (recap.weak_now > 0 || recap.weak_delta !== 0) {
-        bits.push(
-          html`${recap.weak_now} weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`,
-        );
+        bits.push(html`<b>${recap.weak_now}</b> weak spot${recap.weak_now === 1 ? "" : "s"}${delta(recap.weak_delta, false)}`);
       }
-      recapHtml = html`<div class="today-recap">${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</div>`;
+      recapHtml = html`<p class="today-recap">${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</p>`;
     }
     // The three lifetime counters are not what a user decides on before
     // pressing Train, and "Due review" already carries the queue number the
-    // strip leads with — so one chip holds them and the Due shortcut stays
-    // inline, where the action is.
+    // strip leads with — so one quiet line holds them.
     const metric = (value, one, many) => html`<b>${value}</b> ${nounOf(value, one, many)}`;
     const repCount = ownRepertoireCount();
     const countsHtml = [
@@ -409,19 +405,21 @@ export function createDashboardView({
       metric(payload.training_sessions || 0, "session"),
     ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
     const written = paint(card, html`
-    <div class="today-streak" data-lit="${streak.current > 0 ? "1" : "0"}"
-         title="Calendar days with at least one graded move">
+    <div class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}"
+         title="Calendar days with at least one graded move${streak.best > 1 ? `; best ${streak.best}` : ""}">
       <span class="today-count">${streak.current}</span>
-      <span class="today-unit">day streak${best}</span>
+      <span class="today-unit">day streak</span>
     </div>
     <div class="today-body">
-      <div class="today-queue">${queueText}</div>
-      ${warningHtml || html`<div class="today-note">${note}</div>`}
+      <p class="today-queue">${queue.primary}</p>
+      ${warningHtml || (queue.more.length
+        ? html`<p class="today-more">${queue.more.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</p>`
+        : best)}
     </div>
     <div class="today-aside">
       ${recapHtml}
-      <div class="today-counts" data-testid="dashboard-counts"
-           title="Saved analyses, repertoires and training sessions">${countsHtml}</div>
+      <p class="today-counts" data-testid="dashboard-counts"
+           title="Saved analyses, repertoires and training sessions">${countsHtml}</p>
     </div>
     ${firstRun
       ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`

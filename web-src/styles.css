@@ -1633,73 +1633,89 @@ h2 {
 /* Today strip. It and the next steps arrive once, when their data lands. */
 #view-dashboard .today.is-enter,
 #view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
-/* The strip is one band: what is waiting on the left, the week's history and
-   the action on the right. Stacked as four lines in one narrow column, the
-   queue was the second line and the card kept a hole the width of the window. */
+/* The strip answers one question — what to study next — and answers it in one
+   line. The queue is the strip's loudest text; the streak beside it is the
+   quiet meta, and the week's history and the lifetime counts are two small
+   lines at the far end, over the action. Read as four 13px grey lines on one
+   row, nothing led and the queue was the third thing the eye found. */
 .today {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 18px;
+  gap: 8px 20px;
 }
-.lib .today { padding: 12px 14px; }
+.lib .today { padding: 14px 16px; }
 .today-streak {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
   white-space: nowrap;
 }
-/* A live streak says so with the figure's colour; at 0 it stays in ink. */
+/* A trained-today streak says so with the figure's colour; until then it is a
+   count like any other and stays in ink. */
 .today-streak[data-lit="1"] .today-count { color: var(--good-text); }
 .today-count {
   font-size: 26px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 .today-unit {
   color: var(--muted);
   font-size: var(--fs-s);
   line-height: 1.2;
 }
-.today-unit small { display: block; color: var(--label); font-size: var(--fs-s); }
-/* The strip is one band: what is waiting on the left, the week's history and
-   the action on the right. Stacked as four lines in one narrow column, the
-   queue was the second line and the card kept a hole the width of the window. */
+.today-unit small { display: block; color: var(--label); font-size: var(--fs-xs); }
 .today-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
-.today-note,
-.today-recap { color: var(--muted); font-size: var(--fs-s); }
-.today-queue { color: var(--text); font-size: 16px; }
-.today-queue b { font-size: inherit; }
+/* The one thing the button turns on, at the size a fact is read at. */
+.today-queue {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+/* What else is waiting, in one quieter line under it. */
+.today-more,
+.today-recap,
+.today-counts {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  line-height: 1.35;
+}
+.today-more b { color: var(--text); font-weight: 600; }
+/* Colour says good or bad, not up or down: two more mastered moves and one
+   fewer weak spot are both progress. */
+.today-recap .up { color: var(--good-text); }
+.today-recap .down { color: var(--danger-strong); }
 .today-aside {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 2px;
-  margin-left: auto;
   min-width: 0;
+  text-align: right;
 }
-.today-recap .up { color: var(--good-text); }
-.today-recap .down { color: var(--danger); }
-/* Lifetime counts (games · repertoires · sessions): one quiet line beside the
-   recap. Nothing here is what the Train button turns on, so it takes no
-   clickable weight and no tile chrome. */
-.today-counts { color: var(--label); font-size: var(--fs-s); }
-.today-counts b { color: var(--muted); font-variant-numeric: tabular-nums; }
-/* Streak-at-risk: replaces the note line when local midnight is <5h away and
+.today-recap b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Lifetime counts (games · repertoires · sessions): the quietest line in the
+   strip. Nothing here is what the Train button turns on. */
+.today-counts { color: var(--label); }
+.today-counts b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Streak-at-risk: replaces the second line when local midnight is <5h away and
    nothing has been trained yet: same slot, louder voice. */
 .today-warning {
-  align-self: flex-start;
-  padding: 3px 8px;
-  border-radius: 5px;
-  background: var(--warn-soft);
+  margin: 0;
   color: var(--warn-text);
   font-size: var(--fs-s);
   font-weight: 600;
+  line-height: 1.35;
 }
 .today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
 /* Today's payload failed: the strip's slot carries the message and the retry,

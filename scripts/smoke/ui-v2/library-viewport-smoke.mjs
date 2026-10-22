@@ -182,8 +182,10 @@ async function runViewport(vp) {
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
-  // The Today strip is one band: the queue leads, the week's history has its
-  // own cell at the right. Stacked as four lines, the queue was second.
+  // The Today strip is one band: the queue leads at the strip's reading size,
+  // the rest of the queue is one quieter line under it, and the week's history
+  // has its own cell at the right. Read as four equal 13px lines, the queue was
+  // the third thing the eye found.
   const queueFirst = await page.evaluate(() => {
     const body = document.querySelector("#dashboard-today .today-body");
     if (!body) return false;
@@ -191,6 +193,14 @@ async function runViewport(vp) {
     return kids.length > 0 && kids[0].classList.contains("today-queue");
   });
   check(queueFirst, "the queue must be the first line of the Today body");
+  const queueSize = await page.evaluate(() => {
+    const q = document.querySelector("#dashboard-today .today-queue");
+    const more = document.querySelector("#dashboard-today .today-more");
+    if (!q || !more) return null;
+    return { q: parseFloat(getComputedStyle(q).fontSize), more: parseFloat(getComputedStyle(more).fontSize) };
+  });
+  check(queueSize && queueSize.q >= 16 && queueSize.more < queueSize.q,
+    `the queue must be the strip's loudest line, got ${JSON.stringify(queueSize)}`);
   const countsInAside = await page.evaluate(() => {
     const aside = document.querySelector("#dashboard-today .today-aside");
     return !!aside && !!aside.querySelector(".today-counts");
