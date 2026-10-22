@@ -85,7 +85,8 @@ export function createEngineProfileManager({
   let consent = null;
   // Whether this device reserved the full net's heap (a probe step that ran
   // without loading a byte): the device that is offered the choice at all.
-  let bigFits = false;
+  // fitKnown: whether bigFits was measured on this build (before Detect it is unknown, not false).
+  let bigFits = false, fitKnown = false;
   let probing = null, revision = 0, autoSetupDone = false;
   const listeners = new Set();
   const usableListeners = new Set(), setupListeners = new Set();
@@ -152,13 +153,14 @@ export function createEngineProfileManager({
       broken = true;
       profile = { ...FALLBACK };
       consent = null;
-      bigFits = false;
+      bigFits = fitKnown = false;
       if (changed) emit();
       return null;
     }
   }
+  const record = () => JSON.stringify({ profile, detected, measurements, proven, consent, bigFits: fitKnown ? bigFits : null, probe: probeId });
   function persist() {
-    access(s => s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, consent, bigFits, probe: probeId })));
+    access(s => s.setItem(PROFILE_KEY, record()));
   }
   function emit() {
     for (const fn of [...listeners]) { try { fn({ ...profile }); } catch { /* consumer error */ } }
@@ -177,7 +179,7 @@ export function createEngineProfileManager({
       // The answer is this device's own decision and outlives a new engine
       // build; whether the net fits was measured, so a new build measures again.
       if (saved?.consent === "yes" || saved?.consent === "no") consent = saved.consent;
-      if (fresh) bigFits = saved.bigFits === true;
+      if (fresh && typeof saved.bigFits === "boolean") [bigFits, fitKnown] = [saved.bigFits, true];
       const crash = JSON.parse(s.getItem(CRASH_KEY) || "null");
       const hadBig = saved?.profile?.net === "big" || crash?.net === "big";
       if (valid(crash)) {
@@ -189,10 +191,10 @@ export function createEngineProfileManager({
         if (crash.net === "big") {
           // A crash inside the full net's heap: the first step still held big,
           // so the net fits; from lite it does not.
-          bigFits = crash.workers > 1;
+          [bigFits, fitKnown] = [crash.workers > 1, true];
           if (profile.net !== "big") consent = "no";
         }
-        s.setItem(PROFILE_KEY, JSON.stringify({ profile, detected, measurements, proven, consent, bigFits, probe: probeId }));
+        s.setItem(PROFILE_KEY, record());
         s.removeItem(CRASH_KEY);
       }
       // A device that steps down to lite does not keep the full net's 94 MB.
@@ -420,10 +422,8 @@ export function createEngineProfileManager({
         // The mark makes a tab killed by the reservation step down next load.
         progress("speed", 0);
         mark = guard({ net: "big", workers: 1 }, { sticky: true });
-        try {
-          reserveMemory("big");
-          bigFits = true;
-        } catch { bigFits = false; }
+        try { reserveMemory("big"); bigFits = true; } catch { bigFits = false; }
+        fitKnown = true;
         mark.done();
         mark = null;
         step = 1;
@@ -477,7 +477,7 @@ export function createEngineProfileManager({
         // Every completed step was held by this device, whether or not it wins:
         // Settings may offer it, and the faster one stays the chosen profile.
         recordProven(held, net, n);
-        if (net === "big") bigFits = true;
+        if (net === "big") { bigFits = true; fitKnown = true; }
         if (n > 1 && scaling[n - 1] - scaling[n - 2] < MIN_GAIN * scaling[0]) break;
         candidate = attempt;
         Object.assign(measurements, { nodes: r.nodes, searchMs: r.ms, loadMs, nodesPerSecond: scaling[n - 1] });
@@ -585,6 +585,7 @@ export function createEngineProfileManager({
     // "ask" | "download" | null: whether this device still has to answer for the
     // full net's 94 MB, and how Settings offers it (see fullNetChoice).
     fullEngineChoice: fullNetChoice,
+    fullEngineFits() { load(); return fitKnown ? bigFits : null; },
     chooseFullEngine: decide,
     // A device with no setup of its own sets itself up; see autoSetup.
     setupOnFirstVisit: autoSetup,
@@ -601,7 +602,7 @@ export function createEngineProfileManager({
 const manager = createEngineProfileManager();
 export const { engineProfile, engineMeasurements, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
-  readyIfCached, fullEngineChoice, chooseFullEngine,
+  readyIfCached, fullEngineChoice, fullEngineFits, chooseFullEngine,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;
 stockfishBudget.configure(usableEngineProfile().workers);
 subscribeUsableEngineProfile(p => stockfishBudget.configure(p.workers));
