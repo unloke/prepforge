@@ -262,6 +262,12 @@
   cursor: pointer;
 }
 .scout-lines[data-ui] .line-row { border-bottom: 1px solid var(--line); }
+/* Long lists skip the layout and paint of rows (and of the chart strip) that are
+   scrolled out of the column; `auto` keeps each one's last real height, so the
+   scrollbar and scrollIntoView land where they would without it. A row's own
+   entrance still runs: only its contents are skipped. */
+.scout-lines .line-row { content-visibility: auto; contain-intrinsic-size: auto 68px; }
+.scout-intel-charts-strip { content-visibility: auto; contain-intrinsic-size: auto 203px; }
 .scout-lines[data-ui] .line-row:last-child { border-bottom: 0; }
 .line-row:hover { background: var(--panel-soft); }
 .scout-lines[data-ui] .line-row.is-expanded { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--accent); }
@@ -514,9 +520,11 @@
 .scout-source-warnings .source-chip.is-empty { opacity: 0.75; }
 .scout-source-warnings .btn { margin-left: auto; }
 
-/* ≤1279: the Type · last seen column folds under the line (it used to be
-   hidden while its header stayed, leaving an empty, misaligned column). */
-@media (max-width: 1279px) {
+/* A narrow plan column: the Type · last seen column folds under the line (it
+   used to be hidden while its header stayed, leaving an empty, misaligned
+   column). The column's width, not the window's: it is widest stacked at
+   1020px and narrowest beside the detail card at 1280px. */
+@container scout-main (max-width: 800px) {
   .line-row { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .line-row .lr-meta { grid-column: 1; grid-row: 2; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px; }
   .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }

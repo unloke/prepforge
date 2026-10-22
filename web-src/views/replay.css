@@ -34,6 +34,9 @@
 }
 .ledger,
 .focus { min-height: 0; padding: 0; }
+/* The ledger and the detail are panel containers (styles.css, Panel containers). */
+#view-replay .ledger { container: ledger / inline-size; }
+#view-replay .focus { container: focus / inline-size; }
 /* Surfaces by tone: the cards are one step off the page ground with no
    outline. The outline plus the ground's own tint made two nested rectangles
    that read as a frame around the table rather than a surface. */
@@ -99,6 +102,9 @@
 /* Games ledger column header — the shared `.col-head` treatment (styles.css)
    plus this row's sticky positioning. */
 .ledger-table[data-ui] .lr { border-bottom: 1px solid var(--line); }
+/* Off-screen ledger rows skip layout and paint; `auto` keeps a row's real height
+   once it has been on screen. The sticky header row is never skipped. */
+.ledger-table .lr:not(.head) { content-visibility: auto; contain-intrinsic-size: auto 44px; }
 .lr.head {
   position: sticky;
   top: 0;
@@ -223,9 +229,13 @@
 .replay-arrows .t-good { fill: var(--good); }
 .replay-arrows .t-bad { fill: var(--danger); }
 
-/* ≤1279: the Opening column drops. */
+/* ≤1279: the detail column narrows. */
 @media (max-width: 1279px) {
   .triage { grid-template-columns: minmax(0, 1fr) 380px; }
+}
+/* A narrow ledger drops the Opening column. Its width follows the detail
+   column, which follows the window's height, so this is the ledger's own. */
+@container ledger (max-width: 700px) {
   .lr { grid-template-columns: 118px minmax(140px, 1fr) 52px 80px; }
   .lr > :nth-child(4) { display: none; }
 }

@@ -1830,6 +1830,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
+/* Off-screen rows skip layout and paint; `auto` keeps a row's real height. */
+.lib-rep-list .lib-row { content-visibility: auto; contain-intrinsic-size: auto 54px; }
 .lib-row:hover { background: var(--panel-soft); }
 /* A table row cannot scale on press, so the press reads as a step deeper
    into the surface. */
@@ -2166,6 +2168,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   max-width: none;
   margin: 0;
 }
+
+/* Panel containers. These panels get their width from the board, the dock or a
+   side column, not from the window (the Repertoire panel is ~516px at 1440x900
+   and ~1000px at 1920x1080; the Games ledger narrows as the window gets taller),
+   so the layout switches inside them are @container rules on their own width.
+   Viewport @media stays for the page layout around them. */
+#build-sidebar { container: build-panel / inline-size; }
+#build-inspector { container: dock / inline-size; }
+.coach-card,
+.an-pane,
+#analysis-eval-card { container-type: inline-size; }
+.engine-slot { container: engine-card / inline-size; }
+/* Scout's columns (scout-main, scout-side) and the Games ledger and detail
+   (ledger, focus) name themselves in their own rules. */
 
 /* Study views claim the full workspace width so the board + sidebar fill the
    viewport instead of sitting inside the narrow list-view column. Study views
@@ -3888,13 +3904,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    Without it those resolve against the page and, sitting deep inside the
    scrolled list, stretched the document: the whole Scout page could be
    dragged down into empty space. */
-.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; }
+.scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; container: scout-main / inline-size; }
 .scout-main > * { flex-shrink: 0; }
 .scout-results { display: flex; flex-direction: column; gap: 10px; }
 /* The detail card ends with its content: a line's detail runs 448-536px tall,
    and stretching the card to the 808px grid row left a 284px white hole under
    it. It still caps at the row and scrolls if a detail runs longer. */
-.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; }
+.scout-side { position: relative; align-self: start; max-height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow: auto; padding: 12px; container: scout-side / inline-size; }
 /* No report yet: the detail card has nothing to show. */
 .scout-panel:not(:has(.scout-section)) .scout-grid { grid-template-columns: minmax(0, 1fr); }
 .scout-panel:not(:has(.scout-section)) .scout-side { display: none; }
