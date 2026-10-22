@@ -13,6 +13,7 @@ import { localBoardInfo } from "../chess-local.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { nodeMenuHeading } from "../node-menu.js";
+import { buildRole } from "../share-roles.js";
 import { countOf } from "../plural.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 
@@ -126,19 +127,19 @@ async function hydrateBuild(payload, selectedNodeId = null) {
 // Library row's ⋯ (minus "Open in Repertoire" — you are here), plus the
 // page-only Export PGN and New repertoire. Reuses the shared context-menu
 // element and the Library's action handler so the two menus cannot drift.
-function buildMenuItems({ hasRep, isActive }) {
+// An editor of someone else's repertoire gets Export only: training, renaming,
+// sharing, enabling and deleting stay with the owner.
+function buildMenuItems({ hasRep, isActive, isOwner = true }) {
+  const owned = [
+    ["train", "Start training"],
+    ["build-rename", "Rename..."],
+    ["build-export-pgn", "Export PGN"],
+    ["share", "Share..."],
+    ["toggle-active", isActive ? "Disable" : "Enable"],
+    ["delete", "Delete..."],
+  ];
   return [
-    ...(hasRep
-      ? [
-          ["train", "Start training"],
-          ["build-rename", "Rename..."],
-          ["build-export-pgn", "Export PGN"],
-          ["share-link", "Share link..."],
-          ["share-team", "Share with team..."],
-          ["toggle-active", isActive ? "Disable" : "Enable"],
-          ["delete", "Delete..."],
-        ]
-      : []),
+    ...(hasRep ? (isOwner ? owned : [["build-export-pgn", "Export PGN"]]) : []),
     ["build-new-rep", "New repertoire..."],
   ];
 }
@@ -160,7 +161,7 @@ function openBuildMenu(event) {
   const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
   const items = [
     ...(node?.san && node.parent_id ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
-    ...buildMenuItems({ hasRep, isActive }),
+    ...buildMenuItems({ hasRep, isActive, isOwner: buildRole(appState.build) === "owner" }),
   ];
   menu.innerHTML = html`${items
     .map(

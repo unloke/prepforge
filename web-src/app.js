@@ -12,6 +12,7 @@ import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
+import { buildRole } from "./share-roles.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
@@ -84,7 +85,6 @@ const viaTeams = (name) => (...args) => (teamsController
 const loadTeams = viaTeams("loadTeams");
 const hideTeamDetail = viaTeams("hideTeamDetail");
 const createTeam = viaTeams("createTeam");
-const shareRepertoireWithTeam = viaTeams("shareRepertoireWithTeam");
 
 // The Library entry: its chunk, the listing load and PGN import. Bound in init,
 // owned by library-entry.js.
@@ -754,7 +754,7 @@ function setBuildLoading(on, { restore = true } = {}) {
 
 function updateBuildReadOnlyUi(payload) {
   if (appState.sharedToken) return;
-  if (payload.writable === false) {
+  if (buildRole(payload) !== "owner") {
     renderReadOnlyBanner(payload);
   } else {
     removeReadOnlyBanner();
@@ -803,8 +803,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
     ["train", "Start training"],
     ["edit", "Open in Repertoire"],
     ["rename", "Rename..."],
-    ["share-link", "Share link..."],
-    ["share-team", "Share with team..."],
+    ["share", "Share..."],
     ["toggle-active", isActive ? "Disable" : "Enable"],
     ["delete", "Delete..."],
   ];
@@ -875,6 +874,28 @@ async function fetchRepertoireMeta(repertoireId) {
   }
 }
 
+// One Share dialog for teams, people and the link (views/share-dialog.js).
+async function openShareDialog(repertoireId) {
+  const { createShareDialogUi, runShareDialog } = await import("./views/share-dialog.js");
+  const meta = (appState.repertoireList || []).find((r) => String(r.id) === String(repertoireId));
+  const changed = await runShareDialog(repertoireId, {
+    name: meta?.name || appState.build?.name || "Repertoire",
+    api,
+    postJson,
+    origin: window.location.origin,
+    copyText: (text) => navigator.clipboard.writeText(text),
+    confirm: showConfirmModal,
+    setStatus,
+    setStatusError,
+    loadTeams: async () => {
+      if (!appState.teams.length) appState.teams = (await api("/api/teams")).teams || [];
+      return appState.teams;
+    },
+    ui: createShareDialogUi({ activateModal }),
+  });
+  if (changed) await refreshDashboardRepertoires();
+}
+
 async function handleRepertoireContextAction(action, repertoireId, isActive) {
   closeRepertoireContextMenu();
   try {
@@ -904,35 +925,8 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       setStatus(`Renamed to ${name}`);
       return;
     }
-    if (action === "share-link") {
-      const payload = await postJson("/api/repertoires/share-link", {
-        repertoire_id: repertoireId,
-      });
-      const url = `${window.location.origin}${payload.url}`;
-      let copied = false;
-      try {
-        await navigator.clipboard.writeText(url);
-        copied = true;
-      } catch (_) {
-        /* clipboard blocked — the modal below still shows the URL */
-      }
-      await showInputModal({
-        title: copied ? "Share link copied!" : "Share link",
-        okLabel: "Done",
-        // Nothing to cancel: the link already exists.
-        cancel: false,
-        fields: [
-          {
-            name: "url",
-            label: "View-only link",
-            default: url,
-          },
-        ],
-      });
-      return;
-    }
-    if (action === "share-team") {
-      await shareRepertoireWithTeam(repertoireId);
+    if (action === "share") {
+      await openShareDialog(repertoireId);
       return;
     }
     if (action === "toggle-active") {
