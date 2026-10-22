@@ -1,12 +1,12 @@
 import { html } from "../html.js";
 import { hooks } from "../core/hooks.js";
 import { localGameOver } from "../chess-local.js";
-import { buildPvPreview, clampPly, previewPosition, previewLabel, stepPreview } from "../pv-preview.js";
+import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
+import { boardLine } from "../line-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
 import { fullEngineChoice, chooseFullEngine, subscribeEngineProfile, subscribeEngineSetup } from "../engine/engine-profile.js";
 import { engineConsentHtml } from "./engine-consent.js";
 import { createPassFeed } from "./engine-pass-feed.js";
-import { releasePreviewCaption, setPreviewCaption, takePreviewCaption } from "./preview-caption.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
   boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
@@ -397,8 +397,8 @@ class EngineWidget {
     this.pvsEl.addEventListener("click", (event) => {
       const row = event.target.closest(".engine-pv[data-line]");
       if (!row) return;
-      const move = event.target.closest(".pv-move[data-ply]");
-      this._previewLine(Number(row.dataset.line), move ? Number(move.dataset.ply) + 1 : null);
+      const move = event.target.closest(".pv-move[data-p]");
+      this._previewLine(Number(row.dataset.line), move ? Number(move.dataset.p) + 1 : null);
     });
     // The question's two answers; it sits above the lines and never replaces them.
     this.consentEl?.addEventListener("click", (event) => {
@@ -432,47 +432,27 @@ class EngineWidget {
     const board = activeBoardController();
     const same = this.preview && this.preview.index === index && this.preview.board === board ? this.preview : null;
     const pv = same ? same.pv : (this.lastSnapshot?.pvs || [])[index];
-    const data = same ? same.data : pv && board ? buildPvPreview(this.lastFen, pv.pv_uci || []) : null;
+    const data = same ? same.data : pv && board ? walkLine(this.lastFen, pv.pv_uci || []) : null;
     if (!data) return;
-    if (this.preview && this.preview.board !== board) this.exitPreview();
-    if (!this.preview) {
-      board.beginPreview({ onEnd: ({ restored }) => this._onPreviewEnded(restored) });
-      this.preview = { caption: takePreviewCaption(activeViewName()) };
-    }
-    Object.assign(this.preview, { index, data, pv, board, ply: clampPly(data, ply ?? 1) });
-    this._showPreviewPly();
+    this.preview = { index, data, pv, board, ply: clampPly(data, ply ?? 1) };
+    boardLine.open({
+      board, view: activeViewName(), line: data, ply: this.preview.ply, name: `Line ${index + 1}`, owner: this,
+      onChange: (s) => {
+        if (s) this.preview.ply = s.ply;
+        else this.preview = null;
+        this._repaintRows();
+      },
+    });
   }
 
   // ◀ ▶ ⏮ ⏭ and ← → while a line is on the board. Returns false when not previewing.
   stepPreview(action) {
-    if (!this.preview) return false;
-    this.preview.ply = stepPreview(this.preview.data, this.preview.ply, action);
-    this._showPreviewPly();
-    return true;
-  }
-
-  _showPreviewPly() {
-    const p = this.preview;
-    if (!p) return;
-    p.board.showPreview(previewPosition(p.data, p.ply));
-    setPreviewCaption(p.caption, previewLabel(p.data, p.ply, p.index));
-    this._repaintRows();
+    return !!this.preview && boardLine.step(action);
   }
 
   // Back to the game position (no-op when not previewing).
   exitPreview() {
-    if (!this.preview) return;
-    this.preview.board.endPreview({ restore: true });
-  }
-
-  // The board left the preview: restored to the game (restored) or replaced by a new real
-  // position the caller is about to label (not restored).
-  _onPreviewEnded(restored) {
-    const p = this.preview;
-    if (!p) return;
-    this.preview = null;
-    releasePreviewCaption(p.caption, restored);
-    this._repaintRows();
+    if (this.preview) boardLine.exit();
   }
 
   _repaintRows() {
@@ -539,10 +519,8 @@ class EngineWidget {
     // Render only as many PV slots as the user asked for; engines occasionally
     // emit transient extra ranks while changing multipv. Missing ranks keep a
     // placeholder row so the block never changes height mid-search.
-    const sideToMove = snapshot.side_to_move || "white";
-    const fullmoveNumber = this._fullmoveFromFen(snapshot.fen) || 1;
     const shown = pvs.slice(0, this.multipv);
-    const rows = shown.map((pv, index) => this._renderPv(pv, index, sideToMove, fullmoveNumber));
+    const rows = shown.map((pv, index) => this._renderPv(pv, index, snapshot.fen || this.lastFen));
     this._paintPvs(html`${rows}${this._pendingRows(shown.length)}`);
     if (pvs.length) {
       this._renderEvalBar(pvs[0]);
@@ -563,44 +541,20 @@ class EngineWidget {
   // One line per row, cut off at the panel edge. Clicking a row plays it out on the
   // board; the previewed row keeps the line it was clicked on (the search goes on
   // underneath) and marks the move on the board; rows stay one line.
-  _renderPv(pv, index, sideToMove, fullmoveNumber) {
+  _renderPv(pv, index, fen) {
     const previewing = this.preview && this.preview.index === index ? this.preview : null;
     const line = previewing ? previewing.pv : pv;
     const evalText = formatEngineEval(line.score_cp, line.mate_in);
-    const moves = this._formatPvLine(
-      line.pv_san || [],
-      sideToMove,
-      fullmoveNumber,
-      previewing ? previewing.ply - 1 : -1
-    );
+    // Tokens carry the line itself, so hovering one peeks at that position.
+    const moves = (line.pv_san || []).length
+      ? moveLineHtml(fen, line.pv_san, line.pv_uci || [], { current: previewing ? previewing.ply - 1 : -1, cls: "pv-move", focusable: false })
+      : "";
     let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
     if (previewing) cls += " is-previewing";
     const title = previewing ? "Exit line" : "Show on board";
     return (
       html`<div class="${cls}" data-line="${index}" role="button" tabindex="0" aria-pressed="${!!previewing}" title="${title}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );
-  }
-
-  _formatPvLine(moves, sideToMove, fullmoveNumber, currentPly = -1) {
-    if (!moves || !moves.length) return "";
-    const out = [];
-    let move = fullmoveNumber;
-    let whiteToMove = sideToMove === "white";
-    for (let i = 0; i < moves.length; i += 1) {
-      if (i) out.push(" ");
-      out.push(whiteToMove || i === 0
-        ? html`<span class="pv-move-num">${move}${whiteToMove ? "." : "..."}</span><span class="pv-move${i === currentPly ? " is-current" : ""}" data-ply="${i}">${moves[i]}</span>`
-        : html`<span class="pv-move${i === currentPly ? " is-current" : ""}" data-ply="${i}">${moves[i]}</span>`);
-      if (!whiteToMove) move += 1;
-      whiteToMove = !whiteToMove;
-    }
-    return html`${out}`;
-  }
-
-  _fullmoveFromFen(fen) {
-    if (!fen) return 1;
-    const parts = fen.split(" ");
-    return Number(parts[5]) || 1;
   }
 
   _renderEvalBar(topPv) {

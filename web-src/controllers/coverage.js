@@ -1,7 +1,8 @@
 import { html } from "../html.js";
 import { countOf } from "../plural.js";
 import { coverageTreeKey, runCoverageScan } from "../coverage.js";
-import { localBoardAfterMove } from "../chess-local.js";
+import { encodeLine, walkLine } from "../move-text.js";
+import { boardLine } from "../line-preview.js";
 import { maiaInitMessage } from "../maia-init-notice.js";
 
 // A share that rounds to nothing but is not nothing reads "<0.1%": a real
@@ -30,14 +31,9 @@ export function createCoverageController({
   // A rare but real gap reads "<0.1%", never a misleading "0.0%".
   const pct = (n) => formatMass(n * 100);
 
+  // The gap's move on Build's board, as a one-move line (Esc / "Exit line" leave).
   function previewGap(gap) {
-    const board = getBoard();
-    if (!board) return;
-    const after = localBoardAfterMove(gap.fen, gap.moveUci);
-    const exit = document.getElementById("build-pv-exit");
-    board.beginPreview({ onEnd: () => { if (exit) exit.hidden = true; } });
-    board.showPreview({ fen: after.board.fen, lastMove: gap.moveUci });
-    if (exit) { exit.hidden = false; exit.textContent = "Back to preparation"; }
+    boardLine.open({ board: getBoard(), view: "build", line: walkLine(gap.fen, [gap.moveUci]), name: "Gap" });
   }
   function key() {
     const c = getContext();
@@ -132,7 +128,7 @@ export function createCoverageController({
       const state = gap.kind === "missing_reply" ? "No reply" : "Missing branch";
       const check = readOnly ? "" : html`<label class="coverage-gap-select"><input type="checkbox" class="coverage-gap-check" data-index="${i}" aria-label="Select ${path + " " + gap.moveSan}" /></label>`;
       return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}" style="--i:${i}">${check}
-        <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${path}</span><span class="coverage-gap-line"><b class="coverage-gap-move">${gap.moveSan}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
+        <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${path}</span><span class="coverage-gap-line"><b class="coverage-gap-move" data-mt="${encodeLine(gap.fen, [gap.moveUci])}" data-p="0">${gap.moveSan}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
     })}`;
     return markup;
   }
