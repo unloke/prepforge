@@ -87,16 +87,17 @@ def _purge_expired(db: Session, settings: Settings) -> int:
 
 
 def _enforce_session_cap(db: Session, settings: Settings, user_id: str) -> None:
-    """Keep at most ``session_max_per_user`` live sessions per user — prune the oldest
-    so a stolen-then-rotated cookie or an unbounded device list can't accumulate
-    forever. ``0`` disables the cap."""
+    """Keep at most ``session_max_per_user`` live sessions per user — prune the least
+    recently used so a stolen-then-rotated cookie or an unbounded device list can't
+    accumulate forever, without signing out the device in daily use because it
+    signed in first. ``0`` disables the cap."""
     cap = settings.session_max_per_user
     if cap <= 0:
         return
     sessions = db.scalars(
         select(AuthSession)
         .where(AuthSession.user_id == user_id)
-        .order_by(AuthSession.created_at.desc())
+        .order_by(AuthSession.last_seen_at.desc(), AuthSession.created_at.desc())
     ).all()
     for stale in sessions[cap:]:
         db.delete(stale)
