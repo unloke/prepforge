@@ -1,23 +1,25 @@
-// The Analyze report's facts (web-src/views/analyze-report.js). Before this the
-// report was two grade bars and a handoff button: it said how each side's moves
-// were graded but nothing about the game itself. These are the four facts a
-// player reads first — how accurately each side played, the move the game turned
-// on, where the game left their own preparation, and the opening it came from —
-// all derived from the payload the run already saved and the PGN's own headers.
+// The Analyze game report (web-src/views/analyze-report.js): accuracy and grade
+// counts per side, the key moments, the phases and the opening, all derived on
+// the client from the payload the run already saved and the PGN's headers.
 import { describe, expect, it } from "vitest";
+import { Chess } from "chess.js";
 
 import {
   biggestSwing,
-  buildReportFacts,
+  buildGameReport,
+  formatEval,
+  gradeCounts,
+  keyMoments,
   openingFromHeaders,
+  phaseBreakdown,
   prepDeparture,
-  reportIdentity,
   renderReportBlock,
+  reportHtml,
   sideAccuracy,
 } from "./analyze-report.js";
 
 // A game where Black throws the game away at move 2: the eval climbs from level
-// to +2.20 for White, most of it on 2...Nc6. White plays the odd plies, Black the
+// to +2.40 for White, most of it on 2...Nc6. White plays the odd plies, Black the
 // even ones.
 const GRAPH = [
   { ply: 1, san: "e4", score_cp: 20, bounded_score_cp: 20 },
@@ -26,20 +28,31 @@ const GRAPH = [
   { ply: 4, san: "Nc6", score_cp: 240, bounded_score_cp: 240 },
   { ply: 5, san: "Bb5", score_cp: 220, bounded_score_cp: 220 },
 ];
-const MOVES = [
-  { ply: 1, move_number: 1, side: "white", san: "e4", uci: "e2e4" },
-  { ply: 2, move_number: 1, side: "black", san: "e5", uci: "e7e5" },
-  { ply: 3, move_number: 2, side: "white", san: "Nf3", uci: "g1f3" },
-  { ply: 4, move_number: 2, side: "black", san: "Nc6", uci: "b8c6" },
-  { ply: 5, move_number: 3, side: "white", san: "Bb5", uci: "f1b5" },
-];
 
-describe("report accuracy", () => {
+// The moves with their positions, as the saved payload carries them.
+function movesOf(sans, grades = [], best = {}) {
+  const chess = new Chess();
+  return sans.map((san, i) => {
+    const fenBefore = chess.fen();
+    const mv = chess.move(san);
+    return {
+      ply: i + 1,
+      move_number: Math.floor(i / 2) + 1,
+      side: i % 2 ? "black" : "white",
+      san: mv.san,
+      uci: mv.lan,
+      fen_before: fenBefore,
+      fen_after: chess.fen(),
+      classification: grades[i] ?? "best",
+      best_move_uci: best[i + 1] || mv.lan,
+    };
+  });
+}
+const MOVES = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["best", "best", "excellent", "blunder", "good"], { 4: "d7d6" });
+
+describe("accuracy", () => {
   it("averages each side's win-chance fidelity, from its own side", () => {
     const accuracy = sideAccuracy(GRAPH, MOVES);
-    expect(accuracy).not.toBeNull();
-    // White never gave anything away; Black's 2...Nc6 cost real win chance, and
-    // the same curve the coach grades single moves with charges him for it.
     expect(accuracy.white).toBeGreaterThanOrEqual(90);
     expect(accuracy.white).toBeGreaterThan(accuracy.black);
     expect(accuracy.black).toBeLessThan(80);
@@ -51,140 +64,128 @@ describe("report accuracy", () => {
   });
 });
 
-describe("report swing", () => {
-  it("names the move that lost the most win chance, and how much", () => {
-    const swing = biggestSwing(GRAPH, MOVES);
-    expect(swing.label).toBe("2…Nc6");
-    expect(swing.side).toBe("black");
-    expect(swing.loss).toBeGreaterThan(10);
+describe("grade counts", () => {
+  it("counts each side's grades, excellent with good and book with best", () => {
+    const counts = gradeCounts([...MOVES, { ply: 6, side: "black", classification: "book" }, { ply: 7, side: "white", classification: "missed_win" }]);
+    expect(counts.white).toEqual({ best: 1, good: 2, missed: 1 });
+    expect(counts.black).toEqual({ best: 2, blunder: 1 });
+  });
+});
+
+describe("key moments", () => {
+  it("names the moves that lost the most win chance, in game order, with the better move", () => {
+    const moments = keyMoments(GRAPH, MOVES);
+    expect(moments).toHaveLength(1);
+    const [m] = moments;
+    expect(m).toMatchObject({ ply: 4, side: "black", label: "2…Nc6", grade: "blunder", before: "+0.6", after: "+2.4" });
+    expect(m.loss).toBeGreaterThan(10);
+    expect(m.best).toEqual({ san: "d6", uci: "d7d6" });
+    expect(biggestSwing(GRAPH, MOVES).label).toBe("2…Nc6");
   });
 
   it("stays quiet on a game that never left level", () => {
     const flat = MOVES.map((m) => ({ ply: m.ply, san: m.san, score_cp: 0 }));
+    expect(keyMoments(flat, MOVES)).toEqual([]);
     expect(biggestSwing(flat, MOVES)).toBeNull();
+  });
+
+  it("reads a mate and a finished game as players do", () => {
+    expect(formatEval({ mate_in: 3 })).toBe("#3");
+    expect(formatEval({ mate_in: -2 })).toBe("#-2");
+    expect(formatEval({ score_cp: 100000 })).toBe("1-0");
+    expect(formatEval({ score_cp: -45 })).toBe("−0.5");
   });
 });
 
-describe("report opening and identity", () => {
+describe("phases", () => {
+  it("splits the game by phase, never going back, with each side's accuracy", () => {
+    const phases = phaseBreakdown(GRAPH, MOVES);
+    expect(phases.map((p) => p.key)).toEqual(["opening"]);
+    expect(phases[0]).toMatchObject({ from: 1, to: 5, moves: "1–3" });
+    expect(phases[0].white).toBeGreaterThan(phases[0].black);
+    expect(phases[0].errors).toEqual({ white: 0, black: 1 });
+  });
+});
+
+describe("opening and prep", () => {
   it("joins the opening's name and code, and drops what the PGN lacks", () => {
     expect(openingFromHeaders({ Opening: "Ruy Lopez", ECO: "C60" })).toBe("Ruy Lopez · C60");
-    expect(openingFromHeaders({ Opening: "Ruy Lopez" })).toBe("Ruy Lopez");
     expect(openingFromHeaders({ ECO: "C60" })).toBe("C60");
     expect(openingFromHeaders({})).toBe("");
   });
 
-  it("names the players and the result, and nothing when the PGN has neither", () => {
-    expect(reportIdentity({ White: "me_user", Black: "opp_one", Result: "1-0" })).toBe(
-      "me_user vs opp_one · 1-0",
-    );
-    expect(reportIdentity({ White: "me_user" })).toBe("me_user vs ?");
-    expect(reportIdentity({})).toBe("");
-    // A PGN's empty result tag is a placeholder, not a result.
-    expect(reportIdentity({ White: "a", Black: "b", Result: "*" })).toBe("a vs b");
-  });
-});
-
-describe("where the game left the player's preparation", () => {
   // The shape analyze-book.js caches: one child per (parent node, uci).
-  const repertoire = (ucis, rootId = "n0") => {
+  const repertoire = (ucis, name = "Italian") => {
     const children = new Map();
-    let walk = rootId;
+    let walk = "n0";
     ucis.forEach((uci, i) => {
       children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
       walk = `n${i + 1}`;
     });
-    return { rootId, children };
+    return { rootId: "n0", children, name };
   };
 
-  it("names the first mainline move no repertoire continues", () => {
-    // The book runs e4 e5 Nf3 Nc6; 3.Bb5 is the first move it does not have.
+  it("names the first mainline move no repertoire continues, and the repertoire", () => {
     const departure = prepDeparture(MOVES, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
-    expect(departure.label).toBe("3.Bb5");
-    expect(departure.ply).toBe(5);
+    expect(departure).toMatchObject({ label: "3.Bb5", ply: 5, repName: "Italian" });
   });
 
   it("says nothing while the game is still in the book, or with no book at all", () => {
     expect(prepDeparture(MOVES, [repertoire(MOVES.map((m) => m.uci))])).toBeNull();
     expect(prepDeparture(MOVES, [])).toBeNull();
-    // A book that never enters the line is not a departure at ply 1: the player
-    // was never in it.
     expect(prepDeparture(MOVES, [repertoire([])])).toBeNull();
   });
 });
 
-describe("the report's rows", () => {
-  it("leads with accuracy and leaves out every row the game cannot fill", () => {
-    const rows = buildReportFacts({ moves: MOVES, evalGraph: GRAPH, headers: {} });
-    expect(rows.map((r) => r.key)).toEqual(["accuracy", "swing"]);
-    expect(rows[0].label).toBe("Accuracy");
-    expect(rows[0].value).toMatch(/^White \d+% · Black \d+%$/);
+describe("the report", () => {
+  it("names each side from the PGN, or from the saved review's names", () => {
+    const fromPgn = buildGameReport({ moves: MOVES, evalGraph: GRAPH, headers: { White: "me_user", Black: "opp_one", Result: "1-0" } });
+    expect(fromPgn.sides.white.name).toBe("me_user");
+    expect(fromPgn.result).toBe("1-0");
+    const recalled = buildGameReport({ moves: MOVES, evalGraph: GRAPH, names: { white: "A", black: "B", result: "*" } });
+    expect(recalled.sides.black.name).toBe("B");
+    expect(recalled.result).toBe("");
+    expect(buildGameReport({ moves: [] })).toBeNull();
   });
 
-  it("adds the prep and opening rows when the game has them", () => {
-    const rows = buildReportFacts({
+  it("writes accuracy, counts, moments, phases and opening, every move a link", () => {
+    const html = String(reportHtml(buildGameReport({
       moves: MOVES,
       evalGraph: GRAPH,
-      headers: { Opening: "Ruy Lopez", ECO: "C60" },
-      departure: { label: "3.Bb5", ply: 5 },
-    });
-    expect(rows.map((r) => r.key)).toEqual(["accuracy", "swing", "prep", "opening"]);
-    expect(rows.find((r) => r.key === "prep")).toMatchObject({ key: "prep", label: "Left prep at", value: "3.Bb5" });
+      headers: { White: "me_user", Black: "opp_one", Opening: "Ruy Lopez", ECO: "C60" },
+    })));
+    const order = ["rp-sides", "rp-counts", "rp-moments", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    // The moment's own move peeks inside the row's jump; its better move is a link.
+    expect(html).toMatch(/<button type="button" class="km-go" data-ply="4"[^>]*>[\s\S]*?<span class="move-peek-ref" data-mt="[^"]+\|b8c6" data-p="0">2…Nc6<\/span>/);
+    expect(html).toMatch(/class="km-best">Best <span class="move-ref"[^>]*\|d7d6" data-p="0" aria-label="Preview 2…d6">d6<\/span>/);
+    // A count is a control only when there is something to go to.
+    expect(html).toMatch(/<button type="button" class="rp-n" data-side="black" data-grade="blunder"/);
+    expect(html).toMatch(/<span class="rp-n is-zero">0<\/span>/);
+    expect(html).toContain("Ruy Lopez · C60");
+    // No standing explanation in the report.
+    expect(html).not.toMatch(/how|means|click|tap/i);
   });
 
-  it("has nothing to say about a typed PGN that was never analysed", () => {
-    expect(buildReportFacts({ moves: MOVES, evalGraph: [], headers: {} })).toEqual([]);
-  });
-});
-
-// The view writes the block into #analysis-summary. Before this, that host was
-// only ever a pair of grade bars: the report said how each side's moves graded
-// and nothing about the game.
-describe("the report block the view writes", () => {
-  const host = () => {
-    return {
-      querySelectorAll: () => [],
-      set innerHTML(value) { this._html = String(value); },
-      get innerHTML() { return this._html ?? ""; },
-    };
-  };
-
-  it("puts the facts above the grade bars and the game's name below them", () => {
-    const el = host();
-    const grades = [];
-    renderReportBlock(el, {
-      moves: MOVES,
-      evalGraph: GRAPH,
-      headers: { White: "me_user", Black: "opp_one", Result: "1-0", Opening: "Ruy Lopez", ECO: "C60" },
-      reps: [],
-      onGrade: (side, group) => grades.push([side, group]),
-    });
-    const markup = el.innerHTML;
-    const facts = markup.indexOf("rpt-facts");
-    const bars = markup.indexOf("class-bars");
-    const identity = markup.indexOf("rpt-identity");
-    expect(facts).toBeGreaterThan(-1);
-    expect(bars).toBeGreaterThan(facts);
-    expect(identity).toBeGreaterThan(bars);
-    for (const label of ["Accuracy", "Biggest swing", "Opening"]) expect(markup).toContain(label);
-    expect(markup).toContain("me_user vs opp_one · 1-0");
+  it("has no accuracy or counts for a typed PGN that was never graded", () => {
+    const typed = MOVES.map((m) => ({ ...m, classification: null }));
+    expect(String(reportHtml(buildGameReport({ moves: typed, evalGraph: [] })))).toBe("");
   });
 
-  it("shows the move a fact names as a move link, and plain text without its position", () => {
-    const AFTER_E4_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
-    const AFTER_NF3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
-    const moves = MOVES.map((m) => ({ ...m, fen_before: { 3: AFTER_E4_E5, 4: AFTER_NF3 }[m.ply] }));
-    const el = host();
-    renderReportBlock(el, { moves, evalGraph: GRAPH });
-    expect(el.innerHTML).toMatch(/<dd><span class="move-ref"[^>]*data-p="0" aria-label="Preview 2…Nc6">2…Nc6<\/span> · −\d+%<\/dd>/);
-    const plain = host();
-    renderReportBlock(plain, { moves: MOVES, evalGraph: GRAPH });
-    expect(plain.innerHTML).not.toContain("move-ref");
-    expect(plain.innerHTML).toContain("2…Nc6 · −");
+  it("jumps to a moment's move and to the next move of a counted grade", () => {
+    const calls = [];
+    const host = { set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, onJump: (ply) => calls.push(["jump", ply]), onGrade: (side, grade) => calls.push(["grade", side, grade]) });
+    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
+    host.onclick({ target: target({ ply: "4" }) });
+    host.onclick({ target: target({ side: "black", grade: "blunder" }) });
+    expect(calls).toEqual([["jump", 4], ["grade", "black", "blunder"]]);
   });
 
   it("clears the block when there is nothing analysed", () => {
-    const el = host();
-    renderReportBlock(el, { moves: [], evalGraph: [] });
-    expect(el.innerHTML).toBe("");
+    const host = { set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    renderReportBlock(host, { moves: [], evalGraph: [] });
+    expect(host.innerHTML).toBe("");
   });
 });
