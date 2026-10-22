@@ -1461,7 +1461,7 @@ async function submitTrainingMove(playedUci) {
   // decides whether it advances (correct) or resets (wrong), and its right/wrong
   // cue covers the move, so the landing itself stays quiet.
   await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
-  // An answer after a hint advances the line but is graded as a miss.
+  // An answer after a hint advances the line and grades Hard.
   const hinted = appState.trainHintLevel > 0;
   let result;
   try {
@@ -2179,12 +2179,12 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // repertoire). Only the first attempt writes spaced repetition; it lands on
   // the server in the next debounced /smart/sync batch, not per move.
   const correct = playedUci === prompt.expected_uci;
-  // Recall means unaided: an answer after a hint is graded as a miss, and a new
-  // move's demonstration (the arrow shows it) is not a recall at all, so it stays
-  // out of the first-try stats. Its SR write still marks it learned.
+  // Recall means unaided: an answer after a hint grades Hard on the server and
+  // stays out of the first-try stats, and a new move's demonstration (the arrow
+  // shows it) is not a recall at all. Its SR write still marks it learned.
   const hinted = appState.trainHintLevel > 0;
   const scored = prompt.kind !== "new";
-  if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct && !hinted);
+  if (attempt === 1) queueTrainAttempt(smart, prompt.expected_node_id, correct, hinted);
   if (correct) trackPreparationPractice({
     repertoireId: smart.queue[smart.cardIndex]?.repertoire_id || smart.repertoireId,
     nodeId: prompt.expected_node_id, fen: prompt.fen_before, completed: true,

@@ -64,7 +64,7 @@ function ownRowHtml(item, { selected, repSubline }) {
   }
   const queue = [];
   if (health && health.weak) {
-    queue.push(html`<span class="kchip k-weak" title="Missed more than answered">${health.weak} weak</span>`);
+    queue.push(html`<span class="kchip k-weak" title="Missed recently">${health.weak} weak</span>`);
   }
   if (health && health.due) {
     queue.push(html`<span class="kchip k-due" title="Spaced repetition says now">${health.due} due</span>`);
