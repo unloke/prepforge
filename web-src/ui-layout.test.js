@@ -460,7 +460,6 @@ describe("workspace chrome layout", () => {
     expect(head).not.toContain('id="open-engine-widget"');
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));
     expect(body.indexOf('id="analyze-panes"')).toBeGreaterThan(body.indexOf('id="analysis-eval-card"'));
-    expect(html).not.toContain('id="analyze-sheet"');
     // The verdict scrolls inside its row; Humans/prep arrivals keep their rows.
     expect(rule(".coach-prose")).not.toMatch(/line-clamp|overflow:\s*hidden/);
     expect(rule(".coach-prose")).toMatch(/min-height: 0/);
@@ -486,10 +485,8 @@ describe("workspace chrome layout", () => {
     expect(tabbar).not.toContain('data-view="build"');
     expect(html).not.toContain("phone-tabs");
     expect(html).not.toContain("data-phone-pane");
-    // Analyze: the pillars are tabs under the evaluation (the report is one of
-    // them); the game sources are the one sheet.
+    // Analyze: the report is a tab; the game sources are the one sheet.
     expect(html).not.toContain('id="analyze-sheet"');
-    expect(analyze).not.toContain('data-sheet-open="analyze-sheet"');
     const sources = analyze.slice(analyze.indexOf('id="analyze-open"'));
     for (const id of ["pgn-drawer", "history-drawer"]) expect(sources).toContain(`id="${id}"`);
     expect(analyze).toContain('data-sheet-open="analyze-open"');
