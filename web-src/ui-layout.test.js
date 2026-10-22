@@ -84,16 +84,21 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".study")).toMatch(/calc\(100vw - 60px - 44px - var\(--study-panel-min\)\)/);
     expect(css).toMatch(/max-width:\s*1100px\)\s*\{\s*\.study\s*\{\s*--board-share:\s*0\.56/);
     // Each media block body, keyed by its query.
-    const blocks = [...css.matchAll(/@media \(max-width: (\d+)px\) \{([\s\S]*?)\n\}/g)].map((m) => [Number(m[1]), m[2]]);
+    const blocks = [...css.matchAll(/@media ([^{]+?) \{([\s\S]*?)\n\}/g)].map((m) => [m[1], m[2]]);
+    // Stacked is ≤860, except a short landscape screen (a phone on its side),
+    // which keeps two columns; the matching ≥861 rules take it in too.
+    const STACKED = "(max-width: 760px), (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px)";
+    const WIDE = "(min-width: 861px), (min-width: 761px) and (orientation: landscape) and (max-height: 520px)";
     const stackers = blocks.filter(([, body]) => /\.study\s*\{[^}]*grid-template-columns:\s*1fr/.test(body));
-    expect(stackers.map(([w]) => w)).toEqual([860]);
+    expect(stackers.map(([q]) => q)).toEqual([STACKED]);
     const stacked = stackers[0][1];
     expect(stacked).toMatch(/\.board-stack\s*\{[^}]*max-width:\s*min\(55vh,\s*560px\)/);
     // Train / Build panels give up their inner scroll only once stacked.
     const trainStack = blocks.find(([, body]) => body.includes("#view-train .train-sidebar { max-height: none"));
-    expect(trainStack[0]).toBe(860);
+    expect(trainStack[0]).toBe(STACKED);
     const buildStack = blocks.find(([, body]) => body.includes("#view-build .sidebar { max-height: none"));
-    expect(buildStack[0]).toBe(860);
+    expect(buildStack[0]).toBe(STACKED);
+    expect(blocks.some(([q, body]) => q === WIDE && body.includes("#view-train .train-sidebar { height: auto"))).toBe(true);
     // Games: ledger + detail side by side to 860px, then one column.
     expect(replayCss).toMatch(/max-width:\s*1020px\)\s*\{\s*\.triage\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+320px/);
     expect(replayCss).toMatch(/max-width:\s*860px\)\s*\{\s*\.triage\s*\{\s*grid-template-columns:\s*minmax\(0,\s*1fr\);/);

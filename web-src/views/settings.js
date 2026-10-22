@@ -530,9 +530,11 @@ export function createSettingsView({
   // Section nav: click scrolls the card into view and marks the link active; a
   // scroll spy keeps the active marker honest while the user scrolls by hand.
   // The same id names the section beside the page title, so the heading and the
-  // strip never disagree. On a phone the strip wraps into rows that all fit.
+  // strip never disagree. On a phone the strip is one row that scrolls
+  // sideways, so the open link is brought into it.
   function markActiveSection(id) {
     let label = "";
+    let current = null;
     document.querySelectorAll(".settings-nav .settings-nav-link").forEach((link) => {
       const active = link.getAttribute("href") === `#${id}`;
       link.classList.toggle("is-active", active);
@@ -540,9 +542,17 @@ export function createSettingsView({
       if (!active) return link.removeAttribute("aria-current");
       link.setAttribute("aria-current", "true");
       label = link.textContent.trim();
+      current = link;
     });
     const here = document.getElementById("settings-current");
     if (here && label) here.textContent = label;
+    const nav = document.querySelector(".settings-nav");
+    if (nav && current && nav.scrollWidth > nav.clientWidth) {
+      const left = current.offsetLeft;
+      const right = left + current.offsetWidth;
+      if (left < nav.scrollLeft) nav.scrollLeft = Math.max(0, left - 16);
+      else if (right > nav.scrollLeft + nav.clientWidth - 28) nav.scrollLeft = right - nav.clientWidth + 44;
+    }
   }
 
   function bindSectionNav() {
