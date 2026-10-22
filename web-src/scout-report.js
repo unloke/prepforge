@@ -18,8 +18,8 @@ import {
   opponentColorStats,
   scoutLineText,
 } from "./scout.js";
-import { formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
-import { buildScoutStats } from "./scout-stats.js";
+import { buildScoutStats, formatLastSeenLabel, lineLastSeen } from "./scout-stats.js";
+import { START_FEN, moveLineHtml, moveTextHtml, moveTokenHtml } from "./move-text.js";
 import {
   applyMaiaToLines,
   medianOpponentRating,
@@ -421,7 +421,7 @@ export function renderScoutEnginePanel(engineAgg) {
       ? `: based on the latest ${engineAgg.maxGames} games`
       : "";
   const summary = worst
-    ? html`<div class="scout-engine-summary muted hint">Most mistakes after 1.${worst.san}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
+    ? html`<div class="scout-engine-summary muted hint">Most mistakes after ${moveTextHtml(`1.${worst.san}`, { fen: START_FEN })}: ${worst.acpl} cp lost per move${worst.firstInaccuracyPly != null ? `, first slip around move ${Math.floor(worst.firstInaccuracyPly / 2) + 1}` : ""}${scopeNote}</div>`
     : engineAgg.scopeLimited && engineAgg.maxGames
       ? html`<div class="scout-engine-summary muted hint">Based on latest ${engineAgg.maxGames} games</div>`
       : "";
@@ -506,7 +506,7 @@ export function renderInlineRefutationCard(line, oppColor, { renderBoard } = {})
     ? html`<div class="scout-refutation-card-board">${renderBoard(replyFen, playerColor)}</div>`
     : "";
   return html`<div class="scout-refutation-card" data-testid="scout-refutation-card">
-    <div class="scout-refutation-card-copy">${recurrenceNote}${swingNote}. You answer <strong class="scout-refutation-reply-san">${replyLabel}</strong>.</div>
+    <div class="scout-refutation-card-copy">${recurrenceNote}${swingNote}. You answer <strong class="scout-refutation-reply-san">${moveTokenHtml(START_FEN, [...(line.ucis || []), ref.suggestedUci], line.ucis?.length || 0, replyLabel)}</strong>.</div>
     ${boardHtml}
   </div>`;
 }
@@ -991,13 +991,13 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
     ? html`<p class="scout-line-reason note">${reason}</p>`
     : "";
   const replyNote = line.suggestedReply?.uci
-    ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${formatReplyLabel(line.suggestedReply)}</strong> (${line.suggestedReply.source || "engine"})</p>`
+    ? html`<p class="scout-line-reply note good">Suggested reply: <strong>${moveTokenHtml(fen, [line.suggestedReply.uci], 0, formatReplyLabel(line.suggestedReply))}</strong> (${line.suggestedReply.source || "engine"})</p>`
     : line.needsPrep
       ? html`<p class="scout-line-reply note warn">No reply in your prep yet. Run Deep scan or extend the repertoire.</p>`
       : "";
   const engineNote =
     line.enginePattern && line.hasEngineMistake
-      ? html`<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: …${line.enginePattern.playedSan} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
+      ? html`<p class="scout-engine-note note eng" title="Recurring mistake from deep scan">Often errs: ${moveTokenHtml(START_FEN, [...String(line.enginePattern.pathKey || "").split(">").filter(Boolean), line.enginePattern.playedUci], String(line.enginePattern.pathKey || "").split(">").filter(Boolean).length, `…${line.enginePattern.playedSan}`)} (−${(line.enginePattern.avgCpLoss / 100).toFixed(1)}) in ${countOf(line.enginePattern.occurrences, "game")}</p>`
       : line.hasEngineMistake || line.refutation
         ? html`<p class="scout-engine-note note eng">Engine refutation available</p>`
         : "";
@@ -1008,11 +1008,11 @@ export function scoutLineDetailHtml(line, idx, oppColor, rowKind, { fenAfterLine
            .map((sub) => {
              const grey = sub.share < 0.03 ? " muted" : "";
              const pct = Math.round((sub.share || 0) * 100);
-             return html`<div class="scout-subline sv${grey}"><span>${scoutLineText(sub.sans)}</span><i style="width:${Math.max(pct, 2)}%"></i><b>${pct}%</b></div>`;
+             return html`<div class="scout-subline sv${grey}"><span>${moveLineHtml(fenAfterLine((line.ucis || []).slice(0, 1)), sub.sans, sub.ucis)}</span><i style="width:${Math.max(pct, 2)}%"></i><b>${pct}%</b></div>`;
            })}</div></div>`
       : "";
   return html`
-      <h2 class="line-title">${scoutLineText(line.sans)}</h2>
+      <h2 class="line-title">${moveLineHtml(START_FEN, line.sans, line.ucis)}</h2>
       <div class="scout-miniboard-wrap focus-board">${renderBoard(fen, viewColor, line.ucis?.at(-1) || null)}</div>
       ${statusLine}
       ${reasonLine}
@@ -1102,14 +1102,15 @@ function scoutPrepFramingHtml(line) {
   const fullLine = scoutLineText(line.sans);
   const shown = scoutRowPlyLimit(line);
   const hidden = (line.sans?.length || 0) - shown;
-  const theirLine = hidden > 0 ? `${scoutLineText(line.sans.slice(0, shown))} …` : fullLine;
+  // The row is the control: its moves peek on hover and are not tab stops.
+  const theirLine = html`${moveLineHtml(START_FEN, line.sans.slice(0, shown), line.ucis, { focusable: false })}${hidden > 0 ? " …" : ""}`;
   const more = hidden > 0
     ? html` <span class="scout-line-more faint">+${Math.ceil(hidden / 2)} more move${Math.ceil(hidden / 2) === 1 ? "" : "s"}</span>`
     : "";
   const reply = line.suggestedReply;
   const when = html`<span class="when" title="${fullLine}">After <b class="scout-prep-them">${theirLine}</b>${more}</span>`;
   if (reply?.uci) {
-    const replyLabel = formatReplyLabel(reply);
+    const replyLabel = moveTokenHtml(START_FEN, [...(line.ucis || []), reply.uci], line.ucis?.length || 0, formatReplyLabel(reply), { focusable: false });
     return html`<span class="scout-prep-framing">${when}<span class="then"><span class="scout-prep-arrow">→</span> your move: <b class="scout-prep-you">${replyLabel}</b></span></span>`;
   }
   if (line.needsPrep) {

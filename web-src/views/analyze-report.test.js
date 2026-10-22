@@ -128,7 +128,7 @@ describe("the report's rows", () => {
       departure: { label: "3.Bb5", ply: 5 },
     });
     expect(rows.map((r) => r.key)).toEqual(["accuracy", "swing", "prep", "opening"]);
-    expect(rows.find((r) => r.key === "prep")).toEqual({ key: "prep", label: "Left prep at", value: "3.Bb5" });
+    expect(rows.find((r) => r.key === "prep")).toMatchObject({ key: "prep", label: "Left prep at", value: "3.Bb5" });
   });
 
   it("has nothing to say about a typed PGN that was never analysed", () => {
@@ -167,6 +167,19 @@ describe("the report block the view writes", () => {
     expect(identity).toBeGreaterThan(bars);
     for (const label of ["Accuracy", "Biggest swing", "Opening"]) expect(markup).toContain(label);
     expect(markup).toContain("me_user vs opp_one · 1-0");
+  });
+
+  it("shows the move a fact names as a move link, and plain text without its position", () => {
+    const AFTER_E4_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+    const AFTER_NF3 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2";
+    const moves = MOVES.map((m) => ({ ...m, fen_before: { 3: AFTER_E4_E5, 4: AFTER_NF3 }[m.ply] }));
+    const el = host();
+    renderReportBlock(el, { moves, evalGraph: GRAPH });
+    expect(el.innerHTML).toMatch(/<dd><span class="move-ref"[^>]*data-p="0" aria-label="Preview 2…Nc6">2…Nc6<\/span> · −\d+%<\/dd>/);
+    const plain = host();
+    renderReportBlock(plain, { moves: MOVES, evalGraph: GRAPH });
+    expect(plain.innerHTML).not.toContain("move-ref");
+    expect(plain.innerHTML).toContain("2…Nc6 · −");
   });
 
   it("clears the block when there is nothing analysed", () => {
