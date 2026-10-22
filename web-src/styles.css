@@ -4643,6 +4643,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .context-section:first-child {
   padding-top: 4px;
 }
+/* The account or name under its label keeps its own case and stays on one line. */
+.context-who {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
 
 /* Names the move the node menu acts on (UX walkthrough 2026-10-01 P2-8). */
 .context-target {

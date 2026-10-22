@@ -537,17 +537,14 @@
     font-size: 16px;
   }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
-  /* Settings is a thumb target: its row buttons keep the quiet ghost look but
-     take a 40px box (they were 36px, and "Edit" only 34x36). */
-  #view-settings .set :is(.btn, .btn.sm):not(.primary) {
+  /* Settings is a thumb target: its row buttons take a 40px box (they were
+     36px, and "Edit" only 34x36) and keep their own look, the same .btn as
+     everywhere else. Bare accent text read as a link, not as Detect or Sign out. */
+  #view-settings .set :is(.btn, .btn.sm) {
     min-height: 40px;
     height: 40px;
-    padding: 0 8px;
-    border: 0;
-    background: none;
-    color: var(--accent-strong);
+    padding: 0 14px;
     font-size: 15px;
-    font-weight: 600;
   }
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
   /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
@@ -555,8 +552,8 @@
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
-  /* Sign out takes its own line under the identity, on the text's edge (its
-     8px padding pulled back): beside the name it left the name and its Edit
+  /* Sign out takes its own line under the identity, on the text's edge:
+     beside the name it left the name and its Edit
      167px, which cut the name to "onlyformu…" with space to spare below. */
   #view-settings .acct-id { gap: 4px 12px; padding: 12px 0; flex-wrap: wrap; }
   #view-settings .acct-id-text { flex: 1 1 calc(100% - 60px); }
@@ -1329,18 +1326,24 @@
   /* Groups split by a rule instead of a caption, so Delete stays in view. */
   .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
   .context-menu .context-section { display: none; }
-  .context-menu .context-section:not(:nth-child(2)) + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
+  /* Only between groups: a rule at the top of the menu splits nothing. */
+  .context-menu button ~ .context-section + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
 
   /* ---- Dialogs: bottom sheets ------------------------------------------
      Sign in, confirm, share and invite rise from the bottom edge like every
      other phone sheet, full width, with 48px fields and thumb-sized buttons.
      A 380px card floating at the top left its Sign in button in the hardest
      place to reach, and its 32px fields under the iOS 44px floor. */
-  .modal {
+  /* :root + element: beats a dialog's own desktop width (.share-modal,
+     .welcome, .modal.training-history) wherever its CSS loads. The More
+     sheet keeps its floating inset (below). */
+  :root dialog.modal:not(.sheet) {
     inset: auto 0 0;
     margin: auto 0 0;
     width: 100%;
     max-width: none;
+  }
+  .modal {
     max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
     padding-bottom: env(safe-area-inset-bottom);
     border-radius: 18px 18px 0 0;
@@ -1368,6 +1371,7 @@
     display: flex;
     flex-direction: column;
     gap: 0;
+    inset: auto 0 0;
     width: auto;
     margin: auto 8px calc(8px + env(safe-area-inset-bottom));
     padding: 6px 0;

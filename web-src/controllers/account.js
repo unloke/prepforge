@@ -588,10 +588,10 @@ export function createAccountController({
     if (!chip || !menu) return;
     const name = appState.accountUsername || appState.lichessUsername || "your account";
     const lichessItem = appState.lichessUsername
-      ? html`<div class="context-section">Lichess: ${appState.lichessUsername}</div>`
+      ? html`<div class="context-section">Lichess<span class="context-who">${appState.lichessUsername}</span></div>`
       : html`<button type="button" role="menuitem" data-action="connect-lichess">Connect Lichess</button>`;
     const items = [
-      html`<div class="context-section">Signed in as ${name}</div>`,
+      html`<div class="context-section">Signed in as<span class="context-who">${name}</span></div>`,
       lichessItem,
       // One entry: "Account" and "Settings" used to open the same page (the
       // Account card is the top of Settings), which read as a duplicate.
