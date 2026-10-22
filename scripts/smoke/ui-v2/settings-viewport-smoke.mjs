@@ -14,6 +14,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
+import { routeLichessProfile } from "./lichess-profile-route.mjs";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const STATIC_DIR = join(ROOT, "src", "prepforge_chess", "web", "static");
@@ -73,6 +74,7 @@ const failures = [];
 
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  await routeLichessProfile(page);
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
