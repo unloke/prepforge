@@ -200,6 +200,7 @@ export function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, 
       appState.maiaRatingPinned = rating;
       hooks.strengthPainted?.();
       if (appState.signedIn) void saveSettings({ maia_rating: rating }).catch(() => {});
+      else setPref("maiaRating", rating);
     },
     go(goal) {
       switchView(goal === "practice" ? "train" : goal);

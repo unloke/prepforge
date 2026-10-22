@@ -2110,6 +2110,8 @@ async function init() {
   // idle after the first screen is up. It must come after the session is known,
   // so a guest does not download and probe the engine.
   if (appState.signedIn) setupOnFirstVisit();
+  // A guest's Lichess name (the welcome's level) stays on this device.
+  else if (getStoredLichessUsername()) setLichessUsername(getStoredLichessUsername());
   maybeWelcome();
 }
 
