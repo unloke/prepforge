@@ -212,7 +212,7 @@ export function invalidateAnalysisSource() {
   return ++analysisRecallSeq;
 }
 
-export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource() } = {}) {
+export async function recallAnalysis(gameId, listItem = null, { sourceSeq = invalidateAnalysisSource(), quiet = false } = {}) {
   const seq = sourceSeq;
   appState.analysisSourcePgn = null;
   hideAnalysisHandoff();
@@ -243,7 +243,7 @@ export async function recallAnalysis(gameId, listItem = null, { sourceSeq = inva
     await syncPgnFromTree();
     return seq === analysisRecallSeq;
   } catch (error) {
-    if (seq === analysisRecallSeq) setStatusError(error.message);
+    if (seq === analysisRecallSeq && !quiet) setStatusError(error.message);
     return false;
   }
 }

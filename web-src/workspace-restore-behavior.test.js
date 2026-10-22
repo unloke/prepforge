@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { runInNewContext } from "node:vm";
 import { parseWorkspaceLocation, trainQueueRepertoireId } from "./workspace-url.js";
 import { appSource } from "./test-app-source.js";
+import { parsePgn } from "./analyze-pgn.js";
 
 const source = appSource();
 const restore = source.slice(source.indexOf("async function restoreWorkspaceLocation()"), source.indexOf("\nfunction setReplaySection("));
@@ -23,6 +24,7 @@ function runtime(extra = {}) {
     api: vi.fn(), hydrateBuild: vi.fn(), showAnalysisPly: vi.fn(), ...extra,
   };
   context.ANALYSIS_ROOT_PATH = "root";
+  context.parsePgn = parsePgn;
   runInNewContext(`${restore}\n${restoreFactory}\n`
     + "globalThis.__makeRestore = createAnalyzeRestore;\nglobalThis.run = restoreWorkspaceLocation;", context);
   Object.assign(context, context.__makeRestore({
@@ -30,6 +32,8 @@ function runtime(extra = {}) {
     loadPgnIntoAnalyze: context.loadPgnIntoAnalyze, showAnalysisPly: context.showAnalysisPly,
     selectAnalysisNodePath: context.selectAnalysisNodePath || (async () => false),
     setStatus: context.setStatus || vi.fn(),
+    recallAnalysis: context.recallAnalysis || vi.fn(async () => false),
+    rebuildAnalysisVariations: context.rebuildAnalysisVariations || vi.fn(async () => true),
   }));
   return context;
 }
@@ -167,4 +171,34 @@ it("shows nothing extra when no game was loaded", async () => {
   await ctx.run();
   expect(ctx.loadPgnIntoAnalyze).not.toHaveBeenCalled();
   expect(ctx.showAnalysisPly).not.toHaveBeenCalled();
+});
+
+it("recalls a saved review by id so its grades come back, with the session's branches", async () => {
+  const pgn = '[White "Alice"]\n[Black "Bob"]\n[Result "1-0"]\n\n1. e4 e5 (1... c5) 2. Nf3 1-0';
+  const input = { value: "" };
+  const ctx = runtime({
+    window: { location: { href: "http://local/#/analyze?ply=3" } },
+    loadReturnState: () => ({ pgn, ply: 3, gameId: "g1" }),
+    loadPgnIntoAnalyze: vi.fn(async () => true),
+    recallAnalysis: vi.fn(async () => true),
+    rebuildAnalysisVariations: vi.fn(async () => true),
+  });
+  ctx.document = { getElementById: () => input };
+  await ctx.run();
+  expect(ctx.recallAnalysis).toHaveBeenCalledWith("g1", { white: "Alice", black: "Bob", result: "1-0" }, { quiet: true });
+  expect(ctx.rebuildAnalysisVariations).toHaveBeenCalledWith(pgn);
+  expect(ctx.loadPgnIntoAnalyze).not.toHaveBeenCalled();
+  expect(input.value).toBe(pgn);
+  expect(ctx.showAnalysisPly).toHaveBeenCalledWith(3);
+});
+
+it("falls back to the bare PGN when the saved review is gone", async () => {
+  const ctx = runtime({
+    loadReturnState: () => ({ pgn: "1. e4 e5", ply: 0, gameId: "gone" }),
+    loadPgnIntoAnalyze: vi.fn(async () => true),
+    recallAnalysis: vi.fn(async () => false),
+  });
+  ctx.document = { getElementById: () => ({ value: "" }) };
+  await ctx.run();
+  expect(ctx.loadPgnIntoAnalyze).toHaveBeenCalledWith("1. e4 e5", { goToEnd: false, quiet: true });
 });

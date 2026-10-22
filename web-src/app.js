@@ -1133,7 +1133,8 @@ const showAnalysisPly = viaAnalyzeSession("showAnalysisPly");
 // (controllers/analyze-restore.js); this binds it to the session's entry points.
 const { restoreAnalyzeSession, restoreAnalysisNodePath } = createAnalyzeRestore({
   appState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
-  selectAnalysisNodePath, setStatus,
+  selectAnalysisNodePath, setStatus, recallAnalysis: viaAnalyzeEntry("recallAnalysis"),
+  rebuildAnalysisVariations: viaAnalyzeSession("rebuildAnalysisVariations"),
 });
 
 export let appReadyPromise = null;
