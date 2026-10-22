@@ -371,14 +371,6 @@
   white-space: nowrap;
 }
 .acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
-.acct-tag {
-  padding: 1px 8px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 650;
-}
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
 /* Account skeleton: the identity header's shape while the session is unread. */
 .acct-skeleton-avatar {
@@ -411,14 +403,6 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 4px 0 2px;
-}
-.conn-site {
-  padding: 1px 7px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 600;
 }
 /* The linked username is a link into Lichess: it reads as text but takes a
    thumb-sized box on a phone. */

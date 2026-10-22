@@ -295,7 +295,7 @@ export function createSettingsView({
     list.innerHTML = html`${accounts
       .map(
         (account) =>
-          html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="conn-site">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="btn ghost icon sm conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" popover>${account.is_primary
+          html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="status-pill">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="btn ghost icon sm conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" popover>${account.is_primary
             ? ""
             : html`<button type="button" class="conn-menu-item" role="menuitem" data-conn-action="primary">Set primary</button>`}<button type="button" class="conn-menu-item is-danger" role="menuitem" data-conn-action="unlink">Unlink</button></span></span></div>`,
       )}`;
