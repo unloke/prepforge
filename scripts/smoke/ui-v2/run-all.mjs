@@ -40,6 +40,10 @@ const SUITE = [
   ["Last game", "last-game-smoke.mjs"],
   ["Teams", "teams-viewport-smoke.mjs"],
   ["Settings", "settings-viewport-smoke.mjs"],
+  // Nothing enters twice: re-renders, refreshes, returning to a view and the
+  // view's own cross-fade never replay or stack an entrance; the Settings jump
+  // lands under the sticky strip.
+  ["Motion", "motion-smoke.mjs"],
   // Cross-view states: signed out, Library load errors, resize chunk hygiene,
   // mobile account-menu focus, Link Lichess → Connections.
   ["States", "states-smoke.mjs"],

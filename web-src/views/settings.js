@@ -9,6 +9,7 @@ import "./settings.css";
 import { resolveModelBase, peekSharedMaia3Provider, loadMaia3Manifest } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 import { createAccountSection } from "./settings-account.js";
+import { jumpToSection } from "./settings-jump.js";
 import { maiaErrorText, maiaInitMessage } from "../maia-init-notice.js";
 
 export function createSettingsView({
@@ -301,7 +302,7 @@ export function createSettingsView({
     list.innerHTML = html`${accounts
       .map(
         (account) =>
-          html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="conn-site">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" hidden>${account.is_primary
+          html`<div class="conn-row" data-account-id="${account.id}"><span class="conn-name"><span class="conn-site">Lichess</span><a class="conn-user" href="https://lichess.org/@/${encodeURIComponent(account.username)}" target="_blank" rel="noopener">${account.username}</a>${account.is_primary ? html` <span class="conn-primary">Primary</span>` : ""}</span><span class="conn-actions"><button type="button" class="btn ghost icon sm conn-menu-btn" data-conn-action="menu" aria-label="Account actions for ${account.username}" aria-haspopup="menu" aria-expanded="false">⋯</button><span class="conn-menu" role="menu" hidden>${account.is_primary
             ? ""
             : html`<button type="button" class="conn-menu-item" role="menuitem" data-conn-action="primary">Set primary</button>`}<button type="button" class="conn-menu-item is-danger" role="menuitem" data-conn-action="unlink">Unlink</button></span></span></div>`,
       )}`;
@@ -563,29 +564,21 @@ export function createSettingsView({
     // The markup paints Account as the open section; this names it in the
     // heading too, so the two agree from the first frame.
     markActiveSection((nav.querySelector(".settings-nav-link.is-active")?.getAttribute("href") || "").slice(1) || "set-account");
-    // A clicked link stays the active marker while its smooth scroll settles: a
-    // short page cannot always bring the target to the spy line, so the spy
-    // would otherwise hand the marker to a taller neighbour mid-scroll.
+    // A clicked link stays the active marker while its scroll settles: a short
+    // page cannot always bring the target to the spy line, so the spy would
+    // otherwise hand the marker to a taller neighbour mid-scroll.
     let lockedId = null;
-    let lockTimer = 0;
     nav.querySelectorAll(".settings-nav-link").forEach((link) => {
       link.addEventListener("click", (event) => {
         const id = (link.getAttribute("href") || "").slice(1);
         const target = id && document.getElementById(id);
         if (!target) return;
         event.preventDefault();
-        // Reduced motion: jump instead of smooth-scrolling. matchMedia is
-        // optional in embedded/test environments.
-        const reduceMotion =
-          typeof window !== "undefined" &&
-          Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
-        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
         markActiveSection(id);
         lockedId = id;
-        clearTimeout(lockTimer);
-        lockTimer = setTimeout(() => {
-          lockedId = null;
-        }, 800);
+        jumpToSection(target, () => {
+          if (lockedId === id) lockedId = null;
+        });
       });
     });
     const sections = () =>

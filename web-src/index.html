@@ -56,10 +56,10 @@
         </button>
       </div>
       <div class="rail-foot">
-        <button class="icon-btn rail-btn palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">
+        <button class="btn ghost rail-btn palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg><span class="nav-label">Search <kbd>Ctrl K</kbd></span>
         </button>
-        <button class="icon-btn rail-btn" id="theme-toggle" data-testid="theme-toggle" type="button" title="Switch to dark theme" aria-label="Switch to dark theme">
+        <button class="btn ghost rail-btn" id="theme-toggle" data-testid="theme-toggle" type="button" title="Switch to dark theme" aria-label="Switch to dark theme">
           <svg class="ic theme-ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>
           <svg class="ic theme-ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
           <span class="nav-label">Theme</span>
@@ -583,7 +583,7 @@
               <span class="spacer"></span>
               <div id="replay-summary" class="sum-chips" role="group" aria-label="Filter by outcome" hidden></div>
             </div>
-            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
+            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
           </section>
           <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <header class="page-head"><h1>Scout</h1></header>

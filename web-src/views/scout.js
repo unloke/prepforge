@@ -478,7 +478,7 @@ export function createScoutView(deps) {
     let n = 0;
     for (const row of root.querySelectorAll(".scout-weakness-row")) {
       if (before.has(`${row.dataset.color}|${row.dataset.lineKey}`)) continue;
-      row.classList.add("is-entering");
+      row.classList.add("is-enter");
       row.style.setProperty("--enter-index", String(n++));
     }
   }

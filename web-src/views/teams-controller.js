@@ -3,6 +3,7 @@ import { appState } from "../core/state.js";
 import { api, currentOwnerId, postJson, setStatus, setStatusError } from "../core/api.js";
 import { showConfirmModal, showInputModal } from "../core/modals.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./team-skeleton.js";
+import { enterRows } from "../list-enter.js";
 import { createInviteDialogUi, formatDay, runInviteDialog } from "./team-invite.js";
 import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 
@@ -210,6 +211,7 @@ async function openTeamDetail(teamId) {
           <span class="team-member-tail">${tail}</span>
         </div>`;
     })}`;
+  enterRows(membersEl, { key: (row) => `${teamId}|${row.querySelector(".name")?.textContent || ""}` });
   membersEl.querySelectorAll(".team-role-select").forEach((sel) => {
     sel.addEventListener("change", () =>
       updateMemberRole(teamId, sel.dataset.userId, sel.value)
@@ -547,9 +549,9 @@ async function loadSharedRepertoires() {
   const isCurrent = () => seq === sharedRepertoiresSeq && owner === currentOwnerId() && generation === appState.ownerGeneration;
   const container = document.getElementById("teams-shared");
   if (!container) return;
-  // The pane had no in-flight state at all; show the same skeleton the team
-  // detail uses while /api/repertoires is out.
-  container.innerHTML = sharedRepRowsSkeleton(2);
+  // First load only: a refresh keeps the rows on screen until the fresh ones
+  // land, instead of flashing a skeleton over them.
+  if (!container.querySelector?.(".shared-rep-row")) container.innerHTML = sharedRepRowsSkeleton(2);
   try {
     const payload = await api("/api/repertoires");
     if (!isCurrent()) return;
@@ -579,6 +581,7 @@ async function loadSharedRepertoires() {
             </span>
           </div>`;
       })}`;
+    enterRows(container, { key: (row) => row.dataset.repertoireId });
     container.querySelectorAll(".shared-rep-row").forEach((row) => {
       const open = () => openSharedRepertoire(row.dataset.repertoireId);
       row.addEventListener("click", (event) => {

@@ -16,6 +16,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDashboardView } from "./dashboard.js";
+import { settleEntrances } from "../list-enter.js";
 
 // --- a small DOM ------------------------------------------------------------
 // The row reconciliation only needs the container's top-level children, their
@@ -151,8 +152,8 @@ class FakeNode {
     // The per-row menu button is the only child a listener is attached to; it
     // lives inside the row markup, so hand back a stub with the geometry the
     // context-menu call reads.
-    if (!this._html.includes('class="row-menu-btn"')) return null;
-    const btn = new FakeNode('<button class="row-menu-btn">x</button>');
+    if (!this._html.includes("row-menu-btn")) return null;
+    const btn = new FakeNode('<button class="btn ghost icon row-menu-btn">x</button>');
     btn.getBoundingClientRect = () => ({ left: 0, bottom: 0 });
     btn.parentNode = this;
     return btn;
@@ -255,10 +256,11 @@ describe("Library row reconciliation", () => {
   const ids = () => rows().map((r) => r.dataset.repertoireId);
   // What the browser does when a row's entrance finishes: the marker comes off,
   // so re-showing the view cannot replay it.
-  const settle = () =>
-    rows().forEach((row) =>
-      (row._listeners.get("animationend") || []).forEach((fn) => fn({ animationName: "row-enter" })),
-    );
+  const settle = () => {
+    const handlers = {};
+    settleEntrances({ addEventListener: (type, fn) => { handlers[type] = fn; } });
+    rows().forEach((row) => handlers.animationend({ target: row }));
+  };
 
   beforeEach(() => {
     container = new FakeNode("");
@@ -311,7 +313,7 @@ describe("Library row reconciliation", () => {
     expect(rows()[1]).toBe(first[1]);
   });
 
-  it("rebuilds only the row whose content changed, and only that one enters", async () => {
+  it("rebuilds only the row whose content changed, and a refresh enters nothing", async () => {
     payloads = [REPS(), REPS({ rep1: { health: { trainable: 40, mastered: 26, weak: 0, due: 0, learning: 0, untrained: 2, mastery_pct: 62 } } })];
     build();
     await view.loadDashboardRepertoires();
@@ -323,8 +325,9 @@ describe("Library row reconciliation", () => {
     const [after1, after2] = rows();
     expect(after1).not.toBe(before1); // its mastery bar changed
     expect(after2).toBe(before2); // untouched row keeps its node
-    // Only the rebuilt row arrives, so only it draws the entrance.
-    expect(after1.classList.contains("is-enter")).toBe(true);
+    // The repainted row was already on screen: new counts are not an arrival,
+    // so neither row replays the entrance.
+    expect(after1.classList.contains("is-enter")).toBe(false);
     expect(after2.classList.contains("is-enter")).toBe(false);
   });
 
@@ -401,11 +404,13 @@ describe("Library row reconciliation", () => {
   it('settles an interrupted entrance so returning quickly does not replay it', async () => {
     payloads = [REPS(), REPS()];
     build();
+    const handlers = {};
+    settleEntrances({ addEventListener: (type, fn) => { handlers[type] = fn; } });
     await view.loadDashboardRepertoires();
     const first = rows();
     for (const row of first) {
       expect(row.classList.contains('is-enter')).toBe(true);
-      (row._listeners.get('animationcancel') || []).forEach(fn => fn({ animationName: 'row-enter' }));
+      handlers.animationcancel({ target: row });
     }
     await view.loadDashboardRepertoires();
     expect(rows()[0]).toBe(first[0]);

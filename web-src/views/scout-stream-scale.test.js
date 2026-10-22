@@ -128,7 +128,7 @@ describe("scout streaming skeleton", () => {
   it("stops pulsing under prefers-reduced-motion", () => {
     const at = css.indexOf("@media (prefers-reduced-motion: no-preference)");
     expect(at).toBeGreaterThan(-1);
-    expect(css.slice(at, at + 400)).toContain("scout-skeleton-pulse");
+    expect(css.slice(at, at + 400)).toContain("animation: skeleton-pulse");
   });
 });
 

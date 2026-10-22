@@ -150,7 +150,11 @@
   /* -- Radii, elevation, control sizes ------------------------------------ */
   --radius: 6px;      /* controls, small chips */
   --radius-card: 10px; /* cards, popovers, dialogs */
+  --radius-chip: 4px; /* status and kind pills: one step under a control */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
+  --switch-h: 20px;
+  --knob: 16px;
   --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);    /* resting cards */
   --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08); /* dialogs, floating tools */
   --shadow-bar: 0 -6px 18px rgba(20, 20, 30, 0.12); /* a bar that floats over scrolling content */
@@ -694,24 +698,7 @@ h2 {
   cursor: pointer;
 }
 
-/* Prototype top-bar icon buttons: borderless, 30px, tinted on hover. */
-.icon-btn {
-  display: inline-grid;
-  grid-auto-flow: column;
-  place-items: center;
-  gap: 6px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
-.icon-btn .ic { width: 17px; height: 17px; }
-.icon-btn kbd {
+.rail-btn kbd {
   padding: 0 5px;
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a key cap needs its own edge */
   border-radius: 4px;
@@ -1097,8 +1084,8 @@ h2 {
 
 .pf-switch {
   position: relative;
-  width: 38px;
-  height: 22px;
+  width: var(--switch-w);
+  height: var(--switch-h);
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
   border-radius: 999px;
   background: var(--panel-soft);
@@ -1143,8 +1130,8 @@ h2 {
   position: absolute;
   top: 1px;
   left: 1px;
-  width: 18px;
-  height: 18px;
+  width: var(--knob);
+  height: var(--knob);
   border-radius: 50%;
   background: var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); /* taste-skill-ignore: the knob's depth, not a resting shadow */
@@ -1152,7 +1139,7 @@ h2 {
 }
 
 .pf-switch.is-on .pf-knob {
-  transform: translateX(16px);
+  transform: translateX(calc(var(--switch-w) - var(--knob) - 4px));
 }
 
 /* Press: the knob gives under the thumb. scale is its own property, so it
@@ -1327,11 +1314,15 @@ h2 {
 .view.is-active {
   display: block;
   height: 100%;
-  animation: view-enter var(--dur) var(--ease-out) both;
+  /* backwards, not both: a held end transform makes the view the containing
+     block of every position: fixed child, so phone action sheets and docked
+     buttons inside a view were placed against the view, not the screen. */
+  animation: view-enter var(--dur) var(--ease-out) backwards;
 }
 
-/* One loading state: while the hold is up the default view stays hidden. */
-.boot-hold:not([hidden]) ~ .view.is-active {
+/* One loading state: until the hold leaves the DOM the default view stays
+   hidden, also before JS shows the hold, so the view paints (and enters) once. */
+.boot-hold ~ .view.is-active {
   display: none;
 }
 
@@ -1502,9 +1493,9 @@ h2 {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid currentcolor;
+  border: 2px solid var(--muted);
   border-top-color: transparent;
-  animation: btn-spin 600ms linear infinite;
+  animation: spin 600ms linear infinite;
 }
 
 .btn.primary.is-loading::after,
@@ -1513,11 +1504,30 @@ h2 {
   border-top-color: transparent;
 }
 
-@keyframes btn-spin {
-  to {
-    transform: rotate(360deg);
-  }
+/* ---- One pill ------------------------------------------------------------
+   Status and kind labels that sit inside a row or beside a value: one height,
+   one radius, one weight, sentence case. Each class only sets its colours (a
+   pale tint with dark text of the same hue); a view may set the text size. */
+.status-pill,
+.team-role-badge,
+.lib-chip,
+.kchip,
+.kind-badge,
+.train-play-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-xs);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
 }
+/* A pill with no label (a share whose role the server did not send) draws nothing. */
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge, .train-play-chip):empty { display: none; }
 
 .link {
   border: 0;
@@ -1629,9 +1639,9 @@ h2 {
   line-height: 18px;
 }
 
-/* Today strip */
-#view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
-#view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
+/* Today strip. It and the next steps arrive once, when their data lands. */
+#view-dashboard .today.is-enter,
+#view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
 /* The strip is one band: what is waiting on the left, the week's history and
    the action on the right. Stacked as four lines in one narrow column, the
    queue was the second line and the card kept a hole the width of the window. */
@@ -1798,9 +1808,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   height: 11px;
   margin-top: 4px;
   border-radius: 50%;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
-  background-size: 200% 100%;
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+  background: var(--surface-3);
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 .skeleton-stack { display: grid; flex: 1; gap: 5px; min-width: 0; }
 .skeleton-bar.skeleton-thin { height: 8px; }
@@ -1819,25 +1828,19 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row:active { background: var(--surface-3); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
 
-/* ---- One list-entry primitive -----------------------------------------
-   A fresh list fades in item by item. `--i` is the row index; the cap keeps a
-   long list from dragging. Every row is transform/opacity only, so the rows
-   below never move. Callers: dashboard (library), teams, replay summary. */
-.list-enter > * {
+/* ---- One entrance primitive ---------------------------------------------
+   A thing enters once, when it first arrives (list-enter.js marks it
+   `.is-enter` and takes the marker off when the entrance ends). A row already
+   on screen, a skeleton, or content painted while its view is still fading in
+   never enters, so nothing on a page animates twice. Lists stagger by `--i`
+   (capped) at the container's `--stagger`; transform and opacity only, so the
+   rows below never move. */
+.list-enter > .is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
-  animation-delay: calc(min(var(--i, 0), 8) * 25ms);
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger, 25ms));
 }
-#view-dashboard .list-enter > *,
-#view-teams .list-enter > * {
-  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
-}
-/* The Library reconciles its rows instead of rewriting them, so it marks the
-   ones that actually arrived. A row that was already on screen keeps its
-   settled state: re-showing the view, filtering, or a refresh that only
-   changed another row must not replay the entrance over it. */
-#view-dashboard .list-enter > .lib-row:not(.is-enter) {
-  animation: none;
-}
+#view-dashboard .list-enter,
+#view-teams .list-enter { --stagger: 60ms; }
 @keyframes row-enter {
   from {
     opacity: 0;
@@ -1877,12 +1880,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .rep-sub { color: var(--label); font-size: var(--fs-xs); }
 .lib-chip {
   flex: none;
-  padding: 1px 6px;
-  border-radius: 4px;
   background: var(--surface-3);
   color: var(--label);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
 }
 /* A shared tag is a tag, not a micro-label: it sits at the size of the other
    chips instead of a 10px tracked cap, and says "shared" in lower case. */
@@ -1933,16 +1932,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   font-size: var(--fs-xs);
 }
 /* Queue chips reuse the mastery-kind colours (colour means chess). */
-.kchip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  white-space: nowrap;
-}
 .kchip::before {
   content: "";
   width: 6px;
@@ -1955,33 +1944,22 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
 .row-menu-btn {
   justify-self: end;
-  width: var(--control-h);
-  min-width: var(--control-h);
-  height: var(--control-h);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--label);
   font-size: 14px;
   line-height: 1;
   opacity: 0.7;
-  /* Press feedback: same scale as .btn, on a control that is not a .btn. */
   transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
-.row-menu-btn:active {
-  transform: scale(0.97);
-}
+/* The row's ⋯ is the shared quiet icon button (.btn.ghost.icon); it only
+   stays dim until its row is hovered or selected. */
 .lib-row:hover .row-menu-btn,
 .lib-row.is-selected .row-menu-btn,
 .row-menu-btn:focus-visible { opacity: 1; color: var(--text); }
-.row-menu-btn:hover { background: var(--surface-3); }
-.row-menu-btn:active { transform: scale(0.97); }
 .lib-rep-list .empty-state:not(.big) { border: 0; background: none; border-radius: 0; }
 .empty-state.big {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 48px 24px;
   border: 0;
@@ -1990,7 +1968,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
 /* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
 .empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
-.empty-state.big .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 
 /* Side dot (repertoire colour) */
@@ -2636,22 +2614,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--muted);
 }
 
-.explain-review .pf-switch,
-.train-blitz-row .pf-switch {
-  width: 34px;
-  height: 20px;
-}
-
-.explain-review .pf-knob,
-.train-blitz-row .pf-knob {
-  width: 16px;
-  height: 16px;
-}
-
-.explain-review .pf-switch.is-on .pf-knob,
-.train-blitz-row .pf-switch.is-on .pf-knob {
-  transform: translateX(14px);
-}
 
 .train-repertoire-menu {
   position: relative;
@@ -3023,16 +2985,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    and the Explorer rows arrive after a move or a fetch, so they enter with a
    short rise and stagger; the selected move's fill eases. Transform and
    opacity only, and the global reduced-motion block turns all of it off. */
-#build-branchbar:not([hidden]) { animation: fork-enter var(--dur) var(--ease-out) both; }
+#build-branchbar.is-enter { animation: fork-enter var(--dur) var(--ease-out) both; }
 @keyframes fork-enter {
   from { opacity: 0; transform: translateY(-4px); }
 }
-#explorer-rows .explorer-row,
-#coverage-gaps .coverage-gap {
+#explorer-rows > .is-enter,
+#coverage-gaps > .coverage-gap.is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 40ms);
 }
-#explorer-rows.is-refresh .explorer-row { animation: none; }
 #build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 #build-branchbar .fork-chip:active { transform: scale(0.97); }
 
@@ -3605,12 +3566,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-play-chip {
   align-self: flex-start;
   margin: 0;
-  padding: 2px 8px;
-  border-radius: 10px;
   background: var(--warn-soft);
   color: var(--warn-text);
   font-size: var(--fs);
-  font-weight: 650;
 }
 
 /* Progress */
@@ -3746,10 +3704,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
 
 /* The result card arrives when the session ends: one rise, once. */
-#train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
+#train-summary.is-enter { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
 /* The session card arrives the same way when Start opens it, and only then:
    the panel stays mounted as the queue advances, so cards never re-rise. */
-#train-progress-panel:not([hidden]) { animation: trainCardEnter var(--dur) var(--ease-out) both; }
+#train-progress-panel.is-enter { animation: trainCardEnter var(--dur) var(--ease-out) both; }
 @keyframes trainCardEnter {
   from { opacity: 0; transform: translateY(10px); }
 }
@@ -3952,11 +3910,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-skeleton .sk-line { width: 70%; height: 15px; margin-bottom: 6px; }
 .scout-skeleton .sk-row { height: 40px; border-radius: 8px; background: var(--surface-3); }
 @media (prefers-reduced-motion: no-preference) {
-  .scout-skeleton .sk { animation: scout-skeleton-pulse 1.4s ease-in-out infinite alternate; }
+  .scout-skeleton .sk { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
   .scout-skeleton .sk-row:nth-child(3) { animation-delay: 0.1s; }
   .scout-skeleton .sk-row:nth-child(4) { animation-delay: 0.2s; }
 }
-@keyframes scout-skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 .scout-panel .scout-empty { display: none; }
 .scout-panel:not(.is-streaming):has(#scout-results:empty) .scout-empty { display: flex; }
 /* "0 games fetched" before any scout has run is noise next to the empty card. */
@@ -4346,7 +4303,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border-radius: 4px;
   background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
   background-size: 200% 100%;
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 /* A placeholder for a headline-sized element (a repertoire name, a team name):
    the same bar, taller, with its own row. */
@@ -4358,10 +4315,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 10px;
   padding: 14px 12px;
 }
-@keyframes skeleton-pulse {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
+/* The one loading pulse: a flat bar breathing, never a shimmer. */
+@keyframes skeleton-pulse { from { opacity: 1; } to { opacity: 0.55; } }
 
 .inline-undo-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 
@@ -4659,16 +4614,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-style: italic;
 }
 
-.tag {
-  border: 1px solid var(--line); /* taste-skill-ignore: a chip needs its own edge */
-  border-radius: 3px;
-  padding: 1px 5px;
-  font-size: 10px;
-  color: var(--muted);
-  background: var(--panel);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
 
 /* Context menu — all chrome uses theme tokens so light/dark stay consistent. */
 
@@ -5203,11 +5148,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     align-items: center;
   }
   .account-btn,
-  .icon-btn {
+  .rail-btn {
     min-height: 44px;
     min-width: 44px;
   }
-  .icon-btn kbd {
+  .rail-btn kbd {
     display: none;
   }
   .btn {
@@ -5280,9 +5225,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: none;
   border: 2px solid color-mix(in srgb, var(--tone) 25%, transparent);
   border-top-color: var(--tone);
-  animation: notice-spin 900ms linear infinite;
+  animation: spin 900ms linear infinite;
 }
-@keyframes notice-spin { to { transform: rotate(360deg); } }
 /* A job that has just finished: the spinner becomes its tick in place, so the
    card settles instead of silently changing meaning. One gesture, not a loop. */
 .notice[data-state="done"] .notice-icon { animation: notice-land var(--dur-slow) var(--ease-emphasis); }
@@ -5347,21 +5291,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .notice-stop { color: var(--danger); }
 .notice-stop:disabled { color: var(--muted); cursor: default; }
 
-.notice-close {
-  grid-column: 4;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-.notice-close:hover { background: var(--surface-3); color: var(--text); }
-.notice-close:focus-visible,
+/* The dismiss is the shared quiet icon button (.btn.ghost.icon.sm). */
+.notice-close { grid-column: 4; }
 .notice-action:focus-visible,
 .notice-stop:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 /* Routine lines leave by themselves: × shows on hover only. */
@@ -5812,7 +5743,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
   .btn:active,
   .btn.icon:active,
-  .row-menu-btn:active,
   .sheet-row:active {
     transform: none;
   }
@@ -6036,7 +5966,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
-/* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
+/* Rail foot: Search and Theme read as rail rows (icon, label on expand) on
+   the shared quiet button (.btn.ghost). */
 .rail-btn {
   position: relative;
   justify-content: flex-start;
@@ -6044,6 +5975,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   width: 100%;
   height: 38px;
   padding: 0 13px;
+  border: 0;
   white-space: nowrap;
 }
 .rail-btn .ic { width: 18px; height: 18px; }

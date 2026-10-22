@@ -3,7 +3,7 @@ import { html } from "../html.js";
 
 import { Chess } from "chess.js";
 import { buildArrowPath } from "../board-arrows.js";
-import { staggerRows } from "../list-enter.js";
+import { enterOnce, enterRows } from "../list-enter.js";
 import { nounOf } from "../plural.js";
 import { START_FEN, encodeLine, moveTokenHtml } from "../move-text.js";
 import "./replay.css";
@@ -30,7 +30,7 @@ const LEDGER_HEAD = html`<div class="lr head col-head" aria-hidden="true"><span>
 // centred in the table body. An empty Games page used to be two lines of text
 // floating on the page ground with no sign of the table they were about.
 function replayEmptyLedger(body, { headHtml = "" } = {}) {
-  return html`${headHtml}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}<div class="ledger-empty">${body}</div></div></section></div>`;
+  return html`${headHtml}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}<div class="ledger-empty empty-state big">${body}</div></div></section></div>`;
 }
 
 // An opponent who leaves the repertoire within the first couple of moves didn't play a
@@ -234,6 +234,7 @@ export function createReplayView({
   // The last payload painted. A row click re-renders the same payload, so the
   // entrance runs once per Check result and never on selection.
   let lastPayload = null;
+  let lastFocusIndex = null;
   function renderReplaySummary(payload) {
     const el = document.getElementById("replay-summary");
     if (!el) return;
@@ -496,7 +497,10 @@ export function createReplayView({
     lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
     container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${REPLAY_KINDS[filter].label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
-    if (entered) staggerRows(container.querySelector?.(".ledger-table"));
+    // A fresh Check enters row by row; a row click only swaps the detail card.
+    if (entered) enterRows(container.querySelector?.(".ledger-table"));
+    else if (focused.index !== lastFocusIndex) enterOnce(container.querySelector?.(".focus"));
+    lastFocusIndex = focused.index;
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {
         pendingRevealIndex = Number(row.dataset.index);

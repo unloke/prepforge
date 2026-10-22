@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { staggerRows } from "../list-enter.js";
+import { enterRows } from "../list-enter.js";
 import { countOf, nounOf } from "../plural.js";
 import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
 import { START_FEN, moveLineHtml, moveTextHtml, walkPathText } from "../move-text.js";
@@ -255,7 +255,7 @@ export function createTrainView({
           );
         })}`;
     // The rows arrive one by one, with the app's shared stagger.
-    staggerRows(host);
+    enterRows(host);
   }
 
   // Card kind chip beside the counter (smart queue only; rehearsal has none).

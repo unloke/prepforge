@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { reveal } from "../list-enter.js";
 import { countOf } from "../plural.js";
 import { moveTextHtml, plyOfFen } from "../move-text.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
@@ -207,7 +208,7 @@ export function createBuildView({
       ctx.options.length > size
         ? html`<button class="fork-more" type="button" aria-expanded="${expanded ? "true" : "false"}">${expanded ? "Show fewer" : "Show all"}</button>`
         : "";
-    bar.hidden = false;
+    reveal(bar);
     bar.setAttribute("role", "group");
     bar.setAttribute("aria-label", "Fork — pick the next move");
     bar.innerHTML =

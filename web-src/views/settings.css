@@ -73,7 +73,8 @@
 
 /* ---- Cards + rows ------------------------------------------------------ */
 
-/* A jump to a section lands its title below the sticky strip, not under it. */
+/* A jump to a section lands its title below the sticky strip, not under it
+   (settings.js measures the strip; this is the first-paint value). */
 .settings-content > .set { scroll-margin-top: 64px; }
 
 .set {
@@ -142,12 +143,8 @@
 .settings-error { word-break: break-word; }
 
 .status-pill {
-  padding: 1px 8px;
-  border-radius: 10px;
   background: var(--surface-3);
   color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 700;
 }
 .status-pill.ok { background: var(--good-soft); color: var(--good-text); }
 .status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }
@@ -197,26 +194,10 @@
   position: relative;
   flex: none;
 }
-.conn-menu-btn {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted);
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
-}
-.conn-menu-btn:hover,
-.conn-menu-btn[aria-expanded="true"] {
-  background: var(--surface-3);
-  color: var(--text);
-}
-.conn-menu-btn:active { transform: scale(0.92); }
-.conn-menu-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* The account menu opener is the shared quiet icon button (.btn.ghost.icon.sm);
+   the glyph is a little larger and the button stays lit while its menu is open. */
+.conn-menu-btn { font-size: 15px; }
+.conn-menu-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
 .conn-menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -263,33 +244,33 @@
 
 /* ---- Motion ------------------------------------------------------------ */
 
-/* The page arrives in reading order: the title, then the index of sections,
-   then the cards one after another, so the eye lands on the first card and
-   follows the page down. The shared view-enter keyframes do the travel, so
-   this reads like the rest of the app. The animation hangs off the active
-   view, so it plays again every time the page is opened. */
-#view-settings.is-active .page-head h1,
-#view-settings.is-active .settings-here {
-  animation: view-enter var(--dur) var(--ease-out) both;
+/* The page arrives with the view's own cross-fade and nothing else: a second
+   rise on the title, the strip and each card read as the page loading twice.
+
+   A jump from the strip lands on its card: an accent ring and a faint tint
+   come up and fade, so the eye finds the card even when the page could not
+   scroll it to the top. Opacity only; reduced motion shows the ring without
+   the fade and settings.js takes it off. */
+.settings-content > .set { position: relative; }
+.settings-content > .set.is-landed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  animation: set-land 1400ms var(--ease-out) both;
 }
-#view-settings.is-active .settings-nav-link {
-  animation: view-enter var(--dur) var(--ease-out) both;
+@keyframes set-land {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  55% { opacity: 1; }
+  100% { opacity: 0; }
 }
-#view-settings.is-active .settings-nav-link:nth-child(1) { animation-delay: 50ms; }
-#view-settings.is-active .settings-nav-link:nth-child(2) { animation-delay: 100ms; }
-#view-settings.is-active .settings-nav-link:nth-child(3) { animation-delay: 150ms; }
-#view-settings.is-active .settings-nav-link:nth-child(4) { animation-delay: 200ms; }
-#view-settings.is-active .settings-nav-link:nth-child(5) { animation-delay: 250ms; }
-#view-settings.is-active .settings-nav-link:nth-child(6) { animation-delay: 300ms; }
-#view-settings.is-active .settings-content > .set {
-  animation: view-enter var(--dur) var(--ease-out) both;
+@media (prefers-reduced-motion: reduce) {
+  .settings-content > .set.is-landed::after { animation: none; opacity: 1; }
 }
-#view-settings.is-active .settings-content > .set:nth-child(1) { animation-delay: 60ms; }
-#view-settings.is-active .settings-content > .set:nth-child(2) { animation-delay: 120ms; }
-#view-settings.is-active .settings-content > .set:nth-child(3) { animation-delay: 180ms; }
-#view-settings.is-active .settings-content > .set:nth-child(4) { animation-delay: 240ms; }
-#view-settings.is-active .settings-content > .set:nth-child(5) { animation-delay: 300ms; }
-#view-settings.is-active .settings-content > .set:nth-child(6) { animation-delay: 360ms; }
 
 /* ---- Responsive -------------------------------------------------------- */
 
@@ -303,7 +284,7 @@
   .set .seg-btn,
   .conn-menu-btn,
   .settings-nav-link { min-height: 44px; }
-  /* Touch targets: the 38x26 switch and the 24px ⓘ are thumb targets on a
+  /* Touch targets: the switch and the 24px ⓘ are thumb targets on a
      phone. The switch keeps its parts and grows its hit box to 40px (the track
      is drawn by ::after, the knob stays centered); the ⓘ gets a 40px box with
      the glyph unchanged. */
@@ -313,7 +294,7 @@
   .set .pf-switch::after {
     content: "";
     position: absolute;
-    inset: 9px 0;
+    inset: calc((40px - var(--switch-h)) / 2) 0;
     border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
     border-radius: 999px;
     background: var(--panel-soft);
@@ -322,7 +303,7 @@
   .set .pf-switch.is-on { background: none; }
   .set .pf-switch:hover::after { background: var(--surface-3); }
   .set .pf-switch.is-on::after { background: var(--accent); border-color: var(--accent); }
-  .set .pf-switch .pf-knob { top: 10px; }
+  .set .pf-switch .pf-knob { z-index: 1; top: calc((40px - var(--knob)) / 2 - 1px); } /* above the ::after track */
   .set .pf-info { min-width: 40px; min-height: 40px; }
   .set-row { flex-wrap: wrap; }
 }

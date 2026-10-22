@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 
 import { formatEngineEval } from "../engine-eval.js";
@@ -696,12 +697,6 @@ function renderExplorerRows(stats, fen) {
   explorerOpeningName = stats.opening || "";
   if (stats.opening && fen) buildView?.nameOpening(fen, stats.opening);
   paintInspectorScope();
-  // Re-rendering the position already on screen (the add-move save landing,
-  // a cached refresh) only updates the rows in place: replaying their entrance
-  // read as the Explorer animating twice.
-  const shown = rows.dataset.shownFen;
-  const samePosition = !!shown && !!fen && rows.dataset.shownDb === explorerDb && sameFenPosition(shown, fen);
-  rows.classList.toggle("is-refresh", samePosition);
   rows.dataset.shownFen = fen || "";
   rows.dataset.shownDb = explorerDb;
   rows.dataset.fen = fen || "";
@@ -733,7 +728,7 @@ function renderExplorerRows(stats, fen) {
         const seg = (cls, label, value) =>
           html`<span class="${cls}" style="width:${value}%" title="${label} ${value}%">${explorerSegLabel(value)}</span>`;
         return html`
-    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}" style="--i:${stats.moves.indexOf(m)}">
+    <div class="explorer-row${thin ? " is-thin" : ""}${has ? " is-in" : ""}" data-uci="${m.uci}">
       <button type="button" class="explorer-pick" data-explorer-pick aria-label="${action} (${countOf(games, "game")}, White ${m.whitePct}%, draw ${m.drawPct}%, Black ${m.blackPct}%)">
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
@@ -742,6 +737,10 @@ function renderExplorerRows(stats, fen) {
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })}`;
+  // Rows of the position already on screen (the add-move save landing, a
+  // cached refresh, coming back to Build) stay put; a new position's enter.
+  const position = String(fen || "").split(" ").slice(0, 4).join(" ");
+  enterRows(rows, { key: (row) => (row.dataset.uci ? `${explorerDb}|${position}|${row.dataset.uci}` : "head") });
   rows.querySelectorAll(".explorer-row").forEach((row) => {
     const uci = row.dataset.uci;
     // The whole row is the action; the Move button inside is the focusable

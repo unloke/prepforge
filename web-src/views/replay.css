@@ -14,7 +14,6 @@
   .sum-chip, .queued, .src-label, .inline-field, .lr.head, .card-head h2, .faint) {
   font-size: 13px;
 }
-#view-replay .kind-badge { padding: 1px 6px; }
 #view-replay .inline-field select { font-size: 13px; }
 #view-replay .queued { color: var(--muted); }/* "No repertoire" is a real outcome, not a disabled control: the shared
    `--none` grey lands at 3.5:1 on its own tint. */
@@ -63,20 +62,6 @@
 /* Nothing to detail yet: the ledger takes the whole triage instead of leaving
    half the page as bare ground beside an empty card. */
 #view-replay .triage:has(.ledger-empty) { grid-template-columns: minmax(0, 1fr); }
-#view-replay .ledger-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 40px 16px;
-  color: var(--muted);
-  text-align: center;
-  font-size: 13px;
-}
-#view-replay .ledger-empty h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
-#view-replay .ledger-empty p { max-width: 460px; margin: 0; text-wrap: pretty; }
-#view-replay .ledger-empty .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
 #view-replay .ledger-error { display: contents; }
 /* A Check result arrives row by row instead of as one block: the shared
    `.list-enter` stagger, slowed to 60ms here because the ledger is the whole
@@ -86,7 +71,7 @@
 }
 /* The detail card's contents are replaced by a row click; a short fade says
    "this is the other game" without the travel a page switch uses. */
-#view-replay .focus { animation: focus-swap var(--dur-fast) var(--ease-out) both; }
+#view-replay .focus.is-enter { animation: focus-swap var(--dur-fast) var(--ease-out) both; }
 @keyframes focus-swap {
   from { opacity: 0; }
 }
@@ -164,16 +149,7 @@
   aspect-ratio: 1;
   border-radius: 6px;
   background: var(--surface-3);
-  animation: skeleton-pulse 1.2s var(--ease-out) infinite;
-}
-.kind-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border-radius: 4px;
-  font-size: var(--fs-xs);
-  font-style: normal;
-  font-weight: 650;
-  white-space: nowrap;
+  animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 .kind-badge.t-good { background: var(--good-soft); color: var(--good-text); }
 .kind-badge.t-bad { background: var(--danger-soft); color: var(--danger-strong); }
