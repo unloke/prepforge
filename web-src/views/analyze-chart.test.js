@@ -306,7 +306,7 @@ describe("report grades", () => {
 
 describe("coach note", () => {
   it("keeps the verdict readable and scrolls text inside its reserved row", () => {
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 16px/);
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: 0/);
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*overflow-y: auto/);
   });
@@ -580,13 +580,15 @@ describe("Analyze on a phone", () => {
     expect(band).toMatch(/order: 0/);
     expect(band).toMatch(/height: var\(--phone-eval-h\)/);
     expect(band).toMatch(/padding: 6px var\(--phone-gutter\)/);
-    expect(phone).toMatch(/--phone-eval-h: 56px/);
+    // 64px, not 56: the readout is a whole line and the graph under it has to
+    // stay clear of the curve it names.
+    expect(phone).toMatch(/--phone-eval-h: 64px/);
   });
 
   it("gives the eval figure the band's ink and its largest size", () => {
     const rule = phone.match(/#analysis-eval-card \.eval-now \{[^}]*\}/);
     expect(rule).not.toBeNull();
-    expect(rule[0]).toMatch(/font-size:\s*18px/);
+    expect(rule[0]).toMatch(/font-size:\s*20px/);
     expect(rule[0]).toMatch(/color:\s*var\(--text\)/);
   });
 

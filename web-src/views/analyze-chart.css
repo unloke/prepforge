@@ -1368,9 +1368,9 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
    Games sheet, and fill the screen under the board while no game is loaded. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #view-analyze {
-    --phone-eval-h: 56px;
+    --phone-eval-h: 64px;
     --phone-tabs-h: 44px;
-    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 172px);
+    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 164px);
   }
   #view-analyze .study { height: 100svh; }
   #view-analyze .board-stack {
@@ -1380,8 +1380,10 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analyze-sidebar .panel-scroll > *,
   .analyze-main > * { order: 2; flex: none; min-width: 0; }
 
-  /* The evaluation: the figure, then the game graph, one 56px band. A finger on
-     the graph scrubs the game; the band never changes height. */
+  /* The evaluation: the figure, then the game graph, one band. A finger on the
+     graph scrubs the game; the band never changes height. 64px, not 56: the
+     readout ("4. Ba4 · +0.22 · ✓ Best") is a whole line, and at 44px of graph it
+     sat on the curve it was reading. */
   #view-analyze #analysis-eval-card {
     order: 0;
     grid-template-columns: 72px minmax(0, 1fr);
@@ -1396,7 +1398,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-eval-card > :not(.ev-head) { grid-row: 1; grid-column: 2; }
   /* The word stays inside the figure's 72px column instead of running under the graph. */
   #analysis-eval-card .ev-title { grid-area: 1 / 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-  #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 18px; font-weight: 650; }
+  #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
   #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
   #analysis-eval-card > .analysis-job-dock:not(:empty) {
@@ -1408,8 +1410,10 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     background: var(--panel);
   }
 
-  /* The coach, when its tab is open: the phase and the review switch, the
-     verdict (it scrolls inside), the human picks, the prep note. */
+  /* The coach, when its tab is open: the review switch, the verdict (it scrolls
+     inside), the human picks, the prep note. The panel keeps its place; the
+     verdict takes the room, so a long one reads instead of ending in a band of
+     plain ground (measured at 390x844: 292px of card for 26px of verdict). */
   #analysis-explain {
     order: 2;
     flex: 1 1 0;
@@ -1434,11 +1438,17 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-explain .cc-head { gap: 6px; min-height: 0; }
   #analysis-explain .cc-head > b { display: none; }
   #analysis-explain .cc-switch-label { display: block; flex: none; color: var(--muted); font-size: 14px; white-space: nowrap; cursor: pointer; }
+  /* The verdict hugs its words: the tone rule is the note's own height, never a
+     full-height column beside a one-line sentence. What it cannot fit scrolls
+     inside itself rather than pushing the rows under it down the screen, and
+     the rows keep their order from the top — the room a tall phone leaves over
+     falls at the panel's end, where the tab strip's tone closes it, not between
+     the verdict and the action that answers it. */
   #analysis-explain .coach-prose {
     flex: 0 1 auto;
     min-height: 0;
     padding-left: 10px;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.45;
     overflow: auto;
     overscroll-behavior: contain;
@@ -1491,6 +1501,15 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
   #analysis-explain .coach-bookline { max-height: none; }
+  /* The engine-offer row keeps its one line, but its two controls are a thumb's
+     size here (they were 22px: a pointer's row). The row's height is the
+     controls' height, so nothing overlaps the verdict above it. */
+  #analysis-explain .coach-unlock .unlock.is-inline { height: 44px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text b,
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
 
   /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
   .an-panes {
@@ -1508,7 +1527,12 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     padding: 3px;
     border-radius: 12px;
   }
-  .an-tab { height: auto; font-size: 14px; border-radius: 9px; }
+  /* The whole strip is the target: a tab fills its track top to bottom (38px of
+     44) and its name is centred in that height. The 3px the strip pads with is
+     added back as a hit area, so a thumb on the word's edge still hits the tab
+     and the bar keeps the height the board was measured against. */
+  .an-tab { position: relative; height: auto; align-self: stretch; font-size: 14px; border-radius: 9px; }
+  .an-tab::after { content: ""; position: absolute; inset: -3px 0; }
   .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
   .an-pane {
     padding: 8px var(--phone-gutter) 10px;
@@ -1516,12 +1540,32 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   }
   .an-pane-head { min-height: 32px; }
   .engine-pane .an-pane-head > b { display: none; }
+  /* The engine card on a phone is a short band over the board: its row stays one
+     line, the gain clipping first, so the band grows by one line and no more.
+     Its two controls are a thumb's size here (the shared row draws them at 22px
+     for a pointer). */
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) { min-height: 44px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) > .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x { width: 44px; height: 44px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x svg { width: 16px; height: 16px; }
+  /* Analyze's one action is the pill in the thumb bar (phone.css draws it at
+     40px, a pointer's height): it is the control a thumb is meant to land on,
+     so it takes the 44px floor. The bar is 56px, so 6px stays above and below. */
+  #view-analyze #run-analysis { height: 44px; bottom: calc(env(safe-area-inset-bottom) + (var(--phone-bar-h) - 44px) / 2); }
+  /* The engine's head row is a thumb row: the depth, the line stepper and the
+     Live switch all sit on it. */
+  #analysis-engine-pane .an-pane-head { min-height: 44px; }
   #analysis-engine-pane .ev-engine { position: relative; height: 32px; padding: 0 14px 0 12px; font-size: 14px; }
   #analysis-engine-pane .ev-engine::after { content: ""; position: absolute; inset: -6px 0; }
+  /* A line is a row a thumb picks: 44px tall, its text at the row's middle. */
   #analysis-engine-slot .engine-pv,
-  #analysis-engine-slot .engine-pv.is-top { height: 32px; min-height: 32px; font-size: 14px; }
-  #analysis-engine-slot .engine-pv-line { line-height: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #analysis-engine-slot .engine-step { width: 32px; height: 32px; }
+  #analysis-engine-slot .engine-pv.is-top { height: 44px; min-height: 44px; font-size: 14px; }
+  #analysis-engine-slot .engine-pv-line { line-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The stepper is a 32px dot, which is a pointer's size. Its own box stays the
+     dot; the head row's 44px is the hit area a thumb gets, without a bigger
+     accent circle or a row that overlaps its neighbour. */
+  #analysis-engine-slot[data-ui] .engine-step { position: relative; width: 32px; height: 32px; }
+  #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
   .best-line { font-size: 14px; line-height: 28px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
   .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
