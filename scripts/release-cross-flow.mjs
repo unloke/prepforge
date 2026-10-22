@@ -165,14 +165,14 @@ async function main() {
     await page.locator("#analysis-results").waitFor({ state: "visible", timeout: ANALYSIS_TIMEOUT_MS });
     await page.locator("#analysis-moves > *").first().waitFor({ timeout: ANALYSIS_TIMEOUT_MS });
     await page
-      .locator("#analysis-summary .class-bars, #analysis-summary .cbar-row")
+      .locator("#analysis-summary .rp-side")
       .first()
       .waitFor({ timeout: ANALYSIS_TIMEOUT_MS });
 
     const analyzeSnap = await page.evaluate(() => ({
       resultsVisible: !document.getElementById("analysis-results")?.hidden,
       moveListChildCount: document.getElementById("analysis-moves")?.children.length || 0,
-      summaryHasBars: !!document.querySelector("#analysis-summary .class-bars, #analysis-summary .cbar-row"),
+      summaryHasBars: !!document.querySelector("#analysis-summary .rp-side"),
       status: document.getElementById("notices")?.textContent?.trim() || "",
       handoffVisible: !document.getElementById("analysis-handoff")?.hidden,
       repertoireCta: !!document.querySelector('[data-testid="create-repertoire-from-game"]'),

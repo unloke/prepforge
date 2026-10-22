@@ -114,9 +114,20 @@ async function openGamesSheet(page) {
   await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
 }
 
+// A short or narrow panel, and a phone, show one pillar at a time behind tabs.
+async function showPane(page, pane, probe) {
+  if (await page.locator(probe).isVisible()) return;
+  await page.locator(`#an-tab-${pane}`).click();
+}
+
 async function runViewport(vp) {
   console.log(`[analyze-smoke] ${vp.name}`); // names the viewport a thrown step dies in
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  // The linked account's Lichess profile is fetched cross-origin; serve it here.
+  await page.route("https://lichess.org/api/user/**", (route) => route.fulfill({
+    status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" },
+    body: JSON.stringify({ id: "me_user", username: "me_user", perfs: {} }),
+  }));
   const consoleErrors = [];
   page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text()); });
   page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${e.message}`));
@@ -379,7 +390,7 @@ async function runViewport(vp) {
     () =>
       !document.getElementById("analysis-results").hidden &&
       document.querySelectorAll("#analysis-moves .mtree-move").length >= 5 &&
-      document.querySelectorAll("#analysis-summary .cbar-row").length > 0,
+      document.querySelectorAll("#analysis-summary .rp-side").length > 0,
     null,
     { timeout: 20000 },
   );
@@ -387,13 +398,14 @@ async function runViewport(vp) {
   check(chartKids > 0, "eval chart should have rendered the eval graph");
   const movesRows = await page.locator("#analysis-moves .mtree-move").count();
   check(movesRows >= 5, `move grid should list the game's plies, got ${movesRows}`);
-  const classBars = await page.locator("#analysis-summary .cbar-row").count();
-  check(classBars === 2, `class bars should show White + Black rows, got ${classBars}`);
+  const classBars = await page.locator("#analysis-summary .rp-side").count();
+  check(classBars === 2, `the report should show White + Black accuracy, got ${classBars}`);
 
   check(await page.locator("#analysis-job-dock .notice").count() === 0, "completed analysis progress must disappear immediately");
 
   // Exercise shared live evaluation and rapid forward/back navigation with the
   // real worker, not a mirrored test implementation.
+  await showPane(page, "engine", "#open-engine-widget");
   const engineSpot = await page.evaluate(() => {
     const r = document.getElementById("open-engine-widget").getBoundingClientRect();
     const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
@@ -423,6 +435,7 @@ async function runViewport(vp) {
     }
   });
   await page.waitForFunction(() => document.querySelector("#engine-window-pvs .engine-pv:not(.is-pending)"), null, { timeout: 20000 });
+  await showPane(page, "coach", "#explain-engine-toggle");
   await page.locator("#explain-engine-toggle").click();
   // Use the board navigation's real async path, allowing each render to settle.
   await page.evaluate(() => document.getElementById("analysis-start").click());
@@ -435,22 +448,21 @@ async function runViewport(vp) {
   try {
     await page.waitForFunction((text) => document.getElementById("coach-prose").textContent !== text, instant, { timeout: 15000 });
   } catch { check(false, "Coach must produce an engine verdict after rapid stepping stops"); }
+  await showPane(page, "engine", "#open-engine-widget");
   const engineLayout = await page.evaluate(() => {
-    // The docked engine dissolves into the card (display: contents): measure its lines,
-    // and require its depth ring and line stepper on the card's header row. Phones
-    // dissolve the card too and show the best line alone under the eval row.
-    const phone = window.innerWidth <= 760;
-    const panel = phone ? { left: 0, right: window.innerWidth } : document.getElementById("analysis-eval-card").getBoundingClientRect();
-    const engine = document.getElementById(phone ? "analysis-engine-slot" : "engine-window-pvs").getBoundingClientRect();
+    // The engine is its own pillar: its name, depth and Live switch on one
+    // header row, its lines inside the pane.
+    const pane = document.getElementById("analysis-engine-pane").getBoundingClientRect();
+    const engine = document.getElementById("engine-window-pvs").getBoundingClientRect();
     const coach = document.getElementById("analysis-explain").getBoundingClientRect();
-    const head = ["#analysis-chart-caption", phone ? "#analysis-ev-move" : "#analysis-eval-meter", ...(phone ? [] : ["#engine-window-depth-readout", "#engine-window .engine-lines"]), "#open-engine-widget"]
-      .map((sel) => document.querySelector(sel).getBoundingClientRect());
+    const head = ["#open-engine-widget", "#analysis-engine-pane .an-pane-head > b"].map((sel) => document.querySelector(sel).getBoundingClientRect())
+      .filter((r, i) => i === 0 || r.width > 0);
     const oneRow = head.every((r) => r.width > 0 && Math.abs((r.top + r.bottom) / 2 - (head[0].top + head[0].bottom) / 2) < 4 &&
-      r.left >= panel.left && r.right <= panel.right + 1);
-    return { fits: engine.width > 0 && engine.left >= panel.left && engine.right <= panel.right + 1 && oneRow, oneRow, coachHeight: phone ? 0 : coach.height,
+      r.left >= pane.left && r.right <= pane.right + 1);
+    return { pane: [pane.left, pane.right], engine: [engine.left, engine.right, engine.width], fits: engine.width > 0 && engine.left >= pane.left && engine.right <= pane.right + 1 && oneRow, oneRow, coachHeight: window.innerWidth <= 760 ? 0 : coach.height,
       scrollOverflow: document.querySelector("#analyze-sidebar .panel-scroll").scrollWidth - document.querySelector("#analyze-sidebar .panel-scroll").clientWidth };
   });
-  check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit the evaluation card: ${JSON.stringify(engineLayout)}`);
+  check(engineLayout.fits && engineLayout.scrollOverflow <= 1, `Engine must fit its pane: ${JSON.stringify(engineLayout)}`);
   check(engineLayout.coachHeight <= 180, "Coach must keep its reserved verdict, Humans and prep rows compact");
   await checkAnalyzeStability(page, vp.width <= 760, check);
   await shot("engine");
@@ -461,13 +473,15 @@ async function runViewport(vp) {
   // top bar and no panel head strip), the bar under the board names the game,
   // the mainline is a number | White | Black grid inside the panel, and the
   // board has no side eval bar, so it lines up with Build and Train.
+  if (vp.width > 760) await showPane(page, "moves", "#analysis-moves");
   const layout = await page.evaluate(() => {
     const box = (sel) => document.querySelector(sel)?.getBoundingClientRect();
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
-    // Phones dissolve the sidebar box (display: contents); the eval row starts the panel.
-    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#view-analyze .ev-head");
+    // Phones dissolve the sidebar box (display: contents) and put the eval band
+    // over the board; the pillars start the panel under it.
+    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#analyze-panes");
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
@@ -559,6 +573,7 @@ async function runViewport(vp) {
   await page.locator('[data-testid="analysis-board"] [data-square="d7"]').click();
   await page.locator('[data-testid="analysis-board"] [data-square="d5"]').click();
   await page.waitForSelector("#analysis-moves .mtree-var", { state: "attached", timeout: 5000 });
+  if (vp.width > 760) await showPane(page, "moves", "#analysis-moves");
   const variation = await page.evaluate(() => {
     const grid = document.querySelector("#analysis-moves .mtree-line.is-main").getBoundingClientRect();
     const v = document.querySelector("#analysis-moves .mtree-var").getBoundingClientRect();
@@ -573,9 +588,9 @@ async function runViewport(vp) {
     check(variation.blackAligned, "Black moves should stay in one column around a variation");
   }
   if (vp.width <= 760) {
-    // The phone's screen is one column: chart, board, eval row, coach, thumb
-    // bar. A phone has no move list, so the chart is the way to walk the game
-    // and it takes the room the list held.
+    // The phone's screen is one column: the eval band (figure and graph), the
+    // board, the open pillar (here the coach), its tabs, then the thumb bar.
+    await showPane(page, "coach", "#explain-engine-toggle");
     const stack = await page.evaluate(() => {
       const box = (sel) => {
         const el = document.querySelector(sel);
@@ -592,7 +607,7 @@ async function runViewport(vp) {
         board: box("#analysis-board"),
         coach: box("#analysis-explain"),
         proseBottom: Math.round(prose.getBoundingClientRect().bottom),
-        moves: box("#analysis-moves"),
+        tabs: box("#analyze-tabs"),
         barTop: Math.round(bar.top),
         coachFits: coach.scrollHeight <= coach.clientHeight + 1,
         pageScrolls: document.getElementById("view-analyze").scrollHeight >
@@ -601,12 +616,11 @@ async function runViewport(vp) {
     });
     const inOrder = stack.chart.bottom <= stack.board.top + 1 &&
       stack.board.bottom <= stack.coach.top + 1 &&
-      stack.coach.bottom <= stack.barTop + 1;
-    check(inOrder, `phone stack must be chart, board, coach, thumb bar: ${JSON.stringify(stack)}`);
-    check(stack.moves === null, `a phone Analyze screen must have no move list: ${JSON.stringify(stack.moves)}`);
-    // The scrubber keeps a 64px target on short screens; surplus height goes
-    // here after the board and the stable Coach/engine rows fit.
-    check(Math.round(stack.chart.height) >= 64, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
+      stack.coach.bottom <= stack.tabs.top + 1 &&
+      stack.tabs.bottom <= stack.barTop + 1;
+    check(inOrder, `phone stack must be eval band, board, coach, tabs, thumb bar: ${JSON.stringify(stack)}`);
+    // The graph is the scrubber: it keeps a finger-sized band on short screens.
+    check(Math.round(stack.chart.height) >= 44, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
     check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
@@ -731,9 +745,13 @@ async function runViewport(vp) {
     let releaseSave;
     saveGate = new Promise((r) => { releaseSave = r; });
     const saveRequested = new Promise((r) => { sawSave = r; });
+    // With a game loaded the sources sit behind the Games button.
+    await openGamesSheet(page);
+    await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
     await page.locator("#pgn-input").fill(DEMO_PGN_MOVETEXT);
     await page.locator("#run-analysis").click();
     await saveRequested;
+    await openGamesSheet(page);
     await page.locator('.history-item[data-game-id="g2"] .hi-open').focus();
     await page.keyboard.press("Enter");
     await page.waitForFunction(() => document.getElementById("pgn-input").value.includes('[Black "me_user"]'));
