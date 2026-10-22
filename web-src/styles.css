@@ -1941,6 +1941,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
+button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
+button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
   font-size: 14px;

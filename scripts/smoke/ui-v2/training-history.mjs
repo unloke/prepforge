@@ -20,7 +20,7 @@ const seededRuns = [
 ];
 
 export async function checkTrainingHistory(page, check, shot) {
-  await page.locator('#train-summary [data-train-history]').click();
+  await page.locator('#train-history-open').click();
   await page.locator('#training-history-dialog .th-lead').waitFor();
   const cards = await page.locator('#training-history-dialog [data-history-cards]').textContent();
   check(cards.trim() === '4', `history must record the four cards actually completed, got ${cards}`);
@@ -45,7 +45,7 @@ export async function checkTrainingHistory(page, check, shot) {
   if (process.env.UI_V2_SHOTS) writeFileSync(join(process.env.UI_V2_SHOTS, 'history-storage.json'), JSON.stringify(await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => key.startsWith('pf.trainHistory:')))), null, 2));
   await page.keyboard.press('Escape');
   check(await page.locator('#training-history-dialog').count() === 0, 'Escape must close history');
-  check(await page.locator('#train-summary [data-train-history]').evaluate(el => document.activeElement === el), 'closing history must restore focus');
+  check(await page.locator('#train-history-open').evaluate(el => document.activeElement === el), 'closing history must restore focus');
 
   // A second page in the same browser context proves persistence through a new
   // app instance without disturbing the active session in the original page.

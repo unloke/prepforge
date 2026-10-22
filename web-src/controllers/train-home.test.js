@@ -4,8 +4,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./train-home.fixture.js";
 import {
-  createTrainHome, dueMeta, dueStartState, outlookHtml, playBook, trainScopeLabel, trainScreenOf,
+  createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
+import { saveRun } from "../train-history.js";
 
 let doc;
 beforeEach(() => {
@@ -129,6 +130,34 @@ describe("the Due row", () => {
     expect(out.match(/train-outlook-cell/g)).toHaveLength(3);
     expect(out).toContain("<b>4</b><span>today</span>");
     expect(String(outlookHtml(null))).toBe("");
+  });
+
+  it("nothing due is one quiet line naming the next review, not three zeros", () => {
+    const now = Date.parse("2026-10-22T12:00:00Z");
+    const quiet = String(outlookHtml({ now: 0, today: 0, week: 0, next: "2026-10-31T12:00:00Z" }, now));
+    expect(quiet).not.toContain("train-outlook-cell");
+    expect(quiet).toContain("Nothing due · next in 9 days");
+    expect(String(outlookHtml({ now: 0, today: 0, week: 0, next: null }, now))).toBe("");
+    expect(dueIn("2026-10-22T12:40:00Z", now)).toBe("in 40 min");
+    expect(dueIn("2026-10-23T11:00:00Z", now)).toBe("in 23 h");
+    expect(dueIn("2026-10-23T13:00:00Z", now)).toBe("tomorrow");
+  });
+});
+
+describe("the Result", () => {
+  it("Recent lists the runs before this one, never the run on the card", () => {
+    const store = new Map();
+    vi.stubGlobal("localStorage", {
+      getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k),
+    });
+    setup();
+    const run = (id, at) => ({ id, mode: "smart", blitz: false, repertoires: ["Italian"], startedAt: at, finishedAt: at, cards: 4, correct: 3, mistakes: 1, skipped: 0, learned: 0 });
+    saveRun("u1", run("old", "2026-10-21T10:00:00Z"));
+    saveRun("u1", run("just-now", "2026-10-22T10:00:00Z"));
+    showTrainResult({ mode: "smart", title: "Queue complete", cells: [], runId: "just-now" });
+    const recent = doc.getElementById("train-recent");
+    expect(recent.hidden).toBe(false);
+    expect(String(recent.innerHTML).match(/train-recent-row/g)).toHaveLength(1);
   });
 });
 

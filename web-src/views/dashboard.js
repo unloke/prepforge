@@ -455,6 +455,8 @@ export function createDashboardView({
     openShared: (repId) => editRepertoire(repId),
     openRepertoireContextMenu,
     repSubline,
+    // A weak / due / new chip trains that repertoire's Due queue.
+    trainRepertoire: (repId, chip) => openTrain && openTrain({ mode: "smart", repertoireId: repId, origin: chip }),
   });
 
   // An empty library (signed out, or no repertoires yet) is the prototype's

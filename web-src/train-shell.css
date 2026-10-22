@@ -43,6 +43,8 @@
 .train-home[hidden] { display: none; }
 .train-outlook { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .train-outlook[hidden] { display: none; }
+.train-outlook:has(> .train-outlook-quiet) { display: block; }
+.train-outlook-quiet { color: var(--label); font-size: var(--fs); }
 .train-outlook-cell {
   display: flex;
   flex-direction: column;

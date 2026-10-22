@@ -228,8 +228,10 @@ describe("Library row reconciliation", () => {
   let elements;
   let view;
   let payloads;
+  let openTrain;
 
   function build() {
+    openTrain = vi.fn();
     let call = 0;
     view = createDashboardView({
       appState: { signedIn: true, teams: [], pendingRepDeletes: new Set() },
@@ -240,7 +242,7 @@ describe("Library row reconciliation", () => {
       postJson: vi.fn(),
       setStatus: vi.fn(),
       localDateString: () => "2026-10-08",
-      openTrain: vi.fn(),
+      openTrain,
       editRepertoire: vi.fn(),
       openRepertoireContextMenu: vi.fn(),
       createRepertoirePrompt: vi.fn(),
@@ -371,6 +373,19 @@ describe("Library row reconciliation", () => {
     expect(ids()).toEqual(["rep-2", "rep-1"]);
     expect(rows()[0]).toBe(second);
     expect(rows()[1]).toBe(first);
+  });
+
+  it("a weak / due / new chip trains that repertoire's Due queue instead of opening it", async () => {
+    payloads = [REPS()];
+    build();
+    await view.loadDashboardRepertoires();
+    const [row] = rows();
+    expect(row.innerHTML).toContain('data-train-chip="weak"');
+    expect(row.innerHTML).toContain('data-train-chip="new"');
+    const chip = { dataset: { trainChip: "due" } };
+    const click = row._listeners.get("click")[0];
+    click({ target: { closest: (sel) => (sel === "[data-train-chip]" ? chip : null) } });
+    expect(openTrain).toHaveBeenCalledWith({ mode: "smart", repertoireId: "rep-1", origin: chip });
   });
 
   it("keeps the selected row selected through a refresh, in place", async () => {

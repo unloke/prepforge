@@ -902,7 +902,7 @@ function endPlayGame(title, failure = "") {
       cards: play.history.filter((ply) => ply.by === "user").length, correct: 0, mistakes: 0, skipped: 0, learned: 0,
     });
   }
-  home.showTrainResult(playResult(play));
+  home.showTrainResult({ ...playResult(play), runId: `play:${play.startedAt}` });
 }
 
 async function openPlayInAnalyze() {
@@ -919,6 +919,23 @@ async function openPlayInAnalyze() {
     await loadPgnIntoAnalyze(input.value, { goToEnd: true, quiet: true }).catch(() => {});
   }
   setStatus("Loaded this Practice game in Analyze");
+}
+
+// Another repertoire move at this position is prep, not a miss: it lands,
+// slides back, and the same prompt reopens ungraded (Due and Rehearse alike).
+async function answerAlternative({ fen, playedUci, san, still, reopen }) {
+  appState.trainBusy = true;
+  try {
+    const after = await boardAfterMove(fen, playedUci);
+    boards.train.setPosition({ fen: after.board.fen, legalMoves: [], lastMove: playedUci, cue: false });
+  } catch (_) {
+    // The banner still explains; the board just stays put.
+  }
+  setTrainBanner("review", "Also in your repertoire", `${san} is your prep too. This card drills another move.`);
+  await sleep(900);
+  if (!still()) return;
+  await reopen();
+  appState.trainBusy = false;
 }
 
 async function submitTrainingMove(playedUci) {
@@ -977,6 +994,17 @@ async function submitTrainingMove(playedUci) {
     return;
   }
   if (result.day_streak) appState.dayStreak = result.day_streak;
+  if (result.alternative) {
+    const hintLevel = appState.trainHintLevel;
+    return answerAlternative({
+      fen: prompt.fen_before, playedUci, san: result.played_san || playedUci, still: () => !superseded(),
+      reopen: async () => {
+        await renderTraining(result.prompt || prompt, { keepBanner: true });
+        appState.trainHintLevel = hintLevel;
+        if (attempt >= 3) boards.train.setEngineArrow(prompt.expected_uci);
+      },
+    });
+  }
   const stats = appState.trainStats || (trainStatsReset(), appState.trainStats);
 
   if (!result.correct) {
@@ -1067,12 +1095,13 @@ function finishTrainingSession() {
   boards.train.setEngineArrow(null);
   updateTrainTurnBadge(null);
   document.getElementById("train-board-label").textContent = "";
+  const runId = `${training?.session_id}:${training?.session_generation || Date.now()}`;
   saveRun(currentOwnerId(), {
-    id: `${training?.session_id}:${training?.session_generation || Date.now()}`, mode: "all_lines", blitz: false,
+    id: runId, mode: "all_lines", blitz: false,
     repertoires: [training?.repertoire_name].filter(Boolean), startedAt: new Date().toISOString(), finishedAt: new Date().toISOString(),
     cards: Number(training?.lines?.length) || 0, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped || 0, learned: 0,
   });
-  home.showTrainResult(drillResult(training, stats));
+  home.showTrainResult({ ...drillResult(training, stats), runId });
   celebrate();
 }
 
@@ -1433,12 +1462,8 @@ async function presentSmartPrompt(prompt, { attempt = 1 } = {}) {
       let fen = prompt.start_fen;
       board.setPosition({ fen, legalMoves: [], lastMove: null });
       const cue = runIn[runIn.length - 1];
-      const who = cardMeta && cardMeta.color === "black" ? "Black" : "White";
-      setTrainBanner(
-        "runin",
-        `${cardMeta && cardMeta.repertoire_name ? cardMeta.repertoire_name : "Finding the position"} · you play ${who.toLowerCase()}`,
-        cue && cue.san ? `Watch ${cue.san}` : "Watch the last move",
-      );
+      // The board label already names the repertoire and side.
+      setTrainBanner("runin", "Finding the position", cue && cue.san ? `Watch ${cue.san}` : "Watch the last move");
       await sleep(480);
       for (const mv of runIn) {
         if (appState.smart !== smart || smart.prompt !== prompt) return; // superseded
@@ -1519,6 +1544,18 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   // Land the dragged move immediately; a blitz timeout has no real move to show.
   // The graded cue below covers the landing, so it stays quiet.
   if (!timedOut) await optimisticBoardMove(boards.train, prompt.fen_before, playedUci, false);
+  const other = !timedOut && (prompt.target?.alternatives || []).find((alt) => alt.uci === playedUci);
+  if (other) {
+    return answerAlternative({
+      fen: prompt.fen_before, playedUci, san: other.san,
+      still: () => appState.smart === smart && smart.prompt === prompt,
+      reopen: () => {
+        boards.train.setPosition({ fen: prompt.fen_before, legalMoves: prompt.legal_moves || [], lastMove: null, back: true });
+        if (prompt.kind === "new" || attempt >= 3) boards.train.setEngineArrow(prompt.expected_uci);
+        if (smart.blitz && attempt === 1 && prompt.kind !== "new") startBlitzTimer(smart, prompt);
+      },
+    });
+  }
   // Grade locally — the prompt carries the answer (it's the player's own
   // repertoire). Only the first attempt writes spaced repetition; it lands on
   // the server in the next debounced /smart/sync batch, not per move.
@@ -1778,7 +1815,7 @@ async function finishSmartSession() {
     });
   }
   document.getElementById("train-board-label").textContent = finalFen ? "Final position" : "";
-  home.showTrainResult(smartResult(smart, stats));
+  home.showTrainResult({ ...smartResult(smart, stats), runId: `${smart.sessionId}:${smart.generation}` });
   invalidateTrainPreview();
   celebrate();
   // Flush the graded attempts FIRST so the "after" health includes this session.
@@ -1798,7 +1835,7 @@ async function finishSmartSession() {
   // The user may have moved on while the summary loaded.
   if (appState.smart !== smart || appState.trainResult?.mode !== "smart") return;
   appState.smart = null;
-  home.showTrainResult(smartResult(smart, stats, after));
+  home.showTrainResult({ ...smartResult(smart, stats, after), runId: `${smart.sessionId}:${smart.generation}` });
   // Every cached count of what is left to train is now stale.
   refreshRepertoireHead();
   void refreshDashboardRepertoires().catch(() => {});

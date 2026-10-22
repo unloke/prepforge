@@ -256,8 +256,20 @@ export function dueMeta(next) {
   return parts.length ? parts.join(" · ") : "Nothing due";
 }
 
-export function outlookHtml(outlook) {
+// "in 40 min", "in 5 h", "tomorrow", "in 3 days".
+export function dueIn(iso, now = Date.now()) {
+  const minutes = Math.max(1, Math.round((Date.parse(iso) - now) / 60000));
+  if (minutes < 60) return `in ${minutes} min`;
+  if (minutes < 24 * 60) return `in ${Math.round(minutes / 60)} h`;
+  const days = Math.round(minutes / (24 * 60));
+  return days === 1 ? "tomorrow" : `in ${days} days`;
+}
+
+export function outlookHtml(outlook, now = Date.now()) {
   if (!outlook) return "";
+  if (!outlook.now && !outlook.today && !outlook.week) {
+    return outlook.next ? html`<span class="train-outlook-quiet">Nothing due · next ${dueIn(outlook.next, now)}</span>` : "";
+  }
   const cell = (value, label) => html`<span class="train-outlook-cell"><b>${value}</b><span>${label}</span></span>`;
   return html`${cell(outlook.now, "due now")}${cell(outlook.today, "today")}${cell(outlook.week, "this week")}`;
 }
@@ -315,8 +327,8 @@ export async function paintTrainHome() {
   const data = await loadPreview();
   if (trainScreenOf(state) !== "home") return;
   paintDue(data?.next_session);
-  outlook.hidden = !data?.outlook;
   outlook.innerHTML = outlookHtml(data?.outlook);
+  outlook.hidden = !outlook.innerHTML;
 }
 
 // ---------------------------------------------------------------- practice setup
@@ -428,7 +440,8 @@ export function showTrainResult(result) {
   document.getElementById("train-summary-foot").textContent = result.foot || "";
   document.getElementById("train-summary-new").textContent = result.mode === "play" ? "Play again" : "Again";
   const recent = document.getElementById("train-recent");
-  const runs = recentRuns(d.currentOwnerId(), 3);
+  // The run just finished is the card above; Recent is what came before it.
+  const runs = recentRuns(d.currentOwnerId(), 4).filter((run) => run.id !== result.runId).slice(0, 3);
   recent.hidden = !runs.length;
   recent.innerHTML = runs.length
     ? html`<span class="faint">Recent</span>${runs.map((run) => html`<div class="train-recent-row"><span>${MODE_NAMES[run.mode]}${run.blitz ? " · Blitz" : ""}</span><span class="train-recent-name">${run.repertoires.join(" · ")}</span><b>${run.summary}</b></div>`)}`

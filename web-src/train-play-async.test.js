@@ -64,7 +64,7 @@ describe("Play opponent response ownership", () => {
   it("an opponent that cannot play ends the game with its reason, and is not saved as a run", () => {
     const end = source.slice(source.indexOf("function endPlayGame("), source.indexOf("\n}\n", source.indexOf("function endPlayGame(")));
     expect(end).toContain("if (play.history?.length && !failure) {");
-    expect(end).toContain("home.showTrainResult(playResult(play));");
+    expect(end).toContain("home.showTrainResult({ ...playResult(play), runId: `play:${play.startedAt}` });");
   });
 
   it("the palette's practice and Lucky actions open Train the way its Home rows do", async () => {
