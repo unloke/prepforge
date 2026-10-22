@@ -461,48 +461,56 @@
      there, and it holds while the cards scroll. Six sections do not fit one
      row at 390px; wrapped into two rows they took 100px of a sticky strip on
      every scroll. The strip is one row that scrolls sideways inside itself
-     (never the page), its right edge fades to say there is more, and the open
-     section is scrolled into view whenever it changes (settings.js). */
+     (never the page); a cut-off word at the edge says there is more, and the
+     open section is scrolled into view whenever it changes (settings.js). */
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
     width: auto;
     max-width: none;
     flex-wrap: nowrap;
-    gap: 6px;
-    margin: 0 calc(-1 * var(--phone-gutter)) 10px;
-    padding: 6px 0 8px var(--phone-gutter);
+    gap: 0;
+    margin: 0 calc(-1 * var(--phone-gutter)) 12px;
+    padding: 0 var(--phone-gutter);
     border-radius: 0;
     background: var(--bg);
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--phone-gutter);
     scrollbar-width: none;
-    /* Cards pass under the strip while the page scrolls; the edge says the
-       strip ends there instead of the card looking cut. */
-    border-bottom: 1px solid var(--line);
+    /* Cards pass under the strip while the page scrolls; the hairline says
+       the strip ends there, and the open tab's bar sits on it. */
+    box-shadow: inset 0 -1px 0 var(--line);
   }
   #view-settings .settings-nav::-webkit-scrollbar { display: none; }
-  /* The fade is painted in the ground colour over the strip's right edge (a
-     mask would also clear the strip's own ground and show the cards passing
-     under it); it rides the scroll edge and leaves room after the last link. */
-  #view-settings .settings-nav::after {
-    content: "";
-    position: sticky;
-    right: 0;
-    flex: none;
-    width: 28px;
-    margin-left: -6px;
-    background: linear-gradient(to right, transparent, var(--bg) 70%);
-  }
+  /* A row of text tabs, like a native segmented header: the open one is ink
+     with a bar under it, the rest are muted words. Pills on pills read as six
+     buttons competing with the cards' own buttons. */
   #view-settings .settings-nav-link {
+    position: relative;
     flex: none;
     min-height: 44px;
-    padding: 0 14px;
-    border-radius: 10px;
-    background: var(--panel);
+    padding: 0 12px;
+    border-radius: 0;
+    background: none;
+    color: var(--muted);
     font-size: 15px;
   }
-  #view-settings .settings-nav-link.is-active { background: var(--text); color: var(--panel); }
+  #view-settings .settings-nav-link:hover { background: none; color: var(--text); }
+  #view-settings .settings-nav-link.is-active { background: none; color: var(--text); }
+  #view-settings .settings-nav-link::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    bottom: 0;
+    left: 12px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--text);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  #view-settings .settings-nav-link.is-active::after { opacity: 1; }
   /* The heading names the open section on the title's line. */
   #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
