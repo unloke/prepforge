@@ -1,6 +1,7 @@
 // Panels whose width comes from the board, the dock or a side column answer
-// their layout switches from their own width (@container), and long lists skip
-// the rows that are off screen (content-visibility) without losing their height.
+// their layout switches from their own width (@container), and the Games
+// ledger skips the rows that are off screen (content-visibility) without losing
+// their height.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -32,14 +33,12 @@ describe("panel containers", () => {
     expect(unlock).toMatch(/@container unlock \(max-width: 440px\) \{\s*\.unlock:not\(\.is-inline\) \{ grid-template-columns/);
   });
 
-  it("skips off-screen rows but keeps their measured height", () => {
-    for (const [sheet, rule] of [
-      [scout, ".scout-lines .line-row { content-visibility: auto; contain-intrinsic-size: auto 68px; }"],
-      [scout, ".scout-intel-charts-strip { content-visibility: auto; contain-intrinsic-size: auto 203px; }"],
-      [replay, ".ledger-table .lr:not(.head) { content-visibility: auto; contain-intrinsic-size: auto 44px; }"],
-      [styles, ".lib-rep-list .lib-row { content-visibility: auto; contain-intrinsic-size: auto 54px; }"],
-    ]) expect(sheet).toContain(rule);
+  it("skips off-screen Games ledger rows with a placeholder the size of a row's content", () => {
+    expect(replay).toContain(".ledger-table .lr:not(.head) { content-visibility: auto; contain-intrinsic-size: auto 30px; }");
+    expect(replay).toMatch(/\(min-height: 521px\) \{[\s\S]*\.ledger-table \.lr:not\(\.head\) \{ contain-intrinsic-size: auto 52px; \}/);
     // A sticky header is never skipped.
     expect(replay).not.toMatch(/\.lr\.head[^{]*\{[^}]*content-visibility/);
+    // Measured without a gain: the Scout plan rows, the chart strip and Library rows paint whole.
+    for (const sheet of [scout, styles]) expect(sheet).not.toContain("content-visibility");
   });
 });

@@ -1830,8 +1830,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
-/* Off-screen rows skip layout and paint; `auto` keeps a row's real height. */
-.lib-rep-list .lib-row { content-visibility: auto; contain-intrinsic-size: auto 54px; }
 .lib-row:hover { background: var(--panel-soft); }
 /* A table row cannot scale on press, so the press reads as a step deeper
    into the surface. */

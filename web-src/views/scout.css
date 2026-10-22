@@ -262,12 +262,6 @@
   cursor: pointer;
 }
 .scout-lines[data-ui] .line-row { border-bottom: 1px solid var(--line); }
-/* Long lists skip the layout and paint of rows (and of the chart strip) that are
-   scrolled out of the column; `auto` keeps each one's last real height, so the
-   scrollbar and scrollIntoView land where they would without it. A row's own
-   entrance still runs: only its contents are skipped. */
-.scout-lines .line-row { content-visibility: auto; contain-intrinsic-size: auto 68px; }
-.scout-intel-charts-strip { content-visibility: auto; contain-intrinsic-size: auto 203px; }
 .scout-lines[data-ui] .line-row:last-child { border-bottom: 0; }
 .line-row:hover { background: var(--panel-soft); }
 .scout-lines[data-ui] .line-row.is-expanded { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--accent); }
