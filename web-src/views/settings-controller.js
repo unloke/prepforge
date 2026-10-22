@@ -4,7 +4,6 @@ import { hooks } from "../core/hooks.js";
 import { effectiveMaiaRating, pref, setPref } from "../core/prefs.js";
 import { showConfirmModal } from "../core/modals.js";
 import { engineWidget, applyServerEngineGating } from "../core/engine.js";
-import { disposeSharedMaia3Provider, getSharedMaia3Provider } from "../engine/maia3-provider.js";
 
 // Settings: the lazy view chunk, its readiness gate (two tab clicks can start
 // two loads), the section deep link, and the settings actions module that owns
@@ -52,10 +51,7 @@ export async function ensureSettingsView() {
       pref,
       setPref,
       effectiveMaiaRating,
-      getSharedMaia3Provider,
-      disposeSharedMaia3Provider,
       showConfirmModal,
-      startFen: START_FEN,
       api,
       postJson,
       startLichessOAuth,
