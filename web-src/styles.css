@@ -3056,7 +3056,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   align-items: center;
   gap: 1px;
   padding: 6px var(--build-pad, 12px);
-  overflow-x: auto; /* one row when it fits, wraps below 761px (phone.css) */
+  overflow-x: auto; /* one row; build.js keeps its current (last) crumb in view */
   white-space: nowrap;
   font-size: var(--fs-s);
   scrollbar-width: none;

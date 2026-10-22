@@ -252,6 +252,8 @@ export function createBuildView({
         event.currentTarget.blur();
       });
     });
+    // The trail is one scrolling row ending at the current move: keep that end in view.
+    meta.querySelectorAll(".crumbs").forEach((crumbs) => { crumbs.scrollLeft = crumbs.scrollWidth; });
   }
 
   function renderBuilderTree() {
