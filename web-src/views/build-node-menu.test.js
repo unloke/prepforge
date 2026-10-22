@@ -40,6 +40,12 @@ describe("move menu — entries the panel can show", () => {
     expect(source).toMatch(/node\.parent_id \? \[\[\s*\["delete", "Delete this move"\]\]\] : \[\]/);
   });
 
+  it("offers the shown move's menu from ⋯ only on a move, not the start position", () => {
+    // The root node carries san "root", so the ⋯ menu listed "Move 1. root…".
+    const open = session.slice(session.indexOf("function openBuildMenu("), session.indexOf("function openBuildMenu(") + 1600);
+    expect(open).toMatch(/node\?\.san && node\.parent_id \? \[\["build-node-menu"/);
+  });
+
   it("names the note entry for what it will do", () => {
     const source = menuSource();
     expect(source).toMatch(/node\.comment \? "Edit comment…" : "Add comment…"/);

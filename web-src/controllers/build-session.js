@@ -154,10 +154,12 @@ function openBuildMenu(event) {
     ? (appState.repertoireList || []).find((r) => String(r.id) === String(repId))
     : null;
   const isActive = !meta || meta.is_active !== false;
-  // The shown move's own menu, for screens without a right-click.
+  // The shown move's own menu, for screens without a right-click. The start
+  // position is not a move (its node carries san "root"): the entry read
+  // "Move 1. root…" there.
   const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
   const items = [
-    ...(node?.san ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
+    ...(node?.san && node.parent_id ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
     ...buildMenuItems({ hasRep, isActive }),
   ];
   menu.innerHTML = html`${items
