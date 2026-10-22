@@ -88,7 +88,12 @@ export function openTrainPicker(anchor, { label, items, selected = [], multi = f
   });
   document.body.appendChild(el);
   const rect = anchor.getBoundingClientRect();
-  el.style.setProperty("--pick-top", `${Math.round(rect.bottom + 6)}px`);
+  // Under the chip, or above it when the list would run off a short screen.
+  const height = el.offsetHeight;
+  const below = rect.bottom + 6;
+  const top = below + height <= window.innerHeight - 8 || rect.top - 6 - height < 8
+    ? Math.min(below, window.innerHeight - height - 8) : rect.top - 6 - height;
+  el.style.setProperty("--pick-top", `${Math.round(Math.max(8, top))}px`);
   el.style.setProperty("--pick-left", `${Math.round(Math.min(rect.left, window.innerWidth - el.offsetWidth - 8))}px`);
   anchor.setAttribute("aria-expanded", "true");
   const onKey = (event) => {

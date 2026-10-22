@@ -245,16 +245,14 @@ async function main() {
     await page.locator("#view-train.is-active").waitFor({ timeout: 10000 });
     await page.waitForTimeout(500);
 
-    await page.click('#train-modes .train-mode[data-mode="all_lines"]');
-    await page.waitForTimeout(400);
+    await page.click('[data-testid="train-due-scope"]');
+    await page.locator(".train-picker").waitFor({ timeout: 5000 });
     const picker = await page.evaluate((name) => {
-      const select = document.getElementById("train-repertoire-select");
-      const options = [...(select?.options || [])].map((o) => o.textContent.trim());
-      return { hidden: select?.hidden, options, hasRep: options.some((t) => t.includes(name)) };
+      const options = [...document.querySelectorAll(".train-picker .train-pick")].map((o) => o.textContent.trim());
+      return { options, hasRep: options.some((t) => t.includes(name)) };
     }, repName);
-
-    await page.click('#train-modes .train-mode[data-mode="smart"]');
-    await page.waitForTimeout(300);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
 
     const startRespPromise = page.waitForResponse(
       (r) => r.url().includes("/api/train/smart/start") && r.status() === 200,

@@ -411,19 +411,8 @@ async function fetchPlayMaia(fen) {
   // fall back to human-like replies), independent of the Analyze-layer switch.
   try {
     const provider = getSharedMaia3Provider();
-    const maiaNotice = watchMaiaInit(provider, {
-      notices,
-      onRetry: () => {
-        // The failure above sets play.active = false, so gating on it would make
-        // the notice's Retry a dead button exactly when it is needed. Re-asking
-        // the same position is what the user asked for.
-        const play = appState.play;
-        if (play?.fen === fen) {
-          play.active = true;
-          void playOpponentReply();
-        }
-      },
-    });
+    // The Result card names the failure and owns the retry (Play again).
+    const maiaNotice = watchMaiaInit(provider, { notices, quietFail: true });
     try {
       const predictions = await provider.predictions({ fen, rating: effectiveMaiaRating() });
       maiaNotice.succeed();
@@ -662,9 +651,8 @@ async function playOpponentReply() {
   if (!reply.uci) {
     const maia = await fetchPlayMaia(fen);
     if (!isCurrent()) return;
-    // Maia could not start at all: say so and keep the session retryable. The
-    // download/init failure already carries a Retry notice, so this only names
-    // the reason on the board instead of blaming the book.
+    // Maia could not start at all: the Result card names the reason instead of
+    // blaming the book, and Play again retries.
     if (maia.error) {
       endPlayGame("Opponent unavailable", maiaErrorText(maia.error));
       return;

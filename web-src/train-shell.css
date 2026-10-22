@@ -200,3 +200,7 @@
 :root.train-vt #view-train .panel-scroll { view-transition-name: train-body; }
 @keyframes train-vt-out { to { opacity: 0; } }
 @keyframes train-vt-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* A drill panel with nothing in it yet (a rehearsal before its first answer)
+   draws no empty box under the banner. */
+#train-progress-panel:not(:has(> :not([hidden]):not(.train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
