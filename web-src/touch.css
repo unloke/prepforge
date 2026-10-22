@@ -82,6 +82,10 @@
   .board-bar { min-height: 40px; }
   .board-bar .btn.icon { width: 40px; min-width: 40px; height: 40px; }
   .seg-btn { min-height: 40px; }
+  /* Train's three modes share the panel's width: on the narrowest sideways
+     phones (740px) a name breaks onto two lines instead of running into the next. */
+  #train-modes { display: flex; }
+  #train-modes .train-mode { flex: 1 1 0; min-width: 0; padding: 2px 6px; white-space: normal; line-height: 1.15; }
   .mtree-move { position: relative; }
   .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
   .dock-tabs button,
