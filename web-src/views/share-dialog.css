@@ -2,6 +2,8 @@
    with access, and the link. Wider than a confirm so a row's name, role and
    remove sit on one line. */
 .share-modal { width: min(480px, calc(100vw - 24px)); }
+/* The column is the dialog's width, never its widest control's. */
+.share-body { grid-template-columns: minmax(0, 1fr); }
 
 .share-body input,
 .share-body select {
@@ -23,9 +25,9 @@
   box-shadow: 0 0 0 2px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
 }
 
-.share-add { display: flex; flex-wrap: wrap; gap: 6px; }
-.share-add .share-person { flex: 1 1 180px; }
-.share-add .share-target { flex: 0 1 auto; max-width: 40%; }
+.share-add { display: flex; gap: 6px; }
+.share-add .share-person { flex: 1 1 0; }
+.share-add .share-target { flex: 0 1 auto; max-width: 30%; }
 .share-add .share-person[hidden] { display: none; }
 /* A team picked in place of a person takes the person's room. */
 .share-add .share-target:has(+ .share-person[hidden]) { flex: 1 1 180px; max-width: none; }
@@ -73,6 +75,9 @@
   .share-link-url .btn,
   .share-row .btn.icon { height: 40px; min-height: 40px; }
   .share-row .btn.icon { width: 40px; min-width: 40px; }
+  /* The link switch keeps its size but takes a thumb-sized tap. */
+  .share-link .pf-switch::before { content: ""; position: absolute; inset: -10px -6px; }
+  .share-add { flex-wrap: wrap; }
   .share-add .share-person { flex-basis: 100%; order: -1; }
   .share-add .share-target,
   .share-add .share-role { flex: 1 1 0; max-width: none; }
