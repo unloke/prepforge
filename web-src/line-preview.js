@@ -134,23 +134,81 @@ function ensureHost() {
   return host;
 }
 
+// The block the token reads in (a coach sentence, a line title, a table cell).
+// The peek goes beside THAT, not beside the word: a popover centred on a word
+// covers the rest of its own sentence.
+const BLOCK = "p, li, h1, h2, h3, h4, td, th, .line-title, .scout-line-moves, .mtree-line";
+const GAP = 8;
+const EDGE = 8;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(v, hi));
+
+// Whether the space beside `block` is empty. A sentence in a card has nothing
+// level with it, so the peek can take the gutter. A move inside a row of cells
+// (a Scout line's moves beside its results, a table cell beside the next one)
+// has its neighbour there, and that neighbour is text being read too. The
+// neighbour can be a sibling of the block or of an ancestor up to the row, so
+// the walk climbs while each parent is still a row (about as tall as the block)
+// and stops at the card or panel that holds it.
+function sidesClear(block, b) {
+  const overlaps = (r) => r.bottom > b.top + 4 && r.top < b.bottom - 4;
+  const rowMax = (b.height || 0) * 2 + 8;
+  for (let node = block; node?.parentElement; node = node.parentElement) {
+    const p = node.parentElement.getBoundingClientRect?.();
+    if (!p || !overlaps(p) || p.height > rowMax) break;
+    for (const sibling of node.parentElement.children) {
+      if (sibling === node || sibling.contains?.(node)) continue;
+      const s = sibling.getBoundingClientRect?.();
+      if (!s || !s.width || !s.height || !overlaps(s)) continue;
+      return false;
+    }
+  }
+  return true;
+}
+
 function place(target) {
   const r = target.getBoundingClientRect();
   const w = host.offsetWidth;
   const h = host.offsetHeight;
   const vw = document.documentElement.clientWidth;
   const vh = document.documentElement.clientHeight;
-  const below = r.bottom + 6 + h <= vh - 8 || r.top - 6 - h < 8;
-  const top = below ? Math.min(r.bottom + 6, vh - h - 8) : r.top - 6 - h;
-  const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, vw - w - 8));
-  host.style.transform = `translate(${Math.round(left)}px, ${Math.round(Math.max(8, top))}px)`;
+  const put = (x, y) => {
+    host.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  };
+  // A surface the peek must never cover (the eval chart it is reading): it goes
+  // outside that box, above or below, at the end away from the pointer.
+  const avoid = peek?.avoid?.isConnected ? peek.avoid.getBoundingClientRect() : null;
+  if (avoid) {
+    const above = avoid.top - GAP - EDGE;
+    const below = vh - avoid.bottom - GAP - EDGE;
+    const y = above >= h || above > below ? avoid.top - GAP - h : avoid.bottom + GAP;
+    const farRight = r.left + (r.width || 0) / 2 >= (avoid.left + avoid.right) / 2;
+    const x = farRight ? avoid.right - w : avoid.left;
+    put(clamp(x, EDGE, Math.max(EDGE, vw - w - EDGE)), clamp(y, EDGE, Math.max(EDGE, vh - h - EDGE)));
+    return;
+  }
+  // Level with the word it explains, kept off the screen edges.
+  const top = clamp(r.top + (r.height || 0) / 2 - h / 2, EDGE, vh - h - EDGE);
+  const block = target.closest?.(BLOCK) || target;
+  const b = block === target ? r : block.getBoundingClientRect();
+  const clear = sidesClear(block, b);
+  if (clear) {
+    if (vw - b.right - GAP - EDGE >= w) return put(b.right + GAP, top);
+    if (b.left - GAP - EDGE >= w) return put(b.left - GAP - w, top);
+  }
+  // No gutter beside it (full-width prose, a phone, a row of cells): above or
+  // below the whole block it reads in, so neither the line it is on nor the one
+  // above or below it is covered.
+  const above = b.top - GAP - EDGE;
+  const below = vh - b.bottom - GAP - EDGE;
+  const y = above >= h || above > below ? b.top - GAP - h : b.bottom + GAP;
+  put(clamp(r.left + (r.width || 0) / 2 - w / 2, EDGE, Math.max(EDGE, vw - w - EDGE)), clamp(y, EDGE, Math.max(EDGE, vh - h - EDGE)));
 }
 
 function restoreTitle() {
   if (peek?.titled) peek.titled.setAttribute("title", peek.title);
 }
 
-function showPeek(target, { pinned = false, hover = false } = {}) {
+function showPeek(target, { pinned = false, hover = false, avoid = null } = {}) {
   const pos = peekPosition(target);
   if (!pos || !pos.fen) {
     hidePeek();
@@ -166,6 +224,7 @@ function showPeek(target, { pinned = false, hover = false } = {}) {
     titled?.removeAttribute("title");
     peek = { target, titled, title };
   }
+  peek.avoid = avoid;
   peek.pinned = pinned;
   peek.hover = hover && !pinned;
   const canApply = pinned && target.classList.contains("move-ref") && !!options.apply(target, true);
@@ -183,9 +242,12 @@ function showPeek(target, { pinned = false, hover = false } = {}) {
   place(target);
 }
 
-/** Peek at `target` from code (a chart's hover readout, which takes no pointer itself). */
-export function peekAt(target) {
-  if (target?.isConnected && !peek?.pinned) showPeek(target, { hover: true });
+/**
+ * Peek at `target` from code (a chart's hover readout, which takes no pointer
+ * itself). `avoid` is a surface the peek must not cover (the chart being read).
+ */
+export function peekAt(target, { avoid = null } = {}) {
+  if (target?.isConnected && !peek?.pinned) showPeek(target, { hover: true, avoid });
 }
 
 export function hidePeek() {

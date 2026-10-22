@@ -748,21 +748,24 @@
 .eval-chart .eval-m-missed { color: var(--missed); }
 
 /* Hover/focus readout for the chart: SAN, win chance, and classification as
-   text, so the tooltip never depends on colour alone. */
-/* Inside the chart box, so the panel's scroll edge never clips it. */
+   text, so the tooltip never depends on colour alone. analyze.js placeEvalReadout
+   puts it on the far side of the pointer and in the half of the band away from
+   the point, so the column being pointed at and the curve it names stay in view.
+   It is inside the wrap, so the panel's scroll edge never clips it. */
 .eval-chart-tooltip {
   position: absolute;
-  top: 4px;
-  transform: translateX(-50%);
   z-index: 5;
-  padding: 4px 8px;
+  /* One tight line: on a phone the band is 44px, and the readout has to fit in
+     one half of it to stay off the curve. */
+  padding: 1px 6px;
+  line-height: 1.25;
   border: 0;
   border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
   font-size: 11px;
-  /* Intrinsic width: with only `left` set, a shrink-to-fit box near the right
-     edge collapsed to the leftover sliver and wrapped one letter per line. */
+  /* Intrinsic width: a shrink-to-fit box with only `left` set collapsed to the
+     leftover sliver near the right edge and wrapped one letter per line. */
   width: max-content;
   max-width: 100%;
   box-sizing: border-box;

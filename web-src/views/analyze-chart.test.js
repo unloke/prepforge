@@ -186,17 +186,42 @@ afterEach(() => {
 // ---- Theme wiring (light/dark) ---------------------------------------------
 
 describe("eval chart tooltip boundaries", () => {
-  it.each([240, 640])("clamps both edge tooltips in a %ipx chart", (width) => {
+  // The readout takes the side of the plot away from the pointer and the half
+  // of the band away from the point, so neither the column being pointed at nor
+  // the curve it names is ever under it.
+  it.each([240, 640])("keeps the readout inside a %ipx chart and off the cursor", (width) => {
     const { chart, tooltip, view } = setup();
     chart.rectWidth = width;
     tooltip.offsetWidth = 180;
+    tooltip.offsetHeight = 23;
     view.renderEvalChart(POINTS);
-    for (const x of [0, width]) {
+    for (const x of [0, width / 2, width]) {
       chart.dispatch("pointermove", { pointerType: "mouse", clientX: x });
       const left = Number.parseFloat(tooltip.style.left);
-      expect(left - 90).toBeGreaterThanOrEqual(0);
-      expect(left + 90).toBeLessThanOrEqual(width);
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(left + 180).toBeLessThanOrEqual(width);
+      // Left half of the plot: the readout opens to the right of the cursor;
+      // right half: it opens to the left. Either way the cursor's column is clear.
+      if (x < width / 2) expect(left).toBeGreaterThan(x);
+      else if (x > width / 2) expect(left + 180).toBeLessThan(x);
     }
+  });
+
+  it("takes the half of the band the curve is not in", () => {
+    const height = 96;
+    const top = (points) => {
+      const { chart, tooltip, view } = setup();
+      chart.rectWidth = 640;
+      tooltip.offsetWidth = 180;
+      tooltip.offsetHeight = 23;
+      view.renderEvalChart(points);
+      chart.dispatch("pointermove", { pointerType: "mouse", clientX: 320 });
+      return Number.parseFloat(tooltip.style.top);
+    };
+    // White is winning by a rook: the curve rides the top, the readout the bottom.
+    expect(top(POINTS.map((p) => ({ ...p, score_cp: 500, bounded_score_cp: 500 })))).toBeGreaterThan(height / 2);
+    // White is losing by a rook: the curve sits at the bottom, the readout on top.
+    expect(top(POINTS.map((p) => ({ ...p, score_cp: -500, bounded_score_cp: -500 })))).toBeLessThan(height / 2);
   });
 });
 
