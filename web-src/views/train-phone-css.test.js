@@ -51,6 +51,6 @@ it("the pickers open as a bottom sheet at the thumb", () => {
   expect(sheet).toMatch(/max-height: 70dvh/);
 });
 
-it("the result cells fold to two columns instead of wrapping their words", () => {
-  expect(phone).toContain(".sum-cells { grid-template-columns: repeat(2, 1fr); }");
+it("the result cells share one row on a phone instead of orphaning the last", () => {
+  expect(phone).toContain(":root .sum-cells { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); }");
 });

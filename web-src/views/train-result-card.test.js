@@ -51,7 +51,7 @@ it("a rehearsal reports lines, first-try score and misses", () => {
 
 it("a game reports how it ended and how far it went, and names why when it could not go on", () => {
   const play = { ended: "Resigned", userColor: "black", history: [{ by: "user" }, { by: "opponent" }, { by: "user" }], result: "1-0" };
-  expect(playResult(play)).toMatchObject({ title: "Resigned", cells: [[2, "moves"], ["Black", "you played"]], foot: "1-0" });
+  expect(playResult(play)).toMatchObject({ title: "Resigned", cells: [["1-0", "result"], [2, "moves"], ["Black", "you played"]], foot: "" });
   expect(playResult({ ...play, ended: "Opponent unavailable", failure: "Maia could not start." }).foot).toBe("Maia could not start.");
 });
 

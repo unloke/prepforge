@@ -1149,7 +1149,8 @@
   }
   #view-train .train-progress-panel .upnext { min-height: 0; }
   #view-train .train-summary-actions .btn { height: 46px; min-height: 46px; }
-  .sum-cells { grid-template-columns: repeat(2, 1fr); }
+  /* Up to four result cells share one row (train-shell.css arrives later). */
+  :root .sum-cells { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); }
   .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
   .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
   /* The picker is a bottom sheet at the thumb. train-shell.css arrives later
@@ -1161,7 +1162,12 @@
     bottom: calc(8px + env(safe-area-inset-bottom));
     width: auto;
     max-height: 70dvh;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
+  :root .train-picker::backdrop { background: rgba(0, 0, 0, 0.45); }
   :root .train-pick { min-height: 48px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */

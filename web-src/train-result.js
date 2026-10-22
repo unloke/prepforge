@@ -49,11 +49,12 @@ export function drillResult(training, stats) {
 // A finished game: how it ended, how far it went, which side you had.
 export function playResult(play) {
   const moves = (play.history || []).filter((ply) => ply.by === "user").length;
+  const score = play.result && play.result !== "*" ? [[play.result, "result"]] : [];
   return {
     mode: "play",
     title: play.ended || "Game over",
-    cells: [[moves, nounOf(moves, "move")], [play.userColor === "black" ? "Black" : "White", "you played"]],
+    cells: [...score, [moves, nounOf(moves, "move")], [play.userColor === "black" ? "Black" : "White", "you played"]],
     delta: null,
-    foot: play.failure || (play.result && play.result !== "*" ? play.result : ""),
+    foot: play.failure || "",
   };
 }
