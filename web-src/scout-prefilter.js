@@ -134,6 +134,7 @@ export function scorePrefilterLine(line, evalMap, { fenAfterLine, oppColor, ance
     mateIn,
     hasUserReply,
     prefilterScore: userLeafAdvantage,
+    maiaScorePct: line.maiaScorePct ?? null,
     routeReach: line.routeReach ?? null,
     routePlausibility: line.routePlausibility ?? null,
     ancestorFrequency: line.routeReach ?? ancestorInfo.frequency,
@@ -193,15 +194,20 @@ export function rankPrefilterCandidates(
     return true;
   }).map((entry) => ({ ...entry, line: { ...entry.line, ...Object.fromEntries(
     Object.entries(entry).filter(([key]) => key !== "line")), baselineScorePct } }));
+  // Maia lands after this pass, so the queue is ordered by what is known now:
+  // the lines they most reliably reach, then engine safety, then Maia's weakness
+  // once a re-rank carries it. Selecting on historical results here would drop
+  // lines before Maia ever reads them.
   const rank = new Map(selectPreparationRoutes(gated.map(e => e.line), { limit: gated.length, baseline: baselineScorePct })
     .map((line, i) => [routeKey(line), i]));
   // Materialize pure sort inputs once per call; nothing survives receipt updates.
   const ordered = gated.map(entry => {
     const key = routeKey(entry.line);
     return { entry, key, rank: rank.get(key) ?? Infinity,
+      value: preparationValue(entry.line, baselineScorePct).value,
       soft: preparationValue(entry.line, baselineScorePct).softValue };
   });
-  ordered.sort((a,b) => a.rank - b.rank || b.soft - a.soft || a.key.localeCompare(b.key));
+  ordered.sort((a,b) => a.rank - b.rank || b.value - a.value || b.soft - a.soft || a.key.localeCompare(b.key));
   for (let n = 0; n < ordered.length; n++) gated[n] = ordered[n].entry;
   funnel.survived = gated.length;
   if (funnelOut) Object.assign(funnelOut, funnel);
@@ -248,6 +254,7 @@ export function mergeGlobalPrefilterRanked(
   }
   // Assess prospective recommendations first, then bounded backups. An ONNX
   // failure changes availability of supplemental WDL, not candidate membership.
+  // Before any read exists the value is 0 for every line, so reach orders the queue.
   const front = new Set();
   for (const color of ["white", "black"]) {
     const lines = entries.filter(e => e.oppColor === color).map(e => e.line);
@@ -255,10 +262,11 @@ export function mergeGlobalPrefilterRanked(
   }
   const ordered = entries.map(entry => {
     const key = routeKey(entry.line);
+    const evidence = preparationValue(entry.line, baselineByColor[entry.oppColor] ?? 50);
     return { entry, key, front: Number(front.has(`${entry.oppColor}|${key}`)),
-      value: preparationValue(entry.line, baselineByColor[entry.oppColor] ?? 50).value };
+      value: evidence.value, soft: evidence.softValue };
   });
-  ordered.sort((a,b) => b.front - a.front || b.value - a.value ||
+  ordered.sort((a,b) => b.front - a.front || b.value - a.value || b.soft - a.soft ||
     a.entry.oppColor.localeCompare(b.entry.oppColor) || a.key.localeCompare(b.key));
   for (let n = 0; n < ordered.length; n++) entries[n] = ordered[n].entry;
   return entries.slice(0, poolSize);
