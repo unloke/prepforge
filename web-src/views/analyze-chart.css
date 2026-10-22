@@ -1376,7 +1376,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
      the graph scrubs the game; the band never changes height. */
   #view-analyze #analysis-eval-card {
     order: 0;
-    grid-template-columns: 62px minmax(0, 1fr);
+    grid-template-columns: 72px minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr);
     gap: 0 10px;
     height: var(--phone-eval-h);
@@ -1386,7 +1386,8 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     background: var(--bg);
   }
   #analysis-eval-card > :not(.ev-head) { grid-row: 1; grid-column: 2; }
-  #analysis-eval-card .ev-title { grid-area: 1 / 1; color: var(--muted); font-weight: 600; }
+  /* The word stays inside the figure's 72px column instead of running under the graph. */
+  #analysis-eval-card .ev-title { grid-area: 1 / 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 18px; font-weight: 650; }
   #analysis-eval-card .ev-meter { display: none; }
   #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
