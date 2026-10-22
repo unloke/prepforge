@@ -2,7 +2,7 @@ import { html } from "../html.js";
 import { staggerRows } from "../list-enter.js";
 import { countOf, nounOf } from "../plural.js";
 import { TRAINING_SYNC_TEXT } from "../sync-chip.js";
-import { START_FEN, moveLineHtml, moveTextHtml, walkLine } from "../move-text.js";
+import { START_FEN, moveLineHtml, moveTextHtml, walkPathText } from "../move-text.js";
 // Train tab rendering (lazy-loaded from app.js).
 
 // The result screen's stat cells: [value, label]. Counts read "1 card" / "3 cards".
@@ -64,9 +64,8 @@ export function lineTail(line, plies = 2) {
 // The tail as move links when the path plays from the start position (each move
 // peeks at its position); otherwise the plain tail.
 function lineTailHtml(line, plies = 2) {
-  const sans = String(line || "").split(" ").map((t) => t.replace(/^\d+\.+/, "")).filter(Boolean);
-  const walked = walkLine(START_FEN, sans);
-  if (!walked || walked.plies.length !== sans.length) return lineTail(line, plies);
+  const walked = walkPathText(line);
+  if (!walked) return lineTail(line, plies);
   const tail = walked.plies.slice(-plies);
   return moveLineHtml(tail[0].fenBefore, tail.map((p) => p.san), tail.map((p) => p.uci), { focusable: false });
 }

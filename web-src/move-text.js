@@ -63,6 +63,13 @@ export function walkLine(baseFen, moves) {
   return plies.length ? { baseFen: baseFen || START_FEN, plies } : null;
 }
 
+/** A path written out ("1.e4 c5 2.Nf3") walked from the start; null unless every move plays. */
+export function walkPathText(text) {
+  const sans = String(text || "").split(/\s+/).map((t) => t.replace(/^\d+\.+/, "")).filter(Boolean);
+  const line = walkLine(START_FEN, sans);
+  return line && line.plies.length === sans.length ? line : null;
+}
+
 /** Clamp a preview ply (0 = the line's start position, n = its end). */
 export function clampPly(line, ply) {
   const n = line?.plies?.length || 0;

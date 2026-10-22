@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { clampPly, decodeLine, encodeLine, moveLineHtml, moveTextHtml, parseMoveText, plyOfFen, previewLabel, previewPosition, stepPreview, walkLine } from "./move-text.js";
+import { clampPly, decodeLine, encodeLine, moveLineHtml, moveTextHtml, parseMoveText, plyOfFen, previewLabel, previewPosition, stepPreview, walkLine, walkPathText } from "./move-text.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -104,6 +104,15 @@ describe("parseMoveText", () => {
     expect(labels(parseMoveText("Nf3 d5 is the idea", { fen: START }))).toEqual(["1.Nf3", "1...d5"]);
     expect(labels(parseMoveText("1.d4 is the idea", { fen: START }))).toEqual(["1.d4"]);
     expect(labels(parseMoveText("New move: e4", { fen: START, pawns: true }))).toEqual(["1.e4"]);
+  });
+
+  it("reads a Train cue along the card's written path", () => {
+    const path = walkPathText("1.e4 c6");
+    expect(path.plies.map((p) => p.label)).toEqual(["1.e4", "1...c6"]);
+    expect(walkPathText("1.e4 e4")).toBe(null);
+    const at = (ply) => (ply ? path.plies[ply - 1]?.fen : START);
+    const segs = parseMoveText("Weak spot · answer 1...c6", { fen: path.plies[1].fen, at });
+    expect(labels(segs)).toEqual(["1...c6"]);
   });
 
   it("links a bare pawn capture: it never reads as a square", () => {

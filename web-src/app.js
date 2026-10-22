@@ -13,7 +13,7 @@ import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
 import { boardLine } from "./line-preview.js";
 import { installMoveLinks } from "./move-links.js";
-import { moveTextHtml } from "./move-text.js";
+import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
   setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
@@ -1370,8 +1370,9 @@ function setTrainBanner(state, title, sub) {
   banner.dataset.state = state;
   const titleEl = document.getElementById("train-banner-title");
   const subEl = document.getElementById("train-banner-sub");
-  // Moves in the coach's words peek at their position; Train never plays them.
-  const ctx = { fen: appState.smart?.prompt?.fen_before };
+  // The coach's moves peek (Train never plays them); "1...c6" reads along the card's line.
+  const path = walkPathText(appState.smart?.prompt?.target?.line);
+  const ctx = { fen: appState.smart?.prompt?.fen_before, at: (ply) => (ply ? path?.plies[ply - 1]?.fen : START_FEN) };
   titleEl.innerHTML = moveTextHtml(title || "", { ...ctx, pawns: true });
   titleEl.title = title || "";
   subEl.innerHTML = moveTextHtml(sub || "", ctx);
