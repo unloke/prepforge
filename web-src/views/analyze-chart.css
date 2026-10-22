@@ -1090,11 +1090,12 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analyze-open.is-open {
     position: absolute;
     z-index: 30;
-    inset: 8px 8px auto;
+    /* Under the coach's line, so Analyze stays in reach of a pasted game. */
+    inset: 64px 8px auto;
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: calc(100% - 16px);
+    max-height: calc(100% - 72px);
     padding: 6px 14px 14px;
     border-radius: var(--radius-card);
     background: var(--panel);
@@ -1360,7 +1361,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #view-analyze {
     --phone-eval-h: 56px;
     --phone-tabs-h: 44px;
-    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 180px);
+    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 172px);
   }
   #view-analyze .study { height: 100svh; }
   #view-analyze .board-stack {
