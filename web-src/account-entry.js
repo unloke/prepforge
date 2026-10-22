@@ -105,6 +105,8 @@ export function initAccountController() {
         const host = document.getElementById(id);
         if (host) host.innerHTML = "";
       }
+      const historyDrawer = document.getElementById("history-drawer");
+      if (historyDrawer) historyDrawer.hidden = true;
       live("hideTeamDetail")();
       live("dashboardView")?.renderSignedOut();
     },

@@ -123,3 +123,17 @@ describe("repertoire load isolation", () => {
     expect(h.appState.buildLoading).toBe(false);
   });
 });
+
+describe("route back to the shown tree while another loads", () => {
+  it("compares the URL against the loading target, not the stale tree", async () => {
+    const h = harness();
+    const shown = compile("function shownOrLoadingRepertoireId(", { appState: h.appState });
+    expect(shown()).toBe("A");
+    const load = h.edit("B"); await waitForRequest(h, "B");
+    // Still showing A's tree, but B is what will land: a route to A must reopen A.
+    expect(h.appState.build.repertoire_id).toBe("A");
+    expect(shown()).toBe("B");
+    h.requests.get("B").resolve(payload("B")); await load;
+    expect(shown()).toBe("B");
+  });
+});

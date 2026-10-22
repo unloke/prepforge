@@ -183,6 +183,14 @@ export function createAnalysisSelection(deps) {
   // path). A path the current tree no longer has is NOT resolved to some other
   // node: the caller keeps the position it has and can say the branch is gone.
   async function selectAnalysisNodePath(path) {
+    // The tree is built lazily on render; a rebuild of the branches (a recalled
+    // review, a finished run) drops it until then, so build it here too.
+    if (!appState.analysisTree && appState.analysis) {
+      const analysis = appState.analysis;
+      const view = await ensureAnalyzeView();
+      if (analysis !== appState.analysis) return false;
+      appState.analysisTree ||= view.buildAnalysisTree(analysis.moves || []);
+    }
     const tree = appState.analysisTree;
     const nodeId = tree ? analysisNodeIdFromPath(path, tree) : null;
     if (!nodeId) return false;

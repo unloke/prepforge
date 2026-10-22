@@ -378,6 +378,22 @@ async function restoreWorkspaceLocation() {
   }
 }
 
+// The repertoire Build shows, or the one it is loading (A → B → A while B is
+// still loading must open A again, not let B land).
+function shownOrLoadingRepertoireId() {
+  return appState.buildLoading ? appState.buildLoadTarget : appState.build?.repertoire_id;
+}
+
+// Recent analyses are the owner's: shown and (when open) loaded only while
+// signed in. Runs on entering Analyze and whenever the signed-in owner changes,
+// so a sign-in made on the page lists that account's analyses at once.
+function syncAnalysisHistoryDrawer() {
+  const drawer = document.getElementById("history-drawer");
+  if (!drawer) return;
+  drawer.hidden = !appState.signedIn;
+  if (appState.signedIn && drawer.open && appState.currentView === "analyze") loadAnalysisHistory();
+}
+
 // In-page route changes (back/forward and location.hash) take the same path as
 // boot restore: switch the view, then rebuild Train's queue for the URL's
 // repertoire. Without this, ?rep= only took effect on a full reload. Coming
@@ -390,7 +406,7 @@ async function handleWorkspacePopstate() {
   // Back/forward (or an edited hash) naming another repertoire opens it: the
   // editor showing a different tree than its URL survived only until a reload.
   if (loc.view === "build" && loc.repertoireId && appState.signedIn &&
-      loc.repertoireId !== appState.build?.repertoire_id) {
+      loc.repertoireId !== shownOrLoadingRepertoireId()) {
     await editRepertoire(loc.repertoireId);
     return;
   }
@@ -590,14 +606,15 @@ function switchView(name, { fromUrl = false } = {}) {
   // toggle) and an idle panel offers the games to reopen instead of a coach
   // line over blank tone. On a phone it lives in the Games sheet, closed.
   if (name === "analyze") {
-    const historyDrawer = document.getElementById("history-drawer");
-    if (historyDrawer) {
-      historyDrawer.hidden = !appState.signedIn;
-      const ship = appState.signedIn && !historyDrawer.dataset.shipped;
-      if (ship) historyDrawer.dataset.shipped = "1";
+    const drawer = document.getElementById("history-drawer");
+    const ship = !!drawer && appState.signedIn && !drawer.dataset.shipped;
+    if (ship) drawer.dataset.shipped = "1";
+    if (ship && !drawer.open && window.matchMedia?.("(min-width: 861px)").matches) {
       // Opening it fires the drawer's toggle, which loads the list.
-      if (ship && !historyDrawer.open && window.matchMedia?.("(min-width: 861px)").matches) historyDrawer.open = true;
-      else if (appState.signedIn && historyDrawer.open) loadAnalysisHistory();
+      drawer.hidden = false;
+      drawer.open = true;
+    } else {
+      syncAnalysisHistoryDrawer();
     }
   }
   if (name === "analyze" && appState.signedIn) {
@@ -659,6 +676,9 @@ async function editRepertoire(repertoireId, nodeId = null) {
   // The Repertoire view opens NOW with a skeleton; the tree fills in when the
   // load lands (it used to sit on the previous page for seconds).
   const loadSeq = ++buildLoadSeq;
+  // The repertoire this load opens. Until it lands appState.build is still the
+  // previous tree, so a route back to that tree must not read as "already open".
+  appState.buildLoadTarget = repertoireId;
   setBuildLoading(true);
   try {
     await hardFlushBuild();
@@ -949,20 +969,11 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
       appState.buildPending = appState.buildPending.filter((m) => !doomedAdds.includes(m));
       appState.buildPendingDeletes = appState.buildPendingDeletes.filter((entry) => !doomedDeletes.includes(entry));
       void persistOutbox({ build: doomedAdds.map(buildAddId), deletes: doomedDeletes.map(buildDeleteId) });
-      if (appState.build && String(appState.build.repertoire_id) === repKey) {
-        appState.buildUndoDeletes = new Set();
-        appState.buildUndoCommitByMove = new Map();
-        appState.buildSyncState = "saved";
-        appState.build = null;
-        appState.buildNodeById = new Map();
-        appState.buildCurrentNodeId = null;
-        renderBuilderTree();
-        renderBuildSync();
-        document.getElementById("build-board-label").textContent = "No repertoire";
-      }
       if (String(appState.trainingRepertoireId) === repKey) {
         appState.trainingRepertoireId = null;
       }
+      const wasOpen = !!appState.build && String(appState.build.repertoire_id) === repKey;
+      if (wasOpen) closeOpenBuild();
       await refreshDashboardRepertoires();
       showUndoToast({
         title: "Repertoire deleted",
@@ -971,6 +982,8 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
           appState.pendingRepDeletes.delete(repKey);
           setStatus("Delete undone");
           refreshDashboardRepertoires();
+          // Put it back where it was: the Repertoire page still has nothing open.
+          if (wasOpen && !appState.build && appState.currentView === "build") void editRepertoire(repertoireId);
         },
         onCommit: () => {
           // keepalive so a commit forced by beforeunload still reaches the server.
@@ -1003,6 +1016,29 @@ async function handleRepertoireContextAction(action, repertoireId, isActive) {
   } catch (error) {
     setStatusError(error.message);
   }
+}
+
+// The open repertoire went away (deleted): Build shows the empty start position,
+// not the deleted tree's name, board and legal moves under "No repertoire".
+function closeOpenBuild() {
+  appState.buildUndoDeletes = new Set();
+  appState.buildUndoCommitByMove = new Map();
+  appState.buildSyncState = "saved";
+  appState.build = null;
+  appState.buildNodeById = new Map();
+  appState.buildCurrentNodeId = null;
+  if (boards.build) {
+    boards.build.setPosition({ fen: START_FEN, legalMoves: localBoardInfo(START_FEN).legal_moves, lastMove: null });
+    boards.build.setAnnotations([], []);
+  }
+  document.getElementById("build-board-label").textContent = "No repertoire";
+  renderBuildRepHeader();
+  renderBuilderTree();
+  renderBuildSync();
+  syncViewHeads();
+  syncWorkspaceUrl();
+  if (engineWidget) engineWidget.onBoardChanged();
+  scheduleExplorerRefresh();
 }
 
 // F-03: "Retry save" affordance for a finished-but-unsaved analysis.
@@ -1114,7 +1150,8 @@ const showAnalysisPly = viaAnalyzeSession("showAnalysisPly");
 // (controllers/analyze-restore.js); this binds it to the session's entry points.
 const { restoreAnalyzeSession, restoreAnalysisNodePath } = createAnalyzeRestore({
   appState, loadReturnState, loadPgnIntoAnalyze, showAnalysisPly,
-  selectAnalysisNodePath, setStatus,
+  selectAnalysisNodePath, setStatus, recallAnalysis: viaAnalyzeEntry("recallAnalysis"),
+  rebuildAnalysisVariations: viaAnalyzeSession("rebuildAnalysisVariations"),
 });
 
 export let appReadyPromise = null;
@@ -1510,7 +1547,7 @@ function bindEvents() {
   const historyDrawer = document.getElementById("history-drawer");
   if (historyDrawer) {
     historyDrawer.addEventListener("toggle", () => {
-      if (historyDrawer.open) loadAnalysisHistory();
+      if (historyDrawer.open && appState.signedIn) loadAnalysisHistory();
     });
   }
   // Coverage scan: explicit button — never runs implicitly (it's a Maia batch).
@@ -2291,6 +2328,7 @@ async function loadSignedInWorkspace() {
     .then(() => trainSessionLoading?.then((train) => train.syncTrainPickerVisibility()))
     .catch(() => {});
   syncReplayControls();
+  syncAnalysisHistoryDrawer();
   // Boards are already seeded with the start position in init() (browser-computed),
   // so signing in doesn't need to re-fetch them.
   renderBuilderTree();

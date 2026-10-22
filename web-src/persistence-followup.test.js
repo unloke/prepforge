@@ -111,7 +111,7 @@ it('workspace restores local work before remote settings or dashboard resolve',a
   const settings=deferred(),dashboard=deferred();const appState={buildPending:[],buildPendingDeletes:[]};
   const restoreOutbox=vi.fn();const recovery=vi.fn(async()=>{});
   const run=compile('async function loadSignedInWorkspace(',{appState,currentOwnerId:()=> 'owner',loadSettingsController:async()=>({loadSettingsOnce:()=>settings.promise}),loadDashboard:()=>dashboard.promise,
-    getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
+    getStoredLichessUsername:()=>null,refreshLichessStatus:async()=>{},syncTrainPickerVisibility:noop,syncReplayControls:noop,syncAnalysisHistoryDrawer:noop,renderBuilderTree:noop,restoreOutbox,refreshAnalyzeRecovery:recovery});
   const pending=run();expect(restoreOutbox).toHaveBeenCalledOnce();await Promise.resolve();expect(recovery).toHaveBeenCalledOnce();
   settings.resolve();dashboard.resolve();await pending;
 });

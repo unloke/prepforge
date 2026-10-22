@@ -547,6 +547,10 @@ export function createDashboardView({
     // selection to the first shown row when the old one is filtered out — the
     // same rule the unfiltered table has for a row that disappears.
     const shownOwn = shown.filter((item) => !item.sharedRow);
+    // The repertoire open in Build is the selected row: one created or opened
+    // elsewhere (Build's New repertoire, the palette, a link) is the one to mark.
+    const openId = appState.build?.repertoire_id ? String(appState.build.repertoire_id) : null;
+    if (openId && shownOwn.some((item) => String(item.id) === openId)) selectedRepId = openId;
     if (!selectedRepId || !shownOwn.some((item) => String(item.id) === selectedRepId)) {
       selectedRepId = shownOwn.length ? String(shownOwn[0].id) : null;
     }

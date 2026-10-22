@@ -181,6 +181,16 @@ describe("a user-created branch is the same position after a reload", () => {
     }))).toBe("#/analyze?ply=4");
   });
 
+  it("builds the tree a branch rebuild dropped before resolving a path", async () => {
+    // rebuildAnalysisVariations (a recalled review, a finished run) clears the
+    // lazily built tree; a reload restoring ?ply= / ?node= must still land.
+    const h = harness();
+    h.appState.analysisTree = null;
+    await expect(h.selectAnalysisNodePath("e2e4-e7e5")).resolves.not.toBe(false);
+    expect(h.appState.analysisTree).not.toBeNull();
+    expect(h.appState.analysisCurrentNodeId).toBe("m2");
+  });
+
   it("does not select an unrelated position when the saved branch is gone", async () => {
     // The saved path names a branch this game no longer carries: the restore must
     // decline, not fall back to whatever node holds a similar id.
