@@ -7,6 +7,7 @@ import {
   deselectSelf,
   toggleAccount,
   addExternal,
+  lookupLichessUser,
   removeExternal,
   selectionChips,
   resolveFetchUsernames,
@@ -149,5 +150,25 @@ describe("sameFetchSources (UX 2026-10-01 P2-11)", () => {
   });
   it("treats missing lists as empty", () => {
     expect(sameFetchSources(undefined, [])).toBe(true);
+  });
+});
+
+describe("lookupLichessUser", () => {
+  const answer = (status, body) => async (url) => {
+    expect(url).toBe("https://lichess.org/api/user/hikaru");
+    return { status, ok: status === 200, json: async () => body };
+  };
+
+  it("returns Lichess's own spelling of the account", async () => {
+    expect(await lookupLichessUser("hikaru", answer(200, { id: "hikaru", username: "Hikaru" }))).toBe("Hikaru");
+  });
+
+  it("returns null for no such account, or a closed one", async () => {
+    expect(await lookupLichessUser("hikaru", answer(404, null))).toBe(null);
+    expect(await lookupLichessUser("hikaru", answer(200, { id: "hikaru", username: "Hikaru", disabled: true }))).toBe(null);
+  });
+
+  it("throws when Lichess could not answer", async () => {
+    await expect(lookupLichessUser("hikaru", answer(429, null))).rejects.toThrow("429");
   });
 });

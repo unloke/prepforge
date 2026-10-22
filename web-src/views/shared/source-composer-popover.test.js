@@ -242,14 +242,16 @@ describe("source composer popover", () => {
         linkedAccounts: linked,
         onChange: (sel) => changes.push(sel),
         onClose: () => {},
+        lookupUsername: async (name) => (name.toLowerCase() === "hikaru" ? "Hikaru" : null),
       });
-      overlay._input.value = "Hikaru";
+      overlay._input.value = "hikaru";
       listeners.keydown({
         key: "Enter",
         preventDefault: vi.fn(),
         target: { matches: (sel) => sel === "[data-src-add]" },
       });
-      expect(changes[0].external).toEqual(["Hikaru"]);
+      // Lichess names the account: its own spelling is what gets saved.
+      await vi.waitFor(() => expect(changes[0]?.external).toEqual(["Hikaru"]));
       expect(String(overlay.innerHTML)).toContain('aria-label="Remove Hikaru"');
       listeners.click({
         target: {
@@ -258,6 +260,51 @@ describe("source composer popover", () => {
         },
       });
       expect(changes[1].external).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("refuses a name Lichess does not know, and says so", async () => {
+    const { doc, overlay, listeners, restore } = makeDoc();
+    const changes = [];
+    try {
+      openSourceComposer({
+        document: doc,
+        selection: null,
+        linkedAccounts: linked,
+        onChange: (sel) => changes.push(sel),
+        onClose: () => {},
+        lookupUsername: async () => null,
+      });
+      overlay._input.value = "Hikaruu";
+      listeners.click({ target: { closest: (sel) => (sel === "[data-src-add-btn]" ? {} : null) } });
+      await vi.waitFor(() => expect(String(overlay.innerHTML)).toContain("No Lichess player named Hikaruu"));
+      expect(changes).toEqual([]);
+      // The typed name stays in the field to be corrected.
+      expect(String(overlay.innerHTML)).toContain('value="Hikaruu"');
+      expect(String(overlay.innerHTML)).toContain('aria-invalid="true"');
+    } finally {
+      restore();
+    }
+  });
+
+  it("does not add a name it could not check", async () => {
+    const { doc, overlay, listeners, restore } = makeDoc();
+    const changes = [];
+    try {
+      openSourceComposer({
+        document: doc,
+        selection: null,
+        linkedAccounts: linked,
+        onChange: (sel) => changes.push(sel),
+        onClose: () => {},
+        lookupUsername: async () => { throw new Error("offline"); },
+      });
+      overlay._input.value = "Hikaru";
+      listeners.click({ target: { closest: (sel) => (sel === "[data-src-add-btn]" ? {} : null) } });
+      await vi.waitFor(() => expect(String(overlay.innerHTML)).toContain("check Hikaru on Lichess. Try again."));
+      expect(changes).toEqual([]);
     } finally {
       restore();
     }
