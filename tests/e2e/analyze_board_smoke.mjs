@@ -134,10 +134,10 @@ async function main() {
     const gamePieces = await boardPieces();
     await page.click("#open-engine-widget");
     await page
-      .waitForSelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-ply='3']", { timeout: ENGINE_TIMEOUT_MS })
+      .waitForSelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='3']", { timeout: ENGINE_TIMEOUT_MS })
       .catch(() => fail("engine produced no line with four moves"));
     const firstMove = await e2e(
-      () => document.querySelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-ply='0']").textContent,
+      () => document.querySelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='0']").textContent,
     );
     const rowHeight = await e2e(() => document.querySelector("#engine-window-pvs .engine-pv[data-line='0']").offsetHeight);
     await page.click("#engine-window-pvs .engine-pv[data-line='0'] .engine-pv-eval");
@@ -157,10 +157,10 @@ async function main() {
     await page.click("#analysis-prev");
     check(/ · 2\//.test(await label()), `the Previous button steps the line back (got ${await label()})`);
     check(
-      (await e2e(() => document.querySelector(".pv-move.is-current")?.dataset.ply)) === "1",
+      (await e2e(() => document.querySelector(".pv-move.is-current")?.dataset.p)) === "1",
       "the current move is marked in the line",
     );
-    await page.click("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-ply='3']");
+    await page.click("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='3']");
     check(/ · 4\//.test(await label()), "clicking a move in the line jumps to it");
     await page.waitForTimeout(1200); // engine repaints keep the preview
     check(/ · 4\//.test(await label()), "the preview survives engine repaints");
