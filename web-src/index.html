@@ -412,6 +412,7 @@
                 <button type="button" class="seg-btn train-mode" data-mode="all_lines">Line rehearsal</button>
                 <button type="button" class="seg-btn train-mode" data-mode="play" data-testid="train-mode-play" title="Play a game from the opening against Lichess database moves or Maia">Practice game</button>
               </div>
+              <button type="button" class="btn ghost sm train-back" id="train-back" data-testid="train-back" title="Back to training modes"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Modes</span></button>
             </div>
             <section class="coach-banner train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
               <span class="train-coach-icon" id="train-banner-icon" aria-hidden="true"></span>
@@ -506,7 +507,7 @@
                 <p class="train-hint-line" id="train-hint-line" hidden></p>
                 <div class="prog-head">
                   <b id="train-line-label">Card 1 / 1</b>
-                  <button type="button" class="train-mode-name" id="train-mode-name" title="Change mode"></button>
+                  <span class="train-mode-name" id="train-mode-name"></span>
                   <span class="kchip" id="train-card-kind" hidden></span>
                   <span class="spacer"></span>
                   <span class="train-accuracy" id="train-accuracy" title="Share of review moves you got right on the first try, without a hint">–</span>

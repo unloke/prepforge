@@ -1,4 +1,5 @@
 import { html } from "./html.js";
+import { confirmAbandonGame } from "./train-play.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
@@ -1675,16 +1676,7 @@ function bindEvents() {
   if (startPlay) {
     startPlay.addEventListener("click", async () => {
       // Mid-game the same button starts over: ask before throwing the game away.
-      const live = appState.play && appState.play.active && (appState.play.history || []).length > 0;
-      if (live) {
-        const ok = await showConfirmModal({
-          title: "Start a new game?",
-          body: "The current game will be abandoned.",
-          okLabel: "New game",
-          cancelLabel: "Keep playing",
-        });
-        if (!ok) return;
-      }
+      if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Start a new game?", "New game"))) return;
       startPlaySessionTracked();
     });
   }
@@ -1797,13 +1789,16 @@ function bindEvents() {
     syncTrainPickerVisibility();
   };
   document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       if (appState.trainMode === btn.dataset.mode && btn.classList.contains("is-active")) return;
+      // The tabs stay up through a Practice game, and leaving it loses it.
+      if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
       selectTrainMode(btn.dataset.mode);
     });
   });
-  // The tabs leave with the setup card; the session card's mode name leads back.
-  document.getElementById("train-mode-name")?.addEventListener("click", () => {
+  // A running queue or rehearsal hides the tabs; Modes leads back. Every answer
+  // is already saved and Start resumes the session, so nothing needs a confirm.
+  document.getElementById("train-back")?.addEventListener("click", () => {
     appState.smart = null;
     appState.training = null;
     selectTrainMode(appState.trainMode || "smart");

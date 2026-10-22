@@ -1074,16 +1074,8 @@
   }
   #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); }
   #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
-  /* The mode name is a text link inside the card head; the head itself becomes
-     the 44px row, so changing mode is not a 17px-tall target. */
   #view-train .prog-head { min-height: 44px; }
-  #view-train #train-mode-name {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    margin: 0 -6px;
-    padding: 0 6px;
-  }
+  #view-train #train-back { min-height: 44px; height: 44px; }
   #view-train #train-fresh { min-height: 44px; }
   /* A phone row has no room for a name, a meter and a count side by side: the
      name keeps the line, the meter and its number sit under it. */
