@@ -403,9 +403,11 @@
               <svg class="annotations" id="train-annotations"></svg>
             </div>
             <div class="board-bar">
-              <div class="bb-nav">
-                <button class="btn icon" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span class="bl">Hint</span></button>
-                <button class="btn icon" id="train-skip" title="Skip this card" aria-label="Skip this card"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l8 7-8 7zM17 5v14"/></svg><span class="bl">Skip</span></button>
+              <div class="bb-nav train-actions">
+                <button class="btn icon" id="train-hint" title="Hint (show the piece to move)" aria-label="Show hint" hidden><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg><span class="bl">Hint</span></button>
+                <button class="btn icon" id="train-skip" title="Skip this card" aria-label="Skip this card" hidden><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l8 7-8 7zM17 5v14"/></svg><span class="bl">Skip</span></button>
+                <button class="btn icon" id="play-takeback" data-testid="play-takeback" type="button" title="Take back your last move" aria-label="Take back" hidden><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span class="bl">Takeback</span></button>
+                <button class="btn icon" id="play-resign" data-testid="play-resign" type="button" title="Resign this game" aria-label="Resign" hidden><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg><span class="bl">Resign</span></button>
               </div>
               <span class="board-label" id="train-board-label"></span>
               <div class="bb-right">
@@ -416,156 +418,100 @@
             </div>
           </div>
 
-          <aside class="sidebar train-sidebar panel" data-session-state="setup">
-            <div class="panel-head">
-              <div class="seg" id="train-modes" role="group" aria-label="Training mode">
-                <button type="button" class="seg-btn train-mode is-active" data-mode="smart" title="Due reviews and new moves from your repertoires, one card at a time">Smart queue</button>
-                <button type="button" class="seg-btn train-mode" data-mode="all_lines" title="Play one repertoire's lines through, move by move">Line rehearsal</button>
-                <button type="button" class="seg-btn train-mode" data-mode="play" data-testid="train-mode-play" title="Play a game from the opening against Lichess database moves or Maia">Practice game</button>
+          <aside class="sidebar train-sidebar panel">
+            <header class="train-head">
+              <button type="button" class="btn ghost sm train-back" id="train-back" data-testid="train-back" title="Back to Train"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Train</span></button>
+              <h2 class="train-title">Train</h2>
+              <div class="train-head-main">
+                <span class="train-head-mode" id="train-head-mode"></span>
+                <span class="train-scope-chip" id="train-scope-chip" data-testid="train-scope-chip"></span>
               </div>
-              <button type="button" class="btn ghost sm train-back" id="train-back" data-testid="train-back" title="Back to training modes"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Modes</span></button>
-            </div>
+              <span class="train-count" id="train-line-label"></span>
+              <button type="button" class="btn icon ghost train-history-btn" id="train-history-open" data-train-history aria-haspopup="dialog" title="History" aria-label="Training history"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg></button>
+            </header>
+            <div class="prog train-head-prog" id="train-progress" role="progressbar" aria-label="Session progress"><i id="train-progress-fill"></i></div>
             <section class="coach-banner train-coach" id="train-banner" data-testid="train-feedback" data-state="idle" aria-live="polite">
               <span class="train-coach-icon" id="train-banner-icon" aria-hidden="true"></span>
               <div class="train-coach-text">
-                <span class="train-coach-title" id="train-banner-title" data-testid="train-prompt">Ready to train</span>
+                <span class="train-coach-title" id="train-banner-title" data-testid="train-prompt"></span>
                 <span class="train-coach-sub" id="train-banner-sub"></span>
               </div>
               <span class="train-turn-badge" id="train-turn-badge" hidden></span>
             </section>
             <div class="panel-scroll">
-              <section class="tcard train-setup">
-                <div class="train-brief" id="train-brief" hidden>
-                  <div class="train-brief-head">
-                    <b class="train-brief-count" id="train-brief-count">0</b>
-                    <span class="train-brief-label" id="train-brief-label">cards to train</span>
+              <section class="train-home" id="train-home" data-testid="train-home">
+                <div class="train-outlook" id="train-outlook" hidden></div>
+                <section class="train-row" data-row="smart">
+                  <div class="train-row-text">
+                    <h3 class="train-row-title" data-vt-title="smart">Due queue</h3>
+                    <span class="train-row-meta" id="train-due-meta"></span>
                   </div>
-                  <div class="chips" id="train-brief-kinds"></div>
-                  <div class="train-brief-reps" id="train-brief-reps"></div>
-                </div>
-                <div class="train-empty" id="train-empty" hidden>
-                  <div class="train-start-row">
-                    <button class="btn primary" id="train-empty-build" type="button">Open Repertoire</button>
-                    <button class="btn" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
+                  <div class="train-row-opts">
+                    <button type="button" class="train-chip" id="train-due-scope" data-testid="train-due-scope" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="10s per move · a timeout counts as a miss">
+                      <span class="pf-row-label" id="train-blitz-label">Blitz</span>
+                      <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
+                    </span>
                   </div>
-                </div>
-                <div class="field" id="train-srs-picker">
-                  <label class="train-picker-label" for="train-repertoire-select">Repertoire</label>
-                  <select id="train-repertoire-select" data-testid="train-repertoire-select"></select>
-                </div>
-                <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="Timeout counts as a miss">
-                  <span class="pf-row-label" id="train-blitz-label">Blitz · 10s per move</span>
-                  <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
-                </span>
-                <div class="train-start-row" id="train-srs-start">
-                  <button class="btn primary lg train-start" id="start-train" data-testid="start-train">Start</button>
-                  <button class="btn lg" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
-                </div>
-                <div class="train-play-setup" id="train-play-setup" hidden>
-                  <div class="field">
-                    <label class="train-picker-label" for="train-play-book">Opponent book</label>
-                    <select id="train-play-book" data-testid="train-play-book">
-                      <option value="explorer">Lichess explorer</option>
-                      <option value="repertoire">My repertoire</option>
-                      <option value="maia">Maia</option>
-                    </select>
+                  <button class="btn primary train-row-go" id="start-train" data-testid="start-train" type="button">Start</button>
+                  <p class="train-row-error" id="train-due-error" role="alert" hidden></p>
+                </section>
+                <section class="train-row" data-row="all_lines">
+                  <div class="train-row-text">
+                    <h3 class="train-row-title" data-vt-title="all_lines">Rehearse</h3>
+                    <span class="train-row-meta" id="train-rehearse-meta"></span>
                   </div>
-                  <div data-unlock-place="train-practice" hidden></div>
-                  <div class="field train-play-repertoires" id="train-play-repertoire-picker" hidden>
-                    <span class="train-picker-label">Repertoires the opponent draws from</span>
-                    <details class="train-repertoire-menu" id="train-repertoire-menu">
-                      <summary class="train-repertoire-summary" data-testid="train-repertoire-summary">
-                        <span id="train-repertoire-summary-label">Select repertoires</span>
-                        <svg class="train-repertoire-chevron" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                      </summary>
-                      <div class="train-repertoire-popover" role="group" aria-label="Active repertoires">
-                        <label class="train-repertoire-option train-repertoire-select-all">
-                          <input type="checkbox" id="train-repertoire-select-all" data-testid="train-repertoire-select-all" />
-                          <span>Select all</span>
-                        </label>
-                        <div class="train-repertoire-options" id="train-repertoire-options"></div>
-                        <p class="train-repertoire-empty muted" id="train-repertoire-empty" hidden>
-                          No active repertoires. Build one first.
-                        </p>
-                      </div>
-                    </details>
+                  <div class="train-row-opts">
+                    <button type="button" class="train-chip" id="train-rehearse-scope" data-testid="train-rehearse-scope" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                   </div>
-                  <div class="field">
-                    <span class="train-picker-label" id="train-play-color-label">You play</span>
-                    <div class="seg" id="train-play-color" role="group" aria-label="Your color">
-                      <button type="button" class="seg-btn train-mode is-active" data-color="white" data-testid="play-color-white">White</button>
-                      <button type="button" class="seg-btn train-mode" data-color="black" data-testid="play-color-black">Black</button>
+                  <button class="btn train-row-go" id="start-rehearse" data-testid="start-rehearse" type="button">Start</button>
+                  <p class="train-row-error" id="train-rehearse-error" role="alert" hidden></p>
+                </section>
+                <section class="train-row" data-row="play">
+                  <div class="train-row-text">
+                    <h3 class="train-row-title" data-vt-title="play">Practice</h3>
+                    <span class="train-row-meta" id="train-play-meta"></span>
+                  </div>
+                  <div class="train-row-opts">
+                    <button type="button" class="train-chip" id="train-play-book" data-testid="train-play-book" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <button type="button" class="train-chip" id="train-play-reps" data-testid="train-play-reps" aria-haspopup="listbox" hidden><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <div class="seg train-color" id="train-play-color" role="group" aria-label="Your color">
+                      <button type="button" class="seg-btn is-active" data-color="white" data-testid="play-color-white">White</button>
+                      <button type="button" class="seg-btn" data-color="black" data-testid="play-color-black">Black</button>
                     </div>
                   </div>
-                  <p class="note warn" id="train-play-book-hint" hidden></p>
-                  <p class="train-play-chip" id="train-play-chip" hidden data-testid="train-play-chip"></p>
-                  <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail">
-                    <span class="trail-empty">No moves yet</span>
+                  <div data-unlock-place="train-practice" hidden></div>
+                  <div class="train-row-actions">
+                    <button class="btn train-row-go" id="start-play" data-testid="start-play" type="button">Play</button>
+                    <button class="btn ghost" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
                   </div>
-                  <div class="train-start-row">
-                    <button class="btn primary" id="start-play" data-testid="start-play" type="button">Start</button>
-                    <button class="btn" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
-                  </div>
-                  <div class="train-start-row">
-                    <button class="btn sm" id="play-takeback" data-testid="play-takeback" type="button" disabled>Takeback</button>
-                    <button class="btn sm" id="play-resign" data-testid="play-resign" type="button" disabled>Resign</button>
-                    <button class="btn sm" id="play-analyze" data-testid="play-analyze" type="button" disabled>Analyze</button>
-                    <button class="btn sm" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
-                  </div>
-                </div>
+                  <p class="train-row-error" id="train-play-error" role="alert" hidden></p>
+                </section>
               </section>
 
               <section class="tcard train-progress-panel" id="train-progress-panel" hidden>
                 <p class="train-hint-line" id="train-hint-line" hidden></p>
-                <div class="prog-head">
-                  <b id="train-line-label">Card 1 / 1</b>
-                  <span class="train-mode-name" id="train-mode-name"></span>
-                  <span class="kchip" id="train-card-kind" hidden></span>
-                  <span class="spacer"></span>
-                  <span class="train-accuracy" id="train-accuracy" title="Share of review moves you got right on the first try, without a hint">–</span>
-                </div>
                 <button class="train-line-path" id="train-line-path" type="button" aria-expanded="false" hidden></button>
-                <div class="card-dots" id="train-card-dots" title="Moves in this card"></div>
-                <div class="prog" id="train-progress" role="progressbar" aria-label="Cards done this session" title="Cards done this session"><i id="train-progress-fill"></i></div>
-                <div class="qstrip" id="train-queue" hidden>
-                  <div class="qbar" id="train-queue-bar" role="img" aria-label="Queue composition"></div>
-                  <div class="chips" id="train-queue-legend"></div>
-                </div>
-                <div class="stats">
-                  <div class="stat train-stat" title="First-try correct answers in a row">
-                    <b id="train-stat-streak">0</b>
-                    <span>In a row</span>
-                  </div>
-                  <div class="stat" title="Correct on the first try, without a hint">
-                    <b class="good" id="train-stat-correct">0</b>
-                    <span>Correct</span>
-                  </div>
-                  <div class="stat" title="Wrong on the first try or answered after a hint">
-                    <b class="bad" id="train-stat-mistakes">0</b>
-                    <span>Missed</span>
-                  </div>
-                </div>
-                <div class="trail">
-                  <span class="faint">This session</span>
-                  <div class="pips" id="train-line-trail">
-                    <span class="trail-empty">No moves yet</span>
-                  </div>
+                <div class="train-play-trail" id="train-play-trail" data-testid="train-play-trail" hidden></div>
+                <div class="train-session-meta">
+                  <span class="kchip" id="train-card-kind" hidden></span>
+                  <span class="train-stats-line" id="train-stats-line"></span>
                 </div>
                 <div class="upnext list-enter" id="train-upnext" hidden></div>
-                <div class="row">
-                  <button class="btn sm" id="train-fresh" data-testid="train-fresh" type="button" disabled>New session</button>
-                </div>
               </section>
 
               <section class="tcard train-summary" id="train-summary" hidden data-testid="train-summary">
-                <h3 id="train-summary-title">Session results</h3>
+                <h3 class="train-summary-title" id="train-summary-title"></h3>
                 <div class="sum-cells" id="train-summary-stats"></div>
                 <div class="delta" id="train-summary-delta"></div>
-                <p class="muted" id="train-summary-foot"></p>
-                <button class="btn primary block" id="train-summary-new" type="button">New session</button>
-                <button class="btn sm block" type="button" data-train-history aria-haspopup="dialog" title="Keeps up to 100 recent runs within 96 KiB in this browser"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/></svg><span class="bl">History</span></button>
+                <p class="train-summary-foot" id="train-summary-foot"></p>
+                <div class="train-summary-actions">
+                  <button class="btn primary" id="train-summary-new" data-testid="train-again" type="button">Again</button>
+                  <button class="btn" id="play-analyze" data-testid="play-analyze" type="button" hidden>Analyze game</button>
+                  <button class="btn ghost" id="train-summary-home" type="button">Back to Train</button>
+                </div>
+                <div class="train-recent" id="train-recent" hidden></div>
               </section>
-
             </div>
           </aside>
         </div>

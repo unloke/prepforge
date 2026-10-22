@@ -203,8 +203,8 @@ export function maybeWelcome({ switchView, setLichessUsername, lichessAccounts, 
       else setPref("maiaRating", rating);
     },
     go(goal) {
+      // Practice is a row on Train Home.
       switchView(goal === "practice" ? "train" : goal);
-      if (goal === "practice") requestAnimationFrame(() => document.querySelector('#train-modes [data-mode="play"]')?.click());
     },
   });
 }

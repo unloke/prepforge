@@ -435,11 +435,7 @@ export function createDashboardView({
       card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
       return;
     }
-    const trainNow = () =>
-      goToSmartTraining(
-        due > 0 ? "Starting due review…" : learnNew ? "Starting new moves…" : "Starting training…",
-      );
-    document.getElementById("dashboard-train-now").addEventListener("click", trainNow);
+    document.getElementById("dashboard-train-now").addEventListener("click", () => goToSmartTraining());
   }
 
   // ---- Library list rendering ----------------------------------------------
@@ -824,7 +820,7 @@ export function createDashboardView({
           if (ok) setStatus("Ready");
         });
       } else if (action === "analyze" && goToView) goToView("analyze");
-      else if (action === "train" && goToSmartTraining) goToSmartTraining("Starting training…");
+      else if (action === "train" && goToSmartTraining) goToSmartTraining();
       else if (action === "lichess") {
         // Linking lives in Settings → Account (Chess accounts); the app opens Settings via
         // its tab and jumps to the section once the view has rendered.

@@ -1,10 +1,11 @@
 import { html } from '../html.js';
 import { activateModal } from '../core/modals.js';
-import { HISTORY_LIMITS, readTrainingHistory } from '../train-history.js';
+import { HISTORY_LIMITS, readTrainingHistory, runSummary } from '../train-history.js';
 import './train-history.css';
 
 const DATE = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const modeLabel = run => (run.mode === 'blitz' ? 'Blitz' : 'Smart queue');
+const MODES = { smart: 'Due queue', all_lines: 'Rehearse', play: 'Practice' };
+const modeLabel = run => `${MODES[run.mode]}${run.blitz ? ' · Blitz' : ''}`;
 
 // First answers only: retried and demonstrated moves never entered `correct`
 // or `mistakes`, and skipped cards were never answered at all.
@@ -14,13 +15,13 @@ function score(run) {
     pct: attempts ? Math.round((run.correct / attempts) * 100) : null };
 }
 
-const pctText = scored => (scored.pct === null ? '—' : `${scored.pct}%`);
+const pctText = (run, scored) => (run.mode === 'play' ? runSummary(run) : scored.pct === null ? '—' : `${scored.pct}%`);
 // A run of new moves only has no first answers; it still taught something.
-const scoreLabel = (run, scored) =>
-  scored.label ? `${scored.label} first try` : run.learned ? `${run.learned} learned` : 'no first answers';
+const scoreLabel = (run, scored) => run.mode === 'play' ? `${run.cards} moves`
+  : scored.label ? `${scored.label} first try` : run.learned ? `${run.learned} learned` : 'no first answers';
 
 function runName(run) {
-  return run.repertoires.length ? run.repertoires.join(' · ') : 'Smart queue';
+  return run.repertoires.length ? run.repertoires.join(' · ') : MODES[run.mode];
 }
 
 function lead(run) {
@@ -31,7 +32,7 @@ function lead(run) {
     <div class="th-lead-head"><span class="th-lead-label">Latest</span><span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
     <h3 class="th-name" title="${runName(run)}">${runName(run)}</h3>
     <div class="th-figures">
-      <div class="th-figure is-lead"><b data-history-first-try>${pctText(scored)}</b><span>${scoreLabel(run, scored)}</span></div>
+      <div class="th-figure is-lead"><b data-history-first-try>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>
       ${figure(run.cards, 'cards', 'data-history-cards')}
       ${figure(run.mistakes, 'missed', 'data-history-missed', run.mistakes ? 'is-missed' : '')}
       ${figure(run.skipped, 'skipped', 'data-history-skipped')}
@@ -44,14 +45,14 @@ const row = run => {
   return html`<li class="th-run" title="${run.cards} cards · ${scoreLabel(run, scored)} · ${run.mistakes} missed · ${run.skipped} skipped">
     <div class="th-run-main"><b class="th-name" title="${runName(run)}">${runName(run)}</b>
       <span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
-    <div class="th-run-score"><b>${pctText(scored)}</b><span>${scoreLabel(run, scored)}</span></div>
+    <div class="th-run-score"><b>${pctText(run, scored)}</b><span>${scoreLabel(run, scored)}</span></div>
   </li>`;
 };
 
 function body(runs) {
   if (!runs.length) {
     return html`<div class="th-empty"><b>No runs saved yet</b>
-      <p>Finish a Smart queue or Blitz session and it lands here.</p></div>`;
+      <p>Finish a Due queue, Rehearse or Practice run and it lands here.</p></div>`;
   }
   const [latest, ...earlier] = runs;
   return html`${lead(latest)}${earlier.length ? html`<h3 class="th-list-title">Earlier runs</h3>
@@ -83,7 +84,7 @@ export function openTrainingHistory(ownerId) {
   overlay.innerHTML = html`<section class="modal training-history" role="dialog" aria-modal="true" aria-labelledby="training-history-title">
     <header class="th-head"><div class="th-titles">
         <h2 class="modal-title" id="training-history-title">Training history</h2>
-        <span class="th-scope">Smart queue and Blitz · this browser</span></div>
+        </div>
       <button class="btn sm" type="button" data-close>Close</button></header>
     <div class="th-body">${content}</div>${foot}</section>`;
   document.body.appendChild(overlay);

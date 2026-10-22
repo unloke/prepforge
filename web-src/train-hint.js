@@ -57,3 +57,15 @@ export function promptCueSan(smart, prompt) {
   // The cue was played by the other side: number it from the prompt's position.
   return parts[1] === "w" ? `${num - 1}...${san}` : `${num}.${san}`;
 }
+
+// The one wrong-move rule every drill shares: a first miss names the move and
+// gives a free retry (no answer), a second miss reveals the answer, which is
+// then played to move on. "Try again" lives in the sub line so the title never
+// truncates on a phone.
+export function wrongMoveBanner({ attempt, playedSan = "", expectedSan = "", tip = "", timedOut = false }) {
+  if (attempt >= 2) {
+    return { state: "reveal", title: `It's ${expectedSan}`, sub: `${tip ? `${tip} ` : ""}Play it to continue.` };
+  }
+  const title = timedOut ? "Time's up" : playedSan ? `Not ${playedSan}` : "Not your prep";
+  return { state: "wrong", title, sub: tip ? `Try again · ${tip}` : "Try again" };
+}

@@ -1512,8 +1512,7 @@ h2 {
 .team-role-badge,
 .lib-chip,
 .kchip,
-.kind-badge,
-.train-play-chip {
+.kind-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1527,7 +1526,7 @@ h2 {
   white-space: nowrap;
 }
 /* A pill with no label (a share whose role the server did not send) draws nothing. */
-:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge, .train-play-chip):empty { display: none; }
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge):empty { display: none; }
 
 .link {
   border: 0;
@@ -2615,98 +2614,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 
 
-.train-repertoire-menu {
-  position: relative;
-  min-width: 0;
-}
-.train-repertoire-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-  font-size: var(--fs);
-  font-weight: 650;
-  list-style: none;
-  user-select: none;
-}
-.train-repertoire-summary::-webkit-details-marker { display: none; }
-.train-repertoire-summary:hover { border-color: var(--accent); }
-.train-repertoire-summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-}
-.train-repertoire-chevron {
-  flex: none;
-  color: var(--muted);
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-.train-repertoire-menu[open] .train-repertoire-chevron { transform: rotate(180deg); }
-.train-repertoire-popover {
-  position: absolute;
-  z-index: var(--z-popover);
-  top: calc(100% + 5px);
-  left: 0;
-  right: 0;
-  display: grid;
-  gap: 2px;
-  max-height: min(280px, 45vh);
-  overflow-y: auto;
-  padding: 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  background: var(--panel);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--text) 16%, transparent);
-}
-.train-repertoire-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 5px 6px;
-  border-radius: 6px;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.25;
-}
-.train-repertoire-option:hover { background: var(--accent-soft); }
-.train-repertoire-option input {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  accent-color: var(--accent-strong);
-}
-.train-repertoire-option .rep-option-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs);
-}
-.train-repertoire-option .rep-option-color {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: var(--fs);
-  white-space: nowrap;
-}
-.train-repertoire-select-all {
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--line-soft);
-  font-size: var(--fs);
-  font-weight: 700;
-}
-.train-repertoire-empty {
-  margin: 6px 4px 4px;
-  font-size: var(--fs);
-  line-height: 1.35;
-}
 /* Confetti */
 .confetti-layer {
   position: fixed;
@@ -3374,24 +3281,17 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow: auto;
   overscroll-behavior: contain;
 }
-#view-train .panel-head { padding: 8px 12px; }
-/* The mode tabs are the panel's first row, not a separate band: the banner's
-   tone already steps the surface below them. */
-#view-train .train-sidebar > .panel-head { border-bottom: 0; }
 /* The panel's cards are not boxes: the content sits on the panel and the
    fills inside it (chips, the up-next field, the health rows) carry the
    structure. */
 #view-train .tcard { border: 0; }
 #view-train .tcard > h3 { border-bottom: 0; font-size: var(--fs); }
-/* The counters are pills on a soft fill, like the app's other chips. */
-#view-train .stat { border: 0; }
 /* Nothing in this panel that is meant to be read sits under the body size. */
 #view-train .tcard p,
 #view-train .note { font-size: var(--fs); }
 #view-train .btn.sm { font-size: var(--fs); }
 #view-train .seg { display: flex; width: 100%; }
 #view-train .seg-btn { flex: 1; min-width: 0; font-size: var(--fs); transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
-/* The mode tabs answer a press like every other control on the page. */
 #view-train .seg-btn:active:not(:disabled) { transform: scale(0.97); }
 
 .blitz-bar {
@@ -3520,10 +3420,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--panel);
 }
 .tcard p { margin: 0; font-size: var(--fs-s); }
-.tcard .field,
-.train-play-setup { display: flex; flex-direction: column; gap: 10px; }
-.tcard .field { gap: 4px; }
-.train-picker-label { color: var(--label); font-size: var(--fs); font-weight: 550; }
 /* The card's own head, in the Games ledger-head terms: title, then a hairline
    separating it from the controls below. */
 .tcard > h3 {
@@ -3534,21 +3430,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 13.5px;
   font-weight: 700;
 }
-.train-setup select {
-  width: 100%;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: inherit;
-  font: inherit;
-}
-.train-blitz-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
-.train-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.train-start-row .btn { flex: 1; min-width: 0; }
-/* The setup's primary action: one size taller than the Games toolbar buttons,
-   because it is the only thing the whole panel is for. */
 .btn.lg {
   height: 36px;
   min-height: 36px;
@@ -3562,32 +3443,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
   font-size: var(--fs-s);
 }
-.train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
-.train-play-chip {
-  align-self: flex-start;
-  margin: 0;
-  background: var(--warn-soft);
-  color: var(--warn-text);
-  font-size: var(--fs);
-}
-
-/* Progress */
-.prog-head { display: flex; align-items: center; gap: 8px; }
-.prog-head .spacer { flex: 1; }
-.train-mode-name { color: var(--muted); font-size: var(--fs); }
-/* Choosing a mode is setup: once a session runs, or its result shows, the tabs
-   leave with the setup card and Modes leads back to them. */
-#view-train .train-sidebar:not([data-session-state="setup"]) #train-modes,
-#view-train .train-sidebar[data-session-state="setup"] #train-back { display: none; }
-#view-train .train-back { gap: 4px; padding-left: 4px; }
-#view-train .train-back .bi { display: block; }
-/* Setup-only entries leave too, and a live Practice game is still `setup` for
-   the panel (the tabs stay up), so that one is read from the game itself: Lucky
-   is disabled exactly while a game is active, which is when History must be
-   gone. A finished game re-enables it and the entry returns. Every other state
-   already hides these entries with the setup card. */
-#view-train .train-sidebar[data-session-state="setup"] #train-play-setup:has(#feeling-lucky:disabled) [data-train-history] { display: none; }
-.train-accuracy { color: var(--good-text); font-weight: 700; }
 /* The line to the position, its end in view: rtl puts the ellipsis first. */
 .train-line-path {
   display: block;
@@ -3609,78 +3464,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-line-path:hover { color: var(--text); }
 .train-line-path:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .train-line-path[aria-expanded="true"] { direction: ltr; white-space: normal; }
-.card-dots { display: flex; align-items: center; gap: 4px; min-height: 5px; font-size: var(--fs); }
-.card-dots i { width: 18px; height: 5px; border-radius: 3px; background: var(--surface-3); }
-.card-dots i.done { background: var(--good); }
-.card-dots i.cur { background: var(--accent); }
-.card-dots span { margin-left: 6px; }
 .prog { height: 4px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
 .prog i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--dur-slow) var(--ease-out); }
-.qstrip { display: flex; flex-direction: column; gap: 6px; }
-.qbar { display: flex; height: 8px; gap: 1px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
-.qbar i { display: block; min-width: 4px; }
-.qbar i.k-weak, .tsum-row i.k-weak { background: var(--k-weak); }
-.qbar i.k-due, .tsum-row i.k-due { background: var(--k-due); }
-.qbar i.k-new, .tsum-row i.k-new { background: var(--k-new); }
-.qbar i.k-polish { background: var(--k-polish); }
-.tsum-row i.k-mastered { background: var(--k-mastered); }
-.tsum-row i.k-learning { background: var(--k-learning); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .kchip.k-learning { color: var(--accent-text); background: color-mix(in srgb, var(--k-learning) 13%, transparent); }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
-
-/* The setup briefing: the queue's size is the one number the screen is about,
-   then its make-up, then the repertoires it draws from — three shared left
-   edges, gaps between the groups wider than inside them. */
-.train-brief { display: flex; flex-direction: column; gap: 12px; }
-.train-brief-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-/* The queue size is a value the player reads, not a page headline: at display
-   size it made the coach banner above it look like a kicker. */
-.train-brief-count { font-size: 26px; font-weight: 650; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.train-brief-label { color: var(--muted); font-size: var(--fs); font-weight: 550; }
-.train-brief-reps { display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: var(--fs); }
-/* Name, then the same three columns on every row: the meters line up with each
-   other and with the numbers, so two repertoires read as one small table
-   instead of two rows placed by their own text lengths. */
-.train-source { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px 176px; align-items: center; gap: 10px; }
-.train-source-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
-/* Mastery is the one progress signal a player has before starting: a small
-   track on the recess, read against the number beside it. */
-.train-source-meter { display: block; width: 72px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.train-source-meter i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
-.train-source-count { color: var(--label); white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* Nothing to train: the dead Start is replaced by the fix, not by a caption. */
-.train-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-
-/* Compact one-line counters (UX 2026-09-30 P2-10): they must not outshout the board cue. */
-.stats { display: flex; flex-wrap: wrap; gap: 6px; }
-.stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  /* Recessed, not outlined-and-white: the same quiet fill the Games summary
-     chips and ledger rows use inside their card. */
-  background: var(--panel-soft);
-  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
-}
-.stat b { font-size: var(--fs); line-height: 1.2; }
-.stat b.good { color: var(--good-text); }
-.stat b.bad { color: var(--danger); }
-.stat span { color: var(--label); font-size: var(--fs); }
-.stat.pop { animation: streakPop var(--dur) var(--ease-emphasis); }
-.stat.milestone { border-color: var(--good); background: var(--good-soft); }
-.stat.milestone b { color: var(--good-text); }
-.stat.at-risk { border-color: var(--danger); background: var(--danger-soft); }
-.stat.at-risk span::after { content: " · at risk"; color: var(--danger); }
-.trail { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs); }
-.pips { display: flex; flex-wrap: wrap; gap: 3px; min-height: 9px; }
-.pips i { width: 9px; height: 9px; border-radius: 2px; }
-.pips i.ok { background: var(--good); }
-.pips i.no { background: var(--danger); }
-.trail-empty { color: var(--label); font-size: var(--fs); }
 
 .upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
 .un-row {
@@ -3703,63 +3492,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    panel's body size rather than the app's smallest step. */
 #view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
 
-/* The result card arrives when the session ends: one rise, once. */
-#train-summary.is-enter { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
-/* The session card arrives the same way when Start opens it, and only then:
-   the panel stays mounted as the queue advances, so cards never re-rise. */
-#train-progress-panel.is-enter { animation: trainCardEnter var(--dur) var(--ease-out) both; }
-@keyframes trainCardEnter {
-  from { opacity: 0; transform: translateY(10px); }
-}
-
-/* Session summary. A .tcard like the rest; the stat cells are its fills. */
-/* The stat cells fill the row they are in: a session with a skip AND a day
-   streak has five of them, and a fixed four-column grid left three empty
-   columns under the last one. */
-.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
-.sum-cells div { display: flex; flex-direction: column; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
-.sum-cells b { font-size: 18px; }
-.sum-cells span { color: var(--label); font-size: var(--fs); }
-.delta { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
-.tsum-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 40px;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: var(--fs);
-}
-.tsum-row i { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; }
-.tsum-row .num { text-align: right; }
-.tsum-row .up { color: var(--good-text); font-weight: 650; }
-.tsum-row .down { color: var(--danger); font-weight: 650; }
 .btn.block { width: 100%; }
-
 .faint { color: var(--label); }
-
-@keyframes streakPop {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.18); }
-  100% { transform: scale(1); }
-}
-
-#view-train .train-sidebar[data-session-state="active"] .train-setup,
-#view-train .train-sidebar[data-session-state="summary"] .train-setup,
-#view-train .train-sidebar[data-session-state="summary"] #train-progress-panel { display: none; }
-/* The result card takes the room of the panel it fills instead of stacking
-   under the session card. */
-#view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 
 @media (max-width: 860px) and (orientation: portrait), (max-width: 860px) and (min-height: 521px), (max-width: 1100px) and (aspect-ratio < 5/6) {
   #view-train .train-sidebar { max-height: none; overflow: visible; }
   #view-train .panel-scroll { overflow: visible; }
-}
-@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  #view-train .seg-btn { min-height: 44px; }
-  #view-train .panel-head { padding: 8px 12px; border-top: 1px solid var(--line); }
-  /* Prototype: on phones the coach prompt leads the panel, above the modes. */
-  #view-train .train-coach { order: -1; }
-  .train-start-row .btn { flex: 1 1 140px; }
-  .sum-cells { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ===========================================================================
@@ -5122,12 +4860,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     height: 44px;
   }
 
-  /* Train Start + board-bar icons: 44px touch targets (desktop stays 32px / 28px). */
-  #view-train #start-train {
-    min-height: 44px;
-    height: 44px;
-  }
-
+  /* Train board-bar icons: 44px touch targets (desktop stays 28px). */
   .board-bar {
     height: 52px;
   }
@@ -6032,9 +5765,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   box-sizing: border-box;
   height: 84px;
 }
-/* Progress card rows keep their size as the session advances: the pip row is
-   as tall as its "No moves yet" placeholder, and Up next reserves its three
-   rows, so the buttons below never creep upward card by card. */
+/* Up next reserves its three rows, so the session card never changes height
+   card by card. */
 /* A hint is asked for while looking at the board, but the hint itself is in the
    coach strip above it and the stats card renders below it; on a phone that row
    sits past the fold the moment the board is tapped. So hold the hint line at the
@@ -6053,9 +5785,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-weight: 600;
   line-height: 1.35;
 }
-#train-progress-panel .pips { min-height: 1.4em; align-content: center; }
-/* The setup card's controls stay out of the layout while it is hidden. */
-#view-train .train-play-setup[hidden] { display: none; }
 #train-progress-panel .upnext:not([hidden]) { min-height: 116px; box-sizing: border-box; }
 
 @media (max-width: 1279px) {

@@ -1,4 +1,5 @@
-// Completed Smart queue / Blitz runs, kept in this browser and scoped to the
+// Completed Train runs of every mode (Due queue, Rehearse, Practice; Blitz is a
+// flag on a Due run), kept in this browser and scoped to the
 // signed-in owner. One JSON document per account, newest first by finish time,
 // with two hard bounds: 100 runs and 96 KiB of the serialized document
 // (wrapper and separators included). A run that does not fit is not saved and
@@ -28,9 +29,11 @@ function browserStorage() {
   try { return globalThis.localStorage || null; } catch { return null; }
 }
 
+export const RUN_MODES = ['smart', 'all_lines', 'play'];
+
 function isRun(run) {
   return !!run && typeof run.id === 'string' && run.id.length > 0 &&
-    (run.mode === 'smart' || run.mode === 'blitz') &&
+    RUN_MODES.includes(run.mode) && typeof run.blitz === 'boolean' &&
     Array.isArray(run.repertoires) && run.repertoires.every(name => typeof name === 'string') &&
     typeof run.finishedAt === 'string' && Number.isFinite(Date.parse(run.finishedAt)) &&
     [run.cards, run.correct, run.mistakes, run.skipped].every(isCount);
@@ -68,30 +71,52 @@ function readRuns(ownerId, storage) {
   return doc?.v === 1 && Array.isArray(doc.runs) ? bounded(doc.runs.filter(isRun)) : [];
 }
 
-export function saveSmartRun(ownerId, smart, stats, storage = browserStorage(), now = new Date()) {
-  if (!ownerId || !storage || !smart?.sessionId || !smart.generation || !smart.queue?.length ||
-      !Number.isInteger(smart.cardIndex) || smart.cardIndex < smart.queue.length ||
-      !Number.isInteger(smart.cardsDone) || smart.cardsDone < 0) return false;
-  if (!['correct', 'mistakes', 'skipped'].every(key => isCount(stats?.[key]))) return false;
-  const id = `${smart.sessionId}:${smart.generation}`;
-  const repertoires = [...new Set(smart.queue.map(card => card.repertoire_name).filter(Boolean))];
-  if (!repertoires.length && smart.repertoireName) repertoires.push(smart.repertoireName);
-  const run = {
-    id, mode: smart.blitz ? 'blitz' : 'smart', repertoires,
-    startedAt: smart.generation, finishedAt: now.toISOString(),
-    cards: smart.cardsDone, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped, learned: stats.learned || 0,
-  };
+// One finished run of any mode, recorded once per session generation.
+export function saveRun(ownerId, run, storage = browserStorage()) {
+  if (!ownerId || !storage || !isRun(run)) return false;
   try {
     const previous = readRuns(ownerId, storage);
-    // The same generation was already recorded: keep that record's values.
-    if (previous.some(existing => existing.id === id)) return true;
+    // The same session generation was already recorded: keep that record.
+    if (previous.some(existing => existing.id === run.id)) return true;
     const kept = bounded([run, ...previous]);
     // Neither bound is negotiable and the stored document is the user's
     // history: a run that does not fit is reported, not forced in over it.
-    if (!kept.some(saved => saved.id === id)) return false;
+    if (!kept.some(saved => saved.id === run.id)) return false;
     storage.setItem(keyFor(ownerId), serialize(kept));
     return true;
   } catch { return false; }
+}
+
+export function saveSmartRun(ownerId, smart, stats, storage = browserStorage(), now = new Date()) {
+  if (!smart?.sessionId || !smart.generation || !smart.queue?.length ||
+      !Number.isInteger(smart.cardIndex) || smart.cardIndex < smart.queue.length ||
+      !Number.isInteger(smart.cardsDone) || smart.cardsDone < 0) return false;
+  if (!['correct', 'mistakes', 'skipped'].every(key => isCount(stats?.[key]))) return false;
+  const repertoires = [...new Set(smart.queue.map(card => card.repertoire_name).filter(Boolean))];
+  if (!repertoires.length && smart.repertoireName) repertoires.push(smart.repertoireName);
+  return saveRun(ownerId, {
+    id: `${smart.sessionId}:${smart.generation}`, mode: 'smart', blitz: !!smart.blitz, repertoires,
+    startedAt: smart.generation, finishedAt: now.toISOString(),
+    // Cards served: a skipped card was served too, so a session with skips
+    // never reads as "0 cards".
+    cards: smart.cardsDone + stats.skipped, correct: stats.correct, mistakes: stats.mistakes,
+    skipped: stats.skipped, learned: stats.learned || 0,
+  }, storage);
+}
+
+// The first-try score of a drill, or a game's result.
+export function runSummary(run) {
+  if (run.mode === 'play') return run.result || 'Game';
+  const attempts = run.correct + run.mistakes;
+  if (attempts) return `${Math.round((run.correct / attempts) * 100)}% first try`;
+  return run.learned ? `${run.learned} learned` : `${run.cards} cards`;
+}
+
+export function recentRuns(ownerId, count, storage = browserStorage()) {
+  if (!ownerId || !storage) return [];
+  try {
+    return readRuns(ownerId, storage).slice(0, count).map(run => ({ ...run, summary: runSummary(run) }));
+  } catch { return []; }
 }
 
 export function readTrainingHistory(ownerId, storage = browserStorage()) {

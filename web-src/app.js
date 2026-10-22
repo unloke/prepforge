@@ -21,7 +21,7 @@ import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
 import { buildRole } from "./share-roles.js";
 import { createTrainEntry, ensureTrainView, preloadTrainView, renderBuildSync,
-  setBuildSync, setTrainSyncState, renderTrainStats, renderSmartSummaryStats } from "./train-entry.js";
+  setBuildSync, setTrainSyncState, renderTrainStats } from "./train-entry.js";
 import { commitPendingUndos, showUndoToast } from "./undo.js";
 import { analysisGameName } from "./analyze-name.js";
 import { setBoardCaption } from "./board-caption.js";
@@ -336,9 +336,6 @@ async function restoreWorkspaceLocation() {
     // and record it in the URL.
     switchView(appState.currentView);
     syncWorkspaceUrl();
-    if (appState.currentView === "train" && appState.signedIn) {
-      await startTraining(appState.trainMode, { fresh: false });
-    }
     return;
   }
   const loc = parseWorkspaceLocation(window.location.href);
@@ -378,11 +375,10 @@ async function restoreWorkspaceLocation() {
   }
   switchView(loc.view, { fromUrl: true });
   if (loc.view === "analyze") await restoreAnalyzeSession(loc.ply, loc.node);
-  if (loc.view === "train" && appState.signedIn) {
-    // The URL's repertoire is the queue's. A Train link that names one (the
-    // one the Library/Repertoire Train action leaves behind) drills that
-    // repertoire; no ?rep= means the mixed queue over all active ones.
-    await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
+  // #/train is Train Home; a link that names a repertoire opens its Due queue,
+  // with that scope on the session's chip.
+  if (loc.view === "train" && appState.signedIn && loc.repertoireId) {
+    await openTrain({ mode: "smart", repertoireId: loc.repertoireId });
   }
 }
 
@@ -432,8 +428,8 @@ async function handleWorkspacePopstate() {
     if (loc.node && loc.node !== current) await restoreAnalysisNodePath(loc.node);
     else if (!loc.node && loc.ply && loc.ply !== appState.analysisPly) await showAnalysisPly(loc.ply);
   }
-  if (loc.view === "train" && appState.signedIn && (loc.repertoireId || null) !== trainQueueRepertoireId(appState)) {
-    await startTraining(appState.trainMode, { fresh: false, repertoireId: loc.repertoireId });
+  if (loc.view === "train" && appState.signedIn && loc.repertoireId && loc.repertoireId !== trainQueueRepertoireId(appState)) {
+    await openTrain({ mode: "smart", repertoireId: loc.repertoireId });
   }
 }
 
@@ -633,16 +629,9 @@ function switchView(name, { fromUrl = false } = {}) {
 }
 
 
-// Deep-link into the smart queue (it already front-loads due reviews).
-function goToSmartTraining(statusMessage) {
-  switchView("train");
-  appState.trainMode = "smart";
-  const btn = document.querySelector('#train-modes .train-mode[data-mode="smart"]');
-  if (btn) btn.click();
-  if (statusMessage) setStatus(statusMessage);
-  // Dashboard "Train now" used to dump the user on an idle Train tab. Start
-  // (or resume) the smart queue immediately so one click is a real session.
-  startTraining("smart", { fresh: false }).catch(() => {});
+// Library's Train: the Due queue over every repertoire, started at once.
+function goToSmartTraining() {
+  return openTrain({ mode: "smart" });
 }
 
 // `hint` is an on-demand tooltip on a number/text field's label; `onInput`
@@ -768,19 +757,17 @@ function syncCoverageReadOnlyState() {
   coverageEntry?.coverageView?.sync();
 }
 
-async function trainRepertoire(repertoireId, options = {}) {
-  // Training reads the server's repertoire tree — make sure any pending Build edits
-  // are persisted before we leave the builder.
+// "Train this repertoire", a forgotten move, coverage replies: that
+// repertoire's Due queue (or just the picked moves), its name on the chip.
+async function trainRepertoire(repertoireId, { targetNodeIds = [] } = {}) {
+  // Training reads the server's tree: pending Build edits land first.
   try {
     await hardFlushBuild();
   } catch (error) {
     setStatusError(error.message);
     return;
   }
-  appState.trainingRepertoireId = repertoireId;
-  switchView("train");
-  // A repertoire's own Train drills that repertoire, never the mixed queue.
-  await startTraining("smart", { ...options, repertoireId });
+  return openTrain({ mode: "smart", repertoireId, targets: targetNodeIds });
 }
 
 let repertoireMenuOpener = null;
@@ -795,7 +782,7 @@ function openRepertoireContextMenu(event, repertoireId, isActive) {
   repertoireMenuOpener?.setAttribute("aria-expanded", "true");
   const safeId = repertoireId;
   const items = [
-    ["train", "Start training"],
+    ["train", "Train this repertoire"],
     ["edit", "Open in Repertoire"],
     ["rename", "Rename..."],
     ["share", "Share..."],
@@ -1232,10 +1219,10 @@ function loadTrainSession() {
     accountService, api, appState, BLITZ_SECONDS, blitzEnabled, boardAfterMove, boardInfo,
     boards, currentOwnerId, effectiveMaiaRating, ensureExplorerClient, ensureTrainView,
     flushTrainSync, hardFlushBuild, lichessAccounts, loadPgnIntoAnalyze,
-    loadPhaseCoach, loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
-    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson, preloadTrainView,
+    loadTrainResume, localDateString, maiaPhaseCoach, markTrainPositionDirty,
+    notices, openAuthModal, optimisticBoardMove, PLAY_COLOR_KEY, playSound, postJson,
     queueTrainAttempt, refreshAuthStatus, refreshDashboardRepertoires, refreshRepertoireHead,
-    renderSmartSummaryStats, renderTrainStats, requireSignIn,
+    renderTrainStats, requireSignIn, confirmAbandonGame, showConfirmModal, setBlitzEnabled,
     setStatus, setStatusError, setTrainBanner, setTrainSyncState, sleep, START_FEN,
     switchView, syncViewHeads, syncWorkspaceUrl, updateTrainTurnBadge,
   })).catch((error) => {
@@ -1245,24 +1232,10 @@ function loadTrainSession() {
   return trainSessionLoading;
 }
 const viaTrainSession = (name) => (...args) => loadTrainSession().then((train) => train[name](...args));
-const clearBlitzTimer = viaTrainSession("clearBlitzTimer");
 const loadTrainRepertoireOptions = viaTrainSession("loadTrainRepertoireOptions");
 const onFeelingLucky = viaTrainSession("onFeelingLucky");
-const openPlayInAnalyze = viaTrainSession("openPlayInAnalyze");
-const persistPlayRepertoireIds = viaTrainSession("persistPlayRepertoireIds");
-const renderPlayRepertoirePicker = viaTrainSession("renderPlayRepertoirePicker");
-const resetTrainBoardIdle = viaTrainSession("resetTrainBoardIdle");
-const resignPlaySession = viaTrainSession("resignPlaySession");
-const selectedTrainRepertoireIds = viaTrainSession("selectedTrainRepertoireIds");
-const setBlitzBarVisible = viaTrainSession("setBlitzBarVisible");
-const setPlayPickerColor = viaTrainSession("setPlayPickerColor");
-const skipTrainingLine = viaTrainSession("skipTrainingLine");
-const startPlaySessionTracked = viaTrainSession("startPlaySessionTracked");
-const startTraining = viaTrainSession("startTraining");
+const openTrain = viaTrainSession("openTrain");
 const submitTrainingMove = viaTrainSession("submitTrainingMove");
-const syncTrainPickerVisibility = viaTrainSession("syncTrainPickerVisibility");
-const takebackPlaySession = viaTrainSession("takebackPlaySession");
-const trainHint = viaTrainSession("trainHint");
 
 // ----- Sync indicator (Google-Docs style chip by the Build board label) -------
 // The "N to train" counts come from the repertoire listing, which a finished
@@ -1652,160 +1625,14 @@ function bindEvents() {
   document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-input").click());
   document.getElementById("build-empty-open").addEventListener("click", () => switchView("dashboard"));
 
-  document.getElementById("start-train").addEventListener("click", () => startTraining());
-  document.querySelectorAll('[data-train-history]').forEach(button => button.addEventListener('click', async () => {
-    if (!requireSignIn('Sign in to view your training history', 'train-history')) return;
-    const owner = currentOwnerId();
-    try {
-      const { openTrainingHistory } = await import('./views/train-history.js');
-      if (currentOwnerId() === owner) openTrainingHistory(owner);
-    } catch { setStatusError('Could not open History. Reload and try again.'); }
-  }));
-  document.getElementById("train-empty-build").addEventListener("click", () => switchView("build"));
-  document.getElementById("train-summary-new").addEventListener("click", () => startTraining(undefined, { fresh: true }));
-  const startPlay = document.getElementById("start-play");
-  if (startPlay) {
-    startPlay.addEventListener("click", async () => {
-      // Mid-game the same button starts over: ask before throwing the game away.
-      if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Start a new game?", "New game"))) return;
-      startPlaySessionTracked();
-    });
-  }
-  const luckyBtn = document.getElementById("feeling-lucky");
-  if (luckyBtn) luckyBtn.addEventListener("click", () => onFeelingLucky());
-  const takebackBtn = document.getElementById("play-takeback");
-  if (takebackBtn) takebackBtn.addEventListener("click", () => takebackPlaySession());
-  const resignBtn = document.getElementById("play-resign");
-  if (resignBtn) resignBtn.addEventListener("click", () => resignPlaySession());
-  const playAnalyze = document.getElementById("play-analyze");
-  if (playAnalyze) playAnalyze.addEventListener("click", () => openPlayInAnalyze());
-  document.querySelectorAll("#train-play-color .train-mode").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (btn.disabled) return;
-      setPlayPickerColor(btn.dataset.color);
-    });
-  });
-  const playBookEl = document.getElementById("train-play-book");
-  if (playBookEl) {
-    playBookEl.addEventListener("change", () => {
-      syncTrainPickerVisibility();
-    });
-  }
-  const playRepertoireOptions = document.getElementById("train-repertoire-options");
-  if (playRepertoireOptions) {
-    playRepertoireOptions.addEventListener("change", async (event) => {
-      const input = event.target.closest('input[type="checkbox"][data-repertoire-id]');
-      if (!input) return;
-      const id = String(input.dataset.repertoireId || "");
-      if (!id) return;
-      const selected = new Set(await selectedTrainRepertoireIds());
-      if (input.checked) selected.add(id);
-      else selected.delete(id);
-      appState.playRepertoireIds = [...selected];
-      persistPlayRepertoireIds();
-      renderPlayRepertoirePicker();
-      syncTrainPickerVisibility();
-    });
-  }
-  const playRepertoireSelectAll = document.getElementById("train-repertoire-select-all");
-  if (playRepertoireSelectAll) {
-    playRepertoireSelectAll.addEventListener("change", () => {
-      const active = (appState.repertoireList || []).filter(
-        (r) => r.is_active !== false && !appState.pendingRepDeletes.has(String(r.id)),
-      );
-      appState.playRepertoireIds = playRepertoireSelectAll.checked
-        ? active.map((r) => String(r.id))
-        : [];
-      persistPlayRepertoireIds();
-      renderPlayRepertoirePicker(active);
-      syncTrainPickerVisibility();
-    });
-  }
-  const trainFresh = document.getElementById("train-fresh");
-  if (trainFresh) {
-    trainFresh.addEventListener("click", () => startTraining(appState.trainMode, { fresh: true }));
-  }
   createPalette({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
-    requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky, toggleTheme,
+    requireSignIn, openTrain, onFeelingLucky, toggleTheme,
     editBuildNote: (id) => buildSession?.handleNodeContextAction("add_comment", id) });
   bindCommandPalette();
   installMoveLinks({ selectBuildNode, selectAnalysisNode });
   window.addEventListener("popstate", () => {
     void handleWorkspacePopstate();
   });
-  document.getElementById("train-hint").addEventListener("click", trainHint);
-  const blitzToggle = document.getElementById("train-blitz-toggle");
-  if (blitzToggle) {
-    const paintBlitz = (on) => {
-      blitzToggle.classList.toggle("is-on", on);
-      blitzToggle.setAttribute("aria-checked", String(on));
-    };
-    paintBlitz(blitzEnabled());
-    blitzToggle.addEventListener("click", () => {
-      if (blitzToggle.disabled) return;
-      const next = !blitzToggle.classList.contains("is-on");
-      setBlitzEnabled(next);
-      paintBlitz(next);
-    });
-  }
-  // Picking a mode is setup: it ends whatever session the current mode has
-  // (each answer is already saved) and shows that mode's setup card.
-  const selectTrainMode = (mode) => {
-    document
-      .querySelectorAll("#train-modes .train-mode")
-      .forEach((b) => b.classList.toggle("is-active", b.dataset.mode === mode));
-    appState.trainMode = mode;
-    appState.playStartToken = (appState.playStartToken || 0) + 1;
-    appState.playStarting = null;
-    appState.play = null;
-    appState.trainBusy = false;
-    if (mode !== "smart") appState.smart = null;
-    if (mode !== "all_lines") appState.training = null;
-    clearBlitzTimer();
-    setBlitzBarVisible(false);
-    if (mode === "play") {
-      appState.smart = null;
-      appState.training = null;
-      setTrainBanner("idle", "Practice game", "");
-      void resetTrainBoardIdle("Practice game");
-    } else {
-      // "Press Start" is said once, by the Start button itself (UX P2-10).
-      setTrainBanner("idle", "Ready to train", "");
-      void resetTrainBoardIdle("");
-      const progress = document.getElementById("train-progress-panel");
-      if (progress) progress.hidden = true;
-      const summary = document.getElementById("train-summary");
-      if (summary) summary.hidden = true;
-    }
-    // The answer clock only exists in the smart queue; rehearsal is untimed.
-    document.getElementById("train-blitz-row").hidden = mode !== "smart";
-    syncTrainPickerVisibility();
-  };
-  document.querySelectorAll("#train-modes .train-mode").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      if (appState.trainMode === btn.dataset.mode && btn.classList.contains("is-active")) return;
-      // The tabs stay up through a Practice game, and leaving it loses it.
-      if (!(await confirmAbandonGame(appState.play, showConfirmModal, "Leave this game?", "Leave game"))) return;
-      selectTrainMode(btn.dataset.mode);
-    });
-  });
-  // A running queue or rehearsal hides the tabs; Modes leads back. Every answer
-  // is already saved and Start resumes the session, so nothing needs a confirm.
-  document.getElementById("train-back")?.addEventListener("click", () => {
-    appState.smart = null;
-    appState.training = null;
-    selectTrainMode(appState.trainMode || "smart");
-  });
-  const trainSelect = document.getElementById("train-repertoire-select");
-  if (trainSelect) {
-    trainSelect.addEventListener("change", () => {
-      const value = trainSelect.value;
-      appState.trainingRepertoireId = value && value !== "__demo__" ? value : null;
-      // The new pick may have nothing to rehearse: Start follows the pick.
-      syncTrainPickerVisibility();
-    });
-  }
-
   // Analyze takes a PGN file as well as a paste (Library imports from a file too).
   const pgnFileBtn = document.getElementById("pgn-file-btn");
   const pgnFileInput = document.getElementById("pgn-file-input");
@@ -1825,7 +1652,6 @@ function bindEvents() {
   document.getElementById("analysis-flip").addEventListener("click", () => boards.analysis.flip());
   document.getElementById("build-flip").addEventListener("click", () => boards.build.flip());
   document.getElementById("train-flip").addEventListener("click", () => boards.train.flip());
-  document.getElementById("train-skip").addEventListener("click", skipTrainingLine);
 
   // How the current focus arrived: a pointer press, or the keyboard (Tab).
   let focusFromPointer = false;
@@ -2208,7 +2034,7 @@ const PENDING_ACTION_HANDLERS = {
   },
   // #/train was restored and restoreWorkspaceLocation already started it.
   train: () => {
-    if (appState.currentView !== "train") goToSmartTraining("Starting training…");
+    if (appState.currentView !== "train") switchView("train");
   },
   "games-check": () => {
     setReplaySection("games", { syncUrl: false });
@@ -2315,7 +2141,7 @@ async function loadSignedInWorkspace() {
   }
   // The Play opponent book depends on a linked Lichess account.
   refreshLichessStatus()
-    .then(() => trainSessionLoading?.then((train) => train.syncTrainPickerVisibility()))
+    .then(() => trainSessionLoading?.then((train) => train.syncTrainControls()))
     .catch(() => {});
   syncReplayControls();
   syncAnalysisHistoryDrawer();

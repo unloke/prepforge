@@ -748,7 +748,7 @@
   .bb-views svg { fill: none; stroke: currentColor; stroke-width: 1.7; }
   .bb-views[aria-expanded="true"],
   .bb-sheet[aria-expanded="true"] { color: var(--accent-strong) !important; }
-  .study .board-bar #train-hint:disabled { opacity: 0.4; }
+  .study .board-bar :is(#train-hint, #play-takeback):disabled { opacity: 0.4; }
 
   /* Move arrows: one split control. The chevron is the button's own SVG; a
      drawn ::before chevron here doubled it once the glyphs became SVG. */
@@ -1097,22 +1097,35 @@
   #view-build .build-empty .btn.primary { flex: 1 1 100%; }
   #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; border: 0; background: var(--surface-3); }
 
-  /* ---- Train -------------------------------------------------------------
-     The prompt over the board, the session card under it. Modes lead while
-     setting up and drop to the bar's edge during a session. */
+  /* ---- Train: Home and Result are pages, a Session is the board ---------
+     Home and Result are read, not played on: no board, no thumb bar, the tab
+     bar stays. A Session pins the board on top, the coach line under it and
+     the board bar's action slot (Hint · Skip, or Takeback · Resign) at the
+     thumb. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
-  /* Setting up is reading a short form whose Start is docked under it, so the
-     board yields only the room for the mode row, one grouped field and the dock
-     (300px): at 360x740 the board stays full width and Start stays above the
-     tab bar. A Practice game in progress is play, so it takes the play reserve. */
-  #view-train:has(.train-sidebar[data-session-state="setup"]:not([data-play-live])) { --phone-reserve: 300px; }
-  /* The screen's name, at the size the shell uses for one: the coach icon is
-     a mark, not a picture, so it is small and in ink. */
+  #view-train:is([data-train-screen="home"], [data-train-screen="result"]) :is(.board-stack, .board-bar, .blitz-bar) { display: none; }
+  #view-train:is([data-train-screen="home"], [data-train-screen="result"]) .study {
+    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+  }
+  body:has(#view-train.is-active:is([data-train-screen="home"], [data-train-screen="result"])) .tabbar {
+    bottom: 0;
+    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+    visibility: visible;
+    transition: none;
+  }
+  #view-train .train-head { order: 0; padding: 8px var(--phone-gutter) 4px; }
+  #view-train .train-title { font-size: 22px; }
+  #view-train[data-train-screen="session"] .train-head { order: 2; padding-top: 6px; }
+  #view-train .train-head-prog { order: 2; margin: 0 var(--phone-gutter); }
   #view-train .train-coach {
-    order: 0;
+    order: 2;
     flex: none;
     height: auto;
-    min-height: 56px;
+    min-height: 52px;
     margin: 0;
     padding: 6px var(--phone-gutter);
     gap: 10px;
@@ -1120,58 +1133,14 @@
     background: var(--bg);
   }
   #view-train .train-coach-icon { width: 28px; height: 28px; flex: none; }
-  #view-train .train-coach-title { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
+  #view-train .train-coach-title { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
-  #view-train .train-sidebar > .panel-head {
-    order: 2;
-    flex: none;
-    min-height: 0;
-    margin: 0;
-    padding: 12px var(--phone-gutter) 0;
-    border: 0;
-    background: var(--bg);
-  }
-  /* The modes sit on the page ground, where the recessed track was the same
-     tone as the ground and disappeared: the track is the panel fill and the
-     chosen mode takes the recessed step. */
-  #view-train #train-modes { display: flex; width: 100%; gap: 2px; padding: 3px; border: 0; border-radius: 11px; background: var(--panel); }
-  #view-train #train-modes .seg-btn {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 44px;
-    height: 44px;
-    padding: 0 4px;
-    border: 0;
-    border-radius: 9px;
-    background: none;
-    color: var(--muted);
-    /* Three modes share 358px (328px at 360): at 14px the bold active label
-       cut to "Line rehear…" and "Practice ga…". 13px at one weight fits each
-       name on one line, and a screen narrower still wraps a name onto a second
-       line inside the 44px button rather than cutting it. The selected mode is
-       told by its fill and ink, so its weight does not change its width. */
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.15;
-    white-space: normal;
-    text-wrap: balance;
-  }
-  #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); }
-  #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
-  #view-train .prog-head { min-height: 44px; }
-  #view-train #train-back { min-height: 44px; height: 44px; }
-  #view-train #train-fresh { min-height: 44px; }
-  /* A phone row has no room for a name, a meter and a count side by side: the
-     name keeps the line, the meter and its number sit under it. */
-  /* One line per repertoire: the dot, the name (cut first) and its figures at
-     the right edge. The meter repeats the percentage the count already says,
-     and stacked under the name it wrapped the row into two misaligned lines. */
-  #view-train .train-source { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; min-height: 28px; }
-  #view-train .train-source-meter { display: none; }
-  #view-train .train-source-count { font-size: 13px; }
-  /* The up-next row cuts a long repertoire name with an ellipsis: the name was
-     a flex box, which clips its text without one. */
+  #view-train .train-back { min-height: 44px; height: 44px; }
+  #view-train .train-row { padding: 14px; border-radius: var(--phone-radius); }
+  #view-train .train-row-go { height: 44px; min-height: 44px; }
+  #view-train .train-chip { min-height: 40px; font-size: 15px; }
+  #view-train .seg-btn { min-height: 40px; height: 40px; font-size: 14px; }
   #view-train .un-rep { display: block; min-width: 0; }
   #view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
   #view-train .train-sidebar .tcard {
@@ -1183,132 +1152,21 @@
     box-shadow: none;
     font-size: 14px;
   }
-  /* The card's head is above the card's body, not the same size as it. */
-  #view-train .train-sidebar .tcard > h3 { font-size: 15px; }
-  /* A result card replaces the session card in its room between the tab row
-     and the banner: as tall as its content, scrolling inside only when that
-     room is shorter. With the live board gone, a result is read, not played on. */
-  #view-train .study:has([data-session-state="summary"]) .board-stack { display: none; }
-  #view-train .train-sidebar[data-session-state="summary"] > .panel-scroll {
-    order: 2;
-    flex: 1 1 0;
-    min-height: 0;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
-  #view-train .train-start-row .btn { flex: 1 1 140px; height: 46px; min-height: 46px; border-radius: 12px; }
-  /* Setting up is reading the card, not playing, so the board has to leave the
-     setup card on screen (see --phone-reserve above). */
-  #view-train:has(.train-sidebar[data-session-state="setup"]:not([data-play-live])) .board-stack {
-    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
-  }
-
-  /* Session card: progress, then one row each for stats and up next. */
-  #view-train .train-progress-panel { display: flex; flex-direction: column; gap: 10px; }
-  #view-train .train-progress-panel .prog-head { min-height: 0; gap: 8px; }
-  #view-train .train-progress-panel .qstrip { display: none; }
-  /* The stats stay one chip row; the per-move trail repeats them. */
-  #view-train .train-progress-panel .trail { display: none; }
-  #view-train .train-progress-panel .card-dots:empty { display: none; }
   #view-train .train-progress-panel .upnext { min-height: 0; }
-  #view-train .train-progress-panel > .row { justify-content: flex-start; }
+  #view-train .train-summary-actions .btn { height: 46px; min-height: 46px; }
   .sum-cells { grid-template-columns: repeat(2, 1fr); }
-
-  /* ---- Train: setup is a page, a session is the board ------------------
-     Choosing what to train (setup, and a result) is not play: the thumb bar's
-     hint, skip and flip have nothing to act on, so the tab bar stays up there
-     and the bar comes back with the first card. The panel's own action row
-     docks to the bottom of the scroller, right above whichever bar is showing,
-     so Start, New session and a game's Resign are always where the thumb is.
-     The setup fields are grouped rows on the ground, like Settings. */
-  #view-train:has(.train-sidebar:is([data-session-state="setup"]:not([data-play-live]), [data-session-state="summary"])) .board-bar { display: none; }
-  #view-train:has(.train-sidebar:is([data-session-state="setup"]:not([data-play-live]), [data-session-state="summary"])) .study {
-    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
+  .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
+  .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
+  /* The picker is a bottom sheet at the thumb. */
+  .train-picker {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 70dvh;
   }
-  body:has(#view-train.is-active .train-sidebar:is([data-session-state="setup"]:not([data-play-live]), [data-session-state="summary"])) .tabbar {
-    bottom: 0;
-    height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    border-radius: 0;
-    box-shadow: none;
-    transform: none;
-    visibility: visible;
-    transition: none;
-  }
-  /* A Practice game has no hint and no skip. */
-  #view-train:has(.train-sidebar[data-play-live]) .board-bar :is(#train-hint, #train-skip) { visibility: hidden; }
-
-  #view-train .train-sidebar[data-session-state="setup"] > .panel-scroll { gap: 8px; padding-bottom: 0; }
-  #view-train .train-sidebar[data-session-state="setup"] .train-setup,
-  #view-train .train-sidebar[data-session-state="setup"] #train-play-setup:not([hidden]) { display: contents; }
-  #view-train .train-sidebar[data-session-state="setup"] :is(.train-brief:not([hidden]), #train-srs-picker:not([hidden]), .train-blitz-row:not([hidden]), #train-play-setup > .field:not([hidden]), .train-play-trail) {
-    margin: 0;
-    padding: 12px 14px;
-    border-radius: var(--phone-radius);
-    background: var(--panel);
-  }
-  #view-train .train-sidebar[data-session-state="setup"] .train-blitz-row:not([hidden]) {
-    align-items: center;
-    min-height: 52px;
-    color: var(--text);
-    font-size: 16px;
-    font-weight: 500;
-  }
-  #view-train .train-sidebar[data-session-state="setup"] .train-picker-label { color: var(--muted); font-size: 13px; font-weight: 600; }
-  #view-train .train-sidebar[data-session-state="setup"] :is(.train-setup select, .train-repertoire-summary) {
-    height: 44px;
-    border: 0;
-    border-radius: 10px;
-    background-color: var(--surface-3);
-    font-size: 16px;
-  }
-  #view-train .train-sidebar[data-session-state="setup"] #train-play-color .seg-btn { min-height: 44px; height: 44px; }
-  #view-train .train-sidebar[data-session-state="setup"] .train-play-trail { min-height: 48px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 15px; }
-  #view-train .train-sidebar[data-session-state="setup"] .train-empty:not([hidden]) { padding: 4px 2px; }
-
-  /* The docked row: on the ground, full width, the primary action as the
-     wide pill and History as a quiet companion. */
-  #view-train .train-sidebar[data-session-state="setup"] .train-start-row:not([hidden]) {
-    position: sticky;
-    bottom: 0;
-    z-index: 3;
-    margin-top: auto;
-    padding: 10px 0 12px;
-    background: var(--bg);
-  }
-  #view-train .train-sidebar[data-session-state="setup"] .train-start-row { flex-wrap: nowrap; gap: 8px; }
-  #view-train .train-sidebar[data-session-state="setup"] .train-start-row .btn {
-    flex: 0 0 auto;
-    height: 50px;
-    min-height: 50px;
-    padding: 0 16px;
-    border-radius: 25px;
-    font-size: 16px;
-  }
-  #view-train .train-sidebar[data-session-state="setup"] .train-start-row .btn.primary { flex: 1 1 auto; }
-  #view-train .train-sidebar[data-session-state="setup"] .train-start-row .btn:not(.primary) { border: 0; background: var(--surface-3); color: var(--text); }
-  /* A Practice game set up but not started: the game's controls are all off,
-     so only History stays in that row, as a quiet line above the dock. A game
-     in progress turns it round: the setup fields leave, the moves and the
-     game's controls stay, and the controls take the dock. */
-  #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child { position: static; margin-top: 0; padding: 0; }
-  #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child > .btn:disabled { display: none; }
-  #view-train .train-sidebar[data-session-state="setup"]:not([data-play-live]) #train-play-setup > .train-start-row:last-child > [data-train-history] { flex: 1 1 auto; height: 44px; min-height: 44px; background: none; color: var(--accent-strong); }
-  #view-train .train-sidebar[data-play-live] #train-play-setup > :is(.field, .note, .train-play-chip:empty) { display: none; }
-  /* New game rides on top of the dock, centred, so it reads with the game's
-     controls instead of floating under the moves. */
-  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) { position: sticky; bottom: 66px; justify-content: center; margin-top: auto; padding: 0; }
-  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:last-child { margin-top: 0; padding-top: 4px; }
-  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) > .btn:disabled { display: none; }
-  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:nth-last-child(2) > .btn { flex: none; height: 44px; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--accent-strong); font-size: 15px; }
-  /* A game in progress is played, not set up: the modes leave with the form. */
-  #view-train .train-sidebar[data-play-live] #train-modes { display: none; }
-  #view-train .train-sidebar[data-play-live] > .panel-head { display: none; }
-  #view-train .train-sidebar[data-play-live] #train-play-setup > .train-start-row:last-child > .btn { flex: 1 1 0; padding: 0 8px; }
-  #view-train .train-sidebar[data-session-state="summary"] #train-summary-new { height: 50px; min-height: 50px; margin-top: 8px; padding: 0; border-radius: 25px; font-size: 16px; }
+  .train-pick { min-height: 48px; font-size: 16px; }
 
   /* ---- Menus: action sheets at the thumb, whatever opened them ------------- */
   .context-menu:not([hidden], .account-menu) {

@@ -1,6 +1,7 @@
 import { appState, boards } from "./core/state.js";
 import { syncChipVariant } from "./sync-chip.js";
 import { isBuildReadOnly } from "./build-entry.js";
+import "./train-shell.css";
 
 // Train's shell side: the lazy view chunk, its "saving" chip and the stats
 // helpers the session calls, plus the sync chip Build and Train share. The
