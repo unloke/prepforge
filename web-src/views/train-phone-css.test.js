@@ -36,12 +36,13 @@ it("every Train control is a thumb-sized target on a phone", () => {
     /#view-train #train-mode-name \{[^}]*min-height: 44px/,
     /#view-train #train-fresh \{ min-height: 44px/,
   ]) expect(css.match(selector), selector.source).not.toBeNull();
-  const hit = css.match(/#view-train #train-blitz-toggle::after \{[^}]*\}/);
-  expect(hit, "blitz switch tap area").not.toBeNull();
-  expect(hit[0]).toMatch(/inset: -\d+px -\d+px/);
-  // 20px tall + 11px each side reached 42, two short of a thumb. Measured by
-  // hit-testing the switch's centre at 390px.
-  expect(hit[0]).toMatch(/inset: -12px/);
+  // The switch is drawn 26px tall on a phone and its tap area adds 9px above
+  // and below: 44px, a thumb's height.
+  const size = css.match(/:is\(#train-blitz-toggle, #explorer-engine-toggle\) \{[^}]*height: (\d+)px/);
+  const hit = css.match(/:is\(#train-blitz-toggle, #explorer-engine-toggle\)::after \{[^}]*inset: -(\d+)px -\d+px/);
+  expect(size, "switch size").not.toBeNull();
+  expect(hit, "switch tap area").not.toBeNull();
+  expect(Number(size[1]) + 2 * Number(hit[1])).toBeGreaterThanOrEqual(44);
 });
 
 // Setting up is a card to read, so Start must be on screen with it. At

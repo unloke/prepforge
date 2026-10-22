@@ -45,6 +45,14 @@
      dead-end screen offers) 8px under the floor. Dense rows that need to stay
      dense (the Build inspector's tools) set their own height further down. */
   .btn.sm { min-height: 44px; height: 44px; }
+  /* The Train and Explorer switches are drawn at 44x26, about an iOS switch,
+     and their tap area grows to the 44px a thumb needs without moving them.
+     The 38x22 desktop switch was the right size for a pointer and the wrong
+     size to hit. (Settings and the Analyze coach draw their own switch.) */
+  :is(#train-blitz-toggle, #explorer-engine-toggle) { width: 44px; height: 26px; }
+  :is(#train-blitz-toggle, #explorer-engine-toggle) .pf-knob { width: 22px; height: 22px; }
+  :is(#train-blitz-toggle, #explorer-engine-toggle).is-on .pf-knob { transform: translateX(18px); }
+  :is(#train-blitz-toggle, #explorer-engine-toggle)::after { content: ""; position: absolute; inset: -9px -4px; }
 
   /* ---- Pages ------------------------------------------------------------- */
   .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
@@ -172,11 +180,13 @@
   }
   #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
-     reads as a cut-off row, so the chips are sized to fit the width instead. */
+     reads as a cut-off row, so the chips are sized to fit the width instead.
+     They share one row and grow to fill it: at 14px with 14px padding they
+     needed 390px and "Disabled" fell alone onto a second row. */
   #view-dashboard .lib-list .seg {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-wrap: nowrap;
+    gap: 4px;
     max-width: 100%;
     margin: 0;
     padding: 0;
@@ -185,16 +195,18 @@
   }
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     min-height: 44px;
     height: 44px;
-    padding: 0 14px;
+    padding: 0 8px;
     border: 0;
     border-radius: 22px;
     background: var(--surface-3);
     color: var(--text);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 550;
+    white-space: nowrap;
   }
   #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--panel); }
   .search-field {
@@ -259,9 +271,12 @@
   #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; display: flex; align-items: baseline; }
   #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
   #view-dashboard .lib-row .lib-mbar { display: none; }
-  #view-dashboard .lib-row .lib-mastery { width: auto; gap: 4px; }
-  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: left; font-size: 13px; font-weight: 600; }
-  #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
+  /* The figure over its word, right-aligned: "0% mastered" on one line took
+     88px from the name, which cut it to "Throwaway de…" and wrapped the
+     colour line under it. */
+  #view-dashboard .lib-row .lib-mastery { flex-direction: column; align-items: flex-end; width: auto; gap: 0; line-height: 1.2; }
+  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #view-dashboard .lib-row .lib-mastery-word { display: block; color: var(--label); font-size: 12px; }
   /* A shared repertoire is read-only; its name line already says so. */
   #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
   /* An untrained repertoire has no figure, only a note, and the note is wide
@@ -320,7 +335,9 @@
   /* A selected source is a state, not the screen's action: it takes the
      recessed fill and ink text like every other selected control here. */
   #view-replay .toolbar .src-chip { background: var(--surface-3); color: var(--text); }
-  #view-replay .toolbar .src-empty { font-size: 14px; }
+  /* No source yet is a note in the row, not a chip: as a grey pill its words
+     wrapped into a two-line lozenge beside Add. */
+  #view-replay .toolbar .src-empty { padding: 0; border-radius: 0; background: none; color: var(--muted); font-size: 14px; text-wrap: balance; }
   #view-replay .toolbar > .src > .btn {
     justify-self: end;
     min-height: 44px;
@@ -373,26 +390,45 @@
      row is 48px, actions are tinted text, sliders get the row's full width. */
   #view-settings .settings { display: flex; flex-direction: column; gap: 0; align-items: stretch; }
   /* The section strip stays on a phone: it is the only way to reach a section
-     there. It wraps into two rows so all six are on screen at once - a
-     sideways-scrolling row left "Playing strength" and "Board" off the edge,
-     which is not a tap away - and holds while the cards scroll. */
+     there, and it holds while the cards scroll. Six sections do not fit one
+     row at 390px; wrapped into two rows they took 100px of a sticky strip on
+     every scroll. The strip is one row that scrolls sideways inside itself
+     (never the page), its right edge fades to say there is more, and the open
+     section is scrolled into view whenever it changes (settings.js). */
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
     width: auto;
-    flex-wrap: wrap;
+    max-width: none;
+    flex-wrap: nowrap;
     gap: 6px;
-    margin: 0 0 10px;
-    padding: 6px 0 8px;
+    margin: 0 calc(-1 * var(--phone-gutter)) 10px;
+    padding: 6px 0 8px var(--phone-gutter);
     border-radius: 0;
     background: var(--bg);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
     /* Cards pass under the strip while the page scrolls; the edge says the
        strip ends there instead of the card looking cut. */
     border-bottom: 1px solid var(--line);
   }
+  #view-settings .settings-nav::-webkit-scrollbar { display: none; }
+  /* The fade is painted in the ground colour over the strip's right edge (a
+     mask would also clear the strip's own ground and show the cards passing
+     under it); it rides the scroll edge and leaves room after the last link. */
+  #view-settings .settings-nav::after {
+    content: "";
+    position: sticky;
+    right: 0;
+    flex: none;
+    width: 28px;
+    margin-left: -6px;
+    background: linear-gradient(to right, transparent, var(--bg) 70%);
+  }
   #view-settings .settings-nav-link {
-    flex: 0 1 auto;
-    min-height: 42px;
+    flex: none;
+    min-height: 44px;
     padding: 0 14px;
     border-radius: 10px;
     background: var(--panel);
@@ -403,8 +439,8 @@
   #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
   #view-settings .settings-here::before { margin-right: 8px; }
-  /* A jump lands the card below the two-row sticky strip. */
-  #view-settings .settings-content > .set { scroll-margin-top: 112px; }
+  /* A jump lands the card below the sticky strip. */
+  #view-settings .settings-content > .set { scroll-margin-top: 72px; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }
   /* A long section title plus its info and action buttons (Maia3: "Download",
@@ -446,8 +482,33 @@
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
-  #view-settings .acct-id { gap: 12px; padding: 12px 0; flex-wrap: nowrap; }
-  #view-settings .acct-signout { align-self: center; margin: 0; }
+  /* Sign out takes its own line under the identity, on the text's edge (its
+     8px padding pulled back): beside the name it left the name and its Edit
+     167px, which cut the name to "onlyformu…" with space to spare below. */
+  #view-settings .acct-id { gap: 4px 12px; padding: 12px 0; flex-wrap: wrap; }
+  #view-settings .acct-id-text { flex: 1 1 calc(100% - 60px); }
+  #view-settings .acct-signout { align-self: flex-start; margin: 0 0 0 52px; }
+  /* The linked account's ⋯ is a thumb target, and its menu is an action sheet
+     at the thumb like every other phone menu, not a 132px popover over the
+     row under it. */
+  #view-settings .conn-menu-btn { min-width: 44px; height: 44px; font-size: 18px; }
+  #view-settings .conn-menu:not([hidden]) {
+    position: fixed;
+    z-index: var(--z-menu, 80);
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    gap: 0;
+    min-width: 0;
+    padding: 6px 0;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a scrim over the page */
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  #view-settings .conn-menu-item { min-height: 48px; padding: 0 18px; border-radius: 0; font-size: 16px; }
+  #view-settings .conn-menu-item + .conn-menu-item { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
   #view-settings .acct-block { margin-top: 0; }
   #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; color: var(--muted); font-size: 13px; font-weight: 650; }
   #view-settings .acct-block > .btn { margin: 4px 0; }
@@ -462,6 +523,12 @@
   #view-settings #piece-style-picker { flex-wrap: nowrap; gap: 8px; padding: 0; border: 0; background: none; }
   #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 44px; height: auto; padding: 6px 8px 6px 6px; border-radius: 10px; background: var(--surface-3); }
   #view-settings .sw-grid { display: block; }
+
+  /* Teams: with teams in the directory, the detail is opened by tapping one;
+     an empty "No team selected" card under the list is a desktop pane with
+     nothing to show on a phone. (A signed-out or team-less directory keeps it:
+     there it carries the next step.) */
+  #view-teams .teams:has(.team-row:not(.is-skeleton)) .team-empty { display: none; }
 
   /* ---- Study screens ---------------------------------------------------- */
   .workspace:has(> .view.is-active:is(#view-analyze, #view-build, #view-train)) {
@@ -604,8 +671,8 @@
   .bb-sheet[aria-expanded="true"] { color: var(--accent-strong) !important; }
   .study .board-bar #train-hint:disabled { opacity: 0.4; }
 
-  /* Move arrows: one split control, drawn chevrons (the ◀ ▶ glyphs render as
-     emoji on some iPhones). */
+  /* Move arrows: one split control. The chevron is the button's own SVG; a
+     drawn ::before chevron here doubled it once the glyphs became SVG. */
   .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) {
     width: 52px;
     background: var(--surface-3);
@@ -613,15 +680,6 @@
   }
   .study .board-bar :is(#analysis-prev, #build-parent) { border-radius: 12px 4px 4px 12px; }
   .study .board-bar :is(#analysis-next, #build-next) { border-radius: 4px 12px 12px 4px; }
-  .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next)::before {
-    content: "";
-    width: 9px;
-    height: 9px;
-    border: solid currentColor;
-    border-width: 0 0 2.5px 2.5px;
-    transform: translateX(2px) rotate(45deg);
-  }
-  .study .board-bar :is(#analysis-next, #build-next)::before { transform: translateX(-2px) rotate(-135deg); }
 
   /* Touch screens keep :hover after a tap; show the press instead. */
   .study .board-bar .btn.icon:hover,
@@ -826,7 +884,10 @@
     column-gap: 8px;
     min-height: 56px;
     margin: 0 0 var(--phone-gap);
-    padding: 0;
+    /* The back and ⋯ buttons are 44px targets: a -8px margin pulled the icons
+       to the board's edge but left the ⋯ hit area 8px past the screen. The
+       header's own 4px inset keeps both whole on screen. */
+    padding: 0 4px;
     border: 0;
     background: var(--bg);
   }
@@ -845,9 +906,9 @@
     text-overflow: ellipsis;
   }
   #build-rep-header .rep-color-sub { display: none; }
-  #build-rep-header .phone-back { margin-left: -8px; color: var(--text); }
+  #build-rep-header .phone-back { color: var(--text); }
   #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  #build-rep-header #build-menu { grid-column: 3; margin-right: -8px; }
+  #build-rep-header #build-menu { grid-column: 3; }
   #build-menu .bm-dots { font-size: 22px; line-height: 22px; }
 
   /* Under the board one pane at a time (the line tree, Explorer or Coverage)
@@ -864,7 +925,7 @@
   }
   #build-panes > button {
     flex: 1 1 0;
-    min-height: 32px;
+    min-height: 40px;
     border: 0;
     border-radius: 8px;
     background: var(--surface-3);
@@ -903,8 +964,10 @@
   #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
   #build-inspector .inspector-panel { overflow: visible; }
   #build-inspector .dock-tools { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px 6px; }
-  #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 32px; height: 32px; padding: 0 10px; font-size: 13px; }
-  #build-inspector .inspector-info { width: 32px; height: 32px; }
+  /* The pane's tools stay compact in type but not in reach: 40px is the
+     smallest box a thumb hits without a second try. */
+  #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 40px; height: 40px; padding: 0 12px; font-size: 14px; }
+  #build-inspector .inspector-info { width: 40px; height: 40px; }
   #build-inspector .explorer-row { min-height: 46px; }
   #view-build :is(.tree-meta, .forkbar) { font-size: 13px; }
   /* The next move is what the thumb reaches for, and the breadcrumb is the
@@ -914,6 +977,13 @@
   #view-build .fork-chip { min-height: 44px; padding: 0 14px; }
   #view-build .fork-chip small { font-size: var(--fs-s); }
   #view-build .mtree-crumb { min-height: 44px; padding: 0 6px; }
+  /* A move is a thumb target, not a mouse target: the tree runs on a 40px line
+     pitch and each move's hit area fills its line, while the drawn token keeps
+     the score sheet's size (its current-move fill and due/weak underline stay
+     on the text, not on a 40px box). */
+  #view-build .mtree { line-height: 40px; }
+  #view-build .mtree-move { position: relative; line-height: 1.6; }
+  #view-build .mtree-move::after { content: ""; position: absolute; inset: -8px -1px; }
   #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }
   /* The empty answer is a card under the board. Three buttons side by side
      clipped "New repertoire" at 390px, so the one action gets the row and the
@@ -985,20 +1055,19 @@
     border-radius: 9px;
     background: none;
     color: var(--muted);
-    font-size: 14px;
-    font-weight: 550;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* Three modes share 358px (328px at 360): at 14px the bold active label
+       cut to "Line rehear…" and "Practice ga…". 13px at one weight fits each
+       name on one line, and a screen narrower still wraps a name onto a second
+       line inside the 44px button rather than cutting it. The selected mode is
+       told by its fill and ink, so its weight does not change its width. */
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.15;
+    white-space: normal;
+    text-wrap: balance;
   }
-  #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); font-weight: 650; }
+  #view-train #train-modes .seg-btn.is-active { background: var(--surface-3); color: var(--text); }
   #view-train .seg-btn { min-height: 44px; height: 44px; font-size: 14px; }
-  /* A 38x22 switch is the right size to look at and the wrong size to hit. The
-     tap area grows to the 44px a thumb needs without moving the switch. */
-  #view-train #train-blitz-toggle::after {
-    content: "";
-    position: absolute;
-    inset: -12px -8px;
-  }
   /* The mode name is a text link inside the card head; the head itself becomes
      the 44px row, so changing mode is not a 17px-tall target. */
   #view-train .prog-head { min-height: 44px; }
@@ -1012,9 +1081,16 @@
   #view-train #train-fresh { min-height: 44px; }
   /* A phone row has no room for a name, a meter and a count side by side: the
      name keeps the line, the meter and its number sit under it. */
-  #view-train .train-source { grid-template-columns: auto minmax(0, 1fr); row-gap: 4px; }
-  #view-train .train-source-meter { grid-column: 2; width: 100%; }
-  #view-train .train-source-count { grid-column: 2; }
+  /* One line per repertoire: the dot, the name (cut first) and its figures at
+     the right edge. The meter repeats the percentage the count already says,
+     and stacked under the name it wrapped the row into two misaligned lines. */
+  #view-train .train-source { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; min-height: 28px; }
+  #view-train .train-source-meter { display: none; }
+  #view-train .train-source-count { font-size: 13px; }
+  /* The up-next row cuts a long repertoire name with an ellipsis: the name was
+     a flex box, which clips its text without one. */
+  #view-train .un-rep { display: block; min-width: 0; }
+  #view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
   #view-train .train-sidebar .tcard {
     margin: 0;
     padding: 14px;
@@ -1040,7 +1116,7 @@
     overflow: hidden;
   }
   #view-train .train-sidebar[data-session-state="summary"] #train-summary { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
-  #view-train .train-start-row .btn { flex: 1 1 140px; min-height: 46px; border-radius: 12px; }
+  #view-train .train-start-row .btn { flex: 1 1 140px; height: 46px; min-height: 46px; border-radius: 12px; }
   /* Setting up is reading the card, not playing, so the board has to leave the
      setup card on screen (see --phone-reserve above). */
   #view-train:has(.train-sidebar[data-session-state="setup"]) .board-stack {
