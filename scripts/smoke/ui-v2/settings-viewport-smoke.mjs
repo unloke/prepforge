@@ -204,9 +204,9 @@ async function runViewport(vp) {
   const backAvailable = await page.locator("#settings-browser-engine-status").textContent();
   check(backAvailable === "available", `Refresh should see the engine available again, got "${backAvailable}"`);
 
-  // Maia3 card: a REAL state line (manifest is served, so state is on-demand/cache/off — never a canned "Ready").
-  const maiaModel = await page.locator("#settings-maia-model").textContent().catch(() => "");
-  check(maiaModel.length > 0 && maiaModel !== "checking…", `Maia3 state should render, got "${maiaModel}"`);
+  // Maia3 card: a REAL download state (the manifest is served, so it settles past "Checking").
+  const maiaModel = (await page.locator('[data-testid="settings-dl-status-maia"]').textContent({ timeout: 5000 }).catch(() => ""))?.trim();
+  check(maiaModel.length > 0 && !/^checking/i.test(maiaModel), `Maia3 state should render, got "${maiaModel}"`);
 
   // Switches: the Maia-analysis pf-switch toggles and keeps aria-checked in sync.
   const maiaSwitch = page.locator("#settings-maia-analysis");
