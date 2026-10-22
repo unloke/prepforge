@@ -144,12 +144,13 @@ describe("routeSupportGames semantics", () => {
   });
 
   it("labels a weak spot by its anchor evidence, not the single game behind the line", () => {
-    // The deep line was played once and won by the opponent; the trunk is where they lose.
-    const lines = candidates(1).map((line) => line.ucis.length === 6
-      ? { ...line, w: 1, d: 0, l: 0, scorePct: 100 } : line);
+    // One game behind the deep leaf, but the trunk's 41 games carry the evidence;
+    // the weak spot is Maia rating their play from that leaf below their usual level.
+    const lines = candidates(1).map((line) => ({ ...line, maiaScorePct: line.ucis.length === 6 ? 20 : 70 }));
     const deep = rankGamePlan(lines, 50, { oppColor: "black" }).find((line) => line.ucis.length === 6);
+    expect(deep.preparationEvidence.support).toBe(41);
     expect(deep.preparationEvidence.value).toBeGreaterThan(0);
     expect(deep.prepCategory).toBe("attack");
-    expect(deep.belowBaseline).toBe(50);
+    expect(deep.belowBaseline).toBe(30);
   });
 });

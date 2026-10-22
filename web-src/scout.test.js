@@ -23,11 +23,11 @@ import {
   scoutFetchErrorMessage,
   fenAfterLine,
   fenBeforeLastMove,
+  enrichPrepTarget,
   gradeLines,
   lineCoverage,
   moveDistribution,
   movetextSans,
-  openingBreakdown,
   opponentProfile,
   parseClkToSeconds,
   parseGameBlock,
@@ -42,12 +42,10 @@ import {
   nodeIdAfterFlush,
   rankGamePlan,
   rankedOpeningBranches,
-  recommendTargets,
   normalizeToOpponentTerminal,
   terminalMoveIsOpponent,
   triePathKey,
   wilsonScorePct,
-  wilsonScoreUpperPct,
   repertoireChildLookup,
   suggestReplyFromRepertoire,
   attachPrepReplies,
@@ -55,7 +53,6 @@ import {
   scoutStreamUrl,
   scoutUrl,
   topLines,
-  WEAKNESS_MIN_GAMES,
 } from "./scout.js";
 
 function scoutGame({
@@ -487,119 +484,46 @@ describe("fenAfterLine", () => {
   });
 });
 
-describe("openingBreakdown + recommendTargets", () => {
-  it("groups first-move families and deeper lines", () => {
-    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
-    const breakdown = openingBreakdown(trie, { minGames: 1 });
-    expect(breakdown.some((g) => g.sans.length === 1 && g.sans[0] === "e4")).toBe(true);
-    expect(breakdown.some((g) => g.sans.length >= 2)).toBe(true);
-  });
-
-  it("ranks frequent lines below the opponent baseline", () => {
-    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
-    const breakdown = openingBreakdown(trie, { minGames: 1 });
-    const baseline = 50;
-    const targets = recommendTargets(breakdown, baseline, {
-      minGames: 2,
-      limit: 5,
-      oppColor: "white",
-    });
-    const attacks = targets.filter((t) => t.prepCategory === "attack");
-    for (const t of attacks) {
-      expect(t.games).toBeGreaterThanOrEqual(2);
-      expect(t.wilsonScorePct).toBeLessThanOrEqual(baseline);
-      expect(t.opportunity).toBeGreaterThan(0);
-      expect(terminalMoveIsOpponent(t.ucis, "white")).toBe(true);
-    }
-  });
+describe("weak-spot badges come from Maia's leaf read", () => {
+  const badge = (g, baseline = 50) => enrichPrepTarget(g, baseline);
 
   it("wilsonScorePct returns neutral prior for empty samples", () => {
     expect(wilsonScorePct(0, 0, 0)).toBe(50);
     expect(wilsonScorePct(0, 0, 1)).toBeLessThan(wilsonScorePct(3, 2, 15));
   });
 
-  it("classifies 6/7 wins as Main line against a 50% baseline (not Attack)", () => {
-    const group = {
-      line: "e2e4",
-      sans: ["e4"],
-      ucis: ["e2e4"],
-      games: 7,
-      w: 6,
-      d: 0,
-      l: 1,
-      scorePct: 86,
-      share: 0.5,
-      count: 7,
-    };
-    const targets = recommendTargets([group], 50, { minGames: 7, oppColor: "white" });
-    expect(targets).toHaveLength(1);
-    expect(targets[0].prepCategory).toBe("weapon");
-    expect(targets[0].prepCategory).not.toBe("attack");
-    expect(wilsonScoreUpperPct(6, 0, 1)).toBeGreaterThanOrEqual(50);
+  it("calls a line Maia rates well above their usual result a main line", () => {
+    const target = badge({ games: 7, w: 6, d: 0, l: 1, scorePct: 86, share: 0.5, maiaScorePct: 86 });
+    expect(target.prepCategory).toBe("weapon");
+    expect(target.maiaScorePct).toBe(86);
+    expect(target.belowBaseline).toBe(0);
   });
 
-  it("leaves a line only marginally below baseline as neutral, not Attack", () => {
-    // 36% vs a 38% baseline over a sample whose Wilson upper bound is well above
-    // baseline — neither a punishable weakness nor a weapon, so: no badge, not a target.
-    const group = {
-      line: "e2e4",
-      sans: ["e4"],
-      ucis: ["e2e4"],
-      games: 11,
-      w: 4,
-      d: 0,
-      l: 7,
-      scorePct: 36,
-      share: 0.5,
-      count: 11,
-    };
-    const targets = recommendTargets([group], 38, { minGames: 7, oppColor: "white" });
-    expect(targets).toHaveLength(0);
+  it("calls a line Maia rates clearly below their usual result a weak spot", () => {
+    const target = badge({ games: 11, w: 4, d: 0, l: 7, scorePct: 36, share: 0.5, maiaScorePct: 36 }, 50);
+    expect(target.prepCategory).toBe("attack");
+    expect(target.belowBaseline).toBe(14);
+    expect(target.opportunity).toBeGreaterThan(0);
   });
 
-  it("collapses two lines that normalise to the same opponent-terminal move", () => {
-    // "1.d4 Nf6" and "1.d4 g6" both end on the player's move, so both truncate to "1.d4".
-    // They must surface as a single row, not two identical "When they play 1.d4" entries.
-    const breakdown = [
-      { line: "d2d4>g8f6", sans: ["d4", "Nf6"], ucis: ["d2d4", "g8f6"], games: 11, w: 3, d: 0, l: 8, scorePct: 26, share: 0.4, count: 11 },
-      { line: "d2d4>g7g6", sans: ["d4", "g6"], ucis: ["d2d4", "g7g6"], games: 14, w: 10, d: 1, l: 3, scorePct: 75, share: 0.5, count: 14 },
-    ];
-    const targets = recommendTargets(breakdown, 38, { minGames: 7, oppColor: "white" });
-    const d4Rows = targets.filter((t) => t.ucis.join(">") === "d2d4");
-    expect(d4Rows).toHaveLength(1);
+  it("leaves a line Maia rates only marginally below baseline as neutral", () => {
+    // 36% against a 38% baseline is neither a punishable weakness nor a weapon.
+    expect(badge({ games: 11, scorePct: 36, share: 0.5, maiaScorePct: 36 }, 38).prepCategory).toBe("neutral");
   });
 
-  it("recommendTargets rejects lines ending on the player move", () => {
-    const breakdown = [
-      {
-        line: "e2e4>c7c5>d2d4",
-        sans: ["e4", "c5", "cxd4"],
-        ucis: ["e2e4", "c7c5", "d2d4"],
-        games: 10,
-        w: 3,
-        d: 1,
-        l: 6,
-        scorePct: 35,
-        share: 0.4,
-        count: 10,
-      },
-    ];
-    const targets = recommendTargets(breakdown, 50, { minGames: 3, oppColor: "black" });
-    expect(targets).toHaveLength(1);
-    expect(targets[0].ucis).toEqual(["e2e4", "c7c5"]);
-    expect(terminalMoveIsOpponent(targets[0].ucis, "black")).toBe(true);
+  it("gives a line with no Maia read no badge", () => {
+    expect(badge({ games: 12, w: 2, d: 0, l: 10, scorePct: 17, share: 0.4 }).prepCategory).toBe("neutral");
+  });
+
+  it("takes the Maia estimate passed alongside the line", () => {
+    const target = enrichPrepTarget({ games: 12, scorePct: 50, share: 0.4 }, 60, { maiaScorePct: 45 });
+    expect(target.prepCategory).toBe("attack");
+    expect(target.maiaScorePct).toBe(45);
   });
 
   it("normalizeToOpponentTerminal truncates player-terminal paths", () => {
     const out = normalizeToOpponentTerminal(["e2e4", "c7c5", "d2d4"], ["e4", "c5", "cxd4"], "black");
     expect(out?.ucis).toEqual(["e2e4", "c7c5"]);
-  });
-
-  it("excludes thin samples from recommendations", () => {
-    const trie = buildOpeningTrie(GAMES, "white", { recency: false });
-    const breakdown = openingBreakdown(trie, { minGames: 1 });
-    const targets = recommendTargets(breakdown, 40, { minGames: WEAKNESS_MIN_GAMES });
-    expect(targets.every((t) => t.games >= WEAKNESS_MIN_GAMES)).toBe(true);
   });
 });
 
@@ -1063,7 +987,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     expect(rankedOpeningBranches(games, "white").branches.length).toBeLessThanOrEqual(SCOUT_BRANCH_SCORE_CAP);
   });
 
-  it("ranks most-exploitable lines first, the frequent strong line last", () => {
+  it("ranks the lines Maia rates lowest first, the frequent strong line last", () => {
     const weak = {
       line: "e2e4>c7c5>g1f3",
       sans: ["e4", "c5", "Nf3"],
@@ -1075,6 +999,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
       scorePct: 21,
       share: 0.45,
       count: 12,
+      maiaScorePct: 20,
     };
     const strong = {
       line: "d2d4",
@@ -1087,6 +1012,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
       scorePct: 80,
       share: 0.35,
       count: 10,
+      maiaScorePct: 80,
     };
     const nested = {
       line: "e2e4",
@@ -1099,6 +1025,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
       scorePct: 21,
       share: 0.45,
       count: 12,
+      maiaScorePct: 20,
     };
     const ranked = rankGamePlan([strong, nested, weak].map(r => ({ ...r, conditionalReach: 0.4 })), 50, { minGames: 7, oppColor: "white" });
     expect(ranked.map((r) => r.ucis)).toEqual([["e2e4"], ["e2e4", "c7c5", "g1f3"], ["d2d4"]]);
@@ -1144,17 +1071,20 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
     expect(ranked[0].maiaScorePct).toBe(32);
   });
 
-  it("the WEAK SPOT category follows the selection, never a Maia estimate", () => {
+  it("the WEAK SPOT category follows Maia's read, not their whole-game results", () => {
     const base = { games: 10, d: 0, share: 0.3, count: 10, prefilterScore: 0, conditionalReach: 0.4 };
+    // They win these games, but Maia says they play the position badly.
     const strongMaiaLow = { ...base, line: "e2e4>e7e5", sans: ["e4", "e5"], ucis: ["e2e4", "e7e5"],
       w: 9, l: 1, scorePct: 90, maiaScorePct: 0, maiaWdl: { win: 0, draw: 0, loss: 100 } };
+    // They lose these games, but Maia says they play the position well.
     const weakMaiaHigh = { ...base, line: "d2d4>d7d5", sans: ["d4", "d5"], ucis: ["d2d4", "d7d5"],
       w: 1, l: 9, scorePct: 10, maiaScorePct: 100, maiaWdl: { win: 100, draw: 0, loss: 0 } };
     const ranked = rankGamePlan([strongMaiaLow, weakMaiaHigh], 50, { oppColor: "black" });
-    for (const route of ranked) {
-      expect(route.prepCategory === "attack").toBe(route.preparationEvidence.value > 0);
-    }
-    expect(ranked.find((r) => r.line === "d2d4>d7d5")?.prepCategory).toBe("attack");
+    expect(ranked.map((r) => r.ucis)).toEqual([["e2e4", "e7e5"], ["d2d4", "d7d5"]]);
+    expect(ranked[0].prepCategory).toBe("attack");
+    expect(ranked[0].belowBaseline).toBe(50);
+    expect(ranked[1].prepCategory).toBe("weapon");
+    expect(ranked[1].preparationEvidence.value).toBe(0);
   });
 
   it("Maia availability does not give an ordering bonus", () => {
@@ -1198,6 +1128,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         scorePct: 25,
         share: 0.2,
         count: 8,
+        maiaScorePct: 30,
       },
       {
         line: "d2d4",
@@ -1210,6 +1141,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         scorePct: 11,
         share: 0.18,
         count: 9,
+        maiaScorePct: 45,
       },
       {
         line: "g1f3",
@@ -1222,6 +1154,7 @@ describe("rankedOpeningBranches + rankGamePlan", () => {
         scorePct: 43,
         share: 0.15,
         count: 7,
+        maiaScorePct: 60,
       },
     ];
     const ranked = rankGamePlan(lines.map(r => ({ ...r, conditionalReach: 0.4 })), 55, { minGames: 7, oppColor: "white" });
@@ -1816,14 +1749,14 @@ describe("createScoutClient", () => {
   });
 });
 
-describe("prep badges need a real sample", () => {
-  it("does not call a one-game line a main line or a weak spot", async () => {
+describe("prep badges need a Maia read", () => {
+  it("does not call a line a main line or a weak spot without one", async () => {
     const { enrichPrepTarget } = await import("./scout.js");
     const won = enrichPrepTarget({ games: 1, w: 1, d: 0, l: 0, scorePct: 100, share: 0.01 }, 50);
     expect(won.prepCategory).toBe("neutral");
     const lost = enrichPrepTarget({ games: 1, w: 0, d: 0, l: 1, scorePct: 0, share: 0.01 }, 29);
     expect(lost.prepCategory).toBe("neutral");
-    const main = enrichPrepTarget({ games: 12, w: 8, d: 2, l: 2, scorePct: 75, share: 0.3 }, 50);
+    const main = enrichPrepTarget({ games: 12, w: 8, d: 2, l: 2, scorePct: 75, share: 0.3, maiaScorePct: 75 }, 50);
     expect(main.prepCategory).toBe("weapon");
   });
 

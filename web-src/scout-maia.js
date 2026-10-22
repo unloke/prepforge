@@ -189,6 +189,11 @@ export function scoutMaiaRankedNote(
   // One shared inline progress state already names this work; never repeat
   // transient loading sentences in both colour cards.
   if (prefilterState === "loading" || state === MAIA_ENRICH_LOADING) return "";
+  // Weak spots come from Maia's read of their play, so with Maia off there are
+  // none to show: say what turns them on rather than leave a bare list.
+  if (state === MAIA_ENRICH_OFF) {
+    return html`<div class="scout-ranked-note muted hint">Weak spots need Maia. Turn on Maia analysis in Settings → Playing strength.</div>`;
+  }
   // Settled states carry no standing note: how the list is ranked is not repeated
   // on every report. Keep errors and the action that fixes a blocked state.
   if (withMaia < total && (state === MAIA_ENRICH_FAILED || state === MAIA_ENRICH_PARTIAL)) {
