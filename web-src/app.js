@@ -387,11 +387,15 @@ function shownOrLoadingRepertoireId() {
 // Recent analyses are the owner's: shown and (when open) loaded only while
 // signed in. Runs on entering Analyze and whenever the signed-in owner changes,
 // so a sign-in made on the page lists that account's analyses at once.
-function syncAnalysisHistoryDrawer() {
+function syncAnalysisHistoryDrawer({ entering = false } = {}) {
   const drawer = document.getElementById("history-drawer");
   if (!drawer) return;
   drawer.hidden = !appState.signedIn;
-  if (appState.signedIn && drawer.open && appState.currentView === "analyze") loadAnalysisHistory();
+  // Opening it the first time on a desktop fires its toggle, which loads the list.
+  const ship = entering && appState.signedIn && !drawer.dataset.shipped && !drawer.open && window.matchMedia?.("(min-width: 861px)").matches;
+  if (entering && appState.signedIn) drawer.dataset.shipped = "1";
+  if (ship) drawer.open = true;
+  else if (appState.signedIn && drawer.open && (entering || appState.currentView === "analyze")) loadAnalysisHistory();
 }
 
 // In-page route changes (back/forward and location.hash) take the same path as
@@ -605,18 +609,7 @@ function switchView(name, { fromUrl = false } = {}) {
   // in it ships open on a desktop, so it loads on entry (not only on a manual
   // toggle) and an idle panel offers the games to reopen instead of a coach
   // line over blank tone. On a phone it lives in the Games sheet, closed.
-  if (name === "analyze") {
-    const drawer = document.getElementById("history-drawer");
-    const ship = !!drawer && appState.signedIn && !drawer.dataset.shipped;
-    if (ship) drawer.dataset.shipped = "1";
-    if (ship && !drawer.open && window.matchMedia?.("(min-width: 861px)").matches) {
-      // Opening it fires the drawer's toggle, which loads the list.
-      drawer.hidden = false;
-      drawer.open = true;
-    } else {
-      syncAnalysisHistoryDrawer();
-    }
-  }
+  if (name === "analyze") syncAnalysisHistoryDrawer({ entering: true });
   if (name === "analyze" && appState.signedIn) {
     ensureBookLoaded()
       .then(() => updateBookline())
