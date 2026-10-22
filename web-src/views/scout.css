@@ -112,7 +112,9 @@
   font-size: var(--fs-s);
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
-.scout-engine-progress[hidden] { display: none; }
+/* Hidden keeps its line: the bar comes and goes while Stockfish and Maia run, and
+   collapsing it shifted the colour tabs and the report up and down. */
+.scout-engine-progress.is-idle { visibility: hidden; }
 
 /* ---- Colour tabs ---- */
 .scout-color-tabs { display: flex; gap: 4px; }

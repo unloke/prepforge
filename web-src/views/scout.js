@@ -307,7 +307,7 @@ export function createScoutView(deps) {
     const el = document.getElementById("scout-engine-progress");
     if (!el) return;
     if (!enginePhaseActive()) {
-      el.hidden = true;
+      el.classList.add("is-idle");
       el.innerHTML = "";
       return;
     }
@@ -316,7 +316,7 @@ export function createScoutView(deps) {
     // instead of a frozen sliver so the user can tell it's working, not stuck.
     const indeterminate = !p || !p.total;
     const pct = engineProgressPct(p);
-    el.hidden = false;
+    el.classList.remove("is-idle");
     el.classList.toggle("is-indeterminate", indeterminate);
     el.setAttribute("role", "progressbar");
     el.setAttribute("aria-valuemin", "0");
@@ -563,7 +563,7 @@ export function createScoutView(deps) {
       },
     });
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
-    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
+    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress is-idle"></div>`;
     if (results) {
       const shownBefore = planRowKeys(results);
       results.innerHTML = sections.length
