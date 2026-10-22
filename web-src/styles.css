@@ -151,6 +151,9 @@
   --radius: 6px;      /* controls, small chips */
   --radius-card: 10px; /* cards, popovers, dialogs */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
+  --switch-h: 20px;
+  --knob: 16px;
   --shadow-1: 0 1px 2px rgba(20, 20, 30, 0.06);    /* resting cards */
   --shadow-2: 0 8px 28px rgba(20, 20, 30, 0.16), 0 2px 6px rgba(20, 20, 30, 0.08); /* dialogs, floating tools */
   --shadow-bar: 0 -6px 18px rgba(20, 20, 30, 0.12); /* a bar that floats over scrolling content */
@@ -1091,8 +1094,8 @@ h2 {
 
 .pf-switch {
   position: relative;
-  width: 38px;
-  height: 22px;
+  width: var(--switch-w);
+  height: var(--switch-h);
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
   border-radius: 999px;
   background: var(--panel-soft);
@@ -1137,8 +1140,8 @@ h2 {
   position: absolute;
   top: 1px;
   left: 1px;
-  width: 18px;
-  height: 18px;
+  width: var(--knob);
+  height: var(--knob);
   border-radius: 50%;
   background: var(--text);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); /* taste-skill-ignore: the knob's depth, not a resting shadow */
@@ -1146,7 +1149,7 @@ h2 {
 }
 
 .pf-switch.is-on .pf-knob {
-  transform: translateX(16px);
+  transform: translateX(calc(var(--switch-w) - var(--knob) - 4px));
 }
 
 /* Press: the knob gives under the thumb. scale is its own property, so it
@@ -2627,22 +2630,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--muted);
 }
 
-.explain-review .pf-switch,
-.train-blitz-row .pf-switch {
-  width: 34px;
-  height: 20px;
-}
-
-.explain-review .pf-knob,
-.train-blitz-row .pf-knob {
-  width: 16px;
-  height: 16px;
-}
-
-.explain-review .pf-switch.is-on .pf-knob,
-.train-blitz-row .pf-switch.is-on .pf-knob {
-  transform: translateX(14px);
-}
 
 .train-repertoire-menu {
   position: relative;

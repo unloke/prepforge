@@ -20,9 +20,9 @@ function phoneRule(css, selector) {
 }
 
 describe("Settings phone touch targets", () => {
-  it("grows the switch hit box to 40px and keeps the track 18px", () => {
+  it("grows the switch hit box to 40px and keeps the track the shared switch height", () => {
     expect(phoneRule(settingsCss, ".set .pf-switch")).toMatch(/height:\s*40px/);
-    expect(ruleBody(settingsCss, ".set .pf-switch::after")).toMatch(/inset:\s*9px 0/);
+    expect(ruleBody(settingsCss, ".set .pf-switch::after")).toMatch(/inset:\s*calc\(\(40px - var\(--switch-h\)\) \/ 2\) 0/);
   });
 
   it("gives the info buttons a 40px box", () => {
@@ -41,6 +41,7 @@ describe("Settings phone touch targets", () => {
   });
 
   it("leaves the desktop switch dense", () => {
-    expect(ruleBody(sharedCss, ".pf-switch")).toMatch(/height:\s*22px/);
+    expect(ruleBody(sharedCss, ".pf-switch")).toMatch(/height:\s*var\(--switch-h\)/);
+    expect(sharedCss).toMatch(/--switch-h:\s*20px/);
   });
 });
