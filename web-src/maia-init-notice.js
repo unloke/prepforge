@@ -14,6 +14,24 @@ export function maiaInitMessage({ phase, loaded, total } = {}) {
   return null;
 }
 
+// What a Maia failure means to the user, and the action that clears it. The raw
+// worker message (status codes, URLs, hashes) stays for tooltips and logs.
+export function maiaErrorText(error) {
+  const message = String(error?.message || "");
+  const status = /weight fetch (\d{3})/.exec(message)?.[1];
+  if (status === "404") return "The Maia model is missing from the model server.";
+  if (status) return `The Maia download failed (HTTP ${status}). Retry.`;
+  if (/timed out/i.test(message)) return "Maia did not answer in time. Retry.";
+  if (/stalled/i.test(message)) return "The Maia download stopped part-way. Retry.";
+  if (/sha256 mismatch|size mismatch|truncated|exceeds manifest/i.test(message)) {
+    return "The Maia download was incomplete or corrupted. Retry.";
+  }
+  if (/network|fetch|offline|Failed to/i.test(message)) {
+    return "The Maia download failed. Check your connection and retry.";
+  }
+  return message || "Maia could not start. Retry.";
+}
+
 export function watchMaiaInit(provider, { notices, onRetry } = {}) {
   if (!provider || typeof provider.subscribeInitProgress !== "function") return () => {};
   let failed = false;
@@ -31,7 +49,7 @@ export function watchMaiaInit(provider, { notices, onRetry } = {}) {
   const fail = (error) => {
     failed = true;
     stop();
-    notices?.show(error?.message || "Maia could not start.", {
+    notices?.show(maiaErrorText(error), {
       key: MAIA_INIT_NOTICE_KEY,
       tone: "error",
       actions: onRetry
