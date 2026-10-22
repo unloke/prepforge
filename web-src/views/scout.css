@@ -112,7 +112,9 @@
   font-size: var(--fs-s);
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
-.scout-engine-progress[hidden] { display: none; }
+/* Hidden keeps its line: the bar comes and goes while Stockfish and Maia run, and
+   collapsing it shifted the colour tabs and the report up and down. */
+.scout-engine-progress.is-idle { visibility: hidden; }
 
 /* ---- Colour tabs ---- */
 .scout-color-tabs { display: flex; gap: 4px; }
@@ -540,7 +542,11 @@
   .scout-panel .prof-row { flex: 1 1 100%; }
   .scout-panel .prof-row .spacer { display: none; }
   .scout-color-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .scout-color-tab { min-height: 44px; min-width: 0; white-space: normal; justify-content: center; text-align: center; }
+  /* Two half-width tabs: "With White 249 games" no longer fits on one line, and
+     letting each flex item wrap on its own split it into four ragged lines. The
+     dot and label stay together; the count takes the second line. */
+  .scout-color-tab { min-height: 44px; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 0; text-align: center; }
+  .scout-color-tab small { flex-basis: 100%; }
   /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
      are the only way to switch sample size or start the prep. */
   .speed,

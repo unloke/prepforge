@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { engineConsentHtml } from "./engine-consent.js";
 import { createPassFeed } from "./engine-pass-feed.js";
+import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
 
 // The full net's 94 MB question is a row above the lines, never a replacement for
 // them: while it waits for an answer the lite search keeps running, and answering
@@ -75,6 +76,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze" } = {
     subscribeEngineSetup: (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); },
     subscribeEngineProfile: (fn) => { subscribers.add(fn); return () => subscribers.delete(fn); },
     engineConsentHtml, createPassFeed, hooks,
+    clampPly, moveLineHtml, walkLine, boardLine: { open: vi.fn(), step: () => false, exit: vi.fn() },
     analysisStore: async () => store,
   };
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
@@ -314,6 +316,16 @@ describe("streaming snapshots never paint more rows than the requested MultiPV",
     expect(rowsOf(widget)).toBe(3);
     widget._renderSnapshot(snap("board x - - 0 1", [line("a6"), line("b6")], 9));
     expect(rowsOf(widget)).toBe(3);
+  });
+
+  // Hovering a move in a row peeks at its position; a native tooltip on the row
+  // would sit over the peek.
+  it("paints rows without a native tooltip", () => {
+    const { widget } = harness({ choice: null, view: "build" });
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    widget._renderSnapshot(snap("board w - - 0 1", [line("e4")], 10));
+    expect(String(widget.pvsEl.innerHTML)).not.toMatch(/class="engine-pv[^>]*title=/);
   });
 
   it("ignores a snapshot for a FEN the widget has already left", () => {

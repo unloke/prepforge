@@ -40,15 +40,16 @@ def test_build_mutations_have_constant_statement_counts():
     for move in ["g1f3", "b8c6", "f1c4", "g8f6"]:
         second = builder.add_move(rep.id, second.id, move)
 
-    # Budget note (D-02): every tree mutation carries ONE extra statement —
-    # the repertoire revision bump — and the Build payload one extra read (the
-    # fresh revision). Both are O(1); the guard is still "no per-node work".
+    # Budget note: every tree mutation carries two extra statements — the
+    # repertoire revision bump and its repertoire_ops row — and the Build
+    # payload one extra read (the fresh revision). All O(1); the guard is still
+    # "no per-node work".
     count, _ = count_statements(engine, lambda: builder.mark_prepared(rep.id, first.id))
-    assert count <= 4
+    assert count <= 5
     count, _ = count_statements(
         engine, lambda: builder.set_annotations(rep.id, first.id, ["Ge2e4"], ["Rd4"])
     )
-    assert count <= 4
+    assert count <= 5
     count, _ = count_statements(engine, lambda: build_workspace_payload(repo, rep.id))
     assert count <= 4
     count, _ = count_statements(engine, lambda: build_workspace_payload(repo, rep.id))
@@ -60,7 +61,7 @@ def test_build_mutations_have_constant_statement_counts():
             {"tempId": "tmp-3", "parentRef": root.id, "uci": "g1f3"},
         ]
     ))
-    assert count <= 4
+    assert count <= 5
 
 
 def _seed_chain(builder, name, ucs):

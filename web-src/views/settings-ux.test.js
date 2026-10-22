@@ -144,6 +144,6 @@ describe("Maia analysis vs Maia3 Ready", () => {
   it("reports Maia analysis as off without a standing explanation", () => {
     const { view, elements } = setup({ pref: () => false });
     view.renderSettings(null);
-    expect(elements["settings-maia-usage"].textContent).toBe("Not in use");
+    expect(elements["settings-maia-usage"].textContent).toBe("Off in Analyze and Scout");
   });
 });

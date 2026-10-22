@@ -101,8 +101,8 @@
 }
 .team-role-badge.r-owner { background: var(--warn-soft); color: var(--warn-text); }
 .team-role-badge.r-admin { background: var(--accent-soft); color: var(--accent); }
-/* "read-only" on an incoming share is a plain note chip, not a role. */
-.incoming .team-role-badge { font-weight: 600; text-transform: none; }
+/* A repertoire role ("Can edit") is a sentence-case chip, not a team role. */
+.team-role-badge.share-role-badge { font-weight: 600; text-transform: none; }
 
 /* ---- Team detail -------------------------------------------------------- */
 

@@ -4,12 +4,11 @@ import {
   trainAttemptId, ungroupAttempts,
 } from "../sync-queue.js";
 import { classifySyncError, describeSyncError } from "../sync-errors.js";
-import { rebaseBuildOps } from "../build-revision.js";
 
-let api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision, rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
+let appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID, buildQueue, trainQueue;
 
 export function createSyncController(deps) {
-  ({ api, appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, queuedBuildRevision, rebaseQueuedBuildRevision, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
+  ({ appState, currentOwnerId, captureBuildContext, buildOpMatchesRepertoire, resolveBuildId, postJson, setBuildSync, hasPendingBuildOpsFor, hydrateBuild, reapplyPendingBuildNodes, reapplyPendingBuildDeletes, selectBuildNode, setStatusError, setStatus, commitPendingUndos, readCsrfCookie, CSRF_HEADER, setTrainSyncState, localDateString, OUTBOX_TAB_ID } = deps);
   const buildState = {
     get timer() { return appState.buildFlushTimer; },
     set timer(value) { appState.buildFlushTimer = value; },
@@ -86,14 +85,11 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       ];
       let payload = null;
       if (deleteIds.length) {
-        const beforeRevision = queuedBuildRevision([...deleteBatch, ...batch], appState.build);
         payload = await postJson("/api/build/delete-nodes", {
           repertoire_id: repertoireId,
-          base_revision: beforeRevision,
           node_ids: deleteIds,
         });
         if (!ownsQueue()) return false;
-        rebaseQueuedBuildRevision(batch, repertoireId, beforeRevision, payload.revision);
         await persistOutbox({ deletes: deleteBatch.map(buildDeleteId) });
         deleteBatch.length = 0;
       }
@@ -101,7 +97,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         // The add response supersedes the delete payload (it's newer truth).
         payload = await postJson("/api/build/add-moves", {
           repertoire_id: repertoireId,
-          base_revision: queuedBuildRevision(batch, appState.build),
           moves: batch.map((m) => ({ tempId: m.tempId, parentRef: m.parentRef, uci: m.uci })),
         });
       }
@@ -154,8 +149,16 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       // user is sitting on a still-pending tmp node, pick a safe anchor now and
       // restore the tmp selection after we re-insert it below.
       if (isCurrent()) {
-        const payloadHasSelection = payload.nodes.some((n) => n.id === translatedSelection);
-        await hydrateBuild(payload, payloadHasSelection ? translatedSelection : null);
+        // Otherwise land on its nearest ancestor the server kept (a line
+        // deleted elsewhere takes the selection back to where it branched).
+        const kept = new Set(payload.nodes.map((n) => n.id));
+        let anchor = translatedSelection;
+        while (anchor && !kept.has(anchor)) {
+          const parent = appState.buildNodeById.get(anchor)?.parent_id;
+          anchor = parent ? idMap[parent] || parent : null;
+        }
+        const payloadHasSelection = anchor === translatedSelection;
+        await hydrateBuild(payload, anchor);
         if (branchPick) appState.buildBranchChoiceId = branchPick;
 
         reapplyPendingBuildNodes(stillPending, idMap);
@@ -173,6 +176,11 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
         ) {
           await selectBuildNode(prevSelection);
         }
+      }
+      // Moves whose line another device deleted first: the delete won.
+      const dropped = payload.dropped?.length || 0;
+      if (dropped) {
+        setStatus(`${dropped} move${dropped === 1 ? "" : "s"} not saved: line deleted elsewhere`, { severity: "warning" });
       }
       buildQueue.resetRetry();
       persistOutbox();
@@ -202,7 +210,7 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       }
       const info = classifySyncError(error);
       const inFlightCount = batch.length + deleteBatch.length;
-      if (info.kind === "validation") {
+      if (info.kind === "validation" || info.kind === "conflict") {
         // Isolate invalid siblings without rejecting a legal parent/child chain.
         const { rejected, settled, idMap, payload } = await isolateRejectedBuildOps(
           batch,
@@ -247,29 +255,6 @@ function flushBuildMoves(durableCheckpoint, ownsQueue) {
       appState.buildPending = batch.concat(appState.buildPending);
       appState.buildPendingDeletes = deleteBatch.concat(appState.buildPendingDeletes);
       persistOutbox();
-      if (info.kind === "conflict") {
-        // The repertoire moved on elsewhere. Queued edits are move intents the
-        // server re-validates, so replay them on top of its current tree.
-        try {
-          const fresh = await api(`/api/build/load?repertoire_id=${encodeURIComponent(repertoireId)}`);
-          if (!ownsQueue()) return false;
-          if (isCurrent()) {
-            // hydrateBuild rebases the queue and puts the pending moves back.
-            const selection = appState.buildCurrentNodeId;
-            const kept = fresh.nodes.some((n) => n.id === selection);
-            await hydrateBuild(fresh, kept ? selection : null);
-            if (!kept && appState.buildNodeById.has(selection)) await selectBuildNode(selection);
-          } else {
-            rebaseBuildOps([...appState.buildPending, ...appState.buildPendingDeletes], repertoireId, fresh.revision);
-          }
-          persistOutbox();
-          setBuildSync("dirty");
-          buildQueue.retry(info);
-          return false;
-        } catch (_) {
-          // Could not load it either: back off like any other failed save.
-        }
-      }
       setStatus(describeSyncError(info, { count: inFlightCount }));
       if (info.pauseForAuth) {
         // R-04: 401 needs a sign-in, not a backoff timer. Stop sending until
@@ -299,13 +284,7 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
       continue;
     }
     try {
-      const beforeRevision = queuedBuildRevision([...deleteBatch.slice(i), ...batch], appState.build);
-      const payload = await postJson("/api/build/delete-nodes", {
-        repertoire_id: repertoireId,
-        base_revision: beforeRevision,
-        node_ids: [id],
-      });
-      rebaseQueuedBuildRevision([...deleteBatch.slice(i + 1), ...batch], repertoireId, beforeRevision, payload.revision);
+      await postJson("/api/build/delete-nodes", { repertoire_id: repertoireId, node_ids: [id] });
       settled.deletes.push(buildDeleteId(entry));
     } catch (err) {
       const info = classifySyncError(err);
@@ -326,13 +305,10 @@ async function isolateRejectedBuildOps(batch, deleteBatch, repertoireId) {
     // A parent from this same isolation round now has a real id.
     const parentRef = idMap[m.parentRef] || resolveBuildId(m.parentRef);
     try {
-      const beforeRevision = queuedBuildRevision(ordered.slice(i), appState.build);
       const payload = await postJson("/api/build/add-moves", {
         repertoire_id: repertoireId,
-        base_revision: beforeRevision,
         moves: [{ tempId: m.tempId, parentRef, uci: m.uci }],
       });
-      rebaseQueuedBuildRevision(ordered.slice(i + 1), repertoireId, beforeRevision, payload.revision);
       if (payload && payload.id_map) Object.assign(idMap, payload.id_map);
       if (payload && payload.nodes) lastPayload = payload;
       settled.build.push(buildAddId(m));
@@ -431,16 +407,11 @@ function beaconFlushBuild() {
     ),
   ];
   if (deleteIds.length) {
-    send("/api/build/delete-nodes", {
-      repertoire_id: repId,
-      base_revision: queuedBuildRevision([...pendingDeletes, ...pending], appState.build),
-      node_ids: deleteIds,
-    });
+    send("/api/build/delete-nodes", { repertoire_id: repId, node_ids: deleteIds });
   }
   if (pending.length) {
     send("/api/build/add-moves", {
       repertoire_id: repId,
-      base_revision: queuedBuildRevision(pending, appState.build),
       moves: pending.map((m) => ({
         tempId: m.tempId,
         parentRef: m.parentRef,

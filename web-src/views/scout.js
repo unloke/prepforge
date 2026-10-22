@@ -307,7 +307,7 @@ export function createScoutView(deps) {
     const el = document.getElementById("scout-engine-progress");
     if (!el) return;
     if (!enginePhaseActive()) {
-      el.hidden = true;
+      el.classList.add("is-idle");
       el.innerHTML = "";
       return;
     }
@@ -316,7 +316,7 @@ export function createScoutView(deps) {
     // instead of a frozen sliver so the user can tell it's working, not stuck.
     const indeterminate = !p || !p.total;
     const pct = engineProgressPct(p);
-    el.hidden = false;
+    el.classList.remove("is-idle");
     el.classList.toggle("is-indeterminate", indeterminate);
     el.setAttribute("role", "progressbar");
     el.setAttribute("aria-valuemin", "0");
@@ -524,7 +524,9 @@ export function createScoutView(deps) {
         {
           usernames: scoutState.usernames,
           colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(scoutModule.analyzedGames(scoutState.games)),
+            colorRecommendation(
+              scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+            ),
             { username: scoutState.username },
           ),
         },
@@ -561,7 +563,7 @@ export function createScoutView(deps) {
       },
     });
     const sections = [whiteReport.html, blackReport.html].filter(Boolean);
-    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress" hidden></div>`;
+    const progressHtml = html`<div id="scout-engine-progress" class="scout-engine-progress is-idle"></div>`;
     if (results) {
       const shownBefore = planRowKeys(results);
       results.innerHTML = sections.length
@@ -1319,25 +1321,7 @@ export function createScoutView(deps) {
       setStatus(error.message);
       return null;
     }
-    const options = [
-      ...reps.map((r) => ({ value: r.id, label: `${r.name} (${r.color})` })),
-      { value: "__new__", label: "Create new repertoire…" },
-    ];
-    const result = await showInputModal({
-      title: "Add line to prep",
-      okLabel: "Continue",
-      fields: [
-        {
-          name: "repertoire",
-          label: "Target repertoire",
-          type: "select",
-          default: reps[0]?.id || "__new__",
-          options,
-        },
-      ],
-    });
-    if (!result?.repertoire) return null;
-    if (result.repertoire === "__new__") {
+    const createNew = async () => {
       const created = await createRepertoirePrompt({
         title: "New repertoire for scout prep",
         defaultName: scoutState?.username ? `vs ${scoutState.username}` : "Opponent prep",
@@ -1345,7 +1329,21 @@ export function createScoutView(deps) {
         openAfter: false,
       });
       return created?.repertoire_id || null;
-    }
+    };
+    // No repertoire of this colour: a picker whose only choice is "Create new"
+    // is a step that decides nothing.
+    if (!reps.length) return createNew();
+    const options = [
+      ...reps.map((r) => ({ value: r.id, label: `${r.name} (${r.color})` })),
+      { value: "__new__", label: "Create new repertoire…" },
+    ];
+    const result = await showInputModal({
+      title: "Add line to prep",
+      okLabel: "Continue",
+      fields: [{ name: "repertoire", label: "Target repertoire", type: "select", default: reps[0].id, options }],
+    });
+    if (!result?.repertoire) return null;
+    if (result.repertoire === "__new__") return createNew();
     return result.repertoire;
   }
 

@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { roleLabel } from "../share-roles.js";
 
 // The Library table's rows and the painter that keeps them in place.
 //
@@ -12,19 +13,21 @@ import { html } from "../html.js";
 // Selection is deliberately not part of a row's key: applySelectionHighlight
 // toggles it in place, so moving the selection is not a content change.
 
-// Team shares received from others: read-only rows beside the own ones.
+// Repertoires others shared with the caller, beside the own ones, at the
+// caller's role; an editor opens one to edit it.
 function sharedRowHtml(item) {
+  const from = item.owner_display_name ? ` · ${item.owner_display_name}` : "";
   return html`
-    <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${item.id}" data-shared="1">
+    <div class="lib-row is-shared" tabindex="0" data-repertoire-id="${item.id}" data-shared="1" data-role="${item.role}">
       <span class="lib-opt" role="option" aria-selected="false">
         <span class="lib-cell-rep">
           <span class="color-dot ${item.color}"></span>
           <span class="lib-name">
             <span class="lib-name-line"><b class="name">${item.name}</b><span class="lib-chip is-shared">shared</span></span>
-            <small class="rep-sub">${String(item.color) === "black" ? "Black" : "White"} · read-only</small>
+            <small class="rep-sub">${String(item.color) === "black" ? "Black" : "White"} · ${roleLabel(item.role)}${from}</small>
           </span>
         </span>
-        <span class="lib-cell-mastery"><span class="muted">read-only</span></span>
+        <span class="lib-cell-mastery"><span class="muted">—</span></span>
         <span class="lib-cell-queue"><span class="muted">—</span></span>
       </span>
     </div>`;
@@ -35,15 +38,15 @@ function sharedRowHtml(item) {
 // prototype's "Lines" / "Last trained" columns stay out rather than inventing
 // data. Selection is state, not content, so it is not part of what
 // rowContent() compares; entrance markers belong to newly created DOM nodes.
-function ownRowHtml(item, { selected, repSubline, teamName }) {
+function ownRowHtml(item, { selected, repSubline }) {
   const id = item.id;
   const active = item.is_active !== false;
   const cls = ["lib-row", active ? "" : "is-disabled", selected ? "is-selected" : ""]
     .filter(Boolean)
     .join(" ");
   const chipsHtml =
-    html`${active ? "" : html`<span class="lib-chip">disabled</span>`}${item.visibility === "team" && item.team_id
-      ? html`<span class="lib-chip is-shared" title="Shared with ${teamName(item.team_id)}">shared</span>`
+    html`${active ? "" : html`<span class="lib-chip">disabled</span>`}${item.shared
+      ? html`<span class="lib-chip is-shared">shared</span>`
       : ""}`;
   const health = item.health;
   const pct = health ? health.mastery_pct || 0 : null;
@@ -92,7 +95,7 @@ function ownRowHtml(item, { selected, repSubline, teamName }) {
 // the view above it only has to say what the listing now contains.
 // `openOwn` selects the row and opens its workspace (the production action);
 // `openShared` opens a read-only share without claiming the local selection.
-export function createLibraryRows({ openOwn, openShared, openRepertoireContextMenu, repSubline, teamName }) {
+export function createLibraryRows({ openOwn, openShared, openRepertoireContextMenu, repSubline }) {
   // Rows on screen, by key, with the content they were painted from.
   const painted = new Map();
 
@@ -153,7 +156,7 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     String(
       sharedRow
         ? sharedRowHtml(item)
-        : ownRowHtml(item, { selected: false, repSubline, teamName }),
+        : ownRowHtml(item, { selected: false, repSubline }),
     );
 
   const keyOf = (item, sharedRow) => `${sharedRow ? "s" : "o"}:${item.id}`;
@@ -196,7 +199,6 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
               : ownRowHtml(entry.item, {
                   selected: String(entry.item.id) === selectedRepId,
                   repSubline,
-                  teamName,
                 }),
           ),
         };
@@ -260,7 +262,7 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
         entries.forEach((entry) => painted.set(entry.key, String(
           entry.sharedRow
             ? sharedRowHtml(entry.item)
-            : ownRowHtml(entry.item, { selected: false, repSubline, teamName }),
+            : ownRowHtml(entry.item, { selected: false, repSubline }),
         )));
         container.innerHTML = entries.map((entry) => entry.markup).join("");
         container.querySelectorAll(".lib-row").forEach(row => {

@@ -148,6 +148,19 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(byId("count-repertoires").hidden).toBe(false);
   });
 
+  it("shows each shared repertoire's team role and offers Copy only where it is allowed", () => {
+    const { view, byId } = makeHarness();
+    view.renderTeamSharedRepertoires("t1", [
+      { id: "r1", name: "Caro", color: "black", owner_user_id: "u2", owner_display_name: "Sam", role: "view" },
+      { id: "r2", name: "KID", color: "black", owner_user_id: "u2", owner_display_name: "Sam", role: "edit" },
+    ]);
+    const rows = String(byId("team-shared-repertoires").innerHTML).split('class="mem-row').slice(1);
+    expect(rows[0]).toContain("View only");
+    expect(rows[0]).not.toContain("team-copy");
+    expect(rows[1]).toContain("Can edit");
+    expect(rows[1]).toContain("team-copy");
+  });
+
 
   it("does not auto-open when there are several teams", async () => {
     const opened = [];

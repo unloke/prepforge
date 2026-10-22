@@ -1,7 +1,7 @@
 import { html } from "./html.js";
 import { expect, it, vi } from 'vitest';
 import { createSettingsActions } from './settings-actions.js';
-import { withBuildRevision, advanceBuildRevision } from './build-revision.js';
+import { BUILD_MUTATIONS } from './build-live.js';
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from './views/team-skeleton.js';
 const source = appSource();
 function compile(marker, deps, prelude = '') {
@@ -11,22 +11,21 @@ function compile(marker, deps, prelude = '') {
 }
 function deferred() { let resolve, reject; const promise = new Promise((a,b) => {resolve=a; reject=b;}); return {promise,resolve,reject}; }
 const noop = () => {};
-it('production annotation wrapper adopts revisions and rebases newly queued moves', async () => {
+it('production annotation wrapper advances the open revision only past its own write', async () => {
   const node = {arrows: [], circles: []};
   const appState = {build: {repertoire_id: 'r',revision:4},buildCurrentNodeId:'n',buildNodeById:new Map([['n',node]]),buildPending:[],buildPendingDeletes:[]};
-  let revision = 4;
+  const replies = [{revision:5},{revision:7}]; // another device wrote revision 6 in between
   const api = vi.fn(async (_path, options) => {
-    const body = JSON.parse(options.body);
-    expect(body.base_revision).toBe(revision);
-    appState.buildPending.push({repertoire_id:'r',base_revision:revision});
-    return {revision:++revision};
+    expect(JSON.parse(options.body)).not.toHaveProperty('base_revision');
+    return replies.shift();
   });
-  const postJson = compile('async function postJson(', {appState,api,withBuildRevision,advanceBuildRevision,currentOwnerId:()=> "owner"});
+  const postJson = compile('async function postJson(', {appState,api,BUILD_MUTATIONS,announceBuildWrite:noop,currentOwnerId:()=> "owner"});
   const save = compile('async function saveBuildAnnotations(', {appState,postJson,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,
-    hardFlushBuild:async()=>{},resolveBuildId:id=>id,boards:{build:{setAnnotations:noop}},setStatusError:vi.fn()});
-  await save(['Ga1a2'],[]); await save(['Ga1a3'],[]);
-  expect(appState.build.revision).toBe(6);
-  expect(appState.buildPending.every(op=>op.base_revision===6)).toBe(true);
+    hardFlushBuild:async()=>{},resolveBuildId:id=>id,boards:{build:{setAnnotations:noop}},setStatusError:vi.fn(),pokeBuildLive:noop});
+  await save(['Ga1a2'],[]);
+  expect(appState.build.revision).toBe(5);
+  await save(['Ga1a3'],[]);
+  expect(appState.build.revision).toBe(5); // revision 6 is unseen: the change feed fills it
 });
 it.each([false,true])('Settings reads wait for pending write (failure=%s)', async (failure) => {
   const post = deferred(); const appState = {signedIn:true,settings:{stockfish_depth:12}};
@@ -119,28 +118,31 @@ it('annotations send in-flight plus latest snapshot and never replay earlier dra
   const first=deferred(),last=deferred(),node={arrows:[],circles:[]},board={setAnnotations:vi.fn()};
   const appState={build:{repertoire_id:'r',revision:1},buildCurrentNodeId:'n',buildNodeById:new Map([['n',node]])};
   const postJson=vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(last.promise);
-  const save=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,boards:{build:board},setStatusError:noop});
+  const save=compile('async function saveBuildAnnotations(',{appState,currentOwnerId:()=> 'owner',activeViewName:()=> 'build',isBuildReadOnly:()=>false,hardFlushBuild:async()=>{},resolveBuildId:id=>id,postJson,boards:{build:board},setStatusError:noop,pokeBuildLive:noop});
   const a=save(['Ga1a2'],[]);await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(1));
   const b=save(['Ga1a3'],[]),c=save(['Ga1a4'],[]);expect(node.arrows).toEqual(['Ga1a4']);
   first.resolve({revision:2});await vi.waitFor(()=>expect(postJson).toHaveBeenCalledTimes(2));
-  expect(postJson.mock.calls[1][1]).toMatchObject({arrows:['Ga1a4'],base_revision:2});
+  expect(postJson.mock.calls[1][1]).toEqual({repertoire_id:'r',node_id:'n',arrows:['Ga1a4'],circles:[]});
   expect(board.setAnnotations).not.toHaveBeenCalledWith(['Ga1a2'],[]);
   last.reject(Error('offline'));await Promise.all([a,b,c]);
   expect(node.arrows).toEqual(['Ga1a2']);expect(board.setAnnotations).toHaveBeenLastCalledWith(['Ga1a2'],[]);
 });
-it('Build writes serialize and rebase only their own acknowledged revision',async()=>{
+it('Build writes serialize, carry no base revision and tell other tabs',async()=>{
   const first=deferred(),appState={build:{repertoire_id:'r',revision:4},buildPending:[],buildPendingDeletes:[]};
-  const api=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({revision:6});
-  const post=compile('async function postJson(',{appState,currentOwnerId:()=> 'owner',api,withBuildRevision,advanceBuildRevision});
-  const a=post('/api/build/annotations',{repertoire_id:'r',base_revision:4}),b=post('/api/build/add-moves',{repertoire_id:'r',base_revision:4});
+  const announce=vi.fn();
+  const api=vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({revision:6}).mockResolvedValueOnce({});
+  const post=compile('async function postJson(',{appState,currentOwnerId:()=> 'owner',api,BUILD_MUTATIONS,announceBuildWrite:announce});
+  const a=post('/api/build/annotations',{repertoire_id:'r'}),b=post('/api/build/add-moves',{repertoire_id:'r'});
   expect(api).toHaveBeenCalledTimes(1);first.resolve({revision:5});await Promise.all([a,b]);
-  expect(JSON.parse(api.mock.calls[1][1].body).base_revision).toBe(5);
-  await post('/api/build/annotations',{repertoire_id:'r',base_revision:3});
-  expect(JSON.parse(api.mock.calls[2][1].body).base_revision).toBe(3);
+  expect(api).toHaveBeenCalledTimes(2);
+  expect(appState.build.revision).toBe(6);
+  expect(announce).toHaveBeenCalledTimes(2);
+  await post('/api/settings',{repertoire_id:'r'});
+  expect(announce).toHaveBeenCalledTimes(2); // not a Build write
 });
 it('download responses become Blob directly without text parsing',async()=>{
   const blob=new Blob(['{"large":true}']),text=vi.fn();
-  const api=compile('async function api(',{withRequestDeadline:async fn=>fn(new AbortController().signal),headersWithCsrf:async()=>({}),getCsrfToken:noop,fetch:async()=>({ok:true,blob:async()=>blob,text})});
+  const api=compile('async function api(',{withRequestDeadline:async fn=>fn(new AbortController().signal),headersWithCsrf:async()=>({}),getCsrfToken:noop,CLIENT_ID_HEADER:'X-PF-Client',OUTBOX_TAB_ID:'tab',fetch:async()=>({ok:true,blob:async()=>blob,text})});
   expect(await api('/api/account/export',{responseType:'blob',timeoutMs:300000})).toBe(blob);expect(text).not.toHaveBeenCalled();
 });
 it('a Settings read still runs after a write during lazy view loading',async()=>{

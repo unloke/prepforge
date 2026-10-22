@@ -13,6 +13,7 @@ Compact persistent representation:
 from __future__ import annotations
 
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     Float,
     ForeignKey,
@@ -264,20 +265,57 @@ repertoires = Table(
     Column("is_active", Integer, nullable=False),
     Column("created_at", UTCDateTime(), nullable=False),
     Column("updated_at", UTCDateTime(), nullable=False),
-    Column("team_id", Text),
-    Column("visibility", Text),
     Column("health_json", Text),
-    # Mutation revision (D-02): bumped on every tree/metadata write; Build
-    # mutations may send ``base_revision`` and get 409 when it is stale.
+    # Mutation revision: bumped on every tree/metadata write, and the sequence
+    # number of that write's ``repertoire_ops`` row.
     Column("revision", Integer, nullable=False, server_default="0"),
     # Public share-link governance (F-01). ``share_rev`` is mixed into the
     # token signature: rotating bumps it and kills every previously minted
     # link; ``share_enabled`` is the independent on/off switch.
     Column("share_rev", Integer, nullable=False, server_default="0"),
-    Column("share_enabled", Integer, nullable=False, server_default="1"),
+    Column("share_enabled", Integer, nullable=False, server_default="0"),
     Column("share_expires_at", UTCDateTime()),
+    # What "anyone with the link" may do: 'view' or 'copy'. Editing needs a grant.
+    Column("share_role", String(length=8), nullable=False, server_default="view"),
     Index("idx_repertoires_owner", "owner_user_id"),
-    Index("idx_repertoires_team", "team_id"),
+)
+
+# Who besides the owner may use a repertoire, and how: one row per team or person
+# (exactly one of team_id / user_id). role is 'view' < 'copy' < 'edit'; a user's
+# effective role is the highest of their own grant and their teams' grants.
+repertoire_access = Table(
+    "repertoire_access",
+    metadata,
+    Column("id", String(length=32), primary_key=True, default=_uuid),
+    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="CASCADE"), nullable=False),
+    Column("team_id", String(length=32), ForeignKey("teams.id", ondelete="CASCADE")),
+    Column("user_id", String(length=32), ForeignKey("users.id", ondelete="CASCADE")),
+    Column("role", String(length=8), nullable=False),
+    Column("created_by", String(length=32), ForeignKey("users.id", ondelete="SET NULL")),
+    Column("created_at", UTCDateTime(), nullable=False, default=_now),
+    CheckConstraint("(team_id IS NULL) <> (user_id IS NULL)", name="ck_repertoire_access_one_target"),
+    CheckConstraint("role IN ('view', 'copy', 'edit')", name="ck_repertoire_access_role"),
+    UniqueConstraint("repertoire_id", "team_id", name="uq_repertoire_access_team"),
+    UniqueConstraint("repertoire_id", "user_id", name="uq_repertoire_access_user"),
+    Index("ix_repertoire_access_team_id", "team_id"),
+    Index("ix_repertoire_access_user_id", "user_id"),
+)
+
+# One row per repertoire write, keyed by the revision it produced: who wrote it,
+# from which client, what kind of edit, and which nodes it touched. Devices
+# viewing the repertoire read it (``/api/build/changes``) to catch up without a
+# reload. Only the recent tail is kept; an older ``since`` reloads the tree.
+repertoire_ops = Table(
+    "repertoire_ops",
+    metadata,
+    Column("repertoire_id", Text, ForeignKey("repertoires.id", ondelete="CASCADE"), primary_key=True),
+    Column("revision", Integer, primary_key=True),
+    Column("actor_user_id", Text, ForeignKey("users.id", ondelete="SET NULL", name="fk_repertoire_ops_actor_user_id")),
+    Column("client_id", Text),
+    Column("kind", Text, nullable=False),
+    # {"nodes": [ids upserted], "removed": [ids deleted], "meta": bool, "reset": bool}
+    Column("op_json", Text, nullable=False),
+    Column("created_at", UTCDateTime(), nullable=False),
 )
 
 opening_nodes = Table(

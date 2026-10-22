@@ -18,6 +18,8 @@ import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
 import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
+import { moveTextHtml } from "../move-text.js";
+import { analysisTextContext } from "../move-links.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
 import { clearReturnState, saveReturnState } from "../handoff-context.js";
@@ -622,7 +624,7 @@ function savedCoachQuality(ctx) {
 function setCoachProse(text, tone = "info", state = "instant", quality = null) {
   const el = document.getElementById("coach-prose");
   if (!el) return;
-  el.textContent = text || "";
+  el.innerHTML = moveTextHtml(text || "", analysisTextContext());
   el.dataset.state = state;
   el.dataset.quality = COACH_QUALITY_GROUP[String(quality || "").toLowerCase()] || "";
   for (const t of COACH_TONES) el.classList.toggle(`is-${t}`, t === tone);

@@ -5,7 +5,6 @@ import { flushGroups, groupAttempts, ungroupAttempts } from "./sync-queue.js";
 import { createBookActions } from "./analyze-book.js";
 import { createSettingsActions } from "./settings-actions.js";
 import { classifySyncError } from "./sync-errors.js";
-import { rebaseBuildOps } from "./build-revision.js";
 import { expect, it, vi } from "vitest";
 import { appSource } from "./test-app-source.js";
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from "./views/team-skeleton.js";
@@ -41,7 +40,7 @@ function deferred() {
 }
 
 it("opening a repertoire retains and reapplies its durable pending deletes", async () => {
-  const deletion = { id: "B-node", repertoire_id: "B", base_revision: 2 };
+  const deletion = { id: "B-node", repertoire_id: "B" };
   const appState = { build: { repertoire_id: "A" }, buildPendingDeletes: [deletion], buildPending: [], buildIdMap: {} };
   const reapplyPendingBuildDeletes = vi.fn(() => {
     expect(appState.buildPendingDeletes).toEqual([deletion]);
@@ -51,11 +50,9 @@ it("opening a repertoire retains and reapplies its durable pending deletes", asy
     selectBuildNode: vi.fn(), reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes,
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id,
     renderBuildSync: vi.fn(), syncWorkspaceUrl: vi.fn(), hasPendingBuildOpsFor: () => true, setBuildSync: vi.fn(), scheduleBuildFlush: vi.fn(),
-    rebaseBuildOps,
   });
   await run({ repertoire_id: "B", revision: 5, nodes: [{ id: "B-root" }] });
   expect(appState.buildPendingDeletes).toEqual([deletion]);
-  expect(deletion.base_revision).toBe(5); // replays on the tree just loaded
   expect(reapplyPendingBuildDeletes).toHaveBeenCalled();
 });
 
@@ -179,13 +176,13 @@ function buildFlushHarness() {
     resolveBuildId: (id) => id, acquireFlushLock: () => true, OUTBOX_TAB_ID: "tab", clearTimeout: vi.fn(), setBuildSync: vi.fn(),
     buildOpMatchesRepertoire: (op, id) => op.repertoire_id === id, setStatus: vi.fn(),
     postJson: vi.fn(async () => ({ repertoire_id: "r", revision: 2, id_map: { "tmp-a": "real" }, nodes: [{ id: "real" }] })),
-    queuedBuildRevision: () => 1, buildAddId: (op) => op.tempId, buildDeleteId: (op) => op.id,
+    buildAddId: (op) => op.tempId, buildDeleteId: (op) => op.id,
     persistOutbox: vi.fn(), hydrateBuild: vi.fn(async () => { throw new Error("render failed"); }),
     setStatusError: vi.fn(), hasPendingBuildOpsFor: () => false, clearOutboxWhenQuiescent: vi.fn(),
     releaseFlushLock: vi.fn(), classifySyncError: () => ({ kind: "network" }), describeSyncError: () => "error",
     setTimeout: vi.fn(), BUILD_FLUSH_MAX_BACKOFF_MS: 30000, scheduleBuildFlush: vi.fn(),
     reapplyPendingBuildNodes: vi.fn(), reapplyPendingBuildDeletes: vi.fn(),
-    rebaseBuildOps, api: vi.fn(), selectBuildNode: vi.fn(),
+    selectBuildNode: vi.fn(),
   };
   return { op, appState, deps, run: queueFlush("function flushBuildMoves(", deps) };
 }
@@ -256,30 +253,36 @@ it("a failed analysis delete restores the row and says why", async () => {
   delete globalThis.document;
 });
 
-// Production 2026-10-14: one edit made elsewhere moved the server revision, and
-// every queued edit kept its stale base, so each flush (and each reload) hit
-// 409 again while new edits piled onto the queue. A conflict now loads the
-// current tree, rebases the queue onto it and replays.
-it("a Build revision conflict replays the queue on the current tree", async () => {
+// Production 2026-10-14: one edit made elsewhere moved the server revision and
+// every queued edit then hit 409 on each flush. The server now rebases each edit
+// onto the current tree, so a queued edit carries no revision and just lands.
+it("a queued Build edit carries no base revision and lands after edits made elsewhere", async () => {
   const h = buildFlushHarness();
-  h.op.base_revision = 2;
-  const conflict = Object.assign(new Error("changed elsewhere"), { status: 409 });
-  h.deps.classifySyncError = classifySyncError;
-  h.deps.postJson.mockRejectedValueOnce(conflict);
-  h.deps.queuedBuildRevision = (ops) => Math.min(...ops.map((op) => op.base_revision));
-  h.deps.api.mockResolvedValue({ repertoire_id: "r", revision: 3, nodes: [{ id: "root" }] });
-  h.deps.hydrateBuild = vi.fn(async (payload) => {
-    h.appState.build = payload;
-    rebaseBuildOps(h.appState.buildPending, payload.repertoire_id, payload.revision);
-  });
-  expect(await h.run()).toBe(false);
-  expect(h.deps.api).toHaveBeenCalledWith("/api/build/load?repertoire_id=r");
-  expect(h.appState.buildPending).toEqual([h.op]);
-  expect(h.op.base_revision).toBe(3);
   h.deps.hydrateBuild.mockResolvedValue(undefined);
-  expect(await queueFlush("function flushBuildMoves(", h.deps)()).toBe(true);
-  expect(h.deps.postJson.mock.calls[1][1].base_revision).toBe(3);
+  expect(await h.run()).toBe(true);
+  expect(h.deps.postJson).toHaveBeenCalledWith("/api/build/add-moves", {
+    repertoire_id: "r", moves: [{ tempId: "tmp-a", parentRef: "root", uci: "e2e4" }] });
   expect(h.appState.buildPending).toEqual([]);
+});
+
+it("moves whose line was deleted elsewhere are settled with one notice", async () => {
+  const h = buildFlushHarness();
+  h.deps.hydrateBuild.mockResolvedValue(undefined);
+  h.deps.postJson.mockResolvedValueOnce({ repertoire_id: "r", revision: 3, id_map: {}, dropped: ["tmp-a"], nodes: [{ id: "root" }] });
+  expect(await h.run()).toBe(true);
+  expect(h.appState.buildPending).toEqual([]);
+  expect(h.deps.persistOutbox).toHaveBeenCalledWith(expect.objectContaining({ build: ["tmp-a"] }));
+  expect(h.deps.setStatus).toHaveBeenCalledWith("1 move not saved: line deleted elsewhere", { severity: "warning" });
+});
+
+it("a dropped move's selection falls back to the nearest line the server kept", async () => {
+  const h = buildFlushHarness();
+  h.deps.hydrateBuild.mockResolvedValue(undefined);
+  h.appState.buildNodeById = new Map([["tmp-a", { parent_id: "c5" }], ["c5", { parent_id: "e4" }], ["e4", { parent_id: "root" }]]);
+  h.deps.postJson.mockResolvedValueOnce({ repertoire_id: "r", revision: 3, id_map: {}, dropped: ["tmp-a"],
+    nodes: [{ id: "root" }, { id: "e4" }] });
+  expect(await h.run()).toBe(true);
+  expect(h.deps.hydrateBuild).toHaveBeenCalledWith(expect.objectContaining({ revision: 3 }), "e4");
 });
 
 it("queued edits for a repertoire that is not open still save", async () => {
@@ -402,7 +405,7 @@ it("a lost Build response retains deleted in-flight adds until their IDs can be 
   h.deps.postJson.mockImplementationOnce(() => response.promise);
   const pending = h.run();
   h.appState.buildNodeById.delete("tmp-a");
-  h.appState.buildPendingDeletes.push({ id: "tmp-a", repertoire_id: "r", base_revision: 1 });
+  h.appState.buildPendingDeletes.push({ id: "tmp-a", repertoire_id: "r" });
   response.reject(new Error("response lost"));
   expect(await pending).toBe(false);
   expect(h.appState.buildPending).toEqual([h.op]);
@@ -458,7 +461,7 @@ it("a Scout line queued into the open repertoire is flushed by that repertoire",
   const queueBuildAdd = compile("function queueBuildAdd(", { appState });
   const matches = compile("function buildOpMatchesRepertoire(", {});
   queueBuildAdd({ id: "tmp-1", parent_id: "root", uci: "e2e4" });
-  expect(appState.buildPending[0]).toMatchObject({ tempId: "tmp-1", parentRef: "root", uci: "e2e4", base_revision: 3 });
+  expect(appState.buildPending[0]).toMatchObject({ tempId: "tmp-1", parentRef: "root", uci: "e2e4" });
   expect(matches(appState.buildPending[0], "rep")).toBe(true);
   const scout = readFileSync(new URL("./views/scout.js", import.meta.url), "utf8");
   expect(scout).not.toMatch(/buildPending/);

@@ -39,13 +39,13 @@ function bindDropZone(element, onFile) {
 // Library filter bar (prototype All / White / Black / Shared / Disabled plus a
 // repertoire name search): a pure client-side predicate over the cached
 // /api/repertoires listing. Own rows match on their production fields (name,
-// color, visibility, is_active); received shared rows carry `sharedRow`. Filtering never refetches or reshapes a row.
+// color, shared, is_active); received shared rows carry `sharedRow`. Filtering never refetches or reshapes a row.
 export function filterLibraryRows(rows, { filter = "all", query = "" } = {}) {
   const q = query.trim().toLowerCase();
   return (rows || []).filter((item) => {
     if (q && !String(item.name || "").toLowerCase().includes(q)) return false;
     if (filter === "all") return true;
-    if (filter === "shared") return item.sharedRow === true || item.visibility === "team";
+    if (filter === "shared") return item.sharedRow === true || item.shared === true;
     if (filter === "disabled") return item.is_active === false;
     return String(item.color || "") === filter;
   });
@@ -131,7 +131,7 @@ export function createDashboardView({
   }
 
   // "Black · 142 moves to train" (+ disabled / shared-with in the preview) —
-  // only real listing fields (colour, health.trainable, visibility/team). The
+  // only real listing fields (colour, health.trainable, shared). The
   // listing has no line count or last-trained date, so neither is shown.
   function repSubline(item, { detail = false } = {}) {
     const bits = [String(item.color || "") === "black" ? "Black" : "White"];
@@ -141,10 +141,7 @@ export function createDashboardView({
     }
     if (!detail) return bits.join(" · ");
     if (item.is_active === false) bits.push("disabled");
-    if (item.visibility === "team" && item.team_id) {
-      const team = (appState.teams || []).find((tm) => tm.id === item.team_id);
-      bits.push(`shared with ${team ? team.name : "team"}`);
-    }
+    if (item.shared) bits.push("shared");
     return bits.join(" · ");
   }
 
@@ -452,13 +449,9 @@ export function createDashboardView({
   // `libraryRows`, which reconciles them against what is already on screen
   // instead of rewriting the table (see that module for why).
 
-  function teamNameOf(teamId) {
-    return (appState.teams.find((tm) => tm.id === teamId) || {}).name || "team";
-  }
-
   const libraryRows = createLibraryRows({
     // Clicking an own row selects it, then opens its workspace; a received
-    // share opens read-only without claiming the local selection.
+    // share opens at the caller's role without claiming the local selection.
     openOwn: (repId) => {
       selectedRepId = repId;
       editRepertoire(repId);
@@ -466,7 +459,6 @@ export function createDashboardView({
     openShared: (repId) => editRepertoire(repId),
     openRepertoireContextMenu,
     repSubline,
-    teamName: teamNameOf,
   });
 
   // An empty library (signed out, or no repertoires yet) is the prototype's

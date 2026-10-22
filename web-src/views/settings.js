@@ -9,6 +9,7 @@ import "./settings.css";
 import { resolveModelBase, peekSharedMaia3Provider, loadMaia3Manifest } from "../engine/maia3-provider.js";
 import { getCachedWeights, clearWeightCache } from "../engine/maia3-weight-cache.js";
 import { createAccountSection } from "./settings-account.js";
+import { maiaErrorText, maiaInitMessage } from "../maia-init-notice.js";
 
 export function createSettingsView({
   appState,
@@ -244,7 +245,9 @@ export function createSettingsView({
     if (maiaToggle) paintSwitch(maiaToggle, on);
     const usage = document.getElementById("settings-maia-usage");
     if (usage) {
-      usage.textContent = on ? "In use" : "Not in use";
+      // Train's practice opponent and Build's Generate use Maia either way; the
+      // switch only covers the analysis layer, so "Not in use" was untrue.
+      usage.textContent = on ? "On in Analyze and Scout" : "Off in Analyze and Scout";
       usage.title = on ? "" : "Turn on Maia analysis under Playing strength";
     }
     renderMaia3Status();
@@ -338,21 +341,19 @@ export function createSettingsView({
   }
 
   // Maia3 runtime/cache/provider state. The analysis LAYER switch (Playing
-  // strength → Maia analysis) only gates Analyze inference; health stays
-  // independently viewable. Status values:
+  // strength → Maia analysis) only gates Analyze and Scout inference; health
+  // stays independently viewable. Status values:
   //   Ready — provider ready this session, or cached weights verified present
-  //   Available on demand — manifest reachable, nothing cached yet
-  //   Loading — provider initializing, or a Retry verification in flight
-  //   Cache missing — manifest reachable but the cached key is absent/empty
+  //   Not downloaded — manifest reachable, nothing cached yet
+  //   Loading — provider initializing (download / verify / session progress)
   //   Unavailable — provider init/crash failure, or manifest unreachable
   //   Error — unexpected failure while determining the state
-  // Peek (provider + IDB presence) is free for every render; Retry performs the
-  // actual load verification (constructs the provider + runs inference).
+  // Peek (provider + IDB presence) is free for every render; the action button
+  // performs the actual load verification (constructs the provider + runs inference).
   const MAIA_STATUS = {
     READY: "Ready",
-    AVAILABLE: "Available on demand",
+    NOT_DOWNLOADED: "Not downloaded",
     LOADING: "Loading",
-    CACHE_MISSING: "Cache missing",
     UNAVAILABLE: "Unavailable",
     ERROR: "Error",
   };
@@ -369,56 +370,46 @@ export function createSettingsView({
   // downloaded read as if something had failed.
   const MAIA_ACTION_LABEL = {
     [MAIA_STATUS.READY]: "Verify",
-    [MAIA_STATUS.AVAILABLE]: "Download",
-    [MAIA_STATUS.CACHE_MISSING]: "Download",
+    [MAIA_STATUS.NOT_DOWNLOADED]: "Download",
   };
 
-  async function renderMaia3Status() {
+  // The model source (a full asset URL on hosted deploys) and a failure's raw
+  // worker message live in tooltips; the lines say what it means.
+  function paintMaiaStatus(model, note = "", error = null, source = "") {
     const modelEl = document.getElementById("settings-maia-model");
+    if (!modelEl) return;
     const noteEl = document.getElementById("settings-maia-status");
     const errEl = document.getElementById("settings-maia-error");
-    if (!modelEl) return;
-    // The model source (a full asset URL on hosted deploys) lives in the
-    // tooltip; the line itself names the fp16 build, as in the prototype.
-    const set = (model, note = "", error = "", source = "") => {
-      modelEl.textContent = model;
-      modelEl.className = `status-pill ${MAIA_STATUS_TONE[model] || ""}`.trim();
-      const actionBtn = document.getElementById("settings-maia-retry");
-      if (actionBtn && model !== MAIA_STATUS.LOADING) {
-        actionBtn.textContent = MAIA_ACTION_LABEL[model] || "Retry";
-      }
-      if (noteEl) {
-        noteEl.textContent = note;
-        noteEl.title = source ? `Model source: ${source}` : "";
-      }
-      if (errEl) {
-        errEl.textContent = error ? `Last error: ${error}` : "";
-        errEl.hidden = !error;
-      }
-    };
+    modelEl.textContent = model;
+    modelEl.className = `status-pill ${MAIA_STATUS_TONE[model] || ""}`.trim();
+    const actionBtn = document.getElementById("settings-maia-retry");
+    if (actionBtn && model !== MAIA_STATUS.LOADING) actionBtn.textContent = MAIA_ACTION_LABEL[model] || "Retry";
+    if (noteEl) Object.assign(noteEl, { textContent: note, title: source ? `Model source: ${source}` : "" });
+    const errText = error ? `Last error: ${maiaErrorText(error)}` : "";
+    if (errEl) Object.assign(errEl, { textContent: errText, title: error?.message || "", hidden: !error });
+  }
+
+  async function renderMaia3Status() {
+    if (!document.getElementById("settings-maia-model")) return;
     try {
       // Peek-only: rendering the Settings status row must never construct the
       // Maia worker — with Maia analysis OFF no provider may be initialized.
-      // Health stays viewable regardless of the analysis toggle; the toggle
-      // only gates Analyze inference, never this status row or Retry/Reset.
       const provider = peekSharedMaia3Provider();
       if (provider) {
         if (provider.state === "ready") {
           const info = provider.info || {};
-          const base = info.url || provider.assetBase || "";
-          set(MAIA_STATUS.READY, "Loaded this session · fp16", "", base);
+          paintMaiaStatus(MAIA_STATUS.READY, "Loaded this session · fp16", null, info.url || provider.assetBase || "");
           return;
         }
         if (provider.state === "initializing") {
-          set(MAIA_STATUS.LOADING, "Downloading / preparing the model.");
+          paintMaiaStatus(MAIA_STATUS.LOADING, maiaLoadingNote || "Preparing the model");
           return;
         }
         if (provider.state === "unavailable") {
-          const err = provider.lastError;
-          set(
+          paintMaiaStatus(
             MAIA_STATUS.UNAVAILABLE,
             "Last load failed. Use Retry, or Reset cache if it keeps failing.",
-            err ? `${err.message}${err.phase ? ` (${err.phase})` : ""}` : "",
+            provider.lastError || null,
           );
           return;
         }
@@ -427,7 +418,7 @@ export function createSettingsView({
       try {
         manifest = await loadMaia3Manifest();
       } catch {
-        set(MAIA_STATUS.UNAVAILABLE, "Model manifest is not reachable from this server.");
+        paintMaiaStatus(MAIA_STATUS.UNAVAILABLE, "Model manifest is not reachable from this server.");
         return;
       }
       const base = resolveModelBase(manifest);
@@ -437,35 +428,45 @@ export function createSettingsView({
         null;
       const bytes =
         (manifest.artifacts && manifest.artifacts.fp16 && manifest.artifacts.fp16.bytes) || 0;
-      const sizeMb = bytes ? `${Math.round(bytes / (1024 * 1024))} MB` : "~46 MB";
+      // Decimal MB, the unit the reset confirmation quotes (~46 MB).
+      const sizeMb = bytes ? `${Math.round(bytes / 1e6)} MB` : "~46 MB";
       const cached = key ? await getCachedWeights(key) : null;
       if (cached) {
-        set(MAIA_STATUS.READY, `${sizeMb} cached in this browser · fp16`, "", base);
-      } else if (!pref("maiaAnalysis")) {
-        // Analysis OFF still reports real runtime state: with no provider and
-        // nothing cached, the cache is verifiably empty (not merely on-demand).
-        set(MAIA_STATUS.CACHE_MISSING, "Maia analysis is off — model not cached · fp16", "", base);
+        paintMaiaStatus(MAIA_STATUS.READY, `${sizeMb} cached in this browser · fp16`, null, base);
       } else {
-        set(MAIA_STATUS.AVAILABLE, `${sizeMb} · not cached · fp16`, "", base);
+        paintMaiaStatus(MAIA_STATUS.NOT_DOWNLOADED, `${sizeMb} · fp16`, null, base);
       }
     } catch {
-      set(MAIA_STATUS.ERROR, "Could not determine the browser Maia3 state.");
+      paintMaiaStatus(MAIA_STATUS.ERROR, "Could not determine the browser Maia3 state.");
     }
   }
 
+  // Latest cold-init progress line ("Downloading Maia model · 37%") while a
+  // verification is loading the model; null otherwise.
+  let maiaLoadingNote = null;
+
   // Actual health/load verification: constructs the provider (unlike the
   // peek-only status render) and runs one real inference. Always available —
-  // independent of the Maia analysis toggle, which only gates Analyze.
+  // independent of the Maia analysis toggle, which only gates Analyze and Scout.
+  // The ~46 MB first download reports its progress on the card itself: the
+  // "Verifying" toast is gone long before a slow download finishes.
   async function verifyMaia3() {
     setStatus("Verifying Maia3…");
+    let stopProgress = () => {};
     try {
       const provider = getSharedMaia3Provider();
+      stopProgress = provider.subscribeInitProgress?.((progress) => {
+        maiaLoadingNote = maiaInitMessage(progress) || maiaLoadingNote;
+        if (maiaLoadingNote) paintMaiaStatus(MAIA_STATUS.LOADING, maiaLoadingNote);
+      }) || stopProgress;
       renderMaia3Status();
       await provider.predictions({ fen: startFen });
       setStatus("Maia3 ready");
     } catch (err) {
-      setStatus(`Maia3 could not load: ${err.message}`);
+      setStatus(`Maia3 could not load: ${maiaErrorText(err)}`);
     } finally {
+      stopProgress();
+      maiaLoadingNote = null;
       renderMaia3Status();
     }
   }

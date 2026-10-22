@@ -49,9 +49,16 @@ def current_user(user: User | None = Depends(current_user_optional)) -> User:
     return user
 
 
-def get_repository() -> WorkspaceRepository:
+# Each browser tab sends its id, so a write's repertoire_ops row says which
+# client made it and that client can recognise its own edits in the feed.
+CLIENT_ID_HEADER = "X-PF-Client"
+
+
+def get_repository(request: Request) -> WorkspaceRepository:
     """Domain repository bound to the app's shared SQLAlchemy engine."""
-    return WorkspaceRepository(get_engine())
+    repo = WorkspaceRepository(get_engine())
+    repo.op_client = (request.headers.get(CLIENT_ID_HEADER) or "")[:64] or None
+    return repo
 
 
 def current_owner(user: User = Depends(current_user)) -> str:
