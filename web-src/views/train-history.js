@@ -15,6 +15,9 @@ function score(run) {
 }
 
 const pctText = scored => (scored.pct === null ? '—' : `${scored.pct}%`);
+// A run of new moves only has no first answers; it still taught something.
+const scoreLabel = (run, scored) =>
+  scored.label ? `${scored.label} first try` : run.learned ? `${run.learned} learned` : 'no first answers';
 
 function runName(run) {
   return run.repertoires.length ? run.repertoires.join(' · ') : 'Smart queue';
@@ -28,7 +31,7 @@ function lead(run) {
     <div class="th-lead-head"><span class="th-lead-label">Latest</span><span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
     <h3 class="th-name" title="${runName(run)}">${runName(run)}</h3>
     <div class="th-figures">
-      <div class="th-figure is-lead"><b data-history-first-try>${pctText(scored)}</b><span>${scored.label ? `${scored.label} first try` : 'no first answers'}</span></div>
+      <div class="th-figure is-lead"><b data-history-first-try>${pctText(scored)}</b><span>${scoreLabel(run, scored)}</span></div>
       ${figure(run.cards, 'cards', 'data-history-cards')}
       ${figure(run.mistakes, 'missed', 'data-history-missed', run.mistakes ? 'is-missed' : '')}
       ${figure(run.skipped, 'skipped', 'data-history-skipped')}
@@ -38,10 +41,10 @@ function lead(run) {
 
 const row = run => {
   const scored = score(run);
-  return html`<li class="th-run" title="${run.cards} cards · ${scored.label ? `${scored.label} first try` : 'no first answers'} · ${run.mistakes} missed · ${run.skipped} skipped">
+  return html`<li class="th-run" title="${run.cards} cards · ${scoreLabel(run, scored)} · ${run.mistakes} missed · ${run.skipped} skipped">
     <div class="th-run-main"><b class="th-name" title="${runName(run)}">${runName(run)}</b>
       <span class="th-when">${modeLabel(run)} · <time datetime="${run.finishedAt}">${DATE.format(new Date(run.finishedAt))}</time></span></div>
-    <div class="th-run-score"><b>${pctText(scored)}</b><span>${scored.label ? `${scored.label} first try` : 'no first answers'}</span></div>
+    <div class="th-run-score"><b>${pctText(scored)}</b><span>${scoreLabel(run, scored)}</span></div>
   </li>`;
 };
 

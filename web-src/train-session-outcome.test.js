@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { smartSessionOutcomeText } from "./controllers/train-session.js";
+import { smartSessionOutcomeText } from "./train-outcome.js";
 
 describe("smart session outcome copy", () => {
-  it("reports zero review attempts as learning rather than a failed score", () => {
-    expect(smartSessionOutcomeText({}, { correct: 0, mistakes: 0 })).toBe(
-      "New moves learned. No review moves scored yet.",
+  it("counts the new moves learned apart from the review score", () => {
+    // A new move is taught, not graded: a wrong first try on it is not a miss.
+    expect(smartSessionOutcomeText({}, { correct: 0, mistakes: 0, learned: 3, learnedRetry: 1 })).toBe(
+      "3 new moves learned (1 needed a retry). Nothing due for review yet.",
+    );
+    expect(smartSessionOutcomeText({}, { correct: 2, mistakes: 0, learned: 1 })).toBe(
+      "1 new move learned. First-try recall: 2 of 2 review moves.",
     );
   });
 

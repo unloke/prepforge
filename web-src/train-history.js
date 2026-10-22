@@ -79,7 +79,7 @@ export function saveSmartRun(ownerId, smart, stats, storage = browserStorage(), 
   const run = {
     id, mode: smart.blitz ? 'blitz' : 'smart', repertoires,
     startedAt: smart.generation, finishedAt: now.toISOString(),
-    cards: smart.cardsDone, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped,
+    cards: smart.cardsDone, correct: stats.correct, mistakes: stats.mistakes, skipped: stats.skipped, learned: stats.learned || 0,
   };
   try {
     const previous = readRuns(ownerId, storage);

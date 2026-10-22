@@ -10,6 +10,7 @@ import { maiaErrorText, watchMaiaInit } from "../maia-init-notice.js";
 import { pendingHandoffs, trackPreparationPractice, transitionHandoff } from "../handoff-context.js";
 import { countOf } from "../plural.js";
 import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveTip } from "../train-hint.js";
+import { smartSessionOutcomeText } from "../train-outcome.js";
 import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
 import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
@@ -553,7 +554,7 @@ function selectedTrainRepertoireId() {
 }
 
 function trainStatsReset() {
-  appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0 };
+  appState.trainStats = { correct: 0, mistakes: 0, skipped: 0, streak: 0, best: 0, history: [], lastStreak: 0, learned: 0, learnedRetry: 0 };
   appState.trainReview = { queue: [], index: 0, active: false, savedStreak: 0, recovered: 0 };
 }
 
@@ -1823,21 +1824,6 @@ function startBlitzTimer(smart, prompt) {
 
 let smartStartSeq = 0;
 
-export function smartSessionOutcomeText(smart = {}, stats = {}) {
-  const correct = Number(stats.correct) || 0;
-  const missed = Number(stats.mistakes) || 0;
-  const scored = correct + missed;
-  const recall = scored
-    ? `First-try recall: ${correct} of ${scored} review move${scored === 1 ? "" : "s"}.`
-    : "New moves learned. No review moves scored yet.";
-  const details = [];
-  if (missed) details.push(`${missed} missed first try`);
-  if (smart.retriesFixed) details.push(`${smart.retriesFixed} fixed on retry`);
-  if (smart.blitz && smart.timeouts) details.push(`${smart.timeouts} timed out`);
-  if (stats.skipped) details.push(`${stats.skipped} skipped`);
-  return details.length ? `${recall} ${details.join(" · ")}.` : recall;
-}
-
 async function startSmartTraining(options = {}) {
   const seq = ++smartStartSeq;
   const owner = currentOwnerId();
@@ -2304,6 +2290,10 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
     return;
   }
 
+  if (prompt.kind === "new") {
+    stats.learned = (stats.learned || 0) + 1;
+    if (attempt > 1) stats.learnedRetry = (stats.learnedRetry || 0) + 1;
+  }
   if (attempt > 1) {
     // "Fixed on retry" is a scored miss recovered on the free retry; a revealed
     // answer was not recalled and a New move's demonstration was never scored.
@@ -2339,7 +2329,7 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   });
   if (!demonstrating) playSound("right");
   const praise =
-    attempt > 1 ? "Got it this time" : prompt.kind === "new" ? "Learned" : hinted ? "Correct, with a hint" : "Correct";
+    prompt.kind === "new" ? "Learned" : attempt > 1 ? "Got it this time" : hinted ? "Correct, with a hint" : "Correct";
   setTrainBanner("correct", praise, target.san ? `You played ${target.san}` : "");
   if (target.reply && target.reply.uci && target.reply.fen_after) {
     await sleep(520);
