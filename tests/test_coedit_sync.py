@@ -268,3 +268,83 @@ def test_parallel_writers_keep_one_contiguous_op_per_revision(client):
     feed = _changes(client, rep, base)
     assert [op["revision"] for op in feed["ops"]] == list(range(base + 1, base + 9))
     assert len(feed["nodes"]) == 8
+
+
+# ---- several accounts ----------------------------------------------------------
+
+
+def _account(email):
+    from prepforge_chess.api import main
+
+    other = TestClient(main.app)
+    return other, _register(other, email)
+
+
+def _share(owner_client, rep, role, email):
+    r = _post(owner_client, "/api/repertoires/access", {"repertoire_id": rep, "role": role, "person": email})
+    assert r.status_code == 200, r.text
+
+
+def test_an_editor_on_another_account_co_edits_live(client):
+    rep, root, e4 = _setup(client, "owner@example.com")
+    owner_id = client.get("/api/auth/me").json()["id"]
+    editor, editor_id = _account("editor@example.com")
+    viewer, _viewer_id = _account("viewer@example.com")
+    _share(client, rep, "edit", "editor@example.com")
+    _share(client, rep, "view", "viewer@example.com")
+    base = _load(client, rep)["revision"]
+
+    # Both last saw ``base``; owner and editor add on different lines at once.
+    results = []
+
+    def write(who, parent, uci, temp):
+        r = _post(who, "/api/build/add-moves",
+                  {"repertoire_id": rep, "moves": [{"tempId": temp, "parentRef": parent, "uci": uci}]})
+        results.append(r.status_code)
+
+    threads = [threading.Thread(target=write, args=(client, e4, "e7e5", "tmp-o")),
+               threading.Thread(target=write, args=(editor, root, "d2d4", "tmp-e"))]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert results == [200, 200]
+    tree = _load(client, rep)
+    assert tree["revision"] == base + 2
+    assert _children(tree, root) == ["d2d4", "e2e4"] and _children(tree, e4) == ["e7e5"]
+
+    # The editor's write reaches the owner's feed, signed by the editor.
+    feed = _changes(client, rep, base)
+    assert sorted(op["actor_user_id"] for op in feed["ops"]) == sorted([owner_id, editor_id])
+    assert {n["uci"] for n in feed["nodes"]} == {"e7e5", "d2d4"}
+    assert "health" in feed
+
+    # The editor and the viewer read the same feed without the owner's training colour.
+    for reader in (editor, viewer):
+        seen = _changes(reader, rep, base)
+        assert seen["revision"] == base + 2 and seen["health"] is None
+        assert all("mastery" not in n for n in seen["nodes"])
+
+    # The viewer may not write; a revoked editor no longer sees the repertoire.
+    denied = _post(viewer, "/api/build/add-moves",
+                   {"repertoire_id": rep, "moves": [{"tempId": "tmp-v", "parentRef": root, "uci": "c2c4"}]})
+    assert denied.status_code == 403
+    revoked = _post(client, "/api/repertoires/access/revoke", {"repertoire_id": rep, "user_id": editor_id})
+    assert revoked.status_code == 200, revoked.text
+    gone = _post(editor, "/api/build/add-moves",
+                 {"repertoire_id": rep, "moves": [{"tempId": "tmp-e2", "parentRef": root, "uci": "c2c4"}]})
+    assert gone.status_code == 404
+    assert editor.get("/api/build/changes", params={"repertoire_id": rep, "since": base}).status_code == 404
+
+
+def test_rename_stays_owner_only_and_is_logged(client):
+    rep, _root, _e4 = _setup(client, "owner@example.com")
+    owner_id = client.get("/api/auth/me").json()["id"]
+    editor, _ = _account("editor@example.com")
+    _share(client, rep, "edit", "editor@example.com")
+    base = _load(client, rep)["revision"]
+    assert _post(editor, "/api/build/rename", {"repertoire_id": rep, "name": "Mine"}).status_code == 403
+    assert _post(client, "/api/build/rename", {"repertoire_id": rep, "name": "Kings pawn"}).status_code == 200
+    feed = _changes(editor, rep, base)
+    assert feed["name"] == "Kings pawn"
+    assert [(op["kind"], op["actor_user_id"]) for op in feed["ops"]] == [("rename", owner_id)]
