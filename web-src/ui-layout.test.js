@@ -900,7 +900,7 @@ describe("workspace chrome layout", () => {
     // Slice from the mobile chrome block (bottom tab bar / touch targets).
     const mobile = css.slice(css.indexOf("/* Mobile: no rail"));
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
-    expect(mobile).toMatch(/\.account-btn,\s*\.icon-btn\s*\{[^}]*min-height:\s*44px/s);
+    expect(mobile).toMatch(/\.account-btn,\s*\.rail-btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.btn\.icon\s*\{[^}]*min-height:\s*44px/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);

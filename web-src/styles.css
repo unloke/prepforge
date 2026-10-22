@@ -698,24 +698,7 @@ h2 {
   cursor: pointer;
 }
 
-/* Prototype top-bar icon buttons: borderless, 30px, tinted on hover. */
-.icon-btn {
-  display: inline-grid;
-  grid-auto-flow: column;
-  place-items: center;
-  gap: 6px;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.icon-btn:hover { background: var(--surface-3); color: var(--text); }
-.icon-btn .ic { width: 17px; height: 17px; }
-.icon-btn kbd {
+.rail-btn kbd {
   padding: 0 5px;
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a key cap needs its own edge */
   border-radius: 4px;
@@ -5109,11 +5092,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     align-items: center;
   }
   .account-btn,
-  .icon-btn {
+  .rail-btn {
     min-height: 44px;
     min-width: 44px;
   }
-  .icon-btn kbd {
+  .rail-btn kbd {
     display: none;
   }
   .btn {
@@ -5927,7 +5910,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
-/* Rail foot: Search and Theme read as rail rows (icon, label on expand). */
+/* Rail foot: Search and Theme read as rail rows (icon, label on expand) on
+   the shared quiet button (.btn.ghost). */
 .rail-btn {
   position: relative;
   justify-content: flex-start;
@@ -5935,6 +5919,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   width: 100%;
   height: 38px;
   padding: 0 13px;
+  border: 0;
   white-space: nowrap;
 }
 .rail-btn .ic { width: 18px; height: 18px; }
