@@ -93,9 +93,13 @@
 
 .lr {
   display: grid;
-  grid-template-columns: 124px minmax(150px, 1.3fr) 44px minmax(120px, 1fr) 60px;
+  /* The game column is a name and a date: capped, so a wide window gives its
+     room to the opening moves instead of spreading the row into islands. The
+     two short columns fit their header words ("Result", "Departure"), which
+     used to spill 15px past the card and scroll it sideways. */
+  grid-template-columns: 124px minmax(160px, 260px) 52px minmax(120px, 1fr) 80px;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   width: 100%;
   padding: 7px 12px;
   border: 0;
@@ -135,15 +139,16 @@
 .players small { color: var(--label); font-size: var(--fs-xs); }
 .acct { padding: 0 4px; border-radius: 3px; background: var(--surface-3); font-style: normal; }
 .open-prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
-/* Result and Departure are numbers and move numbers: right-aligned with
-   tabular figures, and the header above them is right-aligned the same way. */
-.res { font-weight: 700; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+/* Departure is a move number: right-aligned with tabular figures, and so is its
+   header. A result is a fixed-width score between two text columns: centred, so
+   "1-0" does not run into the first move beside it. */
+.res { font-weight: 700; white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
 /* A ledger, not a win/loss chart: the result column keeps the row's ink and
    the outcome is carried by the Preparation badge. Green/red on every row put
    six accent-coloured numbers on a ten-row sample and made the eye land on the
    score instead of on what left prep. */
 .lr-date { white-space: nowrap; }
-.lr.head > :nth-child(3),
+.lr.head > :nth-child(3) { text-align: center; }
 .lr.head > :nth-child(5) { text-align: right; }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
@@ -224,6 +229,13 @@
     to { opacity: 1; transform: none; }
   }
 } 
+/* Desktop: the departure move is marked as a chip around its own SAN, not a
+   red bar across the whole half of the row, and the note under it starts on
+   the moves' edge instead of at the card's. */
+@media (min-width: 861px) {
+  .ply.dep { justify-self: start; }
+  .dep-note { padding-left: 34px; }
+}
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows path {
@@ -238,7 +250,7 @@
 /* ≤1279: the Opening column drops. */
 @media (max-width: 1279px) {
   .triage { grid-template-columns: minmax(0, 1fr) 380px; }
-  .lr { grid-template-columns: 118px minmax(140px, 1fr) 40px 56px; }
+  .lr { grid-template-columns: 118px minmax(140px, 1fr) 52px 80px; }
   .lr > :nth-child(4) { display: none; }
 }
 /* ≤1020: narrow laptop / split screen. Ledger and detail stay side by side
@@ -262,7 +274,7 @@
   .lr {
     grid-template-columns: 1fr auto;
     grid-template-areas: "badge res" "players dep";
-    row-gap: 4px;
+    gap: 4px 10px;
     min-height: 44px;
   }
   .lr > :nth-child(1) { grid-area: badge; }

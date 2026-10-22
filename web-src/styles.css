@@ -3796,6 +3796,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 
+/* Desktop Games and Scout: the page names itself, as Settings does, and the
+   controls sit on the title's row instead of in a white strip of their own. The
+   strip was a 48px band of 13px controls over the whole width, which read as a
+   cramped form line; on the title row they read as the page's own controls and
+   the results get the height. */
+@media (min-width: 861px) {
+  .review > :is(.games-panel, .scout-panel):not([hidden]) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px 24px;
+  }
+  .review > section > .page-head { display: block; align-self: center; }
+  .review > section > .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
+  .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
+  /* An empty Scout is a card the report lands in, the way the Games ledger is
+     before its first Check, not a line of text floating on the page ground. */
+  .scout-panel .scout-empty { border-radius: var(--radius-card); background: var(--panel); }
+}
+
 /* ===========================================================================
    Scout: Opus prototype composition (skeleton; the report itself is styled in
    views/scout.css). Toolbar card, then a grid: scrolling main column (profile,
