@@ -2297,7 +2297,9 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   }
 
   if (attempt > 1) {
-    smart.retriesFixed += 1;
+    // "Fixed on retry" is a scored miss recovered on the free retry; a revealed
+    // answer was not recalled and a New move's demonstration was never scored.
+    if (scored && attempt === 2) smart.retriesFixed += 1;
   } else if (scored && hinted) {
     stats.mistakes += 1;
     stats.streak = 0;
