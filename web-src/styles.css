@@ -526,11 +526,13 @@ h2 {
   opacity: 0;
 }
 
-/* Hover opens the rail only where there is a pointer that hovers. A touch
-   screen wide enough for the rail (a phone on its side, a tablet) keeps :hover
-   after a tap, so a tap on the rail's edge or a group label left the 204px
-   overlay open over the board and the panel until the next tap elsewhere. */
-@media (hover: hover) {
+/* Hover opens the rail except under a touch pointer. A touch screen wide
+   enough for the rail (a phone on its side, a tablet) keeps :hover after a tap,
+   so a tap on the rail's edge or a group label left the 204px overlay open over
+   the board and the panel until the next tap elsewhere. Keyed on a coarse
+   pointer, not on (hover: hover): a browser with no pointer device at all
+   (headless CI) reports hover: none and must still open on hover. */
+@media not (pointer: coarse) {
   .rail:not(.is-nav-collapsed):hover {
     width: var(--rail-open);
     box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
