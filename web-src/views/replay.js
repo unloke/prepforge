@@ -7,6 +7,7 @@ import { staggerRows } from "../list-enter.js";
 import { nounOf } from "../plural.js";
 import "./replay.css";
 
+// `label` reads after a count of games ("5 not covered"): a phrase, never pluralised.
 const REPLAY_KINDS = {
   "in-prep": { badge: "Stayed in prep", label: "stayed in prep", tone: "good" },
   "user-error": { badge: "You left prep", label: "you left prep", tone: "bad" },
@@ -242,7 +243,7 @@ export function createReplayView({
       .filter(([kind]) => counts[kind] > 0)
       .map(
         ([kind, meta]) =>
-          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${counts[kind]} ${nounOf(counts[kind], meta.label)}</button>`
+          html`<button type="button" class="sum-chip t-${meta.tone}${activeFilter === kind ? " is-on" : ""}" data-filter="${kind}" aria-pressed="${activeFilter === kind}">${counts[kind]} ${meta.label}</button>`
       );
     const queued = Number(payload.misses_recorded) || 0;
     const queuedHtml = queued
@@ -477,7 +478,7 @@ export function createReplayView({
     const entered = payload !== lastPayload;
     lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, filter ? REPLAY_KINDS[filter].label : "game")}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${REPLAY_KINDS[filter].label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     if (entered) staggerRows(container.querySelector?.(".ledger-table"));
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {

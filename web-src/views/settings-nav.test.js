@@ -111,6 +111,16 @@ describe("Settings section navigation", () => {
     }
   });
 
+  it("scrolls the open link into a strip that scrolls sideways", () => {
+    // A phone strip is one row wider than the screen: a section opened from
+    // the scroll spy or a jump must not sit off the strip's edge.
+    const { view, nav } = setup();
+    view.markActiveSection("set-board");
+    expect(nav.scrollLeft).toBeGreaterThanOrEqual(5 * 80 + 80 - nav.clientWidth);
+    view.markActiveSection("set-account");
+    expect(nav.scrollLeft).toBe(0);
+  });
+
   it("keeps every section reachable from the strip and the heading in the page", () => {
     const view = html.slice(html.indexOf('id="view-settings"'), html.indexOf("</main>"));
     for (const [href, label] of SECTIONS) {
@@ -136,7 +146,7 @@ describe("Settings section navigation", () => {
 
   it("lands a jumped-to card below the sticky strip", () => {
     expect(css).toMatch(/\.settings-content > \.set \{ scroll-margin-top: 64px; \}/);
-    expect(phoneCss).toMatch(/#view-settings \.settings-content > \.set \{ scroll-margin-top: 112px; \}/);
+    expect(phoneCss).toMatch(/#view-settings \.settings-content > \.set \{ scroll-margin-top: 72px; \}/);
   });
 
   it("leaves the click's marker alone when every card fits on screen", async () => {

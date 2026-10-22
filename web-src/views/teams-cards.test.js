@@ -2,24 +2,29 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 // The Teams page is a work surface: the open team's panel takes the height of
-// the view and the two short lists beside it keep their own height at the top.
-// It used to be the other way round — every card was sized by its content, so
-// the page showed three short strips over half a screen of empty ground.
+// the view and the two lists (directory, incoming shares) stack beside it at
+// their own height. Without a team open, the placeholder ends where the lists
+// end: a screen-tall blank card beside two short strips read as broken.
 const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 const view = readFileSync(new URL("./teams.css", import.meta.url), "utf8");
 
-// The desktop block that turns Teams into a work surface.
-const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {"));
+// The desktop block that composes Teams.
+const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {\n  .teams {"));
 
 describe("Teams is a work surface", () => {
-  it("gives the grid the height of the view", () => {
-    const grid = desktop.slice(desktop.indexOf(".teams {"), desktop.indexOf(".teams {") + 200);
-    expect(grid).toMatch(/min-height:\s*100%/);
-    expect(grid).toMatch(/grid-template-rows:\s*minmax\(0,\s*1fr\)/);
+  it("gives the grid the height of the view only while a team is open", () => {
+    expect(desktop).toMatch(/\.teams:has\(> \.team-detail:not\(\[hidden\]\)\) \{ min-height: 100%; grid-template-rows: auto minmax\(0, 1fr\); \}/);
   });
 
-  it("keeps the directory and the incoming shares at their own height", () => {
-    expect(shared).toMatch(/\.teams > \.card\.dir,\s*\n\s*\.teams > \.card\.incoming \{ align-self: start; \}/);
+  it("stacks the directory and the incoming shares in one column beside the team", () => {
+    expect(desktop).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); \}/);
+    expect(desktop).toMatch(/\.teams > \.card\.dir,\s*\n\s*\.teams > \.card\.incoming \{ grid-column: 1; \}/);
+    expect(desktop).toMatch(/\.teams > \.team-empty \{ grid-column: 2; grid-row: 1 \/ span 2; align-self: stretch; \}/);
+  });
+
+  it("turns the placeholder into the first-run panel when there is no team yet", () => {
+    expect(desktop).toMatch(/\[data-empty="no-teams"\][^{]*> \.card\.dir \{ display: none; \}/);
+    expect(desktop).toMatch(/\.teams\[data-empty="no-teams"\] #team-empty-new \{ display: inline-flex; \}/);
   });
 
   it("lets the open team's panel fill the card", () => {

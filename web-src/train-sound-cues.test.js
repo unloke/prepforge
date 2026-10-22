@@ -140,4 +140,13 @@ describe("Train answer sounds", () => {
     const landing = h.setPosition.mock.calls.find(([arg]) => arg.lastMove === "g1f3");
     expect(landing[0].cue).toBeUndefined();
   });
+
+  it("counts only a scored miss answered on the free retry as fixed on retry", async () => {
+    for (const [kind, attempt, fixed] of [["due", 2, 1], ["due", 3, 0], ["new", 2, 0]]) {
+      const h = harness({ kind });
+      h.appState.smart.attempt = attempt;
+      await playAnswer(h, "g1f3");
+      expect([kind, attempt, h.appState.smart.retriesFixed]).toEqual([kind, attempt, fixed]);
+    }
+  });
 });

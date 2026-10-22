@@ -12,11 +12,11 @@ import { classifySyncError } from "./sync-errors.js";
 // header controls; this module owns what they drive.
 
 let selectBuildNode, hardFlushBuild, captureBuildContext, hydrateBuild, trainRepertoire,
-  preloadBuildGen, fitDock;
+  preloadBuildGen;
 
 export function createCoverage(deps) {
   ({ selectBuildNode, hardFlushBuild, captureBuildContext, hydrateBuild, trainRepertoire,
-    preloadBuildGen, fitDock } = deps);
+    preloadBuildGen } = deps);
   return { ensureCoverageView, runCoverageScanUI, previewCoverageReplies,
     get coverageView() { return coverageView; } };
 }
@@ -35,8 +35,6 @@ export function ensureCoverageView() {
         getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode, getBoard: () => boards.build,
         previewReplies: previewCoverageReplies, getJob: () => notices,
         onError: (error) => setStatusError(error.message),
-        // The inspector sizes to its content, so every repaint is a new height.
-        onPaint: () => fitDock?.(),
       });
       return coverageView;
     }).catch((error) => { coverageViewReady = null; throw error; });

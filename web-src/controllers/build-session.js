@@ -154,10 +154,12 @@ function openBuildMenu(event) {
     ? (appState.repertoireList || []).find((r) => String(r.id) === String(repId))
     : null;
   const isActive = !meta || meta.is_active !== false;
-  // The shown move's own menu, for screens without a right-click.
+  // The shown move's own menu, for screens without a right-click. The start
+  // position is not a move (its node carries san "root"): the entry read
+  // "Move 1. root…" there.
   const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
   const items = [
-    ...(node?.san ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
+    ...(node?.san && node.parent_id ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
     ...buildMenuItems({ hasRep, isActive }),
   ];
   menu.innerHTML = html`${items
@@ -439,6 +441,19 @@ function initBuildDockLayout() {
   // The panel's height ceiling depends on the window, so a resize refits an
   // unpinned dock (a pinned one keeps the height the user chose).
   window.addEventListener("resize", () => fitBuildDock());
+  // The dock is its drawers' height, capped by what the panel's other bands leave
+  // the tree. Any of them changing — an Explorer row, an engine line, the fork bar
+  // coming or going — refits it before that frame paints (observers run between
+  // layout and paint). Fitting only on a paint the dock knew about left it a drawer
+  // short (an inner scrollbar) or a fork bar tall (a late jump) until some unrelated
+  // repaint caught up.
+  if (typeof ResizeObserver === "function") {
+    const observer = new ResizeObserver(() => fitBuildDock());
+    for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);
+    for (const band of dock.parentElement.children) {
+      if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
+    }
+  }
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
   resizer.addEventListener("keydown", (event) => {
     // Up/Down are the fork picker's keys elsewhere in Build; on the focused
@@ -598,6 +613,7 @@ async function refreshExplorerPanel() {
     appState.buildCurrentNodeId && appState.buildNodeById.get(appState.buildCurrentNodeId);
   const fen = node ? node.fen : null;
   if (!fen) {
+    delete rows.dataset.shownFen;
     rows.innerHTML = html`<div class="muted hint">Open a repertoire to see real-game stats.</div>`;
     // No rows can belong to a position now, so park the search instead of
     // leaving the old one burning a core at full depth.
@@ -625,10 +641,12 @@ async function refreshExplorerPanel() {
   } else {
     explorerOpeningName = "";
     rows.classList.remove("is-stale");
+    delete rows.dataset.shownFen;
     rows.innerHTML = html`<div class="muted hint">Loading ${db === "lichess" ? "Players" : "Masters"}…</div>`;
   }
   try {
     if (!explorerModule) {
+      delete rows.dataset.shownFen;
       rows.innerHTML = html`<div class="muted hint">Loading explorer…</div>`;
       await ensureExplorerClient();
       renderExplorerScope(); // now that ratingBucketsFor is available, show the pool
@@ -646,15 +664,18 @@ async function refreshExplorerPanel() {
     const label = db === "lichess" ? "Players" : "Masters";
     if (explorerModule && error instanceof explorerModule.ExplorerRateLimited) {
       const secs = Math.max(1, Math.ceil(error.retryInMs / 1000));
+      delete rows.dataset.shownFen;
       rows.innerHTML = html`<div class="muted hint">Lichess asks for a short pause - try again in ~${secs}s.</div>`;
     } else if (/link your lichess account/i.test(error.message || "")) {
       // Retrying cannot help until an account is linked: offer the link.
+      delete rows.dataset.shownFen;
       rows.innerHTML =
         html`<div class="muted hint">The ${label} explorer reads Lichess with your linked account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
       rows.querySelector("[data-explorer-link]")?.addEventListener("click", () => {
         openSettingsSection("set-connections").catch(() => {});
       });
     } else {
+      delete rows.dataset.shownFen;
       rows.innerHTML =
         html`<div class="muted hint">${label} explorer unavailable: ${error.message} <button type="button" class="btn sm ghost" data-explorer-retry>Retry</button></div>`;
       rows.querySelector("[data-explorer-retry]")?.addEventListener("click", () => refreshExplorerPanel());
@@ -673,10 +694,19 @@ function renderExplorerRows(stats, fen) {
   if (!rows) return;
   explorerOpeningName = stats.opening || "";
   paintInspectorScope();
+  // Re-rendering the position already on screen (the add-move save landing,
+  // a cached refresh) only updates the rows in place: replaying their entrance
+  // read as the Explorer animating twice.
+  const shown = rows.dataset.shownFen;
+  const samePosition = !!shown && !!fen && rows.dataset.shownDb === explorerDb && sameFenPosition(shown, fen);
+  rows.classList.toggle("is-refresh", samePosition);
+  rows.dataset.shownFen = fen || "";
+  rows.dataset.shownDb = explorerDb;
   rows.dataset.fen = fen || "";
   rows.classList.remove("is-stale");
   rows.removeAttribute("aria-busy");
   if (!stats.moves.length) {
+    delete rows.dataset.shownFen;
     rows.innerHTML = html`<div class="muted hint">No games reached this position - true novelty territory.</div>`;
     void explorerEvalEngine.sync();
     return;
@@ -722,10 +752,9 @@ function renderExplorerRows(stats, fen) {
   explorerEvalEngine.repaint();
   void explorerEvalEngine.sync();
   // The row count is the dock's height: a position with more replies gets a
-  // taller inspector instead of an inner scrollbar inside a fixed one. The rows
-  // paint on the next frame (their animation sets the height), so the fit is
-  // read after that paint rather than against the empty host.
-  requestAnimationFrame(() => fitBuildDock());
+  // taller inspector instead of an inner scrollbar inside a fixed one. Fitted
+  // now, in the task that wrote the rows, so no frame reads them in a short dock.
+  fitBuildDock();
 }
 
 // Explorer bars are always full width: the W/D/B split is what a row is read

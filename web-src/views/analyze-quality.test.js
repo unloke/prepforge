@@ -59,7 +59,9 @@ describe("coach engine-review switch", () => {
 
   it("is labelled and titled in place, with no standing description", () => {
     const tag = html.match(/<button[^>]*id="explain-engine-toggle"[^>]*>/)[0];
-    expect(tag).toContain('aria-label="Engine review"');
+    expect(tag).toContain('aria-label="Grade moves"');
+    // Not a second "Engine" control: the eval card's Engine button is the live lines.
+    expect(tag).not.toMatch(/aria-label="[^"]*Engine/);
     expect(tag).toContain("title=");
     expect(html).not.toMatch(/class="pf-row-text explain-review"/);
     expect(html).not.toContain("read for what they mean to you");

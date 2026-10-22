@@ -153,6 +153,9 @@ export function createTeamsView({
     const body = document.getElementById("team-empty-body");
     if (title) title.textContent = copy.title;
     if (body) body.textContent = copy.body;
+    // The page composes around the state: with no team yet the empty card is the
+    // first-run panel and carries its own New team (teams.css).
+    document.querySelector("#view-teams .teams")?.setAttribute("data-empty", kind);
     // The signed-out card says "Sign in to create or join a team"; give it the
     // button to do so (UX walkthrough 2026-10-01 P2-10).
     const signIn = document.getElementById("team-empty-signin");

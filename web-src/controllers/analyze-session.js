@@ -66,7 +66,7 @@ export function createAnalyzeSession(deps) {
   return {
     analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
     onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
-    resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
+    rebuildAnalysisVariations, resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
     selectAnalysisNode, selectAnalysisNodePath, selectedNodePath, showAnalysisPly,
   };
 }
@@ -1530,6 +1530,9 @@ async function persistAnalysisSession() {
   }
   saveReturnState("analyze", {
     pgn,
+    // A saved review: a reload recalls its grades, chart and report by id instead
+    // of re-parsing a bare PGN (which carries none of them).
+    gameId: analysis?.game_id || null,
     ply: Math.max(0, Number(appState.analysisPly) || 0),
     // The position's stable identity: `root`, or the UCI path that leads to it
     // (`e2e4-d7d6` for 1... d6, `e2e4-e7e5-g1f3-a7a6` for a branch at move 3).
