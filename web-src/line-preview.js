@@ -170,7 +170,10 @@ function showPeek(target, { pinned = false } = {}) {
   const canApply = pinned && target.classList.contains("move-ref") && !!options.apply(target, true);
   const own = peek.titled === target ? peek.title : "";
   const note = own && own !== pos.label ? html`<span class="move-peek-note">${own}</span>` : "";
-  host.innerHTML = html`${miniBoardHtml(pos.fen, pos.lastMove, options.orientation())}<div class="move-peek-foot"><b class="move-peek-label">${pos.label || ""}</b>${canApply ? html`<button type="button" class="btn sm move-peek-go">Show on board</button>` : ""}</div>${note}`;
+  // A view whose boards face one player (a Scout colour section, a Games review)
+  // names that side on the token's container; elsewhere the active board decides.
+  const side = target.closest("[data-board-side]")?.dataset.boardSide || options.orientation();
+  host.innerHTML = html`${miniBoardHtml(pos.fen, pos.lastMove, side)}<div class="move-peek-foot"><b class="move-peek-label">${pos.label || ""}</b>${canApply ? html`<button type="button" class="btn sm move-peek-go">Show on board</button>` : ""}</div>${note}`;
   host.classList.toggle("is-pinned", pinned);
   host.setAttribute("role", pinned ? "dialog" : "tooltip");
   host.setAttribute("aria-label", pos.label ? `Position after ${pos.label}` : "Position");

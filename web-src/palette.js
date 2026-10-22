@@ -1,6 +1,7 @@
 import { html } from "./html.js";
 import { appState } from "./core/state.js";
-import { api } from "./core/api.js";
+import { activeViewName, api } from "./core/api.js";
+import { isBuildReadOnly } from "./build-entry.js";
 import { activateModal } from "./core/modals.js";
 import { buildPaletteItems, filterPaletteItems, paletteScrollTop, renderPaletteItems } from "./command-palette.js";
 
@@ -16,14 +17,25 @@ let paletteA11yCleanup = null;
 // These are the shell's (and its views'), so they arrive once at bind time.
 let switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
   requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky,
-  toggleTheme;
+  toggleTheme, editBuildNote;
 
 export function createPalette(deps) {
   ({ switchView, setReplaySection, loadSettings, editRepertoire, createRepertoirePrompt,
     requireSignIn, showConfirmModal, goToSmartTraining, startTraining, onFeelingLucky,
-    toggleTheme } = deps);
+    toggleTheme, editBuildNote } = deps);
   return { paletteIsOpen, closePalette, openPalette, bindCommandPalette };
 }
+// "Add note" acts on the shown move of a repertoire open for editing in Repertoire.
+function noteTarget() {
+  if (activeViewName() !== "build" || isBuildReadOnly()) return null;
+  const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+  return node?.parent_id ? node : null;
+}
+
+function paletteItemsNow(repertoires) {
+  return buildPaletteItems({ repertoires: repertoires || [], noteMove: noteTarget() });
+}
+
 export function paletteIsOpen() {
   const el = document.getElementById("command-palette");
   return !!(el && !el.hidden);
@@ -68,7 +80,7 @@ export function openPalette() {
   if (!el) return;
   // Open from what is already here: the keypress must not wait on a network
   // round trip. Repertoires arrive (or stay missing) behind it.
-  paletteItems = filterPaletteItems(buildPaletteItems({ repertoires: appState.repertoireList || [] }), "");
+  paletteItems = filterPaletteItems(paletteItemsNow(appState.repertoireList), "");
   paletteActive = 0;
   el.hidden = false;
   const input = document.getElementById("palette-input");
@@ -94,7 +106,7 @@ async function refreshPaletteRepertoires() {
     // A query typed while the fetch was in flight must survive the refresh.
     const input = document.getElementById("palette-input");
     const query = input?.value || "";
-    paletteItems = filterPaletteItems(buildPaletteItems({ repertoires }), query);
+    paletteItems = filterPaletteItems(paletteItemsNow(repertoires), query);
     paletteActive = 0;
     paintPalette();
   } catch (_) {
@@ -126,6 +138,12 @@ async function runPaletteItem(item) {
   }
   if (item.kind === "repertoire" && item.repertoireId) {
     editRepertoire(item.repertoireId);
+    return;
+  }
+  if (item.action === "add-note") {
+    // The palette's "Add note": the move menu's note dialog, for the shown move.
+    const node = noteTarget();
+    if (node) await editBuildNote(node.id);
     return;
   }
   if (item.action === "new-repertoire") {
@@ -189,7 +207,7 @@ export function bindCommandPalette() {
   if (input) {
     input.addEventListener("input", () => {
       paletteItems = filterPaletteItems(
-        buildPaletteItems({ repertoires: appState.repertoireList || [] }),
+        paletteItemsNow(appState.repertoireList),
         input.value,
       );
       paletteActive = 0;

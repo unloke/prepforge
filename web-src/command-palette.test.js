@@ -138,3 +138,22 @@ describe("paletteScrollTop", () => {
     expect(paletteScrollTop({ ...box, itemTop: 10, itemHeight: 31, scrollTop: 0 })).toBe(0);
   });
 });
+
+describe("palette note command", () => {
+  const move = { id: "n3", parent_id: "n2", san: "d4", move_number: 3, move_side: "white", comment: "" };
+
+  it("offers a note on the shown Repertoire move, found by 'note' or 'comment'", () => {
+    const items = buildPaletteItems({ noteMove: move });
+    const note = items.find((item) => item.action === "add-note");
+    expect(note.label).toBe("Add note to 3. d4");
+    for (const query of ["note", "comment"]) {
+      expect(filterPaletteItems(items, query)[0].action).toBe("add-note");
+    }
+  });
+
+  it("says Edit when the move already has a note, and is absent with no move shown", () => {
+    expect(buildPaletteItems({ noteMove: { ...move, comment: "Main idea" } }).find((i) => i.action === "add-note").label)
+      .toBe("Edit note on 3. d4");
+    expect(buildPaletteItems({}).some((item) => item.action === "add-note")).toBe(false);
+  });
+});

@@ -9,7 +9,10 @@ import { START_FEN, moveLineHtml, moveTextHtml, walkPathText } from "../move-tex
 export function summaryStatCells(smart = {}, stats = {}) {
   const firstTries = (stats.correct || 0) + (stats.mistakes || 0);
   const acc = firstTries ? `${Math.round(((stats.correct || 0) / firstTries) * 100)}%` : "—";
-  const cells = [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [acc, "first try"], [stats.best || 0, "best in a row"]];
+  // A session of only new moves has no first tries to score: it says what it taught.
+  const cells = !firstTries && stats.learned
+    ? [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [stats.learned, "learned"]]
+    : [[smart.cardsDone, nounOf(smart.cardsDone, "card")], [acc, "first try"], [stats.best || 0, "best in a row"]];
   if (stats.skipped) cells.push([stats.skipped, "skipped"]);
   return cells;
 }

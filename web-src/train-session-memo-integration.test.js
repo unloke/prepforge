@@ -4,6 +4,7 @@ import { mapTrainUiSession, shouldResetTrainStats } from "./train-resume.js";
 import { clearSessionMemo, loadSessionMemo, saveSessionMemo } from "./train-session-memo.js";
 import * as trainSessionMemo from "./train-session-memo.js";
 import { readTrainingHistory } from './train-history.js';
+import { smartSessionOutcomeText } from "./train-outcome.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -60,7 +61,7 @@ function harness(overrides = {}) {
   deps.paintTrainStartDisabled = vi.fn();
   deps.syncTrainSessionControls = vi.fn();
   deps.showSmartSummary = compile("function showSmartSummary(", deps);
-  deps.smartSessionOutcomeText = compile("function smartSessionOutcomeText(", deps);
+  deps.smartSessionOutcomeText = smartSessionOutcomeText;
   deps.celebrate = compile("function celebrate(", deps);
   deps.rememberSmartSession = compile("function rememberSmartSession(", deps);
   return { appState, deps, start: compile("async function startSmartTraining(", deps), present, phase, payload };

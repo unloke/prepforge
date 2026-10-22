@@ -400,7 +400,7 @@ export function createReplayView({
       actions.push(html`<button class="btn" data-act="analyze" data-index="${index}">Analyze</button>`);
     }
     return (
-      html`<section class="focus card" aria-label="Preparation detail"><div class="focus-top">${boardHtml}<div class="focus-info"><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><p class="focus-line"><i class="kind-badge t-${meta.tone}">${meta.badge}</i><span class="focus-result ${replayResultClass(game)}">${displayReplayResult(game.result)}</span></p><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui data-mt="${encodeLine(START_FEN, game.move_san_history || [])}">${renderReplayMoveLine(game)}</div></section>`
+      html`<section class="focus card" aria-label="Preparation detail" data-board-side="${game.user_color === "black" ? "black" : "white"}"><div class="focus-top">${boardHtml}<div class="focus-info"><h2>${playerName(game, "white")} vs ${playerName(game, "black")}</h2><p class="focus-line"><i class="kind-badge t-${meta.tone}">${meta.badge}</i><span class="focus-result ${replayResultClass(game)}">${displayReplayResult(game.result)}</span></p><ul class="reasons">${renderReplayDetail(game)}</ul><div class="actions">${actions}${lichessLink}</div></div></div><div class="moveline" data-ui data-mt="${encodeLine(START_FEN, game.move_san_history || [])}">${renderReplayMoveLine(game)}</div></section>`
     );
   }
 

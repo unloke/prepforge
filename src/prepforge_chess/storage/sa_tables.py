@@ -360,6 +360,8 @@ training_sessions = Table(
         ForeignKey("repertoires.id", ondelete="CASCADE"),
         nullable=False,
     ),
+    # Whose session: anyone with access to a repertoire trains it on their own.
+    Column("owner_user_id", Text, ForeignKey("users.id", ondelete="CASCADE", name="fk_training_sessions_owner_user_id"), nullable=False),
     Column("mode", Text, nullable=False),
     Column("line_order_json", Text, nullable=False),
     Column("current_index", Integer, nullable=False),
@@ -371,8 +373,9 @@ training_sessions = Table(
     Column("created_at", UTCDateTime(), nullable=False),
     Column("updated_at", UTCDateTime(), nullable=False),
     Index(
-        "idx_training_sessions_rep_mode_updated",
+        "idx_training_sessions_rep_owner_mode_updated",
         "repertoire_id",
+        "owner_user_id",
         "mode",
         "updated_at",
     ),

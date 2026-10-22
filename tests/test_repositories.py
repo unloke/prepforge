@@ -236,6 +236,7 @@ def test_training_session_and_progress_round_trip():
     session = TrainingSession(
         id="session-1",
         repertoire_id="train-rep",
+        owner_user_id="u1",
         mode=TrainingMode.ALL_LINES,
         line_order=["train-e4", "train-root"],
         current_index=1,
@@ -256,7 +257,7 @@ def test_training_session_and_progress_round_trip():
     repo.save_training_progress("train-rep", progress, owner_user_id="u1")
 
     loaded_session = repo.load_training_session("session-1")
-    latest_session = repo.load_latest_training_session("train-rep", TrainingMode.ALL_LINES)
+    latest_session = repo.load_latest_training_session("train-rep", "u1", TrainingMode.ALL_LINES)
     loaded_progress = repo.load_training_progress(
         "train-rep", "train-e4", owner_user_id="u1"
     )

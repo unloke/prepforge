@@ -31,8 +31,11 @@ export function createMoveTreeRenderer() {
     else if (opts.pathIds && opts.pathIds.has(node.id)) classes.push("on-path");
     const title = deco.title ? html` title="${String(deco.title)}"` : "";
     const label = moveTokenLabel(node, deco);
+    // A pointer's way to the move menu: a ⋯ that shows while the move is
+    // hovered. Keyboards reach the same menu with the context-menu key.
+    const more = opts.moveMenu ? html`<span class="mtree-more" aria-hidden="true">⋯</span>` : "";
     return (
-      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}</button>`
+      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}${more}</button>${deco.after || ""}`
     );
   }
 
@@ -129,6 +132,11 @@ export function createMoveTreeRenderer() {
       let pressed = false;
       let start = null;
       button.addEventListener("click", (event) => {
+        if (onContext && event.target?.closest?.(".mtree-more")) {
+          event.stopPropagation();
+          onContext(event, id);
+          return;
+        }
         if (onContext && lastPointer === "touch" && button.classList.contains("is-current")) {
           // The menu's outside-click close listens on document; keep this tap off it.
           event.stopPropagation();

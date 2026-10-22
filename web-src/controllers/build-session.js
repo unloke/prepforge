@@ -54,6 +54,7 @@ export function createBuildSession(deps) {
     initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
     paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
+    handleNodeContextAction,
   };
 }
 
@@ -155,11 +156,11 @@ function openBuildMenu(event) {
     : null;
   const isActive = !meta || meta.is_active !== false;
   // The shown move's own menu, for screens without a right-click. The start
-  // position is not a move (its node carries san "root"): the entry read
-  // "Move 1. root…" there.
+  // position is not a move (its node carries san "root"). "Move 3. d4…" read
+  // as the verb (relocate it), so the entry names the move as its object.
   const node = hasRep ? appState.buildNodeById.get(appState.buildCurrentNodeId) : null;
   const items = [
-    ...(node?.san && node.parent_id ? [["build-node-menu", `Move ${nodeMenuHeading(node)}…`]] : []),
+    ...(node?.san && node.parent_id ? [["build-node-menu", `Options for ${nodeMenuHeading(node)}…`]] : []),
     ...buildMenuItems({ hasRep, isActive, isOwner: buildRole(appState.build) === "owner" }),
   ];
   menu.innerHTML = html`${items
@@ -693,6 +694,7 @@ function renderExplorerRows(stats, fen) {
   const rows = document.getElementById("explorer-rows");
   if (!rows) return;
   explorerOpeningName = stats.opening || "";
+  if (stats.opening && fen) buildView?.nameOpening(fen, stats.opening);
   paintInspectorScope();
   // Re-rendering the position already on screen (the add-move save landing,
   // a cached refresh) only updates the rows in place: replaying their entrance
@@ -1062,6 +1064,7 @@ async function onBuildBoardMove(moveUci) {
 
   const node = buildProvisionalNode(parent, moveUci, after);
   appState.buildJustAddedId = node.id;
+  appState.buildAddedIds.push({ repertoireId: appState.build.repertoire_id, id: node.id });
   queueBuildAdd(node);
   await selectBuildNode(node.id);
   setBuildSync("dirty");
@@ -1640,7 +1643,7 @@ function openNodeContextMenu(event, nodeId) {
       ...(node.is_mainline || !node.parent_id ? [] : [["set_mainline", "Set as mainline"]]),
       node.is_enabled ? ["disable_branch", "Disable branch"] : ["enable_branch", "Re-enable branch"],
     ],
-    [["add_comment", node.comment ? "Edit comment…" : "Add comment…"]],
+    [["add_comment", node.comment ? "Edit note…" : "Add note…"]],
     [
       ["copy_fen", "Copy FEN"],
       ["copy_line_pgn", "Copy line PGN"],
@@ -1664,8 +1667,12 @@ function openNodeContextMenu(event, nodeId) {
   menu.hidden = false;
   markNodeMenuTarget(nodeId);
   const rect = menu.getBoundingClientRect();
-  const left = Math.max(8, Math.min(event.clientX, window.innerWidth - rect.width - 8));
-  const top = Math.max(8, Math.min(event.clientY, window.innerHeight - rect.height - 8));
+  // The context-menu key has no pointer position: open under the move itself.
+  const token = !event.clientX && !event.clientY && document.querySelector(`.mtree-move[data-node-id="${CSS.escape(String(nodeId))}"]`);
+  const box = token ? token.getBoundingClientRect() : null;
+  const [x, y] = box ? [box.left, box.bottom + 4] : [event.clientX, event.clientY];
+  const left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
+  const top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8));
   menu.style.left = `${left}px`;
   menu.style.top = `${top}px`;
   menu.querySelectorAll("button").forEach((button) => {
@@ -1747,10 +1754,10 @@ async function handleNodeContextAction(action, nodeId) {
     let value = null;
     if (action === "add_comment") {
       const result = await showInputModal({
-        title: "Comment",
+        title: `Note on ${nodeMenuHeading(node)}`,
         okLabel: "Save",
         fields: [
-          { name: "comment", label: "Comment", type: "textarea", default: node.comment || "" },
+          { name: "comment", label: "Note", type: "textarea", default: node.comment || "" },
         ],
       });
       if (!result) return;
@@ -1769,6 +1776,7 @@ async function handleNodeContextAction(action, nodeId) {
     setStatusError(error.message);
   }
 }
+
 
 function closeNodeContextMenu() {
   const menu = document.getElementById("node-context-menu");

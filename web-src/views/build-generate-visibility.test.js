@@ -100,16 +100,32 @@ describe("build Generate visibility", () => {
     expect(generateBtn.hidden).toBe(false);
   });
 
-  it("ignores the opponent's reply: a white child is not your prepared move", () => {
-    // 1.e4 has only black's c6 under it — from white's viewpoint there is nothing
-    // of yours to preserve, and with a white repertoire that node hides too.
+  it("stays at the start position even when your first move is there", () => {
+    // Generating from the start grows the whole repertoire, so the button does
+    // not vanish at the one position every visit begins on.
     const white = [
       makeNode({ id: "root" }),
       makeNode({ id: "e4", parent_id: "root", depth: 1, san: "e4", uci: "e2e4", move_side: "white", is_prepared: true }),
     ];
     const { view, generateBtn } = makeHarness({ nodes: white, currentNodeId: "root", color: "white" });
     view.renderBuildRepHeader();
-    expect(generateBtn.hidden).toBe(true);
+    expect(generateBtn.hidden).toBe(false);
+  });
+
+  it("ignores the opponent's reply: a black child is not your prepared move", () => {
+    // White repertoire at 1...c5: only White's own move would answer it.
+    const white = [
+      makeNode({ id: "root" }),
+      makeNode({ id: "e4", parent_id: "root", depth: 1, san: "e4", uci: "e2e4", move_side: "white" }),
+      makeNode({ id: "c5", parent_id: "e4", depth: 2, san: "c5", uci: "c7c5", move_side: "black" }),
+      makeNode({ id: "nf3", parent_id: "c5", depth: 3, san: "Nf3", uci: "g1f3", move_side: "white" }),
+    ];
+    const atE4 = makeHarness({ nodes: white, currentNodeId: "e4", color: "white" });
+    atE4.view.renderBuildRepHeader();
+    expect(atE4.generateBtn.hidden).toBe(false);
+    const atC5 = makeHarness({ nodes: white, currentNodeId: "c5", color: "white" });
+    atC5.view.renderBuildRepHeader();
+    expect(atC5.generateBtn.hidden).toBe(true);
   });
 
   it("hides it with no repertoire open", () => {

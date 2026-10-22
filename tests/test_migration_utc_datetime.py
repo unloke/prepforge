@@ -105,5 +105,7 @@ def test_datetime_upgrade(tmp_path, seeded):
         ).all())
         assert "idx_training_progress_due (due_at<?)" in plan
         if seeded:
+            # e9c1d3f5a7b9: an existing session is its repertoire owner's.
+            assert conn.scalar(select(t.training_sessions.c.owner_user_id)) == "owner"
             assert conn.scalars(select(t.training_progress.c.node_id).where(t.training_progress.c.due_at <= expected)).all() == ["node"]
     engine.dispose()

@@ -696,10 +696,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         with self.engine.begin() as conn:
             # The dashboard counts sessions and this week's reviews through the
             # repertoire's rows, so deleting the repertoire must move those
-            # counts into the owner's archives first (same as deleting nodes).
-            owner = conn.scalar(
-                select(t.repertoires.c.owner_user_id).where(t.repertoires.c.id == repertoire_id)
-            )
+            # counts into each trainer's archives first (same as deleting nodes).
             tp = t.training_progress
             reviewed = conn.execute(
                 select(tp.c.owner_user_id, tp.c.last_reviewed_at).where(
@@ -709,18 +706,19 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 )
             ).all()
             self._archive_reviews(conn, reviewed, week_ago)
-            if owner:
-                sessions = conn.scalar(
-                    select(func.count()).select_from(t.training_sessions).where(
-                        t.training_sessions.c.repertoire_id == repertoire_id
-                    )
-                ) or 0
-                if sessions:
-                    cur = self.lock_user_setting(conn, owner, PLAYED_SESSIONS_KEY, 0)
-                    self.write_user_setting(
-                        conn, owner, PLAYED_SESSIONS_KEY,
-                        (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
-                    )
+            ts = t.training_sessions
+            sessions_by_owner = conn.execute(
+                select(ts.c.owner_user_id, func.count())
+                .where(ts.c.repertoire_id == repertoire_id)
+                .group_by(ts.c.owner_user_id)
+                .order_by(ts.c.owner_user_id)
+            ).all()
+            for owner, sessions in sessions_by_owner:
+                cur = self.lock_user_setting(conn, owner, PLAYED_SESSIONS_KEY, 0)
+                self.write_user_setting(
+                    conn, owner, PLAYED_SESSIONS_KEY,
+                    (cur if isinstance(cur, int) and cur >= 0 else 0) + sessions,
+                )
             conn.execute(delete(t.repertoires).where(t.repertoires.c.id == repertoire_id))
 
     def _archive_reviews(self, conn: Connection, reviewed, week_ago: datetime) -> None:

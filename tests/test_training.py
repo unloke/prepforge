@@ -69,12 +69,14 @@ def _training_repertoire(repository):
 def test_training_order_is_repeatable_with_seed():
     first = create_training_session(
         repertoire_id="rep",
+        owner_user_id="u1",
         line_ids=["a", "b", "c", "d"],
         mode=TrainingMode.ALL_LINES,
         seed=7,
     )
     second = create_training_session(
         repertoire_id="rep",
+        owner_user_id="u1",
         line_ids=["a", "b", "c", "d"],
         mode=TrainingMode.ALL_LINES,
         seed=7,
@@ -87,6 +89,7 @@ def test_training_order_is_repeatable_with_seed():
 def test_wrong_attempt_adds_mistake_and_due_soon():
     session = create_training_session(
         repertoire_id="rep",
+        owner_user_id="u1",
         line_ids=["line"],
         mode=TrainingMode.ALL_LINES,
         seed=1,

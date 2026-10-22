@@ -214,8 +214,7 @@ export function createScoutView(deps) {
     if (!side) return;
     side.hidden = true;
     side.innerHTML = "";
-    delete side.dataset.lineKey;
-    delete side.dataset.color;
+    for (const key of ["lineKey", "color", "boardSide"]) delete side.dataset[key];
   }
 
   // Below 1020px the detail stacks under the plan; bring it into view on select.
@@ -523,12 +522,13 @@ export function createScoutView(deps) {
         scoutState.activeSpeed,
         {
           usernames: scoutState.usernames,
-          colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(
-              scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+          colorRecHtml: scoutState.color === "white" || scoutState.color === "black" ? "" // one colour: nothing to compare
+            : buildColorRecommendationBanner(
+              colorRecommendation(
+                scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+              ),
+              { username: scoutState.username },
             ),
-            { username: scoutState.username },
-          ),
         },
       );
       profileEl.hidden = false;

@@ -93,6 +93,10 @@ describe("a new queue keeps the finished queue's scope", () => {
     expect(finishedQueueScopeFor(scope, appState)).toBe(scope);
     // The listing not loaded yet is not evidence the repertoire is gone.
     expect(finishedQueueScopeFor(scope, state({ repertoireList: [] }))).toBe(scope);
+    // A repertoire shared with the user keeps its scope while it stays shared.
+    const shared = { ...scope, repertoireId: "rep-shared" };
+    expect(finishedQueueScopeFor(shared, state({ sharedRepertoireList: [{ id: "rep-shared", role: "view" }] }))).toBe(shared);
+    expect(finishedQueueScopeFor(shared, state({ sharedRepertoireList: [{ id: "rep-other", role: "view" }] }))).toBeNull();
   });
 
   it("Finish remembers the scope before releasing the live session", async () => {
