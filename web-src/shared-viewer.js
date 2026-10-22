@@ -112,7 +112,7 @@ export function renderReadOnlyBanner(payload) {
   if (!banner) return;
   const role = buildRole(payload);
   const title = document.getElementById("shared-banner-title");
-  if (title) title.textContent = `${roleLabel(role)} · shared with you`;
+  if (title) title.textContent = `${roleLabel(role)} · ${payload.name} · shared with you`;
   const fork = document.getElementById("shared-fork-btn");
   if (fork) fork.hidden = !canCopy(role);
   banner.dataset.role = role;

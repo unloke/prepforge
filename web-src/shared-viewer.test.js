@@ -23,9 +23,9 @@ async function viewer() {
 
 describe("shared repertoire banner", () => {
   it.each([
-    ["view", "View only · shared with you", true],
-    ["copy", "Can copy · shared with you", false],
-    ["edit", "Can edit · shared with you", false],
+    ["view", "View only · KP · shared with you", true],
+    ["copy", "Can copy · KP · shared with you", false],
+    ["edit", "Can edit · KP · shared with you", false],
   ])("role %s reads %j, Copy hidden: %s", async (role, title, copyHidden) => {
     const { renderReadOnlyBanner } = await viewer();
     el("shared-fork-btn").hidden = false;
