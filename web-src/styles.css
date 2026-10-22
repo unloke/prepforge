@@ -3082,10 +3082,13 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .crumb-sep { color: var(--label); font-size: var(--fs-s); padding: 0 1px; }
 .crumb-empty { color: var(--label); padding: 2px 4px; }
 /* The named opening of the shown line, at the trail's right end. A label,
-   so it gives way (ellipsis) before the trail does. */
+   so it gives way (ellipsis) before the trail does: the trail sizes from its
+   content and the label's far larger shrink factor takes the squeeze first. */
+.tree-meta:has(> .build-opening:not([hidden])) { flex-wrap: nowrap; }
+.crumbs:has(+ .build-opening) { flex: 1 1 auto; }
 .build-opening {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 1000 auto;
+  min-width: min(10em, 30%);
   max-width: 45%;
   padding-right: var(--build-pad, 12px);
   color: var(--muted);
@@ -3116,9 +3119,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    corner. It floats, so showing it moves nothing around it. */
 #view-build .mtree-move { position: relative; }
 .mtree-move .mtree-more {
+  /* -4px stays inside the tree's 4px top padding, so the first row's badge
+     is not cut off by the scrolling tree. */
   position: absolute;
-  top: -7px;
-  right: -7px;
+  top: -4px;
+  right: -6px;
   display: grid;
   place-items: center;
   width: 16px;

@@ -277,6 +277,9 @@ export function createBuildView({
       ? html`${renderBuildBreadcrumb()}<span class="build-opening" id="build-opening" hidden></span>`
       : "";
     renderBuildOpening();
+    // A trail wider than its room scrolls; keep its shown move, the end, in view.
+    const crumbs = meta.querySelector?.(".crumbs");
+    if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
         void selectBuildNode(btn.dataset.nodeId).catch(() => {});
