@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { coachTipMayReplace, wrongMoveTip } from "./train-hint.js";
+import { coachTipMayReplace, wrongMoveBanner, wrongMoveTip } from "./train-hint.js";
 import { prefetchTrainCoach } from "./controllers/train-coach.js";
 import { appSource } from "./test-app-source.js";
 
@@ -30,7 +30,8 @@ function harness() {
     appState, document: { getElementById: (id) => id === "train-banner" ? banner : { textContent: banner.title } },
     boards: { train: { setPosition: vi.fn(), setEngineArrow: vi.fn() } },
     setTrainBanner: (state, title, sub) => { banner.dataset.state = state; banner.title = title; banner.sub = sub; },
-    maiaPhaseCoach: () => coach.promise, trainTeachLine: () => "", coachTipMayReplace, wrongMoveTip,
+    maiaPhaseCoach: () => coach.promise, trainTeachLine: () => "", coachTipMayReplace, wrongMoveTip, wrongMoveBanner,
+    trackPreparationPractice: vi.fn(),
     clearBlitzTimer: vi.fn(), optimisticBoardMove: async () => {}, queueTrainAttempt: vi.fn(),
     renderTrainStats: async () => {}, boardAfterMove: async () => ({ board: { fen: "preview" } }),
     playSound: vi.fn(), sleep: () => sleepGate.promise, rememberSmartSession: vi.fn(),

@@ -118,8 +118,9 @@ it("settings saves serialize patches and only publish the latest state", async (
 
 it("a legacy Train start cannot overwrite a newer session", async () => {
   const first = deferred(), second = deferred();
-  const appState = { signedIn: true, trainMode: "all_lines" };
-  const deps = { appState, currentOwnerId: () => "owner", selectedTrainRepertoireId: () => "r",
+  const appState = { signedIn: true, trainMode: "all_lines", trainingRepertoireId: "r" };
+  const deps = { appState, currentOwnerId: () => "owner", trainRowError: vi.fn(), syncTrainSessionControls: vi.fn(),
+    setTrainBanner: vi.fn(), trainStatsReset: vi.fn(), isNothingToTrainError: () => false,
     clearBlitzTimer: vi.fn(), setBlitzBarVisible: vi.fn(), setSmartPanelsHidden: vi.fn(),
     setStatus: vi.fn(), hardFlushBuild: async () => {}, setStatusError: vi.fn(),
     loadTrainResume: async () => ({ mapTrainUiSession: (p) => p, shouldResetTrainStats: () => false }),

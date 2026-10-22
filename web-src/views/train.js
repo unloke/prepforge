@@ -148,13 +148,15 @@ export function createTrainView({
     enterRows(host);
   }
 
-  // Card kind chip beside the counter (smart queue only; rehearsal has none).
+  // Card kind chip beside the stats (smart queue only; rehearsal has none). A
+  // new move's banner already says "New move", so the chip names reviews only.
   function paintCardKind(kind) {
     const chip = document.getElementById("train-card-kind");
     if (!chip) return;
+    if (kind === "new") kind = null;
     chip.hidden = !kind;
     chip.className = kind ? `kchip k-${kind}` : "kchip";
-    chip.textContent = kind ? appState.smart.cardKinds[kind]?.label || kind : "";
+    chip.textContent = kind ? appState.smart?.cardKinds[kind]?.label || kind : "";
   }
 
   // How the card's position arose. One line showing its end; a tap shows it all.

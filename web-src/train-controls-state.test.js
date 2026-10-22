@@ -1,202 +1,102 @@
-// The Train panel's controls must go dead when a click on them would throw away
-// the session the player is in. Both states live in one source-space extraction,
-// the way the other train-session regression tests run the real functions.
-import { describe, expect, it, vi } from "vitest";
-import { appSource } from "./test-app-source.js";
-import { rehearsalStartBlockReason, trainStartBlockReason, trainStartDisabled } from "./train-start.js";
+// Train's controls exist only where they work: the board bar carries Hint and
+// Skip during a drill, Takeback and Resign during a game, and nothing on Home.
+// Nothing is ever left on screen disabled for "wrong mode". A guest's rows say
+// what unlocks them instead of going dead.
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeDocument, setup } from "./controllers/train-home.fixture.js";
+import { createTrainHome } from "./controllers/train-home.js";
 
-const source = appSource();
-function body(marker) {
-  const start = source.indexOf(marker);
-  expect(start, marker).toBeGreaterThan(-1);
-  return source.slice(start, source.indexOf("\n}\n", start) + 2);
+let doc;
+beforeEach(() => {
+  doc = fakeDocument();
+  vi.stubGlobal("document", doc);
+});
+afterEach(() => vi.unstubAllGlobals());
+
+const shown = (id) => !doc.getElementById(id).hidden;
+const bar = () => ({
+  hint: shown("train-hint"), skip: shown("train-skip"),
+  takeback: shown("play-takeback"), resign: shown("play-resign"), analyze: shown("play-analyze"),
+});
+
+function screen(state) {
+  const { deps } = setup({ currentView: "train", ...state });
+  createTrainHome(deps).syncTrainScreen();
+  return doc.getElementById("view-train").dataset.trainScreen;
 }
 
-const PREVIEW = body("const trainPreviewCache = {")
-  .replace("const trainPreviewCache = {", "const previewCache = {")
-  .replace(/trainPreviewCache/g, "previewCache")
-  .replace("nextSession: null", "nextSession /* bound by the harness */");
-const ACTIVE = body("function activeTrainRepertoires()");
-const PAINT = body("function paintTrainStartDisabled()").replace(/trainPreviewCache/g, "previewCache");
-const SELECTED = body("function selectedTrainRepertoire()");
-const CONTROLS = body("function syncTrainSessionControls()");
-
-function runTrainControls(appState) {
-  const lucky = { disabled: false, title: "" };
-  const start = { disabled: false, title: "" };
-  const summary = { hidden: appState.__summaryHidden !== false };
-  const modeTabs = ["smart", "all_lines", "play"].map((mode) => {
-    const tab = { disabled: false, title: mode === "play" ? "Play a game" : "", dataset: { mode } };
-    return tab;
-  });
-  // Hint/Skip: the board bar's pair, disabled exactly when no session of the
-  // current mode is live.
-  const hint = { disabled: false, title: "" };
-  const skip = { disabled: false, title: "" };
-  const modeName = { textContent: "" };
-  const doc = {
-    getElementById: (id) => (id === "feeling-lucky" ? lucky
-      : id === "start-train" ? start
-      : id === "train-summary" ? summary
-      : id === "train-hint" ? hint
-      : id === "train-skip" ? skip
-      : id === "train-mode-name" ? modeName
-      : null),
-    querySelector: (sel) => (sel === "#train-modes .train-mode.is-active"
-      ? { textContent: { smart: "Smart queue", all_lines: "Line rehearsal", play: "Practice game" }[appState.trainMode] }
-      : null),
-    querySelectorAll: (sel) => (sel === "#train-modes .train-mode" ? modeTabs : []),
-  };
-  const deps = {
-    appState, document: doc, syncViewHeads: vi.fn(), blitzEnabled: () => false,
-    trainStartBlockReason,
-  };
-  const build = new Function(
-    "trainStartBlockReason", "rehearsalStartBlockReason", "trainStartDisabled", "selectedTrainRepertoireId",
-    "appState", "document", "syncViewHeads", "blitzEnabled", "nextSession",
-    `${PREVIEW}\n${ACTIVE}\n${SELECTED}\n${PAINT}\n${CONTROLS}\npreviewCache.nextSession = nextSession;\nreturn { syncTrainSessionControls, paintTrainStartDisabled };`,
-  );
-  const controls = build(trainStartBlockReason, rehearsalStartBlockReason, trainStartDisabled, () => appState.selectedRepertoireId ?? null, appState, doc, deps.syncViewHeads, deps.blitzEnabled, appState.nextSession ?? null);
-  controls.syncTrainSessionControls();
-  controls.paintTrainStartDisabled();
-  return { lucky, start, modeTabs, hint, skip, modeName };
-}
-
-describe("syncTrainSessionControls", () => {
-  it("disables Lucky mid-game and says why", () => {
-    const { lucky } = runTrainControls({
-      trainMode: "play",
-      signedIn: true,
-      repertoireList: [],
-      pendingRepDeletes: new Set(),
-      play: { active: true, history: [{ uci: "e2e4" }] },
-    });
-    expect(lucky.disabled).toBe(true);
-    expect(lucky.title).toMatch(/resign/i);
+describe("the board bar's action slot", () => {
+  it("is empty on Home", () => {
+    expect(screen({ trainMode: "smart" })).toBe("home");
+    expect(bar()).toEqual({ hint: false, skip: false, takeback: false, resign: false, analyze: false });
   });
 
-  it("keeps Lucky live outside a game with its original tooltip", () => {
-    const { lucky } = runTrainControls({
-      trainMode: "play",
-      signedIn: true,
-      repertoireList: [],
-      pendingRepDeletes: new Set(),
-      play: { active: false, history: [] },
-    });
-    expect(lucky.disabled).toBe(false);
-    expect(lucky.title).toBe("Jump to a key position instead of move 1");
+  it("holds Hint and Skip during a drill", () => {
+    expect(screen({ trainMode: "smart", smart: { prompt: {} } })).toBe("session");
+    expect(bar()).toEqual({ hint: true, skip: true, takeback: false, resign: false, analyze: false });
+    expect(screen({ trainMode: "all_lines", training: { prompt: {} } })).toBe("session");
+    expect(bar()).toEqual({ hint: true, skip: true, takeback: false, resign: false, analyze: false });
   });
 
-  it("names the running session's mode in the card head", () => {
-    const { modeName } = runTrainControls({
-      trainMode: "all_lines",
-      signedIn: true,
-      repertoireList: [],
-      pendingRepDeletes: new Set(),
-      smart: null,
-      training: { prompt: { card_index: 0 } },
-      nextSession: { cards: 4, resumed: 0 },
-    });
-    expect(modeName.textContent).toBe("Line rehearsal");
+  it("holds Takeback and Resign during a game", () => {
+    expect(screen({ trainMode: "play", play: { active: true, history: [] } })).toBe("session");
+    expect(bar()).toEqual({ hint: false, skip: false, takeback: true, resign: true, analyze: false });
+  });
+
+  it("offers Analyze game only on a finished game that has moves", () => {
+    expect(screen({ trainMode: "play", play: { active: false, history: [{ uci: "e2e4" }] } })).toBe("result");
+    expect(bar().analyze).toBe(true);
+    screen({ trainMode: "play", play: { active: false, history: [] } });
+    expect(bar().analyze).toBe(false);
+    screen({ trainMode: "smart", trainResult: { mode: "smart" } });
+    expect(bar().analyze).toBe(false);
+  });
+
+  it("shows exactly one of Home, the session card and the result card", () => {
+    for (const [state, visible] of [
+      [{ trainMode: "smart" }, "train-home"],
+      [{ trainMode: "smart", trainStarting: true }, "train-progress-panel"],
+      [{ trainMode: "smart", trainResult: { mode: "smart" } }, "train-summary"],
+    ]) {
+      screen(state);
+      expect(["train-home", "train-progress-panel", "train-summary"].filter(shown)).toEqual([visible]);
+    }
   });
 });
 
-describe("Hint / Skip live state", () => {
-  const base = { signedIn: true, repertoireList: [], pendingRepDeletes: new Set() };
-
-  it("goes live for the smart queue's first card even with an open practice game", () => {
-    // The play session used to count as "live" for every mode, so the queue's
-    // first card started with Hint and Skip disabled.
-    const { hint, skip } = runTrainControls({
-      ...base,
-      trainMode: "smart",
-      play: { active: true, history: [{ uci: "e2e4" }] },
-      smart: { prompt: { card_index: 0 }, queue: [], cardIndex: 0, cardKinds: {} },
-      training: null,
-      nextSession: { cards: 4, resumed: 0 },
-    });
-    expect(hint.disabled).toBe(false);
-    expect(skip.disabled).toBe(false);
+describe("Home rows", () => {
+  it("a guest's drill rows lead to sign-in and stay pressable; Practice still plays", async () => {
+    const { deps } = setup({ signedIn: false, repertoireList: [], sharedRepertoireList: [] });
+    await createTrainHome(deps).paintTrainHome();
+    for (const id of ["start-train", "start-rehearse"]) {
+      expect(doc.getElementById(id).textContent).toBe("Sign in to train");
+      expect(doc.getElementById(id).dataset.action).toBe("signin");
+      expect(doc.getElementById(id).disabled).toBe(false);
+    }
+    expect(doc.getElementById("start-play").disabled).toBe(false);
   });
 
-  it("stays dead before a smart session starts, whatever the play state", () => {
-    const { hint, skip } = runTrainControls({
-      ...base,
-      trainMode: "smart",
-      play: { active: true, history: [] },
-      smart: null,
-      training: null,
-      nextSession: { cards: 4, resumed: 0 },
-    });
-    expect(hint.disabled).toBe(true);
-    expect(skip.disabled).toBe(true);
-  });
-});
-
-describe("paintTrainStartDisabled", () => {
-  const state = (appState) => runTrainControls(appState).start;
-
-  it("disables Start when the smart queue has nothing due", () => {
-    const start = state({
-      trainMode: "smart",
-      signedIn: true,
-      repertoireList: [{ id: "r1", is_active: true }],
-      pendingRepDeletes: new Set(),
-      nextSession: { cards: 0, resumed: 0 },
-    });
-    expect(start.disabled).toBe(true);
-    expect(start.title).toBe("Nothing due. Add lines in Repertoire.");
+  it("an account with no repertoire is sent to Library rather than shown a dead Start", async () => {
+    const { deps } = setup({ repertoireList: [], sharedRepertoireList: [] });
+    await createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("start-train").dataset.action).toBe("library");
+    expect(doc.getElementById("start-rehearse").dataset.action).toBe("library");
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
   });
 
-  it("names the missing repertoire when none is active", () => {
-    const start = state({
-      trainMode: "smart",
-      signedIn: true,
-      repertoireList: [],
-      pendingRepDeletes: new Set(),
-      nextSession: { cards: 0, resumed: 0 },
-    });
-    expect(start.disabled).toBe(true);
-    expect(start.title).toBe("No active repertoire. Create one in Library.");
+  it("the Due row reads the preview for its own scope and paints Resume from it", async () => {
+    const { deps } = setup({ trainScope: { repertoireId: "r1", label: "Italian" } });
+    deps.api.mockResolvedValue({ next_session: { cards: 4, resumed: true, left: 2, due: 2 }, outlook: { now: 2, today: 2, week: 3 } });
+    await createTrainHome(deps).paintTrainHome();
+    expect(deps.api).toHaveBeenCalledWith(expect.stringContaining("summary?repertoire_id=r1&preview=true"));
+    expect(doc.getElementById("start-train").textContent).toBe("Resume · 2 cards left");
+    expect(doc.getElementById("train-due-meta").textContent).toBe("2 due");
   });
 
-  it("keeps Start live for a queue with cards, and clears the tooltip", () => {
-    const start = state({
-      trainMode: "smart",
-      signedIn: true,
-      repertoireList: [{ id: "r1", is_active: true }],
-      pendingRepDeletes: new Set(),
-      nextSession: { cards: 7, resumed: 0 },
-    });
-    expect(start.disabled).toBe(false);
-    expect(start.title).toBe("");
-  });
-
-  it("leaves Start to Line rehearsal / play modes and guests alone", () => {
-    const base = {
-      signedIn: true,
-      repertoireList: [{ id: "r1", is_active: true }],
-      pendingRepDeletes: new Set(),
-      nextSession: { cards: 0, resumed: 0 },
-    };
-    expect(state({ ...base, trainMode: "all_lines", selectedRepertoireId: "r1" }).disabled).toBe(false);
-    expect(state({ ...base, trainMode: "all_lines" }).disabled).toBe(true); // waits on the picker
-    expect(state({ ...base, trainMode: "play" }).disabled).toBe(false);
-    expect(state({ ...base, signedIn: false }).disabled).toBe(false);
-  });
-
-  it("disables Line rehearsal's Start when the picked repertoire has no moves to walk", () => {
-    const base = {
-      trainMode: "all_lines",
-      signedIn: true,
-      pendingRepDeletes: new Set(),
-      selectedRepertoireId: "r1",
-    };
-    const empty = state({ ...base, repertoireList: [{ id: "r1", is_active: true, health: { trainable: 0 } }] });
-    expect(empty.disabled).toBe(true);
-    expect(empty.title).toBe("No moves to train. Add lines in Repertoire.");
-    const ready = state({ ...base, repertoireList: [{ id: "r1", is_active: true, health: { trainable: 6 } }] });
-    expect(ready.disabled).toBe(false);
-    expect(ready.title).toBe("");
+  it("a repertoire opponent with nothing picked cannot start a game", async () => {
+    const { deps } = setup({ playBook: "repertoire", playRepertoireIds: [] });
+    await createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("start-play").disabled).toBe(true);
+    expect(doc.getElementById("train-play-reps").hidden).toBe(false);
   });
 });

@@ -38,6 +38,7 @@ function harness() {
     paintPlayPosition: (next) => { board.setPosition(next); banner.title = next.banner; },
     updateTrainTurnBadge: vi.fn(), syncTrainSessionControls: vi.fn(),
     maiaErrorText: (error) => String(error?.message || "Maia could not start."),
+    endPlayGame: vi.fn((title, failure) => { play.active = false; play.ended = title; play.failure = failure; }),
   };
   const reply = compile("async function playOpponentReply(", deps);
   return { play, appState, board, banner, explorer, deps, reply };
@@ -60,24 +61,26 @@ describe("Play opponent response ownership", () => {
     expect(reason(undefined)).toContain("could not start");
   });
 
-  it("paints an unavailable opponent as an error, not a finished session", () => {
-    // "done" carries the green star: a Maia failure read as a success.
-    expect(source).toContain('setTrainBanner("error", "Opponent unavailable"');
-    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
-    expect(css).toMatch(/#train-banner\[data-state="error"\] \{ --cb: var\(--danger\)/);
+  it("an opponent that cannot play ends the game with its reason, and is not saved as a run", () => {
+    const end = source.slice(source.indexOf("function endPlayGame("), source.indexOf("\n}\n", source.indexOf("function endPlayGame(")));
+    expect(end).toContain("if (play.history?.length && !failure) {");
+    expect(end).toContain("home.showTrainResult(playResult(play));");
   });
 
-  it("routes the palette practice action through the New game confirmation button", async () => {
-    const click = vi.fn();
-    const directStart = vi.fn();
-    const run = compile("async function runPaletteItem(", {
-      closePalette: vi.fn(), switchView: vi.fn(),
-      document: { querySelector: () => ({ click: vi.fn() }), getElementById: () => ({ click }) },
-      startPlaySessionTracked: directStart,
-    });
+  it("the palette's practice and Lucky actions open Train the way its Home rows do", async () => {
+    const openTrain = vi.fn(async () => {});
+    const onFeelingLucky = vi.fn();
+    const palette = readFileSync(new URL("./palette.js", import.meta.url), "utf8");
+    const at = palette.indexOf("async function runPaletteItem(");
+    const run = new Function("closePalette", "switchView", "openTrain", "onFeelingLucky", "appState", "requireSignIn", "setReplaySection", "dismissTransientOverlays",
+      `return (${palette.slice(at, palette.indexOf("\n}\n", at) + 2)});`)(vi.fn(), vi.fn(), openTrain, onFeelingLucky, { signedIn: true }, vi.fn(), vi.fn(), vi.fn());
     await run({ action: "play-human" });
-    expect(click).toHaveBeenCalledTimes(1);
-    expect(directStart).not.toHaveBeenCalled();
+    expect(openTrain).toHaveBeenLastCalledWith({ mode: "play" });
+    await run({ action: "feeling-lucky" });
+    expect(openTrain).toHaveBeenLastCalledWith({ mode: "play", autostart: false });
+    expect(onFeelingLucky).toHaveBeenCalled();
+    await run({ action: "start-training" });
+    expect(openTrain).toHaveBeenLastCalledWith({ mode: "smart" });
   });
   function startHarness() {
     const info = deferred();
@@ -174,10 +177,9 @@ describe("Play opponent response ownership", () => {
     h.explorer.resolve({ totalGames: 0, moves: [] });
     await pending;
     expect(h.play.active).toBe(false);
-    expect(h.banner.title).toBe("Opponent unavailable");
-    expect(h.banner.sub).toContain("worker request failed");
-    // The one banner that means "the move generator returned nothing" is NOT shown.
-    expect(h.banner.sub).not.toContain("no legal move");
+    expect(h.deps.endPlayGame).toHaveBeenCalledWith("Opponent unavailable", "Maia3 worker request failed");
+    // The one reason that means "the move generator returned nothing" is NOT given.
+    expect(h.play.failure).not.toContain("no legal move");
   });
 
   it("keeps the no-legal-move message for an empty move generator", async () => {
@@ -186,7 +188,7 @@ describe("Play opponent response ownership", () => {
     const pending = h.reply();
     h.explorer.resolve({ totalGames: 0, moves: [] });
     await pending;
-    expect(h.banner.sub).toBe("The opponent has no legal move from this book.");
+    expect(h.deps.endPlayGame).toHaveBeenCalledWith("No reply from the opponent", "The opponent has no legal move from this book.");
   });
 
   it("drops a Maia reply when the session ends during inference", async () => {

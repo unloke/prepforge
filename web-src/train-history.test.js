@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HISTORY_LIMITS, readTrainingHistory, saveSmartRun } from './train-history.js';
+import { HISTORY_LIMITS, readTrainingHistory, recentRuns, runSummary, saveRun, saveSmartRun } from './train-history.js';
 
 class Storage {
   data = new Map();
@@ -34,7 +34,8 @@ describe('local opening training history', () => {
     const rows = readTrainingHistory('alice', storage);
     expect(rows).toHaveLength(2);
     expect(rows.map(row => row.mistakes)).toEqual([0, 1]);
-    expect(rows[1]).toMatchObject({ repertoires: ['London', 'Caro-Kann'], cards: 1, correct: 3, mistakes: 1, skipped: 1 });
+    // Cards served: the completed one plus the skipped one.
+    expect(rows[1]).toMatchObject({ repertoires: ['London', 'Caro-Kann'], cards: 2, correct: 3, mistakes: 1, skipped: 1 });
   });
   it('records a completion once even if rendering or sync retries it', () => {
     const storage = new Storage();
@@ -69,7 +70,9 @@ describe('local opening training history', () => {
   it('preserves Blitz and skipped-only results without fabricating accuracy', () => {
     const storage = new Storage();
     saveSmartRun('alice', { ...run(), blitz: true, cardsDone: 0 }, { correct: 0, mistakes: 0, skipped: 2 }, storage, finished);
-    expect(readTrainingHistory('alice', storage)[0]).toMatchObject({ mode: 'blitz', cards: 0, correct: 0, mistakes: 0, skipped: 2 });
+    // Blitz is a flavour of the Due queue, not a mode; skipped cards were served.
+    expect(readTrainingHistory('alice', storage)[0]).toMatchObject({ mode: 'smart', blitz: true, cards: 2, correct: 0, mistakes: 0, skipped: 2 });
+    expect(runSummary(readTrainingHistory('alice', storage)[0])).toBe('2 cards');
   });
   it(`keeps the newest ${HISTORY_LIMITS.runs} runs by finish time and drops the oldest`, () => {
     const storage = new Storage();
@@ -137,7 +140,7 @@ describe('local opening training history', () => {
   });
   it('refuses a stored document over the byte cap instead of parsing it', () => {
     const storage = new Storage();
-    const entry = JSON.stringify({ id: 's:g', mode: 'smart', repertoires: ['開局準備'.repeat(4500)],
+    const entry = JSON.stringify({ id: 's:g', mode: 'smart', blitz: false, repertoires: ['開局準備'.repeat(4500)],
       startedAt: '2026-10-21T12:00:00Z', finishedAt: '2026-10-21T12:05:00.000Z', cards: 4, correct: 3, mistakes: 1, skipped: 0 });
     // Two runs only, so the count cap is nowhere near: the size alone rejects it.
     storage.setItem(KEY, `{"v":1,"runs":[${entry},${entry}]}`);
@@ -206,5 +209,18 @@ describe('local opening training history', () => {
     // Reading is a separate failure: a denied read is what the dialog reports.
     expect(() => readTrainingHistory('alice', { getItem() { throw new Error('Denied'); } })).toThrow('Denied');
     expect(() => readTrainingHistory('alice', null)).toThrow('Allow site storage');
+  });
+  it('keeps rehearsals and games in the same list, newest first, with their own summaries', () => {
+    const storage = new Storage();
+    saveSmartRun('alice', run(), stats, storage, finished);
+    expect(saveRun('alice', { id: 'rehearse:1', mode: 'all_lines', blitz: false, repertoires: ['London'],
+      finishedAt: '2026-10-21T13:10:00.000Z', cards: 4, correct: 3, mistakes: 1, skipped: 0 }, storage)).toBe(true);
+    expect(saveRun('alice', { id: 'play:1', mode: 'play', blitz: false, result: 'Resigned', repertoires: [],
+      finishedAt: '2026-10-21T13:20:00.000Z', cards: 6, correct: 0, mistakes: 0, skipped: 0 }, storage)).toBe(true);
+    expect(saveRun('alice', { id: 'x', mode: 'blitz', blitz: true, repertoires: [], finishedAt: '2026-10-21T13:30:00.000Z',
+      cards: 1, correct: 1, mistakes: 0, skipped: 0 }, storage)).toBe(false);
+    const recent = recentRuns('alice', 2, storage);
+    expect(recent.map((r) => [r.mode, r.summary])).toEqual([['play', 'Resigned'], ['all_lines', '75% first try']]);
+    expect(readTrainingHistory('alice', storage)).toHaveLength(3);
   });
 });

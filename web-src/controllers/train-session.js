@@ -666,8 +666,7 @@ async function playOpponentReply() {
     // download/init failure already carries a Retry notice, so this only names
     // the reason on the board instead of blaming the book.
     if (maia.error) {
-      setStatus(maiaErrorText(maia.error));
-      endPlayGame("Opponent unavailable");
+      endPlayGame("Opponent unavailable", maiaErrorText(maia.error));
       return;
     }
     maiaPredictions = maia;
@@ -681,7 +680,7 @@ async function playOpponentReply() {
     });
   }
   if (!reply.uci) {
-    endPlayGame("No reply from the opponent");
+    endPlayGame("No reply from the opponent", "The opponent has no legal move from this book.");
     return;
   }
   const nodeIdBefore = play.nodeId;
@@ -887,13 +886,15 @@ function resignPlaySession() {
 }
 
 // Every way a practice game ends goes to the shared Result card.
-function endPlayGame(title) {
+// A game that could not go on (no opponent) names why and is not a run.
+function endPlayGame(title, failure = "") {
   const play = appState.play;
   if (!play) return;
   play.active = false;
   play.ended = title;
+  play.failure = failure;
   updateTrainTurnBadge(null);
-  if (play.history?.length) {
+  if (play.history?.length && !failure) {
     saveRun(currentOwnerId(), {
       id: `play:${play.startedAt}`, mode: "play", blitz: false, result: title,
       repertoires: (play.repertoires || []).map((rep) => rep.name).filter(Boolean),

@@ -629,11 +629,6 @@ function switchView(name, { fromUrl = false } = {}) {
 }
 
 
-// Library's Train: the Due queue over every repertoire, started at once.
-function goToSmartTraining() {
-  return openTrain({ mode: "smart" });
-}
-
 // `hint` is an on-demand tooltip on a number/text field's label; `onInput`
 // (values, overlay) runs on open and on every change — e.g. to repaint a live
 // note (a `note` field is addressable as [data-note="<name>"]). `onSubmit`
@@ -1802,7 +1797,7 @@ async function init() {
     selectNode: selectAnalysisNode, reveal: revealAnalysisResults,
   });
   libraryEntry = createLibrary({
-    switchView, hydrateBuild, syncViewHeads, goToSmartTraining, editRepertoire,
+    switchView, hydrateBuild, syncViewHeads, openTrain, editRepertoire,
     openRepertoireContextMenu, createRepertoirePrompt, requireSignIn, openAuthModal,
     openSettingsSection, parseFenBoard, pieceSvg,
   });

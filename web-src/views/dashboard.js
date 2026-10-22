@@ -58,7 +58,7 @@ export function createDashboardView({
   setStatus,
   setStatusError = (message) => setStatus(message),
   localDateString,
-  goToSmartTraining,
+  openTrain,
   editRepertoire,
   openRepertoireContextMenu,
   createRepertoirePrompt,
@@ -435,7 +435,7 @@ export function createDashboardView({
       card.querySelector("[data-lib-action]")?.addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire" }));
       return;
     }
-    document.getElementById("dashboard-train-now").addEventListener("click", () => goToSmartTraining());
+    document.getElementById("dashboard-train-now").addEventListener("click", () => openTrain({ mode: "smart" }));
   }
 
   // ---- Library list rendering ----------------------------------------------
@@ -820,7 +820,7 @@ export function createDashboardView({
           if (ok) setStatus("Ready");
         });
       } else if (action === "analyze" && goToView) goToView("analyze");
-      else if (action === "train" && goToSmartTraining) goToSmartTraining();
+      else if (action === "train" && openTrain) openTrain({ mode: "smart" });
       else if (action === "lichess") {
         // Linking lives in Settings → Account (Chess accounts); the app opens Settings via
         // its tab and jumps to the section once the view has rendered.

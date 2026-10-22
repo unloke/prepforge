@@ -54,6 +54,6 @@ export function playResult(play) {
     title: play.ended || "Game over",
     cells: [[moves, nounOf(moves, "move")], [play.userColor === "black" ? "Black" : "White", "you played"]],
     delta: null,
-    foot: play.result && play.result !== "*" ? play.result : "",
+    foot: play.failure || (play.result && play.result !== "*" ? play.result : ""),
   };
 }

@@ -174,16 +174,13 @@ describe("seven views share chrome families", () => {
     expect(html).toContain('id="open-palette"');
     expect(app).toContain("showPromotionPicker");
     expect(app).toContain("PROMOTION_PIECES");
-    expect(html).toContain('id="train-fresh"');
     expect(html).toContain('id="start-play"');
     expect(html).toContain('id="feeling-lucky"');
     expect(html).toContain("I'm Feeling Lucky");
-    expect(html).toContain("Lichess explorer");
     expect(html).toContain('id="train-play-color"');
     expect(html).toContain('id="play-takeback"');
     expect(html).toContain('id="play-resign"');
     expect(html).toContain('id="play-analyze"');
-    expect(html).toContain("My repertoire");
     expect(html).toContain('role="combobox"');
     expect(html).toContain('aria-controls="palette-results"');
     expect(html).toContain('aria-label="Notifications"');
@@ -193,31 +190,26 @@ describe("seven views share chrome families", () => {
     expect(app).toContain('event.key !== "Tab"');
   });
 
-  it("keeps the Train setup order: modes, repertoire picker, blitz, SRS start", () => {
-    const setup = html.slice(html.indexOf('id="train-modes"'));
-    const modes = setup.indexOf('id="train-modes"');
-    const picker = setup.indexOf('id="train-srs-picker"');
-    const blitz = setup.indexOf('id="train-blitz-row"');
-    const srs = setup.indexOf('id="train-srs-start"');
-    expect(modes).toBeGreaterThanOrEqual(0);
-    expect(picker).toBeGreaterThan(modes);
-    expect(blitz).toBeGreaterThan(picker);
-    expect(srs).toBeGreaterThan(blitz);
-    const pickerBody = setup.slice(picker, blitz);
-    expect(pickerBody).toContain('id="train-repertoire-select"');
-    expect(ruleBody(".tcard .field")).toMatch(/gap:\s*4px/);
+  it("Train Home is three rows in the order of the daily job: Due queue, Rehearse, Practice", () => {
+    const home = html.slice(html.indexOf('id="train-home"'), html.indexOf('id="train-progress-panel"'));
+    const rows = [...home.matchAll(/<section class="train-row" data-row="([a-z_]+)">/g)].map((m) => m[1]);
+    expect(rows).toEqual(["smart", "all_lines", "play"]);
+    // One primary action on Home: the Due queue's Start.
+    expect(home.match(/class="btn primary/g)).toHaveLength(1);
+    expect(home).toMatch(/class="btn primary train-row-go" id="start-train"/);
+    // No mode tabs, no second History.
+    expect(html).not.toContain('id="train-modes"');
+    expect(html.match(/data-train-history/g)).toHaveLength(1);
   });
 
-  it("keeps Play setup order: opponent book, repertoires, then your color", () => {
-    const setup = html.slice(html.indexOf('id="train-play-setup"'));
-    const book = setup.indexOf('id="train-play-book"');
-    const reps = setup.indexOf('id="train-play-repertoire-picker"');
-    const color = setup.indexOf('id="train-play-color-label"');
+  it("keeps the Practice row's order: opponent, its repertoires, then your color", () => {
+    const row = html.slice(html.indexOf('data-row="play"'), html.indexOf('id="train-progress-panel"'));
+    const book = row.indexOf('id="train-play-book"');
+    const reps = row.indexOf('id="train-play-reps"');
+    const color = row.indexOf('id="train-play-color"');
     expect(book).toBeGreaterThanOrEqual(0);
     expect(reps).toBeGreaterThan(book);
     expect(color).toBeGreaterThan(reps);
-    expect(setup).toContain('id="train-repertoire-select-all"');
-    expect(setup).toContain('id="train-repertoire-options"');
   });
 });
 
