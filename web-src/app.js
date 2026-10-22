@@ -1956,7 +1956,7 @@ async function init() {
   // The account entry and the Analyze entry points are needed before the first
   // paint (the chip, the auth gate, the PGN drawer), so both binds happen here.
   accountEntry = createAccountEntry({
-    switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, loadTeams,
+    switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, persistOutbox, loadTeams,
     clearCoverage: () => coverageEntry?.coverageView?.clear(),
     get dashboardView() { return libraryEntry?.dashboardView; },
     get scoutController() { return scoutController; },

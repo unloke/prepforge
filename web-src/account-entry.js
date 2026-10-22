@@ -15,7 +15,7 @@ import { pgnPlayers, selfSide } from "./analyze-orient.js";
 // analysis history and the recovery bar for an unsaved run. Loaded at boot by
 // the shell; createAccountEntry binds the shell's state and helpers, once.
 
-let switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut,
+let switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, persistOutbox,
   paintGamesSource, paintScoutSource, clearCoverage, hideAnalysisRetrySave;
 // These arrive as getters: the shell creates them after this module binds (a
 // view chunk, the app-ready promise), so each read must be live.
@@ -30,7 +30,7 @@ let analyzeEntry = null;
 
 export function createAccountEntry(deps) {
   shell = deps;
-  ({ switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut,
+  ({ switchView, loadSettings, openSettingsSection, flushAllPendingForSignOut, persistOutbox,
     paintGamesSource, paintScoutSource, clearCoverage, hideAnalysisRetrySave } = deps);
   // The functions below are module level; the factory binds the state and the
   // shell helpers they share, once.
@@ -75,6 +75,7 @@ export function initAccountController() {
       void openSettingsSection("set-account");
     },
     beforeSignOut: flushAllPendingForSignOut,
+    beforeSessionEnd: () => persistOutbox(),
     // No auth-known hook here: restoreWorkspaceLocation switches to the URL's
     // view after the session is read (and switchView reloads Teams), so a Teams
     // load deferred on an unread session is retried there. Doing it here as well
