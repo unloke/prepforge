@@ -25,6 +25,7 @@ import { setBoardCaption } from "./board-caption.js";
 import { readCsrfCookie, CSRF_HEADER } from "./csrf.js";
 import { localBoardInfo } from "./chess-local.js";
 import { setupOnFirstVisit } from "./engine/engine-profile.js";
+import { bindUnlocks } from "./engine-unlock.js";
 import { bindRailCollapseOnNavigate } from "./rail-nav.js";
 import { createBoardController } from "./board/board-controller.js";
 import { buildAddId, buildDeleteId } from "./sync-queue.js";
@@ -1943,6 +1944,7 @@ async function init() {
   if (libraryRows) libraryRows.innerHTML = libraryRowsSkeleton();
   appState.prefs = loadPrefs();
   installSoundUnlock();
+  bindUnlocks();
   // The account entry and the Analyze entry points are needed before the first
   // paint (the chip, the auth gate, the PGN drawer), so both binds happen here.
   accountEntry = createAccountEntry({
@@ -2108,6 +2110,14 @@ async function init() {
   // idle after the first screen is up. It must come after the session is known,
   // so a guest does not download and probe the engine.
   if (appState.signedIn) setupOnFirstVisit();
+  maybeWelcome();
+}
+
+// A first visit gets the welcome once; welcome.js decides and loads only then.
+function maybeWelcome() {
+  try { if (localStorage.getItem("prepforge.welcome")) return; } catch { return; }
+  void import("./welcome.js").then((welcome) => welcome.maybeWelcome({ switchView, setLichessUsername, lichessAccounts,
+    saveSettings: viaSettings("saveSettings") })).catch(() => {});
 }
 
 function handleOAuthErrorFromUrl() {
@@ -2349,7 +2359,13 @@ hooks.analyzeSession = () => analyzeSession;
 // The one pref change a view has to react to: Coverage only shows in the
 // inspector, and repainting it re-reads the Maia gate.
 hooks.prefApplied = (name) => {
-  if (name === "maiaAnalysis" && buildDockTab === "coverage") setBuildInspector("coverage");
+  if (name !== "maiaAnalysis") return;
+  if (buildDockTab === "coverage") setBuildInspector("coverage");
+  // The analysis layers that read the gate take Maia in place: the coach re-reads
+  // the position on the board, and an open Scout report adds its Maia reads.
+  const coach = analyzeSession?.positionCoach;
+  if (coach && activeViewName() === "analyze" && coach.fen) { coach.cancel(); coach.update(coach.fen, coach.ctx); }
+  scoutController?.onMaiaGate();
 };
 
 appReadyPromise = init()

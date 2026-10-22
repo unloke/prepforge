@@ -173,6 +173,7 @@
                   <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
                   <div class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></div>
                   <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
+                  <div class="coach-unlock" data-unlock-place="analyze-coach" data-unlock-style="inline" hidden></div>
                 </section>
                 <!-- One Evaluation card: current eval + win meter, the live engine's
                      depth, line count and lines, the game graph, and the whole-game
@@ -371,6 +372,7 @@
                   <div class="explorer-rows" id="explorer-rows" data-ui></div>
                 </div>
                 <div class="inspector-panel" id="coverage-drawer" data-testid="coverage-drawer" role="tabpanel" aria-labelledby="build-tool-coverage" hidden>
+                  <div data-unlock-place="build-coverage" hidden></div>
                   <div class="job-dock" id="coverage-job-dock" data-testid="coverage-job-dock"></div>
                   <div class="coverage-gaps" id="coverage-gaps"></div>
                 </div>
@@ -459,6 +461,7 @@
                       <option value="maia">Maia</option>
                     </select>
                   </div>
+                  <div data-unlock-place="train-practice" hidden></div>
                   <div class="field train-play-repertoires" id="train-play-repertoire-picker" hidden>
                     <span class="train-picker-label">Repertoires the opponent draws from</span>
                     <details class="train-repertoire-menu" id="train-repertoire-menu">
@@ -606,6 +609,7 @@
             </div>
             <div class="scout-grid">
               <div class="scout-main">
+                <div data-unlock-place="scout" hidden></div>
                 <div class="scout-stream stream card" role="status"><div class="spinner" aria-hidden="true"></div><div><b id="scout-stream-phase">Loading your repertoire…</b><p id="scout-stream-detail" class="scout-stream-detail"></p></div></div>
                 <div class="scout-skeleton" aria-hidden="true">
                   <div class="sk-card sk-profile"><span class="sk sk-name"></span><span class="sk sk-sub"></span></div>
@@ -755,18 +759,12 @@
               </div>
               <div class="set-row"><span>Mode</span><b>Browser only</b></div>
               <div class="set-row"><span>Engine</span><b id="settings-stockfish-version">checking…</b></div>
-              <div class="pf-row" id="settings-full-row" hidden>
-                <span class="pf-row-text" id="settings-full-label"><span class="pf-row-label">Full engine</span></span>
-                <span class="pf-row-actions">
-                  <button type="button" class="btn sm" id="settings-full-download" data-testid="settings-full-download">Download (94 MB)</button>
-                  <button type="button" class="btn sm ghost" id="settings-full-keep" data-testid="settings-full-keep">Keep lite</button>
-                </span>
-              </div>
+              <div class="dl-row" id="settings-dl-stockfish" data-testid="settings-dl-stockfish"></div>
               <div class="pf-row">
                 <span class="pf-row-text"><span class="pf-row-label" id="settings-net-label">Net</span></span>
                 <div class="seg" role="group" aria-labelledby="settings-net-label" id="settings-net-seg">
-                  <button type="button" class="seg-btn" data-net="big" title="Stronger. 94 MB download, about 450 MB of memory per worker">Full</button>
-                  <button type="button" class="seg-btn" data-net="lite" title="7 MB download, little memory">Lite</button>
+                  <button type="button" class="seg-btn" data-net="big" title="Stronger. 99 MB download, about 450 MB of memory per worker">Full</button>
+                  <button type="button" class="seg-btn" data-net="lite" title="2 MB download, little memory">Lite</button>
                 </div>
               </div>
               <div class="pf-row">
@@ -789,17 +787,12 @@
               <h2>
                 Maia3
                 <button type="button" class="pf-info" id="maia-info" aria-label="About Maia3 settings" title="About Maia3 settings" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
-                <span class="spacer"></span>
-                <button class="btn sm" id="settings-maia-retry" data-testid="settings-maia-retry">Retry</button>
-                <button class="btn sm" id="settings-maia-reset" data-testid="settings-maia-reset">Reset cache</button>
               </h2>
               <div class="pf-info-pop" id="maia-info-pop" hidden>
-                Downloads once (~46 MB), then stays cached in this browser. Powers coach intuition, human-like branches, and coverage.
+                Kept in this browser once downloaded. Powers the practice bot, coach intuition, human-like branches and coverage.
               </div>
-              <div class="set-row"><span>Browser Maia3</span><span class="status-pill" id="settings-maia-model">checking…</span></div>
-              <p class="faint small" id="settings-maia-status"></p>
+              <div class="dl-row" id="settings-dl-maia" data-testid="settings-dl-maia"></div>
               <p class="faint small" id="settings-maia-usage" data-testid="settings-maia-usage"></p>
-              <p class="note warn settings-error" id="settings-maia-error" hidden></p>
             </section>
             <section class="card set" id="set-strength">
               <h2>
@@ -919,7 +912,7 @@
           <button class="engine-window-close" id="engine-window-close" type="button" title="Close" aria-label="Close">×</button>
         </div>
       </header>
-      <div class="engine-window-consent" id="engine-window-consent" hidden></div>
+      <div class="engine-window-unlock" id="engine-window-unlock" hidden></div>
       <div class="engine-window-body">
         <div class="engine-bar" id="engine-eval-bar" aria-hidden="true">
           <div class="engine-bar-white" id="engine-eval-bar-white"></div>

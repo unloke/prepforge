@@ -6097,20 +6097,4 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* The full net's question: one row above the card's lines, in flow, so the search
    below it keeps its rows and its height while the row waits for an answer. */
-.engine-consent {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 6px 6px 6px 0;
-  border-bottom: 1px solid var(--line-soft);
-  font-size: 12.5px;
-}
-.engine-window.is-docked .engine-window-consent { padding: 4px 6px 2px 0; }
-.engine-window.is-docked .engine-window-consent:not([hidden]) + .engine-window-body .engine-window-pvs { padding-top: 2px; }
-.engine-consent-actions {
-  display: inline-flex;
-  gap: 6px;
-  margin-left: auto;
-}
+
