@@ -24,6 +24,10 @@ def repo(request, tmp_path):
     if request.param == "sqlite":
         engine = connect_database(tmp_path / "regression.sqlite3")
         apply_schema(engine)
+        # Real users: apply_schema turns foreign keys off only on its own
+        # connection, and the concurrency tests' threads open fresh ones that
+        # enforce them (so the run used to depend on which connection a thread got).
+        insert_users(engine, "owner", "t-owner")
         try:
             yield WorkspaceRepository(engine)
         finally:
