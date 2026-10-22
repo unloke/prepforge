@@ -84,8 +84,10 @@
   /* The game column is a name and a date: capped, so a wide window gives its
      room to the opening moves instead of spreading the row into islands. The
      two short columns fit their header words ("Result", "Departure"), which
-     used to spill 15px past the card and scroll it sideways. */
-  grid-template-columns: 124px minmax(160px, 260px) 52px minmax(120px, 1fr) 80px;
+     used to spill 15px past the card and scroll it sideways. The badge column
+     fits the longest badge, "Opponent left prep" (154px at 13px); it ran
+     into the game column at 124px. */
+  grid-template-columns: 156px minmax(160px, 260px) 52px minmax(120px, 1fr) 80px;
   align-items: center;
   gap: 16px;
   width: 100%;
@@ -238,7 +240,7 @@
 /* A narrow ledger drops the Opening column. Its width follows the detail
    column, which follows the window's height, so this is the ledger's own. */
 @container ledger (max-width: 700px) {
-  .lr { grid-template-columns: 118px minmax(140px, 1fr) 52px 80px; }
+  .lr { grid-template-columns: 156px minmax(110px, 1fr) 52px 80px; }
   .lr > :nth-child(4) { display: none; }
 }
 /* ≤1020: narrow laptop / split screen. Ledger and detail stay side by side
