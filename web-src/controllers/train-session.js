@@ -558,6 +558,8 @@ function sideToMoveFromFen(fen) {
 
 async function startTraining(mode, options = {}) {
   mode = mode || appState.trainMode || "smart";
+  // Practice game starts via startPlaySession; never post "play" to /api/train/start (422).
+  if (mode === "play") return;
   appState.trainMode = mode;
   // Training runs against your own repertoires and review schedule, so a
   // guest gets the sign-in gate — not a "Nothing to train yet" that blames an
