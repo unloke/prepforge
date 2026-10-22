@@ -9,6 +9,7 @@
 import { html } from "../html.js";
 import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import { evaluationToWin, moveAccuracy } from "../explain.js";
+import { moveTokenHtml } from "../move-text.js";
 
 // The evaluation of a point in the graph is White's, so the mover's is its
 // complement when Black played. A missing point is a level position: the first
@@ -80,7 +81,7 @@ export function biggestSwing(evalGraph, moves = []) {
   const worst = rows.reduce((a, b) => (b.loss > a.loss ? b : a));
   const loss = Math.round(worst.loss);
   if (loss < 1) return null;
-  return { ply: worst.ply, san: worst.san, side: worst.side, loss, label: moveRef(worst.move, worst.ply) };
+  return { ply: worst.ply, san: worst.san, side: worst.side, loss, label: moveRef(worst.move, worst.ply), move: worst.move };
 }
 
 // The opening's name and code, as the PGN records them. A PGN without them has
@@ -123,7 +124,7 @@ export function prepDeparture(moves = [], reps = []) {
   if (deepest <= 0 || deepest >= moves.length) return null;
   const move = moves[deepest];
   const ply = Number(move.ply) || deepest + 1;
-  return { ply, label: moveRef(move, ply) };
+  return { ply, label: moveRef(move, ply), move };
 }
 
 // The report's fact rows, in reading order. Each is a label and a figure built
@@ -135,11 +136,19 @@ export function buildReportFacts({ moves = [], evalGraph = [], headers = {}, dep
     rows.push({ key: "accuracy", label: "Accuracy", value: `White ${accuracy.white}% · Black ${accuracy.black}%` });
   }
   const swing = biggestSwing(evalGraph, moves);
-  if (swing) rows.push({ key: "swing", label: "Biggest swing", value: `${swing.label} · −${swing.loss}%` });
-  if (departure) rows.push({ key: "prep", label: "Left prep at", value: departure.label });
+  if (swing) rows.push({ key: "swing", label: "Biggest swing", value: `${swing.label} · −${swing.loss}%`, ref: swing });
+  if (departure) rows.push({ key: "prep", label: "Left prep at", value: departure.label, ref: departure });
   const opening = openingFromHeaders(headers);
   if (opening) rows.push({ key: "opening", label: "Opening", value: opening });
   return rows;
+}
+
+// A fact that names a move shows it as a move link (move-text.js).
+function factValueHtml({ value, ref }) {
+  const move = ref?.move;
+  const at = move?.fen_before && move.uci ? value.indexOf(ref.label) : -1;
+  if (at < 0) return value;
+  return html`${value.slice(0, at)}${moveTokenHtml(move.fen_before, [move.uci], 0, ref.label)}${value.slice(at + ref.label.length)}`;
 }
 
 // One grade bar per side: a segment per grade present, its glyph and count in
@@ -179,7 +188,7 @@ export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, r
   const identity = reportIdentity(headers);
   host.innerHTML = html`${rows.length
     ? html`<dl class="rpt-facts">${rows.map(
-        (row) => html`<div class="rpt-fact"><dt>${row.label}</dt><dd>${row.value}</dd></div>`,
+        (row) => html`<div class="rpt-fact"><dt>${row.label}</dt><dd>${factValueHtml(row)}</dd></div>`,
       )}</dl>`
     : ""}${classBarsHtml(moves)}${identity ? html`<p class="rpt-identity">${identity}</p>` : ""}`;
   host.querySelectorAll(".cbar-seg").forEach((seg) => {

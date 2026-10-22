@@ -110,8 +110,12 @@ describe("train up-next preview", () => {
     view.renderSmartProgress({ total_cards: 4, card_index: 0, kind: "new", targets_total: 1, target_index: 0 });
     const html = String(elements["train-upnext"].innerHTML);
     for (const answer of ["Qxb7", "Bd3", "Be7"]) expect(html).not.toContain(answer);
-    expect(html).toContain("3.e3 Qb6");
-    expect(html).toContain("6...e6 7.f4");
+    // From the start position the tail is move links; a path that cannot be
+    // played from there (a card deep in a line) stays the plain tail.
+    const text = html.replace(/<[^>]+>/g, "");
+    expect(text).toContain("3.e3 Qb6");
+    expect(html).toMatch(/class="move-peek-ref" data-mt="[^"]+" data-p="1">Qb6/);
+    expect(text).toContain("6...e6 7.f4");
   });
 
   it("names the starting position on a first-move card instead of a blank row", () => {

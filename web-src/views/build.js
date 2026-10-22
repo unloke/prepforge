@@ -1,5 +1,6 @@
 import { html } from "../html.js";
 import { countOf } from "../plural.js";
+import { moveTextHtml, plyOfFen } from "../move-text.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 // A trained move's status, said the way a person says it. The tree paints only
@@ -230,13 +231,20 @@ export function createBuildView({
     }
   }
 
+  // A note's moves are read from the note's own position, and a numbered move
+  // ("4.Nc3" on move 9) from that ply on the path that led here.
+  function noteHtml(node) {
+    const path = buildPath(node.id);
+    return moveTextHtml(node.comment, { fen: node.fen, at: (ply) => path.find((n) => plyOfFen(n.fen) === ply)?.fen });
+  }
+
   function renderTreeMeta() {
     const meta = document.getElementById("build-tree-meta");
     if (!meta) return;
     meta.hidden = !appState.build;
-    const comment = appState.build && appState.buildNodeById.get(appState.buildCurrentNodeId)?.comment;
+    const node = appState.build && appState.buildNodeById.get(appState.buildCurrentNodeId);
     meta.innerHTML = appState.build
-      ? html`${renderBuildBreadcrumb()}${comment ? html`<p class="build-comment">${comment}</p>` : ""}`
+      ? html`${renderBuildBreadcrumb()}${node?.comment ? html`<p class="build-comment">${noteHtml(node)}</p>` : ""}`
       : "";
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
       btn.addEventListener("click", (event) => {
