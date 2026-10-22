@@ -7,24 +7,18 @@ const phone = readFileSync(new URL("./phone.css", import.meta.url), "utf8");
 const settings = readFileSync(new URL("./views/settings.css", import.meta.url), "utf8");
 
 describe("settings motion", () => {
-  it("arranges the six cards in reading order with a 60ms step", () => {
-    expect(settings).toContain("#view-settings.is-active .settings-content > .set {");
-    expect(settings).toMatch(/#view-settings\.is-active \.settings-content > \.set \{[^}]*animation:\s*view-enter/);
-    const delays = [...settings.matchAll(/\.settings-content > \.set:nth-child\((\d)\) \{ animation-delay: (\d+)ms; \}/g)].map(
-      (m) => [Number(m[1]), Number(m[2])],
-    );
-    expect(delays).toHaveLength(6);
-    expect(delays.map((d) => d[0])).toEqual([1, 2, 3, 4, 5, 6]);
-    // A fixed step, so the cards arrive at the same speed every time. The
-    // first card waits for the title to land.
-    expect(delays.map((d) => d[1])).toEqual([60, 120, 180, 240, 300, 360]);
+  it("arrives with the view's own fade and nothing stacked on it", () => {
+    // A second rise on the title, the strip and each card read as the page
+    // loading twice; only the view's cross-fade plays on a visit.
+    expect(settings).not.toMatch(/#view-settings\.is-active [^{]*\{[^}]*animation:/);
+    expect(css).toMatch(/\.view\.is-active \{[^}]*animation:\s*view-enter/);
   });
 
-  it("plays the entrance again every time the page is opened", () => {
-    // The animation hangs off the active view: when the view loses .is-active
-    // the animation is dropped and starts again on the next visit.
-    expect(settings).toMatch(/#view-settings\.is-active \.settings-content > \.set \{[^}]*animation:/);
-    expect(css).toMatch(/\.view\.is-active \{[^}]*animation:\s*view-enter/);
+  it("lands a jump on its card with a ring that fades, and keeps the ring still for reduced motion", () => {
+    expect(settings).toMatch(/\.set\.is-landed::after \{[^}]*box-shadow: inset 0 0 0 2px var\(--accent\)[^}]*animation: set-land/);
+    const frames = /@keyframes set-land \{([\s\S]*?)\n\}/.exec(settings)[1];
+    expect(frames).not.toMatch(/transform|width|height|top|left/);
+    expect(settings).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.settings-content > \.set\.is-landed::after \{ animation: none; opacity: 1; \}/);
   });
 
   it("keeps the entrance to opacity and travel", () => {

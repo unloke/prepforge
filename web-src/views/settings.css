@@ -73,7 +73,8 @@
 
 /* ---- Cards + rows ------------------------------------------------------ */
 
-/* A jump to a section lands its title below the sticky strip, not under it. */
+/* A jump to a section lands its title below the sticky strip, not under it
+   (settings.js measures the strip; this is the first-paint value). */
 .settings-content > .set { scroll-margin-top: 64px; }
 
 .set {
@@ -263,33 +264,33 @@
 
 /* ---- Motion ------------------------------------------------------------ */
 
-/* The page arrives in reading order: the title, then the index of sections,
-   then the cards one after another, so the eye lands on the first card and
-   follows the page down. The shared view-enter keyframes do the travel, so
-   this reads like the rest of the app. The animation hangs off the active
-   view, so it plays again every time the page is opened. */
-#view-settings.is-active .page-head h1,
-#view-settings.is-active .settings-here {
-  animation: view-enter var(--dur) var(--ease-out) both;
+/* The page arrives with the view's own cross-fade and nothing else: a second
+   rise on the title, the strip and each card read as the page loading twice.
+
+   A jump from the strip lands on its card: an accent ring and a faint tint
+   come up and fade, so the eye finds the card even when the page could not
+   scroll it to the top. Opacity only; reduced motion shows the ring without
+   the fade and settings.js takes it off. */
+.settings-content > .set { position: relative; }
+.settings-content > .set.is-landed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  animation: set-land 1400ms var(--ease-out) both;
 }
-#view-settings.is-active .settings-nav-link {
-  animation: view-enter var(--dur) var(--ease-out) both;
+@keyframes set-land {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  55% { opacity: 1; }
+  100% { opacity: 0; }
 }
-#view-settings.is-active .settings-nav-link:nth-child(1) { animation-delay: 50ms; }
-#view-settings.is-active .settings-nav-link:nth-child(2) { animation-delay: 100ms; }
-#view-settings.is-active .settings-nav-link:nth-child(3) { animation-delay: 150ms; }
-#view-settings.is-active .settings-nav-link:nth-child(4) { animation-delay: 200ms; }
-#view-settings.is-active .settings-nav-link:nth-child(5) { animation-delay: 250ms; }
-#view-settings.is-active .settings-nav-link:nth-child(6) { animation-delay: 300ms; }
-#view-settings.is-active .settings-content > .set {
-  animation: view-enter var(--dur) var(--ease-out) both;
+@media (prefers-reduced-motion: reduce) {
+  .settings-content > .set.is-landed::after { animation: none; opacity: 1; }
 }
-#view-settings.is-active .settings-content > .set:nth-child(1) { animation-delay: 60ms; }
-#view-settings.is-active .settings-content > .set:nth-child(2) { animation-delay: 120ms; }
-#view-settings.is-active .settings-content > .set:nth-child(3) { animation-delay: 180ms; }
-#view-settings.is-active .settings-content > .set:nth-child(4) { animation-delay: 240ms; }
-#view-settings.is-active .settings-content > .set:nth-child(5) { animation-delay: 300ms; }
-#view-settings.is-active .settings-content > .set:nth-child(6) { animation-delay: 360ms; }
 
 /* ---- Responsive -------------------------------------------------------- */
 
