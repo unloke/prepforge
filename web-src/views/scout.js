@@ -522,12 +522,13 @@ export function createScoutView(deps) {
         scoutState.activeSpeed,
         {
           usernames: scoutState.usernames,
-          colorRecHtml: buildColorRecommendationBanner(
-            colorRecommendation(
-              scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+          colorRecHtml: scoutState.color === "white" || scoutState.color === "black" ? "" // one colour: nothing to compare
+            : buildColorRecommendationBanner(
+              colorRecommendation(
+                scoutModule.analyzedGames(scoutState.games, null, { speedFilter: scoutState.activeSpeed }),
+              ),
+              { username: scoutState.username },
             ),
-            { username: scoutState.username },
-          ),
         },
       );
       profileEl.hidden = false;
