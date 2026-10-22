@@ -5,6 +5,7 @@ import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
 import { boardLine } from "../line-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
 import { paintUnlocks } from "../engine-unlock.js";
+import { subscribeDownloads } from "../engine/engine-downloads.js";
 import { createPassFeed } from "./engine-pass-feed.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
@@ -98,6 +99,9 @@ class EngineWidget {
     if (!this.el) return;
     this.pvsEl = document.getElementById("engine-window-pvs");
     this.unlockEl = document.getElementById("engine-window-unlock");
+    // The row comes, changes and goes with the download, not only with a paint here:
+    // each change re-fits the Build dock to the card (_paintPvs).
+    subscribeDownloads(() => { if (this.open) this._paintUnlock(); });
     this.evalBarWhite = document.getElementById("engine-eval-bar-white");
     this.evalBarText = document.getElementById("engine-eval-bar-text");
     this.evalHead = document.getElementById("engine-head-eval");
@@ -262,7 +266,7 @@ class EngineWidget {
   _paintPvs(markup) {
     if (!this.pvsEl) return;
     if (markup !== undefined) this.pvsEl.innerHTML = markup;
-    const key = `${this.pvsEl.children.length}/${this.unlockEl?.hidden === false}`;
+    const key = `${this.pvsEl.children.length}/${this.unlockEl?.hidden === false && this.unlockEl.firstElementChild?.dataset.mode}`;
     if (key === this.pvsEl.dataset.rows || this.el?.hidden || activeViewName() !== "build") return;
     this.pvsEl.dataset.rows = key;
     hooks.build?.session?.fitBuildDock();

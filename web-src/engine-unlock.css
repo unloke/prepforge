@@ -105,5 +105,13 @@
   .engine-window-unlock .unlock:not(.is-inline) .unlock-line { overflow: hidden; text-overflow: ellipsis; }
   .engine-window-unlock .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; }
   .engine-window-unlock .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
+}
+@media (max-width: 760px) {
   .unlock.is-inline .unlock-size { display: none; }
+}
+/* A short laptop window: the Build inspector is already at its ceiling over the
+   Explorer rows, so the engine card there keeps its lines and leaves the offer to
+   Analyze and Settings. */
+@media (min-width: 861px) and (max-height: 640px) {
+  #explorer-engine-slot .engine-window-unlock { display: none; }
 }
