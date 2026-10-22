@@ -2451,8 +2451,13 @@ function showSmartSummary(smart, stats) {
   document.getElementById("train-progress-panel").hidden = true;
   const bar = document.getElementById("train-queue");
   if (bar) bar.hidden = true;
+  // The before/after rows arrive with the server summary; until then the strip
+  // stays hidden rather than showing an empty tinted bar.
   const delta = document.getElementById("train-summary-delta");
-  if (delta) delta.innerHTML = "";
+  if (delta) {
+    delta.innerHTML = "";
+    delta.hidden = true;
+  }
   const foot = document.getElementById("train-summary-foot");
   if (foot) foot.textContent = "";
   void renderSmartSummaryStats(smart, stats);
