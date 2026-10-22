@@ -11,7 +11,10 @@ import uuid
 
 import pytest
 
-from test_repertoire_access import _load, _post, world  # noqa: F401 (fixture)
+import test_repertoire_access as access
+from test_repertoire_access import _load, _post
+
+world = access.world  # the sharing fixture: an owner and one account per role
 
 
 def _smart_start(client, rep, **extra):

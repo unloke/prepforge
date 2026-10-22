@@ -316,10 +316,7 @@ describe("captureScoutExpanded / restoreScoutExpanded", () => {
   it("repaints the open detail when the same line is rebuilt with new numbers", () => {
     const lineEl = createStubElement("div");
     lineEl.classList.add("scout-line");
-    lineEl.dataset.lineKey = "e2e4";
-    lineEl.dataset.color = "white";
-    lineEl.dataset.rowIdx = "0";
-    lineEl.dataset.rowKind = "prep";
+    Object.assign(lineEl.dataset, { lineKey: "e2e4", color: "white", rowIdx: "0", rowKind: "prep" });
     const sideEl = createStubElement("aside");
     const ctx = (games) => ({
       scoutModule,

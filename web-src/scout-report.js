@@ -200,9 +200,7 @@ export function openScoutLine(lineEl, line, rowKind, ctx) {
     // key/colour matched left the detail on an old snapshot ("4 games" row,
     // "seen in 3 games" detail).
     sideEl.innerHTML = callbacks.scoutLineDetailHtml(line, idx, color, rowKind);
-    sideEl.dataset.lineKey = key;
-    sideEl.dataset.color = color;
-    sideEl.dataset.boardSide = color === "white" ? "black" : "white";
+    Object.assign(sideEl.dataset, { lineKey: key, color, boardSide: color === "white" ? "black" : "white" });
     sideEl.hidden = false;
   }
   const ecoCached = ctx.ecoCache?.get(key);

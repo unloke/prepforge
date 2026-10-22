@@ -214,9 +214,7 @@ export function createScoutView(deps) {
     if (!side) return;
     side.hidden = true;
     side.innerHTML = "";
-    delete side.dataset.lineKey;
-    delete side.dataset.color;
-    delete side.dataset.boardSide;
+    for (const key of ["lineKey", "color", "boardSide"]) delete side.dataset[key];
   }
 
   // Below 1020px the detail stacks under the plan; bring it into view on select.
