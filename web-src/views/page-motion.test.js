@@ -41,9 +41,10 @@ it("an inactive tab brightens under the pointer", () => {
 });
 
 it("the members arrive one after another", () => {
-  expect(rule(teams, "#team-members > .mem-row {")).toMatch(/animation:\s*row-enter/);
-  expect(rule(teams, "#team-members > .mem-row:nth-child(2) {")).toMatch(/animation-delay:\s*60ms/);
-  expect(rule(teams, "#team-members > .mem-row:nth-child(n + 4) {")).toMatch(/animation-delay:\s*180ms/);
+  // Only rows the list helper marked as new: the skeleton and a re-opened
+  // team's rows already on screen do not rise again.
+  expect(rule(teams, "#team-members > .mem-row.is-enter {")).toMatch(/animation:\s*row-enter/);
+  expect(rule(teams, "#team-members > .mem-row.is-enter {")).toMatch(/animation-delay:\s*calc\(min\(var\(--i, 0\), 3\) \* 60ms\)/);
 });
 
 it("reduced motion drops the travel everywhere", () => {

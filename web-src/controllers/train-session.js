@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { reveal } from "../list-enter.js";
 // Train sessions: the smart queue, line rehearsal, practice games and Feeling Lucky.
 // Lazy-loaded by app.js the first time Train is used. The functions stay at module
 // level; createTrainSession binds the app.js state and helpers they share, once.
@@ -618,7 +619,7 @@ async function startTraining(mode, options = {}) {
     if (boards.train && payload.color) {
       boards.train.setOrientation(payload.color === "black" ? "black" : "white");
     }
-    document.getElementById("train-progress-panel").hidden = false;
+    reveal(document.getElementById("train-progress-panel"));
     await renderTrainStats();
     if (payload.prompt) {
       await renderTraining(payload);
@@ -2001,7 +2002,7 @@ async function startSmartTraining(options = {}) {
   if (boards.train && payload.color) {
     boards.train.setOrientation(payload.color === "black" ? "black" : "white");
   }
-  document.getElementById("train-progress-panel").hidden = false;
+  reveal(document.getElementById("train-progress-panel"));
   setSmartPanelsHidden();
   await renderSmartQueueStrip();
   await renderTrainStats();
@@ -2454,7 +2455,7 @@ function showSmartSummary(smart, stats) {
   void renderSmartSummaryStats(smart, stats);
   const panel = document.getElementById("train-summary");
   if (panel) {
-    panel.hidden = false;
+    reveal(panel);
     // Read from the card's top: on a phone the results replace the session card
     // in the same scroller, and the last card left it scrolled out of view.
     panel.scrollIntoView({ block: "start" });

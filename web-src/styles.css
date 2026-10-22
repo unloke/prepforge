@@ -1623,9 +1623,9 @@ h2 {
   line-height: 18px;
 }
 
-/* Today strip */
-#view-dashboard .today { animation: view-enter var(--dur-slow) var(--ease-out) both; }
-#view-dashboard .steps { animation: view-enter var(--dur-slow) var(--ease-out) 90ms both; }
+/* Today strip. It and the next steps arrive once, when their data lands. */
+#view-dashboard .today.is-enter,
+#view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
 /* The strip is one band: what is waiting on the left, the week's history and
    the action on the right. Stacked as four lines in one narrow column, the
    queue was the second line and the card kept a hole the width of the window. */
@@ -1813,25 +1813,19 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row:active { background: var(--surface-3); }
 .lib-row:focus-visible { outline-offset: -2px; border-radius: 0; }
 
-/* ---- One list-entry primitive -----------------------------------------
-   A fresh list fades in item by item. `--i` is the row index; the cap keeps a
-   long list from dragging. Every row is transform/opacity only, so the rows
-   below never move. Callers: dashboard (library), teams, replay summary. */
-.list-enter > * {
+/* ---- One entrance primitive ---------------------------------------------
+   A thing enters once, when it first arrives (list-enter.js marks it
+   `.is-enter` and takes the marker off when the entrance ends). A row already
+   on screen, a skeleton, or content painted while its view is still fading in
+   never enters, so nothing on a page animates twice. Lists stagger by `--i`
+   (capped) at the container's `--stagger`; transform and opacity only, so the
+   rows below never move. */
+.list-enter > .is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
-  animation-delay: calc(min(var(--i, 0), 8) * 25ms);
+  animation-delay: calc(min(var(--i, 0), 8) * var(--stagger, 25ms));
 }
-#view-dashboard .list-enter > *,
-#view-teams .list-enter > * {
-  animation-delay: calc(min(var(--i, 0), 8) * 60ms);
-}
-/* The Library reconciles its rows instead of rewriting them, so it marks the
-   ones that actually arrived. A row that was already on screen keeps its
-   settled state: re-showing the view, filtering, or a refresh that only
-   changed another row must not replay the entrance over it. */
-#view-dashboard .list-enter > .lib-row:not(.is-enter) {
-  animation: none;
-}
+#view-dashboard .list-enter,
+#view-teams .list-enter { --stagger: 60ms; }
 @keyframes row-enter {
   from {
     opacity: 0;
@@ -3017,16 +3011,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    and the Explorer rows arrive after a move or a fetch, so they enter with a
    short rise and stagger; the selected move's fill eases. Transform and
    opacity only, and the global reduced-motion block turns all of it off. */
-#build-branchbar:not([hidden]) { animation: fork-enter var(--dur) var(--ease-out) both; }
+#build-branchbar.is-enter { animation: fork-enter var(--dur) var(--ease-out) both; }
 @keyframes fork-enter {
   from { opacity: 0; transform: translateY(-4px); }
 }
-#explorer-rows .explorer-row,
-#coverage-gaps .coverage-gap {
+#explorer-rows > .is-enter,
+#coverage-gaps > .coverage-gap.is-enter {
   animation: row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * 40ms);
 }
-#explorer-rows.is-refresh .explorer-row { animation: none; }
 #build-branchbar .fork-chip { transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 #build-branchbar .fork-chip:active { transform: scale(0.97); }
 
@@ -3693,10 +3686,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
 
 /* The result card arrives when the session ends: one rise, once. */
-#train-summary:not([hidden]) { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
+#train-summary.is-enter { animation: trainCardEnter var(--dur-slow) var(--ease-out) both; }
 /* The session card arrives the same way when Start opens it, and only then:
    the panel stays mounted as the queue advances, so cards never re-rise. */
-#train-progress-panel:not([hidden]) { animation: trainCardEnter var(--dur) var(--ease-out) both; }
+#train-progress-panel.is-enter { animation: trainCardEnter var(--dur) var(--ease-out) both; }
 @keyframes trainCardEnter {
   from { opacity: 0; transform: translateY(10px); }
 }

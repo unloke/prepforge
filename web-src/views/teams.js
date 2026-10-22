@@ -6,7 +6,7 @@ import { html } from "../html.js";
 // invite-link status as a footer line under the tabs.
 import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
-import { staggerRows } from "../list-enter.js";
+import { enterRows } from "../list-enter.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
 import { canCopy, roleLabel } from "../share-roles.js";
 
@@ -106,7 +106,7 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
-    list.innerHTML = teamRowsSkeleton(3);
+    if (!list.querySelector?.(".team-row:not(.is-skeleton)")) list.innerHTML = teamRowsSkeleton(3);
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
@@ -222,7 +222,7 @@ export function createTeamsView({
           <span class="team-role-badge r-${roleKey}">${role}</span>
         </div>`;
       })}` : html`<div class="empty-state">No teams match your search.</div>`;
-    staggerRows(list);
+    enterRows(list, { key: (row) => row.dataset.teamId });
     list.querySelectorAll(".team-row").forEach((row) => {
       const open = () => openTeamDetail(row.dataset.teamId);
       row.addEventListener("click", open);

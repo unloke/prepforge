@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { nounOf } from "../plural.js";
 import { loadTeamDirectory } from "../team-directory.js";
-import { staggerRows } from "../list-enter.js";
+import { reveal } from "../list-enter.js";
 import { createLibraryRows } from "./library-rows.js";
 // Dashboard tab rendering (lazy-loaded from app.js).
 
@@ -255,7 +255,7 @@ export function createDashboardView({
           );
         })}`,
     );
-    card.hidden = false;
+    reveal(card);
   }
 
   // Linking / unlinking Lichess happens outside the Library (Settings, OAuth
@@ -327,7 +327,7 @@ export function createDashboardView({
   function renderTodayError(message) {
     const card = document.getElementById("dashboard-today");
     if (!card) return;
-    card.hidden = false;
+    reveal(card);
     const written = paint(card, html`<div class="today-error" role="alert" data-testid="today-error"><span>Today is unavailable: ${message}</span><button type="button" class="btn sm" data-today-retry title="Reload today's counts">Try again</button></div>`);
     lastTodayPayload = null;
     if (written) card.querySelector("[data-today-retry]")?.addEventListener("click", () => loadDashboard().catch((e) => setStatusError(e.message)));
@@ -427,7 +427,7 @@ export function createDashboardView({
       ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
       : html`<button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
   `);
-    card.hidden = false;
+    reveal(card);
     if (!written) return;
     if (firstRun) {
       // The strip is re-rendered on every load, so it binds its own action;
@@ -552,7 +552,7 @@ export function createDashboardView({
       container,
       shown.filter((item) => !item.sharedRow),
       shown.filter((item) => item.sharedRow),
-      { selectedRepId, staggerRows },
+      { selectedRepId },
     );
     // The row painter owns the nodes, so the note paint() keeps for the empty
     // states in this same container no longer describes what is there.
@@ -717,7 +717,7 @@ export function createDashboardView({
             html`<div class="step"><span class="step-n" aria-hidden="true"></span><div class="step-text"><b>${title}</b>${detail ? html`<p>${detail}</p>` : ""}</div><button type="button" class="btn sm" data-lib-action="${action}">${label}</button></div>`,
         )}`,
     );
-    card.hidden = false;
+    reveal(card);
   }
 
   // Either endpoint failing leaves the error card and rethrows, so the caller

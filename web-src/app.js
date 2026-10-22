@@ -51,6 +51,7 @@ import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, mai
   pref, syncThemeToggle, toggleTheme,
   STOCKFISH_MAX_DEPTH, STOCKFISH_MIN_DEPTH } from "./core/prefs.js";
 import { applyTheme } from "./theme.js";
+import { settleEntrances } from "./list-enter.js";
 import { activateModal, showConfirmModal, showInputModal } from "./core/modals.js";
 import { hooks } from "./core/hooks.js";
 import { PIECE_SETS, PIECE_STYLE_KEY, boardAfterMove, boardInfo, isPromotionMove, legalMoveFor,
@@ -1491,6 +1492,7 @@ function bindEvents() {
     beaconFlushTrain();
   });
   startBuildLive();
+  settleEntrances();
 
   // Account chip (folds in the old standalone Sign out button as a menu action)
   document.getElementById("account-chip").addEventListener("click", () => onAccountChipClick());

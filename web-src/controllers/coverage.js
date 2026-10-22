@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { enterRows } from "../list-enter.js";
 import { countOf } from "../plural.js";
 import { coverageTreeKey, runCoverageScan } from "../coverage.js";
 import { encodeLine, walkLine } from "../move-text.js";
@@ -127,7 +128,7 @@ export function createCoverageController({
       const path = gap.pathSans.join(" ") || "Start";
       const state = gap.kind === "missing_reply" ? "No reply" : "Missing branch";
       const check = readOnly ? "" : html`<label class="coverage-gap-select"><input type="checkbox" class="coverage-gap-check" data-index="${i}" aria-label="Select ${path + " " + gap.moveSan}" /></label>`;
-      return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}" style="--i:${i}">${check}
+      return html`<div class="coverage-gap${readOnly ? " is-readonly" : ""}" data-index="${i}">${check}
         <button type="button" class="coverage-gap-body" data-gap="${i}" title="Preview this opponent move"><span class="coverage-gap-path">${path}</span><span class="coverage-gap-line"><b class="coverage-gap-move" data-mt="${encodeLine(gap.fen, [gap.moveUci])}" data-p="0">${gap.moveSan}</b><span class="coverage-gap-meta">${state}</span><b class="coverage-gap-impact">${pct(gap.impact)}</b></span><span class="coverage-gap-track"><i style="width:${gap.impact * 100}%"></i></span></button></div>`;
     })}`;
     return markup;
@@ -170,6 +171,8 @@ export function createCoverageController({
       body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Press Scan to check this line.</p>`;
     }
     el.innerHTML = body;
+    // Gaps the panel already showed stay put through a repaint; a new scan's enter.
+    enterRows(el, { key: (row) => row.dataset.index != null ? `${row.textContent}` : row.className });
     const checks = () => [...el.querySelectorAll(".coverage-gap-check")];
     const selectAll = el.querySelector("#coverage-selectall");
     const complete = el.querySelector("#coverage-complete");

@@ -1,4 +1,5 @@
 import { html } from "../html.js";
+import { enterRows } from "../list-enter.js";
 import { roleLabel } from "../share-roles.js";
 
 // The Library table's rows and the painter that keeps them in place.
@@ -103,13 +104,6 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
   // row never collects a second handler.
   function bindRow(row) {
     const repId = row.dataset.repertoireId;
-    // The entrance is a one-off: the marker comes off when it ends, so
-    // re-showing the view or moving the row cannot replay it.
-    const settle = (event) => {
-      if (event.animationName === "row-enter") row.classList.remove("is-enter");
-    };
-    row.addEventListener("animationend", settle);
-    row.addEventListener("animationcancel", settle);
     if (row.dataset.shared) {
       const openSharedRow = () => openShared(repId);
       row.addEventListener("click", openSharedRow);
@@ -180,7 +174,7 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
     // Paint `visible` (own) then `shared` (read-only) into `container`,
     // reconciling against the nodes already there. Returns the rows the
     // selection highlight has to visit.
-    render(container, visible, shared, { selectedRepId, staggerRows }) {
+    render(container, visible, shared, { selectedRepId }) {
       const entries = [
         ...visible.map((item) => ({ item, sharedRow: false })),
         ...shared.map((item) => ({ item, sharedRow: true })),
@@ -229,7 +223,6 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
         const nodeFor = (markup) => {
           template.innerHTML = markup;
           const node = template.content.firstElementChild;
-          node.classList.add('is-enter');
           bindRow(node);
           return node;
         };
@@ -265,14 +258,12 @@ export function createLibraryRows({ openOwn, openShared, openRepertoireContextMe
             : ownRowHtml(entry.item, { selected: false, repSubline }),
         )));
         container.innerHTML = entries.map((entry) => entry.markup).join("");
-        container.querySelectorAll(".lib-row").forEach(row => {
-          row.classList.add('is-enter');
-          bindRow(row);
-        });
+        container.querySelectorAll(".lib-row").forEach(bindRow);
       }
       highlight(container, selectedRepId);
-      // Number the rows so an entering one waits its turn in place.
-      staggerRows(container);
+      // Only a row the listing did not show before enters: a kept row, and a
+      // row repainted because its counts changed, stay settled.
+      enterRows(container, { key: keyOfNode });
       return container.querySelectorAll(".lib-row");
     },
   };

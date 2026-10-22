@@ -88,7 +88,7 @@ it("team detail B stays visible after slow A responds", async () => {
     api: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     teamRoleLabel: (r) => r, teamsView: null,
     renderTeamSharedRepertoires: vi.fn(), memberRowsSkeleton, sharedRepRowsSkeleton,
-    formatDay: () => "", renderTeamInviteFooter: () => {} };
+    formatDay: () => "", renderTeamInviteFooter: () => {}, enterRows: () => {} };
   const open = compile("async function openTeamDetail(", deps, "let teamDetailSeq = 0");
   const a = open("A"), b = open("B");
   second.resolve({ name: "B", role: "member", members: [] }); await b;
@@ -125,7 +125,7 @@ it("a legacy Train start cannot overwrite a newer session", async () => {
     loadTrainResume: async () => ({ mapTrainUiSession: (p) => p, shouldResetTrainStats: () => false }),
     postJson: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise),
     boards: {}, document: { getElementById: () => ({}) }, renderTrainStats: vi.fn(),
-    renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn() };
+    renderTraining: vi.fn(), syncWorkspaceUrl: vi.fn(), requireSignIn: vi.fn(), reveal: (el) => { el.hidden = false; } };
   const run = compile("async function startTraining(", deps, "let smartStartSeq = 0");
   const a = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(1));
   const b = run("all_lines"); await vi.waitFor(() => expect(deps.postJson).toHaveBeenCalledTimes(2));

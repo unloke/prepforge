@@ -86,7 +86,7 @@
 }
 /* The detail card's contents are replaced by a row click; a short fade says
    "this is the other game" without the travel a page switch uses. */
-#view-replay .focus { animation: focus-swap var(--dur-fast) var(--ease-out) both; }
+#view-replay .focus.is-enter { animation: focus-swap var(--dur-fast) var(--ease-out) both; }
 @keyframes focus-swap {
   from { opacity: 0; }
 }
