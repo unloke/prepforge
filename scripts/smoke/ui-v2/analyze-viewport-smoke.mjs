@@ -103,8 +103,8 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 
-// Recent analyses now starts collapsed, so recalling a saved game from it
-// means opening it first. Phones raise the sources as a sheet, where one row
+// Recent analyses starts collapsed on a phone, so recalling a saved game from
+// it means opening it first. Phones raise the sources as a sheet, where one row
 // opens the list in place; a wide panel has the drawer inline.
 async function openGamesSheet(page) {
   const button = page.locator('#view-analyze [data-sheet-open="analyze-open"]');
@@ -305,11 +305,13 @@ async function runViewport(vp) {
   check(board === 64, `analysis board should render 64 squares, got ${board}`);
   const coachText = await page.locator('[data-testid="coach-prose"]').textContent().catch(() => "");
   check(/Make a move/.test(coachText || ""), `coach should show its idle line, got "${coachText.slice(0, 40)}"`);
-  // Recent analyses ships closed (it is where a game comes from, not another
-  // result) and loads the moment it is opened; it never opens empty.
+  // Recent analyses ships open on a desktop, so an idle panel offers the games to
+  // reopen; on a phone it sits closed in the Games sheet. It loads the moment it
+  // is opened and never opens empty.
   await page.waitForTimeout(200);
-  const historyClosed = await page.locator("#history-drawer").evaluate((d) => !d.open);
-  check(historyClosed, "recent analyses should start collapsed");
+  const historyOpen = await page.locator("#history-drawer").evaluate((d) => d.open);
+  const shipsOpen = vp.width >= 861;
+  check(historyOpen === shipsOpen, `recent analyses should start ${shipsOpen ? "open" : "collapsed"}`);
   await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
   await page.waitForFunction(
     () => document.querySelectorAll("#history-drawer .history-item").length === 2,

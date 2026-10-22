@@ -284,24 +284,21 @@ async function runViewport(vp) {
     await page.waitForTimeout(300);
   }
 
-  // Teams is a work surface: with no team picked the middle card fills the
-  // height of the view, and the directory and the incoming shares are short
-  // lists that keep their own height at the top of their columns.
+  // With no team picked the directory and the incoming shares stack in one
+  // column and the placeholder beside them ends where that column ends: no
+  // screen-tall blank card (only an open team takes the view's height).
   if (vp.width >= 1021) {
     const boxes = await page.evaluate(() => {
-      const h = (sel) => Math.round(document.querySelector(sel)?.getBoundingClientRect().height || 0);
-      const view = document.querySelector("#view-teams");
-      const grid = document.querySelector("#view-teams .teams");
+      const box = (sel) => document.querySelector(sel)?.getBoundingClientRect() || { height: 0, bottom: 0 };
+      const [middle, dir, incoming] = ["team-empty", "card.dir", "card.incoming"].map((c) => box(`#view-teams .teams > .${c}`));
       return {
-        middle: h("#view-teams .teams > .team-empty"),
-        dir: h("#view-teams .teams > .card.dir"),
-        incoming: h("#view-teams .teams > .card.incoming"),
-        gap: Math.round(view.getBoundingClientRect().bottom - grid.getBoundingClientRect().bottom),
+        middle: Math.round(middle.height), dir: Math.round(dir.height), incoming: Math.round(incoming.height),
+        endGap: Math.round(Math.abs(middle.bottom - Math.max(dir.bottom, incoming.bottom))),
       };
     });
-    check(boxes.gap <= 40, `the Teams work surface should reach the bottom of the view, ${boxes.gap}px short`);
+    check(boxes.endGap <= 2, `the placeholder should end where the list column ends, ${boxes.endGap}px off`);
     check(boxes.middle > boxes.dir && boxes.middle > boxes.incoming,
-      `the middle card should fill the surface, got ${JSON.stringify(boxes)}`);
+      `the placeholder should span the list column, got ${JSON.stringify(boxes)}`);
   }
 
   // Overflow + console errors.
