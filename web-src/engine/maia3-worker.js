@@ -258,54 +258,78 @@ async function moveAssessmentBatch({ fen, moves, rating }) {
   return results;
 }
 
-// moveAssessmentMany(): moveAssessment for many (position, move) pairs in two forwards —
-// one batched policy forward over the positions, one batched value forward over the
-// positions after each move. Aligned to `items`; null for a malformed FEN or illegal move.
-// Each answer is { humanProbability, winChanceAfter, naturalUci }.
+// moveAssessmentMany(): moveAssessment for many (position, move) pairs in ONE forward over
+// the unique model inputs. The before-position of a move and the after-position of the move
+// before it are the same model input, so a game's consecutive plies mostly share rows: the
+// two heads are both read off that one row and scattered back. Aligned to `items`; null for
+// a malformed FEN or illegal move. Each answer is { humanProbability, winChanceAfter, naturalUci }.
 async function moveAssessmentMany({ items, rating }) {
   const list = Array.isArray(items) ? items : [];
   const results = new Array(list.length).fill(null);
-  const slots = [];
-  const afters = [];
+  const slots = []; // input index per usable item
+  const policyRow = []; // row holding the before-position input
+  const valueRow = []; // row holding the after-move input
+  const rows = []; // unique model inputs, in first-seen order
+  const rowOf = new Map();
+  const rowFor = (tokens) => {
+    const key = tokenKey(tokens);
+    let row = rowOf.get(key);
+    if (row === undefined) {
+      row = rows.length;
+      rowOf.set(key, row);
+      rows.push(tokens);
+    }
+    return row;
+  };
   for (let i = 0; i < list.length; i++) {
     const { fen, moveUci } = list[i] || {};
     if (!isValidFen(fen)) continue;
     const after = tokensAfterMove(fen, moveUci);
     if (after === null) continue;
     slots.push(i);
-    afters.push(after);
+    policyRow.push(rowFor(tokensFromFen(fen)));
+    valueRow.push(rowFor(after));
   }
   if (!slots.length) return results;
   const elo = rating || defaultRating;
-  const n = slots.length;
-  const elos = new Array(n).fill(elo);
-  const before = new Float32Array(n * TOKENS_PER_POSITION);
-  const after = new Float32Array(n * TOKENS_PER_POSITION);
-  slots.forEach((slot, k) => {
-    before.set(tokensFromFen(list[slot].fen), k * TOKENS_PER_POSITION);
-    after.set(afters[k], k * TOKENS_PER_POSITION);
-  });
-  const outPolicy = await session.run(feeds(before, n, elos, elos));
-  const outValue = await session.run(feeds(after, n, elos, elos));
-  const moveData = outPolicy.logits_move.data;
+  const n = rows.length;
+  const batch = new Float32Array(n * TOKENS_PER_POSITION);
+  rows.forEach((tokens, k) => batch.set(tokens, k * TOKENS_PER_POSITION));
+  const elos = new Array(n).fill(elo); // self/oppo swapped — equal here (single rating)
+  const out = await session.run(feeds(batch, n, elos, elos));
+  const moveData = out.logits_move.data;
   const perMove = moveData.length / n;
-  const valueData = outValue.logits_value.data;
+  const valueData = out.logits_value.data;
   slots.forEach((slot, k) => {
     const { fen, moveUci } = list[slot];
-    const logits = moveData.subarray(k * perMove, (k + 1) * perMove);
+    const logits = moveData.subarray(policyRow[k] * perMove, (policyRow[k] + 1) * perMove);
     const lookup = makeHumanProbabilityLookup(logits, fen);
+    const v = valueRow[k] * 3;
     results[slot] = {
       humanProbability: lookup(moveUci),
       // The move a human would naturally play here, off the same policy forward — the
       // trap layer needs it, so it never has to ask Maia again.
       naturalUci: buildPredictions(logits, fen, { topN: 1 })[0]?.move_uci ?? null,
-      winChanceAfter: winChanceAfter([valueData[k * 3], valueData[k * 3 + 1], valueData[k * 3 + 2]]),
+      winChanceAfter: winChanceAfter([valueData[v], valueData[v + 1], valueData[v + 2]]),
     };
   });
   return results;
 }
 
-const HANDLERS = { init, predictions, positionRead, positionReadBatch, wdlRead, moveAssessment, moveAssessmentBatch, moveAssessmentMany };
+// Exact identity of one model-input row: the tensor bytes the model sees. Keyed on the
+// bytes, not the FEN, so rows that differ only in something the tokenizer adds later
+// (ancestor history, time info) can never merge. A row is 64*97 floats, so the key is a
+// few tens of KB — bounded by the caller's batch (16 moves → at most 32 rows).
+function tokenKey(tokens) {
+  const bytes = new Uint8Array(tokens.buffer, tokens.byteOffset, tokens.byteLength);
+  let key = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    key += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  }
+  return key;
+}
+
+export const HANDLERS = { init, predictions, positionRead, positionReadBatch, wdlRead, moveAssessment, moveAssessmentBatch, moveAssessmentMany };
 
 self.onmessage = async (ev) => {
   const { id, type } = ev.data || {};
