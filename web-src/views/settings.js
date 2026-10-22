@@ -426,9 +426,9 @@ export function createSettingsView({
           return;
         }
         const list = sections();
-        // A window that shows every card at once has no section "in front of
-        // you", only the one you last jumped to: the spy stays out of the
-        // click's way there.
+        // When the viewport is taller than content, nothing hijacks the click's
+        // choice—only scroll events change the marker. Keep the nav synced while
+        // scrolling so it matches what the user actually sees.
         if (document.documentElement.scrollHeight - window.innerHeight < window.innerHeight * 0.5) return;
         // The last card whose top passed the probe line - also the right answer
         // when the line sits in the gap between two cards. At the bottom of the
