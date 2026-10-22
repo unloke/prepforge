@@ -478,7 +478,7 @@ export function createReplayView({
     const entered = payload !== lastPayload;
     lastPayload = payload;
     const ledgerScroll = revealIndex != null ? container.querySelector?.(".ledger-table")?.scrollTop || 0 : 0;
-    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${filter ? REPLAY_KINDS[filter].label : nounOf(rows.length, "game")}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
+    container.innerHTML = html`${warning}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2><span class="faint">${rows.length} ${nounOf(rows.length, "game")}${filter ? ` · ${REPLAY_KINDS[filter].label}` : ""}${accountNote}</span></header><div class="ledger-table${entered ? " list-enter" : ""}" data-ui>${LEDGER_HEAD}${rows.map(({ game, index }) => renderReplayRow(game, index, selectedIndex, { showAccount }))}</div></section>${renderReplayFocus(focused.game, focused.index)}</div>`;
     if (entered) staggerRows(container.querySelector?.(".ledger-table"));
     container.querySelectorAll(".lr[data-index]").forEach((row) => {
       row.addEventListener("click", () => {

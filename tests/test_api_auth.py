@@ -246,3 +246,33 @@ def test_change_password_keeps_this_session_and_ends_others(client):
     assert client.post(
         "/api/auth/login", json={"email": "c@b.com", "password": "newpassword1"}, headers=h
     ).status_code == 200
+
+
+def test_session_cap_evicts_the_least_recently_used_session(client, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from fastapi.testclient import TestClient
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+    from prepforge_chess.api.config import get_settings
+    from prepforge_chess.api.db import get_engine
+    from prepforge_chess.api.models import AuthSession
+    from prepforge_chess.api.security import hash_session_token
+
+    monkeypatch.setattr(get_settings(), "session_max_per_user", 2)
+    creds = {"email": "cap2@example.com", "password": "longpassword1"}
+    client.post("/api/auth/register", json=creds, headers=csrf_headers(client))
+    idle = TestClient(client.app)
+    assert idle.post("/api/auth/login", json=creds, headers=csrf_headers(idle)).status_code == 200
+    # The first device signed in long ago but is the one in daily use.
+    first_hash = hash_session_token(client.cookies.get("pf_session"))
+    with Session(get_engine()) as db:
+        for row in db.scalars(select(AuthSession)):
+            in_use = row.token_hash == first_hash
+            row.created_at = datetime.now(timezone.utc) - timedelta(days=20 if in_use else 10)
+            row.last_seen_at = datetime.now(timezone.utc) - timedelta(minutes=1 if in_use else 60 * 24)
+        db.commit()
+    newest = TestClient(client.app)
+    assert newest.post("/api/auth/login", json=creds, headers=csrf_headers(newest)).status_code == 200
+    assert client.get("/api/auth/me").status_code == 200
+    assert newest.get("/api/auth/me").status_code == 200
+    assert idle.get("/api/auth/me").status_code == 401

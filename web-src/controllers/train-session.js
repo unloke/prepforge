@@ -1720,27 +1720,36 @@ async function trainHint() {
     setStatus("Start a session first");
     return;
   }
+  // One hint read per position: clicks made while it is in flight wait on the
+  // same read and each still reveals one more level.
+  let pending = appState.trainHintInfo;
+  if (!pending || pending.forFen !== prompt.fen_before) {
+    pending = appState.trainHintInfo = {
+      forFen: prompt.fen_before,
+      read: postJson("/api/train/hint", { session_id: prompt.session_id }),
+    };
+    appState.trainHintLevel = 0;
+  }
+  let info;
   try {
-    if (!appState.trainHintInfo || appState.trainHintInfo.forFen !== prompt.fen_before) {
-      const res = await postJson("/api/train/hint", { session_id: prompt.session_id });
-      appState.trainHintInfo = { ...res, forFen: prompt.fen_before };
-      appState.trainHintLevel = 0;
-    }
-    const info = appState.trainHintInfo;
-    appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
-    const level = appState.trainHintLevel;
-    if (level === 1) {
-      boards.train.setEngineArrow(null);
-      setTrainBanner("move", "Hint 1 · Idea", info.strategy || "Follow your preparation");
-    } else if (level === 2) {
-      boards.train.setEngineArrow(null);
-      setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
-    } else {
-      setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
-      if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
-    }
+    info = await pending.read;
   } catch (error) {
+    if (appState.trainHintInfo === pending) appState.trainHintInfo = null;
     setStatusError(error.message);
+    return;
+  }
+  if (appState.trainHintInfo !== pending) return;
+  appState.trainHintLevel = Math.min(3, (appState.trainHintLevel || 0) + 1);
+  const level = appState.trainHintLevel;
+  if (level === 1) {
+    boards.train.setEngineArrow(null);
+    setTrainBanner("move", "Hint 1 · Idea", info.strategy || "Follow your preparation");
+  } else if (level === 2) {
+    boards.train.setEngineArrow(null);
+    setTrainBanner("move", "Hint 2 · Piece", info.piece || "Find the move");
+  } else {
+    setTrainBanner("move", "Hint 3 · Answer", info.expected_san ? `Play ${info.expected_san}` : "Here it is");
+    if (info.expected_uci) boards.train.setEngineArrow(info.expected_uci);
   }
 }
 
@@ -1958,6 +1967,9 @@ async function startSmartTraining(options = {}) {
   appState.smart = {
     sessionId: mapped.sessionId,
     generation: mapped.generation,
+    // The position sync's token: without it the server never applies the
+    // session's position, so a finished queue resumed from its first card.
+    stateVersion: mapped.stateVersion,
     seed: mapped.seed,
     repertoireId: mapped.repertoireId,
     repertoireName: mapped.repertoireName,
@@ -2297,7 +2309,9 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   }
 
   if (attempt > 1) {
-    smart.retriesFixed += 1;
+    // "Fixed on retry" is a scored miss recovered on the free retry; a revealed
+    // answer was not recalled and a New move's demonstration was never scored.
+    if (scored && attempt === 2) smart.retriesFixed += 1;
   } else if (scored && hinted) {
     stats.mistakes += 1;
     stats.streak = 0;
@@ -2437,8 +2451,13 @@ function showSmartSummary(smart, stats) {
   document.getElementById("train-progress-panel").hidden = true;
   const bar = document.getElementById("train-queue");
   if (bar) bar.hidden = true;
+  // The before/after rows arrive with the server summary; until then the strip
+  // stays hidden rather than showing an empty tinted bar.
   const delta = document.getElementById("train-summary-delta");
-  if (delta) delta.innerHTML = "";
+  if (delta) {
+    delta.innerHTML = "";
+    delta.hidden = true;
+  }
   const foot = document.getElementById("train-summary-foot");
   if (foot) foot.textContent = "";
   void renderSmartSummaryStats(smart, stats);
