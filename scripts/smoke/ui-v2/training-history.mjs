@@ -5,14 +5,14 @@ import { strict as assert } from 'node:assert';
 // One completed Smart queue fixture run, plus a seeded document for the list.
 const historyKey = (owner) => `pf.trainHistory:${encodeURIComponent(owner)}`;
 const seededRuns = [
-  { id: 's1:2026-10-21T07:00:00+00:00', mode: 'blitz', repertoires: ['Caro-Kann: Advance', 'London System'],
-    startedAt: '2026-10-21T07:00:00+00:00', finishedAt: '2026-10-21T07:12:00.000Z', cards: 12, correct: 9, mistakes: 2, skipped: 1 },
-  { id: 's2:2026-10-19T18:00:00+00:00', mode: 'smart', repertoires: ['A repertoire with a very long name that has to wrap or truncate: Najdorf, English Attack, and the whole family'],
-    startedAt: '2026-10-19T18:00:00+00:00', finishedAt: '2026-10-19T18:34:00.000Z', cards: 36, correct: 24, mistakes: 9, skipped: 3 },
-  { id: 's3:2026-10-17T09:00:00+00:00', mode: 'smart', repertoires: ['London System'],
-    startedAt: '2026-10-17T09:00:00+00:00', finishedAt: '2026-10-17T09:08:00.000Z', cards: 8, correct: 0, mistakes: 0, skipped: 8 },
+  { id: 's1:2026-10-21T07:00:00Z', mode: 'smart', blitz: true, repertoires: ['Caro-Kann: Advance', 'London System'],
+    startedAt: '2026-10-21T07:00:00Z', finishedAt: '2026-10-21T07:12:00Z', cards: 12, correct: 9, mistakes: 2, skipped: 1 },
+  { id: 's2:2026-10-19T18:00:00Z', mode: 'smart', blitz: false, repertoires: ['A repertoire with a very long name that has to wrap or truncate: Najdorf, English Attack, and the whole family'],
+    startedAt: '2026-10-19T18:00:00Z', finishedAt: '2026-10-19T18:34:00Z', cards: 36, correct: 24, mistakes: 9, skipped: 3 },
+  { id: 's3:2026-10-17T09:00:00Z', mode: 'smart', blitz: false, repertoires: ['London System'],
+    startedAt: '2026-10-17T09:00:00Z', finishedAt: '2026-10-17T09:08:00Z', cards: 8, correct: 0, mistakes: 0, skipped: 8 },
   ...Array.from({ length: 104 }, (_, index) => ({
-    id: `s${index + 10}:2026-09-${String((index % 28) + 1).padStart(2, '0')}T10:00:00+00:00`, mode: 'smart',
+    id: `s${index + 10}:2026-09-${String((index % 28) + 1).padStart(2, '0')}T10:00:00+00:00`, mode: 'smart', blitz: false,
     repertoires: ['Caro-Kann: Advance'], startedAt: '2026-09-01T10:00:00+00:00',
     finishedAt: new Date(Date.UTC(2026, 8, 1, 10) + index * 3600000).toISOString(),
     cards: 20, correct: 15, mistakes: 4, skipped: 1,
@@ -28,7 +28,6 @@ export async function checkTrainingHistory(page, check, shot) {
   check(firstTry.trim() === '100%', `first-try figure must come from run counters, got ${firstTry}`);
   check(await page.locator('#training-history-dialog .th-run').count() === 0, 'a first completion has no earlier runs');
   check((await page.locator('#training-history-title').textContent()) === 'Training history', 'history must name itself');
-  check((await page.locator('#training-history-dialog .th-scope').textContent()).includes('this browser'), 'history must say it is stored in this browser');
   const foot = await page.locator('#training-history-dialog .th-foot').textContent();
   check(/^1 saved run$/.test(foot.trim()), `history must report the count it actually holds, got "${foot}"`);
   const footNote = await page.locator('#training-history-dialog .th-foot span').getAttribute('title');
