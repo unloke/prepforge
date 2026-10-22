@@ -1431,6 +1431,7 @@ function bindEvents() {
   // Teams view actions.
   const teamsNewBtn = document.getElementById("teams-new");
   if (teamsNewBtn) teamsNewBtn.addEventListener("click", createTeam);
+  document.getElementById("team-empty-new")?.addEventListener("click", createTeam);
   const teamDetailClose = document.getElementById("team-detail-close");
   if (teamDetailClose) teamDetailClose.addEventListener("click", hideTeamDetail);
 

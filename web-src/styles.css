@@ -1537,34 +1537,39 @@ h2 {
 }
 .teams {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 330px;
   gap: 12px;
   align-items: start;
 }
-/* Directory, detail and incoming shares share one row height: a short card
-   (an empty directory) used to leave the row ragged. */
-.teams > .card { align-self: stretch; }
 
-/* Teams is a work surface: the open team's panel takes the height of the
-   view, the way the Library table does, and the two short lists beside it
-   keep their own height at the top. Before this, every card was sized by its
-   content, so the page showed three short strips over half a screen of
-   empty ground. */
+/* Desktop: the two lists (directory, incoming shares) stack in a narrow column
+   and the team takes the rest. An open team is a work surface and takes the
+   view's height; the placeholder card spans the list column and ends where it
+   ends, so a short directory never leaves a screen-tall blank card beside two
+   strips. With no team yet (or signed out) the directory has nothing to list:
+   the placeholder is the first-run panel with its own New team, and the shares
+   card sits beside it at the same height. */
 @media (min-width: 1021px) {
-  .teams { min-height: 100%; grid-template-rows: minmax(0, 1fr); }
+  .teams { grid-template-columns: 300px minmax(0, 1fr); }
   .teams > .card.dir,
-  .teams > .card.incoming { align-self: start; }
+  .teams > .card.incoming { grid-column: 1; }
+  .teams > .team-detail,
+  .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
+  .teams:has(> .team-detail:not([hidden])) { min-height: 100%; grid-template-rows: auto minmax(0, 1fr); }
   .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
   .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: stretch; }
+  .teams[data-empty="signed-out"] > .team-empty { grid-column: 1 / -1; } /* a guest has no shares card */
+}
+#team-empty-new { display: none; }
+@media (min-width: 1021px) {
+  .teams[data-empty="no-teams"] #team-empty-new { display: inline-flex; }
 }
 
-@media (max-width: 1279px) {
-  .teams { grid-template-columns: 250px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-  .incoming { grid-column: 2; }
-}
 @media (max-width: 1020px) {
   .teams { grid-template-columns: minmax(0, 1fr); }
-  .incoming { grid-column: auto; }
 }
 @media (max-width: 760px) {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
