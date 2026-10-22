@@ -25,10 +25,11 @@ from prepforge_chess.core.limits import (
 from prepforge_chess.api.config import Settings, get_settings
 from prepforge_chess.api.db import get_db
 from prepforge_chess.api.deps import current_owner, current_user, get_repository
-from prepforge_chess.api.models import User
+from prepforge_chess.api.models import LinkedAccount, User
 from prepforge_chess.storage.types import Plan
 from prepforge_chess.api.ratelimit import limiter
 from prepforge_chess.api.routers.teams import user_team_ids
+from prepforge_chess.storage.repositories.repertoires import ROLE_RANK
 from prepforge_chess.core.models import Color, MoveSource, OpeningNode
 from prepforge_chess.services.opening_builder import (
     CreateRepertoireRequest,
@@ -51,13 +52,30 @@ def _repertoire_cap(user: User, settings: Settings) -> int | None:
     return None if user.plan == Plan.pro else settings.free_repertoire_limit
 
 
-def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
-    """Owner gate for repertoire mutations. Returns the repertoire's lightweight meta,
-    or raises 404 if it is missing or owned by a different user."""
-    meta = repo.repertoire_meta(repertoire_id)
-    if meta is None or meta["owner_user_id"] != owner:
+def _repertoire_access(
+    repo: WorkspaceRepository, repertoire_id: str, user_id: str, need: str = "view"
+) -> dict[str, Any]:
+    """The one access gate. Returns the repertoire's meta with the caller's
+    ``role`` (owner / edit / copy / view). 404 when the caller has no access at
+    all (never revealing the repertoire), 403 when their role is below ``need``."""
+    meta, role = repo.access_role(repertoire_id, user_id)
+    if role is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    return meta
+    if ROLE_RANK[role] < ROLE_RANK[need]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_DENIED[need])
+    return {**meta, "role": role}
+
+
+_DENIED = {
+    "copy": "The owner hasn't allowed copies of this repertoire.",
+    "edit": "You can't edit this repertoire.",
+    "owner": "Only the owner can do this.",
+}
+
+
+def _owned_repertoire(repo: WorkspaceRepository, repertoire_id: str, owner: str) -> dict[str, Any]:
+    """Owner-only actions: rename, delete, enable/disable, sharing, and Train."""
+    return _repertoire_access(repo, repertoire_id, owner, "owner")
 
 
 def _check_base_revision(
@@ -84,31 +102,27 @@ def _check_base_revision(
         )
 
 
-def _readable_repertoire(
-    repo: WorkspaceRepository, repertoire_id: str, owner: str, team_ids: set[str]
-) -> dict[str, Any]:
-    """Read gate: the owner, OR a member of the team a ``visibility='team'``
-    repertoire is shared with. 404 otherwise. Widens reads only — mutations keep using
-    ``_owned_repertoire`` so sharing never grants write access."""
-    meta = repo.repertoire_meta(repertoire_id)
-    if meta is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    if meta["owner_user_id"] == owner:
-        return meta
-    if meta["visibility"] == "team" and meta["team_id"] in team_ids:
-        return meta
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-
-
 def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:
-    """Remove the owner's personal training colour from a read-only Build payload.
+    """Remove the owner's personal training colour from a payload someone else sees.
 
-    Public share links and team-shared read views must not leak health, summary, or
-    per-node mastery derived from the owner's training progress."""
+    Share links and grants must not leak health or per-node mastery derived from
+    the owner's training progress."""
     payload.pop("health", None)
-    payload.pop("summary", None)
     for node in payload.get("nodes", []):
         node.pop("mastery", None)
+
+
+def _payload(repo: WorkspaceRepository, meta: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+    """The Build payload as the caller may see it. Always computed against the
+    owner's progress (so the cached health badge stays the owner's), then stripped
+    of that progress for anyone else. ``role``/``writable`` drive the client."""
+    payload = build_workspace_payload(repo, meta["id"], owner_user_id=meta["owner_user_id"], **kwargs)
+    payload["role"] = meta["role"]
+    payload["writable"] = ROLE_RANK[meta["role"]] >= ROLE_RANK["edit"]
+    if meta["role"] != "owner":
+        _strip_readonly_build_payload(payload)
+        payload["shared"] = True
+    return payload
 
 
 @router.get("/dashboard")
@@ -254,22 +268,14 @@ def _listing_health(health: dict[str, Any] | None) -> dict[str, Any] | None:
 
 @router.get("/repertoires")
 def list_repertoires(
-    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
-    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """The caller's own repertoires (metadata + a cached ``health`` badge — no tree
     load and no per-row health walk; the badge is refreshed off the Build payload and
     train summary, and is ``None`` until a rep is first opened/trained), plus a
-    lightweight ``shared`` list of repertoires other members have shared to the
-    caller's teams (read-only; no health/tree load to keep this cheap)."""
-    team_ids = user_team_ids(db, user.id)
-    shared = [
-        item
-        for item in repo.list_team_shared_repertoires(list(team_ids))
-        if item["owner_user_id"] != owner  # the caller's own shared reps already appear above
-    ]
+    lightweight ``shared`` list of repertoires others shared with the caller, each
+    at the caller's role (no health/tree load to keep this cheap)."""
     return {
         "repertoires": [
             {
@@ -282,19 +288,13 @@ def list_repertoires(
                 # boot, so its cache bookkeeping (computed_at, revision) stays here.
                 "health": _listing_health(row["health"]),
                 "is_active": row["is_active"],
-                "team_id": row["team_id"],
-                "visibility": row["visibility"],
+                "shared": row["shared"],
             }
             for row in repo.list_owner_repertoire_listings(owner_user_id=owner)
         ],
         "shared": [
-            {
-                "id": item["id"],
-                "name": item["name"],
-                "color": item["color"],
-                "team_id": item["team_id"],
-            }
-            for item in shared
+            {key: item[key] for key in ("id", "name", "color", "role", "team_id", "owner_display_name")}
+            for item in repo.list_shared_with(owner)
         ],
     }
 
@@ -302,56 +302,116 @@ def list_repertoires(
 @router.get("/build/load")
 def build_load(
     repertoire_id: str,
-    user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
-    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """The Build-view payload for a repertoire the caller can read. The owner always
-    can write; a team member can read one shared to their team (``writable=false``).
-    Computes no chess — pure serialization of the stored tree + training progress."""
-    meta = _readable_repertoire(repo, repertoire_id, owner, user_team_ids(db, user.id))
-    payload = build_workspace_payload(repo, repertoire_id, owner_user_id=meta["owner_user_id"])
-    payload["writable"] = meta["owner_user_id"] == owner
-    if not payload["writable"]:
-        _strip_readonly_build_payload(payload)
-        payload["shared"] = True
-        if meta.get("visibility") == "team" and meta.get("team_id"):
-            payload["share_team_id"] = meta["team_id"]
-    return payload
+    """The Build-view payload for a repertoire the caller can read, with their
+    ``role``; ``writable`` for the owner and editors. Computes no chess — pure
+    serialization of the stored tree + training progress."""
+    return _payload(repo, _repertoire_access(repo, repertoire_id, owner))
 
 
-class ShareRepertoireBody(BaseModel):
+# ---- Access: who a repertoire is shared with, and how -----------------------
+# Owner-only. A grant names one team (the owner must be in it) or one person
+# (found by email or Lichess username) with a role: view, copy or edit.
+
+Role = Literal["view", "copy", "edit"]
+
+
+def _access_state(repo: WorkspaceRepository, meta: dict[str, Any], secret: str) -> dict[str, Any]:
+    link = _share_state(meta)
+    if link["share_enabled"]:
+        link["url"] = "/?shared={0}".format(mint_share_token(meta["id"], secret, link["share_rev"]))
+    return {"repertoire_id": meta["id"], "link": link, "grants": repo.repertoire_grants(meta["id"])}
+
+
+@router.get("/repertoires/access")
+def repertoire_access(
+    repertoire_id: str,
+    owner: str = Depends(current_owner),
+    repo: WorkspaceRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """The Share dialog's state: the link (with its URL while on) and every grant."""
+    meta = _owned_repertoire(repo, repertoire_id, owner)
+    return _access_state(repo, meta, settings.secret_key)
+
+
+class GrantBody(BaseModel):
     repertoire_id: str
+    role: Role = "view"
     team_id: str | None = None
-    visibility: Literal["private", "team"] = "private"
+    user_id: str | None = None
+    # A person to add: their email or Lichess username.
+    person: str | None = Field(default=None, max_length=320)
 
 
-@router.post("/repertoires/share")
-def share_repertoire(
-    body: ShareRepertoireBody,
+def _find_person(db: Session, person: str) -> User | None:
+    handle = person.strip()
+    if "@" in handle:
+        return db.scalar(select(User).where(func.lower(User.email) == handle.lower()))
+    link = db.scalar(select(LinkedAccount).where(
+        LinkedAccount.provider == "lichess",
+        func.lower(LinkedAccount.provider_user_id) == handle.lower(),
+    ))
+    return db.get(User, link.user_id) if link is not None else None
+
+
+@router.post("/repertoires/access")
+@limiter.limit("30/minute")
+def grant_access(
+    request: Request,
+    body: GrantBody,
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
     db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Share (or unshare) one of the caller's OWN repertoires with a team. Only the
-    owner may change sharing; sharing to a team requires the caller to be a member of
-    that team (404 otherwise, to avoid revealing teams). ``visibility='private'``
-    unshares."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
-    if body.visibility == "team":
-        if not body.team_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="team_id is required to share with a team",
-            )
+    """Share with a team or a person at a role, or change an existing grant's role."""
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    if sum(bool(v) for v in (body.team_id, body.user_id, body.person and body.person.strip())) != 1:
+        raise HTTPException(status_code=400, detail="name one team or one person")
+    if body.team_id:
         if body.team_id not in user_team_ids(db, user.id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="team not found")
-        repo.set_repertoire_sharing(body.repertoire_id, body.team_id, "team")
-        return {"repertoire_id": body.repertoire_id, "visibility": "team", "team_id": body.team_id}
-    repo.set_repertoire_sharing(body.repertoire_id, None, "private")
-    return {"repertoire_id": body.repertoire_id, "visibility": "private", "team_id": None}
+        repo.set_grant(body.repertoire_id, team_id=body.team_id, role=body.role, created_by=owner)
+    elif body.user_id:  # a role change for someone already on the list
+        if not any(g.get("user_id") == body.user_id for g in repo.repertoire_grants(body.repertoire_id)):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not shared with this person")
+        repo.set_grant(body.repertoire_id, user_id=body.user_id, role=body.role, created_by=owner)
+    else:
+        target = _find_person(db, body.person)
+        if target is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No PrepForge account has that email or Lichess username.",
+            )
+        if target.id == owner:
+            raise HTTPException(status_code=400, detail="This repertoire is already yours.")
+        repo.set_grant(body.repertoire_id, user_id=target.id, role=body.role, created_by=owner)
+    return _access_state(repo, meta, settings.secret_key)
+
+
+class RevokeBody(BaseModel):
+    repertoire_id: str
+    team_id: str | None = None
+    user_id: str | None = None
+
+
+@router.post("/repertoires/access/revoke")
+def revoke_access(
+    body: RevokeBody,
+    owner: str = Depends(current_owner),
+    repo: WorkspaceRepository = Depends(get_repository),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Stop sharing with one team or person. Their access ends with their next request."""
+    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    if bool(body.team_id) == bool(body.user_id):
+        raise HTTPException(status_code=400, detail="name one team or one person")
+    repo.delete_grant(body.repertoire_id, team_id=body.team_id, user_id=body.user_id)
+    return _access_state(repo, meta, settings.secret_key)
 
 
 class DeleteRepertoireRequest(BaseModel):
@@ -481,13 +541,12 @@ def create_repertoire(
 # ---- Public share links -------------------------------------------------------
 # A share link is a signed token: base64url(rep_id) + "." + share_rev + "." +
 # HMAC slice. Knowing the link grants READ of the tree (name + moves +
-# comments) and nothing else: the public payload is stripped of the owner's
-# training state, and every mutating endpoint still checks ownership. Forking
-# copies the tree under the CALLER with fresh ids (same mechanics as package
-# import).
+# comments), plus a copy when ``share_role`` is 'copy'; it never grants edit.
+# The public payload is stripped of the owner's training state. Forking copies
+# the tree under the CALLER with fresh ids (same mechanics as package import).
 #
 # F-01: the link is independently governable per repertoire:
-# - ``share_enabled`` off kills the link (without touching team sharing);
+# - ``share_enabled`` off kills the link (without touching grants);
 # - ``share_rev`` rotation re-signs, so every previously minted link dies;
 # - ``share_expires_at`` is an optional deadline.
 
@@ -528,6 +587,7 @@ def _share_state(meta: dict[str, Any]) -> dict[str, Any]:
         "share_enabled": bool(meta.get("share_enabled")),
         "share_rev": int(meta.get("share_rev") or 0),
         "share_expires_at": meta.get("share_expires_at"),
+        "share_role": meta.get("share_role"),
     }
 
 
@@ -544,25 +604,22 @@ def _share_link_live(meta: dict[str, Any], token_rev: int, now: datetime) -> boo
 
 def _resolve_share_link(
     repo: WorkspaceRepository, token: str, secret: str
-) -> str | None:
-    """The repertoire id a token currently grants read for, else None. Revoked,
-    rotated, and expired links all resolve to None (→ 404, F-01)."""
+) -> dict[str, Any]:
+    """The meta of the repertoire a token currently opens, with the link's role.
+    Bad, revoked, rotated and expired links are all 404 (F-01)."""
     parsed = parse_share_token(token, secret)
-    if parsed is None:
-        return None
-    repertoire_id, token_rev = parsed
-    meta = repo.repertoire_meta(repertoire_id)
-    if meta is None:
-        return None
-    if not _share_link_live(meta, token_rev, datetime.now(timezone.utc)):
-        return None
-    return repertoire_id
+    meta = repo.repertoire_meta(parsed[0]) if parsed is not None else None
+    if meta is None or not _share_link_live(meta, parsed[1], datetime.now(timezone.utc)):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
+    return {**meta, "role": meta["share_role"]}
 
 
 class ShareLinkBody(BaseModel):
     repertoire_id: str
     # Optional deadline for the link (1–365 days). None = no expiry.
     expires_in_days: int | None = Field(default=None, ge=1, le=365)
+    # What anyone with the link may do. None keeps the current role.
+    role: Literal["view", "copy"] | None = None
 
 
 def _share_expiry(expires_in_days: int | None) -> datetime | None:
@@ -573,19 +630,6 @@ def _share_expiry(expires_in_days: int | None) -> datetime | None:
     )
 
 
-@router.get("/repertoires/share-link")
-def share_link_status(
-    repertoire_id: str,
-    owner: str = Depends(current_owner),
-    repo: WorkspaceRepository = Depends(get_repository),
-) -> dict[str, Any]:
-    """Public-link state for one of the caller's OWN repertoires (F-01), so the
-    share panel can show team sharing and "anyone with the link" separately —
-    without minting (or re-enabling) anything."""
-    meta = _owned_repertoire(repo, repertoire_id, owner)
-    return _share_state(meta)
-
-
 @router.post("/repertoires/share-link")
 def create_share_link(
     body: ShareLinkBody,
@@ -593,19 +637,19 @@ def create_share_link(
     repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Enable the public read-only link for one of the caller's OWN repertoires.
+    """Turn on (or update) the public link for one of the caller's OWN repertoires.
 
     Idempotent mint: while a link is live, this returns the current token. If
-    the link was revoked, enabling mints a FRESH link (rotation) — a revoked
-    link never comes back to life (F-01)."""
+    the link was off, enabling mints a FRESH link (rotation) — a revoked link
+    never comes back to life (F-01). ``role`` sets what the link allows."""
     meta = _owned_repertoire(repo, body.repertoire_id, owner)
     expires_at = _share_expiry(body.expires_in_days)
     if not meta["share_enabled"]:
         state = repo.set_share_state(
-            body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at
+            body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at, role=body.role
         )
     else:
-        state = repo.set_share_state(body.repertoire_id, expires_at=expires_at)
+        state = repo.set_share_state(body.repertoire_id, expires_at=expires_at, role=body.role)
     token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
     return {
         "token": token,
@@ -626,7 +670,7 @@ def rotate_share_link(
     _owned_repertoire(repo, body.repertoire_id, owner)
     expires_at = _share_expiry(body.expires_in_days)
     state = repo.set_share_state(
-        body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at
+        body.repertoire_id, enabled=True, rotate=True, expires_at=expires_at, role=body.role
     )
     token = mint_share_token(body.repertoire_id, settings.secret_key, state["share_rev"])
     return {"token": token, "url": "/?shared={0}".format(token), **state}
@@ -638,7 +682,7 @@ def revoke_share_link(
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
 ) -> dict[str, Any]:
-    """Turn the public link OFF. Team sharing is untouched — the two are
+    """Turn the public link OFF. Grants are untouched — the two are
     independent controls (F-01)."""
     _owned_repertoire(repo, body.repertoire_id, owner)
     state = repo.set_share_state(body.repertoire_id, enabled=False)
@@ -654,25 +698,21 @@ def shared_repertoire(
     """Public (unauthenticated) read of a shared repertoire's tree.
 
     Reuses the Build payload shape so the SPA's viewer is the Build view in
-    read-only mode — minus the owner's training colour (health/mastery).
-    Revoked / rotated / expired links are 404 (F-01)."""
-    repertoire_id = _resolve_share_link(repo, token, settings.secret_key)
-    if repertoire_id is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
-    try:
-        meta = repo.repertoire_meta(repertoire_id)
-        if meta is None:
-            raise ValueError("unknown share link")
-        payload = build_workspace_payload(
-            repo, repertoire_id, owner_user_id=meta["owner_user_id"]
-        )
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link"
-        ) from None
-    _strip_readonly_build_payload(payload)
-    payload["shared"] = True
+    read-only mode — minus the owner's training colour (health/mastery). ``role``
+    is the link's (view / copy). Revoked / rotated / expired links are 404 (F-01)."""
+    meta = _resolve_share_link(repo, token, settings.secret_key)
+    payload = _payload(repo, meta)
+    payload["writable"] = False
     return payload
+
+
+def _fork(repo: WorkspaceRepository, repertoire_id: str, owner: str, user: User, settings: Settings) -> dict[str, Any]:
+    repertoire = repo.load_repertoire(repertoire_id)
+    if repertoire is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
+    _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
+    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
+    return {"repertoire_id": repertoire.id, "name": repertoire.name}
 
 
 @router.post("/shared/{token}/fork")
@@ -683,19 +723,14 @@ def fork_shared_repertoire(
     repo: WorkspaceRepository = Depends(get_repository),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Copy a shared repertoire into the caller's account (fresh ids, caller-owned).
-    Same free-plan cap as creating one from scratch. Revoked / rotated / expired
-    links are 404 (F-01) — an already-made copy is independent and cannot be
-    recalled by revoking the link."""
-    repertoire_id = _resolve_share_link(repo, token, settings.secret_key)
-    if repertoire_id is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
-    repertoire = repo.load_repertoire(repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="unknown share link")
-    _reassign_ids(repertoire)  # fresh ids -> caller's own copy, no cross-tenant clobber
-    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
-    return {"repertoire_id": repertoire.id, "name": repertoire.name}
+    """Copy a shared repertoire into the caller's account (fresh ids, caller-owned)
+    when the link allows copies (403 otherwise). Same free-plan cap as creating one
+    from scratch. Revoked / rotated / expired links are 404 (F-01) — an already-made
+    copy is independent and cannot be recalled by revoking the link."""
+    meta = _resolve_share_link(repo, token, settings.secret_key)
+    if meta["role"] != "copy":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=_DENIED["copy"])
+    return _fork(repo, meta["id"], owner, user, settings)
 
 
 class ForkRepertoireBody(BaseModel):
@@ -708,28 +743,17 @@ def fork_repertoire(
     user: User = Depends(current_user),
     owner: str = Depends(current_owner),
     repo: WorkspaceRepository = Depends(get_repository),
-    db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    """Copy a readable (team-shared or owned) repertoire into the caller's account.
-
-    Team members use this to fork a coach's shared repertoire into their own
-    workspace. The source must pass the read gate; callers who already own it get
-    400 — there is nothing to fork."""
-    meta = _readable_repertoire(
-        repo, body.repertoire_id, owner, user_team_ids(db, user.id)
-    )
-    if meta["owner_user_id"] == owner:
+    """Copy a repertoire shared with the caller (role copy or edit) into their own
+    account. Callers who already own it get 400 — there is nothing to fork."""
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "copy")
+    if meta["role"] == "owner":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="repertoire is already yours",
         )
-    repertoire = repo.load_repertoire(body.repertoire_id)
-    if repertoire is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
-    _reassign_ids(repertoire)
-    repo.save_repertoire(repertoire, owner_user_id=owner, max_owned=_repertoire_cap(user, settings))
-    return {"repertoire_id": repertoire.id, "name": repertoire.name}
+    return _fork(repo, body.repertoire_id, owner, user, settings)
 
 
 class RenameRepertoireBody(BaseModel):
@@ -751,7 +775,7 @@ def build_rename(
         OpeningBuilderService(repo).rename_repertoire(body.repertoire_id, body.name)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
+    return _payload(repo, meta)
 
 
 class AddMoveBody(BaseModel):
@@ -770,7 +794,7 @@ def build_add_move(
     """Append a manual move under a parent node and return the refreshed Build payload.
     Classifies ownership: a move played on the owner's turn is flagged
     ``prepared``; the first enabled child of a parent becomes the mainline."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
     _check_base_revision(meta, body.base_revision, repo)
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:  # gate passed but row vanished — treat as not found
@@ -796,12 +820,8 @@ def build_add_move(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(
-        repo,
-        body.repertoire_id,
-        selected_node_id=node.id,
-        owner_user_id=owner,
-        repertoire=repertoire,
+    return _payload(
+        repo, meta, selected_node_id=node.id, repertoire=repertoire,
         summary={"added_nodes": 1, "updated_nodes": 0, "high_probability_unprepared": 0},
     )
 
@@ -848,10 +868,10 @@ def build_add_moves(
     No compute: the service re-validates legality + parentage and recomputes the
     persisted flags itself, so a malformed batch raises ``ValueError`` → 400
     before anything lands. Owner-gated so a user can't flush onto another's tree."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
     key, receipt = _build_batch_receipt(repo, owner, "adds", body)
     if receipt is not None:
-        payload = build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
+        payload = _payload(repo, meta)
         payload.update(receipt)
         return payload
     _check_base_revision(meta, body.base_revision, repo)
@@ -863,11 +883,8 @@ def build_add_moves(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    payload = build_workspace_payload(
-        repo,
-        body.repertoire_id,
-        owner_user_id=owner,
-        repertoire=repertoire,
+    payload = _payload(
+        repo, meta, repertoire=repertoire,
         summary={
             "added_nodes": summary.added_nodes,
             "updated_nodes": summary.updated_nodes,
@@ -900,10 +917,10 @@ def build_delete_nodes(
     subtree-root ids on the same debounce. Idempotent per id (an id deleted by
     an earlier subtree in the batch, or by a previous flush, is skipped) so an
     optimistic over-delete can't fail the whole flush. Owner-gated."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
     key, receipt = _build_batch_receipt(repo, owner, "deletes", body)
     if receipt is not None:
-        payload = build_workspace_payload(repo, body.repertoire_id, owner_user_id=owner)
+        payload = _payload(repo, meta)
         payload.update(receipt)
         return payload
     _check_base_revision(meta, body.base_revision, repo)
@@ -914,9 +931,7 @@ def build_delete_nodes(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    payload = build_workspace_payload(
-        repo, body.repertoire_id, owner_user_id=owner, repertoire=service.loaded_repertoire
-    )
+    payload = _payload(repo, meta, repertoire=service.loaded_repertoire)
     payload["removed_node_ids"] = removed
     return payload
 
@@ -952,7 +967,7 @@ def build_apply_plan(
     anything lands. Owner-gated so a user can't apply a plan onto another's tree."""
     if not isinstance(body.plan, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="plan must be an object")
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
     receipt_target = None
     if body.operation_id is not None:
         key = "build-receipt:plan:" + str(body.operation_id)
@@ -963,9 +978,7 @@ def build_apply_plan(
         if receipt is not None:
             if receipt.get("digest") != digest:
                 raise HTTPException(status_code=409, detail="operation_id reused with a different plan")
-            payload = build_workspace_payload(
-                repo, body.repertoire_id, owner_user_id=owner, summary=receipt["summary"]
-            )
+            payload = _payload(repo, meta, summary=receipt["summary"])
             payload["id_map"] = receipt.get("id_map", {})
             return payload
         receipt_target = (owner, key, digest)
@@ -977,12 +990,8 @@ def build_apply_plan(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    payload = build_workspace_payload(
-        repo,
-        body.repertoire_id,
-        selected_node_id=body.root_node_id,
-        owner_user_id=owner,
-        repertoire=repertoire,
+    payload = _payload(
+        repo, meta, selected_node_id=body.root_node_id, repertoire=repertoire,
         summary={
             "added_nodes": summary.added_nodes,
             "updated_nodes": summary.updated_nodes,
@@ -1024,7 +1033,7 @@ def build_action(
 ) -> dict[str, Any]:
     """Apply a node action (set-mainline / toggle-prepared / toggle-branch / delete /
     comment / tag / queue / critical) and return the refreshed Build payload."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
     _check_base_revision(meta, body.base_revision, repo)
     builder = OpeningBuilderService(repo)
     action = body.action
@@ -1060,9 +1069,8 @@ def build_action(
             builder.add_tag(body.repertoire_id, body.node_id, "critical")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return build_workspace_payload(
-        repo, body.repertoire_id, selected_node_id=selected_node_id,
-        owner_user_id=owner, repertoire=builder.loaded_repertoire,
+    return _payload(
+        repo, meta, selected_node_id=selected_node_id, repertoire=builder.loaded_repertoire
     )
 
 
@@ -1084,7 +1092,7 @@ def build_annotations(
 ) -> dict[str, Any]:
     """Persist a node's arrows/circles and echo them back (the SPA ignores the rest of
     a Build payload here, so no full reserialization)."""
-    meta = _owned_repertoire(repo, body.repertoire_id, owner)
+    meta = _repertoire_access(repo, body.repertoire_id, owner, "edit")
     _check_base_revision(meta, body.base_revision, repo)
     try:
         OpeningBuilderService(repo).set_annotations(
@@ -1114,7 +1122,7 @@ def build_export(
 ) -> dict[str, Any]:
     """Serialize a repertoire to a downloadable blob: ``json`` (full package) or
     ``pgn`` (mainline, or the path to ``node_id`` when given). Pure serialization."""
-    _owned_repertoire(repo, body.repertoire_id, owner)
+    _repertoire_access(repo, body.repertoire_id, owner, "copy")
     repertoire = repo.load_repertoire(body.repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")
@@ -1143,7 +1151,7 @@ def export_tree_pgn(
 ) -> dict[str, Any]:
     """Full tree-with-variations PGN for the top-level "Export PGN" action (the SPA's
     per-line export goes through ``/build/export``). Pure serialization, owner-gated."""
-    _owned_repertoire(repo, repertoire_id, owner)
+    _repertoire_access(repo, repertoire_id, owner, "copy")
     repertoire = repo.load_repertoire(repertoire_id)
     if repertoire is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="repertoire not found")

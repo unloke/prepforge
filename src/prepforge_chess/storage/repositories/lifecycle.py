@@ -47,6 +47,8 @@ class LifecycleRepository(Repository):
             ("moves", t.moves.c.game_id.in_(games)),
             ("games", t.games.c.owner_user_id == owner_user_id),
             ("opening_nodes", t.opening_nodes.c.repertoire_id.in_(reps)),
+            ("repertoire_access", t.repertoire_access.c.repertoire_id.in_(reps)
+             | (t.repertoire_access.c.user_id == owner_user_id)),
             ("repertoires", t.repertoires.c.owner_user_id == owner_user_id),
             ("user_settings", t.user_settings.c.user_id == owner_user_id),
         )

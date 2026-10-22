@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Optional
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.engine import Connection
 from prepforge_chess.core.models import Color, EngineEvaluation, MoveSource, OpeningNode, Repertoire
 from prepforge_chess.storage import codec
@@ -13,6 +14,10 @@ from prepforge_chess.storage.repositories.common import _bool_to_int, _insert, _
 from prepforge_chess.storage.repositories.evaluations import EvaluationRepository
 from prepforge_chess.storage.repositories.training import TrainingRepository
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
+
+
+# view < copy < edit < owner: each role can do everything the one before it can.
+ROLE_RANK = {"view": 1, "copy": 2, "edit": 3, "owner": 4}
 
 
 class RevisionConflict(RuntimeError):
@@ -316,10 +321,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                 t.repertoires.c.notes,
                 t.repertoires.c.tags_json,
                 t.repertoires.c.is_active,
-                t.repertoires.c.team_id,
-                t.repertoires.c.visibility,
                 t.repertoires.c.health_json,
                 t.repertoires.c.revision,
+                or_(t.repertoires.c.share_enabled == 1, select(t.repertoire_access.c.id).where(
+                    t.repertoire_access.c.repertoire_id == t.repertoires.c.id
+                ).exists()).label("shared"),
             )
             .where(t.repertoires.c.owner_user_id == owner_user_id)
             .order_by(t.repertoires.c.updated_at.desc())
@@ -346,8 +352,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     "notes": row["notes"],
                     "tags": _json_load(row["tags_json"], []),
                     "is_active": _int_to_bool(row["is_active"]),
-                    "team_id": row["team_id"],
-                    "visibility": row["visibility"] or "private",
+                    "shared": bool(row["shared"]),
                     # Cached coverage summary (NULL until the rep is first
                     # opened/trained) with live mastery counts.
                     "health": health,
@@ -429,10 +434,9 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         ]
 
     def repertoire_meta(self, repertoire_id: str, *, conn: Optional[Connection] = None) -> Optional[Dict[str, Any]]:
-        """Lightweight ``(id, name, is_active, owner_user_id, team_id, visibility)`` for
-        owner/share-gating and write responses, without loading the whole opening tree.
-        ``None`` if absent; ``owner_user_id``/``team_id`` are ``None`` for an
-        unclaimed/unshared row, and ``visibility`` defaults to ``"private"``."""
+        """Lightweight meta (owner, revision, link state) for access gating and write
+        responses, without loading the whole opening tree. ``None`` if absent;
+        ``owner_user_id`` is ``None`` for an unclaimed row."""
         with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
             row = conn.execute(
                 select(
@@ -440,12 +444,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     t.repertoires.c.name,
                     t.repertoires.c.is_active,
                     t.repertoires.c.owner_user_id,
-                    t.repertoires.c.team_id,
-                    t.repertoires.c.visibility,
                     t.repertoires.c.revision,
                     t.repertoires.c.share_rev,
                     t.repertoires.c.share_enabled,
                     t.repertoires.c.share_expires_at,
+                    t.repertoires.c.share_role,
                 ).where(t.repertoires.c.id == repertoire_id)
             ).mappings().first()
         if row is None:
@@ -455,12 +458,11 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             "name": row["name"],
             "is_active": _int_to_bool(row["is_active"]),
             "owner_user_id": row["owner_user_id"],
-            "team_id": row["team_id"],
-            "visibility": row["visibility"] or "private",
             "revision": int(row["revision"] or 0),
             "share_rev": int(row["share_rev"] or 0),
             "share_enabled": _int_to_bool(row["share_enabled"]),
             "share_expires_at": row["share_expires_at"],
+            "share_role": row["share_role"],
         }
 
     def set_share_state(
@@ -471,12 +473,15 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         rotate: bool = False,
         expires_at: Optional[datetime] = None,
         clear_expiry: bool = False,
+        role: Optional[str] = None,
     ) -> Dict[str, Any]:
         """F-01: public share-link governance. ``enabled`` toggles the link
-        independently of team sharing, ``rotate`` bumps ``share_rev`` (killing
-        every previously minted link), ``expires_at`` or
-        ``clear_expiry`` set the optional deadline. Returns the fresh state."""
+        independently of grants, ``rotate`` bumps ``share_rev`` (killing
+        every previously minted link), ``expires_at`` or ``clear_expiry`` set the
+        optional deadline, ``role`` what the link allows. Returns the fresh state."""
         values: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
+        if role is not None:
+            values["share_role"] = role
         if enabled is not None:
             values["share_enabled"] = 1 if enabled else 0
         if rotate:
@@ -496,91 +501,131 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
                     t.repertoires.c.share_rev,
                     t.repertoires.c.share_enabled,
                     t.repertoires.c.share_expires_at,
+                    t.repertoires.c.share_role,
                 ).where(t.repertoires.c.id == repertoire_id)
             ).first()
         return {
             "share_rev": int(row[0] or 0),
             "share_enabled": bool(row[1]),
             "share_expires_at": row[2],
+            "share_role": row[3],
         }
 
-    def set_repertoire_sharing(
-        self, repertoire_id: str, team_id: Optional[str], visibility: str
-    ) -> None:
-        """Set the team a repertoire is shared with and its visibility. Pass
-        ``team_id=None`` + ``visibility='private'`` to unshare."""
-        with self.engine.begin() as conn:
-            conn.execute(
-                update(t.repertoires)
-                .where(t.repertoires.c.id == repertoire_id)
-                .values(team_id=team_id, visibility=visibility, updated_at=datetime.now(timezone.utc))
-            )
+    def access_role(self, repertoire_id: str, user_id: str) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+        """The repertoire's meta and what ``user_id`` may do with it: ``owner``, the
+        highest of their own and their teams' grants (``edit`` / ``copy`` /
+        ``view``), or ``None``. ``(None, None)`` when the repertoire is absent."""
+        meta = self.repertoire_meta(repertoire_id)
+        if meta is None:
+            return None, None
+        if meta["owner_user_id"] is not None and meta["owner_user_id"] == user_id:
+            return meta, "owner"
+        acc = t.repertoire_access
+        my_teams = select(t.team_members.c.team_id).where(t.team_members.c.user_id == user_id)
+        with self.engine.connect() as conn:
+            roles = conn.scalars(select(acc.c.role).where(
+                acc.c.repertoire_id == repertoire_id,
+                (acc.c.user_id == user_id) | acc.c.team_id.in_(my_teams),
+            )).all()
+        return meta, max(roles, key=ROLE_RANK.__getitem__, default=None)
 
-    def list_team_shared_repertoires(self, team_ids: List[str]) -> List[Dict[str, Any]]:
-        """Lightweight metas of every repertoire shared (``visibility='team'``) to any
-        of ``team_ids`` — for the team members' read-only listing. Empty list if no
-        team_ids, so a non-member never widens the query."""
-        if not team_ids:
-            return []
+    def repertoire_grants(self, repertoire_id: str) -> List[Dict[str, Any]]:
+        """Every team and person a repertoire is shared with, teams first."""
+        acc = t.repertoire_access
         with self.engine.connect() as conn:
             rows = conn.execute(
-                select(
-                    t.repertoires.c.id,
-                    t.repertoires.c.name,
-                    t.repertoires.c.color,
-                    t.repertoires.c.root_fen,
-                    t.repertoires.c.owner_user_id,
-                    t.repertoires.c.team_id,
-                )
-                .where(t.repertoires.c.team_id.in_(team_ids))
-                .where(t.repertoires.c.visibility == "team")
-                .order_by(t.repertoires.c.updated_at.desc())
+                select(acc.c.team_id, acc.c.user_id, acc.c.role, t.teams.c.name.label("team_name"),
+                       t.users.c.display_name, t.users.c.email)
+                .select_from(acc.outerjoin(t.teams, t.teams.c.id == acc.c.team_id)
+                             .outerjoin(t.users, t.users.c.id == acc.c.user_id))
+                .where(acc.c.repertoire_id == repertoire_id)
+                .order_by(acc.c.team_id.is_(None), acc.c.created_at)
             ).mappings().all()
+            user_ids = [r["user_id"] for r in rows if r["user_id"]]
+            lichess = dict(conn.execute(
+                select(t.linked_accounts.c.user_id, t.linked_accounts.c.provider_user_id).where(
+                    t.linked_accounts.c.provider == "lichess",
+                    t.linked_accounts.c.user_id.in_(user_ids),
+                )
+            ).all()) if user_ids else {}
         return [
+            {"team_id": r["team_id"], "name": r["team_name"], "role": r["role"]}
+            if r["team_id"] else
             {
-                "id": r["id"],
-                "name": r["name"],
-                "color": r["color"],
-                "root_fen": r["root_fen"],
-                "owner_user_id": r["owner_user_id"],
-                "team_id": r["team_id"],
+                "user_id": r["user_id"],
+                # A person added by Lichess handle is shown by it, never by email.
+                "name": r["display_name"] or lichess.get(r["user_id"]) or r["email"],
+                "lichess_username": lichess.get(r["user_id"]),
+                "role": r["role"],
             }
             for r in rows
         ]
+
+    def set_grant(
+        self, repertoire_id: str, *, role: str, created_by: str,
+        team_id: Optional[str] = None, user_id: Optional[str] = None,
+    ) -> None:
+        """Share with one team or person at ``role`` (or change their role)."""
+        acc = t.repertoire_access
+        target = acc.c.team_id == team_id if team_id else acc.c.user_id == user_id
+        with self.engine.begin() as conn:
+            changed = conn.execute(update(acc).where(acc.c.repertoire_id == repertoire_id, target)
+                                   .values(role=role)).rowcount
+            if not changed:
+                conn.execute(acc.insert().values(
+                    id=uuid.uuid4().hex, repertoire_id=repertoire_id, team_id=team_id,
+                    user_id=user_id, role=role, created_by=created_by,
+                    created_at=datetime.now(timezone.utc),
+                ))
+
+    def delete_grant(
+        self, repertoire_id: str, *, team_id: Optional[str] = None, user_id: Optional[str] = None
+    ) -> bool:
+        acc = t.repertoire_access
+        target = acc.c.team_id == team_id if team_id else acc.c.user_id == user_id
+        with self.engine.begin() as conn:
+            return bool(conn.execute(delete(acc).where(acc.c.repertoire_id == repertoire_id, target)).rowcount)
+
+    def list_shared_with(self, user_id: str) -> List[Dict[str, Any]]:
+        """Repertoires others shared with ``user_id`` directly or through a team,
+        one row each at the user's effective role. ``team_id`` names the team the
+        role comes from (``None`` for a direct grant), newest first."""
+        acc = t.repertoire_access
+        reps = t.repertoires
+        my_teams = select(t.team_members.c.team_id).where(t.team_members.c.user_id == user_id)
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(reps.c.id, reps.c.name, reps.c.color, reps.c.owner_user_id,
+                       t.users.c.display_name.label("owner_name"), acc.c.team_id, acc.c.role)
+                .select_from(acc.join(reps, reps.c.id == acc.c.repertoire_id)
+                             .outerjoin(t.users, t.users.c.id == reps.c.owner_user_id))
+                .where((acc.c.user_id == user_id) | acc.c.team_id.in_(my_teams))
+                .where(reps.c.owner_user_id.is_distinct_from(user_id))
+                .order_by(reps.c.updated_at.desc(), acc.c.team_id.is_not(None))
+            ).mappings().all()
+        best: Dict[str, Dict[str, Any]] = {}
+        for r in rows:
+            seen = best.get(r["id"])
+            if seen is None or ROLE_RANK[r["role"]] > ROLE_RANK[seen["role"]]:
+                best[r["id"]] = {
+                    "id": r["id"], "name": r["name"], "color": r["color"],
+                    "owner_user_id": r["owner_user_id"], "owner_display_name": r["owner_name"],
+                    "team_id": r["team_id"], "role": r["role"],
+                }
+        return list(best.values())
 
     def list_repertoires_shared_to_team(self, team_id: str) -> List[Dict[str, Any]]:
-        """Lightweight metas of repertoires shared (``visibility='team'``) to one team."""
+        """Repertoires shared with one team, with the team's role."""
+        acc = t.repertoire_access
         with self.engine.connect() as conn:
             rows = conn.execute(
-                select(
-                    t.repertoires.c.id,
-                    t.repertoires.c.name,
-                    t.repertoires.c.color,
-                    t.repertoires.c.owner_user_id,
-                )
-                .where(t.repertoires.c.team_id == team_id)
-                .where(t.repertoires.c.visibility == "team")
+                select(t.repertoires.c.id, t.repertoires.c.name, t.repertoires.c.color,
+                       t.repertoires.c.owner_user_id, acc.c.role)
+                .select_from(acc.join(t.repertoires, t.repertoires.c.id == acc.c.repertoire_id))
+                .where(acc.c.team_id == team_id)
                 .order_by(t.repertoires.c.updated_at.desc())
             ).mappings().all()
-        return [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "color": r["color"],
-                "owner_user_id": r["owner_user_id"],
-            }
-            for r in rows
-        ]
-
-    def unshare_all_for_team(self, team_id: str, *, conn: Optional[Connection] = None) -> None:
-        """Unshare in the caller's team-deletion transaction when supplied."""
-        stmt = (update(t.repertoires).where(t.repertoires.c.team_id == team_id)
-                .values(team_id=None, visibility="private", updated_at=datetime.now(timezone.utc)))
-        if conn is not None:
-            conn.execute(stmt)
-        else:
-            with self.engine.begin() as own_conn:
-                own_conn.execute(stmt)
+        return [dict(r) for r in rows]
 
     def set_repertoire_active(self, repertoire_id: str, active: bool) -> None:
         with self.engine.begin() as conn:

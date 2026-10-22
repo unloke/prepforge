@@ -34,6 +34,7 @@ def _expected_tables() -> set[str]:
         "moves",
         "analysis_results",
         "repertoires",
+        "repertoire_access",
         "opening_nodes",
         "training_sessions",
         "training_progress",

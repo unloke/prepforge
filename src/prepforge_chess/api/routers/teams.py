@@ -1,4 +1,4 @@
-"""Teams: share repertoires read-only with a group.
+"""Teams: share repertoires with a group.
 
 A *team* is a feature, not a pricing tier: creating one is **open to every signed-in
 user** (no Pro requirement, no per-seat billing). Membership has roles
@@ -12,9 +12,9 @@ Members are added two ways:
 * via the team's **invite link** -- a shareable code anyone can redeem to join
   themselves (covers people who have not linked Lichess yet).
 
-Repertoires are shared to a team via ``POST /api/repertoires/share`` (in
-``workspace.py``); team members then get **read-only** access -- mutations stay
-owner-only, so sharing never widens write access.
+Repertoires are shared with a team via ``POST /api/repertoires/access`` (in
+``workspace.py``) at a role -- view, copy or edit -- that every member gets. A
+team role here (owner/admin/member) governs managing the team, never a repertoire.
 """
 from __future__ import annotations
 
@@ -281,6 +281,7 @@ def team_detail(
             "name": item["name"],
             "color": item["color"],
             "owner_user_id": item["owner_user_id"],
+            "role": item["role"],
             "owner_display_name": owners_by_id[item["owner_user_id"]].display_name
             if item["owner_user_id"] in owners_by_id
             else None,
@@ -537,10 +538,9 @@ def delete_team(
     team_id: str,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-    repo: RepertoireRepository = Depends(get_repository),
 ) -> dict[str, bool]:
-    """Delete a team and unshare its repertoires. Team owner only. The team's invite
-    row cascades away with it (FK ON DELETE CASCADE)."""
+    """Delete a team. Team owner only. Its invite row and repertoire grants cascade
+    away with it (FK ON DELETE CASCADE)."""
     member = _require_member(db, team_id, user)
     if member.role != TeamRole.owner:
         raise HTTPException(
@@ -549,7 +549,6 @@ def delete_team(
     team = db.get(Team, team_id)
     if team is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="team not found")
-    repo.unshare_all_for_team(team_id, conn=db.connection())
     db.delete(team)
     db.commit()
     return {"deleted": True}
