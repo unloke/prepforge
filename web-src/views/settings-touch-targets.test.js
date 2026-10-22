@@ -45,3 +45,11 @@ describe("Settings phone touch targets", () => {
     expect(sharedCss).toMatch(/--switch-h:\s*20px/);
   });
 });
+
+describe("Settings phone switch knob", () => {
+  it("paints the knob above the ::after track that draws the switch", () => {
+    // The track is a later positioned box, so without a z-index it covered the
+    // knob and every phone switch read as a bare pill.
+    expect(phoneRule(settingsCss, ".set .pf-switch .pf-knob")).toMatch(/z-index:\s*1/);
+  });
+});

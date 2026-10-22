@@ -303,7 +303,7 @@
   .set .pf-switch.is-on { background: none; }
   .set .pf-switch:hover::after { background: var(--surface-3); }
   .set .pf-switch.is-on::after { background: var(--accent); border-color: var(--accent); }
-  .set .pf-switch .pf-knob { top: calc((40px - var(--knob)) / 2 - 1px); }
+  .set .pf-switch .pf-knob { z-index: 1; top: calc((40px - var(--knob)) / 2 - 1px); } /* above the ::after track */
   .set .pf-info { min-width: 40px; min-height: 40px; }
   .set-row { flex-wrap: wrap; }
 }
