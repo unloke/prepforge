@@ -2867,34 +2867,6 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   margin: 0 4px;
 }
 
-/* An engine line on the board (not the game's position): an accent frame on the
-   board and an accent label, with "Back to game" beside it. */
-.chessboard.is-previewing::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border: 3px solid var(--accent);
-  pointer-events: none;
-  z-index: 6;
-}
-.board-bar:has(.pv-exit:not([hidden])) .board-label {
-  color: var(--accent-text);
-  font-weight: 600;
-}
-.pv-exit {
-  flex: none;
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.pv-exit:hover { background: var(--accent); color: var(--accent-ink); }
-
 .board-label {
   flex: 1;
   min-width: 0;
@@ -5301,14 +5273,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border: 0;
   border-bottom: 1px solid var(--line-soft);
   border-radius: 0;
-  cursor: pointer;
 }
-.engine-window.is-docked .engine-pv:hover { background: var(--panel-soft); }
+/* Only a row that plays into the move list (Analyze) is a control; Build's card
+   is a readout beside the Explorer, which adds moves itself. */
+.engine-window .engine-pv[role="button"] { cursor: pointer; }
+.engine-window.is-docked .engine-pv[role="button"]:hover { background: var(--panel-soft); }
 .engine-window.is-docked .engine-pv:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .engine-window.is-docked .engine-pv.is-top { background: none; border-color: var(--line-soft); }
 .engine-window.is-docked .engine-pv-eval { padding: 1px 6px; min-width: 0; font-size: 11.5px; }
 .engine-window.is-docked .engine-pv-line { line-height: 22px; text-overflow: ellipsis; }
-.engine-window.is-docked .engine-pv.is-previewing { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 .engine-pv.is-pending { cursor: default; }
 .engine-pv.is-pending .engine-pv-eval { color: var(--muted); background: none; border-color: var(--line-soft); }
 .engine-pv.is-pending .engine-pv-line { color: var(--muted); font-style: italic; }

@@ -3,11 +3,11 @@
 //
 // Click on a token: a line the tree already has (the repertoire on Build, the game
 // and its variations on Analyze) is selected there, as clicking it in the move list
-// would. Any other line is walked on the board like an engine line, so a note or a
-// coach sentence never adds a move. Every other view leaves the token to its row.
+// would. A line the tree does not have is not played anywhere: a note or a coach
+// sentence never adds a move. Every other view leaves the token to its row.
 import { appState, boards } from "./core/state.js";
 import { activeViewName } from "./core/api.js";
-import { boardLine, initCoachGhosts, initMoveLinks, tokenPosition } from "./line-preview.js";
+import { initCoachGhosts, initMoveLinks, tokenPosition } from "./line-preview.js";
 import { plyOfFen } from "./move-text.js";
 
 const samePosition = (a, b) => !!a && !!b && a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
@@ -83,9 +83,7 @@ export function installMoveLinks({ selectBuildNode, selectAnalysisNode }) {
         const build = view === "build";
         const node = treeNodeForLine(pos.line, pos.ply, build ? buildTree() : analysisTree());
         if (node) void (build ? selectBuildNode(node.id) : selectAnalysisNode(node.id)).catch(() => {});
-        else boardLine.open({ board, view, line: pos.line, ply: pos.ply });
       };
     },
   });
-  for (const id of ["analysis-pv-exit", "build-pv-exit"]) document.getElementById(id)?.addEventListener("click", () => boardLine.exit());
 }

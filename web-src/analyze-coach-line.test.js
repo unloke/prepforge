@@ -64,13 +64,8 @@ describe("the Coach line", () => {
     expect(phoneCss).toMatch(/#fetch-my-game \{ display: none; \}/);
   });
 
-  it("reads an engine line in the accent, and the game's name in the ink", () => {
-    // An engine line walked on the board owns the bar's slot. The shared sheet
-    // paints .board-label with the accent while a line is up, and this page's
-    // caption rule is stronger, so the state is restated here — without it the
-    // previewing bar kept the ink (measured: #1b1c1e where #2447a8 belongs).
+  it("reads the game's name in the full ink", () => {
     expect(rule("#view-analyze .board-caption")).toMatch(/color: var\(--text\)/);
-    expect(rule("#view-analyze .board-bar:has(.pv-exit:not([hidden])) .board-caption")).toMatch(/color: var\(--accent-text\)/);
   });
 
   it("names the game in the bar under the board instead", () => {

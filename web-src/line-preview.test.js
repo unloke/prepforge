@@ -1,5 +1,5 @@
-// Move links on the page: the board line one source at a time, and what a token
-// does when it is clicked. No board is drawn beside the text any more, so the
+// Move links on the page: what a token does when it is clicked, and the coach's
+// ghost on the board. No board is drawn beside the text any more, so the
 // module must never create one — the last test pins that.
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeLine } from "./move-text.js";
@@ -51,44 +51,6 @@ beforeEach(() => {
   applied.length = 0;
   ghosts.length = 0;
   canApply = true;
-});
-
-describe("board line", () => {
-  function fakeBoard() {
-    return {
-      shown: [],
-      beginPreview({ onEnd }) { this.onEnd = onEnd; this.previewing = true; },
-      showPreview(pos) { this.shown.push(pos); },
-      endPreview({ restore }) { this.previewing = false; this.onEnd({ restored: restore }); },
-    };
-  }
-  const line = () => ({ baseFen: START, plies: [{ uci: "e2e4", fen: "a", label: "1.e4" }, { uci: "e7e5", fen: "b", label: "1...e5" }] });
-
-  it("steps one line and hands the board back on exit", () => {
-    const board = fakeBoard();
-    const seen = [];
-    mod.boardLine.open({ board, view: "build", line: line(), ply: 1, onChange: (s) => seen.push(s && s.ply) });
-    expect(board.shown.at(-1)).toEqual({ fen: "a", lastMove: "e2e4" });
-    expect(mod.boardLine.step("next")).toBe(true);
-    expect(board.shown.at(-1).lastMove).toBe("e7e5");
-    expect(mod.boardLine.step("next")).toBe(true); // clamped at the end
-    mod.boardLine.exit();
-    expect(board.previewing).toBe(false);
-    expect(seen).toEqual([1, 2, 2, null]);
-    expect(mod.boardLine.active).toBe(null);
-    expect(mod.boardLine.step("next")).toBe(false);
-  });
-
-  it("lets a second source take the same board over without restoring it", () => {
-    const board = fakeBoard();
-    const first = vi.fn();
-    mod.boardLine.open({ board, view: "analyze", line: line(), owner: "engine", onChange: first });
-    mod.boardLine.open({ board, view: "analyze", line: line(), ply: 2, owner: "note" });
-    expect(first).toHaveBeenLastCalledWith(null);
-    expect(board.previewing).toBe(true);
-    expect(mod.boardLine.active.owner).toBe("note");
-    mod.boardLine.exit();
-  });
 });
 
 describe("move links", () => {

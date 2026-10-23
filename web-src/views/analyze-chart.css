@@ -39,21 +39,11 @@
    the same places, so the name takes the slot the current move used to hold and
    no other geometry changes. It is the page's first fact, so it reads at the
    body size in the full ink; a name longer than the slot is cut with an
-   ellipsis and its whole text is the tooltip. An engine line being previewed
-   takes the slot over in the accent (see .board-bar:has(.pv-exit)). */
+   ellipsis and its whole text is the tooltip. */
 #view-analyze .board-caption {
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
-}
-
-/* While an engine line is walked on the board the slot is the line, not the
-   game: it reads in the accent, as every board bar's does. The shared sheet
-   paints .board-label that way, and this page's caption is the stronger
-   selector, so it says so here instead of losing the state to specificity
-   (measured: the previewing bar stayed in the ink, #1b1c1e, not #2447a8). */
-#view-analyze .board-bar:has(.pv-exit:not([hidden])) .board-caption {
-  color: var(--accent-text);
 }
 
 /* The last move's tint. The shared sheet paints it as a gradient over the
@@ -664,7 +654,13 @@
   border-radius: 4px;
   background: none;
 }
-#analysis-engine-slot .engine-pv:hover { background: var(--panel-soft); }
+#analysis-engine-slot .engine-pv[role="button"]:hover { background: var(--panel-soft); }
+#analysis-engine-slot .engine-pv[role="button"]:active { background: var(--surface-3); }
+#analysis-engine-slot .engine-pv:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Each move in a line is its own target (clicking it plays the line up to that
+   move), so it says so under the pointer. */
+#analysis-engine-slot .pv-move { cursor: pointer; border-radius: 2px; }
+#analysis-engine-slot .pv-move:hover { text-decoration: underline; text-underline-offset: 2px; }
 #analysis-engine-slot .engine-pv.is-expanded { height: auto; }
 #analysis-engine-slot .engine-pv-eval,
 #analysis-engine-slot .engine-pv.is-top .engine-pv-eval {
@@ -1683,11 +1679,4 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head { display: contents; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain > :not(.cc-head),
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
-}
-
-/* While an engine line is on the board, the coach still speaks about the game
-   position, not the one shown: set it back until the line is left. */
-#view-analyze .study:has(#analysis-pv-exit:not([hidden])) #analysis-explain {
-  opacity: 0.4;
-  pointer-events: none;
 }

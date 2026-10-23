@@ -1,4 +1,4 @@
-import { appState, boards, notices } from "./core/state.js";
+import { appState, notices } from "./core/state.js";
 import { BROWSER_ENGINE_UNAVAILABLE, currentOwnerId, postJson, setStatusError } from "./core/api.js";
 import { effectiveMaiaRating, effectiveStockfishDepth } from "./core/prefs.js";
 import { showConfirmModal } from "./core/modals.js";
@@ -32,7 +32,7 @@ export function ensureCoverageView() {
         getContext: () => ({ build: appState.build, ownerId: currentOwnerId(),
           ownerGeneration: appState.ownerGeneration, rating: effectiveMaiaRating(),
           selectedNodeId: appState.buildCurrentNodeId, readOnly: isBuildReadOnly() }),
-        getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode, getBoard: () => boards.build,
+        getProvider: () => getSharedMaia3Provider(), selectNode: selectBuildNode,
         previewReplies: previewCoverageReplies, getJob: () => notices,
         onError: (error) => setStatusError(error.message),
       });

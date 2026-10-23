@@ -87,88 +87,8 @@ class BoardController {
     );
   }
 
-  // --- Ghost line -----------------------------------------------------------
-  // A line the text beside the board names (a coach sentence's moves), drawn on
-  // the board itself as faint arrows under every real mark. Nothing about the
-  // position changes — no moves, no badge, no tree — so reading a sentence never
-  // moves the board the reader is looking at. One ghost at a time; [] clears it.
-  setGhost(ucis) {
-    const next = Array.isArray(ucis) ? ucis.filter((uci) => typeof uci === "string" && uci.length >= 4) : [];
-    if (next.length === this.ghostLine.length && next.every((uci, i) => uci === this.ghostLine[i])) return;
-    this.ghostLine = next;
-    this._renderArrows();
-  }
-
-  // --- Engine-line preview ---------------------------------------------------
-  // Shows positions that are not the game's (an engine PV) without touching the game,
-  // the analysis tree or a repertoire. The real position is saved on entry and put back
-  // by endPreview(); a real setPosition() while previewing ends the preview instead (the
-  // game moved on), so a stale preview can never hide the real board. Moves are off while
-  // previewing (no legal moves), and engine/fork arrows meant for the real position wait.
-  beginPreview({ onEnd = null } = {}) {
-    if (!this._preview) {
-      this._preview = {
-        fen: this.fen,
-        legalMoves: this.legalMoves,
-        lastMove: this.lastMove,
-        moveBadge: this.moveBadge,
-        engineArrow: this.engineArrow,
-        betterArrow: this.betterArrow,
-        branchArrows: this.branchArrows,
-        branchPick: this.branchPick,
-        // The marks the user drew on the real position; the preview's own
-        // positions would otherwise clear them on the way back.
-        arrows: this.arrows.slice(),
-        circles: [...this.highlights],
-      };
-    }
-    this._preview.onEnd = onEnd;
-    this.board.classList.add("is-previewing");
-  }
-
-  showPreview({ fen, lastMove = null }) {
-    if (!this._preview || !fen) return;
-    this._renderingPreview = true;
-    try {
-      this.setPosition({ fen, legalMoves: [], lastMove });
-    } finally {
-      this._renderingPreview = false;
-    }
-    this.moveBadge = null;
-    this._syncMoveBadge();
-    this.engineArrow = null;
-    this.betterArrow = null;
-    this.branchArrows = [];
-    this.branchPick = null;
-    this._renderArrows();
-  }
-
-  // Put the saved real position back (restore = true), or just drop the preview because
-  // the caller is about to show a new real position (restore = false).
-  endPreview({ restore = true } = {}) {
-    const saved = this._preview;
-    if (!saved) return;
-    this._preview = null;
-    this.board.classList.remove("is-previewing");
-    if (restore) {
-      this.setPosition({ fen: saved.fen, legalMoves: saved.legalMoves, lastMove: saved.lastMove });
-      this.moveBadge = saved.moveBadge;
-      this._syncMoveBadge();
-      this.engineArrow = saved.engineArrow;
-      this.betterArrow = saved.betterArrow;
-      this.branchArrows = saved.branchArrows;
-      this.branchPick = saved.branchPick;
-      this.setAnnotations(saved.arrows, saved.circles);
-    }
-    if (saved.onEnd) saved.onEnd({ restored: restore });
-  }
-
   setEngineArrow(uci) {
     const next = uci || null;
-    if (this._preview) {
-      this._preview.engineArrow = next;
-      return;
-    }
     if (this.engineArrow === next) return;
     this.engineArrow = next;
     this._renderArrows();
@@ -178,10 +98,6 @@ class BoardController {
   // error), drawn in its own colour so it never reads as the engine's next move.
   setBetterArrow(uci) {
     const next = typeof uci === "string" && uci.length >= 4 ? uci : null;
-    if (this._preview) {
-      this._preview.betterArrow = next;
-      return;
-    }
     if (this.betterArrow === next) return;
     this.betterArrow = next;
     this._renderArrows();
@@ -193,11 +109,6 @@ class BoardController {
   setBranchArrows(list, pickUci = null) {
     const next = Array.isArray(list) ? list.filter((u) => typeof u === "string" && u.length >= 4) : [];
     const pick = typeof pickUci === "string" && pickUci.length >= 4 ? pickUci : null;
-    if (this._preview) {
-      this._preview.branchArrows = next;
-      this._preview.branchPick = pick;
-      return;
-    }
     const same =
       pick === this.branchPick &&
       next.length === this.branchArrows.length &&
@@ -205,6 +116,18 @@ class BoardController {
     if (same) return;
     this.branchArrows = next;
     this.branchPick = pick;
+    this._renderArrows();
+  }
+
+  // --- Ghost line -----------------------------------------------------------
+  // A line the text beside the board names (a coach sentence's moves), drawn on
+  // the board itself as faint arrows under every real mark. Nothing about the
+  // position changes — no moves, no badge, no tree — so reading a sentence never
+  // moves the board the reader is looking at. One ghost at a time; [] clears it.
+  setGhost(ucis) {
+    const next = Array.isArray(ucis) ? ucis.filter((uci) => typeof uci === "string" && uci.length >= 4) : [];
+    if (next.length === this.ghostLine.length && next.every((uci, i) => uci === this.ghostLine[i])) return;
+    this.ghostLine = next;
     this._renderArrows();
   }
 
@@ -556,8 +479,6 @@ class BoardController {
   // repertoire step, a takeback, an analysis branch — gets the same motion
   // without its caller having to say which direction the user went.
   setPosition({ fen, legalMoves = [], lastMove = null, cue, back = false }) {
-    // A real position arriving mid-preview ends the preview (see beginPreview).
-    if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
     const fenChanged = this.fen !== fen;
     // The position itself, without the clocks: a confirmed render that differs
     // only in halfmove/fullmove is the same position arriving twice, not a move.
@@ -610,7 +531,6 @@ class BoardController {
   }
 
   setMoveBadge(squareName, classification, label) {
-    if (this._preview) return;
     if (!squareName) {
       this.moveBadge = null;
     } else {
