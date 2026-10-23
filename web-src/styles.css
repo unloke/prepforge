@@ -3557,7 +3557,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--panel);
   color: var(--text);
   font-size: 12px;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
+/* A native select on the toolbar still answers the pointer: the fill steps to
+   the recessed surface on hover and back to the panel on press. */
+@media (hover: hover) and (pointer: fine) {
+  .inline-field select:hover { background: var(--surface-3); }
+}
+.inline-field select:active { background: var(--surface-3); }
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sum-chip {
   height: 26px;
