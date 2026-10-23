@@ -34,7 +34,7 @@ const MIME = {
 // Own-side nodes carry mastery so the tree colours have real training data.
 // FENs are chess.js-verified (1.e4 c6 2.d4 d5 3.e5 with Bf5/Na6 branches).
 const BUILD_NODES = [
-  { id: "n0", parent_id: null, depth: 0, san: null, uci: null, move_number: 1, ply: 0, move_side: "white", is_mainline: false, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null },
+  { id: "n0", parent_id: null, depth: 0, san: null, uci: null, fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen_before: null, fen_after: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", move_number: 1, ply: 0, move_side: "white", is_mainline: false, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null },
   { id: "n1", parent_id: "n0", depth: 1, san: "e4", uci: "e2e4", fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen_after: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", move_number: 1, ply: 1, move_side: "white", side_to_move: "black", source: "manual", is_mainline: true, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null, arrows: [], circles: [] },
   { id: "n2", parent_id: "n1", depth: 2, san: "c6", uci: "c7c6", fen: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", fen_before: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", fen_after: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", move_number: 1, ply: 2, move_side: "black", side_to_move: "white", source: "manual", is_mainline: true, is_enabled: true, is_prepared: true, mastery: "mastered", maia_probability: null, arrows: [], circles: [] },
   { id: "n3", parent_id: "n2", depth: 3, san: "d4", uci: "d2d4", fen: "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2", fen_before: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", fen_after: "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2", move_number: 2, ply: 3, move_side: "white", side_to_move: "black", source: "manual", is_mainline: true, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null, arrows: [], circles: [] },
@@ -417,6 +417,32 @@ async function runViewport(vp) {
     check(big.pageScroll <= 0, `a large tree scrolled the page by ${big.pageScroll}px`);
     check(big.treeScroll > 0, "a large tree should scroll inside its panel");
   }
+
+  // A root-only repertoire is a real first-run state (a new one is always
+  // this). Its Explorer shows the start position's stats and raises no error:
+  // the load payload's root carries its fen, as the server sends it.
+  const rootOnly = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const rootErrors = [];
+  rootOnly.on("pageerror", (e) => rootErrors.push(e.message));
+  await rootOnly.route("**/api/build/load**", async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.nodes = json.nodes.filter((node) => node.depth === 0);
+    await route.fulfill({ response, json });
+  });
+  await rootOnly.goto(base, { waitUntil: "domcontentloaded" });
+  await rootOnly.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').waitFor({ state: "visible", timeout: 15000 });
+  await rootOnly.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').dblclick();
+  await rootOnly.locator("#build-rep-name").filter({ hasText: "Caro-Kann" }).waitFor({ state: "attached", timeout: 15000 });
+  if (vp.width >= 1100) {
+    await rootOnly.locator("#explorer-rows .explorer-row").first().waitFor({ state: "attached", timeout: 8000 }).catch(() => {});
+    const rootRows = await rootOnly.locator("#explorer-rows .explorer-row").count();
+    check(rootRows > 0, `a root-only repertoire's Explorer should show the start position's stats, got ${rootRows} rows`);
+  }
+  const rootText = await rootOnly.evaluate(() => document.body.innerText);
+  check(!/Cannot read properties/.test(rootText), "a root-only repertoire should raise no error toast");
+  check(rootErrors.length === 0, `a root-only repertoire threw: ${rootErrors.join(" | ")}`);
+  await rootOnly.close();
 
   await page.close();
 
