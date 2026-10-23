@@ -1010,14 +1010,15 @@ h2 {
   gap: 12px;
   min-width: 0;
 }
-/* One column, in the strip's order: Account (with the connections block),
-   Appearance, Board, then the engines. Every section is in the page at once, so
+/* One column, in the strip's order. Every section is in the page at once, so
    the strip is anchor navigation that tracks the scroll (settings.js marks the
-   card you are in); the cards stay one column because a two-column masonry put
-   Board beside Engine while the strip lists it third, and the tab you picked
-   and the card you landed on were in different columns. Six cards in one
-   column scroll in the order the strip names, which is the point of the strip. */
-.settings-content > #set-board { order: 0; }
+   card you are in) rather than a tab set that switches panes: a tab set would
+   hide five cards the page already has. The cards follow the strip's order —
+   Board is third in the markup (it sits with the other personal cards) and
+   last in the strip, so it is ordered last here too. A two-column masonry put
+   it beside Engine instead, and the tab you picked and the card it landed on
+   were in different columns. */
+.settings-content > #set-board { order: 1; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
