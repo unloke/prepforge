@@ -166,9 +166,11 @@ describe("scout phone composition", () => {
   it("puts the game plan before the summary sentence on a phone", () => {
     // The head, a 250px summary band and the plan stacked in source order put
     // the first line 1,228px down at 390x844. The plan is what the page is for.
-    expect(phone).toMatch(/\.cs-head \{ order: 0; \}/);
-    expect(phone).toMatch(/\.plan \{ order: 1; \}/);
-    expect(phone).toMatch(/\.intel \{ order: 2; \}/);
+    // The order is one rule set for every width (scout.css): the table comes
+    // after the head and before the reads and the plan's first moves.
+    const sheet = readFileSync(resolve(here, "./scout.css"), "utf8");
+    expect(sheet).toMatch(/\.color-sec \.plan > \.scout-lines-head,\s*\.color-sec \.plan > \.scout-lines \{ order: 2; \}/);
+    expect(sheet).toMatch(/\.color-sec \.intel > \*,\s*\.color-sec \.plan > \* \{ order: 4; \}/);
   });
 
   it("keeps the speed chips and the two actions, and drops the repeated identity", () => {
