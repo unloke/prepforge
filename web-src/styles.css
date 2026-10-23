@@ -3324,6 +3324,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   .forkbar { padding: 0 var(--build-pad, 12px) 6px; }
   .forkbar .fork-chips { flex-wrap: wrap; }
 }
+/* On a phone the panel is display: contents, so it is no container: the
+   toolbar stacks by the viewport instead (the trail on its own row). */
+@media (max-width: 760px) {
+  .build-toolbar { flex-wrap: wrap; }
+  .build-toolbar > .tree-meta { flex: 1 1 100%; }
+  .forkbar { padding: 0 var(--build-pad, 12px) 6px; }
+  .forkbar .fork-chips { flex-wrap: wrap; }
+}
 .fork-head {
   display: flex;
   align-items: center;

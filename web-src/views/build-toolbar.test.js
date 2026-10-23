@@ -29,3 +29,7 @@ it("a folded dock keeps no height from an earlier fit", () => {
 it("the toolbar stacks only in a narrow panel", () => {
   expect(css).toMatch(/@container build-panel \(max-width: 440px\)/);
 });
+
+it("on a phone the toolbar stacks by viewport: the panel is display: contents there", () => {
+  expect(css).toMatch(/@media \(max-width: 760px\) \{\s*\.build-toolbar \{ flex-wrap: wrap; \}/);
+});
