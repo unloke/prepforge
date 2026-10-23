@@ -202,6 +202,19 @@
 .coach-prose[data-quality="mistake"] { border-left-color: var(--warn); }
 .coach-prose[data-quality="blunder"] { border-left-color: var(--danger); }
 .coach-prose[data-quality="missed"] { border-left-color: var(--missed); }
+/* The sentence's move references are its only controls, and the only place a move
+   link does something with the board. A touch of the accent marks them at rest;
+   the underline waits for the pointer or the keyboard, where it marks the one
+   being read — three faint rules in one sentence read as ruled text, not links.
+   Colour only: the words stay in the sentence's own face and size. */
+.coach-prose .move-ref {
+  color: var(--accent-text);
+  text-decoration-color: transparent;
+}
+.coach-prose .move-ref:hover,
+.coach-prose .move-ref:focus-visible {
+  text-decoration-color: currentColor;
+}
 .coach-bookline {
   margin: 0;
   font-size: var(--fs-s);
