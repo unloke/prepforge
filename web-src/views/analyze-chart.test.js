@@ -260,6 +260,15 @@ describe("eval chart sizing", () => {
     expect(chart.listeners.animationend).toBeUndefined();
   });
 
+  it("draws a game of ten plies or more without reading a move before it is set", () => {
+    const { chart, view } = setup();
+    const long = Array.from({ length: 24 }, (_, i) => ({
+      ply: i + 1, san: "e4", score_cp: 20 + i, bounded_score_cp: 20 + i, classification: i === 11 ? "blunder" : "good",
+    }));
+    expect(() => view.renderEvalChart(long)).not.toThrow();
+    expect(chart.querySelectorAll(".eval-dot")).toHaveLength(1);
+  });
+
   it("draws a short phone chart once instead of redrawing itself forever", () => {
     const { chart, appState, view } = setup();
     chart.rectHeight = 30;

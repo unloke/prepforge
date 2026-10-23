@@ -323,7 +323,7 @@
   background: var(--surface-3);
 }
 #analysis-eval-card {
-  --an-eval-h: 112px;
+  --an-eval-h: 152px;
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(64px, 1fr);
@@ -739,9 +739,27 @@
 /* Eval chart: a neutral field split by the centre line. The area between the
    curve and the line is light above it (White better) and dark below it
    (Black better), so the fill reads as "who is ahead" at a glance. */
+/* The plot and its two lanes: the win share down a 28px gutter, the move numbers
+   in a 14px row under the plot. Rows: plot 1fr, numbers 14px. */
 .eval-chart-wrap {
   position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 14px;
 }
+.eval-chart-wrap > .eval-chart { grid-column: 2; grid-row: 1; min-height: 0; }
+.eval-chart-wrap > .eval-scale { grid-column: 1; grid-row: 1; position: relative; }
+.eval-chart-wrap > .eval-moves { grid-column: 2; grid-row: 2; position: relative; }
+.eval-scale > span,
+.eval-moves > span {
+  position: absolute;
+  color: var(--muted);
+  font: 11px/1 var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.eval-scale > .eval-ytick { left: 0; transform: translateY(-50%); }
+.eval-moves > .eval-move-num { top: 1px; transform: translateX(-50%); }
 .eval-chart {
   display: block;
   width: 100%;
@@ -764,9 +782,6 @@
   --eval-area-white: var(--eval-side-white);
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
-.eval-chart .eval-ytick { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.eval-chart .eval-ytick-label { font-family: var(--font); text-anchor: start; dominant-baseline: middle; }
-.eval-chart .eval-move-num { font-family: var(--font); text-anchor: middle; }
 .eval-chart .eval-current-marker { stroke: var(--accent-text); stroke-width: 1.5; opacity: 0.7; vector-effect: non-scaling-stroke; }
 .eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
 .eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
@@ -1286,7 +1301,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
    sources as folds. A stacked tablet puts the panel under the board in two
    columns, with the engine's lines on the left and the report and the moves
    behind tabs on the right; a phone pins the board and tabs every pillar. */
-#view-analyze { --an-eval-h: 112px; }
+#view-analyze { --an-eval-h: 152px; }
 /* The evaluation under the board takes its height out of the board's square. */
 #view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
   --board-chrome: calc(42px + 8px + var(--an-eval-h));
