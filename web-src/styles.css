@@ -2463,6 +2463,32 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   opacity: 0.8;
 }
 
+/* The ghost of a line the coach's sentence names (a move reference in the coach
+   card, hovered or focused). A cut-out arrow: translucent white with a dark keyline,
+   so it reads on both board colours and in both themes without taking a colour that
+   already means something on the board (accent = yours, green = the engine's,
+   violet = the better move). It sits under every real mark and fades in fast. */
+.annot-ghost {
+  pointer-events: none;
+  animation: annot-ghost-in var(--dur-fast) var(--ease-out);
+}
+.annot-ghost-arrow {
+  fill: var(--dot-white);
+  fill-opacity: 0.38;
+  stroke: var(--coord-on-dark);
+  stroke-opacity: 0.5;
+  stroke-width: 0.35;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  filter: none;
+}
+@keyframes annot-ghost-in {
+  from { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .annot-ghost { animation: none; }
+}
+
 .square {
   border: 0;
   padding: 0;

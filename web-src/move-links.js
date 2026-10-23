@@ -7,7 +7,7 @@
 // coach sentence never adds a move. Every other view leaves the token to its row.
 import { appState, boards } from "./core/state.js";
 import { activeViewName } from "./core/api.js";
-import { boardLine, initMoveLinks, tokenPosition } from "./line-preview.js";
+import { boardLine, initCoachGhosts, initMoveLinks, tokenPosition } from "./line-preview.js";
 import { plyOfFen } from "./move-text.js";
 
 const samePosition = (a, b) => !!a && !!b && a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
@@ -71,6 +71,7 @@ export function analysisTextContext() {
 }
 
 export function installMoveLinks({ selectBuildNode, selectAnalysisNode }) {
+  initCoachGhosts(() => boards.analysis);
   initMoveLinks({
     apply(token) {
       const view = activeViewName();
