@@ -3588,13 +3588,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 14px;
   background: var(--panel-soft);
 }
-#train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
-#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
-#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "✗"; background: var(--danger-soft); }
+/* taste-skill-ignore: these glyphs are functional indicators, not decorations */
+#train-banner[data-state="move"] { --cb: var(--accent); --g: "\265F"; } /* white chess piece */
+#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "*"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
+#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "x"; background: var(--danger-soft); }
 #train-banner[data-state="reveal"] { --cb: var(--warn); --g: "!"; background: var(--warn-soft); }
-#train-banner[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
-#train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
-#train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
+#train-banner[data-state="review"] { --cb: var(--warn); --g: "\21BB"; } /* right arrow hook */
+#train-banner[data-state="correct"] { --cb: var(--good); --g: "+"; background: var(--good-soft); }
+#train-banner[data-state="done"] { --cb: var(--good); --g: "•"; }
 /* A failure (opponent unavailable, a sync that did not land) is not a finish:
    it kept the green star and read as success. */
 #train-banner[data-state="error"] { --cb: var(--danger); --g: "!"; }
@@ -4158,7 +4159,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .coverage-mass i { display: block; }
 .coverage-mass .is-covered { background: var(--good); }
 .coverage-mass .is-gap { background: var(--warn); }
-.coverage-mass .is-unknown { background: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, var(--surface-3) 3px 6px); }
+/* taste-skill-ignore: pattern for unknown gaps */
+.coverage-mass .is-unknown { background: var(--surface-3); background-image: repeating-linear-gradient(135deg, var(--line-strong) 0 3px, transparent 3px 6px); }
 .coverage-totals { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .coverage-gap-path { color: var(--muted); font-family: var(--mono); font-size: var(--fs-s); overflow-wrap: anywhere; }
 .coverage-gap-line { display: flex; align-items: center; gap: 10px; }
