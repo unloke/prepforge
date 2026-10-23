@@ -1510,6 +1510,12 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-explain .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
   #analysis-explain .coach-unlock .unlock.is-inline .unlock-text b,
   #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
+  /* The gain is a sentence ("What players at your rating would play"), not a
+     number: on a phone's 358px row it clipped at "woul…" beside the two
+     controls. It wraps to two 13px lines inside the same 44px, and the name
+     drops to its own line above it rather than sharing one. */
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
 
   /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
   .an-panes {
@@ -1540,14 +1546,17 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   }
   .an-pane-head { min-height: 32px; }
   .engine-pane .an-pane-head > b { display: none; }
-  /* The engine card on a phone is a short band over the board: its row stays one
-     line, the gain clipping first, so the band grows by one line and no more.
-     Its two controls are a thumb's size here (the shared row draws them at 22px
-     for a pointer). */
+  /* The engine card on a phone is a short band over the board. Its controls are
+     a thumb's size (the shared row draws them at 22px for a pointer), and the
+     gain is a sentence, not a number: beside a 141px button it clipped at
+     "Deeper evaluatio…", so the name takes its own line and the gain wraps to
+     two 13px lines inside the 44px the button already set. */
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) { min-height: 44px; }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) > .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x { width: 44px; height: 44px; }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x svg { width: 16px; height: 16px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
+  #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
   /* Analyze's one action is the pill in the thumb bar (phone.css draws it at
      40px, a pointer's height): it is the control a thumb is meant to land on,
      so it takes the 44px floor. The bar is 56px, so 6px stays above and below. */
