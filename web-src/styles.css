@@ -3120,7 +3120,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* With no repertoire open the panel's bands give way to the empty state. The
    class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
    ancestor of the tree it made every crumb rebuild re-style the page. */
-#build-sidebar.is-empty .panel-body > :is(.tree-meta, .forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
+#build-sidebar.is-empty .panel-body > :is(.build-toolbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
 /* The one line a new user reads here is running text, so it reads at the size
    the Library's empty state uses, not at the panel's dense 13px. */
 #view-build .empty-state.big p { color: var(--text); font-size: 16px; }
@@ -3190,6 +3190,17 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
    kind of thing. */
 #build-sidebar { --build-pad: 14px; }
 
+/* One toolbar row: the trail takes what the candidates leave, the candidates
+   sit at its right end. Each keeps its own scroll or wrap; a narrow panel
+   stacks them (the @container rule below). */
+.build-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  background: var(--panel);
+}
+.build-toolbar > .tree-meta { flex: 1 1 0; }
 .tree-meta {
   display: flex;
   flex-wrap: wrap;
@@ -3297,15 +3308,29 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 }
 
 .forkbar {
-  padding: 8px var(--build-pad, 12px) 10px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px var(--build-pad, 12px) 4px 0;
   background: var(--panel);
+  min-width: 0;
+}
+.forkbar .fork-chips { flex-wrap: nowrap; }
+.forkbar .fork-more { white-space: nowrap; }
+@container build-panel (max-width: 440px) {
+  .build-toolbar { flex-wrap: wrap; }
+  .build-toolbar > .tree-meta { flex: 1 1 100%; }
+  .forkbar { padding: 0 var(--build-pad, 12px) 6px; }
+  .forkbar .fork-chips { flex-wrap: wrap; }
 }
 .fork-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin: 0;
   font-size: var(--fs-s);
+  white-space: nowrap;
 }
 .fork-head b { font-weight: 600; color: var(--muted); }
 .fork-chips { display: flex; flex-wrap: wrap; gap: 6px; }

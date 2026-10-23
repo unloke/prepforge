@@ -323,6 +323,13 @@ function fitBuildDock() {
   if (!dock) return;
   // A height the user dragged is theirs: a repaint must not undo it.
   if (dock.dataset.dockPinned) return;
+  // Folded, the dock is its tab strip: a height left from an unfolded fit
+  // would hold the tree short.
+  if (dock.classList.contains("is-folded")) {
+    dock.style.flexBasis = "";
+    dock.style.minHeight = "";
+    return;
+  }
   const max = buildDockMaxHeight();
   const was = dock.style.minHeight;
   const basis = dock.style.flexBasis;
@@ -371,7 +378,7 @@ function setBuildDockFolded(folded, { remember = true } = {}) {
     fold.setAttribute("aria-label", label);
     fold.title = label;
   }
-  if (remember) writeDockStore(BUILD_DOCK_FOLDED_KEY, folded ? "1" : null);
+  if (remember) writeDockStore(BUILD_DOCK_FOLDED_KEY, folded ? "1" : "0");
   if (was === folded) return;
   // Folding parks the Explorer fetch and the row-eval worker; unfolding catches up.
   if (!folded && buildDockTab === "explorer") refreshExplorerPanel();
@@ -386,7 +393,9 @@ function initBuildDockLayout() {
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
   if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
-  setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
+  // Folded until the user opens it: the Explorer is reference data, and the
+  // tree and the candidates are the screen.
+  setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) !== "0", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
     if (event.detail !== 0) fold.blur();
