@@ -17,7 +17,6 @@ import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
 import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
-import { boardLine } from "./line-preview.js";
 import { installMoveLinks } from "./move-links.js";
 import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
@@ -552,7 +551,6 @@ function switchView(name, { fromUrl = false } = {}) {
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   if (name !== "analyze") analyzeSession?.positionCoach.cancel();
-  if (appState.currentView !== name) { engineWidget.exitPreview(); boardLine.exit(); }
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -1565,28 +1563,23 @@ function bindEvents() {
     .getElementById("explorer-engine-toggle")
     ?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
   bindEvalChart();
-  // While an engine line is on the board, the board-bar arrows step through it.
-  const navOrPreview = (action, nav) => () => {
-    if (boardLine.step(action)) return;
-    nav();
-  };
-  document.getElementById("analysis-start").addEventListener("click", navOrPreview("start", () => {
+  document.getElementById("analysis-start").addEventListener("click", () => {
     void analysisTreeNav("start").catch(() => {});
-  }));
-  document.getElementById("analysis-prev").addEventListener("click", navOrPreview("prev", () => {
+  });
+  document.getElementById("analysis-prev").addEventListener("click", () => {
     void analysisTreeNav("prev").catch(() => {});
-  }));
-  document.getElementById("analysis-next").addEventListener("click", navOrPreview("next", () => {
+  });
+  document.getElementById("analysis-next").addEventListener("click", () => {
     void analysisTreeNav("next").catch(() => {});
-  }));
-  document.getElementById("analysis-end").addEventListener("click", navOrPreview("end", () => {
+  });
+  document.getElementById("analysis-end").addEventListener("click", () => {
     void analysisTreeNav("end").catch(() => {});
-  }));
+  });
 
-  document.getElementById("build-root").addEventListener("click", navOrPreview("start", buildGoRoot));
-  document.getElementById("build-parent").addEventListener("click", navOrPreview("prev", buildGoBack));
-  document.getElementById("build-next").addEventListener("click", navOrPreview("next", buildGoForward));
-  document.getElementById("build-end").addEventListener("click", navOrPreview("end", buildGoToEnd));
+  document.getElementById("build-root").addEventListener("click", buildGoRoot);
+  document.getElementById("build-parent").addEventListener("click", buildGoBack);
+  document.getElementById("build-next").addEventListener("click", buildGoForward);
+  document.getElementById("build-end").addEventListener("click", buildGoToEnd);
   document.getElementById("build-generate-node").addEventListener("click", generateFromCurrentNode);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
@@ -1638,26 +1631,11 @@ function bindEvents() {
     const inEditable = !!active && (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
       active.isContentEditable === true);
     if (inEditable) return;
-    // An engine line on the board: ← → step through it, Esc goes back to the game.
-    // The preview belongs to a board, so it answers only on the view that owns it.
     const view = activeViewName();
     // Ctrl/Cmd+Z takes back the last move added here (its Undo card restores it).
     if (view === "build" && (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
       event.preventDefault();
       return void undoLastBuildAdd();
-    }
-    if (boardLine.active && (view === "analyze" || view === "build")) {
-      const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
-      if (action) {
-        event.preventDefault();
-        boardLine.step(action);
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        boardLine.exit();
-        return;
-      }
     }
     // Arrow keys navigate the board of the view that is on screen — and only
     // there: Analyze and Build each have one; every other view has none, so ← →

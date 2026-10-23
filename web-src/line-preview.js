@@ -14,49 +14,6 @@ import { html } from "./html.js";
 import { previewPosition, decodeLine } from "./move-text.js";
 import { parseFenBoard, pieceSvg } from "./board/ui.js";
 
-// --- Peek -------------------------------------------------------------------
-
-let session = null;
-
-function showSession() {
-  const s = session;
-  if (!s) return;
-  s.board.showPreview(previewPosition(s.line, s.ply));
-  s.onChange?.(s);
-}
-
-export const boardLine = {
-  /** Walk `line` (move-text walkLine shape) on `board` at `ply`; onChange fires when open/closed. */
-  open({ board, line, ply = 1, onChange = null }) {
-    if (!board || !line) return;
-    if (session && session.board !== board) this.exit();
-    if (!session) {
-      session = { board, onChange };
-    }
-    Object.assign(session, { line, ply });
-    showSession();
-  },
-  step(action) {
-    if (!session) return false;
-    const n = session.line?.plies?.length || 0;
-    let newPly = Number(session.ply) || 0;
-    if (action === "prev") newPly = Math.max(0, newPly - 1);
-    if (action === "next") newPly = Math.min(n, newPly + 1);
-    if (action === "start") newPly = 0;
-    if (action === "end") newPly = n;
-    session.ply = newPly;
-    showSession();
-    return true;
-  },
-  exit() {
-    session?.onChange?.(null);
-    session = null;
-  },
-  get active() {
-    return session;
-  },
-};
-
 // --- Ghost ------------------------------------------------------------------
 
 export function ghostOnBoard({ board, line, ply }) {
@@ -71,40 +28,6 @@ export function ghostOnBoard({ board, line, ply }) {
 export function clearGhost(board) {
   if (board) board.setGhost([]);
 }
-
-// A single line at a time per board; the caller drives lifecycle through
-// onChange so it never runs behind the board's real position.
-export const boardGhost = {
-  /** Show `line` (move-text walkLine shape) on `board`; ``ply`` is how far to draw. */
-  open({ board, line, ply = 1, onChange = null }) {
-    if (!board || !line) return;
-    if (session && session.board !== board) this.exit();
-    if (!session) {
-      session = { board, onChange };
-    }
-    Object.assign(session, { line, ply });
-    showSession();
-  },
-  step(action) {
-    if (!session) return false;
-    const n = session.line?.plies?.length || 0;
-    let newPly = Number(session.ply) || 0;
-    if (action === "prev") newPly = Math.max(0, newPly - 1);
-    if (action === "next") newPly = Math.min(n, newPly + 1);
-    if (action === "start") newPly = 0;
-    if (action === "end") newPly = n;
-    session.ply = newPly;
-    showSession();
-    return true;
-  },
-  exit() {
-    session?.board.setGhost([]);
-    session = null;
-  },
-  get active() {
-    return session;
-  },
-};
 
 const sources = [];
 /** Hover peek for an existing control: `resolve(el)` → `{ fen, lastMove, label }` or null. */

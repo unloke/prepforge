@@ -56,7 +56,7 @@ export function loadEngineWidget() {
     loadedEngineWidget = mod.createEngineWidget({
       effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
       boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-      activeBoardController, explorerEvalEngine, getAnalyzeSession: () => hooks.analyzeSession?.() || null,
+      explorerEvalEngine, getAnalyzeSession: () => hooks.analyzeSession?.() || null,
       analysisStore,
     });
     return loadedEngineWidget;
@@ -68,17 +68,9 @@ export function loadEngineWidget() {
 }
 export const engineWidget = {
   isOpen: () => loadedEngineWidget?.isOpen() || false,
-  isPreviewing: () => loadedEngineWidget?.isPreviewing() || false,
-  stepPreview: (action) => loadedEngineWidget?.stepPreview(action) || false,
   get lastSnapshot() { return loadedEngineWidget?.lastSnapshot || null; },
   onBoardChanged: () => loadedEngineWidget?.onBoardChanged(),
   async onDepthSettingChanged() { await loadedEngineWidget?.onDepthSettingChanged(); },
-  // Outside a preview this is only called on a view switch, which also
-  // supersedes an open still waiting on the import.
-  exitPreview() {
-    engineWidgetOpenSeq += 1;
-    loadedEngineWidget?.exitPreview();
-  },
   close() {
     engineWidgetOpenSeq += 1;
     return loadedEngineWidget?.close();

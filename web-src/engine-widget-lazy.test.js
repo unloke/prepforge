@@ -15,8 +15,8 @@ function harness() {
   const pending = new Promise((resolve, reject) => { resolveImport = resolve; rejectImport = reject; });
   let view = "analyze", wanted = true;
   const widget = {
-    openForCurrent: vi.fn(), close: vi.fn(), exitPreview: vi.fn(),
-    isOpen: () => true, isPreviewing: () => false, stepPreview: () => false,
+    openForCurrent: vi.fn(), close: vi.fn(),
+    isOpen: () => true,
     onBoardChanged: vi.fn(), onDepthSettingChanged: vi.fn(), lastSnapshot: { fen: "current" },
   };
   const createEngineWidget = vi.fn(() => widget);
@@ -43,12 +43,9 @@ describe("lazy engine widget", () => {
   it("answers synchronous calls without importing and keeps the depth promise contract", async () => {
     const h = harness(), engine = h.engineWidget;
     expect(engine.isOpen()).toBe(false);
-    expect(engine.isPreviewing()).toBe(false);
-    expect(engine.stepPreview("next")).toBe(false);
     expect(engine.lastSnapshot).toBeNull();
     engine.onBoardChanged();
     engine.close();
-    engine.exitPreview();
     await expect(engine.onDepthSettingChanged()).resolves.toBeUndefined();
     expect(h.deps.importWidget).not.toHaveBeenCalled();
   });
@@ -82,7 +79,9 @@ describe("lazy engine widget", () => {
     if (kind === "view") h.setView("build");
     if (kind === "preference") h.setWanted(false);
     if (kind === "leave-and-return") {
-      h.engineWidget.exitPreview();
+      // Leaving a view without the engine closes it (syncEngineForView), which
+      // supersedes the open still in flight; coming back asks again.
+      h.engineWidget.close();
       h.setView("build");
       h.setView("analyze");
     }

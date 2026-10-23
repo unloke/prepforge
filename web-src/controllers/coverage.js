@@ -2,8 +2,7 @@ import { html } from "../html.js";
 import { enterRows } from "../list-enter.js";
 import { countOf } from "../plural.js";
 import { coverageTreeKey, runCoverageScan } from "../coverage.js";
-import { encodeLine, walkLine } from "../move-text.js";
-import { boardLine } from "../line-preview.js";
+import { encodeLine } from "../move-text.js";
 import { maiaInitMessage } from "../maia-init-notice.js";
 
 // A share that rounds to nothing but is not nothing reads "<0.1%": a real
@@ -17,7 +16,7 @@ function formatMass(value) {
 // database switch; app.js wires them); the panel body only shows the scan
 // state and its gaps. The controls are the source of truth for scope/horizon.
 export function createCoverageController({
-  getContext, getProvider, selectNode, getBoard,
+  getContext, getProvider, selectNode,
   previewReplies, getJob, onError,
 }) {
   let result = null;
@@ -32,10 +31,6 @@ export function createCoverageController({
   // A rare but real gap reads "<0.1%", never a misleading "0.0%".
   const pct = (n) => formatMass(n * 100);
 
-  // The gap's move on Build's board, as a one-move line (Esc / "Exit line" leave).
-  function previewGap(gap) {
-    boardLine.open({ board: getBoard(), view: "build", line: walkLine(gap.fen, [gap.moveUci]), name: "Gap" });
-  }
   function key() {
     const c = getContext();
     return JSON.stringify([c.ownerId, c.ownerGeneration, c.build?.repertoire_id,
@@ -191,9 +186,10 @@ export function createCoverageController({
     el.querySelectorAll("[data-gap]").forEach((n) => n.addEventListener("click", async () => {
       if (!valid()) { sync(); return; }
       try {
+        // The position the gap comes from, on the board: the missing move is
+        // named in the row, and playing it is the user's own edit.
         const gap = result.gaps[Number(n.dataset.gap)];
         await selectNode(gap.nodeId);
-        if (valid()) previewGap(gap);
       } catch (error) { onError(error); }
     }));
   }

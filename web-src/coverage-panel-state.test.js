@@ -95,7 +95,7 @@ function harness({ provider, predictions, context: contextPatch } = {}) {
   const controller = createCoverageController({
     getContext: () => context,
     getProvider: () => provider || { predictions: predictions || (async () => []) },
-    selectNode: async () => {}, getBoard: () => null,
+    selectNode: async () => {},
     previewReplies: async () => {}, getJob: () => job, onError: () => {},
   });
   return { controller, job, gaps, depth, context, els, badge: el("build-coverage-count") };

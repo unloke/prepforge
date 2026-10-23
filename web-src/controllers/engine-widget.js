@@ -1,8 +1,7 @@
 import { html } from "../html.js";
 import { hooks } from "../core/hooks.js";
 import { localGameOver, pvSan } from "../chess-local.js";
-import { clampPly, decodeLine, encodeLine, moveLineHtml, walkLine } from "../move-text.js";
-import { boardLine } from "../line-preview.js";
+import { clampPly, decodeLine, encodeLine, moveLineHtml } from "../move-text.js";
 import { formatEngineEval } from "../engine-eval.js";
 import { paintUnlocks } from "../engine-unlock.js";
 import { subscribeDownloads } from "../engine/engine-downloads.js";
@@ -10,13 +9,13 @@ import { createPassFeed } from "./engine-pass-feed.js";
 
 let effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
   boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-  activeBoardController, explorerEvalEngine, getAnalyzeSession, analysisStore;
+  explorerEvalEngine, getAnalyzeSession, analysisStore;
 
 export function createEngineWidget(deps) {
   ({
     effectiveStockfishDepth, createSharedEvaluationProvider, activeViewName, appState,
     boards, START_FEN, setEngineBestArrow, setStatusError, setEngineOn,
-    activeBoardController, explorerEvalEngine, getAnalyzeSession, analysisStore,
+    explorerEvalEngine, getAnalyzeSession, analysisStore,
   } = deps);
   const widget = new EngineWidget();
   widget.bind();
@@ -39,8 +38,6 @@ class EngineWidget {
     this.unwatch = null;
     this.lastFen = null;
     this.lastSnapshot = null;
-    // The engine line shown on the board (see _previewLine), or null.
-    this.preview = null;
     // Lines shown, and the width of the search behind them: always the same number.
     this.multipv = 1;
     this.maxMultipv = 5;
@@ -158,7 +155,6 @@ class EngineWidget {
 
   async close() {
     if (!this.open) return;
-    this.exitPreview();
     this.open = false;
     this._unwatch();
     this.passFeed?.detach();
@@ -280,7 +276,6 @@ class EngineWidget {
 
   _clearAnalysisView() {
     setEngineBestArrow(null);
-    this.exitPreview();
     if (this.lastFen && this._renderGameOver(this.lastFen)) return;
     this._paintPvs(this._pendingRows(0));
     if (this.depthReadout) this.depthReadout.textContent = "0 / ?";
@@ -383,10 +378,6 @@ class EngineWidget {
     });
   }
 
-  isPreviewing() {
-    return !!this.preview;
-  }
-
   // The lines the card shows, played into the analysis tree up to `ply` (1 = the
   // first move). The moves come from the row's own encoded line, so a repaint
   // between the click and this handler cannot swap the line under it; a row with
@@ -411,46 +402,6 @@ class EngineWidget {
       // makes the rest of the line meaningless from this position.
       if (appState.analysisBoardFen !== step.fen) return;
     }
-  }
-
-  // Put line `index` of the current search on the board at `ply` (1 = after its first
-  // move). Clicking the previewed row again (not one of its moves) goes back to the game.
-  _previewLine(index, ply) {
-    if (!Number.isFinite(index)) return;
-    if (this.preview && this.preview.index === index && ply === null) {
-      this.exitPreview();
-      return;
-    }
-    // A move in the previewed row belongs to the line shown there, not to whatever
-    // the search has since put in that slot.
-    const board = activeBoardController();
-    const same = this.preview && this.preview.index === index && this.preview.board === board ? this.preview : null;
-    const pv = same ? same.pv : (this.lastSnapshot?.pvs || [])[index];
-    const data = same ? same.data : pv && board ? walkLine(this.lastFen, pv.pv_uci || []) : null;
-    if (!data) return;
-    this.preview = { index, data, pv, board, ply: clampPly(data, ply ?? 1) };
-    boardLine.open({
-      board, view: activeViewName(), line: data, ply: this.preview.ply, name: `Line ${index + 1}`, owner: this,
-      onChange: (s) => {
-        if (s) this.preview.ply = s.ply;
-        else this.preview = null;
-        this._repaintRows();
-      },
-    });
-  }
-
-  // ◀ ▶ ⏮ ⏭ and ← → while a line is on the board. Returns false when not previewing.
-  stepPreview(action) {
-    return !!this.preview && boardLine.step(action);
-  }
-
-  // Back to the game position (no-op when not previewing).
-  exitPreview() {
-    if (this.preview) boardLine.exit();
-  }
-
-  _repaintRows() {
-    if (this.lastSnapshot && this.lastSnapshot.fen === this.lastFen) this._renderSnapshot(this.lastSnapshot);
   }
 
   // Paint every update the search produces, as it produces it: the panel used to sample
@@ -532,25 +483,26 @@ class EngineWidget {
     if (snapshot.running === false) this._unwatch();
   }
 
-  // One line per row, cut off at the panel edge. Clicking a row plays it out on the
-  // board; the previewed row keeps the line it was clicked on (the search goes on
-  // underneath) and marks the move on the board; rows stay one line.
+  // One line per row, cut off at the panel edge; rows stay one line. In Analyze a
+  // row (and each move in it) plays into the move list, so it is a control; in
+  // Build the card is a readout next to the Explorer, which already adds moves,
+  // and a row that did nothing when clicked would be a dead button.
   _renderPv(pv, index, fen) {
-    const previewing = this.preview && this.preview.index === index ? this.preview : null;
-    const line = previewing ? previewing.pv : pv;
-    const evalText = formatEngineEval(line.score_cp, line.mate_in);
+    const evalText = formatEngineEval(pv.score_cp, pv.mate_in);
     // SAN for the rows this frame actually paints, converted once per PV version (see pvSan).
-    const sans = pvSan(fen, line);
+    const sans = pvSan(fen, pv);
     const moves = sans.length
-      ? moveLineHtml(fen, sans, line.pv_uci || [], { current: previewing ? previewing.ply - 1 : -1, cls: "pv-move", focusable: false })
+      ? moveLineHtml(fen, sans, pv.pv_uci || [], { cls: "pv-move", focusable: false })
       : "";
-    let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
-    if (previewing) cls += " is-previewing";
+    const cls = index === 0 ? "engine-pv is-top" : "engine-pv";
     // The row carries its line as the moves do (data-mt), so a click on the row's
     // own space plays the same line the row shows, not one the search has since
     // replaced.
+    const playable = activeViewName() === "analyze"
+      ? html` role="button" tabindex="0"`
+      : "";
     return (
-      html`<div class="${cls}" data-line="${index}" data-mt="${encodeLine(fen, line.pv_uci || [])}" role="button" tabindex="0" aria-pressed="${!!previewing}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
+      html`<div class="${cls}" data-line="${index}" data-mt="${encodeLine(fen, pv.pv_uci || [])}"${playable}><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );
   }
 

@@ -3,11 +3,11 @@
 //
 // Click on a token: a line the tree already has (the repertoire on Build, the game
 // and its variations on Analyze) is selected there, as clicking it in the move list
-// would. Any other line is walked on the board like an engine line, so a note or a
-// coach sentence never adds a move. Every other view only peeks.
+// would. A line the tree does not have is not played anywhere — a note or a coach
+// sentence never adds a move, and its hover peek already shows the position.
 import { appState, boards } from "./core/state.js";
 import { activeBoardController, activeViewName } from "./core/api.js";
-import { boardLine, initMoveLinks, peekPosition, registerPeekSource } from "./line-preview.js";
+import { initMoveLinks, peekPosition, registerPeekSource } from "./line-preview.js";
 import { plyOfFen, walkLine } from "./move-text.js";
 
 const samePosition = (a, b) => !!a && !!b && a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
@@ -85,11 +85,9 @@ export function installMoveLinks({ selectBuildNode, selectAnalysisNode }) {
         const build = view === "build";
         const node = treeNodeForLine(pos.line, pos.ply, build ? buildTree() : analysisTree());
         if (node) void (build ? selectBuildNode(node.id) : selectAnalysisNode(node.id)).catch(() => {});
-        else boardLine.open({ board, view, line: pos.line, ply: pos.ply });
       };
     },
   });
-  for (const id of ["analysis-pv-exit", "build-pv-exit"]) document.getElementById(id)?.addEventListener("click", () => boardLine.exit());
   registerPeekSource("#view-build [data-node-id]:is(.mtree-move, .mtree-crumb, .fork-chip)", (el) => {
     const node = appState.buildNodeById.get(el.dataset.nodeId);
     if (!node) return null;

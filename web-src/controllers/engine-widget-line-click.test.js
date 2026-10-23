@@ -55,7 +55,6 @@ function harness({ view = "analyze", boardFen = START, lands = true, withSession
     getAnalyzeSession: () => (withSession ? session : null),
     paintUnlocks: () => {}, createPassFeed, hooks: {},
     clampPly, decodeLine, encodeLine, moveLineHtml, walkLine,
-    boardLine: { open: vi.fn(), step: () => false, exit: vi.fn() },
     analysisStore: async () => ({}),
   };
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
@@ -100,15 +99,13 @@ describe("an engine line clicked into the move list", () => {
   });
 
   it("plays every move in order, each from the position the one before reached", async () => {
-    const { widget, appState, session, deps } = harness();
+    const { widget, appState, session } = harness();
     await widget._playLine(rowOf(), 3);
     expect(session.calls.map(([uci]) => uci)).toEqual(["e2e4", "e7e5", "g1f3"]);
     expect(session.calls[0][1]).toBe(START);
     expect(session.calls[1][1]).toBe(fenAfter(START, "e2e4"));
     expect(session.calls[2][1]).toBe(fenAfter(fenAfter(START, "e2e4"), "e7e5"));
     expect(appState.analysisBoardFen).toBe(fenAfter(fenAfter(fenAfter(START, "e2e4"), "e7e5"), "g1f3"));
-    // The preview (a line walked on the board on its own) is not involved.
-    expect(deps.boardLine.open).not.toHaveBeenCalled();
   });
 
   it("stops at a move that does not land instead of playing the rest from the wrong position", async () => {

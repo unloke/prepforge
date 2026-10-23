@@ -751,7 +751,7 @@
   .study .board-bar .bb-views { order: 1; }
   .study .board-bar .bb-sheet { order: 2; }
   .study .board-bar [id$="-flip"] { order: 3; }
-  .study .board-bar :is(.board-label, .pv-exit) {
+  .study .board-bar .board-label {
     grid-area: 1 / -4 / 2 / -3;
     justify-self: center;
     min-width: 0;
@@ -768,7 +768,6 @@
      on a wide screen; a phone has no room for it beside the pill without
      covering it, so the eval row under the board names the position instead. */
   #view-analyze .board-bar .board-label { display: none; }
-  .study .board-bar .pv-exit { z-index: 7; height: 40px; padding: 0 16px; border-radius: 999px; font-size: 14px; }
   /* The last two tracks. The pill is absolute in the free middle, so the
      arrows must be placed: auto-placement would fill that track first. */
   .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; grid-column: -3 / -2; }
@@ -875,7 +874,6 @@
      the pill fell back to inherited ink (measured at 390: rgb(27,28,30) on
      rgb(239,239,236), which read as a live button at 55% opacity). */
   :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--label); }
-  .study:has(.pv-exit:not([hidden])) :is(#run-analysis, #build-generate-node) { display: none; }
   /* The save chip is the inspector head's (see #build-sync-head below): the
      board bar's copy would sit at the screen's bottom, far from the tree the
      edit happened in. */

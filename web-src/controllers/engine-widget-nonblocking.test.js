@@ -77,7 +77,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze", pvSa
       row.innerHTML = choiceNow === "ask" ? html`<div class="unlock" data-place="${row.dataset.unlockPlace}">Full Stockfish</div>` : "";
     },
     createPassFeed, hooks,
-    clampPly, decodeLine, encodeLine, moveLineHtml, walkLine, boardLine: { open: vi.fn(), step: () => false, exit: vi.fn() },
+    clampPly, decodeLine, encodeLine, moveLineHtml, walkLine,
     analysisStore: async () => store,
   };
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));

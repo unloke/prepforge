@@ -76,30 +76,12 @@ export function clampPly(line, ply) {
   return Math.max(0, Math.min(n, Math.round(Number(ply) || 0)));
 }
 
-/** The board position at preview ply `ply`: `{ fen, lastMove }`. */
+/** The board position at ply `ply` of a line: `{ fen, lastMove }`. */
 export function previewPosition(line, ply) {
   const at = clampPly(line, ply);
   if (!line || at === 0) return { fen: line?.baseFen || null, lastMove: null };
   const step = line.plies[at - 1];
   return { fen: step.fen, lastMove: step.uci };
-}
-
-/** Board-bar label while stepping: "Line 1 · 5...Qxe5 · 2/12" (ply 0: "… · start · 0/12"). */
-export function previewLabel(line, ply, name = "Line") {
-  const at = clampPly(line, ply);
-  const n = line?.plies?.length || 0;
-  const where = at === 0 ? "start" : line.plies[at - 1].label;
-  return `${name} · ${where} · ${at}/${n}`;
-}
-
-/** Step for a key or button: "prev" | "next" | "start" | "end". Returns the new ply. */
-export function stepPreview(line, ply, action) {
-  const n = line?.plies?.length || 0;
-  if (action === "start") return 0;
-  if (action === "end") return n;
-  if (action === "prev") return clampPly(line, ply - 1);
-  if (action === "next") return clampPly(line, ply + 1);
-  return clampPly(line, ply);
 }
 
 /** A token's line as markup data, and back. */
