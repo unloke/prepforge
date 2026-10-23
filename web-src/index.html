@@ -295,7 +295,7 @@
                 <button class="btn icon" id="build-next" title="Forward one move" aria-label="Forward one move"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
                 <button class="btn icon" id="build-end" title="To end of line" aria-label="Go to end of line"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 6v12M7 6l6 6-6 6"/></svg></button>
               </div>
-              <span class="board-label" id="build-board-label">No repertoire</span>
+              <span class="board-label" id="build-board-label"></span>
               <button class="pv-exit" id="build-pv-exit" type="button" title="Leave the line (Esc)" hidden>Exit line</button>
               <div class="bb-right">
                 <span class="build-sync" id="build-sync" aria-live="polite" hidden></span>
@@ -309,9 +309,9 @@
             <div class="engine-banner" id="build-engine-banner" data-testid="build-engine-banner" hidden></div>
             <div class="panel-head" id="build-rep-header">
               <button class="btn icon phone-back" type="button" data-mirror='.nav-item[data-view="dashboard"]' aria-label="Library" title="Library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-              <span class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</span>
+              <h1 class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</h1>
               <button class="btn primary" id="build-generate-node" data-testid="build-generate-node" aria-label="Generate moves" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
-              <button class="row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
+              <button class="btn ghost icon row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
             <div class="panel-body">
             <div class="phone-panes" id="build-panes" role="tablist" aria-label="Panel">
@@ -336,7 +336,7 @@
               <div class="row">
                 <button class="btn primary" id="build-empty-create" type="button">New repertoire</button>
                 <button class="btn" id="build-empty-import" type="button">Import PGN</button>
-                <button class="btn ghost" id="build-empty-open" type="button">Browse…</button>
+                <button class="btn" id="build-empty-open" type="button">Browse…</button>
               </div>
             </div>
             <div class="tree-meta" id="build-tree-meta"></div>
@@ -421,7 +421,7 @@
           <aside class="sidebar train-sidebar panel">
             <header class="train-head">
               <button type="button" class="btn ghost sm train-back" id="train-back" data-testid="train-back" title="Back to Train"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Train</span></button>
-              <h2 class="train-title">Train</h2>
+              <h1 class="train-title">Train</h1>
               <div class="train-head-main">
                 <span class="train-head-mode" id="train-head-mode"></span>
                 <span class="train-scope-chip" id="train-scope-chip" data-testid="train-scope-chip"></span>
@@ -440,12 +440,13 @@
             </section>
             <div class="panel-scroll">
               <section class="train-home" id="train-home" data-testid="train-home">
-                <div class="train-outlook" id="train-outlook" hidden></div>
                 <section class="train-row" data-row="smart">
                   <div class="train-row-text">
                     <h3 class="train-row-title" data-vt-title="smart">Due queue</h3>
+                    <div class="train-outlook" id="train-outlook" hidden></div>
                     <span class="train-row-meta" id="train-due-meta"></span>
                   </div>
+                  <button class="btn primary train-row-go" id="start-train" data-testid="start-train" type="button">Start</button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-due-scope" data-testid="train-due-scope" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="10s per move · a timeout counts as a miss">
@@ -453,7 +454,6 @@
                       <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
                     </span>
                   </div>
-                  <button class="btn primary train-row-go" id="start-train" data-testid="start-train" type="button">Start</button>
                   <p class="train-row-error" id="train-due-error" role="alert" hidden></p>
                 </section>
                 <section class="train-row" data-row="all_lines">
@@ -461,10 +461,10 @@
                     <h3 class="train-row-title" data-vt-title="all_lines">Rehearse</h3>
                     <span class="train-row-meta" id="train-rehearse-meta"></span>
                   </div>
+                  <button class="btn primary train-row-go" id="start-rehearse" data-testid="start-rehearse" type="button">Start</button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-rehearse-scope" data-testid="train-rehearse-scope" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                   </div>
-                  <button class="btn train-row-go" id="start-rehearse" data-testid="start-rehearse" type="button">Start</button>
                   <p class="train-row-error" id="train-rehearse-error" role="alert" hidden></p>
                 </section>
                 <section class="train-row" data-row="play">
@@ -472,19 +472,17 @@
                     <h3 class="train-row-title" data-vt-title="play">Practice</h3>
                     <span class="train-row-meta" id="train-play-meta"></span>
                   </div>
+                  <button class="btn primary train-row-go" id="start-play" data-testid="start-play" type="button">Play</button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-play-book" data-testid="train-play-book" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <button type="button" class="train-chip" id="train-play-reps" data-testid="train-play-reps" aria-haspopup="listbox" hidden><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <button class="btn ghost train-lucky" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
                     <div class="seg train-color" id="train-play-color" role="group" aria-label="Your color">
                       <button type="button" class="seg-btn is-active" data-color="white" data-testid="play-color-white">White</button>
                       <button type="button" class="seg-btn" data-color="black" data-testid="play-color-black">Black</button>
                     </div>
                   </div>
                   <div data-unlock-place="train-practice" hidden></div>
-                  <div class="train-row-actions">
-                    <button class="btn train-row-go" id="start-play" data-testid="start-play" type="button">Play</button>
-                    <button class="btn ghost" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
-                  </div>
                   <p class="train-row-error" id="train-play-error" role="alert" hidden></p>
                 </section>
               </section>

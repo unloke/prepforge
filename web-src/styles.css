@@ -2850,7 +2850,22 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .rep-name b { overflow: hidden; text-overflow: ellipsis; }
 .rep-color-sub { color: var(--label); font-size: var(--fs-s); }
 .rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
-.build-empty { flex: 1; justify-content: center; }
+/* With nothing open, the start block is the first thing in the panel body: it
+   sits at the top of the room, where the eye starts, instead of floating in
+   the middle of 700px of empty column. The panel ends with it, like Train's:
+   a full-height white sheet under three buttons reads as content that failed
+   to load. */
+#view-build #build-sidebar.is-empty { height: auto; align-self: start; }
+#view-build .build-empty {
+  flex: none;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 20px var(--build-pad, 14px) 24px;
+  text-align: left;
+}
+#view-build .build-empty h3 { font-size: 17px; font-weight: 650; }
+#view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
 /* With no repertoire open the panel's bands give way to the empty state. The
    class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
    ancestor of the tree it made every crumb rebuild re-style the page. */
