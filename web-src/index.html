@@ -219,8 +219,14 @@
                       <b>Engine</b>
                       <span class="ep-depth" id="analysis-best-depth"></span>
                       <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Live</button>
+                      <!-- Line count stepper: replace the floating window cluster in the pane. One line by default, expanded shows three. -->
+                      <div class="engine-lines" role="group" aria-label="Lines shown">
+                        <button class="engine-step" id="analyze-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
+                        <span class="engine-lines-readout" id="analyze-lines-readout" title="Lines shown">1</span>
+                        <button class="engine-step" id="analyze-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
+                      </div>
                     </header>
-                    <div class="engine-slot" id="analysis-engine-slot"></div>
+                    <div class="engine-slot is-expanded" id="analysis-engine-slot"></div>
                     <div class="best-line" id="analysis-best-line" data-testid="analysis-best-line" hidden></div>
                   </section>
                   <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>

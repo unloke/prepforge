@@ -516,7 +516,6 @@
 #analysis-engine-slot:not(.is-expanded) .engine-window-pvs { max-height: 28px; }
 #analysis-engine-slot .engine-window-pvs { overflow: auto; scrollbar-width: thin; }
 .best-line {
-  display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 6px;
   min-height: 22px;
