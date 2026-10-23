@@ -11,7 +11,7 @@
   min-height: 48px;
   padding: 8px 12px 8px 14px;
 }
-.train-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.train-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
 .train-head-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; }
 .train-head-mode { font-weight: 650; white-space: nowrap; }
 .train-scope-chip {
@@ -78,7 +78,6 @@
 /* Every row's primary action: one fill, the app's control height. */
 .train-row-go { min-width: 92px; padding: 0 16px; font-weight: 600; }
 .train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }
 .train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
 .train-row-error[hidden] { display: none; }

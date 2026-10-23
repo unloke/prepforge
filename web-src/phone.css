@@ -1119,7 +1119,6 @@
     transition: none;
   }
   #view-train .train-head { order: 0; padding: 8px var(--phone-gutter) 4px; }
-  #view-train .train-title { font-size: 22px; }
   #view-train[data-train-screen="session"] .train-head { order: 2; padding-top: 6px; }
   #view-train .train-head-prog { order: 2; margin: 0 var(--phone-gutter); }
   #view-train .train-coach {
