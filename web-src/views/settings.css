@@ -185,11 +185,15 @@
   text-align: right;
 }
 
+/* Board prefs: one toggle per line, so each switch sits on its own label's
+   line. Two columns put a toggle at the end of the first column beside the
+   second column's label, and the pair it belonged to was a guess. Rows are
+   denser than a control row: a switch needs less height than a button. */
 .sw-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 24px;
+  gap: 2px;
 }
+.sw-grid .pf-row { padding: 4px 0; }
 
 /* Connections: one row per identity — name + Primary tag, ⋯ overflow on the right. */
 .set .sub-head { padding: 8px 0 4px; }
@@ -300,7 +304,6 @@
   .settings-nav-link { flex: none; white-space: nowrap; }
 }
 @media (max-width: 760px) {
-  .sw-grid { grid-template-columns: 1fr; }
   .slider input { width: 130px; }
   .set .btn.sm,
   .set .seg-btn,
