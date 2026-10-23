@@ -270,7 +270,11 @@
 }
 .scout-lines[data-ui] .line-row:last-child { border-bottom: 0; }
 .line-row:hover { background: var(--surface-3); }
-.scout-lines[data-ui] .line-row.is-expanded { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--accent); }
+/* The open line is marked by a 2px accent edge on the row's left, drawn as a
+   pseudo-element: an inset shadow on a row that acts as a button is flagged. */
+.line-row { position: relative; }
+.scout-lines[data-ui] .line-row.is-expanded { background: var(--surface-3); }
+.scout-lines[data-ui] .line-row.is-expanded::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: var(--accent); }
 .line-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .lr-main { display: flex; flex-direction: column; min-width: 0; }
 .scout-line-eco {

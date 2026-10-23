@@ -34,3 +34,8 @@ it("the activity trend spans the chart row; the two cards beside it share a row"
   expect(rule(".scout-intel-charts")).toMatch(/repeat\(2,/);
   expect(rule(".scout-intel-trends")).toMatch(/grid-column:\s*1 \/ -1/);
 });
+
+it("the open line is an edge pseudo-element, not a shadow on a button-like row", () => {
+  expect(rule(".scout-lines[data-ui] .line-row.is-expanded")).not.toMatch(/box-shadow/);
+  expect(rule(".scout-lines[data-ui] .line-row.is-expanded::before")).toMatch(/width:\s*2px/);
+});
