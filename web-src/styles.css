@@ -691,6 +691,7 @@ h2 {
 }
 .rail .tab.is-active {
   background: transparent;
+  color: var(--text);
 }
 .rail .tab.is-active::after {
   content: "";
@@ -698,7 +699,7 @@ h2 {
   top: 0;
   right: -8px;
   bottom: 0;
-  width: 1px;
+  width: 2px;
   background: var(--accent);
 }
 
