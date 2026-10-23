@@ -75,6 +75,16 @@
   box-shadow: none; /* taste-skill-ignore: clears the .card shadow the identity inherits; it is not a shadow */
 }
 .scout-main > .scout-profile .prof-row { flex: 1 1 auto; }
+/* The engine offer is one quiet line, not a card: the name, the gain in muted
+   type, the action at the right. It sits on the panel ground like the identity. */
+.scout-main > [data-unlock-place="scout"] .unlock {
+  min-height: 0;
+  padding: 4px 0;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+}
+.scout-main > [data-unlock-place="scout"] .unlock-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .scout-profile[hidden] { display: none; }
 .prof-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }

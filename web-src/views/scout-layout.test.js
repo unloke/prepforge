@@ -76,3 +76,10 @@ it("on desktop the ranked lines come first, the caption is one line above them",
   expect(css).toMatch(/\.color-sec \.intel > \.scout-intel-headline \{ order: 1;[^}]*font-size: 14px/);
   expect(css).toMatch(/\.color-sec \.intel > \*,\s*\.color-sec \.plan > \* \{ order: 4; \}/);
 });
+
+// One Maia offer, as a quiet line with no card frame.
+it("the engine offer is a quiet line on the panel ground, not a card", () => {
+  const offer = rule('.scout-main > [data-unlock-place="scout"] .unlock');
+  expect(offer).toMatch(/background:\s*none/);
+  expect(offer).toMatch(/border-radius:\s*0/);
+});
