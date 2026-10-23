@@ -93,6 +93,13 @@ describe("Home rows", () => {
     expect(doc.getElementById("train-due-meta").textContent).toBe("2 cards left");
   });
 
+  it("Home says where finished runs will be listed before there is one", async () => {
+    const { deps } = setup({ signedIn: true });
+    await createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("train-recent-home").hidden).toBe(false);
+    expect(String(doc.getElementById("train-recent-home").innerHTML)).toContain("No finished runs yet");
+  });
+
   it("a repertoire opponent with nothing picked cannot start a game", async () => {
     const { deps } = setup({ playBook: "repertoire", playRepertoireIds: [] });
     await createTrainHome(deps).paintTrainHome();

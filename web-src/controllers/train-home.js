@@ -305,10 +305,21 @@ function setChip(id, text, disabled = false) {
   chip.disabled = disabled;
 }
 
+// The last few finished runs, as one list. Home and Result both show it.
+// An empty list shows its one sentence only where one is given (Home); the
+// Result card hides the list until there is an earlier run to show.
+function paintRecent(el, runs, emptyText = "") {
+  el.hidden = !runs.length && !emptyText;
+  el.innerHTML = el.hidden ? "" : html`<span class="faint">Recent</span>${runs.length
+    ? runs.map((run) => html`<div class="train-recent-row"><span>${MODE_NAMES[run.mode]}${run.blitz ? " · Blitz" : ""}</span><span class="train-recent-name">${run.repertoires.join(" · ")}</span><b>${run.summary}</b></div>`)
+    : html`<span class="faint">${emptyText}</span>`}`;
+}
+
 export async function paintTrainHome() {
   const state = d.appState;
   const signedIn = !!state.signedIn;
   const reps = allTrainable();
+  paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(d.currentOwnerId(), 3) : [], "No finished runs yet. Each one you finish is listed here.");
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
@@ -464,13 +475,8 @@ export function showTrainResult(result) {
   delta.innerHTML = result.delta || "";
   document.getElementById("train-summary-foot").textContent = result.foot || "";
   document.getElementById("train-summary-new").textContent = result.mode === "play" ? "Play again" : "Again";
-  const recent = document.getElementById("train-recent");
   // The run just finished is the card above; Recent is what came before it.
-  const runs = recentRuns(d.currentOwnerId(), 4).filter((run) => run.id !== result.runId).slice(0, 3);
-  recent.hidden = !runs.length;
-  recent.innerHTML = runs.length
-    ? html`<span class="faint">Recent</span>${runs.map((run) => html`<div class="train-recent-row"><span>${MODE_NAMES[run.mode]}${run.blitz ? " · Blitz" : ""}</span><span class="train-recent-name">${run.repertoires.join(" · ")}</span><b>${run.summary}</b></div>`)}`
-    : "";
+  paintRecent(document.getElementById("train-recent"), recentRuns(d.currentOwnerId(), 4).filter((run) => run.id !== result.runId).slice(0, 3));
   syncTrainScreen();
 }
 
