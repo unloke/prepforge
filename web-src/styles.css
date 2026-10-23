@@ -447,8 +447,10 @@ button,
   /* Press feedback on the row-body controls that are not .btn. */
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+/* The move row is wider than a thumb's press: it travels instead of shrinking
+   (see .btn:active). */
 .mtree-move:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
@@ -463,41 +465,9 @@ button,
    press would ring the whole workspace. */
 #workspace-main:focus { outline: none; }
 
-/* Inputs/selects/textareas already carry a border, so use a softer ring
-   without the offset to avoid a doubled outline. */
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
-}
-
-/* A <select> is a control like a button: one radius, one height, the app's own
-   chevron instead of the platform's. Before this rule each context drew its own
-   (30px in a toolbar, 26px in the inspector, 32px in a dialog, the browser
-   arrow everywhere), so the same control read as three different things and the
-   system arrow sat on the app's flat surfaces like a browser widget. */
-select {
-  height: var(--control-h);
-  min-height: var(--control-h);
-  padding: 0 26px 0 10px;
-  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
-  border-radius: var(--radius);
-  background-color: var(--panel);
-  background-image: var(--select-chevron);
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 12px;
-  color: var(--text);
-  font-size: var(--fs-s);
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
-}
-
-select:hover:not(:disabled) { border-color: var(--muted); }
-select:disabled { color: var(--label); cursor: not-allowed; }
+/* Field geometry, states and the select chevron live in one place further
+   down ("Inputs, selects, textareas: one field style"), so a view cannot drift
+   one control away from the rest. */
 
 h1,
 h2,
@@ -854,20 +824,37 @@ h2 {
   flex-wrap: wrap;
 }
 
-.src-chip {
+/* ---- One chip ------------------------------------------------------------
+   A chip is a control you can act on: a source, a filter. One height, one
+   radius, one weight, sentence case. Colours are the chip's own state; the
+   shape is not. */
+.src-chip,
+.sum-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   height: 24px;
-  padding: 0 4px 0 9px;
-  border-radius: 12px;
-  max-width: 100%;
-  min-width: 0;
-  background: var(--accent-soft);
-  color: var(--accent-text);
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+  background: var(--surface-3);
+  color: var(--muted);
+  font: inherit;
   font-size: var(--fs-s);
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
+}
+
+/* The source chip carries the source's state in its tint: a selected account
+   is the accent tint, the sign-in tray is a dashed outline. */
+.src-chip {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 4px 0 9px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 /* Guest Games tray: an action, not a selected source. */
@@ -875,7 +862,6 @@ h2 {
   padding: 0 10px;
   border: 1px dashed var(--line-strong);
   background: transparent;
-  font-family: inherit;
   cursor: pointer;
 }
 .src-chip.src-chip-signin:hover { background: var(--accent-soft); }
@@ -936,7 +922,7 @@ h2 {
   gap: 8px;
   padding: 12px;
   background: var(--float);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a floating popover is a real overlay */
 }
 
@@ -997,20 +983,6 @@ h2 {
   color: var(--warn-text);
 }
 
-/* One tag style for account kinds (Primary, External) everywhere: Settings,
-   the source picker and the Games/Scout chips. Lives here, not in the lazy
-   settings.css, so it is styled before Settings has ever been opened.
-   A quiet filled chip in sentence case: the kind is a word, not a label. */
-.conn-primary,
-.src-kind {
-  padding: 1px 7px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 600;
-}
-
 .src-row.is-external .src-chip-x {
   margin-left: auto;
 }
@@ -1040,13 +1012,6 @@ h2 {
 .src-add-input {
   flex: 1;
   min-width: 0;
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a form field keeps its outline */
-  border-radius: var(--radius);
-  background: var(--panel);
-  font-size: 12px;
-  color: var(--text);
 }
 
 .src-foot {
@@ -1155,6 +1120,15 @@ h2 {
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
+/* A thumb needs 44px; the switch's drawn box stays 34x20 at every width. The
+   tap area grows around it, so one switch serves a pointer and a thumb and no
+   view redraws the track to reach the floor. */
+.pf-switch::after {
+  content: "";
+  position: absolute;
+  inset: -12px -5px;
+}
+
 .pf-switch:hover {
   border-color: var(--line-strong);
   background: var(--surface-3);
@@ -1230,7 +1204,9 @@ h2 {
   font-size: var(--fs-s);
   font-weight: 550;
   padding: 0 10px;
-  min-height: 28px;
+  /* A tab is a control: it takes the row's control height, so a strip of tabs
+     beside a select and a button is one line, not three heights. */
+  min-height: var(--control-h);
   cursor: pointer;
   white-space: nowrap;
   transition: color var(--dur-fast) var(--ease-out);
@@ -1351,13 +1327,11 @@ h2 {
   }
 }
 
-/* Modal select field: the shared <select> box, sized for a dialog's rows. */
+/* Modal select field: a select that fills its dialog row. Geometry is the
+   shared field rule's; only the width is the dialog's. */
 .modal-field select {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
-  height: 32px;
-  font-family: inherit;
 }
 
 /* Workspace + views */
@@ -1483,8 +1457,11 @@ h2 {
   background: var(--surface-3);
 }
 
+/* Press moves the control down a pixel instead of shrinking it: a scale on a
+   wide button releases outside the shrunk edge and the click is lost, so the
+   one press feedback in the app is a travel every width can take. */
 .btn:active:not(:disabled, .is-coming-soon) {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 
 .btn.primary {
@@ -1563,27 +1540,30 @@ h2 {
   width: 100%;
 }
 
-/* Disabled and engine-unavailable actions read inert: the muted fill lands
-   after the variants, so a disabled .btn.primary cannot keep its accent fill. */
+/* Disabled and engine-unavailable actions read inert without going under the
+   contrast floor: the muted fill and ink land after the variants, so a disabled
+   .btn.primary cannot keep its accent fill, and the label stays legible (a
+   translucent label fails 4.5:1 on the surface it sits on). */
 .btn:disabled,
 .btn.is-coming-soon {
-  opacity: 0.55;
   cursor: not-allowed;
   background: var(--surface-3);
   border-color: var(--line-strong);
-  color: var(--label);
+  color: var(--muted);
 }
 
 /* Reachable but inert: the control still handles the click (that is the point
    it opens the connect flow), it just reads as unavailable. */
 .btn.is-unavailable {
-  opacity: 0.55;
   cursor: not-allowed;
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: var(--muted);
 }
 .btn.is-unavailable:hover {
-  border-color: var(--line);
-  background: none;
-  color: inherit;
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  color: var(--muted);
 }
 .btn.is-unavailable:active {
   transform: none;
@@ -1613,6 +1593,70 @@ h2 {
   border-top-color: transparent;
 }
 
+/* ---- Inputs, selects, textareas: one field style ----------------------
+   One height (var(--control-h)), one radius (var(--radius)), one edge
+   (--line-strong), one fill (--panel) for every text, search, number, email,
+   password and textarea field in the app. A view may set width, placement or a
+   placeholder; the geometry and the states stay here. */
+select,
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  font-size: var(--fs-s);
+  height: var(--control-h);
+  min-height: var(--control-h);
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
+  background-color: var(--panel);
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+select {
+  padding-right: 26px;
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+
+textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* A number is a short value: right-aligned tabular digits, so a column of them
+   reads down the units. */
+input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+select:hover:not(:disabled) { border-color: var(--muted); }
+select:disabled,
+input:disabled,
+textarea:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* The ring follows the field's own radius and never reshapes it. */
+select:focus-visible,
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]):focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
+}
+
 /* ---- One pill ------------------------------------------------------------
    Status and kind labels that sit inside a row or beside a value: one height,
    one radius, one weight, sentence case. Each class only sets its colours (a
@@ -1621,7 +1665,9 @@ h2 {
 .team-role-badge,
 .lib-chip,
 .kchip,
-.kind-badge {
+.kind-badge,
+.conn-primary,
+.src-kind {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1635,7 +1681,17 @@ h2 {
   white-space: nowrap;
 }
 /* A pill with no label (a share whose role the server did not send) draws nothing. */
-:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge):empty { display: none; }
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge, .conn-primary, .src-kind):empty { display: none; }
+
+/* The neutral pill: a status with no severity of its own is the quiet surface.
+   Its tone variants (ok, warn, err) set the pale tint of their own hue. */
+.status-pill {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.status-pill.ok { background: var(--good-soft); color: var(--good-text); }
+.status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }
+.status-pill.err { background: var(--danger-soft); color: var(--danger); }
 
 .link {
   border: 0;
@@ -1755,10 +1811,12 @@ h2 {
   .lib-list .card-head .seg { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
   .lib-list .card-head .search-field { grid-column: 2; grid-row: 2; width: 220px; margin-left: 0; }
 }
+/* A count is a number beside a word, not a chip: one line of the row's own
+   size, no pill around it. */
 .count {
   min-width: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: var(--radius-chip);
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
@@ -1894,6 +1952,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .steps { grid-column: 1; grid-row: 2; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
+/* The search field is the shared field with a leading icon: the box carries the
+   edge, radius, fill and focus ring, and the input inside it is the bare text
+   line. Height and radius come from the field rule. */
 .search-field {
   display: flex;
   align-items: center;
@@ -1907,16 +1968,20 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   color: var(--label);
 }
-.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */ }
+.search-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
+}
 .search-field input {
   width: 100%;
   min-width: 0;
-  height: 26px;
+  height: 100%;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
+  box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */
 }
-.search-field input:focus-visible { box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
 
 /* One column-header treatment for every table in the app: the Library grid,
    the Games ledger and the Scout plan all label their columns the same way.
@@ -2124,8 +2189,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row .kchip.k-weak::before { background: var(--k-weak); }
 .lib-row .kchip.k-due::before { background: var(--k-due); }
 .lib-row .kchip.k-new::before { background: var(--k-new); }
-button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
-button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
+/* A kind chip is a button when it opens something: one press feedback and one
+   hover, in the family's own ink. */
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
+button.kchip:hover { background: var(--line); }
+button.kchip:active { transform: translateY(1px); }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
@@ -3670,7 +3738,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .kchip.k-mastered { color: var(--good-text); background: color-mix(in srgb, var(--k-mastered) 13%, transparent); }
 .kchip.k-polish, .kchip.phase { color: var(--muted); background: var(--surface-3); }
 
-.upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-soft); }
+.upnext { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: var(--radius); background: var(--panel-soft); }
 .un-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3688,8 +3756,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* A card with no line of its own says so in words, not in the move face. */
 .un-line.is-plain { font-family: inherit; }
 /* The queue's kind chips are read at a glance mid-session, so they sit at the
-   panel's body size rather than the app's smallest step. */
-#view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
+   panel's body size rather than the app's smallest step. Only the type moves;
+   the pill's height, padding and radius are the shared ones. */
+#view-train .kchip { font-size: var(--fs); }
 
 .btn.block { width: 100%; }
 .faint { color: var(--label); }
@@ -3743,26 +3812,34 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .src-label { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 .inline-field { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* The chosen filter is the sheet's selection mark: the ink label and an accent
+   line under the word, exactly as wide as the word. A filled plate would make
+   the narrowest control on the page the loudest. */
 .sum-chip {
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a chip on a white card is told apart by its edge */
-  border-radius: 13px;
-  background: var(--panel);
-  font: inherit;
-  font-size: var(--fs-s);
-  font-weight: 600;
+  position: relative;
   cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.sum-chip::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 .sum-chip:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 .sum-chip.t-good { color: var(--good-text); }
 .sum-chip.t-bad { color: var(--danger); }
 .sum-chip.t-warn { color: var(--warn-text); }
 .sum-chip.t-none { color: var(--none); }
-.sum-chip.is-on { border-color: currentColor; background: color-mix(in srgb, currentColor 12%, var(--panel)); }
+.sum-chip.is-on { color: var(--text); background: var(--surface-3); }
+.sum-chip.is-on::after { opacity: 1; }
 .sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .queued { color: var(--label); font-size: var(--fs-xs); }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -3892,8 +3969,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .toolbar { gap: 8px; }
   .toolbar .spacer { display: none; }
   .sum-chips { width: 100%; }
-  .toolbar .btn,
-  .inline-field select { min-height: 44px; }
   .toolbar .counter { margin-left: 0; }
   /* Phone: the plan first, then the open line's detail, then the chart cards. */
   .scout-grid { display: flex; flex-direction: column; }
@@ -4544,7 +4619,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-height: calc(100vh - 16px);
   overflow-y: auto;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-card);
   background: var(--float);
   color: var(--text);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
@@ -4674,7 +4749,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overscroll-behavior: contain;
   background: var(--float);
   color: var(--text);
-  border-radius: 8px;
+  border-radius: var(--radius-card);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
   display: grid;
   align-content: start;
@@ -4895,17 +4970,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   line-height: 1.4;
 }
 
-.modal-field input,
-.modal-field textarea {
-  height: 32px;
+/* A dialog field is the shared field filling its row: the geometry, edge and
+   focus ring come from the field rule, so only the width is the dialog's. */
+.modal-field :is(input, select, textarea) {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
-  padding: 0 10px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a form field keeps its outline */
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
 }
 
 /* A number is a short value: label left, a narrow right-aligned box right,
@@ -4914,26 +4983,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   grid-template-columns: minmax(0, 1fr) 84px;
   align-items: center;
   column-gap: 12px;
-}
-.modal-field.is-num input {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.modal-field textarea {
-  height: auto;
-  min-height: 72px;
-  padding: 8px 10px;
-  resize: vertical;
-  font-family: inherit;
-  line-height: 1.4;
-}
-
-.modal-field input:focus,
-.modal-field select:focus,
-.modal-field textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
 }
 
 .modal-footer {
@@ -5122,7 +5171,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   column-gap: 10px;
   padding: 10px 6px 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--float);
   box-shadow: var(--shadow-2); /* taste-skill-ignore: a floating notice is a real overlay */
   color: var(--text);
@@ -5239,7 +5288,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #coverage-job-dock { margin: 6px 0 8px; }
 .job-dock > .notice {
   padding: 8px 6px 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel-soft);
   box-shadow: none; /* taste-skill-ignore: a docked notice is not floating */
   transform: none;
@@ -5277,7 +5326,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-height: 80vh;
   background: var(--float);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   box-shadow: 0 18px 44px rgba(28, 28, 28, 0.18), 0 4px 12px rgba(28, 28, 28, 0.08);
   display: flex;
   flex-direction: column;

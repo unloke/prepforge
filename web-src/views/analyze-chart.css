@@ -1140,18 +1140,13 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .drawer[open] summary::before {
   content: "▾";
 }
+/* A PGN box is code-like text, so it keeps the mono face; its box, edge and
+   focus ring are the shared field's. */
 .drawer textarea {
   display: block;
-  box-sizing: border-box;
   width: 100%;
   min-height: 96px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel-soft);
-  color: var(--text);
   font: 13px/1.45 var(--mono);
-  resize: vertical;
 }
 .analysis-history {
   display: flex;
@@ -1488,50 +1483,10 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     overflow: auto;
     overscroll-behavior: contain;
   }
-  /* On phones the coach head floats beside the text. The switch is a 22px
-     control: its own padding gives it a 44px target (the border-box stays at a
-     knob-tall 22px, so the header keeps its height). */
-  #analysis-explain .cc-head .pf-switch {
-    position: relative;
-    box-sizing: border-box;
-    width: 44px;
-    height: 44px;
-    border: 0;
-    background: none;
-  }
-  #analysis-explain .cc-head .pf-switch.is-on { background: none; }
-  #analysis-explain .cc-head .pf-switch .pf-knob { display: none; }
-  #analysis-explain .cc-head .pf-switch::before {
-    content: "";
-    position: absolute;
-    top: 11px;
-    left: 3px;
-    width: 34px;
-    height: 18px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--panel-soft);
-  }
-  /* The switch is a form control: it keeps its own edge (data-ui). */
-  #analysis-explain .cc-head .pf-switch[data-ui]::before {
-    border: 1px solid var(--line-strong);
-  }
-  #analysis-explain .cc-head .pf-switch::after {
-    content: "";
-    position: absolute;
-    top: 14px;
-    left: 6px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--text);
-    transition: transform var(--dur-fast) var(--ease-out);
-  }
-  #analysis-explain .cc-head .pf-switch.is-on::before { border-color: var(--accent); background: var(--accent); }
-  #analysis-explain .cc-head .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
-  @media (prefers-reduced-motion: reduce) {
-    #analysis-explain .cc-head .pf-switch::after { transition: none; }
-  }
+  /* On phones the coach head floats beside the text. The switch keeps its
+     shared 34x20 track and its shared 44px tap area, so the head's height is
+     the switch's own. */
+  #analysis-explain .cc-head .pf-switch { flex: none; }
   #analysis-explain .coach-maia { height: 44px; overflow-x: auto; scrollbar-width: none; }
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
@@ -1646,7 +1601,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
      PGN), so a drawer's own summary would name the same action twice. */
   #analyze-open > .drawer > summary { display: none; }
   #analyze-open > .drawer:not([open]) { display: none; }
-  #pgn-input { min-height: 120px; border-radius: 10px; }
+  #pgn-input { min-height: 120px; }
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; font-size: 15px; }
   #analyze-open .history-item .hi-open { padding: 8px 2px; font-size: 15px; }

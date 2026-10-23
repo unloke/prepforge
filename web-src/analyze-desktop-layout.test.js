@@ -46,3 +46,16 @@ describe("Analyze's desktop panel", () => {
     expect(view.indexOf('id="analyze-open"')).toBeGreaterThan(view.indexOf('id="analyze-panes"'));
   });
 });
+
+describe("Analyze desktop geometry", () => {
+  const styles = read("./styles.css");
+
+  it("does not stretch the board column past the board on desktop", () => {
+    // The board is a square capped by its width share, so a stretched column
+    // left a tall empty area under it (175px at 1180x900) while the panel
+    // stayed full height.
+    const desktop = styles.match(/@media \(min-width: 960px\) \{[\s\S]*?\n\}/);
+    expect(desktop).toBeTruthy();
+    expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
+  });
+});

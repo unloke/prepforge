@@ -549,12 +549,12 @@ describe("workspace chrome layout", () => {
     // section you picked and the card you landed on were in different columns.
     expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
     expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*880px[^}]*margin:\s*0 auto/);
-    // The desktop page names itself through the shell's one page-head rule;
-    // Settings adds only the inline section name beside it.
+    // The desktop page names itself through the shell's one page-head rule.
     expect(css).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*\.workspace\s+\.page-head\s*\{[^}]*display:\s*flex/);
     expect(settingsCss).not.toMatch(/#view-settings\s+\.page-head\s+h1/);
     expect(settingsCss).toContain(".set-row");
-    expect(settingsCss).toContain(".status-pill.ok");
+    // The status pill is one shared family, styled before Settings loads.
+    expect(css).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.
     for (const legacy of ["settings-row", "settings-label", "settings-value", "pf-feedback", "piece-style-preview", "settings-layout"]) {
       expect(html).not.toContain(legacy);
@@ -917,12 +917,3 @@ describe("workspace chrome layout", () => {
   });
 });
 
-// ---- Analyze desktop geometry --------------------------------------------------
-
-it("does not stretch the board column past the board on desktop", () => {
-  // The board is a square capped by its width share, so a stretched column left a
-  // tall empty area under it (175px at 1180x900) while the panel stayed full height.
-  const desktop = css.match(/@media \(min-width: 960px\) \{[\s\S]*?\n\}/);
-  expect(desktop).toBeTruthy();
-  expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
-});

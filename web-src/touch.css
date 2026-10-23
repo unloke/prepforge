@@ -80,12 +80,10 @@
   }
   .board-bar { min-height: 40px; }
   .board-bar .btn.icon { width: 40px; min-width: 40px; height: 40px; }
-  .seg-btn { min-height: 40px; }
   .mtree-move { position: relative; }
   .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
   .dock-tabs button,
   .context-menu button { min-height: 40px; }
-  .search-field input { min-height: 36px; }
 }
 
 /* ---- A tablet held upright (761-1100 wide, narrower than 5:6) ---------------
@@ -98,7 +96,6 @@
   .rail .tab,
   .rail .rail-btn { height: 44px; }
   .rail .account-btn { height: 44px; }
-  .seg-btn { min-height: 40px; }
   .mtree-move { position: relative; }
   .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
 

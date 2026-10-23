@@ -20,9 +20,14 @@ function phoneRule(css, selector) {
 }
 
 describe("Settings phone touch targets", () => {
-  it("grows the switch hit box to 40px and keeps the track the shared switch height", () => {
-    expect(phoneRule(settingsCss, ".set .pf-switch")).toMatch(/height:\s*40px/);
-    expect(ruleBody(settingsCss, ".set .pf-switch::after")).toMatch(/inset:\s*calc\(\(40px - var\(--switch-h\)\) \/ 2\) 0/);
+  it("keeps the shared switch track and lets the shared tap area reach 44px", () => {
+    // The switch is drawn 34x20 everywhere; one shared ::after gives it a thumb
+    // target, so Settings no longer redraws the track on a phone.
+    expect(ruleBody(sharedCss, ".pf-switch")).toMatch(/height:\s*var\(--switch-h\)/);
+    const hit = ruleBody(sharedCss, ".pf-switch::after");
+    const inset = Number(/inset:\s*-(\d+)px/.exec(hit)?.[1]);
+    expect(Number(/--switch-h:\s*(\d+)px/.exec(sharedCss)?.[1]) + 2 * inset).toBeGreaterThanOrEqual(44);
+    expect(settingsCss).not.toMatch(/\.set \.pf-switch::after/);
   });
 
   it("gives the info buttons a 40px box", () => {
@@ -31,13 +36,11 @@ describe("Settings phone touch targets", () => {
     expect(body).toMatch(/min-height:\s*40px/);
   });
 
-  it("keeps row buttons and segmented choices at 40px on a phone", () => {
-    const buttons = phoneRule(phoneCss, "#view-settings .set :is(.btn, .btn.sm)");
-    expect(buttons).toMatch(/min-height: 40px/);
-    expect(buttons).toMatch(/height: 40px/);
-    const seg = phoneRule(phoneCss, "#view-settings .set .seg-btn");
-    expect(seg).toMatch(/min-height: 40px/);
-    expect(seg).toMatch(/height: 40px/);
+  it("keeps row buttons and segmented choices at 44px on a phone", () => {
+    // They come from the shared phone rule now; Settings sets only padding.
+    expect(phoneCss).toMatch(/\.btn,\n  \.btn\.sm,\n  \.seg-btn,\n  \.sum-chip,[\s\S]*?\{ min-height: 44px; height: 44px; \}/);
+    const row = phoneCss.match(/#view-settings \.set :is\(\.btn, \.btn\.sm\) \{[^}]*\}/)[0];
+    expect(row).not.toMatch(/height:/);
   });
 
   it("leaves the desktop switch dense", () => {
@@ -47,9 +50,10 @@ describe("Settings phone touch targets", () => {
 });
 
 describe("Settings phone switch knob", () => {
-  it("paints the knob above the ::after track that draws the switch", () => {
-    // The track is a later positioned box, so without a z-index it covered the
-    // knob and every phone switch read as a bare pill.
-    expect(phoneRule(settingsCss, ".set .pf-switch .pf-knob")).toMatch(/z-index:\s*1/);
+  it("keeps one switch: the shared track draws it, with no phone redraw", () => {
+    // A view-drawn ::after track covered the knob and every phone switch read
+    // as a bare pill; the shared rule is the only track now.
+    expect(settingsCss).not.toMatch(/\.set \.pf-switch \{/);
+    expect(ruleBody(sharedCss, ".pf-switch")).toMatch(/background:\s*var\(--panel-soft\)/);
   });
 });
