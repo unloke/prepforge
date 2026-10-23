@@ -390,8 +390,10 @@
   }
   #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
   /* The engine offer (Maia's 46 MB download) waits under the report on a phone:
-     the first screen is the opponent's lines, and the offer's card follows them. */
-  #view-replay .scout-main > [data-unlock-place="scout"] { order: 2; }
+     the first screen is the opponent's lines, and the offer's card follows them.
+     Only once there is a report: while games stream the page is short, and the
+     card would sit 500px below the stream with nothing between. */
+  #view-replay .scout-panel:has(#scout-results:not(:empty)) .scout-main > [data-unlock-place="scout"] { order: 2; }
 
   /* The page's one action docks above the tab bar, where the thumb rests:
      Check on Games, Start on Scout. Up in the source card it sat in the top
