@@ -52,7 +52,6 @@ const FIXTURE = {
     { ply: 4, san: "Nc6", score_cp: -120, bounded_score_cp: -120, classification: "mistake" },
     { ply: 5, san: "Bb5", score_cp: -400, bounded_score_cp: -400, classification: "blunder" },
   ],
-  critical_moments: [],
 };
 
 // Poll through page.evaluate: waitForFunction re-evaluates its predicate as a

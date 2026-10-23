@@ -216,7 +216,7 @@ await page.route("**/api/analyze/classify-save", async (route) => {
   }
   const saved = {
     game_id: prepared.gameId, engine: "stockfish (browser)", depth: 4, summary: {},
-    position_evals, moves, eval_graph, critical_moments: [],
+    position_evals, moves, eval_graph,
   };
   savedReviews.set(prepared.gameId, saved);
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(saved) });

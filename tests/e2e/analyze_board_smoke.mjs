@@ -59,7 +59,6 @@ async function fixture() {
     position_evals: {},
     moves,
     eval_graph: moves.map((m) => ({ ply: m.ply, san: m.san, score_cp: 20, bounded_score_cp: 20, classification: "best" })),
-    critical_moments: [],
   };
 }
 

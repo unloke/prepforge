@@ -278,7 +278,6 @@ async function runViewport(vp) {
         position_evals: {},
         moves,
         eval_graph,
-        critical_moments: [],
       }),
     });
   });
