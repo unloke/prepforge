@@ -65,6 +65,8 @@ describe("settings connections", () => {
 
     const html = elements["settings-lichess-accounts"].innerHTML;
     expect(String(html)).toContain("account_a");
+    // The site name is a chip like every other one in Settings.
+    expect(String(html)).toContain('<span class="status-pill">Lichess</span>');
     expect(String(html)).toContain('class="conn-primary">Primary</span>');
     expect(String(html)).not.toContain("account_a — Primary");
     expect(String(html)).toContain("account_b");
