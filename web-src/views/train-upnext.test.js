@@ -115,7 +115,7 @@ describe("train up-next preview", () => {
     // played from there (a card deep in a line) stays the plain tail.
     const text = html.replace(/<[^>]+>/g, "");
     expect(text).toContain("3.e3 Qb6");
-    expect(html).toMatch(/class="move-peek-ref" data-mt="[^"]+" data-p="1">Qb6/);
+    expect(html).toMatch(/class="move-inline" data-mt="[^"]+" data-p="1">Qb6/);
     expect(text).toContain("6...e6 7.f4");
   });
 

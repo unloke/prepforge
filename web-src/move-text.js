@@ -207,14 +207,15 @@ export function parseMoveText(text, ctx = {}) {
 
 /**
  * One token: `text` showing move `index` of `ucis` played from `baseFen`. A `.move-ref`
- * is a control of its own; `focusable: false` (a `.move-peek-ref` by default) sits
- * inside a control that already is one (a clickable row) and only peeks on hover.
+ * is a control of its own; `focusable: false` (a `.move-inline` by default) sits
+ * inside a control that already is one (a clickable row) and leaves the click to it.
+ * The accessible name is the numbered move, which the visible text may shorten.
  */
-export function moveTokenHtml(baseFen, ucis, index, text, { focusable = true, cls = focusable ? "move-ref" : "move-peek-ref", label = text, current = false } = {}) {
+export function moveTokenHtml(baseFen, ucis, index, text, { focusable = true, cls = focusable ? "move-ref" : "move-inline", label = text, current = false } = {}) {
   const data = encodeLine(baseFen, ucis);
   const c = `${cls}${current ? " is-current" : ""}`;
   return focusable
-    ? html`<span class="${c}" role="button" tabindex="0" data-mt="${data}" data-p="${index}" aria-label="${`Preview ${label}`}">${text}</span>`
+    ? html`<span class="${c}" role="button" tabindex="0" data-mt="${data}" data-p="${index}" aria-label="${label}">${text}</span>`
     : html`<span class="${c}" data-mt="${data}" data-p="${index}">${text}</span>`;
 }
 
@@ -231,7 +232,7 @@ export function moveTextHtml(text, ctx = {}, opts = {}) {
  * no chess work until a token is looked at. `current` marks one ply; `cls` names the
  * tokens and `${cls}-num` their move numbers.
  */
-export function moveLineHtml(baseFen, sans, ucis, { current = -1, focusable = true, cls = focusable ? "move-ref" : "move-peek-ref" } = {}) {
+export function moveLineHtml(baseFen, sans, ucis, { current = -1, focusable = true, cls = focusable ? "move-ref" : "move-inline" } = {}) {
   const n = sans?.length || 0;
   const known = (ucis || []).slice(0, n);
   const start = plyOfFen(baseFen);

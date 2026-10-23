@@ -3894,15 +3894,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-minisquare.last { background-image: linear-gradient(var(--last-move), var(--last-move)); }
 .scout-minisquare svg, .scout-minisquare .piece { width: 80%; height: 80%; }
 
-/* Move links (move-text.js / line-preview.js): a move inside text that peeks
-   at its position. The marker is the word's own underline, with no padding, box
-   or border, so a linked move is exactly as wide and as tall as the word it is
-   and a line never grows because a move in it is a link. A .move-ref is its own
-   control and says so at rest; a .move-peek-ref sits inside a control that
-   already is one (a Scout line row, a game row) and answers the pointer. Hover,
-   press and focus raise the underline's contrast; nothing moves. */
+/* Move links (move-text.js): a move inside text that acts on the board when it is
+   clicked. The marker is the word's own underline, with no padding, box or border,
+   so a linked move is exactly as wide and as tall as the word it is and a line
+   never grows because a move in it is a link. A .move-ref is its own control and
+   says so at rest; a .move-inline sits inside a control that already is one (a
+   Scout line row, a game row) and leaves the click to it. Hover, press and focus
+   raise the underline's contrast; nothing moves. */
 .move-ref,
-.move-peek-ref {
+.move-inline {
   cursor: pointer;
   text-decoration: underline;
   text-decoration-thickness: 0.07em;
@@ -3912,46 +3912,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .move-ref { text-decoration-color: color-mix(in srgb, currentColor 26%, transparent); }
 .move-ref:hover,
-.move-peek-ref:hover,
-.move-ref[aria-describedby],
-.move-peek-ref[aria-describedby] { text-decoration-color: currentColor; }
+.move-inline:hover { text-decoration-color: currentColor; }
 .move-ref:active,
-.move-peek-ref:active { text-decoration-color: currentColor; text-decoration-thickness: 0.16em; }
+.move-inline:active { text-decoration-color: currentColor; text-decoration-thickness: 0.16em; }
 .move-ref:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.move-ref-num, .move-peek-ref-num { color: var(--muted); }
-
-.move-peek {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 60;
-  width: 176px;
-  padding: 6px;
-  border-radius: var(--radius-card);
-  background: var(--panel);
-  box-shadow: var(--shadow-2); /* taste-skill-ignore: the peek floats over the page */
-  pointer-events: none;
-}
-.move-peek.is-pinned { pointer-events: auto; width: 212px; }
-.move-peek .scout-miniboard { height: auto; aspect-ratio: 1; }
-.move-peek-foot {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 24px;
-  padding: 6px 2px 0;
-}
-.move-peek-label { font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
-.move-peek-go { margin-left: auto; }
-.move-peek-note {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  padding: 2px 2px 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
+.move-ref-num, .move-inline-num { color: var(--muted); }
 
 /* Shared repertoire viewer */
 

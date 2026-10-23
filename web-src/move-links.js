@@ -1,17 +1,16 @@
 // The app's side of move links (line-preview.js): what a token does on Build and
-// Analyze, and which existing move controls get a hover peek.
+// Analyze.
 //
 // Click on a token: a line the tree already has (the repertoire on Build, the game
 // and its variations on Analyze) is selected there, as clicking it in the move list
 // would. Any other line is walked on the board like an engine line, so a note or a
-// coach sentence never adds a move. Every other view only peeks.
+// coach sentence never adds a move. Every other view leaves the token to its row.
 import { appState, boards } from "./core/state.js";
-import { activeBoardController, activeViewName } from "./core/api.js";
-import { boardLine, initMoveLinks, peekPosition, registerPeekSource } from "./line-preview.js";
-import { plyOfFen, walkLine } from "./move-text.js";
+import { activeViewName } from "./core/api.js";
+import { boardLine, initMoveLinks, tokenPosition } from "./line-preview.js";
+import { plyOfFen } from "./move-text.js";
 
 const samePosition = (a, b) => !!a && !!b && a.split(" ").slice(0, 4).join(" ") === b.split(" ").slice(0, 4).join(" ");
-const numbered = (moveNumber, side, san) => `${moveNumber}${side === "black" ? "..." : "."}${san}`;
 
 /**
  * The node a line ends on in a tree: followed move by move from a node at the line's
@@ -73,13 +72,11 @@ export function analysisTextContext() {
 
 export function installMoveLinks({ selectBuildNode, selectAnalysisNode }) {
   initMoveLinks({
-    orientation: () => activeBoardController()?.orientation || "white",
-    apply(token, probe) {
+    apply(token) {
       const view = activeViewName();
       const board = view === "build" ? boards.build : view === "analyze" ? boards.analysis : null;
       if (!board) return null;
-      if (probe) return () => {};
-      const pos = peekPosition(token);
+      const pos = tokenPosition(token);
       if (!pos?.line) return null;
       return () => {
         const build = view === "build";
@@ -90,18 +87,4 @@ export function installMoveLinks({ selectBuildNode, selectAnalysisNode }) {
     },
   });
   for (const id of ["analysis-pv-exit", "build-pv-exit"]) document.getElementById(id)?.addEventListener("click", () => boardLine.exit());
-  registerPeekSource("#view-build [data-node-id]:is(.mtree-move, .mtree-crumb, .fork-chip)", (el) => {
-    const node = appState.buildNodeById.get(el.dataset.nodeId);
-    if (!node) return null;
-    return { fen: node.fen, lastMove: node.uci || null, label: node.depth ? numbered(node.move_number, node.move_side, node.san) : "Start" };
-  });
-  registerPeekSource("#view-analyze .mtree-move[data-node-id]", (el) => {
-    const node = appState.analysisTree?.byId.get(el.dataset.nodeId);
-    if (!node || !node.uci) return null;
-    return { fen: node.fenAfter, lastMove: node.uci, label: numbered(node.moveNumber, node.side, node.san) };
-  });
-  registerPeekSource(".explorer-row[data-uci]", (el) => {
-    const line = walkLine(el.closest("[data-fen]")?.dataset.fen, [el.dataset.uci]);
-    return line ? { fen: line.plies[0].fen, lastMove: line.plies[0].uci, label: line.plies[0].label } : null;
-  });
 }

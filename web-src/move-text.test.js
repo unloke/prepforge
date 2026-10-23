@@ -172,7 +172,7 @@ describe("markup", () => {
   it("escapes the prose and marks tokens as buttons with their line", () => {
     const out = String(moveTextHtml("<b>1.e4</b>", { fen: START }));
     expect(out).toContain("&lt;b&gt;");
-    expect(out).toMatch(/<span class="move-ref" role="button" tabindex="0" data-mt="[^"]+\|e2e4" data-p="0" aria-label="Preview 1.e4">1.e4<\/span>/);
+    expect(out).toMatch(/<span class="move-ref" role="button" tabindex="0" data-mt="[^"]+\|e2e4" data-p="0" aria-label="1.e4">1.e4<\/span>/);
     expect(String(moveTextHtml("no moves here", { fen: START }))).toBe("no moves here");
   });
 

@@ -9,7 +9,6 @@ import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { renderReportBlock, reportGradeOf } from "./analyze-report.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
 import { moveLineHtml, moveTokenHtml, walkLine } from "../move-text.js";
-import { hidePeek, peekAt } from "../line-preview.js";
 
 // The board, the move list, the eval display and the engine's controls are
 // real interface: they keep their own lines, sizes and borders. The marker is
@@ -697,9 +696,6 @@ export function createAnalyzeView({
   // Keyboard/hover focus ply within the chart (-1 = none). Arrows move it, Enter
   // commits it — the same call a mouse click makes.
   let evalChartFocusIdx = -1;
-  // A mouse hovering the graph peeks at the hovered ply; a finger scrubbing it
-  // moves the board itself, so it needs no peek.
-  let peekOnHover = false;
   let tooltipMarkup = "";
 
   // `cursorX` is the pointer's client x; the readout opens on the far side of
@@ -739,7 +735,6 @@ export function createAnalyzeView({
     tooltip.style.maxWidth = `${spot.maxWidth}px`;
     tooltip.style.left = `${spot.left}px`;
     tooltip.style.top = `${spot.top}px`;
-    if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"), { avoid: chart });
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));
@@ -750,7 +745,6 @@ export function createAnalyzeView({
 
   function hideEvalChartTooltip() {
     const tooltip = document.getElementById("eval-chart-tooltip");
-    if (tooltip && !tooltip.hidden && tooltip.querySelector?.("[aria-describedby]")) hidePeek();
     if (tooltip) tooltip.hidden = true;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) hover.setAttribute("visibility", "hidden");
@@ -805,9 +799,7 @@ export function createAnalyzeView({
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
-      peekOnHover = true;
       showEvalChartTooltip(evalChartFocusIdx, event.clientX);
-      peekOnHover = false;
     });
     chart.addEventListener("pointerup", endScrub);
     chart.addEventListener("pointercancel", endScrub);

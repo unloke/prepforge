@@ -157,9 +157,9 @@ describe("the report", () => {
     const order = ["rp-sides", "rp-counts", "rp-moments", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    // The moment's own move peeks inside the row's jump; its better move is a link.
-    expect(html).toMatch(/<button type="button" class="km-go" data-ply="4"[^>]*>[\s\S]*?<span class="move-peek-ref" data-mt="[^"]+\|b8c6" data-p="0">2…Nc6<\/span>/);
-    expect(html).toMatch(/class="km-best">Best <span class="move-ref"[^>]*\|d7d6" data-p="0" aria-label="Preview 2…d6">d6<\/span>/);
+    // The moment's own move sits inside the row's jump; its better move is a link.
+    expect(html).toMatch(/<button type="button" class="km-go" data-ply="4"[^>]*>[\s\S]*?<span class="move-inline" data-mt="[^"]+\|b8c6" data-p="0">2…Nc6<\/span>/);
+    expect(html).toMatch(/class="km-best">Best <span class="move-ref"[^>]*\|d7d6" data-p="0" aria-label="2…d6">d6<\/span>/);
     // A count is a control only when there is something to go to.
     expect(html).toMatch(/<button type="button" class="rp-n" data-side="black" data-grade="blunder"/);
     expect(html).toMatch(/<span class="rp-n is-zero">0<\/span>/);
