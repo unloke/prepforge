@@ -98,7 +98,7 @@ describe("scout accent budget", () => {
     // line" chip and the engine note read as calls to action when they are data.
     expect(css).not.toMatch(/\.c-main \{[^}]*--accent/);
     expect(css).not.toMatch(/\.scout-color-rec \{[^}]*--accent-soft/);
-    expect(css).toMatch(/\.line-row\.is-expanded \{[^}]*inset 3px 0 0 var\(--accent\)/);
+    expect(css).toMatch(/\.line-row\.is-expanded::before \{[^}]*background: var\(--accent\)/);
   });
 });
 
