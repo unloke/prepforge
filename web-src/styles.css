@@ -1734,7 +1734,10 @@ h2 {
   font-size: var(--fs-s);
   font-weight: 600;
 }
-.today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
+/* Today's action is the shared `.btn.primary`: same height, padding and size as
+   the two buttons on the card head below it. It used to be a 38px box at 14px
+   beside their 30px at 13px, which read as a different control family. */
+.today > .btn { padding: 0 16px; }
 /* Today's payload failed: the strip's slot carries the message and the retry,
    at the same quiet weight as the rest of the strip. */
 .today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
@@ -3466,12 +3469,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 13.5px;
   font-weight: 700;
 }
-.btn.lg {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 18px;
-  font-size: var(--fs);
-}
+/* The Today strip's one action is a `.btn.primary` like every other primary
+   button in the app. It used to be `.btn.lg`, a 36px box that stood 6px taller
+   than the two buttons on the Library's card head beside it; one control height
+   is what makes a page of controls read as one system. */
 .note {
   padding: 7px 9px;
   border-radius: var(--radius);

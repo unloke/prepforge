@@ -153,7 +153,7 @@
     text-wrap: pretty;
   }
   #view-dashboard .today-queue b { font: inherit; }
-  #view-dashboard .today .btn.lg { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
+  #view-dashboard .today .btn { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   #view-dashboard .lib-list .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }

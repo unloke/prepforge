@@ -424,8 +424,8 @@ export function createDashboardView({
            title="Saved analyses, repertoires and training sessions">${countsHtml}</div>
     </div>
     ${firstRun
-      ? html`<button class="btn primary lg" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
-      : html`<button class="btn primary lg" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
+      ? html`<button class="btn primary" data-lib-action="new" data-testid="today-primary">New repertoire</button>`
+      : html`<button class="btn primary" id="dashboard-train-now" data-testid="dashboard-train-now">${learnNew ? "Learn new moves" : "Train"}</button>`}
   `);
     reveal(card);
     if (!written) return;
