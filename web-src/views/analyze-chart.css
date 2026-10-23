@@ -940,8 +940,9 @@
 }
 .rp-summary:hover { background: var(--surface-3); }
 .rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.rp-summary .rp-side { display: inline-flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
-.rp-summary .rp-side + .rp-side { margin-left: auto; }
+.rp-summary { gap: 12px; }
+.rp-summary .rp-disc { display: none; } /* the sides come in colour order; the names carry them */
+.rp-summary .rp-side { display: inline-flex; flex: 1 1 0; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
 .rp-errs { color: var(--muted); }
 .rp-chev {
   flex: none;
@@ -1076,6 +1077,12 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .km.g-inaccuracy .km-loss { color: var(--inaccuracy-text); }
 .km.g-mistake .km-loss { color: var(--warn-text); }
 .km-best { flex: none; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+/* A phone has no room for five columns: the eval and the best move wrap under the move. */
+@media (max-width: 760px) {
+  .km { flex-wrap: wrap; row-gap: 0; }
+  .km-go { grid-template-columns: 8px 60px 100px 84px 44px; gap: 6px; }
+  .km-best { flex-basis: 100%; padding: 0 8px 4px 22px; }
+}
 .km-kind { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 .km-kind .rp-glyph { margin-right: 4px; }
 .km.g-brilliant .km-kind { color: var(--brilliant-text); }
