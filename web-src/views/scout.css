@@ -72,7 +72,7 @@
   padding: 0;
   border: 0;
   background: none;
-  box-shadow: none;
+  box-shadow: none; /* taste-skill-ignore: clears the .card shadow the identity inherits; it is not a shadow */
 }
 .scout-main > .scout-profile .prof-row { flex: 1 1 auto; }
 .scout-profile[hidden] { display: none; }
