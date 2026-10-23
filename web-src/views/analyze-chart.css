@@ -95,11 +95,11 @@
   display: grid;
   grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) auto;
   gap: 0;
-  /* Head, three 24px lines of verdict (plus its 4px padding), the Humans row and
-     one 6px gap before each of them. The prep row contributes nothing while it is
-     hidden, so the card ends on the Humans row; when the note does appear it takes
-     its 22px + gap out of the scrolling verdict, and nothing outside moves. */
-  height: calc(var(--coach-head) + var(--coach-line) * 3 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
+  /* Head, two 24px lines of verdict (plus its 4px padding), the Humans row and
+     one 6px gap before each of them. A verdict longer than two lines scrolls
+     inside its row; the card never grows for it. The prep row contributes nothing
+     while it is hidden, so the card ends on the Humans row. */
+  height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
   padding: 0;
   background: none;
   border: 0;
@@ -394,12 +394,13 @@
   gap: 8px;
 }
 .an-tab {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   height: 30px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: none;
   color: var(--muted);
   font: inherit;
@@ -415,12 +416,24 @@
   flex: none;
   display: none;
   gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--surface-3);
+  /* The strip sits on a 1px rule, and the chosen tab is a 2px accent line on it,
+     as wide as its label (the shared .seg control): no track, no filled plate. */
+  border-bottom: 1px solid var(--line);
+}
+.an-tab::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 .an-tab:hover { color: var(--text); }
-.an-tab[aria-selected="true"] { background: var(--panel); color: var(--text); }
+.an-tab[aria-selected="true"] { color: var(--text); font-weight: 650; }
+.an-tab[aria-selected="true"]::after { opacity: 1; }
 .an-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .an-tab[hidden],
 .an-tab[data-pane="coach"] { display: none; }
@@ -496,11 +509,18 @@
 .engine-pane .an-pane-head > b { grid-area: 1 / 1; }
 .ep-depth,
 #analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
-#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
+/* The floating window's own line stepper is not drawn in the pane: the pane's
+   stepper beside the head is the one control. */
+#analysis-engine-slot .engine-lines { display: none; }
 .engine-pane .ev-engine { grid-area: 1 / 5; }
+/* The pane's stepper is a bare "− 1 +" at the head's left, not a pill that
+   stretches across the free column (it read as an empty input). */
+.engine-pane > .an-pane-head .engine-lines { justify-self: start; gap: 6px; padding: 0; border: 0; background: none; }
+.engine-pane .ep-none { color: var(--muted); }
 #analysis-engine-slot .engine-window-body,
 #analysis-engine-slot .engine-window-unlock,
-.engine-pane > .best-line { grid-column: 1 / -1; }
+.engine-pane > .best-line,
+.engine-pane > .coach-unlock { grid-column: 1 / -1; }
 .ep-depth { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 #view-analyze:has(#analysis-eval-card.is-engine) :is(#analysis-best-line, .ep-depth) { display: none; }
 #analysis-engine-slot .engine-head-label,
@@ -516,7 +536,6 @@
 #analysis-engine-slot:not(.is-expanded) .engine-window-pvs { max-height: 28px; }
 #analysis-engine-slot .engine-window-pvs { overflow: auto; scrollbar-width: thin; }
 .best-line {
-  display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 6px;
   min-height: 22px;
@@ -1515,18 +1534,18 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   /* The engine-offer row keeps its one line, but its two controls are a thumb's
      size here (they were 22px: a pointer's row). The row's height is the
      controls' height, so nothing overlaps the verdict above it. */
-  #analysis-explain .coach-unlock .unlock.is-inline { height: 44px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text b,
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline { height: 44px; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-text b,
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
   /* The gain is a sentence ("What players at your rating would play"), not a
      number: on a phone's 358px row it clipped at "woul…" beside the two
      controls. It wraps to two 13px lines inside the same 44px, and the name
      drops to its own line above it rather than sharing one. */
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
-  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
+  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
 
   /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
   .an-panes {
@@ -1552,6 +1571,9 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .an-tab { position: relative; height: auto; align-self: stretch; font-size: 14px; border-radius: 9px; }
   .an-tab::after { content: ""; position: absolute; inset: -3px 0; }
   .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
+  /* A phone shows the chart, board, engine and coach; the move list is not a
+     phone pane (the score sheet stays on desktop and the tablet). */
+  .an-tab[data-pane="moves"] { display: none; }
   .an-pane {
     flex: 1 1 auto;
     padding: 8px var(--phone-gutter) 10px;

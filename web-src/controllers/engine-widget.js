@@ -107,6 +107,11 @@ class EngineWidget {
     this.linesDownBtn = document.getElementById("engine-lines-down");
     this.depthReadout = document.getElementById("engine-window-depth-readout");
     this.closeBtn = document.getElementById("engine-window-close");
+    // Analyze pane line stepper (replaces floating window controls in the pane)
+    this.analyzeLinesReadout = document.getElementById("analyze-lines-readout");
+    this.analyzeLinesUpBtn = document.getElementById("analyze-lines-up");
+    this.analyzeLinesDownBtn = document.getElementById("analyze-lines-down");
+    this.engineSlot = document.getElementById("analysis-engine-slot");
     this._renderLinesReadout();
     this._bindControls();
   }
@@ -132,7 +137,10 @@ class EngineWidget {
   // profile moves the search onto the full net once its bytes land.
   _paintUnlock() {
     if (!this.unlockEl) return;
-    this.unlockEl.dataset.unlockPlace = activeViewName() === "build" ? "engine-build" : "engine-analyze";
+    const analyze = activeViewName() !== "build";
+    this.unlockEl.dataset.unlockPlace = analyze ? "engine-analyze" : "engine-build";
+    // Analyze's offer is one quiet row under the lines, not a card.
+    this.unlockEl.dataset.unlockStyle = analyze ? "inline" : "";
     paintUnlocks(this.el);
     this._paintPvs();
   }
@@ -230,6 +238,12 @@ class EngineWidget {
     if (clamped === this.multipv) return;
     this.multipv = clamped;
     this._renderLinesReadout();
+    // Update analyze pane readout if present (different slot than floating window)
+    if (this.analyzeLinesReadout) {
+      this.analyzeLinesReadout.textContent = `${this.multipv}`;
+      if (this.analyzeLinesDownBtn) this.analyzeLinesDownBtn.disabled = this.multipv <= this.minMultipv;
+      if (this.analyzeLinesUpBtn) this.analyzeLinesUpBtn.disabled = this.multipv >= this.maxMultipv;
+    }
     if (!this.open) return;
     this._clearAnalysisView();
     const engine = this.engine;
@@ -351,12 +365,25 @@ class EngineWidget {
     this.linesReadout.title = "Lines shown";
     if (this.linesDownBtn) this.linesDownBtn.disabled = this.multipv <= this.minMultipv;
     if (this.linesUpBtn) this.linesUpBtn.disabled = this.multipv >= this.maxMultipv;
+    // Also update analyze pane readout when floating window shows
+    if (this.analyzeLinesReadout) {
+      this.analyzeLinesReadout.textContent = `${this.multipv}`;
+      if (this.analyzeLinesDownBtn) this.analyzeLinesDownBtn.disabled = this.multipv <= this.minMultipv;
+      if (this.analyzeLinesUpBtn) this.analyzeLinesUpBtn.disabled = this.multipv >= this.maxMultipv;
+    }
   }
 
   _bindControls() {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
+    // Analyze pane line stepper (separate from floating window controls)
+    if (this.analyzeLinesUpBtn) {
+      this.analyzeLinesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
+    }
+    if (this.analyzeLinesDownBtn) {
+      this.analyzeLinesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
+    }
     // A line is for the move list: clicking one of its moves plays the line up to
     // that move into the analysis tree, as a variation from the position on the
     // board, and a branch that is already there is selected instead of added

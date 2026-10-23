@@ -2,31 +2,34 @@
 //
 // The coach, the evaluation (graph and win meter), the engine's lines and the
 // game report own the screen around the board; the score sheet and the game
-// sources are secondary. A wide screen shows every pillar at once, with the
-// evaluation under the board on the game's time axis. A short or narrow panel
-// keeps the coach and the evaluation fixed and puts the engine, the report and
-// the moves behind tabs; a phone adds the coach to the tabs, under a pinned
-// board. The layout is CSS (analyze-chart.css); this module owns the two things
-// CSS cannot do: which tab is open, and moving the evaluation card next to the
-// board or into the panel (one element, so its listeners and observers stay).
+// sources are secondary. A wide screen shows every pillar at once, in the
+// panel beside the board: the coach, the evaluation, the engine, the score sheet,
+// then the report fold. A short or narrow panel keeps the coach and the
+// evaluation fixed and puts the engine, the report and the moves behind tabs; a
+// phone adds the coach to the tabs, under a pinned board. A stacked tablet and a
+// phone put the evaluation under the board, on the game's time axis. The layout
+// is CSS (analyze-chart.css); this module owns the two things CSS cannot do:
+// which tab is open, and moving the evaluation card next to the board or into
+// the panel (one element, so its listeners and observers stay).
 
 export const PANES = ["coach", "engine", "report", "moves"];
 const KEY = "prepforge.analyze.pane";
 
 // The same bands analyze-chart.css lays out. The evaluation sits under the board
-// on a wide screen, a stacked tablet and a phone; beside the board on a short
-// or narrow side-by-side panel it joins the panel's fixed column instead.
+// on a stacked tablet and a phone; in the panel's column (beside the board) on
+// every wider screen.
 export const LAYOUT_QUERIES = {
   phone: "(max-width: 760px)",
   stacked:
     "(min-width: 761px) and (max-width: 860px) and (orientation: portrait), (min-width: 761px) and (max-width: 860px) and (min-height: 521px), (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6)",
-  wide: "(min-width: 1101px) and (min-height: 700px)",
 };
 
 /** The open pane for a stored value: the phone may open the coach; every other
  *  layout shows the coach above the tabs, so a stored "coach" reads as the report. */
 export function paneFor(stored, { phone = false } = {}) {
   const pane = PANES.includes(stored) ? stored : phone ? "coach" : "report";
+  // A phone has no move-list tab, so a stored "moves" opens the coach.
+  if (phone && pane === "moves") return "coach";
   return !phone && pane === "coach" ? "report" : pane;
 }
 
@@ -86,7 +89,7 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
   const coach = document.getElementById("analysis-explain");
   function placeEval() {
     if (!card || !boardArea || !coach) return;
-    const underBoard = media.phone.matches || media.stacked.matches || media.wide.matches;
+    const underBoard = media.phone.matches || media.stacked.matches;
     const home = underBoard ? boardArea : coach.parentElement;
     const after = underBoard ? boardArea.querySelector(".board-bar") : coach;
     if (!after) return;

@@ -139,7 +139,7 @@
                    on the board, named. With no game loaded it stays empty: the
                    board shows a start position, and a label saying so is a
                    standing explanation of the obvious. -->
-              <span class="board-label board-caption" id="analysis-board-caption" data-testid="analysis-game-name"></span>
+              <h1 class="board-label board-caption" id="analysis-board-caption" data-testid="analysis-game-name"></h1>
               <div class="bb-right">
                 <button class="btn icon bb-views" type="button" data-phone-nav title="Views" aria-label="Views" aria-expanded="false" aria-controls="app-tabbar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span class="bl">Menu</span></button>
                 <button class="btn icon bb-sheet" type="button" data-sheet-open="analyze-open" title="Games" aria-label="Games" aria-expanded="false" aria-controls="analyze-open"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5H10l2 2h6.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/></svg></button>
@@ -170,7 +170,6 @@
                   <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
                   <div class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></div>
                   <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
-                  <div class="coach-unlock" data-unlock-place="analyze-coach" data-unlock-style="inline" hidden></div>
                 </section>
                 <!-- One Evaluation card: current eval + win meter, the live engine's
                      depth, line count and lines, the game graph, and the whole-game
@@ -219,11 +218,19 @@
                       <b>Engine</b>
                       <span class="ep-depth" id="analysis-best-depth"></span>
                       <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Live</button>
+                      <!-- Line count stepper: replace the floating window cluster in the pane. One line by default, expanded shows three. -->
+                      <div class="engine-lines" role="group" aria-label="Lines shown">
+                        <button class="engine-step" id="analyze-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
+                        <span class="engine-lines-readout" id="analyze-lines-readout" title="Lines shown">1</span>
+                        <button class="engine-step" id="analyze-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
+                      </div>
                     </header>
-                    <div class="engine-slot" id="analysis-engine-slot"></div>
+                    <div class="engine-slot is-expanded" id="analysis-engine-slot"></div>
                     <div class="best-line" id="analysis-best-line" data-testid="analysis-best-line" hidden></div>
+                    <div class="coach-unlock" data-unlock-place="analyze-coach" data-unlock-style="inline" hidden></div>
                   </section>
                   <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>
+                    <header class="an-pane-head"><b>Moves</b></header>
                     <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
                   </div>
                   <details class="drawer an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
