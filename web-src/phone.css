@@ -160,16 +160,30 @@
   #view-dashboard .today .btn.lg { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
-  #view-dashboard .lib-list .card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 0; margin: 0 0 10px; padding: 0; border: 0; }
+  /* The phone has no card head: the page title names the page, so the head is
+     the controls only — the filters on one row, then search and import. */
+  #view-dashboard .lib-list .card-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "filters filters"
+      "search  import";
+    align-items: center;
+    gap: 10px;
+    min-height: 0;
+    margin: 0 0 10px;
+    padding: 0;
+    border: 0;
+  }
   #view-dashboard .lib-list .card-head h2,
   #view-dashboard .lib-cols { display: none; }
   /* Import PGN needs its own place on a phone: the page head's + is New
      repertoire, so with the header actions hidden a phone could not add a PGN
      at all. It takes the pill of the search field beside it, so the two read
      as one row of controls; New repertoire keeps the +. */
-  #view-dashboard .lib-list .seg { grid-column: 1 / -1; }
-  #view-dashboard .lib-list .search-field { grid-column: 1; }
-  #view-dashboard .lib-actions { grid-column: 2; display: flex; gap: 8px; }
+  #view-dashboard .lib-list .seg { grid-area: filters; }
+  #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
+  #view-dashboard .lib-actions { grid-area: import; display: flex; gap: 8px; }
   #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
   #view-dashboard .lib-actions #dashboard-import-pgn {
     flex: none;

@@ -39,8 +39,10 @@ it("Import PGN stays reachable on a phone", () => {
 it("the phone Library header is a grid: chips on top, search and import below", () => {
   const head = rule("#view-dashboard .lib-list .card-head {");
   expect(head).toMatch(/display:\s*grid/);
-  expect(rule("#view-dashboard .lib-list .seg {")).toMatch(/grid-column:\s*1 \/ -1/);
-  expect(rule("#view-dashboard .lib-list .search-field {")).toMatch(/grid-column:\s*1/);
+  expect(head).toMatch(/"filters filters"\s*"search\s+import"/);
+  expect(rule("#view-dashboard .lib-list .seg {")).toMatch(/grid-area:\s*filters/);
+  expect(rule("#view-dashboard .lib-list .search-field {")).toMatch(/grid-area:\s*search/);
+  expect(rule("#view-dashboard .lib-actions {")).toMatch(/grid-area:\s*import/);
 });
 
 it("the phone repertoire row keeps the mastery figure", () => {
