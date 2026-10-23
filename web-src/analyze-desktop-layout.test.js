@@ -40,8 +40,6 @@ describe("Analyze's desktop panel", () => {
     // Opened, it takes under half the screen and scrolls inside itself, so the
     // score sheet keeps its place.
     expect(css).toMatch(/\.an-panes > \.report-pane\[open\] \{[^}]*max-height: min\(45vh, 420px\);[^}]*overflow: auto;/);
-    // Smart review slot reserved above report content (future lane).
-    expect(panes).toContain('class="review-slot"');
     // Every part of the report lives inside the fold, not in a pane of its own.
     for (const id of ["analysis-summary", "analysis-handoff"]) expect(panes).toContain(`id="${id}"`);
   });

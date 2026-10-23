@@ -5,11 +5,10 @@ import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
 
 import {
-  biggestSwing,
   buildGameReport,
   formatEval,
   gradeCounts,
-  keyMoments,
+  reviewMoments,
   openingFromHeaders,
   phaseBreakdown,
   prepDeparture,
@@ -73,20 +72,24 @@ describe("grade counts", () => {
 });
 
 describe("key moments", () => {
-  it("names the moves that lost the most win chance, in game order, with the better move", () => {
-    const moments = keyMoments(GRAPH, MOVES);
-    expect(moments).toHaveLength(1);
-    const [m] = moments;
-    expect(m).toMatchObject({ ply: 4, side: "black", label: "2…Nc6", grade: "blunder", before: "+0.6", after: "+2.4" });
-    expect(m.loss).toBeGreaterThan(10);
-    expect(m.best).toEqual({ san: "d6", uci: "d7d6" });
-    expect(biggestSwing(GRAPH, MOVES).label).toBe("2…Nc6");
+  const SWINGS = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["brilliant", "best", "great", "blunder", "mistake"], { 4: "d7d6" });
+
+  it("lists the brilliant, great, mistake and blunder moves in game order, with the better move", () => {
+    const moments = reviewMoments(SWINGS, GRAPH);
+    expect(moments.map((m) => [m.ply, m.grade])).toEqual([[1, "brilliant"], [3, "great"], [4, "blunder"], [5, "mistake"]]);
+    expect(moments[2]).toMatchObject({ label: "2…Nc6", side: "black", before: "+0.6", after: "+2.4", departure: false });
+    expect(moments[2].loss).toBeGreaterThan(10);
+    expect(moments[2].best).toEqual({ san: "d6", uci: "d7d6" });
+    expect(moments[0].loss).toBeNull();
   });
 
-  it("stays quiet on a game that never left level", () => {
-    const flat = MOVES.map((m) => ({ ply: m.ply, san: m.san, score_cp: 0 }));
-    expect(keyMoments(flat, MOVES)).toEqual([]);
-    expect(biggestSwing(flat, MOVES)).toBeNull();
+  it("adds the move that left the player's own preparation", () => {
+    const moments = reviewMoments(MOVES, GRAPH, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
+    expect(moments.map((m) => [m.ply, m.grade, m.departure])).toEqual([[4, "blunder", false], [5, null, true]]);
+  });
+
+  it("lists nothing when no move carries a marked grade", () => {
+    expect(reviewMoments(movesOf(["e4", "e5"], ["best", "good"]), GRAPH)).toEqual([]);
   });
 
   it("reads a mate and a finished game as players do", () => {
@@ -107,23 +110,23 @@ describe("phases", () => {
   });
 });
 
+// The shape analyze-book.js caches: one child per (parent node, uci).
+const repertoire = (ucis, name = "Italian") => {
+  const children = new Map();
+  let walk = "n0";
+  ucis.forEach((uci, i) => {
+    children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
+    walk = `n${i + 1}`;
+  });
+  return { rootId: "n0", children, name };
+};
+
 describe("opening and prep", () => {
   it("joins the opening's name and code, and drops what the PGN lacks", () => {
     expect(openingFromHeaders({ Opening: "Ruy Lopez", ECO: "C60" })).toBe("Ruy Lopez · C60");
     expect(openingFromHeaders({ ECO: "C60" })).toBe("C60");
     expect(openingFromHeaders({})).toBe("");
   });
-
-  // The shape analyze-book.js caches: one child per (parent node, uci).
-  const repertoire = (ucis, name = "Italian") => {
-    const children = new Map();
-    let walk = "n0";
-    ucis.forEach((uci, i) => {
-      children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
-      walk = `n${i + 1}`;
-    });
-    return { rootId: "n0", children, name };
-  };
 
   it("names the first mainline move no repertoire continues, and the repertoire", () => {
     const departure = prepDeparture(MOVES, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
@@ -152,9 +155,9 @@ describe("the report", () => {
     const html = String(reportHtml(buildGameReport({
       moves: MOVES,
       evalGraph: GRAPH,
-      headers: { White: "me_user", Black: "opp_one", Opening: "Ruy Lopez", ECO: "C60" },
+      headers: { White: "me_user", Black: "opp_one", Result: "0-1", Opening: "Ruy Lopez", ECO: "C60" },
     })));
-    const order = ["rp-sides", "rp-counts", "rp-moments", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
+    const order = ["rp-moments", "rp-counts", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The moment's own move sits inside the row's jump; its better move is a link.
@@ -164,6 +167,9 @@ describe("the report", () => {
     expect(html).toMatch(/<button type="button" class="rp-n" data-side="black" data-grade="blunder"/);
     expect(html).toMatch(/<span class="rp-n is-zero">0<\/span>/);
     expect(html).toContain("Ruy Lopez · C60");
+    // The result is written once, labelled; no repeated name header.
+    expect(html.split("Result").length - 1).toBe(1);
+    expect(html).not.toContain("rp-sides");
     // No standing explanation in the report.
     expect(html).not.toMatch(/how|means|click|tap/i);
   });
@@ -175,17 +181,48 @@ describe("the report", () => {
 
   it("jumps to a moment's move and to the next move of a counted grade", () => {
     const calls = [];
-    const host = { set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    const host = { dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
     renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, onJump: (ply) => calls.push(["jump", ply]), onGrade: (side, grade) => calls.push(["grade", side, grade]) });
-    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
+    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" || sel === "[data-toggle-summary]" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
     host.onclick({ target: target({ ply: "4" }) });
     host.onclick({ target: target({ side: "black", grade: "blunder" }) });
     expect(calls).toEqual([["jump", 4], ["grade", "black", "blunder"]]);
   });
 
   it("clears the block when there is nothing analysed", () => {
-    const host = { set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    const host = { dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
     renderReportBlock(host, { moves: [], evalGraph: [] });
     expect(host.innerHTML).toBe("");
+  });
+});
+
+describe("the report's summary", () => {
+  const headers = { White: "me_user", Black: "opp_one" };
+  const fakeHost = () => ({ dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } });
+
+  it("starts as one line that names both sides and their errors, and opens the full report", () => {
+    const report = buildGameReport({ moves: MOVES, evalGraph: GRAPH, headers });
+    const closed = String(reportHtml(report, false));
+    expect(closed).toMatch(/<button type="button" class="rp-summary" data-toggle-summary aria-expanded="false">/);
+    expect(closed).toContain("me_user");
+    expect(closed).toContain("no errors");
+    expect(closed).not.toContain("rp-counts");
+    expect(String(reportHtml(report, true))).toMatch(/aria-expanded="true"[\s\S]*rp-counts/);
+
+    const host = fakeHost();
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, headers });
+    expect(host.innerHTML).not.toContain("rp-counts");
+    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? {} : null) } });
+    expect(host.dataset.open).toBe("true");
+    expect(host.innerHTML).toContain("rp-counts");
+    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? {} : null) } });
+    expect(host.innerHTML).not.toContain("rp-counts");
+  });
+
+  it("keeps the open state when the block is written again", () => {
+    const host = fakeHost();
+    host.dataset.open = "true";
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, headers });
+    expect(host.innerHTML).toContain("rp-counts");
   });
 });

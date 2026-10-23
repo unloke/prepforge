@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createAnalyzeView } from "./analyze.js";
 
 function render(quality) {
-  const host = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
+  const host = { dataset: { open: "true" }, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
   globalThis.document = { getElementById: (id) => (id === "analysis-summary" ? host : null) };
   const appState = { analysis: { quality }, analysisVarNodes: new Map() };
   const view = createAnalyzeView({
