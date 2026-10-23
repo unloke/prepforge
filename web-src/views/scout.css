@@ -122,14 +122,16 @@
 .scout-engine-progress.is-idle { visibility: hidden; }
 
 /* ---- Colour tabs ---- */
-.scout-color-tabs { display: flex; gap: 4px; }
+/* The selected tab is a 1px accent line as wide as its label: the tab has no
+   side padding, and tabs are spaced by gap. */
+.scout-color-tabs { display: flex; gap: 20px; }
 .scout-color-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 12px;
+  padding: 7px 0;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   background: none;
   color: var(--label);
   font: inherit;

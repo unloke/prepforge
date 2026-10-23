@@ -46,3 +46,9 @@ it("the empty report is one dashed frame on one line, not a centred card", () =>
   expect(empty).toMatch(/justify-content:\s*flex-start/);
   expect(empty).toMatch(/background:\s*none/);
 });
+
+it("the selected colour tab is a 1px accent line as wide as its label", () => {
+  expect(rule(".scout-color-tab")).toMatch(/padding:\s*7px 0;/);
+  expect(rule(".scout-color-tab")).toMatch(/border-bottom:\s*1px solid transparent/);
+  expect(rule(".scout-color-tab.is-active")).toMatch(/border-bottom-color:\s*var\(--accent\)/);
+});
