@@ -98,7 +98,7 @@ describe("Home rows", () => {
     deps.api.mockResolvedValue({
       next_session: {
         cards: 2, resumed: 0, left: 2, due: 1,
-        upcoming: [{ kind: "due", repertoire_id: "r1", repertoire_name: "Italian", color: "white", san: "Nf3", line: "1.e4 e5 2.Nf3" }],
+        upcoming: [{ kind: "due", repertoire_id: "r1", repertoire_name: "Italian", color: "white", line: "1.e4 e5 2.Nf3" }],
       },
       outlook: { now: 1, today: 1, week: 2 },
     });
@@ -107,7 +107,7 @@ describe("Home rows", () => {
     expect(list.hidden).toBe(false);
     expect(String(list.innerHTML)).toContain("Italian");
     expect(String(list.innerHTML)).toContain('data-repertoire-id="r1"');
-    expect(String(list.innerHTML)).toContain("Nf3");
+    expect(String(list.innerHTML)).toContain("1...e5 2.Nf3");
   });
 
   it("Home says where finished runs will be listed before there is one", async () => {

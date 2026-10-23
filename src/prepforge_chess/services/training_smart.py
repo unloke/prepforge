@@ -410,7 +410,6 @@ class SmartTrainingService:
                 "repertoire_id": card["repertoire_id"],
                 "repertoire_name": card["repertoire_name"],
                 "color": card["color"],
-                "san": first["san"],
                 "line": first["line"],
             })
         return rows

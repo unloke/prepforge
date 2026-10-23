@@ -323,7 +323,7 @@ function paintDueNext(upcoming) {
   const list = document.getElementById("train-due-next");
   const rows = upcoming || [];
   list.hidden = !rows.length;
-  list.innerHTML = rows.map((row) => html`<li><button type="button" class="train-due-line" data-repertoire-id="${row.repertoire_id}" title="Narrow the due queue to ${row.repertoire_name}"><span class="un-kind">${KIND_NAMES[row.kind] || row.kind}</span><span class="train-due-rep"><span class="color-dot ${row.color === "black" ? "black" : "white"}"></span>${row.repertoire_name}</span><b class="train-due-san">${row.san}</b><span class="train-due-pos">${row.line ? lineTail(row.line) : ""}</span></button></li>`).join("");
+  list.innerHTML = rows.map((row) => html`<li><button type="button" class="train-due-line" data-repertoire-id="${row.repertoire_id}" title="Narrow the due queue to ${row.repertoire_name}"><span class="un-kind">${KIND_NAMES[row.kind] || row.kind}</span><span class="train-due-rep"><span class="color-dot ${row.color === "black" ? "black" : "white"}"></span>${row.repertoire_name}</span><span class="train-due-pos">${row.line ? lineTail(row.line) : ""}</span></button></li>`).join("");
 }
 
 export async function paintTrainHome() {

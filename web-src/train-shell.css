@@ -265,8 +265,7 @@
 .train-due-line:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .train-due-rep { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .train-due-rep .color-dot { margin-right: 6px; vertical-align: 0; }
-.train-due-san { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
-.train-due-pos { flex: none; max-width: 40%; overflow: hidden; color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.train-due-pos { flex: none; max-width: 40%; overflow: hidden; font-size: var(--fs); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .train-due-pos:empty { display: none; }
 /* A quiet tag: the kind is words in the muted voice, not a filled pill. */
 .un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 600; }

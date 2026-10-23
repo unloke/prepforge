@@ -203,8 +203,8 @@ def test_smart_summary_preview_counts_the_next_queue(client):
     assert body["outlook"] == {"now": 0, "today": 0, "week": 0, "next": None}
     # Home lists the queue's first cards: the move each one asks for, its kind.
     [first] = body["next_session"]["upcoming"]
-    assert (first["kind"], first["san"], first["color"]) == ("new", "e4", "white")
-    assert set(first) == {"kind", "repertoire_id", "repertoire_name", "color", "san", "line"}
+    assert (first["kind"], first["color"]) == ("new", "white")
+    assert set(first) == {"kind", "repertoire_id", "repertoire_name", "color", "line"}
     plain = client.get("/api/train/smart/summary?mixed=true").json()
     assert "next_session" not in plain and "outlook" not in plain
 
