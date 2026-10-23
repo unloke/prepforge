@@ -29,3 +29,11 @@ it("the .study grid rule closes before its max-width and margin", () => {
   expect(rule[1]).toMatch(/max-width:\s*none/);
   expect(rule[1]).toMatch(/margin:\s*0/);
 });
+
+it("the tree and the Explorer rows are the screen's content, not interface fragments", () => {
+  // data-ui is the taste inspector's mark for a cropped product fragment on a
+  // page; on the Build screen the tree is the whole screen, so it carries no mark.
+  expect(build).toMatch(/<div class="tree-wrap" id="builder-tree"[^>]*>/);
+  expect(build).not.toMatch(/id="builder-tree"[^>]*data-ui/);
+  expect(build).not.toMatch(/id="explorer-rows"[^>]*data-ui/);
+});
