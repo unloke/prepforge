@@ -87,6 +87,38 @@ class BoardController {
     );
   }
 
+  setEngineArrow(uci) {
+    const next = uci || null;
+    if (this.engineArrow === next) return;
+    this.engineArrow = next;
+    this._renderArrows();
+  }
+
+  // The move the side that just moved should have played instead (Analyze, on a graded
+  // error), drawn in its own colour so it never reads as the engine's next move.
+  setBetterArrow(uci) {
+    const next = typeof uci === "string" && uci.length >= 4 ? uci : null;
+    if (this.betterArrow === next) return;
+    this.betterArrow = next;
+    this._renderArrows();
+  }
+
+  // Faint arrows for the fork's next-move options at the current position, so a
+  // branch point is visible on the board itself (the fork picker's on-board echo).
+  // ``pickUci`` is the currently picked option, drawn stronger than its siblings.
+  setBranchArrows(list, pickUci = null) {
+    const next = Array.isArray(list) ? list.filter((u) => typeof u === "string" && u.length >= 4) : [];
+    const pick = typeof pickUci === "string" && pickUci.length >= 4 ? pickUci : null;
+    const same =
+      pick === this.branchPick &&
+      next.length === this.branchArrows.length &&
+      next.every((u, i) => u === this.branchArrows[i]);
+    if (same) return;
+    this.branchArrows = next;
+    this.branchPick = pick;
+    this._renderArrows();
+  }
+
   // --- Ghost line -----------------------------------------------------------
   // A line the text beside the board names (a coach sentence's move), drawn on
   // the board itself: dashed arrows that fade along the line, over the real
@@ -449,8 +481,6 @@ class BoardController {
   // repertoire step, a takeback, an analysis branch — gets the same motion
   // without its caller having to say which direction the user went.
   setPosition({ fen, legalMoves = [], lastMove = null, cue, back = false }) {
-    // A real position arriving mid-preview ends the preview (see beginPreview).
-    if (this._preview && !this._renderingPreview) this.endPreview({ restore: false });
     const fenChanged = this.fen !== fen;
     // The position itself, without the clocks: a confirmed render that differs
     // only in halfmove/fullmove is the same position arriving twice, not a move.
@@ -503,7 +533,6 @@ class BoardController {
   }
 
   setMoveBadge(squareName, classification, label) {
-    if (this._preview) return;
     if (!squareName) {
       this.moveBadge = null;
     } else {
