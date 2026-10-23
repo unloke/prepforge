@@ -95,12 +95,12 @@ export async function openSettingsSection(sectionId) {
     link.click();
     return;
   }
-  // A block inside a card (Chess accounts lives in Account): mark the card's
-  // nav link, then bring the block itself into view.
-  const target = document.getElementById(sectionId);
-  const card = target?.closest(".card[id]");
+  // A block inside a card (Chess accounts lives in Account): open that card.
+  // Scrolling the block itself to the top pushed the card's own top off the
+  // screen, and the strip's scroll spy then marked the next card down (the
+  // deep link said Account, the strip said Board).
+  const card = document.getElementById(sectionId)?.closest(".card[id]");
   if (card) document.querySelector(`.settings-nav-link[href="#${card.id}"]`)?.click();
-  target?.scrollIntoView({ block: "start" });
 }
 
 let settingsActionsPromise = null;
