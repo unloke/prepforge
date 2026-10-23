@@ -78,7 +78,10 @@
 .train-row > .train-row-go,
 .train-row-actions { grid-area: go; }
 .train-row-actions { display: flex; align-items: center; gap: 6px; }
-.train-row-go { min-width: 92px; height: 34px; padding: 0 16px; font-weight: 600; }
+/* A row's action is the app's button at the app's height: it carried its own
+   34px, so the ghost beside it (30px) sat 4px short of the control it pairs
+   with. */
+.train-row-go { min-width: 92px; padding: 0 16px; font-weight: 600; }
 .train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }

@@ -110,6 +110,19 @@ describe("visual system tokens", () => {
     expect(ring).not.toMatch(/border-radius/);
   });
 
+  // A row's action is the shared button at the shared height. Train's rows set
+  // their own 34px and "I'm Feeling Lucky" sat as bare text beside an outlined
+  // Play: a text button next to a boxed one reads as a caption, not a control.
+  it("puts a row's actions on the shared button, not a local height", () => {
+    const train = readFileSync(join(root, "train-shell.css"), "utf8");
+    const go = /(?:^|\n)\.train-row-go \{([^}]+)\}/.exec(train)?.[1] || "";
+    expect(go).not.toMatch(/height:/);
+    expect(go).toMatch(/min-width:\s*92px/);
+    const lucky = /<button[^>]*id="feeling-lucky"[^>]*>/.exec(html)?.[0] || "";
+    expect(lucky).toMatch(/class="btn"/);
+    expect(lucky).not.toMatch(/ghost/);
+  });
+
   // phone.css hides `.page-head` at every width; only its own media query brings
   // it back. Library and Teams were therefore nameless on a wide screen, and the
   // inspector failed them for having no h1 at 1440.
