@@ -106,17 +106,21 @@ describe("Library initial chunk failure", () => {
 describe("Games link chip respects explicit Self selection", () => {
   it.each([
     ["all", [], "data-games-link"],
-    ["none", [], "No sources"],
-    ["subset", [], "No sources"],
-    ["subset", ["unlinked-id"], "No sources"],
+    ["none", [], ""],
+    ["subset", [], ""],
+    ["subset", ["unlinked-id"], ""],
   ])("%s with %j and no linked accounts", (linkedMode, accountIds, expected) => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     const paint = compile("function paintGamesSource(", {
       appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
+      gamesIdleHint: () => "",
     });
     paint();
     expect(String(tray.innerHTML)).toContain(expected);
     expect(String(tray.innerHTML)).not.toContain("Self · all linked");
+    // The tray never carries a sentence of its own: the ledger's empty state
+    // names the next step.
+    expect(String(tray.innerHTML)).not.toContain("No sources");
   });
   it("external usernames stay usable without linking", () => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };

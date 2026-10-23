@@ -762,14 +762,6 @@ h2 {
   flex-wrap: wrap;
 }
 
-.src-empty {
-  padding: 3px 9px;
-  border-radius: 12px;
-  background: var(--surface-3);
-  color: var(--label);
-  font-size: var(--fs-s);
-}
-
 .src-chip {
   display: inline-flex;
   align-items: center;
@@ -3558,10 +3550,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a white toolbar on a white card is told apart by its edge */
-  border-radius: var(--radius-card);
-  background: var(--panel);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+/* One control height across the row: the source chips, the sample/colour
+   select, Add and Check are all 30px, so their baselines line up. */
+@media (min-width: 761px) {
+  .toolbar .src-chip,
+  .toolbar .btn.sm { height: var(--control-h); min-height: var(--control-h); }
 }
 .toolbar .spacer { flex: 1; }
 .src { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -3575,7 +3572,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--panel);
   color: var(--text);
   font-size: 12px;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
+/* A native select on the toolbar still answers the pointer: the fill steps to
+   the recessed surface on hover and back to the panel on press. */
+@media (hover: hover) and (pointer: fine) {
+  .inline-field select:hover { background: var(--surface-3); }
+}
+.inline-field select:active { background: var(--surface-3); }
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sum-chip {
   height: 26px;
@@ -3602,11 +3606,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 
-/* Desktop Games and Scout: the page names itself, as Settings does, and the
-   controls sit on the title's row instead of in a white strip of their own. The
-   strip was a 48px band of 13px controls over the whole width, which read as a
-   cramped form line; on the title row they read as the page's own controls and
-   the results get the height. */
+/* Desktop Games and Scout: title and controls share one row, no toolbar card.
+   Controls align to a common baseline (src chips + inline field + button),
+   same height everywhere, no extra vertical space. */
 @media (min-width: 861px) {
   .review > :is(.games-panel, .scout-panel):not([hidden]) {
     display: grid;
@@ -3618,6 +3620,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .review > section > .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
   .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
   .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
+  /* Games and Scout are worked in, not read: their empty states are one
+     compact note in the frame the results will fill, not a 48px-padded hero. */
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big { gap: 4px; padding: 22px 16px; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big h3 { font-size: 15px; font-weight: 600; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big p { font-size: 13px; color: var(--muted); }
   /* An empty Scout is a card the report lands in, the way the Games ledger is
      before its first Check, not a line of text floating on the page ground. */
   .scout-panel .scout-empty { border-radius: var(--radius-card); background: var(--panel); }
@@ -3713,6 +3720,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .review,
   .games-panel,
   .replay-results { height: auto; }
+  /* Between the phone shell and the two-column desktop grid the page title
+     was hidden while the toolbar showed, so Games and Scout were two unnamed
+     rows. The title comes back over its own controls. */
+  .review > section > .page-head { display: block; }
+  .review > section > .page-head h1 { margin: 0 0 2px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }

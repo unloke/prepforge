@@ -91,7 +91,7 @@ function paintScoutSource() {
               ? html`<span class="src-chip is-self" data-scout-chip-self>${c.label}</span>`
               : html`<span class="src-chip" data-scout-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-scout-unpick="${c.id}" aria-label="Remove ${c.label} from Scout sources">×</button></span>`
         )}`
-    : html`<span class="src-empty">No sources — open Add and pick one</span>`;
+    : html``;
   // The empty state names the next step for where the user actually is. While the
   // session is unread it says nothing: a guest/signed-in distinction is a guess.
   const hint = document.getElementById("scout-empty-hint");
