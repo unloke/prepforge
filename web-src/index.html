@@ -446,6 +446,7 @@
                     <div class="train-outlook" id="train-outlook" hidden></div>
                     <span class="train-row-meta" id="train-due-meta"></span>
                   </div>
+                  <button class="btn primary train-row-go" id="start-train" data-testid="start-train" type="button">Start</button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-due-scope" data-testid="train-due-scope" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <span class="pf-row-text train-blitz-row" id="train-blitz-row" title="10s per move · a timeout counts as a miss">
@@ -453,7 +454,6 @@
                       <button type="button" class="pf-switch" id="train-blitz-toggle" role="switch" aria-checked="false" aria-labelledby="train-blitz-label" data-testid="train-blitz-toggle"><span class="pf-knob"></span></button>
                     </span>
                   </div>
-                  <button class="btn primary train-row-go" id="start-train" data-testid="start-train" type="button">Start</button>
                   <p class="train-row-error" id="train-due-error" role="alert" hidden></p>
                 </section>
                 <section class="train-row" data-row="all_lines">
@@ -461,10 +461,10 @@
                     <h3 class="train-row-title" data-vt-title="all_lines">Rehearse</h3>
                     <span class="train-row-meta" id="train-rehearse-meta"></span>
                   </div>
+                  <button class="btn primary train-row-go" id="start-rehearse" data-testid="start-rehearse" type="button">Start</button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-rehearse-scope" data-testid="train-rehearse-scope" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                   </div>
-                  <button class="btn train-row-go" id="start-rehearse" data-testid="start-rehearse" type="button">Start</button>
                   <p class="train-row-error" id="train-rehearse-error" role="alert" hidden></p>
                 </section>
                 <section class="train-row" data-row="play">
@@ -472,19 +472,17 @@
                     <h3 class="train-row-title" data-vt-title="play">Practice</h3>
                     <span class="train-row-meta" id="train-play-meta"></span>
                   </div>
+                  <button class="btn primary train-row-go" id="start-play" data-testid="start-play" type="button">Play</button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-play-book" data-testid="train-play-book" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <button type="button" class="train-chip" id="train-play-reps" data-testid="train-play-reps" aria-haspopup="listbox" hidden><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
+                    <button class="btn ghost train-lucky" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
                     <div class="seg train-color" id="train-play-color" role="group" aria-label="Your color">
                       <button type="button" class="seg-btn is-active" data-color="white" data-testid="play-color-white">White</button>
                       <button type="button" class="seg-btn" data-color="black" data-testid="play-color-black">Black</button>
                     </div>
                   </div>
                   <div data-unlock-place="train-practice" hidden></div>
-                  <div class="train-row-actions">
-                    <button class="btn train-row-go" id="start-play" data-testid="start-play" type="button">Play</button>
-                    <button class="btn ghost" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Jump to a key position instead of move 1">I'm Feeling Lucky</button>
-                  </div>
                   <p class="train-row-error" id="train-play-error" role="alert" hidden></p>
                 </section>
               </section>

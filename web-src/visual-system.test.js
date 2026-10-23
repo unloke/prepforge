@@ -193,9 +193,13 @@ describe("seven views share chrome families", () => {
     const home = html.slice(html.indexOf('id="train-home"'), html.indexOf('id="train-progress-panel"'));
     const rows = [...home.matchAll(/<section class="train-row" data-row="([a-z_]+)">/g)].map((m) => m[1]);
     expect(rows).toEqual(["smart", "all_lines", "play"]);
-    // One primary action on Home: the Due queue's Start.
-    expect(home.match(/class="btn primary/g)).toHaveLength(1);
+    // One primary per row, in the same place and the same style: each mode's
+    // Start is the one filled action of its own card, at the card's top right.
+    expect(home.match(/class="btn primary train-row-go"/g)).toHaveLength(3);
+    expect(home.match(/class="btn primary/g)).toHaveLength(3);
     expect(home).toMatch(/class="btn primary train-row-go" id="start-train"/);
+    expect(home).toMatch(/class="btn primary train-row-go" id="start-rehearse"/);
+    expect(home).toMatch(/class="btn primary train-row-go" id="start-play"/);
     // No mode tabs, no second History.
     expect(html).not.toContain('id="train-modes"');
     expect(html.match(/data-train-history/g)).toHaveLength(1);

@@ -60,30 +60,49 @@
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: "text go" "opts opts";
   align-items: center;
-  gap: 8px 12px;
-  padding: 12px;
+  gap: 10px 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   background: var(--panel);
 }
-.train-row-text { grid-area: text; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.train-row-text { grid-area: text; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .train-row-title { margin: 0; font-size: 15px; font-weight: 650; width: fit-content; }
 .train-row-meta { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 .train-row-meta:empty { display: none; }
-.train-row > .train-row-go,
-.train-row-actions { grid-area: go; }
-.train-row-actions { display: flex; align-items: center; gap: 6px; }
-.train-row-go { min-width: 92px; height: 34px; padding: 0 16px; font-weight: 600; }
+.train-row > .train-row-go { grid-area: go; }
+/* Every row's primary action: one fill, one height, one edge. */
+.train-row-go { min-width: 96px; height: 34px; padding: 0 18px; font-weight: 600; }
 .train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }
 .train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
 .train-row-error[hidden] { display: none; }
 .train-blitz-row { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
+/* Lucky is Practice's second way in, not a third option: it reads as the text
+   action it is and sits at the far end of the options line. */
+#view-train .train-lucky { margin-left: auto; height: 30px; padding: 0 10px; font-size: var(--fs); font-weight: 600; }
+#view-train .train-lucky + .train-color { margin-left: 0; }
 #view-train .train-color { width: auto; margin-left: auto; }
 #view-train .train-color .seg-btn { flex: none; padding: 0 12px; }
 /* Maia's download row belongs to the Maia opponent only. */
 #view-train:not([data-play-book="maia"]) [data-unlock-place="train-practice"] { display: none; }
+/* In the Practice row the offer is a line of the row, not a card inside a
+   card: no fill, no radius, one line — the engine's name, its button and the
+   dismiss, grouped at the left under the options. The gain is already the row
+   title's job (Practice with Maia), so it is not said twice. */
+#view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) {
+  grid-template-columns: auto auto auto;
+  justify-content: start;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+#view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) .unlock-line { display: none; }
+#view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: start; }
+#view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
+#view-train [data-unlock-place="train-practice"] .unlock-bar { bottom: -4px; height: 2px; }
 
 .train-chip {
   display: inline-flex;
