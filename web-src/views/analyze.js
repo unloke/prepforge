@@ -191,7 +191,6 @@ export function createAnalyzeView({
     reviewBar.set(report);
   }
 
-
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
     const ply = Number(appState.analysisPly);
