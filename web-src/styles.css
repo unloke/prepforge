@@ -5846,10 +5846,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
   .rail .tab,
-  .rail .rail-btn { height: 34px; }
+  .rail .rail-btn { height: 40px; }
   .rail .nav-group-label { height: 14px; line-height: 14px; }
   .rail-foot { gap: 2px; padding-top: 6px; }
-  .rail .account-btn { height: 36px; }
+  .rail .account-btn { height: 40px; }
+}
+
+/* Below ~560px of height the rows and the group dividers no longer both fit:
+   at 40px rows the 528px window overflowed the rail by 57px and pushed the
+   account chip off the bottom. The dividers are only a hairline between
+   already-separated groups, so on a short window the rail drops them and the
+   rows keep their height. */
+@media (min-width: 761px) and (max-height: 560px) {
+  .rail .nav-group-label { display: none; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a
