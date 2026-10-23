@@ -1325,6 +1325,8 @@ function updateTrainTurnBadge(side) {
   badge.hidden = false;
   badge.dataset.side = side;
   badge.title = side === "white" ? "White to move" : "Black to move";
+  badge.setAttribute("role", "img");
+  badge.setAttribute("aria-label", badge.title);
   // Show the side-to-move as a real piece (king of that colour), not a bare
   // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
   badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
