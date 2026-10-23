@@ -1040,6 +1040,9 @@
   /* The pane's tools stay compact in type but not in reach: 40px is the
      smallest box a thumb hits without a second try. */
   #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 40px; height: 40px; padding: 0 12px; font-size: 14px; }
+  /* A select keeps room for the chevron the shared rule draws inside its right
+     padding; the 12px above would put the label under the arrow. */
+  #build-inspector .dock-select { padding-right: 30px; }
   #build-inspector .inspector-info { width: 40px; height: 40px; }
   #build-inspector .explorer-row { min-height: 46px; }
   /* "White / Draw / Black" broke onto two lines once Eval took a column. One

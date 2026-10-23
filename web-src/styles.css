@@ -152,6 +152,9 @@
   --radius-card: 10px; /* cards, popovers, dialogs */
   --radius-chip: 4px; /* status and kind pills: one step under a control */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  /* The chevron a <select> draws for itself: one glyph, themed by the token so
+     the arrow is legible on both grounds. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%2367696e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
   --switch-h: 20px;
   --knob: 16px;
@@ -207,6 +210,10 @@
   --line: #2b3035;
   --line-soft: #25292d;
   --line-strong: #3a4046;
+
+  /* The select chevron is an SVG data URL, so it cannot take a var(): it is
+     redeclared with the dark --label grey. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a9aeb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* The accent */
   --accent: #6d8ff0;
@@ -383,11 +390,12 @@ button,
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
-   mouse click. Applies to every interactive control for consistency. */
+   mouse click. Applies to every interactive control for consistency. The ring
+   follows the element's own radius; this rule used to set `border-radius: 4px`
+   here, which reshaped whatever it landed on. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
-  border-radius: 4px;
 }
 /* The skip link's target. A click on empty space focuses it, and the next key
    press would ring the whole workspace. */
@@ -401,6 +409,33 @@ select:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
 }
+
+/* A <select> is a control like a button: one radius, one height, the app's own
+   chevron instead of the platform's. Before this rule each context drew its own
+   (30px in a toolbar, 26px in the inspector, 32px in a dialog, the browser
+   arrow everywhere), so the same control read as three different things and the
+   system arrow sat on the app's flat surfaces like a browser widget. */
+select {
+  height: var(--control-h);
+  min-height: var(--control-h);
+  padding: 0 26px 0 10px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
+  background-color: var(--panel);
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  color: var(--text);
+  font-size: var(--fs-s);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+select:hover:not(:disabled) { border-color: var(--muted); }
+select:disabled { color: var(--label); cursor: not-allowed; }
 
 h1,
 h2,
@@ -1251,17 +1286,12 @@ h2 {
   }
 }
 
-/* Modal select field */
+/* Modal select field: the shared <select> box, sized for a dialog's rows. */
 .modal-field select {
-  height: 32px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  color: var(--text);
+  height: 32px;
   font-family: inherit;
 }
 
@@ -1409,11 +1439,14 @@ h2 {
   color: var(--danger-strong);
 }
 
-/* Ghost: no fill or border until hover — a quiet text action. */
+/* Ghost: no fill or border until hover — a quiet text action. It carries the
+   ink, not the muted grey: a grey label on the page ground read as disabled
+   next to the outlined button beside it (Build's "Browse…"). Quietness is the
+   missing edge, not a lighter word. */
 .btn.ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--muted);
+  color: var(--text);
 }
 
 .btn.ghost:hover:not(:disabled, .is-coming-soon) {
@@ -3210,17 +3243,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   margin-bottom: 6px;
 }
 .dock-tools .spacer { flex: 1; }
-.dock-select {
-  min-height: 26px;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-s);
-}
-.dock-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .inspector-info {
   width: 24px;
   min-width: 0;
@@ -3552,15 +3574,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .src { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .src-label { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 .inline-field { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
-.inline-field select {
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
-  font-size: 12px;
-}
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sum-chip {
   height: 26px;
@@ -4743,15 +4756,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .modal-field input,
-.modal-field select,
 .modal-field textarea {
   height: 32px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
   padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--line); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
 }
