@@ -108,7 +108,12 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     boards.build.setOrientation(payload.color === "black" ? "black" : "white");
   }
   renderBuildRepHeader();
-  const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
+  // The opening node must exist in this payload. A node that a concurrent edit
+  // removed (an anchor passed in, or a stale selection) made selectBuildNode
+  // return at once, so the tree was never painted and the skeleton stayed up.
+  const known = (id) => !!id && appState.buildNodeById.has(id);
+  const root = payload.nodes.find((node) => node.depth === 0) || payload.nodes[0];
+  const nextNodeId = [selectedNodeId, payload.selected_node_id].find(known) || root?.id;
   await selectBuildNode(nextNodeId);
   // R-02: put this repertoire's unsynced local edits back onto the tree the
   // server just sent, and re-prune what is queued for deletion.
@@ -323,6 +328,15 @@ function fitBuildDock() {
   if (!dock) return;
   // A height the user dragged is theirs: a repaint must not undo it.
   if (dock.dataset.dockPinned) return;
+  // Folded, the dock is its tab strip: a height left from an unfolded fit
+  // would hold the tree short.
+  if (dock.classList.contains("is-folded")) {
+    dock.style.flexBasis = "";
+    dock.style.minHeight = "";
+    const tree = document.getElementById("builder-tree");
+    if (tree) tree.style.flexGrow = "";
+    return;
+  }
   const max = buildDockMaxHeight();
   const was = dock.style.minHeight;
   const basis = dock.style.flexBasis;
@@ -351,6 +365,10 @@ function applyBuildDockHeight(px, { pinned = false } = {}) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
   dock.dataset.dockPinned = pinned ? "1" : "";
+  // A pinned inspector holds its height, so the tree takes the rest of the
+  // column (an unpinned one fills the leftover, and the tree keeps its content).
+  const tree = document.getElementById("builder-tree");
+  if (tree) tree.style.flexGrow = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
   // Basis and floor together: the dock neither grows past what the tree does
   // not need nor gets squashed under a long one (rule: .dock min-height 0).
@@ -371,7 +389,7 @@ function setBuildDockFolded(folded, { remember = true } = {}) {
     fold.setAttribute("aria-label", label);
     fold.title = label;
   }
-  if (remember) writeDockStore(BUILD_DOCK_FOLDED_KEY, folded ? "1" : null);
+  if (remember) writeDockStore(BUILD_DOCK_FOLDED_KEY, folded ? "1" : "0");
   if (was === folded) return;
   // Folding parks the Explorer fetch and the row-eval worker; unfolding catches up.
   if (!folded && buildDockTab === "explorer") refreshExplorerPanel();
@@ -386,6 +404,8 @@ function initBuildDockLayout() {
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
   if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
+  // Open unless the user folded it: the Explorer is the data the screen's
+  // question needs, so it fills the column under the tree by default.
   setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());

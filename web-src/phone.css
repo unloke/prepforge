@@ -974,8 +974,10 @@
   }
   /* The repertoire's name is this screen's title: it takes the shell's title
      size and ink, at the same left edge as the board under it. */
+  #build-rep-header .rep-title { flex: 1 1 0; justify-content: center; }
   #build-rep-header .rep-name {
-    flex: 1 1 0;
+    flex: none;
+    width: 100%;
     min-width: 0;
     height: 24px;
     color: var(--text);

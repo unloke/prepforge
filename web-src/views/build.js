@@ -268,11 +268,6 @@ export function createBuildView({
     el.hidden = !name;
     el.textContent = name;
     el.title = name;
-    // The band holds one row while a name is beside the trail (styles.css).
-    // A class, not `:has(> .build-opening:not([hidden]))`: that selector made
-    // every crumb rebuild re-style the page — 95 ms per step at 10,000 moves.
-    const meta = el.parentElement;
-    if (meta) meta.classList.toggle("has-opening", !!name);
   }
 
   function renderTreeMeta() {
@@ -280,7 +275,7 @@ export function createBuildView({
     if (!meta) return;
     meta.hidden = !appState.build;
     meta.innerHTML = appState.build
-      ? html`${renderBuildBreadcrumb()}<span class="build-opening" id="build-opening" hidden></span>`
+      ? renderBuildBreadcrumb()
       : "";
     renderBuildOpening();
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
@@ -344,7 +339,12 @@ export function createBuildView({
         const classes = [];
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
-        if (b.move_side !== appState.build.color) classes.push("is-opp");
+        const opp = b.move_side !== appState.build.color;
+        if (opp) classes.push("is-opp");
+        // The one gap the tree marks: the opponent has just moved here and
+        // no answer is recorded. A line that ends on our own move is finished.
+        const gap = opp && !(node.children && node.children.length);
+        if (gap) classes.push("is-gap");
         // The move this session just made: one rise, once, so a line the user
         // added is distinguishable from the seventy already there.
         if (b.id === appState.buildJustAddedId) classes.push("is-added");
@@ -360,7 +360,7 @@ export function createBuildView({
         const open = openNotes.has(String(b.id)) ? " is-open" : "";
         return {
           classes,
-          title: [status, "Right-click for move options"].filter(Boolean).join(" · "),
+          title: [status, gap ? "No answer recorded here" : "", "Right-click for move options"].filter(Boolean).join(" · "),
           ...(status ? { label: status } : {}),
           after: b.comment
             ? html`<div class="mtree-comment${open}" data-note-for="${String(b.id)}">${noteHtml(b)}</div>`

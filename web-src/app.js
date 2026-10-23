@@ -1526,6 +1526,9 @@ function bindEvents() {
     const pane = button.dataset.pane;
     document.getElementById("view-build").dataset.pane = pane;
     panes.querySelectorAll("[data-pane]").forEach((b) => b.setAttribute("aria-selected", String(b === button)));
+    // The Explorer and Coverage panes are the inspector: a folded dock (its
+    // default) would show them empty. Unfolding is not remembered for desktop.
+    if (pane !== "moves") setBuildDockFolded(false, { remember: false });
     if (pane !== "moves" && buildDockTab !== pane) setBuildInspector(pane);
   });
   const dockTabs ={ explorer: "build-tool-explorer", coverage: "build-tool-coverage" };

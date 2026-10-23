@@ -34,7 +34,7 @@ const MIME = {
 // Own-side nodes carry mastery so the tree colours have real training data.
 // FENs are chess.js-verified (1.e4 c6 2.d4 d5 3.e5 with Bf5/Na6 branches).
 const BUILD_NODES = [
-  { id: "n0", parent_id: null, depth: 0, san: null, uci: null, move_number: 1, ply: 0, move_side: "white", is_mainline: false, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null },
+  { id: "n0", parent_id: null, depth: 0, san: null, uci: null, fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen_before: null, fen_after: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", move_number: 1, ply: 0, move_side: "white", is_mainline: false, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null },
   { id: "n1", parent_id: "n0", depth: 1, san: "e4", uci: "e2e4", fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", fen_before: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", fen_after: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", move_number: 1, ply: 1, move_side: "white", side_to_move: "black", source: "manual", is_mainline: true, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null, arrows: [], circles: [] },
   { id: "n2", parent_id: "n1", depth: 2, san: "c6", uci: "c7c6", fen: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", fen_before: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", fen_after: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", move_number: 1, ply: 2, move_side: "black", side_to_move: "white", source: "manual", is_mainline: true, is_enabled: true, is_prepared: true, mastery: "mastered", maia_probability: null, arrows: [], circles: [] },
   { id: "n3", parent_id: "n2", depth: 3, san: "d4", uci: "d2d4", fen: "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2", fen_before: "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", fen_after: "rnbqkbnr/pp1ppppp/2p5/8/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2", move_number: 2, ply: 3, move_side: "white", side_to_move: "black", source: "manual", is_mainline: true, is_enabled: true, is_prepared: false, mastery: null, maia_probability: null, arrows: [], circles: [] },
@@ -309,11 +309,13 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   }
 
-  // Dock: Explorer is open by default and shows real W/D/L rows; tabs are a
-  // single-select tablist (Coverage replaces Explorer, Engine docks the widget).
+  // Dock: the inspector starts open and its Explorer fills the column under
+  // the tree; on a phone the Explorer is a pane of its own.
   console.log(`[${vp.name}] at dock step; tree trained=${trained}`);
+  if (vp.width >= 1100) check((await page.locator("#build-inspector.is-folded").count()) === 0, "the inspector should start open");
+  else await page.locator('#build-panes [data-pane="explorer"]').click();
   await page.locator("#explorer-rows .explorer-row").first().waitFor({ timeout: 4000 }).catch(() => {});
-  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open by default");
+  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open");
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
@@ -329,13 +331,15 @@ async function runViewport(vp) {
     const seam = await resizer.evaluate((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y }));
     const dockH = () => page.evaluate(() => document.getElementById("build-inspector").getBoundingClientRect().height);
     const growBy = 120;
+    // The inspector fills the column, so its top seam can only move down: a
+    // drag up takes the tree's floor and stops there. The drag goes down.
     const startDock = await dockH();
     const startTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
     // Drag in the right half of the seam, well clear of the tree's left gutter.
     const atX = seam.x + 200;
     await page.mouse.move(atX, seam.y);
     await page.mouse.down();
-    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y - (growBy * i) / 4);
+    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y + (growBy * i) / 4);
     await page.waitForTimeout(120);
     const midDock = await dockH();
     // Release where the drag ended: moving the pointer back first would let the
@@ -345,13 +349,12 @@ async function runViewport(vp) {
     const endDock = await dockH();
     const endLabel = await page.locator("#build-board-label").textContent().catch(() => "");
     check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
-    check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
-    check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
-    // The tree is the other half of the seam: the dock grows out of the panel,
-    // never past it. On a short line the tree already sits at its floor
-    // (min-height), so what the drag takes comes from the panel's rest — the
-    // check is that the panel itself never overflows and the page never scrolls.
-    const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    check(startDock - midDock > growBy * 0.7, `dragging the seam down should shrink the inspector, got ${startDock} → ${midDock}`);
+    check(startDock - endDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
+    const endTreeNow = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    check(endTreeNow - startTree > growBy * 0.7, `the tree should take the height the inspector gave up, got ${startTree} → ${endTreeNow}`);
+    // The dock may not grow out of the panel or push the page: the panel
+    // itself never overflows and the page never scrolls.
     const panelFit = await page.evaluate(() => {
       const panel = document.querySelector("#build-sidebar > .panel-body");
       return {
@@ -359,10 +362,6 @@ async function runViewport(vp) {
         page: document.documentElement.scrollHeight - innerHeight,
       };
     });
-    check(
-      startTree - endTree > growBy * 0.7 || endTree <= 110,
-      `the move tree should give up what the dock took, or already be at its floor, got ${startTree} → ${endTree}`,
-    );
     check(panelFit.overflow <= 1, `the dragged dock overflowed the panel by ${panelFit.overflow}px`);
     check(panelFit.page <= 0, `the dragged dock scrolled the page by ${panelFit.page}px`);
     const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);
@@ -418,6 +417,32 @@ async function runViewport(vp) {
     check(big.pageScroll <= 0, `a large tree scrolled the page by ${big.pageScroll}px`);
     check(big.treeScroll > 0, "a large tree should scroll inside its panel");
   }
+
+  // A root-only repertoire is a real first-run state (a new one is always
+  // this). Its Explorer shows the start position's stats and raises no error:
+  // the load payload's root carries its fen, as the server sends it.
+  const rootOnly = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+  const rootErrors = [];
+  rootOnly.on("pageerror", (e) => rootErrors.push(e.message));
+  await rootOnly.route("**/api/build/load**", async (route) => {
+    const response = await route.fetch();
+    const json = await response.json();
+    json.nodes = json.nodes.filter((node) => node.depth === 0);
+    await route.fulfill({ response, json });
+  });
+  await rootOnly.goto(base, { waitUntil: "domcontentloaded" });
+  await rootOnly.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').waitFor({ state: "visible", timeout: 15000 });
+  await rootOnly.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"]').dblclick();
+  await rootOnly.locator("#build-rep-name").filter({ hasText: "Caro-Kann" }).waitFor({ state: "attached", timeout: 15000 });
+  if (vp.width >= 1100) {
+    await rootOnly.locator("#explorer-rows .explorer-row").first().waitFor({ state: "attached", timeout: 8000 }).catch(() => {});
+    const rootRows = await rootOnly.locator("#explorer-rows .explorer-row").count();
+    check(rootRows > 0, `a root-only repertoire's Explorer should show the start position's stats, got ${rootRows} rows`);
+  }
+  const rootText = await rootOnly.evaluate(() => document.body.innerText);
+  check(!/Cannot read properties/.test(rootText), "a root-only repertoire should raise no error toast");
+  check(rootErrors.length === 0, `a root-only repertoire threw: ${rootErrors.join(" | ")}`);
+  await rootOnly.close();
 
   await page.close();
 
