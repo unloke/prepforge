@@ -38,3 +38,10 @@ it("a phone's Explorer or Coverage pane opens the dock, which is folded by defau
   const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
   expect(app).toMatch(/if \(pane !== "moves"\) setBuildDockFolded\(false, \{ remember: false \}\);/);
 });
+
+it("the opening name sits under the repertoire title, not in the toolbar row", () => {
+  const head = html.slice(html.indexOf('id="build-rep-header"'), html.indexOf('<div class="panel-body">'));
+  expect(head).toMatch(/<div class="rep-title">\s*<h1 class="rep-name" id="build-rep-name"[\s\S]*?<span class="build-opening" id="build-opening"/);
+  const toolbar = html.slice(html.indexOf('class="build-toolbar"'), html.indexOf('class="tree-wrap"'));
+  expect(toolbar).not.toMatch(/build-opening/);
+});

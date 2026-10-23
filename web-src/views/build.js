@@ -268,11 +268,6 @@ export function createBuildView({
     el.hidden = !name;
     el.textContent = name;
     el.title = name;
-    // The band holds one row while a name is beside the trail (styles.css).
-    // A class, not `:has(> .build-opening:not([hidden]))`: that selector made
-    // every crumb rebuild re-style the page — 95 ms per step at 10,000 moves.
-    const meta = el.parentElement;
-    if (meta) meta.classList.toggle("has-opening", !!name);
   }
 
   function renderTreeMeta() {
@@ -280,7 +275,7 @@ export function createBuildView({
     if (!meta) return;
     meta.hidden = !appState.build;
     meta.innerHTML = appState.build
-      ? html`${renderBuildBreadcrumb()}<span class="build-opening" id="build-opening" hidden></span>`
+      ? renderBuildBreadcrumb()
       : "";
     renderBuildOpening();
     meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
