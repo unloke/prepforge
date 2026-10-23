@@ -1,4 +1,5 @@
 import { ENGINE_ID } from "./stockfish-provider.js";
+import { pvSan } from "../chess-local.js";
 import { subscribeUsableEngineProfile } from "./engine-profile.js";
 import { stockfishBudget } from "./compute-budget.js";
 import { createEngineProvider, ANALYSIS_MAX_NODES } from "./stockfish-provider.js";
@@ -52,7 +53,7 @@ function gameSnapshot(fen, game) {
   };
 }
 
-function gameEvalFromSnapshot(snapshot) {
+function gameEvalFromSnapshot(fen, snapshot) {
   const top = snapshot && snapshot.pvs && snapshot.pvs[0];
   if (!top || (top.score_cp == null && top.mate_in == null)) return null;
   return {
@@ -60,7 +61,8 @@ function gameEvalFromSnapshot(snapshot) {
     mate_in: top.mate_in ?? null,
     best_move_uci: top.pv_uci && top.pv_uci.length ? top.pv_uci[0] : null,
     pv: (top.pv_uci || []).slice(),
-    pv_san: (top.pv_san || []).slice(),
+    // This read is stored as the game channel's answer, so it carries SAN from here on.
+    pv_san: pvSan(fen, top),
     depth: snapshot.current_depth || 0,
     nodes: snapshot.nodes ?? null,
   };
@@ -429,7 +431,7 @@ export function createPositionAnalysisStore({
     if (!entry) return null;
     if (entry.game && entry.game.target >= depth) return entry.game.eval;
     const live = entry.live;
-    if (live && live.complete && live.maxDepth >= depth) return gameEvalFromSnapshot(live.snapshot);
+    if (live && live.complete && live.maxDepth >= depth) return gameEvalFromSnapshot(fen, live.snapshot);
     return null;
   }
 

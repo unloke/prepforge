@@ -1,4 +1,3 @@
-import { Chess } from "chess.js";
 import { stockfishBudget } from "./compute-budget.js";
 import { loadEngineModule, EngineAssetError } from "./engine-assets.js";
 
@@ -39,26 +38,6 @@ const DRAIN_TIMEOUT_MS = 15000;
 
 function uid() {
   return "sfw-" + Math.random().toString(36).slice(2, 10);
-}
-
-/** Convert a UCI pv (array of long-algebraic moves) to SAN from `fen`. */
-function uciToSan(fen, uciMoves) {
-  const san = [];
-  try {
-    const game = new Chess(fen);
-    for (const uci of uciMoves) {
-      const move = game.move({
-        from: uci.slice(0, 2),
-        to: uci.slice(2, 4),
-        promotion: uci.length > 4 ? uci[4] : undefined,
-      });
-      if (!move) break;
-      san.push(move.san);
-    }
-  } catch (_) {
-    // Illegal/garbled pv tail — return whatever converted cleanly.
-  }
-  return san;
 }
 
 const defaultCreateWorker = url => new Worker(url);
@@ -321,16 +300,17 @@ export function createStockfishWasmProvider({
         score_cp: null,
         mate_in: null,
         pv_uci: [],
-        pv_san: [],
       });
     }
+    // UCI only: SAN costs a full replay of the line, and most versions of a PV are never
+    // shown (the panel paints one per animation frame; batch work keeps only the last).
+    // pvSan() converts a version once, when a reader actually needs it.
     state.pvs[rank - 1] = {
       rank,
       depth: depth || 0,
       score_cp: scoreCp,
       mate_in: mateIn,
       pv_uci: pv,
-      pv_san: uciToSan(state.fen, pv),
     };
     notifySearchWaiters();
     onChange?.();

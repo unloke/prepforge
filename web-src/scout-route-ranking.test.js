@@ -23,14 +23,20 @@ describe('v10 evidence and cache boundaries', () => {
     const plan = rankGamePlan(observed(games),100*score,{ oppColor:'black' });
     expect(plan.every(r => r.preparationEvidence.value === 0 && r.preparationEvidence.weakness === 0)).toBe(true);
   });
-  it('recent wins erase old weakness with matching recency-weighted baseline', () => {
+  it('weights the baseline by recency and lets only Maia decide the weakness', () => {
     const recentWins = observed(corpus(false)).find(r => r.ucis[1] === 'e7e5');
     const recentLosses = observed(corpus(true)).find(r => r.ucis[1] === 'e7e5');
     expect(recentWins.routeSupportGames).toBe(12);
     expect(recentWins.selectionWdl.l).toBeCloseTo(6/256);
     expect(recentWins.selectionBaseline.score).toBeCloseTo(36/(36+6/256));
+    // Whole-game results are reach and baseline, never a weakness signal on their own.
     expect(preparationValue(recentWins).value).toBe(0);
-    expect(preparationValue(recentLosses).value).toBeGreaterThan(0);
+    expect(preparationValue(recentLosses).value).toBe(0);
+    // The recency-weighted baseline is what Maia's leaf score is measured against.
+    expect(preparationValue({ ...recentWins, maiaScorePct: 50 }).weakness)
+      .toBeCloseTo(recentWins.selectionBaseline.score - 0.5);
+    expect(preparationValue({ ...recentWins, maiaScorePct: 50 }).value)
+      .toBeGreaterThan(preparationValue({ ...recentLosses, maiaScorePct: 50 }).value);
   });
   it('anchors selection at the newest colour/speed/collapse eligible game', () => {
     const games = [...corpus(true), game('wrong-colour',1,['d2d4'], -90,{ color:'white' }),

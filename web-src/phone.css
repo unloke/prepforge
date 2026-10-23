@@ -1008,7 +1008,7 @@
     font-weight: 600;
   }
   #build-panes > button[aria-selected="true"] { background: var(--line-strong); color: var(--text); }
-  #view-build:has(#build-empty:not([hidden])) #build-panes,
+  #view-build #build-sidebar.is-empty #build-panes,
   #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
   #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-tree-meta, #build-branchbar, #builder-tree),
   #build-inspector .dock-tabs { display: none !important; }

@@ -1,6 +1,7 @@
 import { html } from "../html.js";
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { pvSan } from "../chess-local.js";
 import { createPassFeed } from "./engine-pass-feed.js";
 import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
 
@@ -56,7 +57,7 @@ function noPassStore() {
   return fakeStore();
 }
 
-function harness({ choice = "ask", store = noPassStore(), view = "analyze" } = {}) {
+function harness({ choice = "ask", store = noPassStore(), view = "analyze", pvSan: sanOf = pvSan } = {}) {
   // "ask": the full net is not here, so its unlock row shows; null: nothing to offer.
   let choiceNow = choice;
   let row = null;
@@ -65,7 +66,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze" } = {
   const hooks = { build: { session: { fitBuildDock: () => fits.push(1) } } };
   const deps = {
     html,
-    setEngineBestArrow: vi.fn(), localGameOver: () => null,
+    setEngineBestArrow: vi.fn(), localGameOver: () => null, pvSan: sanOf,
     activeViewName: () => view, effectiveStockfishDepth: () => 16,
     createSharedEvaluationProvider: vi.fn(), appState: {}, boards: {}, START_FEN: "start",
     explorerEvalEngine: { repaint: vi.fn() }, formatEngineEval: () => "0.00",
@@ -324,5 +325,44 @@ describe("streaming snapshots never paint more rows than the requested MultiPV",
     widget._renderSnapshot(snap("board w - - 0 1", [line("e4"), line("Nf3"), line("Nc6")]));
     expect(String(widget.pvsEl.innerHTML)).toBe(pending);
     expect(widget.lastSnapshot).toBe(null);
+  });
+});
+
+// SAN costs a full replay of a line. The card converts a line when it paints it, so a
+// search that reports more ranks than the user asked for converts only the rows shown.
+describe("SAN is converted for the rows this frame paints", () => {
+  const uciLine = (uci) => ({ score_cp: 20, mate_in: null, pv_uci: uci });
+  const snap = (fen, pvs) => ({
+    session_id: "s", fen, running: true, current_depth: 10, max_depth: 16,
+    side_to_move: "white", pvs,
+  });
+
+  it("converts only the painted ranks, never the transient extra ones", () => {
+    const asked = [];
+    const { widget } = harness({
+      choice: null, view: "build",
+      pvSan: (fen, pv) => { asked.push(pv.pv_uci[0]); return [pv.pv_uci[0]]; },
+    });
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    widget.multipv = 2;
+    widget._renderSnapshot(snap("board w - - 0 1", [
+      uciLine(["e2e4"]), uciLine(["d2d4"]), uciLine(["g1f3"]), uciLine(["c2c4"]),
+    ]));
+    expect(asked).toEqual(["e2e4", "d2d4"]);
+  });
+
+  it("converts nothing for a snapshot that is only a depth/number update of hidden rows", () => {
+    const asked = [];
+    const { widget } = harness({
+      choice: null, view: "build",
+      pvSan: (fen, pv) => { asked.push(pv.pv_uci[0]); return [pv.pv_uci[0]]; },
+    });
+    widget.el.hidden = false;
+    widget.lastFen = "board w - - 0 1";
+    widget.multipv = 0; // no rows asked for: the eval chip and arrow still update
+    widget._renderSnapshot(snap("board w - - 0 1", [uciLine(["e2e4"])]));
+    expect(asked).toEqual([]);
+    expect(widget.depthReadout.textContent).toBe("10 / 16");
   });
 });

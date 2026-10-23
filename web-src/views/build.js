@@ -268,6 +268,11 @@ export function createBuildView({
     el.hidden = !name;
     el.textContent = name;
     el.title = name;
+    // The band holds one row while a name is beside the trail (styles.css).
+    // A class, not `:has(> .build-opening:not([hidden]))`: that selector made
+    // every crumb rebuild re-style the page — 95 ms per step at 10,000 moves.
+    const meta = el.parentElement;
+    if (meta) meta.classList.toggle("has-opening", !!name);
   }
 
   function renderTreeMeta() {
@@ -291,7 +296,13 @@ export function createBuildView({
     if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
   }
 
+  // The tree payload the container was last painted from. A re-read (hydrate
+  // after training, sync, reload) swaps appState.build for a new object, so a
+  // step that lands on the new payload must repaint, not move the mark.
+  let paintedTree = null;
+
   function renderBuilderTree() {
+    paintedTree = null;
     // The rule above reads the tree, so every re-render — including the ones
     // that bail before the tree renderer runs — repaints the head. Otherwise the
     // no-repertoire and root-only branches leave the previous visibility.
@@ -360,6 +371,7 @@ export function createBuildView({
     });
     renderTreeMeta();
     container.innerHTML = treeHtml;
+    paintedTree = appState.build;
     // The arrival is over once the token has landed: drop the flag now so no
     // later render replays it, and drop the class on animationend so nothing
     // is left carrying an entrance that already happened.
@@ -397,9 +409,41 @@ export function createBuildView({
     paintGenerateVisibility();
   }
 
+  // Stepping through the tree changes which move is current and nothing else
+  // the tree draws: same nodes, same classes on every other move. Repainting
+  // the whole list for that cost a full innerHTML swap and 6 listeners per move
+  // on every click. This moves the mark and leaves the markup alone. Anything
+  // structural (add, delete, collapse, note, grade, import) still calls
+  // renderBuilderTree, which is the only path that writes the container.
+  function updateBuildTreeSelection() {
+    const container = document.getElementById("builder-tree");
+    const renderer = getMoveTreeRenderer();
+    // The tree renderer chunk is still loading: the first paint of this tree is
+    // a render, not a mark move (renderBuilderTree waits for the chunk itself).
+    if (!container || !renderer || paintedTree !== appState.build) {
+      renderBuilderTree();
+      return;
+    }
+    // Not on screen (inside a collapsed branch, or the tree has not been
+    // painted since it changed): only a render can put the mark there. The
+    // start position is not a move, so there it marks nothing — like a render.
+    const node = appState.buildNodeById.get(appState.buildCurrentNodeId);
+    const currentId = node && node.parent_id ? node.id : null;
+    if (!renderer.updateMoveTreeSelection(container, { currentId })) {
+      renderBuilderTree();
+      return;
+    }
+    const current = container.querySelector(".mtree .mtree-move.is-current");
+    if (current) renderer.scrollIntoViewWithin(container, current);
+    renderTreeMeta();
+    renderBuildBranchBar();
+    onTreeRendered();
+  }
+
   return {
     renderBuildRepHeader,
     renderBuilderTree,
+    updateBuildTreeSelection,
     renderBuildBreadcrumb,
     renderBuildBranchBar,
     renderBuildOpening,

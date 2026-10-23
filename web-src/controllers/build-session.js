@@ -257,7 +257,10 @@ async function selectBuildNode(nodeId) {
       ? "Start"
       : `${node.move_number}${node.move_side === "black" ? "..." : "."} ${node.san}`;
   document.getElementById("build-board-label").textContent = label;
-  renderBuilderTree();
+  // A step through the tree changes the mark, not the tree. Structural edits
+  // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
+  if (buildView) buildView.updateBuildTreeSelection();
+  else renderBuilderTree();
   paintGenerateVisibility();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();

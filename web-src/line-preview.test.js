@@ -11,7 +11,7 @@ function fakeEl() {
   const attrs = {};
   const classes = new Set();
   return {
-    _html: "", hidden: false,
+    _html: "", hidden: false, parentElement: null, children: [],
     get innerHTML() { return String(this._html); }, set innerHTML(v) { this._html = v; }, style: {}, offsetWidth: 176, offsetHeight: 200, isConnected: true,
     classList: { add: (c) => classes.add(c), contains: (c) => classes.has(c), toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)) },
     setAttribute: (k, v) => { attrs[k] = String(v); }, getAttribute: (k) => attrs[k] ?? null, removeAttribute: (k) => { delete attrs[k]; },
@@ -236,5 +236,110 @@ describe("peek", () => {
     expect(click.stopPropagation).not.toHaveBeenCalled();
     handlers.pointerover(ev(t, { pointerType: "touch" }));
     expect(applied).toEqual([]);
+  });
+
+  // Where the peek lands: beside the sentence, never over it, and inside the
+  // screen at 390.
+  const placed = () => {
+    const m = /translate\((-?[\d.]+)px, (-?[\d.]+)px\)/.exec(host.style.transform || "");
+    return m ? { x: Number(m[1]), y: Number(m[2]), w: host.offsetWidth, h: host.offsetHeight } : null;
+  };
+  const inSentence = (el, box) => {
+    const r = el.getBoundingClientRect();
+    return box.x < r.right && box.x + box.w > r.left && box.y < r.bottom && box.y + box.h > r.top;
+  };
+
+  it("opens beside the sentence, not over the words being read", () => {
+    const line = fakeEl();
+    line.getBoundingClientRect = () => ({ left: 924, top: 100, right: 1380, bottom: 130, width: 456, height: 30 });
+    const t = token(LINE, 0);
+    t.getBoundingClientRect = () => ({ left: 1100, top: 105, right: 1126, bottom: 125, width: 26, height: 20 });
+    t.closest = (sel) => (sel === "[data-mt]" || sel.includes("[data-p]") ? t : sel === "[data-board-side]" ? null : sel === "[title]" ? null : line);
+    const vw = document.documentElement.clientWidth;
+    document.documentElement.clientWidth = 1440;
+    try {
+      handlers.focusin(ev(t));
+      expect(host.hidden).toBe(false);
+      const box = placed();
+      // Right gutter: 1440 - 1380 - 8 - 8 = 44px (not enough for 176px peek)
+      // Left gutter: 924 - 8 - 8 = 908px (enough), so peek opens left of sentence
+      expect(box.x).toBe(740); // 924 - 8 - 176
+      expect(inSentence(line, box)).toBe(false);
+    } finally {
+      document.documentElement.clientWidth = vw;
+      mod.hidePeek();
+    }
+  });
+
+  it("goes above the row, not beside it, when the row has cells level with the move", () => {
+    // A Scout line: the moves cell sits beside the results cell, so the space
+    // to its right is not empty and the peek may not take it.
+    const row = fakeEl();
+    row.getBoundingClientRect = () => ({ left: 0, top: 600, right: 1100, bottom: 634, width: 1100, height: 34 });
+    const moves = fakeEl();
+    moves.parentElement = row;
+    moves.getBoundingClientRect = () => ({ left: 100, top: 604, right: 420, bottom: 630, width: 320, height: 26 });
+    const results = fakeEl();
+    results.parentElement = row;
+    results.getBoundingClientRect = () => ({ left: 940, top: 604, right: 1090, bottom: 630, width: 150, height: 26 });
+    row.children = [moves, results];
+    const t = token(LINE, 0);
+    t.getBoundingClientRect = () => ({ left: 140, top: 608, right: 166, bottom: 628, width: 26, height: 20 });
+    t.closest = (sel) => (sel === "[data-mt]" || sel.includes("[data-p]") ? t : sel === "[data-board-side]" ? null : sel === "[title]" ? null : moves);
+    const vw = document.documentElement.clientWidth;
+    document.documentElement.clientWidth = 1440;
+    try {
+      handlers.focusin(ev(t));
+      const box = placed();
+      // Above the moves cell it reads in (604 - 8 - 200), not over the
+      // results cell beside it.
+      expect(box.y).toBe(396);
+      expect(box.y + box.h).toBeLessThanOrEqual(604);
+      expect(box.x + box.w).toBeLessThan(940);
+    } finally {
+      document.documentElement.clientWidth = vw;
+      mod.hidePeek();
+    }
+  });
+
+  it("falls back above the block when neither side has room, inside the screen", () => {
+    const line = fakeEl();
+    line.getBoundingClientRect = () => ({ left: 0, top: 400, right: 390, bottom: 430, width: 390, height: 30 });
+    const t = token(LINE, 0);
+    t.getBoundingClientRect = () => ({ left: 120, top: 405, right: 150, bottom: 425, width: 30, height: 20 });
+    t.closest = (sel) => (sel === "[data-mt]" || sel.includes("[data-p]") ? t : sel === "[data-board-side]" ? null : sel === "[title]" ? null : line);
+    const vw = document.documentElement.clientWidth;
+    document.documentElement.clientWidth = 390; // a phone
+    try {
+      handlers.focusin(ev(t));
+      const box = placed();
+      // No gutter on either side of a full-width sentence: above the whole
+      // paragraph (400 - 8 - 200), and wholly on the 390px screen.
+      expect(box.y).toBe(192);
+      expect(box.y + box.h).toBeLessThanOrEqual(400);
+      expect(box.x).toBeGreaterThanOrEqual(8);
+      expect(box.x + box.w).toBeLessThanOrEqual(390 - 8);
+      expect(inSentence(line, box)).toBe(false);
+    } finally {
+      document.documentElement.clientWidth = vw;
+      mod.hidePeek();
+    }
+  });
+
+  it("keeps clear of a surface it is asked to avoid", () => {
+    const chart = { isConnected: true, getBoundingClientRect: () => ({ left: 86, top: 400, right: 764, bottom: 464, width: 678, height: 64 }) };
+    const t = token(LINE, 1);
+    mod.peekAt(t, { avoid: chart });
+    const box = placed();
+    expect(host.hidden).toBe(false);
+    // Not on the plot at all, and wholly on screen (the fake screen is 1000x800).
+    // The peek goes under or over the plot, never beside it, where the plot
+    // would still be the nearest thing to the pointer.
+    expect(box.y + box.h <= 400 || box.y >= 464).toBe(true);
+    expect(box.x).toBeGreaterThanOrEqual(8);
+    expect(box.y).toBeGreaterThanOrEqual(8);
+    expect(box.x + box.w).toBeLessThanOrEqual(1000 - 8);
+    expect(box.y + box.h).toBeLessThanOrEqual(800 - 8);
+    mod.hidePeek();
   });
 });

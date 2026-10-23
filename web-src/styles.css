@@ -2851,7 +2851,10 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .rep-color-sub { color: var(--label); font-size: var(--fs-s); }
 .rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
 .build-empty { flex: 1; justify-content: center; }
-#build-sidebar:has(#build-empty:not([hidden])) .panel-body > :is(.tree-meta, .forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
+/* With no repertoire open the panel's bands give way to the empty state. The
+   class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
+   ancestor of the tree it made every crumb rebuild re-style the page. */
+#build-sidebar.is-empty .panel-body > :is(.tree-meta, .forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
 /* The one line a new user reads here is running text, so it reads at the size
    the Library's empty state uses, not at the panel's dense 13px. */
 #view-build .empty-state.big p { color: var(--text); font-size: 16px; }
@@ -2960,9 +2963,12 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .crumb-empty { color: var(--label); padding: 2px 4px; }
 /* The named opening of the shown line, at the trail's right end. A label,
    so it gives way (ellipsis) before the trail does: the trail sizes from its
-   content and the label's far larger shrink factor takes the squeeze first. */
-.tree-meta:has(> .build-opening:not([hidden])) { flex-wrap: nowrap; }
-.crumbs:has(+ .build-opening) { flex: 1 1 auto; }
+   content and the label's far larger shrink factor takes the squeeze first.
+   The band keeps one row while a name is shown; the class comes from
+   renderBuildOpening() (build.js) because a `:has()` here made every crumb
+   rebuild re-style the page (95 ms per navigation at 10,000 moves). */
+.tree-meta.has-opening { flex-wrap: nowrap; }
+.tree-meta.has-opening .crumbs { flex: 1 1 auto; }
 .build-opening {
   flex: 0 1000 auto;
   min-width: min(10em, 30%);
@@ -3760,21 +3766,30 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .scout-minisquare svg, .scout-minisquare .piece { width: 80%; height: 80%; }
 
 /* Move links (move-text.js / line-preview.js): a move inside text that peeks
-   at its position. A .move-ref is its own control; a .move-peek-ref sits in a
-   control that already is one and only peeks on hover. */
-.move-ref {
+   at its position. The marker is the word's own underline, with no padding, box
+   or border, so a linked move is exactly as wide and as tall as the word it is
+   and a line never grows because a move in it is a link. A .move-ref is its own
+   control and says so at rest; a .move-peek-ref sits inside a control that
+   already is one (a Scout line row, a game row) and answers the pointer. Hover,
+   press and focus raise the underline's contrast; nothing moves. */
+.move-ref,
+.move-peek-ref {
   cursor: pointer;
-  border-radius: 3px;
-  text-decoration: underline dotted var(--line-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
+  text-decoration: underline;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.18em;
+  text-decoration-color: transparent;
   overflow-wrap: normal;
 }
-.move-ref:hover, .move-ref[aria-describedby] { background: var(--surface-3); text-decoration-color: var(--accent); }
+.move-ref { text-decoration-color: color-mix(in srgb, currentColor 26%, transparent); }
+.move-ref:hover,
+.move-peek-ref:hover,
+.move-ref[aria-describedby],
+.move-peek-ref[aria-describedby] { text-decoration-color: currentColor; }
+.move-ref:active,
+.move-peek-ref:active { text-decoration-color: currentColor; text-decoration-thickness: 0.16em; }
 .move-ref:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.move-peek-ref { border-radius: 3px; }
-.move-peek-ref:hover, .move-peek-ref[aria-describedby] { background: var(--surface-3); }
-.move-ref-num, .move-peek-ref-num { color: var(--muted); margin-right: 1px; }
+.move-ref-num, .move-peek-ref-num { color: var(--muted); }
 
 .move-peek {
   position: fixed;
@@ -4234,8 +4249,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--line-soft);
 }
 
-/* The variation that leads to the current move gets an accent rail. */
-.mtree-var:has(> .mtree-move.is-current, > .mtree-move.on-path)::before {
+/* The variation that leads to the current move gets an accent rail. The class
+   is set by the renderer (movetree.js): a `:has(> .mtree-move.is-current)`
+   selector here made every selection change re-evaluate a subtree selector
+   over the whole tree, which cost 96 ms per navigation at 10,000 moves. */
+.mtree-var.is-on-path::before {
   background: var(--accent-line);
 }
 
@@ -5783,7 +5801,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #build-rep-header .rep-name { font-size: 17px; font-weight: 650; flex: 1 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 13px; }
 
-#build-sidebar:has(#build-empty:not([hidden])) #build-generate-node { display: none; }
+#build-sidebar.is-empty #build-generate-node { display: none; }
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }

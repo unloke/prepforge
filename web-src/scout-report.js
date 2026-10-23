@@ -1294,7 +1294,6 @@ export function buildScoutSectionReport(
     return best || { ...line, covered: 0, prepared: false, repId: null, repName: null };
   });
 
-  const breakdown = scoutModule.openingBreakdown(trie, { minGames: 1 });
   const sectionRating = maiaRatings?.[oppColor] ?? medianOpponentRating(games, oppColor);
   const { branches: allOpeningLines, ancestorFreq } = scoutModule.rankedOpeningBranches(
     games,
@@ -1387,7 +1386,6 @@ export function buildScoutSectionReport(
     gradedLines: graded,
     weaknessTargets: prepTargets,
     prepTargets,
-    breakdown,
     trie,
     oppColor,
     baselineScorePct: baseline,

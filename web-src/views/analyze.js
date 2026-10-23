@@ -47,7 +47,7 @@ export function createAnalyzeView({
   // with the first render that happens to follow the coach's own read.
   ensureBookLoaded = async () => {},
 }) {
-  const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks } =
+  const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
   // The pillars' tabs and the evaluation card's place (beside or under the board).
   const panes = typeof document !== "undefined"
@@ -72,6 +72,10 @@ export function createAnalyzeView({
   // rescaleEvalMarkers so nothing distorts.
   const EVAL_CHART_W = 640;
   const EVAL_CHART_H = 96;
+  // The hover readout keeps this far from the pointer's own column, and this
+  // far off the band's edge on the side it takes.
+  const READOUT_GAP = 12;
+  const READOUT_EDGE = 3;
   // Checkmate-on-board sentinel (game-analyzer terminalEval / engine.py mate_score).
   const CHECKMATE_CP = 10000;
 
@@ -115,6 +119,17 @@ export function createAnalyzeView({
     if (!points || !points.length) return -1;
     const clamped = Math.max(0, Math.min(1, ratio));
     return Math.round(clamped * (points.length - 1));
+  }
+
+  // Where the hovered point's readout sits, in the wrap's coordinates. It takes
+  // the side of the plot away from the pointer and the half of the band away
+  // from the point, so neither the column being pointed at nor the curve it
+  // names is ever under it. `cursorPx` and `pointY` are in plot pixels, read off
+  // the live box.
+  function placeEvalReadout(plotW, plotH, cursorPx, width, height, pointY) {
+    const left = cursorPx >= plotW / 2 ? cursorPx - READOUT_GAP - width : cursorPx + READOUT_GAP;
+    const top = pointY <= plotH / 2 ? plotH - height - READOUT_EDGE : READOUT_EDGE;
+    return { left: Math.max(0, Math.min(left, plotW - width)), top };
   }
 
   // Engine evaluation as players read it: "+1.4" / "−0.3" in pawns (White's
@@ -403,6 +418,35 @@ export function createAnalyzeView({
     renderAnalysisTree(moves);
   }
 
+  // Stepping the game (a click on a move, ← / →, the chart, the report's key
+  // moments) moves the mark and the on-path trail; it does not change the tree.
+  // That used to be a whole `innerHTML` swap plus 6 listeners per move on every
+  // step. Structure — a loaded game, a new branch, a finished analysis — still
+  // goes through renderAnalysisTree, the only path that writes the container.
+  function updateAnalysisTreeSelection() {
+    const container = document.getElementById("analysis-moves");
+    const tree = appState.analysisTree;
+    if (!container || !tree) {
+      // No tree on screen yet: the first paint of one is a render.
+      renderAnalysisTree();
+      return;
+    }
+    const moved = updateMoveTreeSelection(container, {
+      // The start position is not a move: the sheet then marks none, as a
+      // render of it does.
+      currentId: appState.analysisCurrentNodeId === "root" ? null : appState.analysisCurrentNodeId,
+      pathIds: analysisPathIds(appState.analysisCurrentNodeId, tree),
+    });
+    // Not on screen (a tree built but never painted, or a node inside a
+    // collapsed branch): only a render can put the mark there.
+    if (!moved) {
+      renderAnalysisTree();
+      return;
+    }
+    const focus = container.querySelector(".mtree-move.is-current");
+    if (focus) scrollIntoViewWithin(container, focus);
+  }
+
   function rescaleEvalMarkers() {
     const chart = document.getElementById("eval-chart");
     if (!chart) return;
@@ -649,7 +693,9 @@ export function createAnalyzeView({
   let peekOnHover = false;
   let tooltipMarkup = "";
 
-  function showEvalChartTooltip(idx) {
+  // `cursorX` is the pointer's client x; the readout opens on the far side of
+  // it. A finger scrubbing has no pointer to avoid, so it uses the point.
+  function showEvalChartTooltip(idx, cursorX = null) {
     const tooltip = document.getElementById("eval-chart-tooltip");
     const chart = document.getElementById("eval-chart");
     const points = appState.evalChartPoints || [];
@@ -661,7 +707,6 @@ export function createAnalyzeView({
     const point = points[idx];
     const x = evalChartXOf(idx, points.length);
     const rect = chart.getBoundingClientRect();
-    const px = rect.width > 0 ? (x / EVAL_CHART_W) * rect.width : 0;
     const move = (appState.analysis?.moves || []).find((m) => Number(m.ply) === Number(point.ply)) || null;
     const markup = String(evalChartTooltipHtml(point, {
       isCurrent: point.ply === appState.analysisPly,
@@ -672,16 +717,17 @@ export function createAnalyzeView({
     if (tooltip.hidden || tooltipMarkup !== markup) {
       tooltipMarkup = markup;
       tooltip.innerHTML = markup;
-      // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
-      tooltip.hidden = false;
-      // Clamp the centred box so its edges stay inside the chart (it used to
-      // spill past the panel's right edge on the last plies).
-      const half = (tooltip.offsetWidth || 0) / 2;
-      const left = rect.width > 2 * half ? Math.max(half, Math.min(px, rect.width - half)) : rect.width / 2;
-      tooltip.style.left = `${left}px`;
     }
+    // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
     tooltip.hidden = false;
-    if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"));
+    const plotW = rect.width || EVAL_CHART_W;
+    const plotH = rect.height || EVAL_CHART_H;
+    const cursorPx = Number.isFinite(cursorX) ? cursorX - rect.left : (x / EVAL_CHART_W) * plotW;
+    const pointY = (evalChartYOf(pointWinPct(point)) / EVAL_CHART_H) * plotH;
+    const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, pointY);
+    tooltip.style.left = `${spot.left}px`;
+    tooltip.style.top = `${spot.top}px`;
+    if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"), { avoid: chart });
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));
@@ -726,7 +772,7 @@ export function createAnalyzeView({
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
       const idx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
-      showEvalChartTooltip(idx);
+      showEvalChartTooltip(idx, event.clientX);
       if (idx === scrubIdx) return;
       scrubIdx = idx;
       selectEvalChartIdx(idx);
@@ -748,7 +794,7 @@ export function createAnalyzeView({
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
       peekOnHover = true;
-      showEvalChartTooltip(evalChartFocusIdx);
+      showEvalChartTooltip(evalChartFocusIdx, event.clientX);
       peekOnHover = false;
     });
     chart.addEventListener("pointerup", endScrub);
@@ -944,6 +990,7 @@ export function createAnalyzeView({
     renderReport,
     renderEvalChart,
     renderAnalysisTree,
+    updateAnalysisTreeSelection,
     buildAnalysisTree,
     serializeAnalysisPgn,
     adaptParsedTree,
