@@ -412,6 +412,13 @@
   /* Teams: rows in the directory and the incoming shares are thumb rows. */
   #view-teams :is(.team-row, .mem-row, .shared-rep-row) { min-height: 52px; align-items: center; }
   #view-teams .card { border-radius: var(--phone-radius); }
+  /* A card's head on a phone is a title row, not a banner: 10px of pad over a
+     44px button made the directory's head 64px, taller than the 22px page
+     title above it and twice the 18px name it holds. The head keeps a small
+     pad, the button keeps its thumb height, and the name reads at the size of
+     the open team's name. */
+  #view-teams .card-head { padding-block: 6px; }
+  #view-teams .card-head h2 { font-size: 17px; }
   /* The open team's header is one row, like a pushed screen's: back on the
      left, the name (cut first) and role, then whatever actions the role has.
      Wrapped, the actions took a second line, and a member's lone × sat on a
