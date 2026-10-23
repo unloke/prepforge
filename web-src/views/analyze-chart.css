@@ -1382,7 +1382,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 
   /* The evaluation: the figure, then the game graph, one band. A finger on the
      graph scrubs the game; the band never changes height. 64px, not 56: the
-     readout ("4. Ba4 · +0.22 · ✓ Best") is a whole line, and at 44px of graph it
+     readout ("4. Ba4 · +0.22 · Best") is a whole line, and at 44px of graph it
      sat on the curve it was reading. */
   #view-analyze #analysis-eval-card {
     order: 0;
