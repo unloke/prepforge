@@ -234,6 +234,14 @@
                     <header class="an-pane-head"><b>Moves</b></header>
                     <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
                   </div>
+                  <div class="review-bar" id="analysis-review" data-testid="analysis-review" hidden>
+                    <button type="button" class="rv-step" data-rv="prev" aria-label="Previous key moment" aria-keyshortcuts="Shift+ArrowLeft" title="Previous key moment (Shift+←)">‹</button>
+                    <span class="rv-now"><i class="rp-glyph" aria-hidden="true"></i><b class="rv-move"></b><span class="rv-kind"></span></span>
+                    <span class="rv-count"></span>
+                    <button type="button" class="rv-step" data-rv="next" aria-label="Next key moment" aria-keyshortcuts="Shift+ArrowRight" title="Next key moment (Shift+→)">›</button>
+                    <button type="button" class="rv-act" data-rv-act hidden></button>
+                    <button type="button" class="rv-maia" data-rv-maia hidden>Find great moves<span class="rv-size"></span></button>
+                  </div>
                   <details class="drawer an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
                     <summary>Game report</summary>
                     <div class="report" id="analysis-summary" data-testid="analysis-summary"></div>

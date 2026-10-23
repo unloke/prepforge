@@ -458,6 +458,67 @@
 /* The score sheet keeps its own cap (.moves-grid) and scrolls inside it: the
    panel is as tall as its column, so a long game never stretches it. */
 .an-panes > .moves-pane:not([hidden]) { flex: none; }
+
+/* The review bar: one row above the report fold, under the board's eval card.
+   Its height is fixed and the label ellipsises, so stepping through the moments
+   never moves the controls beneath it. */
+.review-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  min-width: 0;
+  padding: 0 4px;
+  border-block: 1px solid var(--line-soft);
+  font-size: var(--fs-s);
+}
+.review-bar[hidden] { display: none; }
+.rv-step {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.rv-step:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
+.rv-step:active:not(:disabled) { background: var(--line-soft); }
+.rv-step:focus-visible,
+.rv-act:focus-visible,
+.rv-maia:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.rv-step:disabled { opacity: 0.35; cursor: default; }
+.rv-now { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; overflow: hidden; }
+.rv-now .rp-glyph { flex: none; }
+.rv-move { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rv-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.rv-count { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rv-act,
+.rv-maia {
+  flex: none;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rv-act:hover,
+.rv-maia:hover { background: var(--surface-3); }
+.rv-act:active,
+.rv-maia:active { background: var(--line-soft); }
+.rv-act[hidden],
+.rv-maia[hidden] { display: none; }
+.rv-size { margin-left: 6px; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
 /* The report opened is a compact read, not a second column: it keeps under half
    the screen and scrolls inside itself, so the score sheet stays where it is. */
 .an-panes > .report-pane > summary { margin-bottom: 0; }

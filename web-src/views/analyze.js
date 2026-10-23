@@ -7,6 +7,7 @@ import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { createReviewBar } from "./analyze-review-bar.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
 import { evalChartTooltipHtml, formatPointEval, placeEvalReadout } from "./analyze-readout.js";
 import { moveLineHtml, moveTokenHtml, walkLine } from "../move-text.js";
@@ -52,6 +53,7 @@ export function createAnalyzeView({
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
+  const reviewBar = createReviewBar({ appState, showAnalysisPly });
   // The pillars' tabs and the evaluation card's place (beside or under the board).
   const panes = typeof document !== "undefined"
     ? installAnalyzePanes({ onEvalMoved: () => requestAnimationFrame(() => rescaleEvalMarkers()) })
@@ -172,10 +174,10 @@ export function createAnalyzeView({
   // The report pane: accuracy, grade counts, key moments, phases, the opening.
   // Where the game came from is the PGN box's own tag block (or, for a recalled
   // review, the names the history row carried); the book is the repertoire cache
-  // the coach already walks.
+  // the coach already walks. The review bar reads the same moments.
   function renderReport(moves) {
     const analysis = appState.analysis || {};
-    renderReportBlock(document.getElementById("analysis-summary"), {
+    const report = renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
       evalGraph: analysis.eval_graph || [],
       headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
@@ -186,7 +188,9 @@ export function createAnalyzeView({
       onGrade: jumpToGrade,
     });
     markCurrentMoment();
+    reviewBar.set(report);
   }
+
 
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
@@ -624,6 +628,7 @@ export function createAnalyzeView({
   function updateEvalChartCursor() {
     paintBestLine();
     markCurrentMoment();
+    reviewBar.paint();
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;
     const dot = document.getElementById("eval-chart-cursor-dot");
