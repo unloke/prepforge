@@ -9,15 +9,40 @@
 
 
 
-.settings-nav {
-  width: fit-content;
-  max-width: 100%;
+/* Desktop: the section names are a label column (app-screens 8.2) and the
+   content sits beside them, left-aligned to the title. The current area is
+   marked by the accent line on the column's edge (settings.css). */
+@media (min-width: 761px) {
+  .settings {
+    display: grid;
+    grid-template-columns: 184px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+  }
+  .settings > .page-head { grid-column: 1 / -1; }
+  .settings-nav {
+    grid-column: 1;
+    grid-row: 2;
+    position: sticky;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .settings-content { grid-column: 2; grid-row: 2; }
 }
+
 .settings-nav-link {
+  position: relative;
   flex: none;
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 12px;
   border-radius: var(--radius);
   color: var(--muted);
@@ -25,17 +50,25 @@
   font-weight: 550;
   white-space: nowrap;
   text-decoration: none;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out);
 }
-.settings-nav-link:hover { background: var(--surface-3); color: var(--text); }
+.settings-nav-link:hover { color: var(--text); }
 .settings-nav-link:active { transform: scale(0.97); }
-/* The open section is a filled ink plate: the strongest mark on the page, so
-   "where am I" is answered without reading. Weight stays the same between the
-   two states - a heavier label would reflow the strip on every jump. */
-.settings-nav-link.is-active {
-  background: var(--text);
-  color: var(--panel);
+/* The selection mark is the app's one accent line (app-sheet): a 2px line on
+   the nearest edge, exactly as tall as the label. */
+.settings-nav-link.is-active { color: var(--text); }
+.settings-nav-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
 }
+.settings-nav-link.is-active::before { opacity: 1; }
 .settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- Cards + rows ------------------------------------------------------ */
@@ -145,9 +178,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  justify-self: stretch;
 }
 .slider input {
   width: 200px;
+  max-width: 100%;
+  min-width: 0;
   accent-color: var(--accent);
 }
 .strength-readout {

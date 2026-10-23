@@ -1042,27 +1042,9 @@ h2 {
    them ~600px apart) and the page keeps equal margins. */
 .settings {
   display: block;
-  max-width: 880px;
+  max-width: 960px;
   margin: 0 auto;
 }
-/* The six sections are one strip under the title at every width: it is the
-   page's only navigation, so it keeps a surface of its own instead of reading
-   as six loose grey words on the ground. It stays at the top while the cards
-   scroll, so a jump to any section is always one tap away. */
-.settings-nav {
-  position: sticky;
-  top: 8px;
-  z-index: 3;
-  display: flex;
-  gap: 2px;
-  margin: 0 0 12px;
-  padding: 4px;
-  overflow-x: auto; /* one row when it fits, wraps below 761px (phone.css) */
-  border-radius: var(--radius-card);
-  background: var(--float);
-  scrollbar-width: none;
-}
-.settings-nav::-webkit-scrollbar { display: none; }
 .settings-content {
   display: flex;
   flex-direction: column;

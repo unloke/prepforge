@@ -9,7 +9,7 @@ const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 function link(area, label) {
   const classes = new Set();
-  const attrs = { href: `#settings-${area}`, "data-area": area };
+  const attrs = { href: `#/settings/${area}`, "data-area": area };
   return {
     label,
     dataset: { area },
@@ -37,17 +37,19 @@ function setup(hash = "") {
 }
 
 describe("Settings area router", () => {
-  it("opens the area named by the hash, and Account without one", () => {
-    const a = setup("#settings-engine");
+  it("opens the area named by the hash, and the last area without one", () => {
+    const a = setup("#/settings/engine");
     a.router.open();
     expect(a.shown).toEqual(["engine"]);
     expect(a.links.find((l) => l.label === "Engine").classList.contains("is-active")).toBe(true);
     expect(a.title.textContent).toBe("Engine");
 
-    const b = setup("#something-else");
+    const b = setup("#/settings");
     b.router.open();
     expect(b.shown).toEqual(["account"]);
     expect(b.title.textContent).toBe("Account");
+    b.router.hashChanged();
+    expect(b.shown).toEqual(["account"]);
   });
 
   it("a click on a link shows its area, names the title and writes the hash", () => {
@@ -56,7 +58,7 @@ describe("Settings area router", () => {
     const preventDefault = vi.fn();
     handlers.click({ preventDefault, target: { closest: () => links[2] } });
     expect(preventDefault).toHaveBeenCalled();
-    expect(globalThis.history.pushState).toHaveBeenCalledWith(null, "", "#settings-board");
+    expect(globalThis.history.pushState).toHaveBeenCalledWith(null, "", "#/settings/board");
     expect(shown.at(-1)).toBe("board");
     expect(title.textContent).toBe("Board");
     expect(links.filter((l) => l.classList.contains("is-active")).map((l) => l.label)).toEqual(["Board"]);
@@ -67,7 +69,7 @@ describe("Settings area router", () => {
   it("back and forward show the area in the hash", () => {
     const { handlers, shown, router } = setup("");
     router.open();
-    globalThis.location.hash = "#settings-appearance";
+    globalThis.location.hash = "#/settings/appearance";
     router.hashChanged();
     expect(shown.at(-1)).toBe("appearance");
   });
@@ -75,7 +77,7 @@ describe("Settings area router", () => {
   it("the markup has one link and one card per area, and one title", () => {
     const view = html.slice(html.indexOf('id="view-settings"'), html.indexOf("</main>"));
     for (const area of ["account", "appearance", "board", "engine"]) {
-      expect(view).toContain(`href="#settings-${area}" data-area="${area}"`);
+      expect(view).toContain(`href="#/settings/${area}" data-area="${area}"`);
     }
     expect(view.match(/class="settings-nav-link/g)).toHaveLength(4);
     expect(view.match(/<h1 /g)).toHaveLength(1);

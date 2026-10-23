@@ -1,5 +1,8 @@
-// Settings areas: one view per area, reached by a hash route (#settings-engine).
-// The nav link, the view's title and the hash name the same area.
+// Settings areas: one view per area, reached by the app's own route
+// (#/settings/engine; the workspace codec reads the view and ignores the rest).
+// The nav link, the view's title and the hash name the same area. The app
+// rewrites the hash to #/settings on a view switch, so the last area is kept in
+// memory and the hash wins only when it names one.
 
 export const SETTINGS_AREAS = ["account", "appearance", "board", "engine"];
 
@@ -10,12 +13,14 @@ export const SETTINGS_AREAS = ["account", "appearance", "board", "engine"];
  * @param {HTMLElement} options.titleEl - the view's title; it takes the area's name
  */
 export function createSettingsRouter({ showArea, navEl, titleEl }) {
+  let current = "account";
   const areaFromHash = () => {
-    const area = location.hash.match(/^#settings-(\w+)$/)?.[1];
-    return SETTINGS_AREAS.includes(area) ? area : "account";
+    const area = location.hash.match(/^#\/settings\/(\w+)$/)?.[1];
+    return SETTINGS_AREAS.includes(area) ? area : null;
   };
 
   function show(area) {
+    current = area;
     navEl.querySelectorAll(".settings-nav-link").forEach((link) => {
       const active = link.dataset.area === area;
       link.classList.toggle("is-active", active);
@@ -33,7 +38,13 @@ export function createSettingsRouter({ showArea, navEl, titleEl }) {
     history.pushState(null, "", link.getAttribute("href"));
     show(link.dataset.area);
   });
-  // Back and forward move between areas (the view wires this to the window;
-  // pushState does not fire hashchange).
-  return { open: () => show(areaFromHash()), hashChanged: () => show(areaFromHash()) };
+
+  return {
+    open: () => show(areaFromHash() || current),
+    // Back and forward (the view wires this to the window; pushState does not fire hashchange).
+    hashChanged: () => {
+      const area = areaFromHash();
+      if (area) show(area);
+    },
+  };
 }
