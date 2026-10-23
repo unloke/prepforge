@@ -21,7 +21,7 @@ function rule(selector) {
 it("Library phone controls meet the 44px tap-target floor", () => {
   for (const selector of [
     "#view-dashboard .lib-list .seg-btn",
-    "#view-dashboard .today .btn.lg",
+    "#view-dashboard .today .btn",
     "#view-dashboard .step .btn",
     "#view-dashboard .lib-row .row-menu-btn",
   ]) {

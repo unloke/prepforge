@@ -55,24 +55,28 @@
 .train-row[data-row="smart"] .train-row-text { flex-flow: row wrap; align-items: baseline; column-gap: 10px; }
 .train-row[data-row="smart"] .train-row-title { flex: 1 0 100%; }
 
+/* A row is the app's card primitive, one tone step inside the panel: the
+   panel is already --panel, so a --panel fill here could only be told apart by
+   a hairline drawn around every row. The rest of the app separates surfaces by
+   tone; so does this. */
 .train-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: "text go" "opts opts";
   align-items: center;
-  gap: 10px 12px;
-  padding: 14px;
-  border: 1px solid var(--line);
+  gap: 8px 12px;
+  padding: 12px;
+  border: 0;
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--panel-soft);
 }
 .train-row-text { grid-area: text; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .train-row-title { margin: 0; font-size: 15px; font-weight: 650; width: fit-content; }
 .train-row-meta { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 .train-row-meta:empty { display: none; }
 .train-row > .train-row-go { grid-area: go; }
-/* Every row's primary action: one fill, one height, one edge. */
-.train-row-go { min-width: 96px; height: 34px; padding: 0 18px; font-weight: 600; }
+/* Every row's primary action: one fill, the app's control height. */
+.train-row-go { min-width: 92px; padding: 0 16px; font-weight: 600; }
 .train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }
