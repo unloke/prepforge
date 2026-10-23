@@ -2039,6 +2039,10 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
 .empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
 .empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+/* The Library's empty card is nothing but its invitation, so the 48px block
+   padding left a blank band above it as tall as the words. 32px still centres
+   the invitation in a card of its own height. */
+.lib-rep-list .empty-state.big { padding: 32px 24px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 
 /* Side dot (repertoire colour) */
