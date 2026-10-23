@@ -1,11 +1,12 @@
-// The desktop Today strip is one band: the queue leads, the week's history
-// sits in its own cell at the right, and the Train button closes it.
+// The desktop Today strip answers one question — what to study next — in one
+// primary line.
 //
-// It used to be a grid of three columns whose middle column held four
-// stacked lines: the note, the queue, the counts and the recap. The queue -
-// the number the Train button turns on - was the second line at 13px, and
-// the card kept a hole the width of the window between the text and the
-// button. These rules pin the band so a density pass cannot stack it again.
+// It used to be a single row of four 13px grey lines: the queue (the number the
+// Train button turns on) was the third thing the eye found, between a streak and
+// two stat lines, and a second line restated the streak the figure beside it
+// already showed. Now the queue leads at the strip's own reading size, the rest
+// of the queue is one quieter line under it, and the week's history and the
+// lifetime counts sit at the far end over the action.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -23,25 +24,27 @@ function rule(selector) {
   return css.slice(open, css.indexOf("}", open));
 }
 
-it("the Today strip is one row, not a grid of stacked columns", () => {
-  const strip = rule(".today {");
-  expect(strip).toMatch(/display:\s*flex/);
-  expect(strip).not.toMatch(/display:\s*grid/);
-  // The body is a column of its own: the queue over the note.
-  expect(rule(".today-body {")).toMatch(/flex-direction:\s*column/);
-});
-
-it("the queue leads the body and the history sits in its own cell", () => {
-  // The aside carries the counts and the recap, pushed to the right of the
-  // band so the queue is never the second line of a stack.
-  const aside = rule(".today-aside {");
-  expect(aside).toMatch(/margin-left:\s*auto/);
-  expect(aside).toMatch(/flex-direction:\s*column/);
-});
-
 it("the queue is the loudest line in the strip", () => {
-  expect(rule(".today-queue {")).toMatch(/font-size:\s*16px/);
-  expect(rule(".today-queue {")).toMatch(/color:\s*var\(--text\)/);
-  // The asides stay quiet: the note, the recap and the counts are 13px.
-  expect(rule(".today-note,\n.today-recap {")).toMatch(/font-size:\s*var\(--fs-s\)/);
+  const queue = rule(".today-queue {");
+  expect(queue).toMatch(/font-size:\s*17px/);
+  expect(queue).toMatch(/color:\s*var\(--text\)/);
+  // The rest of the queue, the week's history and the lifetime counts are one
+  // step quieter, and they are one size: 13px, never a second hierarchy.
+  expect(rule(".today-more,\n.today-recap,\n.today-counts {")).toMatch(/font-size:\s*var\(--fs-s\)/);
+});
+
+it("the streak figure is a figure, not a sentence", () => {
+  // 26px, tabular so two visits do not shift the strip; the word beside it is
+  // the small size.
+  expect(rule(".today-count {")).toMatch(/font-size:\s*26px/);
+  expect(rule(".today-count {")).toMatch(/font-variant-numeric:\s*tabular-nums/);
+  expect(rule(".today-unit {")).toMatch(/font-size:\s*var\(--fs-s\)/);
+});
+
+it("the week's history and the counts sit at the far end", () => {
+  // Right-aligned over the action, so the queue's line runs the width of the
+  // strip and the quiet figures close it.
+  const aside = rule(".today-aside {");
+  expect(aside).toMatch(/align-items:\s*flex-end/);
+  expect(aside).toMatch(/text-align:\s*right/);
 });

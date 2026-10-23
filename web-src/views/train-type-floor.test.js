@@ -16,7 +16,7 @@ const rule = (selector) => {
 
 const BODY = [
   ".train-row-meta", ".train-chip", ".train-blitz-row", ".train-coach-sub", ".train-scope-chip", ".train-count",
-  ".train-outlook-cell span", ".train-picker-head", ".train-picker-group", ".train-pick", ".train-pick-sub",
+  ".train-outlook-lead", ".train-outlook-rest", ".train-outlook-quiet", ".train-picker-head", ".train-picker-group", ".train-pick", ".train-pick-sub",
   ".train-session-meta", ".un-row", ".sum-cells span", ".delta", ".train-recent", "#view-train .seg-btn", "#view-train .kchip",
 ];
 

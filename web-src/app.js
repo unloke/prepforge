@@ -957,7 +957,7 @@ function closeOpenBuild() {
     boards.build.setPosition({ fen: START_FEN, legalMoves: localBoardInfo(START_FEN).legal_moves, lastMove: null });
     boards.build.setAnnotations([], []);
   }
-  document.getElementById("build-board-label").textContent = "No repertoire";
+  document.getElementById("build-board-label").textContent = "";
   renderBuildRepHeader();
   renderBuilderTree();
   renderBuildSync();

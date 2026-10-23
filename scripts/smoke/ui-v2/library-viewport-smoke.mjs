@@ -182,8 +182,10 @@ async function runViewport(vp) {
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
-  // The Today strip is one band: the queue leads, the week's history has its
-  // own cell at the right. Stacked as four lines, the queue was second.
+  // The Today strip is one band: the queue leads at the strip's reading size,
+  // the rest of the queue is one quieter line under it, and the week's history
+  // has its own cell at the right. Read as four equal 13px lines, the queue was
+  // the third thing the eye found.
   const queueFirst = await page.evaluate(() => {
     const body = document.querySelector("#dashboard-today .today-body");
     if (!body) return false;
@@ -191,6 +193,14 @@ async function runViewport(vp) {
     return kids.length > 0 && kids[0].classList.contains("today-queue");
   });
   check(queueFirst, "the queue must be the first line of the Today body");
+  const queueSize = await page.evaluate(() => {
+    const q = document.querySelector("#dashboard-today .today-queue");
+    const more = document.querySelector("#dashboard-today .today-more");
+    if (!q || !more) return null;
+    return { q: parseFloat(getComputedStyle(q).fontSize), more: parseFloat(getComputedStyle(more).fontSize) };
+  });
+  check(queueSize && queueSize.q >= 16 && queueSize.more < queueSize.q,
+    `the queue must be the strip's loudest line, got ${JSON.stringify(queueSize)}`);
   const countsInAside = await page.evaluate(() => {
     const aside = document.querySelector("#dashboard-today .today-aside");
     return !!aside && !!aside.querySelector(".today-counts");
@@ -222,29 +232,40 @@ async function runViewport(vp) {
   // The list must actually fill its column. A two-column track leaking into the
   // phone breakpoint squeezed this to ~70px, and `overflow: hidden` on the list
   // hid the clipped text from the document-level overflow check below - only a
-  // measured width catches it. Above 1020px the Next-steps column is meant to
-  // sit beside the list, so only the single-column widths must fill.
+  // measured width catches it. The Library is one column at every width now, so
+  // every viewport must fill.
   if (vp.width <= 1020) {
     const listWidth = await page.locator("#dashboard-repertoires").evaluate((el) => el.getBoundingClientRect().width);
     check(listWidth >= vp.width - 60, `library list should fill the single column, got ${Math.round(listWidth)}px at ${vp.width}px`);
   }
 
-  // The Library is a work surface: on a desktop the table card fills the
-  // screen instead of floating as a short card over empty ground, and the
-  // setup checklist beside it keeps its own height.
+  // The Library card ends at its last row. It used to be told to take the
+  // height it was given, so three repertoires sat in a card running to the
+  // bottom of the window with about 70% of it empty white.
   if (vp.width >= 1021) {
     const listBox = await page.locator("#view-dashboard .lib-list").evaluate((el) => {
       const r = el.getBoundingClientRect();
-      return { top: r.top, bottom: r.bottom, height: r.height };
+      const rows = el.querySelector("#dashboard-repertoires");
+      const lastRow = rows && rows.lastElementChild;
+      return { top: r.top, bottom: r.bottom, width: r.width, height: r.height, lastRowBottom: lastRow ? lastRow.getBoundingClientRect().bottom : null };
     });
     const stepsBox = await page.locator("#dashboard-steps").evaluate((el) => {
       const r = el.getBoundingClientRect();
-      return { height: r.height };
+      return { top: r.top, bottom: r.bottom, width: r.width, height: r.height };
     });
-    check(vp.height - listBox.bottom <= 40,
-      `the Library table should reach the bottom of the work surface, ${Math.round(vp.height - listBox.bottom)}px short`);
-    check(stepsBox.height < listBox.height,
-      `the setup checklist should keep its own height beside the table, got ${Math.round(stepsBox.height)}px vs ${Math.round(listBox.height)}px`);
+    // The card hugs the table: no more than the card's own padding under the
+    // last row (the list's bottom padding is 0; the card's is 0 here).
+    check(listBox.bottom - listBox.lastRowBottom <= 4,
+      `the Library card should end at its last row, ${Math.round(listBox.bottom - listBox.lastRowBottom)}px of card under it`);
+    check(vp.height - listBox.bottom > 120,
+      `the Library card should not stretch to the bottom of the window, ${Math.round(vp.height - listBox.bottom)}px short`);
+    // The checklist is a band under the table, not a short card floating at the
+    // right of it with nothing beneath: it starts below the table's last row and
+    // runs the same width.
+    check(stepsBox.top >= listBox.bottom - 1,
+      `the checklist should sit under the table, ${Math.round(listBox.bottom - stepsBox.top)}px of overlap`);
+    check(Math.abs(stepsBox.width - listBox.width) <= 4,
+      `the checklist should run the table's width, ${Math.round(listBox.width)}px vs ${Math.round(stepsBox.width)}px`);
   }
 
   // Mastery bar carries the health pct.

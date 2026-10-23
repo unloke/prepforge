@@ -29,6 +29,18 @@ it("keeps the page header's action a thumb target in ink", () => {
   expect(button).toMatch(/color:\s*var\(--text\)/);
 });
 
+// The title row is the top of the page, not a band: at 56px tall with a 20px
+// margin inside a container that also gapped its children by 20px, Library,
+// Games, Scout and Teams opened with ~50px of dead ground under the title.
+it("the page title row is the action's height and adds no margin of its own", () => {
+  const head = rule(".page-head {");
+  expect(head).toMatch(/min-height:\s*44px/);
+  expect(head).toMatch(/margin:\s*0;/);
+  expect(head).not.toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
+  // A page that stacks blocks in normal flow still gets one gap from the shell.
+  expect(rule(".view > .page-head {")).toMatch(/margin-bottom:\s*var\(--phone-gap\)/);
+});
+
 it("draws the bottom bar as chrome: a tone step, no shadow, ink selection", () => {
   const bar = rule(".tabbar {");
   expect(bar).toMatch(/border-top:\s*1px solid var\(--line\)/);
@@ -41,6 +53,14 @@ it("draws the bottom bar as chrome: a tone step, no shadow, ink selection", () =
 it("keeps every bottom bar destination at a 44px hit height", () => {
   const item = rule(".tabbar .tabbar-item {");
   expect(item).toMatch(/height:\s*56px/);
+});
+
+// box-sizing is border-box, so the bar's own 1px top rule is drawn inside its
+// height: at 56 the 56px rows pushed their last pixel past the bottom of the
+// screen (measured: item bottom 845 at a 844 viewport).
+it("the bottom bar holds its 56px rows inside the screen", () => {
+  const bar = rule(".tabbar {");
+  expect(bar).toMatch(/height:\s*calc\(57px \+ env\(safe-area-inset-bottom\)\)/);
 });
 
 // Every custom property a phone rule reads must be one the app defines. The

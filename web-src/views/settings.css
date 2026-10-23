@@ -91,18 +91,39 @@
 .set .pf-info-pop { margin: 0 0 6px; }
 /* Rows are separated by space, not by a rule: a settings card is a list of
    label/value pairs, and the label column plus the value edge already say
-   where one row ends. */
-.set-row,
-.set .pf-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0;
+   where one row ends. On desktop, use fixed width columns so labels and values
+   line up vertically for fast scanning (no ~600px gaps). */
+@media (min-width: 1200px) {
+  .set-row,
+  .set .pf-row {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    gap: 24px;
+    padding: 8px 0;
+  }
+  .set-row > span:first-child,
+  .set .pf-row-text {
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
-.set-row > span:first-child,
-.set .pf-row-text {
-  min-width: 0;
+/* Mobile/narrow view keeps flex row layout. */
+@media (max-width: 1199px) {
+  .set-row,
+  .set .pf-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+  }
+  .set-row > span:first-child,
+  .set .pf-row-text {
+    min-width: 0;
+  }
 }
 /* Dim the disabled control, not the whole row: dimming the row also dims the
    value readout, which drops it under the WCAG AA 4.5:1 contrast floor and
@@ -164,11 +185,15 @@
   text-align: right;
 }
 
+/* Board prefs: one toggle per line, so each switch sits on its own label's
+   line. Two columns put a toggle at the end of the first column beside the
+   second column's label, and the pair it belonged to was a guess. Rows are
+   denser than a control row: a switch needs less height than a button. */
 .sw-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 24px;
+  gap: 2px;
 }
+.sw-grid .pf-row { padding: 4px 0; }
 
 /* Connections: one row per identity — name + Primary tag, ⋯ overflow on the right. */
 .set .sub-head { padding: 8px 0 4px; }
@@ -279,7 +304,6 @@
   .settings-nav-link { flex: none; white-space: nowrap; }
 }
 @media (max-width: 760px) {
-  .sw-grid { grid-template-columns: 1fr; }
   .slider input { width: 130px; }
   .set .btn.sm,
   .set .seg-btn,
@@ -350,14 +374,6 @@
   white-space: nowrap;
 }
 .acct-id-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
-.acct-tag {
-  padding: 1px 8px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 650;
-}
 .acct-signout { flex: none; align-self: flex-start; margin-top: 4px; }
 /* Account skeleton: the identity header's shape while the session is unread. */
 .acct-skeleton-avatar {
@@ -390,14 +406,6 @@
   flex-wrap: wrap;
   gap: 8px;
   padding: 4px 0 2px;
-}
-.conn-site {
-  padding: 1px 7px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 600;
 }
 /* The linked username is a link into Lichess: it reads as text but takes a
    thumb-sized box on a phone. */

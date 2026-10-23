@@ -21,7 +21,7 @@ function rule(selector) {
 it("Library phone controls meet the 44px tap-target floor", () => {
   for (const selector of [
     "#view-dashboard .lib-list .seg-btn",
-    "#view-dashboard .today .btn.lg",
+    "#view-dashboard .today .btn",
     "#view-dashboard .step .btn",
     "#view-dashboard .lib-row .row-menu-btn",
   ]) {
@@ -61,4 +61,13 @@ it("source chips and their × are 44px rows on a phone", () => {
   expect(x, "the phone chip × rule").not.toBeNull();
   expect(x[0]).toMatch(/width:\s*44px/);
   expect(x[0]).toMatch(/height:\s*44px/);
+});
+
+// The queue chips in a Library row are buttons that open Train, and at the
+// shared chip's 18px they were under the 24px minimum target under a thumb.
+// They take 24px; the row's own 64px tap still opens the repertoire, so the
+// queue line does not become a stack of buttons.
+it("the Library row's queue chips are 24px targets on a phone", () => {
+  const chip = rule("#view-dashboard .lib-row button.kchip {");
+  expect(chip).toMatch(/min-height:\s*24px/);
 });
