@@ -323,7 +323,7 @@
   background: var(--surface-3);
 }
 #analysis-eval-card {
-  --an-eval-h: 152px;
+  --an-eval-h: 160px;
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(64px, 1fr);
@@ -1301,7 +1301,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
    sources as folds. A stacked tablet puts the panel under the board in two
    columns, with the engine's lines on the left and the report and the moves
    behind tabs on the right; a phone pins the board and tabs every pillar. */
-#view-analyze { --an-eval-h: 152px; }
+#view-analyze { --an-eval-h: 160px; }
 /* The evaluation under the board takes its height out of the board's square. */
 #view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
   --board-chrome: calc(42px + 8px + var(--an-eval-h));
