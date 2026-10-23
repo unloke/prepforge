@@ -78,6 +78,8 @@ const api = (path, url) => {
       ],
     };
   }
+  // The share dialog's access read (one grant, link off); before the listing's prefix match.
+  if (path.startsWith("/api/repertoires/access")) return { grants: [{ user_id: "u9", name: "Sam", lichess_username: "samqueen", role: "view" }], link: { share_enabled: false, share_role: "view" } };
   if (path.startsWith("/api/repertoires")) return FIXTURE_REPS;
   if (path.startsWith("/api/teams")) return { teams: [] };
   if (path.startsWith("/api/lichess")) return { accounts: [] };
@@ -267,6 +269,17 @@ async function runViewport(vp) {
   const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i.is-mastered").getAttribute("style");
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);
 
+  // Share: the row's ⋯ menu opens the share dialog with the access read, and
+  // the dialog lists the grant (a read that fails leaves the dialog empty).
+  // Before the row click below, which leaves the Library for the workspace.
+  await page.locator('[data-row-menu="rep-1"]').first().click();
+  await page.locator('#repertoire-context-menu [data-action="share"]').click();
+  await page.waitForTimeout(400);
+  const shareOpen = await page.locator("dialog.share-modal[open]").count();
+  check(shareOpen === 1, "Share... from the row menu must open the share dialog");
+  check(/Sam/.test(await page.locator("dialog.share-modal").textContent().catch(() => "")), "the share dialog must list the existing grant");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(200);
   const row2 = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
   // A click (or tap) on a row opens the workspace directly.
   await row2.click();
