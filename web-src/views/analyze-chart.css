@@ -1571,6 +1571,9 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .an-tab { position: relative; height: auto; align-self: stretch; font-size: 14px; border-radius: 9px; }
   .an-tab::after { content: ""; position: absolute; inset: -3px 0; }
   .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
+  /* A phone shows the chart, board, engine and coach; the move list is not a
+     phone pane (the score sheet stays on desktop and the tablet). */
+  .an-tab[data-pane="moves"] { display: none; }
   .an-pane {
     flex: 1 1 auto;
     padding: 8px var(--phone-gutter) 10px;

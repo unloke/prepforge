@@ -28,6 +28,8 @@ export const LAYOUT_QUERIES = {
  *  layout shows the coach above the tabs, so a stored "coach" reads as the report. */
 export function paneFor(stored, { phone = false } = {}) {
   const pane = PANES.includes(stored) ? stored : phone ? "coach" : "report";
+  // A phone has no move-list tab, so a stored "moves" opens the coach.
+  if (phone && pane === "moves") return "coach";
   return !phone && pane === "coach" ? "report" : pane;
 }
 

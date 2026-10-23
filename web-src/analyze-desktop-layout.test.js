@@ -62,6 +62,14 @@ describe("Analyze title", () => {
   });
 });
 
+describe("Analyze phone panes", () => {
+  it("has no move-list pane on a phone, so a stored 'moves' opens the coach", async () => {
+    const { paneFor } = await import("./views/analyze-panes.js");
+    expect(paneFor("moves", { phone: true })).toBe("coach");
+    expect(paneFor("moves", { phone: false })).toBe("moves");
+  });
+});
+
 describe("Analyze evaluation placement", () => {
   it("puts the evaluation under the board only on the stacked and phone bands", async () => {
     // At a wide desktop the evaluation is the panel's second block, beside the
