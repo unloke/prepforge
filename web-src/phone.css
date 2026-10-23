@@ -381,6 +381,22 @@
      so neither floats on its own line under the Start control. */
   #view-replay .toolbar > #scout-reset-btn:not([hidden]) { grid-column: 1; justify-self: start; min-height: 44px; margin: 0; border: 0; color: var(--text); }
   #view-replay .toolbar > .counter { grid-column: 2; justify-self: end; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
+  /* The title is 44px tall as a bar; on the phone it is the title alone, so the
+     toolbar follows it at the panel's own gap instead of after a 34px band. */
+  #view-replay .scout-panel > .page-head { min-height: 0; }
+  /* Once there is a report, Start leaves the docked bar and joins the toolbar's
+     last row: Reset, the count, Start. Before that the docked Start is the page's one action. */
+  #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; }
+  #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar > :is(#scout-reset-btn, .counter, #scout-btn) { grid-row: 3; }
+  #view-replay.is-active .scout-panel:has(#scout-results > .scout-section) > .toolbar > #scout-btn {
+    position: static;
+    grid-column: 3;
+    justify-self: end;
+    width: auto;
+    min-height: 44px;
+    margin: 0;
+    outline: 0;
+  }
   #view-replay .toolbar > .sum-chips:not([hidden]) { padding-bottom: 12px; }
   /* The empty answer is a card of its own under the control card, sized to
      its message: on Games and Scout the tab has either rows or nothing, and

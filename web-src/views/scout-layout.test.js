@@ -90,3 +90,13 @@ it("the colour split in the identity row is plain text, not a tinted chip", () =
   expect(split).toMatch(/background:\s*none/);
   expect(split).toMatch(/padding:\s*0/);
 });
+
+// On a phone the docked Start is the action only until a report exists; after
+// that Start sits in the toolbar's last row, and the title no longer leaves a band.
+it("on a phone the docked Start gives way to the toolbar once there is a report", () => {
+  const phone = readFileSync(join(root, "..", "phone.css"), "utf8");
+  // "A report" is the colour sections; an error block alone keeps the docked Start.
+  // :has() cannot nest, so the test is written as one level of :has.
+  expect(phone).toMatch(/\.scout-panel:has\(#scout-results > \.scout-section\) > \.toolbar > #scout-btn \{\s*position: static;/);
+  expect(phone).toMatch(/\.scout-panel > \.page-head \{ min-height: 0; \}/);
+});
