@@ -143,6 +143,17 @@ describe("visual system tokens", () => {
     }
   });
 
+  // A button answers the pointer with contrast, not weight: the edge steps to
+  // the muted ink as the fill steps to the page tone. The ghost has no edge to
+  // darken, so it must keep its border transparent instead of growing one.
+  it("answers a hover with a darker edge, and a ghost with none", () => {
+    const hover = /\.btn:hover:not\(:disabled, \.is-coming-soon\) \{([^}]+)\}/.exec(css)?.[1] || "";
+    expect(hover).toMatch(/border-color:\s*var\(--muted\)/);
+    expect(hover).toMatch(/background:\s*var\(--surface-3\)/);
+    const ghost = /\.btn\.ghost:hover:not\(:disabled, \.is-coming-soon\) \{([^}]+)\}/.exec(css)?.[1] || "";
+    expect(ghost).toMatch(/border-color:\s*transparent/);
+  });
+
   it("locks the Train coach height so Maia copy cannot shove the board", () => {
     expect(css).toContain(".train-coach");
     expect(ruleBody(".train-coach")).toMatch(/display:\s*grid/);

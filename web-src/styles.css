@@ -1415,8 +1415,11 @@ h2 {
     transform var(--dur-fast) var(--ease-out);
 }
 
+/* Hover raises contrast, not weight: the edge steps down to the muted ink and
+   the fill to the page tone, so a button answers the pointer on a white card
+   where a one-step fill alone was barely a difference. */
 .btn:hover:not(:disabled, .is-coming-soon) {
-  border-color: var(--line-strong);
+  border-color: var(--muted);
   background: var(--surface-3);
 }
 
@@ -1470,6 +1473,7 @@ h2 {
 }
 
 .btn.ghost:hover:not(:disabled, .is-coming-soon) {
+  border-color: transparent;
   background: var(--surface-3);
   color: var(--text);
 }
