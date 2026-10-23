@@ -27,6 +27,7 @@ from __future__ import annotations
 import random
 import uuid
 from dataclasses import dataclass, replace
+from types import SimpleNamespace
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -358,26 +359,61 @@ class SmartTrainingService:
             [(rep.id, plan, preorder_index(rep.root_node, rep.color)) for rep, plan, _, _ in plans]
         )
 
-    def preview(self, owner_user_id: str, repertoire_id: Optional[str] = None) -> Dict[str, int]:
+    def preview(
+        self, owner_user_id: str, repertoire_id: Optional[str] = None, upcoming: int = 0
+    ) -> Dict[str, object]:
         """Card counts of the queue a plain Start of this scope would serve:
         what is left of a resumable session of the SAME scope, else a freshly
         planned one (planning is deterministic, so the counts match).
-        ``resumed`` says which, ``left`` how many cards remain."""
+        ``resumed`` says which, ``left`` how many cards remain. ``upcoming``
+        names the first few of those cards (repertoire, move, kind, position)
+        so Home can list them before anything starts."""
         if repertoire_id is None:
             reps = self.active_repertoires(owner_user_id)
             if not reps:
-                return {**card_counts([]), "resumed": 0, "left": 0}
-            existing = self._latest(self._anchor(reps).id, SCOPE_ALL)
+                return {**card_counts([]), "resumed": 0, "left": 0, "upcoming": []}
+            anchor = self._anchor(reps)
+            existing = self._latest(anchor.id, SCOPE_ALL)
         else:
             reps = [self._load_repertoire_or_raise(repertoire_id)]
+            anchor = reps[0]
             existing = self._latest(repertoire_id, SCOPE_REPERTOIRE)
         if existing is not None and self._resumable(existing, reps):
-            cards = [decode_card(raw) for raw in existing.line_order[existing.current_index:]]
-            counts = card_counts(cards)
-            return {**counts, "resumed": 1, "left": counts["cards"]}
-        plan = self._plan_single(reps[0]) if repertoire_id else self._plan_mixed(reps)
-        counts = card_counts(plan.cards)
-        return {**counts, "resumed": 0, "left": counts["cards"]}
+            cards = [card for card in (decode_card(raw) for raw in existing.line_order[existing.current_index:]) if card is not None]
+            resumed = 1
+        else:
+            cards = list(self._plan_single(reps[0]).cards if repertoire_id else self._plan_mixed(reps).cards)
+            resumed = 0
+        counts = card_counts(cards)
+        return {
+            **counts,
+            "resumed": resumed,
+            "left": counts["cards"],
+            "upcoming": self._upcoming(owner_user_id, anchor, cards[:upcoming]) if upcoming else [],
+        }
+
+    def _upcoming(self, owner_user_id: str, anchor: Repertoire, cards: List[TrainingCard]) -> List[dict]:
+        """The expected move of each card, in queue order: the same card data a
+        Start serves (session_card_bundle), reduced to what a list row shows."""
+        if not cards:
+            return []
+        session = SimpleNamespace(
+            line_order=[encode_card(card) for card in cards],
+            repertoire_id=anchor.id,
+            owner_user_id=owner_user_id,
+        )
+        rows = []
+        for card in self.session_card_bundle(session, anchor):
+            first = card["targets"][0]
+            rows.append({
+                "kind": card["kind"],
+                "repertoire_id": card["repertoire_id"],
+                "repertoire_name": card["repertoire_name"],
+                "color": card["color"],
+                "san": first["san"],
+                "line": first["line"],
+            })
+        return rows
 
     def _resumable(self, session: TrainingSession, reps: List[Repertoire]) -> bool:
         """An unfinished session whose every card still resolves to nodes of
