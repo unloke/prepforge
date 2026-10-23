@@ -204,10 +204,12 @@
                 <!-- F-04: after a batch import — what was stored, and which game
                      this report covers (switchable). -->
                 <div class="analysis-import-picker" id="analysis-import-picker" data-testid="analysis-import-picker" hidden></div>
-                <!-- The pillars under the coach: the engine's lines, the game
-                     report and the score sheet. A wide panel shows them all; a
-                     short or narrow one, and a phone, show one at a time behind
-                     the tabs (the phone adds the coach as a tab). -->
+                <!-- The engine's lines, the score sheet and the game report,
+                     under the coach. A side-by-side panel lays them in its one
+                     column: the engine's head row, the score sheet, then the
+                     report as a fold. A stacked tablet, a phone on its side and
+                     a phone have no room for that column, and show one pane at a
+                     time behind the tabs. -->
                 <div class="an-panes" id="analyze-panes">
                   <div class="an-tabs" id="analyze-tabs" role="tablist" aria-label="Analysis">
                     <button type="button" role="tab" class="an-tab" id="an-tab-coach" data-pane="coach" aria-controls="analysis-explain" aria-selected="false" tabindex="-1">Coach</button>
@@ -224,8 +226,11 @@
                     <div class="engine-slot" id="analysis-engine-slot"></div>
                     <div class="best-line" id="analysis-best-line" data-testid="analysis-best-line" hidden></div>
                   </section>
-                  <section class="an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
-                    <header class="an-pane-head"><b>Game report</b></header>
+                  <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>
+                    <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
+                  </div>
+                  <details class="drawer an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
+                    <summary>Game report</summary>
                     <div class="report" id="analysis-summary" data-testid="analysis-summary"></div>
                     <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
                       <button
@@ -237,45 +242,46 @@
                         New repertoire from this game
                       </button>
                     </div>
-                  </section>
-                  <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>
-                    <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
-                  </div>
+                  </details>
                 </div>
               </div>
+              <!-- Where the game came from: the PGN box and the recent
+                   analyses. A phone lays this out as a bottom sheet; a wider
+                   panel shows the same two folds under the report (the sheet
+                   dissolves into the panel, phone.css). -->
               <div class="phone-sheet" id="analyze-open">
-                <div class="sheet-bar">
-                  <b>Games</b>
-                  <button type="button" class="sheet-done" data-sheet-close>Done</button>
-                </div>
-                <!-- One button at the bottom of the screen holds every way a
-                     game gets here: the latest one, one already saved, and a
-                     PGN. The two that need more room open in place. -->
-                <div class="sheet-rows">
-                  <button type="button" class="sheet-row" data-mirror="#fetch-my-game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span>Last game</span></button>
-                  <button type="button" class="sheet-row" data-reveal="#history-drawer" aria-expanded="false" aria-controls="history-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3.5 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/></svg><span>Past analyses</span></button>
-                  <button type="button" class="sheet-row" data-reveal="#pgn-drawer" aria-expanded="false" aria-controls="pgn-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h7l4 4v12H7zM14 4v4h4"/></svg><span>Paste a PGN</span></button>
-                </div>
-                <details class="drawer" id="pgn-drawer">
-                  <summary>Analyze source · PGN</summary>
-                  <textarea
-                    id="pgn-input"
-                    aria-label="PGN"
-                    data-testid="pgn-input"
-                    rows="5"
-                    spellcheck="false"
-                    placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
-                  ></textarea>
-                  <div class="row gap pgn-file-row">
-                    <button type="button" class="btn sm ghost" id="pgn-file-btn" data-testid="pgn-file-btn">Open .pgn file</button>
-                    <input type="file" id="pgn-file-input" accept=".pgn,application/x-chess-pgn,text/plain" hidden />
+                  <div class="sheet-bar">
+                    <b>Games</b>
+                    <button type="button" class="sheet-done" data-sheet-close>Done</button>
                   </div>
-                </details>
-                <details class="drawer" id="history-drawer" data-testid="history-drawer" hidden>
-                  <summary>Recent analyses</summary>
-                  <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
-                </details>
-              </div>
+                  <!-- One button at the bottom of the screen holds every way a
+                       game gets here: the latest one, one already saved, and a
+                       PGN. The two that need more room open in place. -->
+                  <div class="sheet-rows">
+                    <button type="button" class="sheet-row" data-mirror="#fetch-my-game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg><span>Last game</span></button>
+                    <button type="button" class="sheet-row" data-reveal="#history-drawer" aria-expanded="false" aria-controls="history-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3.5 2M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/></svg><span>Past analyses</span></button>
+                    <button type="button" class="sheet-row" data-reveal="#pgn-drawer" aria-expanded="false" aria-controls="pgn-drawer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h7l4 4v12H7zM14 4v4h4"/></svg><span>Paste a PGN</span></button>
+                  </div>
+                  <details class="drawer" id="pgn-drawer">
+                    <summary>Analyze source · PGN</summary>
+                    <textarea
+                      id="pgn-input"
+                      aria-label="PGN"
+                      data-testid="pgn-input"
+                      rows="5"
+                      spellcheck="false"
+                      placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
+                    ></textarea>
+                    <div class="row gap pgn-file-row">
+                      <button type="button" class="btn sm ghost" id="pgn-file-btn" data-testid="pgn-file-btn">Open .pgn file</button>
+                      <input type="file" id="pgn-file-input" accept=".pgn,application/x-chess-pgn,text/plain" hidden />
+                    </div>
+                  </details>
+                  <details class="drawer" id="history-drawer" data-testid="history-drawer" hidden>
+                    <summary>Recent analyses</summary>
+                    <div class="analysis-history" id="analysis-history" data-testid="analysis-history"></div>
+                  </details>
+                </div>
             </div>
           </aside>
         </div>

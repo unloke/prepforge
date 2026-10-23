@@ -351,46 +351,44 @@
 .board-area > #analysis-eval-card { margin-top: 2px; }
 
 #analyze-sidebar .panel-scroll > * { min-width: 0; }
-/* The panel's column: the coach, (beside the board) the evaluation, then the
-   pillars. The panel no longer scrolls as one sheet: the coach and the
-   evaluation keep their places and each pane scrolls inside itself, so a
-   reader stepping a game never sees the panel jump. */
-#analyze-sidebar .panel-scroll { overflow: hidden; }
+/* The panel's column: the coach, (beside the board) the evaluation, the
+   engine's lines, the score sheet, then the folds — the game report, the PGN
+   box and the recent analyses. The panel ends where the column does, like
+   Train's: the score sheet has its own cap, so a long game scrolls inside the
+   sheet instead of stretching the panel. */
+#analyze-sidebar .panel-scroll { gap: 8px; }
 .analyze-main {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  container: an-main / inline-size;
+  gap: 8px;
 }
 .analyze-main > * { min-width: 0; }
 .analyze-main > :is(.coach-card, .eval-card, .analysis-retry-save, .analysis-import-picker) { flex: none; }
+/* The folds read as one block of lines, not as separate objects: their gap is
+   half the column's. The sources' folds are the sheet's children (phone.css
+   dissolves the sheet into the panel above the phone band). */
+#analyze-open > .drawer { padding-top: 0; }
+#analyze-sidebar .panel-scroll > .analyze-main { margin-bottom: 0; }
 /* The two actions ride the coach's line (see .cc-head) and never wrap: they are
    the only way to get a game, and a second row of them would move the panel.
    They read as words, not icon + word: the words are the labels. */
 #analyze-actions { flex-wrap: nowrap; }
 #analyze-actions .btn > .bi { display: none; }
 
-/* ---- The pillars: engine, report, moves ---------------------------------
-   One pane at a time behind the tabs by default (a short or narrow panel); a
-   wide screen shows them together (see the wide band below). Which pane is
-   open is #view-analyze[data-pane], kept by analyze-panes.js, which also hides
-   the tab of a pane with nothing in it. */
+/* ---- The score sheet, the engine and the folds --------------------------
+   One column: the engine's head row and lines, the score sheet taking what is
+   left, then the game report as a fold. The game's sources (the PGN box and
+   the recent analyses) are the panel's next two folds, after this block.
+   Where the panel is too short or narrow to hold the engine's lines and the
+   sheet side by side with the coach (a stacked tablet, a phone), the same
+   panes stand one at a time behind the tabs; the bands below say which. */
 .an-panes {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.an-tabs {
-  flex: none;
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--surface-3);
 }
 .an-tab {
   flex: 1 1 0;
@@ -407,13 +405,24 @@
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
+/* The tabs are the narrow and stacked panels' way of showing one pane at a
+   time (the phone band turns them on too); a side-by-side panel shows every
+   pane without them. */
+.an-tabs {
+  flex: none;
+  display: none;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
+}
 .an-tab:hover { color: var(--text); }
 .an-tab[aria-selected="true"] { background: var(--panel); color: var(--text); }
 .an-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .an-tab[hidden],
 .an-tab[data-pane="coach"] { display: none; }
 .an-pane {
-  flex: 1 1 auto;
+  flex: none;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -422,9 +431,6 @@
   scrollbar-width: thin;
 }
 .an-pane > * { flex: none; min-width: 0; }
-#view-analyze:not([data-pane="engine"]) .engine-pane,
-#view-analyze:not([data-pane="report"]) .report-pane,
-#view-analyze:not([data-pane="moves"]) .moves-pane,
 .an-pane[hidden] { display: none; }
 .an-pane-head {
   display: flex;
@@ -434,10 +440,24 @@
   font-size: var(--fs-s);
 }
 .an-pane-head > b { font-weight: 700; }
-/* The tabs already name the pane; its own title is for the wide band, where
-   the panes stand without tabs. */
-.report-pane > .an-pane-head { display: none; }
+/* The score sheet keeps its own cap (.moves-grid) and scrolls inside it: the
+   panel is as tall as its column, so a long game never stretches it. */
+.an-panes > .moves-pane:not([hidden]) { flex: none; }
+/* The report opened is a compact read, not a second column: it keeps under half
+   the screen and scrolls inside itself, so the score sheet stays where it is. */
+.an-panes > .report-pane > summary { margin-bottom: 0; }
+.an-panes > .report-pane[open] {
+  flex: none;
+  max-height: min(45vh, 420px);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.an-panes > .report-pane[open] > summary { margin-bottom: 10px; }
 
+/* Nothing to report yet (no game analysed): the fold is not offered. */
+.an-panes > .report-pane:has(#analysis-summary:empty):has(#analysis-handoff[hidden]) {
+  display: none;
+}
 /* The engine pane: the live lines when the engine is on, the saved run's best
    line when it is off. One head row for both: the pane's name, the depth (the
    saved run's or the live search's), the live search's line stepper and the
@@ -453,7 +473,6 @@
   align-content: start;
   gap: 4px 10px;
 }
-#view-analyze:not([data-pane="engine"]) .engine-pane { display: none; }
 .engine-pane > .an-pane-head,
 #analysis-engine-slot,
 #analysis-engine-slot > .engine-window:not([hidden]),
@@ -1077,61 +1096,18 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 /* ---- Drawers: the report, the PGN source, recent analyses ----------- */
 
 /* ---- Where games come from ------------------------------------------------
-   Secondary to the pillars. With no game on the board they fill the pane area
-   (a PGN box and the recent analyses); with a game loaded they wait behind
-   the board bar's Games button and open over the panel. */
-#analyze-sidebar { position: relative; }
+   The panel's last two folds: the PGN box and the recent analyses, under the
+   game report. With no game on the board they take the room under the coach
+   instead, so the first game arrives through them. A phone lays them out as
+   the Games sheet (phone.css), which is why they sit in the sheet's own
+   container. */
 #analyze-sidebar .panel-scroll > #analyze-open { margin: 0; }
-#view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
-#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes > :not(.engine-pane) { display: none; }
+/* No game yet: no score sheet and no report, so the sources (the sheet
+   dissolves into the column, phone.css) sit under the coach and take the
+   room. */
 #view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes { flex: none; }
-#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes > .engine-pane { display: grid; flex: none; }
-#view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  overflow: auto;
-}
-@media (min-width: 761px) {
-  #view-analyze:has(#analysis-results:not([hidden])) .board-bar .bb-sheet { display: inline-flex; }
-  #analyze-open.is-open {
-    position: absolute;
-    z-index: 30;
-    /* From the panel's foot, so the coach and Analyze stay in reach of a
-       pasted game. */
-    inset: auto 8px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: calc(100% - 180px);
-    padding: 6px 14px 14px;
-    border-radius: var(--radius-card);
-    background: var(--panel);
-    box-shadow: var(--shadow-2); /* taste-skill-ignore: a popover floats over the panel */
-    overflow: auto;
-  }
-  #analyze-open.is-open > .sheet-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 36px;
-    font-size: var(--fs);
-  }
-  #analyze-open .sheet-done {
-    min-height: 32px;
-    padding: 0 8px;
-    border: 0;
-    border-radius: 6px;
-    background: none;
-    color: var(--accent-text);
-    font: inherit;
-    font-size: var(--fs-s);
-    font-weight: 650;
-    cursor: pointer;
-  }
-  #analyze-open .sheet-done:hover { background: var(--accent-soft); }
-}
+#view-analyze:not(:has(#analysis-results:not([hidden]))) .an-panes > :is(.moves-pane, .report-pane) { display: none; }
+#analyze-open > .drawer:first-of-type { margin-top: 0; }
 
 .drawer {
   flex: none;
@@ -1279,45 +1255,21 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 }
 
 /* ---- Layout bands -----------------------------------------------------------
-   Side by side (761px and up, the default here): the panel fills the board's
-   column height; the coach and the evaluation are fixed and the pillars share
-   what is left behind their tabs. A wide screen puts the evaluation under the
-   board and shows the pillars together; a stacked tablet puts the panel under
-   the board in two columns; a phone pins the board and tabs every pillar. */
+   Side by side (761px and up, the default here): one column holds the coach,
+   the engine's head row, the score sheet, then the report and the game's
+   sources as folds. A stacked tablet puts the panel under the board in two
+   columns, with the engine's lines on the left and the report and the moves
+   behind tabs on the right; a phone pins the board and tabs every pillar. */
 #view-analyze { --an-eval-h: 112px; }
 /* The evaluation under the board takes its height out of the board's square. */
 #view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
   --board-chrome: calc(42px + 8px + var(--an-eval-h));
 }
 @media (min-width: 761px) {
-  #analyze-sidebar { height: var(--study-h); align-self: stretch; }
   /* A short window keeps two lines of verdict, so the panes keep their room. */
   @media (max-height: 640px) {
     .coach-card { --coach-line: 22px; height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2); }
     #view-analyze { --an-eval-h: 100px; }
-  }
-}
-
-/* Wide: every pillar on screen. The engine pane spans the column under the
-   coach with three lines' room; the report and the score sheet stand side by
-   side when the column is 560px or wider, and share one tabbed pane below
-   that. A stored "engine" choice from a narrower window reads as the report. */
-@media (min-width: 1101px) and (min-height: 700px) {
-  .an-tab[data-pane="engine"] { display: none; }
-  #view-analyze .an-panes > .engine-pane { order: -1; display: grid; flex: none; max-height: 160px; }
-  #view-analyze:is([data-pane="engine"], [data-pane="coach"]) .an-panes > .report-pane { display: flex; }
-  @container an-main (min-width: 560px) {
-    .an-panes {
-      display: grid;
-      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-      grid-template-rows: auto minmax(0, 1fr);
-      gap: 12px 16px;
-    }
-    .an-panes > .engine-pane { grid-column: 1 / -1; }
-    .an-panes > .an-tabs { display: none; }
-    #view-analyze .an-panes > :is(.report-pane, .moves-pane:not([hidden])) { display: flex; }
-    .report-pane > .an-pane-head { display: flex; }
-    .moves-pane > .moves-grid { flex: 1 1 auto; max-height: none; }
   }
 }
 
@@ -1349,15 +1301,88 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .analyze-main > .coach-card { grid-column: 1; grid-row: 1 / 3; }
   .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { grid-column: 1 / -1; grid-row: 4; }
   .an-panes { display: contents; }
-  .an-panes > .an-tabs { grid-column: 2; grid-row: 1; }
+  .an-tabs { display: flex; grid-column: 2; grid-row: 1; }
+  .an-tab[data-pane="engine"] { display: none; }
+  /* One pane at a time on the right, and the engine's lines under the coach.
+     The tab names the pane it opens, so the report shows its content without
+     repeating its own name. There is no engine tab here, so a stored "engine"
+     opens the report. */
+  #view-analyze[data-pane="moves"] .an-panes > .report-pane { display: none; }
+  #view-analyze:not([data-pane="moves"]) .an-panes > .moves-pane { display: none; }
+  .an-panes > .report-pane { flex: 1 1 auto; }
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
   #view-analyze .an-panes > .engine-pane { grid-column: 1; grid-row: 3; display: grid; }
   .an-panes > :is(.report-pane, .moves-pane) { grid-column: 2; grid-row: 2 / 4; }
-  .an-tab[data-pane="engine"] { display: none; }
-  #view-analyze:is([data-pane="engine"], [data-pane="coach"]) .an-panes > .report-pane { display: flex; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open { grid-column: 2; grid-row: 1 / 4; }
   #view-analyze .panel-scroll > #analyze-open { min-height: 0; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll > .analyze-main { display: flex; }
+}
+
+/* A phone on its side keeps the tabs: the panel beside the board is 390px
+   tall, and one pane at a time is all it holds. The tab names the pane it
+   opens, so the report shows its content without repeating its own name. */
+@media (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  .analyze-main { flex: 1 1 auto; min-height: 0; }
+  .an-panes { flex: 1 1 auto; min-height: 0; }
+  .an-tabs { display: flex; }
+  .an-pane { flex: 1 1 auto; }
+  #view-analyze:not([data-pane="engine"]) .an-panes > .engine-pane,
+  #view-analyze:not([data-pane="report"]) .an-panes > .report-pane,
+  #view-analyze:not([data-pane="moves"]) .an-panes > .moves-pane { display: none; }
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  #view-analyze[data-pane="engine"] .an-panes > .engine-pane { display: grid; }
+  #view-analyze[data-pane="report"] .an-panes > .report-pane { display: flex; }
+  #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
+}
+
+/* Where the panel has no room for two more folds — a stacked tablet, a phone on
+   its side — the game's sources stay behind the board bar's Games button and
+   open over the panel. */
+@media (min-width: 761px) and (max-width: 860px) and (orientation: portrait),
+  (min-width: 761px) and (max-width: 860px) and (min-height: 521px),
+  (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6),
+  (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  #analyze-sidebar { position: relative; }
+  #view-analyze:has(#analysis-results:not([hidden])) .board-bar .bb-sheet { display: inline-flex; }
+  #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
+  #analyze-open.is-open {
+    position: absolute;
+    z-index: 30;
+    inset: auto 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: calc(100% - 180px);
+    padding: 6px 14px 14px;
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    box-shadow: var(--shadow-2); /* taste-skill-ignore: a popover floats over the panel */
+    overflow: auto;
+  }
+  #analyze-open.is-open > .sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 36px;
+    font-size: var(--fs);
+  }
+  #analyze-open .sheet-done {
+    min-height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: var(--fs-s);
+    font-weight: 650;
+    cursor: pointer;
+  }
+  #analyze-open .sheet-done:hover { background: var(--accent-soft); }
 }
 
 /* ---- Phone ------------------------------------------------------------
@@ -1501,6 +1526,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   }
   #view-analyze[data-pane="coach"] .an-panes { flex: none; }
   .an-panes > .an-tabs {
+    display: flex;
     order: 2;
     height: var(--phone-tabs-h);
     box-sizing: border-box;
@@ -1511,9 +1537,19 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .an-tab { height: auto; font-size: 14px; border-radius: 9px; }
   .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
   .an-pane {
+    flex: 1 1 auto;
     padding: 8px var(--phone-gutter) 10px;
     overscroll-behavior: contain;
   }
+  /* The tab names the pane, so the report's own summary would say it twice. */
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  #view-analyze:not([data-pane="engine"]) .engine-pane,
+  #view-analyze:not([data-pane="report"]) .report-pane,
+  #view-analyze:not([data-pane="moves"]) .moves-pane { display: none; }
+  #view-analyze[data-pane="report"] .an-panes > .report-pane { display: flex; }
+  #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
+  #view-analyze[data-pane="engine"] .an-panes > .engine-pane { display: grid; }
   .an-pane-head { min-height: 32px; }
   .engine-pane .an-pane-head > b { display: none; }
   #analysis-engine-pane .ev-engine { position: relative; height: 32px; padding: 0 14px 0 12px; font-size: 14px; }
