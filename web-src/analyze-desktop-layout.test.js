@@ -49,6 +49,16 @@ describe("Analyze's desktop panel", () => {
   });
 });
 
+describe("Analyze evaluation placement", () => {
+  it("puts the evaluation under the board only on the stacked and phone bands", async () => {
+    // At a wide desktop the evaluation is the panel's second block, beside the
+    // board, so the first screen reads coach, evaluation, engine. Only a stacked
+    // tablet and a phone move it under the board.
+    const { LAYOUT_QUERIES } = await import("./views/analyze-panes.js");
+    expect(Object.keys(LAYOUT_QUERIES)).toEqual(["phone", "stacked"]);
+  });
+});
+
 describe("Analyze desktop geometry", () => {
   const styles = read("./styles.css");
 
