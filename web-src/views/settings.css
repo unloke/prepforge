@@ -99,6 +99,7 @@
   font-size: 14px;
 }
 .set .spacer { flex: 1; }
+.set-row-value { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .set .pf-info-pop { margin: 0 0 6px; }
 /* Rows are separated by space, not by a rule: a settings card is a list of
    label/value pairs, and the label column plus the value edge already say
@@ -450,6 +451,7 @@
 .dl-row { display: grid; gap: 6px; padding: 8px 0; }
 .dl-row:empty { display: none; }
 .dl-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+}
 .dl-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .dl-text b { font-weight: 600; }
 .dl-size { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
