@@ -252,8 +252,7 @@ export function renderAnnotations(
   engineArrow = null,
   branchArrows = [],
   branchPick = null,
-  betterArrow = null,
-  ghost = null
+  betterArrow = null
 ) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
@@ -271,25 +270,6 @@ export function renderAnnotations(
     parent.appendChild(path);
     drawn.push({ from, to, kind, opts, idle: parent !== overlay });
   };
-  // The ghost of a line the coach's sentence names: drawn first, under every real
-  // mark, as dashed amber arrows that fade along the line. One group, so crossing
-  // arrows do not darken where they meet.
-  const ghostMoves = (Array.isArray(ghost) ? ghost : []).filter(valid);
-  if (ghostMoves.length) {
-    const group = document.createElementNS(NS, "g");
-    group.setAttribute("class", "annot-ghost");
-    ghostMoves.forEach((uci, i) => {
-      const path = document.createElementNS(NS, "path");
-      path.setAttribute("d", buildArrowPath(squareCenter(uci.slice(0, 2), orientation), squareCenter(uci.slice(2, 4), orientation), { scale: 0.66 }));
-      path.setAttribute("class", "annot-arrow annot-ghost-arrow");
-      // The first move of the line reads strongest; the rest step back, so the
-      // order of the line is visible without a number on the board.
-      path.setAttribute("style", `opacity:${(0.92 - (i * 0.5) / Math.max(1, ghostMoves.length - 1)).toFixed(3)}`);
-      group.appendChild(path);
-    });
-    overlay.appendChild(group);
-  }
-  // Paint order is importance order, so a stronger mark is never buried under a weaker
   // Paint order is importance order, so a stronger mark is never buried under a weaker
   // one: idle fork options → the picked option → the engine-also-likes-this option →
   // the better move → your own arrows → the engine's move.

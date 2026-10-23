@@ -26,8 +26,7 @@ class BoardController {
     this.selected = null;
     this.lastMove = null;
     this.dragFrom = null;
-    this.ghost = null;          // the piece following the pointer during a drag
-    this.ghostLine = [];        // a text's line drawn faintly on the board (setGhost)
+    this.ghost = null;
     this._draggedMove = null;   // the move a drag released, so it lands without a slide
     this._soundedKey = null;    // the move whose sound was already played
     this.engineArrow = null;
@@ -82,22 +81,116 @@ class BoardController {
       this.engineArrow,
       this.branchArrows,
       this.branchPick,
-      this.betterArrow,
-      this.ghostLine
+      this.betterArrow
     );
   }
 
-  // --- Ghost line -----------------------------------------------------------
-  // A line the text beside the board names (a coach sentence's move), drawn on
-  // the board itself: dashed arrows that fade along the line, over the real
-  // position and under every real mark. Nothing about the position changes — no
-  // moves, no badge, no tree — so hovering a sentence never moves the board the
-  // reader is looking at. One ghost at a time; null clears it.
-  setGhost(ucis) {
-    const next = Array.isArray(ucis) ? ucis.filter((uci) => typeof uci === "string" && uci.length >= 4) : [];
-    const same = next.length === this.ghostLine.length && next.every((uci, i) => uci === this.ghostLine[i]);
+  // --- Engine-line preview ---------------------------------------------------
+  // Shows positions that are not the game's (an engine PV) without touching the game,
+  // the analysis tree or a repertoire. The real position is saved on entry and put back
+  // by endPreview(); a real setPosition() while previewing ends the preview instead (the
+  // game moved on), so a stale preview can never hide the real board. Moves are off while
+  // previewing (no legal moves), and engine/fork arrows meant for the real position wait.
+  beginPreview({ onEnd = null } = {}) {
+    if (!this._preview) {
+      this._preview = {
+        fen: this.fen,
+        legalMoves: this.legalMoves,
+        lastMove: this.lastMove,
+        moveBadge: this.moveBadge,
+        engineArrow: this.engineArrow,
+        betterArrow: this.betterArrow,
+        branchArrows: this.branchArrows,
+        branchPick: this.branchPick,
+        // The marks the user drew on the real position; the preview's own
+        // positions would otherwise clear them on the way back.
+        arrows: this.arrows.slice(),
+        circles: [...this.highlights],
+      };
+    }
+    this._preview.onEnd = onEnd;
+    this.board.classList.add("is-previewing");
+  }
+
+  showPreview({ fen, lastMove = null }) {
+    if (!this._preview || !fen) return;
+    this._renderingPreview = true;
+    try {
+      this.setPosition({ fen, legalMoves: [], lastMove });
+    } finally {
+      this._renderingPreview = false;
+    }
+    this.moveBadge = null;
+    this._syncMoveBadge();
+    this.engineArrow = null;
+    this.betterArrow = null;
+    this.branchArrows = [];
+    this.branchPick = null;
+    this._renderArrows();
+  }
+
+  // Put the saved real position back (restore = true), or just drop the preview because
+  // the caller is about to show a new real position (restore = false).
+  endPreview({ restore = true } = {}) {
+    const saved = this._preview;
+    if (!saved) return;
+    this._preview = null;
+    this.board.classList.remove("is-previewing");
+    if (restore) {
+      this.setPosition({ fen: saved.fen, legalMoves: saved.legalMoves, lastMove: saved.lastMove });
+      this.moveBadge = saved.moveBadge;
+      this._syncMoveBadge();
+      this.engineArrow = saved.engineArrow;
+      this.betterArrow = saved.betterArrow;
+      this.branchArrows = saved.branchArrows;
+      this.branchPick = saved.branchPick;
+      this.setAnnotations(saved.arrows, saved.circles);
+    }
+    if (saved.onEnd) saved.onEnd({ restored: restore });
+  }
+
+  setEngineArrow(uci) {
+    const next = uci || null;
+    if (this._preview) {
+      this._preview.engineArrow = next;
+      return;
+    }
+    if (this.engineArrow === next) return;
+    this.engineArrow = next;
+    this._renderArrows();
+  }
+
+  // The move the side that just moved should have played instead (Analyze, on a graded
+  // error), drawn in its own colour so it never reads as the engine's next move.
+  setBetterArrow(uci) {
+    const next = typeof uci === "string" && uci.length >= 4 ? uci : null;
+    if (this._preview) {
+      this._preview.betterArrow = next;
+      return;
+    }
+    if (this.betterArrow === next) return;
+    this.betterArrow = next;
+    this._renderArrows();
+  }
+
+  // Faint arrows for the fork's next-move options at the current position, so a
+  // branch point is visible on the board itself (the fork picker's on-board echo).
+  // ``pickUci`` is the currently picked option, drawn stronger than its siblings.
+  setBranchArrows(list, pickUci = null) {
+    const next = Array.isArray(list) ? list.filter((u) => typeof u === "string" && u.length >= 4) : [];
+    const pick = typeof pickUci === "string" && pickUci.length >= 4 ? pickUci : null;
+    if (this._preview) {
+      this._preview.branchArrows = next;
+      this._preview.branchPick = pick;
+      return;
+    }
+    const same =
+      pick === this.branchPick &&
+      next.length === this.branchArrows.length &&
+      next.every((u, i) => u === this.branchArrows[i]);
     if (same) return;
-    this.ghostLine = next;
+    this.branchArrows = next;
+    this.branchPick = pick;
     this._renderArrows();
   }
 

@@ -2463,27 +2463,6 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   opacity: 0.8;
 }
 
-/* Ghost line from coach text: dashed amber arrows drawn on the board itself when
-   hovering a move reference. No position change, no layout shift — just the path
-   visible through the pieces. Translucent, with decreasing opacity along the line.
-   Reduced motion: hide the animation entirely. */
-.annot-ghost {
-  pointer-events: none;
-  transition: opacity var(--dur-slow) var(--ease-out);
-}
-.annot-ghost-arrow {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.6;
-  stroke-dasharray: 2.4 1.8;
-  filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.3));
-}
-@media (prefers-reduced-motion: reduce) {
-  .annot-ghost {
-    display: none;
-  }
-}
-
 .square {
   border: 0;
   padding: 0;
