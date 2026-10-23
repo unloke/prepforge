@@ -491,6 +491,15 @@ describe("eval chart mouse behaviour", () => {
     expect(tooltip.hidden).toBe(true);
   });
 
+  it("hover draws a crosshair: the ply's column and the point's level", () => {
+    const { chart, view, doc } = setup();
+    view.renderEvalChart(POINTS);
+    chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 });
+    const hover = doc.getElementById("eval-chart-hover");
+    expect(hover.getAttribute("visibility")).toBe("visible");
+    expect(hover.getAttribute("d")).toMatch(/^M480 0V96M0 [\d.]+H640$/);
+  });
+
   it("a finger scrubs with the tooltip up and lifting it hides the tooltip", () => {
     const { chart, tooltip, showAnalysisPly, view } = setup();
     view.renderEvalChart(POINTS);
