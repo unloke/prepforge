@@ -451,6 +451,13 @@
 .dl-row { display: grid; gap: 6px; padding: 8px 0; }
 .dl-row:empty { display: none; }
 .dl-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+/* The state and its action are one group. Desktop puts the name in the label
+   column and the group in the value column, the same grid as the rows above it;
+   narrower widths lay the group's parts out directly in the row's grid. */
+.dl-state { display: contents; }
+@media (min-width: 1200px) {
+  .dl-head { grid-template-columns: 190px minmax(0, 1fr); column-gap: 24px; }
+  .dl-state { display: flex; align-items: center; gap: 10px; min-width: 0; }
 }
 .dl-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .dl-text b { font-weight: 600; }
