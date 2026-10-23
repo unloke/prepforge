@@ -28,3 +28,11 @@ it("the head's ⋯ is the app's shared icon button, not a bare button", () => {
   expect(cls).toContain("icon");
   expect(tag[0]).toMatch(/aria-label="More actions"/);
 });
+
+it("the board bar adds no second caption to the empty screen", () => {
+  // The head says "No repertoire open" and the panel says "Start a repertoire";
+  // a third "No repertoire" under the board said nothing new.
+  const label = /<span class="board-label" id="build-board-label">([^<]*)<\/span>/.exec(html);
+  expect(label, "the Build board label").not.toBeNull();
+  expect(label[1]).toBe("");
+});
