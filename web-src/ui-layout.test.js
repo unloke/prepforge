@@ -445,8 +445,8 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     const head = view.slice(view.indexOf('class="cc-head"'), view.indexOf('class="coach-prose"'));
     // The Evaluation card holds the eval figure, win meter, the game graph and
-    // the whole-game progress; the live engine is its own pillar beside the
-    // report and the score sheet, all behind one tab strip.
+    // the whole-game progress. The engine's lines, the score sheet and the
+    // report follow in the panel's one column.
     const body = view.slice(view.indexOf('class="panel-scroll"'));
     const card = body.slice(body.indexOf('id="analysis-eval-card"'), body.indexOf("</section>", body.indexOf('id="analysis-eval-card"')));
     for (const id of ["analysis-chart-caption", "analysis-eval-meter", "eval-chart-live", "eval-chart", "analysis-job-dock"]) {
@@ -747,8 +747,9 @@ describe("workspace chrome layout", () => {
     // board's height and hold hundreds of px of empty tone under a short game.
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
     expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
-    // On a wide panel the score sheet fills its pillar and is its only scroller.
-    expect(analyzeCss).toMatch(/@media \(min-width: 1101px\) and \(min-height: 700px\) \{[\s\S]*?\.moves-pane > \.moves-grid \{ flex: 1 1 auto; max-height: none; \}/);
+    // One column at every side-by-side width: the sheet keeps its own cap and
+    // scrolls inside it, so a long game never stretches the panel.
+    expect(analyzeCss).toMatch(/\.an-panes > \.moves-pane:not\(\[hidden\]\) \{ flex: none; \}/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,
