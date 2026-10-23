@@ -6,10 +6,10 @@ import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.j
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
-import { renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { prepDeparture, renderReportBlock, reportGradeOf } from "./analyze-report.js";
 import { createReviewBar } from "./analyze-review-bar.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
-import { evalChartTooltipHtml, formatPointEval, placeEvalReadout } from "./analyze-readout.js";
+import { departureNotch, evalChartTooltipHtml, formatPointEval, placeEvalReadout } from "./analyze-readout.js";
 import { moveLineHtml, moveTokenHtml, walkLine } from "../move-text.js";
 
 // The board, the move list, the eval display and the engine's controls are
@@ -679,6 +679,8 @@ export function createAnalyzeView({
   // Keyboard/hover focus ply within the chart (-1 = none). Arrows move it, Enter
   // commits it — the same call a mouse click makes.
   let evalChartFocusIdx = -1;
+  // The ply where the game left preparation (null when none), set by renderEvalChart.
+  let departurePly = null;
   let tooltipMarkup = "";
 
   // `cursorX` is the pointer's client x; the readout opens on the far side of
@@ -698,6 +700,7 @@ export function createAnalyzeView({
     const move = (appState.analysis?.moves || []).find((m) => Number(m.ply) === Number(point.ply)) || null;
     const markup = String(evalChartTooltipHtml(point, {
       isCurrent: point.ply === appState.analysisPly,
+      leftPrep: point.ply === departurePly,
       move,
     }));
     // Same markup as the last move: keep the measured width instead of writing
@@ -805,6 +808,7 @@ export function createAnalyzeView({
     measurePlotPads(chart);
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
+    departurePly = points?.length ? prepDeparture(appState.analysis?.moves || [], bookReps(), selfSide())?.ply ?? null : null;
     onEvalChartRendered();
     const width = EVAL_CHART_W;
     const height = EVAL_CHART_H;
@@ -892,6 +896,8 @@ export function createAnalyzeView({
     polyline.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(polyline);
 
+    const left = coords.find((c) => c.ply === departurePly);
+    if (left) chart.appendChild(departureNotch(left.x, left.y));
     // Colour the vertical cliff at each error/brilliant move so bad moves are unmissable.
     coords.forEach((c, i) => {
       if (i === 0) return;
@@ -964,7 +970,9 @@ export function createAnalyzeView({
     // repaint once they land, so the report carries it without holding it up.
     void ensureBookLoaded()
       .then(() => {
-        if (appState.analysis === payload) renderReport(payload.moves);
+        if (appState.analysis !== payload) return;
+        renderEvalChart(payload.eval_graph);
+        renderReport(payload.moves);
       })
       .catch(() => {});
   }

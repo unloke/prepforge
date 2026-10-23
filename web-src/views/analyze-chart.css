@@ -868,6 +868,7 @@
 .eval-chart .eval-cliff { stroke-width: 1.5; stroke-linecap: round; stroke: currentColor; }
 .eval-chart .eval-dot { fill: currentColor; stroke: none; }
 .eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
+.eval-chart .eval-departure { stroke: var(--muted); stroke-width: 1; }
 .eval-chart .eval-cursor-dot {
   fill: none;
   stroke: var(--accent);
