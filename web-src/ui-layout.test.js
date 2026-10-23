@@ -543,7 +543,7 @@ describe("workspace chrome layout", () => {
     // The section strip runs across the width under the title, so the cards
     // take the whole window: a fixed side column was easy to miss.
     expect(css).toMatch(/\.settings\s*\{[^}]*display:\s*block/);
-    expect(css).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky[^}]*background:\s*var\(--panel\)/);
+    expect(css).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky[^}]*background:\s*var\(--float\)/);
     // One column of cards in the strip's own order, capped and centred: a
     // two-column masonry listed Board third and drew it beside Engine, so the
     // section you picked and the card you landed on were in different columns.
@@ -717,13 +717,19 @@ describe("workspace chrome layout", () => {
     for (const selector of [".lr", ".res.r-win", ".res.r-loss", ".open-prev", ".moveline .inprep", ".kind-badge.t-bad"]) {
       expect(replayRule(selector), selector).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
     }
-    // Segmented control (prototype): body text on the surface-3 track in both
-    // states; the selected tile is a raised panel-coloured chip.
+    // Segmented control: the sheet's one selection mark. The options are words
+    // on a plain row over a 1px rule; the chosen one is a 2px accent line
+    // exactly as wide as its label, and no option is a filled plate.
     const segBtn = ruleBody(".seg-btn");
-    expect(segBtn).toMatch(/color:\s*var\(--text\)/);
+    expect(segBtn).toMatch(/color:\s*var\(--muted\)/);
     const segActive = css.match(/\.seg-btn\.is-active\s*\{([^}]+)\}/)?.[1] || "";
-    expect(segActive).toMatch(/background:\s*var\(--panel\)/);
-    expect(segActive).not.toMatch(/color:/);
+    expect(segActive).toMatch(/color:\s*var\(--text\)/);
+    expect(segActive).not.toMatch(/background/);
+    const segMark = css.match(/\.seg-btn::after\s*\{([^}]+)\}/)?.[1] || "";
+    expect(segMark).toMatch(/background:\s*var\(--accent\)/);
+    expect(segMark).toMatch(/left:\s*10px/);
+    expect(segMark).toMatch(/right:\s*10px/);
+    expect(css).toMatch(/\.seg-btn\.is-active::after\s*\{\s*opacity:\s*1/);
     const segDisabled = css.match(/\.seg-btn:disabled\s*\{([^}]+)\}/)?.[1] || "";
     expect(segDisabled).toMatch(/color:\s*var\(--label\)/);
     // Shared switches use tokens for track + knob in both states.
@@ -880,14 +886,16 @@ describe("workspace chrome layout", () => {
     const menuBtn = ruleBody(".context-menu button");
     const menuBtnHover = css.match(/\.context-menu button:hover\s*\{([^}]+)\}/)?.[1] || "";
     const modal = ruleBody(".modal");
-    expect(menu).toMatch(/background:\s*var\(--panel\)/);
+    // What floats takes --float (a step above the ground in both themes), so a
+    // menu never melts into the page in dark.
+    expect(menu).toMatch(/background:\s*var\(--float\)/);
     expect(menu).toMatch(/color:\s*var\(--text\)/);
     expect(menu).not.toMatch(/#ffffff|#1c1c1c/);
     expect(menuBtn).toMatch(/color:\s*var\(--text\)/);
     expect(menuBtn).not.toMatch(/#1c1c1c/);
     expect(menuBtnHover).toMatch(/background:\s*var\(--surface-3\)/);
     expect(menuBtnHover).toMatch(/color:\s*var\(--text\)/);
-    expect(modal).toMatch(/background:\s*var\(--panel\)/);
+    expect(modal).toMatch(/background:\s*var\(--float\)/);
     expect(modal).toMatch(/color:\s*var\(--text\)/);
     expect(modal).not.toMatch(/#ffffff/);
     expect(css).toContain(".account-menu button[data-action=\"signout\"]:focus-visible");
