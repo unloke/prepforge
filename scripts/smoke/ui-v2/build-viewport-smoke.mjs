@@ -309,16 +309,13 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   }
 
-  // Dock: the inspector starts folded to its tab strip, so the tree has the
-  // panel; unfolding it shows the real W/D/L rows. Tabs are a single-select
-  // tablist (Coverage replaces Explorer, Engine docks the widget).
+  // Dock: the inspector starts open and its Explorer fills the column under
+  // the tree; on a phone the Explorer is a pane of its own.
   console.log(`[${vp.name}] at dock step; tree trained=${trained}`);
-  check((await page.locator("#build-inspector.is-folded").count()) === 1, "the inspector should start folded");
-  // On a phone the Explorer is a pane of its own, not a folding strip.
-  if (vp.width >= 1100) await page.locator("#build-dock-fold").click();
-  else await page.locator("#build-panes [data-pane=\"explorer\"]").click();
+  if (vp.width >= 1100) check((await page.locator("#build-inspector.is-folded").count()) === 0, "the inspector should start open");
+  else await page.locator('#build-panes [data-pane="explorer"]').click();
   await page.locator("#explorer-rows .explorer-row").first().waitFor({ timeout: 4000 }).catch(() => {});
-  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open once unfolded");
+  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open");
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");
@@ -334,13 +331,15 @@ async function runViewport(vp) {
     const seam = await resizer.evaluate((el) => ({ x: el.getBoundingClientRect().x, y: el.getBoundingClientRect().y }));
     const dockH = () => page.evaluate(() => document.getElementById("build-inspector").getBoundingClientRect().height);
     const growBy = 120;
+    // The inspector fills the column, so its top seam can only move down: a
+    // drag up takes the tree's floor and stops there. The drag goes down.
     const startDock = await dockH();
     const startTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
     // Drag in the right half of the seam, well clear of the tree's left gutter.
     const atX = seam.x + 200;
     await page.mouse.move(atX, seam.y);
     await page.mouse.down();
-    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y - (growBy * i) / 4);
+    for (let i = 1; i <= 4; i++) await page.mouse.move(atX, seam.y + (growBy * i) / 4);
     await page.waitForTimeout(120);
     const midDock = await dockH();
     // Release where the drag ended: moving the pointer back first would let the
@@ -350,13 +349,12 @@ async function runViewport(vp) {
     const endDock = await dockH();
     const endLabel = await page.locator("#build-board-label").textContent().catch(() => "");
     check(endLabel.includes("e5"), `dragging must not change position, board reads "${endLabel}"`);
-    check(midDock - startDock > growBy * 0.7, `dragging the seam should grow the inspector, got ${startDock} → ${midDock}`);
-    check(endDock - startDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
-    // The tree is the other half of the seam: the dock grows out of the panel,
-    // never past it. On a short line the tree already sits at its floor
-    // (min-height), so what the drag takes comes from the panel's rest — the
-    // check is that the panel itself never overflows and the page never scrolls.
-    const endTree = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    check(startDock - midDock > growBy * 0.7, `dragging the seam down should shrink the inspector, got ${startDock} → ${midDock}`);
+    check(startDock - endDock > growBy * 0.7, `the dragged height should stick after pointerup, got ${startDock} → ${endDock}`);
+    const endTreeNow = await page.evaluate(() => document.getElementById("builder-tree").getBoundingClientRect().height);
+    check(endTreeNow - startTree > growBy * 0.7, `the tree should take the height the inspector gave up, got ${startTree} → ${endTreeNow}`);
+    // The dock may not grow out of the panel or push the page: the panel
+    // itself never overflows and the page never scrolls.
     const panelFit = await page.evaluate(() => {
       const panel = document.querySelector("#build-sidebar > .panel-body");
       return {
@@ -364,10 +362,6 @@ async function runViewport(vp) {
         page: document.documentElement.scrollHeight - innerHeight,
       };
     });
-    check(
-      startTree - endTree > growBy * 0.7 || endTree <= 110,
-      `the move tree should give up what the dock took, or already be at its floor, got ${startTree} → ${endTree}`,
-    );
     check(panelFit.overflow <= 1, `the dragged dock overflowed the panel by ${panelFit.overflow}px`);
     check(panelFit.page <= 0, `the dragged dock scrolled the page by ${panelFit.page}px`);
     const cursorOnHandle = await resizer.evaluate((el) => getComputedStyle(el).cursor);

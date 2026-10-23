@@ -320,16 +320,13 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".inspector-info-pop");
     // The one sentence that explains the panel reads at the panel's size.
     expect(ruleBody(".inspector-info-pop")).toMatch(/font-size:\s*var\(--fs-s\)/);
-    // The inspector is sized to its own contents by fitBuildDock(), so a short
-    // repertoire leaves no dead space above it and a long Explorer is not boxed
-    // into its own scrollbar; a fixed 40% share did both.
-    expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
+    // The inspector takes the leftover under the tree, so a short repertoire
+    // leaves no dead space above it; a dragged height holds (data-dock-pinned).
+    expect(ruleBody(".dock")).toMatch(/flex:\s*1 1 auto/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    // The tree is the workspace and takes the panel's leftover height, so the
-    // inspector pins to the panel's foot instead of leaving ground under it; a
-    // long line still scrolls inside the tree, above the dock, with a floor so
-    // the dock can never squeeze it away.
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
+    // The tree takes its own height and scrolls past it; the inspector takes
+    // the leftover. A long line scrolls inside the tree, above the dock.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
     expect(css).not.toContain("#build-sidebar .panel-body::after");
   });

@@ -15,6 +15,10 @@ it("the trail and the candidates sit in one toolbar", () => {
   expect(toolbar[1]).toMatch(/id="build-branchbar"/);
 });
 
+it("a dragged inspector holds its height; the tree takes the rest", () => {
+  expect(css).toMatch(/\.dock\[data-dock-pinned="1"\] \{[^}]*flex-grow:\s*0/);
+});
+
 it("the inspector is open unless the user folded it, and remembers the choice", () => {
   expect(session).toMatch(/readDockStore\(BUILD_DOCK_FOLDED_KEY\) === "1"/);
   expect(session).toMatch(/folded \? "1" : "0"/);

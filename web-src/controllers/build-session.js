@@ -333,6 +333,8 @@ function fitBuildDock() {
   if (dock.classList.contains("is-folded")) {
     dock.style.flexBasis = "";
     dock.style.minHeight = "";
+    const tree = document.getElementById("builder-tree");
+    if (tree) tree.style.flexGrow = "";
     return;
   }
   const max = buildDockMaxHeight();
@@ -363,6 +365,10 @@ function applyBuildDockHeight(px, { pinned = false } = {}) {
   const dock = document.getElementById("build-inspector");
   if (!dock) return null;
   dock.dataset.dockPinned = pinned ? "1" : "";
+  // A pinned inspector holds its height, so the tree takes the rest of the
+  // column (an unpinned one fills the leftover, and the tree keeps its content).
+  const tree = document.getElementById("builder-tree");
+  if (tree) tree.style.flexGrow = pinned ? "1" : "";
   const clamped = Math.round(Math.min(Math.max(px, BUILD_DOCK_MIN), buildDockMaxHeight()));
   // Basis and floor together: the dock neither grows past what the tree does
   // not need nor gets squashed under a long one (rule: .dock min-height 0).
