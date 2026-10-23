@@ -39,3 +39,10 @@ it("the open line is an edge pseudo-element, not a shadow on a button-like row",
   expect(rule(".scout-lines[data-ui] .line-row.is-expanded")).not.toMatch(/box-shadow/);
   expect(rule(".scout-lines[data-ui] .line-row.is-expanded::before")).toMatch(/width:\s*2px/);
 });
+
+it("the empty report is one dashed frame on one line, not a centred card", () => {
+  const empty = rule(".scout-panel .scout-empty.empty-state.big");
+  expect(empty).toMatch(/border:\s*1px dashed/);
+  expect(empty).toMatch(/justify-content:\s*flex-start/);
+  expect(empty).toMatch(/background:\s*none/);
+});

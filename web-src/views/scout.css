@@ -539,6 +539,22 @@
   .scout-lines-head span:nth-child(2) { display: none; }
 }
 
+/* Empty: one dashed frame where the report will land, its title and sentence on
+   one line. A centred card over the empty ground read as a placeholder page. */
+.scout-panel .scout-empty.empty-state.big {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 4px 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-card);
+  background: none;
+  text-align: left;
+}
+.scout-panel .scout-empty.empty-state.big h3 { font-size: 14px; }
+.scout-panel .scout-empty.empty-state.big p { max-width: none; font-size: 13px; color: var(--muted); }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* The first screen was the toolbar, the profile and a 150px section head; the
