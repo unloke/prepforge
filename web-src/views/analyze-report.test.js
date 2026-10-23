@@ -215,6 +215,23 @@ describe("the report", () => {
     expect(html).not.toMatch(/how|means|click|tap/i);
   });
 
+  it("shows a graded moment with its eval, and a departure with its side and book but no eval", () => {
+    const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["great", "best", "best", "best", "best"]);
+    const html = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR)], selfSide: "white" })));
+    expect(html).toMatch(/data-km-ply="1"[\s\S]*?<span class="km-eval">[^<]+<\/span><span class="km-loss"><\/span>/);
+    expect(html).toMatch(/data-km-ply="5"[\s\S]*?<span class="km-kind">[\s\S]*?You left prep<\/span><span class="km-eval"><\/span>/);
+    expect(html).toMatch(/data-km-ply="5"[\s\S]*?<span class="km-best">Italian<\/span>/);
+    const opponent = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR, "Black", "black")], selfSide: "black" })));
+    expect(opponent).toMatch(/data-km-ply="5"[\s\S]*?Opponent left prep/);
+  });
+
+  it("keeps a game whose only moment is the departure in the report", () => {
+    const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"]);
+    const html = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR)], selfSide: "white" })));
+    expect(html).toContain("rp-moments");
+    expect(html).toContain("You left prep");
+  });
+
   it("has no accuracy or counts for a typed PGN that was never graded", () => {
     const typed = MOVES.map((m) => ({ ...m, classification: null }));
     expect(String(reportHtml(buildGameReport({ moves: typed, evalGraph: [] })))).toBe("");

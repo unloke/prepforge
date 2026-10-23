@@ -307,14 +307,20 @@ function countsHtml(report) {
 }
 
 const KIND_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
+const LEFT_PREP = { you: "You left prep", opponent: "Opponent left prep" };
 
-// One row per review move: the move (a jump to it), its kind, the eval it moved
-// and the win chance it cost, and the better move as a link on the same line.
+// One row per review move: the move (a jump to it) and its kind. A graded move
+// shows the eval it moved and, for a mistake or blunder, the win chance it cost
+// and the better move on a line under it. A departure shows whose move left the
+// book and the repertoire's name, with no eval.
 function momentsHtml(report) {
   if (!report.moments.length) return "";
-  return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map(
-    (m) => html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${[m.grade && KIND_WORD[m.grade], m.departure && "Left prep"].filter(Boolean).join(" · ")}</span><span class="km-eval">${m.before} → ${m.after}</span><span class="km-loss">${m.loss == null ? "" : `−${m.loss}%`}</span></button>${m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : ""}</li>`,
-  )}</ol></section>`;
+  return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map((m) => {
+    const kind = [m.grade && KIND_WORD[m.grade], m.departure && (LEFT_PREP[m.by] || "Left prep")].filter(Boolean).join(" · ");
+    const best = m.loss != null && m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : "";
+    const rep = m.departure && m.repName ? html`<span class="km-best">${m.repName}</span>` : "";
+    return html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${kind}</span><span class="km-eval">${m.grade ? `${m.before} → ${m.after}` : ""}</span><span class="km-loss">${m.loss == null ? "" : `−${m.loss}%`}</span></button>${best}${rep}</li>`;
+  })}</ol></section>`;
 }
 
 function phasesHtml(report) {

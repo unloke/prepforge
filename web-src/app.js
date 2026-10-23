@@ -1727,7 +1727,7 @@ async function init() {
   createBook({ editRepertoire });
   analyzeLoader = createAnalyzeView({
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
-    selectNode: selectAnalysisNode, reveal: revealAnalysisResults,
+    selectNode: selectAnalysisNode, reveal: revealAnalysisResults, selfSide: analysisSelfSide,
   });
   libraryEntry = createLibrary({
     switchView, hydrateBuild, syncViewHeads, openTrain, editRepertoire,

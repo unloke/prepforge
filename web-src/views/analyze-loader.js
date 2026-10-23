@@ -14,13 +14,15 @@ let moveTreeModule = null;
 let moveTreeRenderer = null;
 export let analyzeView = null;
 
-let loadAnalyzeSession, showAnalysisPly, selectAnalysisNode, revealAnalysisResults;
+let loadAnalyzeSession, showAnalysisPly, selectAnalysisNode, revealAnalysisResults, analysisSelfSide = () => null;
 
-export function createAnalyzeView({ loadSession, showPly, selectNode, reveal }) {
+export function createAnalyzeView({ loadSession, showPly, selectNode, reveal, selfSide }) {
   loadAnalyzeSession = loadSession;
   showAnalysisPly = showPly;
   selectAnalysisNode = selectNode;
-  revealAnalysisResults = reveal;  return { preloadAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
+  revealAnalysisResults = reveal;
+  analysisSelfSide = selfSide;
+  return { preloadAnalyzeView, ensureAnalyzeView, ensureMoveTreeRenderer,
     renderAnalysisTree, renderAnalysisTreeEmptyState, bindEvalChart,
     get analyzeView() { return analyzeView; },
     get moveTreeRenderer() { return moveTreeRenderer; } };
@@ -49,6 +51,7 @@ export async function ensureAnalyzeView() {
       revealAnalysisResults,
       onEvalChartRendered: () => syncAnalysisEvalCard(),
       bookReps: getBookReps,
+      selfSide: () => analysisSelfSide(),
       ensureBookLoaded,
     });
   }

@@ -46,6 +46,9 @@ export function createAnalyzeView({
   // Loading that cache, if a caller has one. Without it the prep row appears
   // with the first render that happens to follow the coach's own read.
   ensureBookLoaded = async () => {},
+  // The user's colour in this game ("white" | "black", null when unknown): the
+  // departure walks that colour's book and says whose move left it.
+  selfSide = () => null,
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
@@ -178,6 +181,7 @@ export function createAnalyzeView({
       headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
       names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),
+      selfSide: selfSide(),
       onJump: jumpToPly,
       onGrade: jumpToGrade,
     });
