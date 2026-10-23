@@ -2078,7 +2078,9 @@ async function loadSignedInWorkspace() {
   const settingsReady = loadSettingsController().then((settings) =>
     isCurrent() ? settings.loadSettingsOnce({ render: false }) : null
   ).catch((error) => { if (isCurrent()) setStatusError(error.message); });
-  const dashboardReady = loadDashboard();
+  // The Library paints itself when its read lands (and shows its own failure);
+  // the route restore must not wait for it.
+  loadDashboard().catch(() => {});
   try {
     const stored = getStoredLichessUsername();
     if (stored) setLichessUsername(stored);
@@ -2112,7 +2114,7 @@ async function loadSignedInWorkspace() {
   }
   await refreshAnalyzeRecovery();
   if (!isCurrent()) return;
-  await Promise.allSettled([settingsReady, dashboardReady]);
+  await settingsReady;
 }
 
 // The seams the core modules use to reach the views and the lazily loaded
