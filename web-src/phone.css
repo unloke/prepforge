@@ -46,14 +46,8 @@
   .btn.icon,
   .btn.sm.icon { width: 44px; min-width: 44px; }
   textarea { height: auto; }
-  /* The Train and Explorer switches are drawn at 44x26, about an iOS switch,
-     and their tap area grows to the 44px a thumb needs without moving them.
-     The 38x22 desktop switch was the right size for a pointer and the wrong
-     size to hit. (Settings and the Analyze coach draw their own switch.) */
-  :is(#train-blitz-toggle, #explorer-engine-toggle) { width: 44px; height: 26px; }
-  :is(#train-blitz-toggle, #explorer-engine-toggle) .pf-knob { width: 22px; height: 22px; }
-  :is(#train-blitz-toggle, #explorer-engine-toggle).is-on .pf-knob { transform: translateX(18px); }
-  :is(#train-blitz-toggle, #explorer-engine-toggle)::after { content: ""; position: absolute; inset: -9px -4px; }
+  /* The switch is the shared 34x20 track at every width; its shared ::after
+     gives a thumb the 44px it needs, so no view redraws it here. */
 
   /* ---- Pages ------------------------------------------------------------- */
   .workspace { padding: 12px 12px calc(72px + env(safe-area-inset-bottom)); }
@@ -562,18 +556,11 @@
     font-size: 16px;
   }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
-  /* Settings is a thumb target: its row buttons take a 40px box (they were
-     36px, and "Edit" only 34x36) and keep their own look, the same .btn as
-     everywhere else. Bare accent text read as a link, not as Detect or Sign out. */
-  #view-settings .set :is(.btn, .btn.sm) {
-    min-height: 40px;
-    height: 40px;
-    padding: 0 14px;
-    font-size: 15px;
-  }
+  /* Settings row buttons are the shared .btn at the shared phone height; only
+     the padding grows for a thumb. */
+  #view-settings .set :is(.btn, .btn.sm) { padding: 0 14px; font-size: 15px; }
   #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
-  /* Segmented choices (theme, net, workers, strength, piece set) are 40px. */
-  #view-settings .set .seg-btn { min-height: 40px; height: 40px; padding: 0 12px; }
+  #view-settings .set .seg-btn { padding: 0 12px; }
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }

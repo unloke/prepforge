@@ -53,8 +53,6 @@
 .modal-footer .share-reset { margin-right: auto; }
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  /* The link switch keeps its size but takes a thumb-sized tap. */
-  .share-link .pf-switch::before { content: ""; position: absolute; inset: -10px -6px; }
   .share-add { flex-wrap: wrap; }
   .share-add .share-person { flex-basis: 100%; order: -1; }
   .share-add .share-target,

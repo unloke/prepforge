@@ -163,14 +163,6 @@
 .set .faint:empty { display: none; }
 .settings-error { word-break: break-word; }
 
-.status-pill {
-  background: var(--surface-3);
-  color: var(--muted);
-}
-.status-pill.ok { background: var(--good-soft); color: var(--good-text); }
-.status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }
-.status-pill.err { background: var(--danger-soft); color: var(--danger); }
-
 .slider {
   display: flex;
   align-items: center;
@@ -307,26 +299,9 @@
   .slider input { width: 130px; }
   /* The nav links are anchors, not .btn: they keep their own thumb height. */
   .settings-nav-link { min-height: 44px; }
-  /* Touch targets: the switch and the 24px ⓘ are thumb targets on a
-     phone. The switch keeps its parts and grows its hit box to 40px (the track
-     is drawn by ::after, the knob stays centered); the ⓘ gets a 40px box with
-     the glyph unchanged. */
-  /* background/border are cleared on ::after only: the base rule sets the
-     transparent state there too. */
-  .set .pf-switch { height: 40px; background: none; border-color: transparent; }
-  .set .pf-switch::after {
-    content: "";
-    position: absolute;
-    inset: calc((40px - var(--switch-h)) / 2) 0;
-    border: 1px solid var(--line-strong); /* taste-skill-ignore: a switch is a form control and keeps its outline */
-    border-radius: 999px;
-    background: var(--panel-soft);
-    transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
-  }
-  .set .pf-switch.is-on { background: none; }
-  .set .pf-switch:hover::after { background: var(--surface-3); }
-  .set .pf-switch.is-on::after { background: var(--accent); border-color: var(--accent); }
-  .set .pf-switch .pf-knob { z-index: 1; top: calc((40px - var(--knob)) / 2 - 1px); } /* above the ::after track */
+  /* The ⓘ is a 24px glyph with a 40px box on a phone. The switch already
+     carries its thumb-sized tap area in the shared rule, so it is not redrawn
+     here. */
   .set .pf-info { min-width: 40px; min-height: 40px; }
   .set-row { flex-wrap: wrap; }
 }

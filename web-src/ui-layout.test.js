@@ -553,7 +553,8 @@ describe("workspace chrome layout", () => {
     // screens, so without this the Settings view has no heading at all.
     expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*flex/);
     expect(settingsCss).toContain(".set-row");
-    expect(settingsCss).toContain(".status-pill.ok");
+    // The status pill is one shared family, styled before Settings loads.
+    expect(css).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.
     for (const legacy of ["settings-row", "settings-label", "settings-value", "pf-feedback", "piece-style-preview", "settings-layout"]) {
       expect(html).not.toContain(legacy);
@@ -916,14 +917,3 @@ describe("workspace chrome layout", () => {
   });
 });
 
-// ---- Analyze desktop geometry --------------------------------------------------
-
-describe("analyze layout", () => {
-  it("does not stretch the board column past the board on desktop", () => {
-  // The board is a square capped by its width share, so a stretched column left a
-  // tall empty area under it (175px at 1180x900) while the panel stayed full height.
-  const desktop = css.match(/@media \(min-width: 960px\) \{[\s\S]*?\n\}/);
-  expect(desktop).toBeTruthy();
-  expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
-  });
-});

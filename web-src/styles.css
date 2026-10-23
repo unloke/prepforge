@@ -825,20 +825,37 @@ h2 {
   flex-wrap: wrap;
 }
 
-.src-chip {
+/* ---- One chip ------------------------------------------------------------
+   A chip is a control you can act on: a source, a filter. One height, one
+   radius, one weight, sentence case. Colours are the chip's own state; the
+   shape is not. */
+.src-chip,
+.sum-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   height: 24px;
-  padding: 0 4px 0 9px;
-  border-radius: 12px;
-  max-width: 100%;
-  min-width: 0;
-  background: var(--accent-soft);
-  color: var(--accent-text);
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+  background: var(--surface-3);
+  color: var(--muted);
+  font: inherit;
   font-size: var(--fs-s);
   font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
+}
+
+/* The source chip carries the source's state in its tint: a selected account
+   is the accent tint, the sign-in tray is a dashed outline. */
+.src-chip {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 4px 0 9px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 /* Guest Games tray: an action, not a selected source. */
@@ -846,7 +863,6 @@ h2 {
   padding: 0 10px;
   border: 1px dashed var(--line-strong);
   background: transparent;
-  font-family: inherit;
   cursor: pointer;
 }
 .src-chip.src-chip-signin:hover { background: var(--accent-soft); }
@@ -966,20 +982,6 @@ h2 {
 
 .src-self-count.is-mixed {
   color: var(--warn-text);
-}
-
-/* One tag style for account kinds (Primary, External) everywhere: Settings,
-   the source picker and the Games/Scout chips. Lives here, not in the lazy
-   settings.css, so it is styled before Settings has ever been opened.
-   A quiet filled chip in sentence case: the kind is a word, not a label. */
-.conn-primary,
-.src-kind {
-  padding: 1px 7px;
-  border-radius: 10px;
-  background: var(--surface-3);
-  color: var(--muted);
-  font-size: var(--fs);
-  font-weight: 600;
 }
 
 .src-row.is-external .src-chip-x {
@@ -1117,6 +1119,15 @@ h2 {
   cursor: pointer;
   padding: 0;
   transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+/* A thumb needs 44px; the switch's drawn box stays 34x20 at every width. The
+   tap area grows around it, so one switch serves a pointer and a thumb and no
+   view redraws the track to reach the floor. */
+.pf-switch::after {
+  content: "";
+  position: absolute;
+  inset: -12px -5px;
 }
 
 .pf-switch:hover {
@@ -1656,7 +1667,9 @@ textarea:focus-visible {
 .team-role-badge,
 .lib-chip,
 .kchip,
-.kind-badge {
+.kind-badge,
+.conn-primary,
+.src-kind {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1670,7 +1683,17 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 /* A pill with no label (a share whose role the server did not send) draws nothing. */
-:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge):empty { display: none; }
+:is(.status-pill, .team-role-badge, .lib-chip, .kchip, .kind-badge, .conn-primary, .src-kind):empty { display: none; }
+
+/* The neutral pill: a status with no severity of its own is the quiet surface.
+   Its tone variants (ok, warn, err) set the pale tint of their own hue. */
+.status-pill {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+.status-pill.ok { background: var(--good-soft); color: var(--good-text); }
+.status-pill.warn { background: var(--warn-soft); color: var(--warn-text); }
+.status-pill.err { background: var(--danger-soft); color: var(--danger); }
 
 .link {
   border: 0;
@@ -1790,10 +1813,12 @@ textarea:focus-visible {
   .lib-list .card-head .seg { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
   .lib-list .card-head .search-field { grid-column: 2; grid-row: 2; width: 220px; margin-left: 0; }
 }
+/* A count is a number beside a word, not a chip: one line of the row's own
+   size, no pill around it. */
 .count {
   min-width: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: var(--radius-chip);
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
@@ -2180,8 +2205,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row .kchip.k-weak::before { background: var(--k-weak); }
 .lib-row .kchip.k-due::before { background: var(--k-due); }
 .lib-row .kchip.k-new::before { background: var(--k-new); }
-button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
-button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
+/* A kind chip is a button when it opens something: one press feedback and one
+   hover, in the family's own ink. */
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
+button.kchip:hover { background: var(--line); }
+button.kchip:active { transform: translateY(1px); }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
@@ -3746,8 +3774,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* A card with no line of its own says so in words, not in the move face. */
 .un-line.is-plain { font-family: inherit; }
 /* The queue's kind chips are read at a glance mid-session, so they sit at the
-   panel's body size rather than the app's smallest step. */
-#view-train .kchip { font-size: var(--fs); padding: 1px 8px; }
+   panel's body size rather than the app's smallest step. Only the type moves;
+   the pill's height, padding and radius are the shared ones. */
+#view-train .kchip { font-size: var(--fs); }
 
 .btn.block { width: 100%; }
 .faint { color: var(--label); }
@@ -3801,17 +3830,24 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .src-label { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 .inline-field { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* The chosen filter is the sheet's selection mark: the ink label and an accent
+   line under the word, exactly as wide as the word. A filled plate would make
+   the narrowest control on the page the loudest. */
 .sum-chip {
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a chip on a white card is told apart by its edge */
-  border-radius: 13px;
-  background: var(--panel);
-  font: inherit;
-  font-size: var(--fs-s);
-  font-weight: 600;
+  position: relative;
   cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.sum-chip::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 .sum-chip:active {
   transform: translateY(1px);
@@ -3820,7 +3856,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .sum-chip.t-bad { color: var(--danger); }
 .sum-chip.t-warn { color: var(--warn-text); }
 .sum-chip.t-none { color: var(--none); }
-.sum-chip.is-on { border-color: currentColor; background: color-mix(in srgb, currentColor 12%, var(--panel)); }
+.sum-chip.is-on { color: var(--text); background: var(--surface-3); }
+.sum-chip.is-on::after { opacity: 1; }
 .sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .queued { color: var(--label); font-size: var(--fs-xs); }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
