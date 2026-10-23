@@ -29,7 +29,7 @@ describe("panel containers", () => {
     expect(scout).not.toContain("@media (max-width: 1279px)");
     expect(replay).toMatch(/@container ledger \(max-width: 700px\) \{\s*\.lr \{[^}]*\}\s*\.lr > :nth-child\(4\) \{ display: none; \}/);
     // The badge column holds "Opponent left prep" at every width, so it never runs into the game column.
-    expect(replay).toMatch(/\.lr \{[^}]*grid-template-columns: 156px minmax\(160px, 260px\)/);
+    expect(replay).toMatch(/\.lr \{[^}]*grid-template-columns: 156px minmax\(160px, 240px\) 52px minmax\(120px, 200px\) 80px;/);
     expect(replay).toContain(".lr { grid-template-columns: 156px minmax(110px, 1fr) 52px 80px; }");
     // The page-level split stays a viewport query.
     expect(replay).toMatch(/@media \(max-width: 1279px\) \{\s*\.triage \{ grid-template-columns: minmax\(0, 1fr\) 380px; \}\s*\}/);
