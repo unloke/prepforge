@@ -1149,14 +1149,13 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   flex-direction: column;
   gap: 2px;
 }
+/* The open button fills the row: a row that highlights on hover but only
+   answered clicks on its text line dropped every click above or below it. */
 .history-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
-  padding: 6px 4px;
   border: 0;
-  cursor: pointer;
 }
 .history-item .hi-open {
   display: flex;
@@ -1165,7 +1164,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 0;
+  padding: 6px 4px;
   border: 0;
   background: none;
   color: inherit;
@@ -1178,6 +1177,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
    list stays a list of games and not a list of games with a bin each. */
 .history-item .hi-delete {
   flex: none;
+  align-self: center;
   opacity: 0;
   color: var(--label);
 }
@@ -1224,11 +1224,12 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     transform var(--dur-fast) var(--ease-out);
 }
 
-/* Press: the control gives a little under the finger. */
+/* Press: the control gives a little under the finger. Not the full-width
+   history row: shrinking it moved its edge out from under a press near the
+   edge, and the release then landed outside it and fired no click. */
 .ev-engine:active,
 .an-tab:active,
 .coach-bookaction:active,
-.history-item .hi-open:active,
 .history-item .hi-delete:active {
   transform: scale(0.97);
 }
@@ -1638,8 +1639,8 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analyze-open > .drawer:not([open]) { display: none; }
   #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
-  #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
-  #analyze-open .history-item .hi-open { font-size: 15px; }
+  #analyze-open .history-item { min-height: 48px; font-size: 15px; }
+  #analyze-open .history-item .hi-open { padding: 8px 2px; font-size: 15px; }
   #analyze-open .history-item .hi-meta { font-size: 13px; }
   /* Touch target, and always visible: a phone has no hover to reveal it. */
   #analyze-open .history-item .hi-delete {
