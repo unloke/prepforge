@@ -633,9 +633,11 @@ export function createAnalyzeView({
     const line = ev && Array.isArray(ev.pv) && ev.pv.length ? walkLine(fen, ev.pv.slice(0, 10)) : null;
     const depth = document.getElementById("analysis-best-depth");
     if (depth) depth.textContent = line && ev.depth ? `Depth ${ev.depth}` : "";
+    // No saved line here: the row keeps its line and reads as a missing value (a
+    // grey dash), so the engine's one-line slot never shows an empty box.
     if (!line) {
-      host.hidden = true;
-      host.innerHTML = "";
+      host.hidden = false;
+      host.innerHTML = html`<span class="engine-pv-eval ep-none">—</span>`;
       return;
     }
     const plies = line.plies;

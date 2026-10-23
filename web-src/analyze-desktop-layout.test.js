@@ -88,5 +88,7 @@ describe("Analyze engine pane", () => {
     // the head is the only one shown in the Analyze slot.
     expect(css).toMatch(/#analysis-engine-slot \.engine-lines \{ display: none; \}/);
     expect(html).toContain('id="analyze-lines-readout"');
+    // The pane's stepper is bare, not a pill that stretches across the head.
+    expect(css).toMatch(/\.engine-pane > \.an-pane-head \.engine-lines \{ justify-self: start;[^}]*background: none;/);
   });
 });

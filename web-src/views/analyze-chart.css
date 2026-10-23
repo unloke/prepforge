@@ -500,6 +500,10 @@
    stepper beside the head is the one control. */
 #analysis-engine-slot .engine-lines { display: none; }
 .engine-pane .ev-engine { grid-area: 1 / 5; }
+/* The pane's stepper is a bare "− 1 +" at the head's left, not a pill that
+   stretches across the free column (it read as an empty input). */
+.engine-pane > .an-pane-head .engine-lines { justify-self: start; gap: 6px; padding: 0; border: 0; background: none; }
+.engine-pane .ep-none { color: var(--muted); }
 #analysis-engine-slot .engine-window-body,
 #analysis-engine-slot .engine-window-unlock,
 .engine-pane > .best-line,
