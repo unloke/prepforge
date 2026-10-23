@@ -34,7 +34,8 @@ it("the up-next is one soft field with the rows spaced inside it", () => {
 });
 
 it("the result card's cells are soft fields and what changed is one unruled line", () => {
-  expect(rule(".sum-cells div")).toMatch(/background: var\(--panel-soft\)/);
+  // The figures are one line of text, not tiles.
+  expect(css).not.toMatch(/\.sum-cells/);
   expect(rule(".delta")).not.toMatch(/border/);
   expect(rule(".tsum-item")).not.toMatch(/border/);
 });

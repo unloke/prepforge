@@ -423,7 +423,7 @@ def smart_summary(
         payload = _smart_summary_payload(repo, repertoire, owner, owned=owned)
         scope_id = repertoire_id
     if preview:
-        payload["next_session"] = service.preview(owner, scope_id)
+        payload["next_session"] = service.preview(owner, scope_id, upcoming=5)
         payload["outlook"] = _outlook(repo, reps, owner, utc_offset)
     day = streak.resolve_day(local_date)
     payload["day_streak"] = streak.as_view(

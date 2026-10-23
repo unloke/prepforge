@@ -137,11 +137,9 @@ export function createTrainView({
           // button's word sitting in a row that has no button; this says which
           // position the card is about.
           const line = lineTailHtml(card.targets?.[0]?.line);
-          const tail = line
-            ? html`<span class="un-line">${line}</span>`
-            : html`<span class="un-line is-plain">First move</span>`;
+          const tail = line ? html`<span class="un-line">${line}</span>` : "";
           return (
-            html`<div class="un-row"><span class="kchip k-${card.kind || "polish"}">${kind}</span><span class="un-what"><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</span></div>`
+            html`<div class="un-row"><span class="un-kind">${kind}</span><span class="un-what"><span class="un-rep"><span class="color-dot ${dot}"></span>${rep}</span>${tail}</span></div>`
           );
         })}`;
     // The rows arrive one by one, with the app's shared stagger.

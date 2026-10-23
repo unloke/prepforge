@@ -3611,14 +3611,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 14px;
   background: var(--panel-soft);
 }
-/* taste-skill-ignore: these glyphs are functional indicators, not decorations */
-#train-banner[data-state="move"] { --cb: var(--accent); --g: "\265F"; } /* white chess piece */
-#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "*"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
-#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "x"; background: var(--danger-soft); }
+#train-banner[data-state="move"] { --cb: var(--accent); --g: "♟"; }
+#train-banner[data-state="teach"] { --cb: var(--k-new); --g: "✦"; background: color-mix(in srgb, var(--k-new) 8%, var(--panel)); }
+/* A miss is a compact row like the others: the icon and the move carry the red. */
+#train-banner[data-state="wrong"] { --cb: var(--danger); --g: "↺"; padding: 10px 12px; }
+#train-banner[data-state="wrong"] .train-coach-title .move-ref { color: var(--danger); }
 #train-banner[data-state="reveal"] { --cb: var(--warn); --g: "!"; background: var(--warn-soft); }
-#train-banner[data-state="review"] { --cb: var(--warn); --g: "\21BB"; } /* right arrow hook */
-#train-banner[data-state="correct"] { --cb: var(--good); --g: "+"; background: var(--good-soft); }
-#train-banner[data-state="done"] { --cb: var(--good); --g: "•"; }
+#train-banner[data-state="review"] { --cb: var(--warn); --g: "↻"; background: var(--warn-soft); }
+#train-banner[data-state="correct"] { --cb: var(--good); --g: "✓"; background: var(--good-soft); }
+#train-banner[data-state="done"] { --cb: var(--good); --g: "★"; }
 /* A failure (opponent unavailable, a sync that did not land) is not a finish:
    it kept the green star and read as success. */
 #train-banner[data-state="error"] { --cb: var(--danger); --g: "!"; }
@@ -3683,7 +3684,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #train-banner .train-coach-sub.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
 #train-banner:has(.train-coach-sub:not(:empty)) { cursor: pointer; }
 #train-banner[data-state="correct"] .train-coach-title { color: var(--good-text); }
-#train-banner[data-state="wrong"] .train-coach-title { color: var(--danger); }
 #train-banner[data-state="reveal"] .train-coach-title,
 #train-banner[data-state="review"] .train-coach-title { color: var(--warn-text); }
 .train-turn-badge {

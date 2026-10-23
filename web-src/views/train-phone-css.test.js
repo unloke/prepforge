@@ -55,5 +55,5 @@ it("the pickers open as a bottom sheet at the thumb", () => {
 });
 
 it("the result cells share one row on a phone instead of orphaning the last", () => {
-  expect(phone).toContain(":root .sum-cells { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); }");
+  expect(phone).not.toContain("sum-cells");
 });
