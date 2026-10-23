@@ -39,7 +39,8 @@ export function createReviewBar({ appState, showAnalysisPly }) {
   }
 
   function paint() {
-    const bar = document.getElementById("analysis-review");
+    // Unit tests load the module with no DOM; there is nothing to paint then.
+    const bar = globalThis.document?.getElementById("analysis-review");
     if (!bar) return;
     bind(bar);
     const maia = appState.analysis?.quality?.maia;
@@ -79,5 +80,5 @@ export function createReviewBar({ appState, showAnalysisPly }) {
     paint();
   }
 
-  return { set, paint };
+  return { set, paint, step };
 }

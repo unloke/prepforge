@@ -982,6 +982,7 @@ export function createAnalyzeView({
     liveEvalChart,
     paintEvalHead,
     renderReport,
+    reviewStep: reviewBar.step,
     renderEvalChart,
     renderAnalysisTree,
     updateAnalysisTreeSelection,
