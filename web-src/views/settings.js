@@ -171,7 +171,7 @@ export function createSettingsView({
       status.textContent = busy || setup.phase === "error" ? `${setup.label}${bytes}`
         : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
         : profile.source === "user" ? "Set by you"
-        : profile.source === "detected" ? `Detected for this device${speed}`
+        : profile.source === "detected" ? (speed ? `Speed${speed}` : "Detected for this device")
         : "Not detected yet";
       // A detected profile that stopped on an error is the memory limit, not a failure.
       status.title = m?.error && profile.source === "detected" ? `Stopped at: ${m.error}` : "";
