@@ -874,6 +874,31 @@ export function createAnalyzeView({
       chart.appendChild(tickLabel);
     });
 
+    // Hover/focus indicator (hidden until the pointer or keyboard asks).
+    const hover = document.createElementNS(svgNS, "line");
+    hover.setAttribute("id", "eval-chart-hover");
+    hover.setAttribute("class", "eval-hover");
+    hover.setAttribute("y1", "0");
+    hover.setAttribute("y2", String(height));
+    hover.setAttribute("x1", "-10");
+    hover.setAttribute("x2", "-10");
+    hover.setAttribute("visibility", "hidden");
+    hover.setAttribute("vector-effect", "non-scaling-stroke");
+    chart.appendChild(hover);
+
+    if (!points || !points.length) {
+      hideEvalChartTooltip();
+      updateEvalChartCursor();
+      bindEvalChartInteractions();
+      return;
+    }
+
+    const coords = points.map((point, index) => {
+      const x = evalChartXOf(index, points.length);
+      const y = yOf(pointWinPct(point));
+      return { x, y, ply: point.ply, classification: point.classification };
+    });
+
     // Move numbers along the x-axis at the bottom (only when enough moves).
     if (points.length >= 10) {
       const numTickStep = Math.ceil(points.length / 8); // ~8 labels max
@@ -908,31 +933,6 @@ export function createAnalyzeView({
         chart.appendChild(currentMarker);
       }
     }
-
-    // Hover/focus indicator (hidden until the pointer or keyboard asks).
-    const hover = document.createElementNS(svgNS, "line");
-    hover.setAttribute("id", "eval-chart-hover");
-    hover.setAttribute("class", "eval-hover");
-    hover.setAttribute("y1", "0");
-    hover.setAttribute("y2", String(height));
-    hover.setAttribute("x1", "-10");
-    hover.setAttribute("x2", "-10");
-    hover.setAttribute("visibility", "hidden");
-    hover.setAttribute("vector-effect", "non-scaling-stroke");
-    chart.appendChild(hover);
-
-    if (!points || !points.length) {
-      hideEvalChartTooltip();
-      updateEvalChartCursor();
-      bindEvalChartInteractions();
-      return;
-    }
-
-    const coords = points.map((point, index) => {
-      const x = evalChartXOf(index, points.length);
-      const y = yOf(pointWinPct(point));
-      return { x, y, ply: point.ply, classification: point.classification };
-    });
 
     // One straight segment per move. The area between the curve and the centre
     // line is drawn twice and clipped to each half: light where White is better

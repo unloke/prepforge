@@ -8,6 +8,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
 
+// The x-axis move numbers read the chart points: they must follow the declaration.
+const ANALYZE_SOURCE = readFileSync(new URL("./analyze.js", import.meta.url), "utf8");
+
 const STYLES = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 // The chart rules ship in a lazy sheet (loaded with the Analyze view) so the
 // eager styles.css stays under its deploy budget. The token contract spans both:
@@ -620,5 +623,11 @@ describe("Analyze on a phone", () => {
   // The graph beside the figure is the same win-chance series: no meter.
   it("does not repeat the graph's win share in the band", () => {
     expect(phone).toMatch(/#analysis-eval-card \.ev-meter \{ display: none; \}/);
+  });
+});
+
+describe("eval chart on long games", () => {
+  it("declares the chart points before the x-axis move numbers read them", () => {
+    expect(ANALYZE_SOURCE.indexOf("const coords = points.map(")).toBeLessThan(ANALYZE_SOURCE.indexOf("// Move numbers along the x-axis"));
   });
 });
