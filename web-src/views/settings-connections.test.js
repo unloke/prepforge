@@ -5,9 +5,11 @@ function makeSettingsView(overrides = {}) {
   const elements = {};
   const listeners = {};
   const listChildren = [];
+  globalThis.location = { hash: "" };
+  globalThis.window = { addEventListener() {} };
   globalThis.document = {
     getElementById: (id) => elements[id] ?? null,
-    querySelector: () => null,
+    querySelector: (sel) => (sel === ".settings-nav" ? { addEventListener() {}, querySelectorAll: () => [] } : null),
     querySelectorAll: () => [],
     addEventListener: vi.fn(),
   };
@@ -17,7 +19,7 @@ function makeSettingsView(overrides = {}) {
       listeners[name] = handler;
     },
     querySelectorAll: () => [],
-    querySelector: () => null,
+    querySelector: (sel) => (sel === ".settings-nav" ? { addEventListener() {}, querySelectorAll: () => [] } : null),
   };
   elements["settings-link-lichess"] = { addEventListener: vi.fn() };
   const appState = { lichessUsername: null, lichessAccounts: [], ...(overrides.appState || {}) };

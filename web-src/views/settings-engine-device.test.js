@@ -33,9 +33,11 @@ function setup() {
     "settings-detect": { disabled: false },
     "settings-stockfish-version": { textContent: "" },
   };
+  globalThis.location = { hash: "" };
+  globalThis.window = { addEventListener() {} };
   globalThis.document = {
     getElementById: (id) => elements[id] ?? null,
-    querySelector: () => null,
+    querySelector: (sel) => (sel === ".settings-nav" ? { addEventListener() {}, querySelectorAll: () => [] } : null),
     querySelectorAll: () => [],
     addEventListener: () => {},
   };

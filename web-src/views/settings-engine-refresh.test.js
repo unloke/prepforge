@@ -29,7 +29,7 @@ function el(extra = {}) {
     addEventListener: (type, fn) => { (listeners[type] ||= []).push(fn); },
     fire: (type) => { for (const fn of listeners[type] || []) fn({}); },
     querySelectorAll: () => [],
-    querySelector: () => null,
+    querySelector: (sel) => (sel === ".settings-nav" ? { addEventListener() {}, querySelectorAll: () => [] } : null),
     ...extra,
   };
 }
@@ -51,9 +51,11 @@ function harness() {
     "settings-profile-progress": el({ firstElementChild: { style: styleMock() } }),
     "settings-detect": el(),
   };
+  globalThis.location = { hash: "" };
+  globalThis.window = { addEventListener() {} };
   globalThis.document = {
     getElementById: (id) => elements[id] ?? null,
-    querySelector: () => null,
+    querySelector: (sel) => (sel === ".settings-nav" ? { addEventListener() {}, querySelectorAll: () => [] } : null),
     querySelectorAll: () => [],
     addEventListener: () => {},
   };

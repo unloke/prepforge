@@ -26,7 +26,7 @@ export function downloadRowHtml(s) {
     : s.note ? html`<p class="dl-line">${s.note}</p>` : "";
   const bar = s.phase === "downloading"
     ? html`<span class="dl-bar${pct == null ? " is-busy" : ""}" role="progressbar" aria-label="${ENGINE_NAMES[s.id]} download" aria-valuemin="0" aria-valuemax="100"${pct == null ? "" : html` aria-valuenow="${pct}"`}><i style="width:${pct ?? 0}%"></i></span>` : "";
-  return html`<div class="dl-head"><span class="dl-text"><b>${ENGINE_NAMES[s.id]}</b><span class="dl-size">${formatMB(s.bytes)}</span></span><span class="status-pill ${tone}" data-testid="settings-dl-status-${s.id}">${pill}</span>${action}</div>${bar}${sub}`;
+  return html`<div class="dl-head"><span class="dl-text"><b>${ENGINE_NAMES[s.id]}</b><span class="dl-size">${formatMB(s.bytes)}</span></span><span class="dl-state"><span class="status-pill ${tone}" data-testid="settings-dl-status-${s.id}">${pill}</span>${action}</span></div>${bar}${sub}`;
 }
 
 export function createSettingsDownloads({ showConfirmModal, setPref }) {

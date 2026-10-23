@@ -7,35 +7,42 @@
 
 /* ---- Section nav ------------------------------------------------------- */
 
-/* The page title row is the shell's (`styles.css` `.page-head`): one height,
-   one title size and one gap on every view. Settings adds only the inline
-   section name that sits on the title's baseline. */
 
-/* The section you are in, named beside the page title: the heading and the
-   strip answer "where am I" with the same word at the same moment. */
-.settings-here {
-  margin: 0;
-  color: var(--muted);
-  font-size: 17px;
-  font-weight: 600;
-}
-.settings-here::before {
-  content: "/";
-  margin-right: 10px;
-  color: var(--line-strong);
-  font-weight: 400;
-}
-.settings-here span { color: var(--text); }
 
-.settings-nav {
-  width: fit-content;
-  max-width: 100%;
+/* Desktop: the section names are a label column (app-screens 8.2) and the
+   content sits beside them, left-aligned to the title. The current area is
+   marked by the accent line on the column's edge (settings.css). */
+@media (min-width: 761px) {
+  .settings {
+    display: grid;
+    grid-template-columns: 184px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+  }
+  .settings > .page-head { grid-column: 1 / -1; }
+  .settings-nav {
+    grid-column: 1;
+    grid-row: 2;
+    position: sticky;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .settings-content { grid-column: 2; grid-row: 2; }
 }
+
 .settings-nav-link {
+  position: relative;
   flex: none;
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 12px;
   border-radius: var(--radius);
   color: var(--muted);
@@ -43,27 +50,46 @@
   font-weight: 550;
   white-space: nowrap;
   text-decoration: none;
-  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out);
 }
-.settings-nav-link:hover { background: var(--surface-3); color: var(--text); }
+.settings-nav-link:hover { color: var(--text); }
 .settings-nav-link:active { transform: scale(0.97); }
-/* The open section is a filled ink plate: the strongest mark on the page, so
-   "where am I" is answered without reading. Weight stays the same between the
-   two states - a heavier label would reflow the strip on every jump. */
-.settings-nav-link.is-active {
-  background: var(--text);
-  color: var(--panel);
+/* The selection mark is the app's one accent line (app-sheet): a 2px line on
+   the nearest edge, exactly as tall as the label. */
+.settings-nav-link.is-active { color: var(--text); }
+.settings-nav-link::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  opacity: 0;
 }
+.settings-nav-link.is-active::before { opacity: 1; }
 .settings-nav-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- Cards + rows ------------------------------------------------------ */
 
-/* A jump to a section lands its title below the sticky strip, not under it
-   (settings.js measures the strip; this is the first-paint value). */
-.settings-content > .set { scroll-margin-top: 64px; }
-
 .set {
   padding: 12px 14px;
+}
+/* A section with a title is a row: the title in a label column, its rows in
+   the panel beside it (app-screens 8.2). The title and the panel share the top
+   edge. A card with no title of its own (the view's h1 names it) stays full
+   width, and a phone stacks both. */
+@media (min-width: 761px) {
+  .settings-content > .set:has(> h2) {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+    padding: 16px 20px;
+  }
+  .settings-content > .set:has(> h2) > h2 { grid-column: 1; grid-row: 1; margin: 6px 0 0; }
+  .settings-content > .set:has(> h2) > :not(h2) { grid-column: 2; }
 }
 .set h2 {
   display: flex;
@@ -73,6 +99,7 @@
   font-size: 14px;
 }
 .set .spacer { flex: 1; }
+.set-row-value { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
 .set .pf-info-pop { margin: 0 0 6px; }
 /* Rows are separated by space, not by a rule: a settings card is a list of
    label/value pairs, and the label column plus the value edge already say
@@ -152,9 +179,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  justify-self: stretch;
 }
 .slider input {
   width: 200px;
+  max-width: 100%;
+  min-width: 0;
   accent-color: var(--accent);
 }
 .strength-readout {
@@ -244,36 +275,6 @@
 .conn-menu-item:hover { background: var(--surface-3); }
 .conn-menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .conn-menu-item.is-danger { color: var(--danger-strong); }
-
-/* ---- Motion ------------------------------------------------------------ */
-
-/* The page arrives with the view's own cross-fade and nothing else: a second
-   rise on the title, the strip and each card read as the page loading twice.
-
-   A jump from the strip lands on its card: an accent ring and a faint tint
-   come up and fade, so the eye finds the card even when the page could not
-   scroll it to the top. Opacity only; reduced motion shows the ring without
-   the fade and settings.js takes it off. */
-.settings-content > .set { position: relative; }
-.settings-content > .set.is-landed::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 2px var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  animation: set-land 1400ms var(--ease-out) both;
-}
-@keyframes set-land {
-  0% { opacity: 0; }
-  14% { opacity: 1; }
-  55% { opacity: 1; }
-  100% { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .settings-content > .set.is-landed::after { animation: none; opacity: 1; }
-}
 
 /* ---- Responsive -------------------------------------------------------- */
 
@@ -450,6 +451,14 @@
 .dl-row { display: grid; gap: 6px; padding: 8px 0; }
 .dl-row:empty { display: none; }
 .dl-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+/* The state and its action are one group. Desktop puts the name in the label
+   column and the group in the value column, the same grid as the rows above it;
+   narrower widths lay the group's parts out directly in the row's grid. */
+.dl-state { display: contents; }
+@media (min-width: 1200px) {
+  .dl-head { grid-template-columns: 190px minmax(0, 1fr); column-gap: 24px; }
+  .dl-state { display: flex; align-items: center; gap: 10px; min-width: 0; }
+}
 .dl-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .dl-text b { font-weight: 600; }
 .dl-size { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
@@ -469,3 +478,74 @@
   .dl-head .status-pill { grid-row: 2; justify-self: start; }
   .dl-head .btn { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* ---- Appearance area — accent presets and board colors ------------------ */
+.rule.full-width {
+  border: 0;
+  height: 1px;
+  background: var(--rule);
+  margin: 16px -14px;
+}
+/* Accent presets: a name with its colour dot. The chosen one takes a 2px line
+   exactly as wide as its label, on the bottom edge (the app's one selection
+   mark). The dot colours are the presets' own, light and dark. */
+.set .accent-swatches,
+.set .board-color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+.accent-swatch,
+.board-color-swatch {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.accent-swatch:hover,
+.board-color-swatch:hover { color: var(--text); }
+.accent-swatch:focus-visible,
+.board-color-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.accent-swatch[aria-pressed="true"],
+.board-color-swatch[aria-pressed="true"] { color: var(--text); }
+.accent-swatch[aria-pressed="true"]::after,
+.board-color-swatch[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 2px;
+  background: var(--accent);
+}
+.accent-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.accent-swatch[data-accent="blue"] { --swatch: #2f5bd3; }
+.accent-swatch[data-accent="orange"] { --swatch: #c2410c; }
+:root[data-theme="dark"] .accent-swatch[data-accent="blue"] { --swatch: #6d8ff0; }
+:root[data-theme="dark"] .accent-swatch[data-accent="orange"] { --swatch: #f0932b; }
+/* The board preview: a 2x2 board in the theme's own squares, named beside it. */
+.board-mini {
+  display: grid;
+  grid-template-columns: repeat(2, 14px);
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+.board-square { width: 14px; height: 14px; }
+.board-square.light { background: var(--square-light); }
+.board-square.dark { background: var(--square-dark); }

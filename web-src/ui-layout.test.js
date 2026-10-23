@@ -537,12 +537,12 @@ describe("workspace chrome layout", () => {
     // The section strip runs across the width under the title, so the cards
     // take the whole window: a fixed side column was easy to miss.
     expect(css).toMatch(/\.settings\s*\{[^}]*display:\s*block/);
-    expect(css).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky[^}]*background:\s*var\(--float\)/);
+    expect(settingsCss).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky/);
     // One column of cards in the strip's own order, capped and centred: a
     // two-column masonry listed Board third and drew it beside Engine, so the
     // section you picked and the card you landed on were in different columns.
     expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
-    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*880px[^}]*margin:\s*0 auto/);
+    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*960px[^}]*margin:\s*0 auto/);
     // The desktop page names itself through the shell's one page-head rule.
     expect(css).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*\.workspace\s+\.page-head\s*\{[^}]*display:\s*flex/);
     expect(settingsCss).not.toMatch(/#view-settings\s+\.page-head\s+h1/);

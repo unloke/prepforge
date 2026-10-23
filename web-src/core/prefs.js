@@ -1,11 +1,12 @@
 import { appState, boards } from "./state.js";
 import { hooks } from "./hooks.js";
-import { PREFS_KEY, applyAccent, applyTheme, readStoredAccent, readStoredPrefs, readStoredTheme, setAccent, storeTheme } from "../theme.js";
+import { PREFS_KEY, applyAccent, applyBoardTheme, applyTheme, readStoredAccent, readStoredPrefs, readStoredTheme, setAccent, storeTheme } from "../theme.js";
 import { fetchLichessProfile } from "../lichess-profile.js";
 
 const DEFAULT_PREFS = {
   theme: "system",
   accent: "blue",
+  boardTheme: "slate",
   coordinates: true,
   lastMovePulse: true,
   flipAnim: true,
@@ -94,6 +95,7 @@ export function applyPref(name) {
     applyAccent(pref("accent"));
     hooks.settingsPainted?.();
   }
+  if (name === "boardTheme") applyBoardTheme(pref("boardTheme"));
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
   }

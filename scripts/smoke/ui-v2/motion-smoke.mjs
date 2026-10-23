@@ -260,27 +260,19 @@ async function run({ name, width, height, mobile }) {
   await settle();
   await refreshAndReturn("settings", "#/settings");
 
-  // The Settings jump lands the card under the sticky strip and marks it.
-  await step("settings:jump");
-  const link = page.locator(".settings-nav .settings-nav-link", { hasText: "Board" });
-  await link.click();
-  await page.waitForFunction(() => document.querySelector("#set-board")?.classList.contains("is-landed"), null, { timeout: 3000 })
-    .catch(() => failures.push(`${name}: the Board card never showed its landing ring`));
-  const landing = await page.evaluate(() => {
-    const nav = document.querySelector(".settings-nav").getBoundingClientRect();
-    const card = document.querySelector("#set-board").getBoundingClientRect();
-    const ring = getComputedStyle(document.querySelector("#set-board"), "::after");
-    const room = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
-    return { navBottom: nav.bottom, cardTop: card.top, ring: ring.boxShadow, anim: ring.animationName, room, active: document.querySelector(".settings-nav-link.is-active")?.textContent };
-  });
-  if (landing.cardTop < landing.navBottom - 1) failures.push(`${name}: the Board card landed under the sticky strip (top ${Math.round(landing.cardTop)} < strip ${Math.round(landing.navBottom)})`);
-  if (!/inset/.test(landing.ring)) failures.push(`${name}: the landing ring is missing (${landing.ring})`);
-  if (landing.anim !== "set-land") failures.push(`${name}: the landing ring should fade (animation ${landing.anim})`);
-  if (!/Board/.test(landing.active || "")) failures.push(`${name}: the strip should mark Board, got "${landing.active}"`);
-  await page.waitForTimeout(1700);
-  if (await page.locator("#set-board.is-landed").count()) failures.push(`${name}: the landing ring should clear itself`);
-
-  judge(name, await page.evaluate(() => window.__anim));
+  // A Settings area is its own view: the link opens its card, marks it, and
+  // the view fades in (no landing ring; the card is the page).
+  await step("settings:area");
+  await page.locator(".settings-nav .settings-nav-link", { hasText: "Board" }).click();
+  await page.waitForTimeout(400);
+  const area = await page.evaluate(() => ({
+    shown: document.querySelector("#set-board")?.offsetParent !== null,
+    hidden: document.querySelector("#set-engine")?.offsetParent === null,
+    active: document.querySelector(".settings-nav-link.is-active")?.textContent?.trim(),
+  }));
+  if (!area.shown || !area.hidden) failures.push(`${name}: the Board area should show its card and hide the others, got ${JSON.stringify(area)}`);
+  if (area.active !== "Board") failures.push(`${name}: the strip should mark Board, got "${area.active}"`);
+  await page.waitForTimeout(300);
   for (const e of errors) failures.push(`${name}: pageerror ${e}`);
   await context.close();
 
@@ -292,11 +284,8 @@ async function run({ name, width, height, mobile }) {
   await rp.waitForTimeout(800);
   await rp.locator(".settings-nav .settings-nav-link", { hasText: "Board" }).click();
   await rp.waitForTimeout(150);
-  const still = await rp.evaluate(() => {
-    const ring = getComputedStyle(document.querySelector("#set-board"), "::after");
-    return { landed: document.querySelector("#set-board").classList.contains("is-landed"), anim: ring.animationName, opacity: ring.opacity };
-  });
-  if (!still.landed || still.anim !== "none" || still.opacity !== "1") failures.push(`${name} reduced motion: the ring should show still, got ${JSON.stringify(still)}`);
+  const still = await rp.evaluate(() => document.querySelector("#set-board")?.offsetParent !== null);
+  if (!still) failures.push(`${name} reduced motion: the Board area should open without a fade`);
   await reduced.close();
 }
 

@@ -660,18 +660,15 @@
 
       <section class="view" id="view-settings" data-testid="view-settings">
         <div class="settings">
-          <header class="page-head"><h1>Settings</h1><p class="settings-here"><span id="settings-current" data-testid="settings-current">Account</span></p></header>
-          <nav class="settings-nav" aria-label="Settings sections">
-            <a class="settings-nav-link is-active" href="#set-account" aria-current="true">Account</a>
-            <a class="settings-nav-link" href="#set-appearance">Appearance</a>
-            <a class="settings-nav-link" href="#set-engine">Engine</a>
-            <a class="settings-nav-link" href="#set-maia">Maia3</a>
-            <a class="settings-nav-link" href="#set-strength">Playing strength</a>
-            <a class="settings-nav-link" href="#set-board">Board</a>
+          <header class="page-head"><h1 id="settings-current" data-testid="settings-current">Settings</h1></header>
+          <nav class="settings-nav" aria-label="Settings areas">
+            <a class="settings-nav-link is-active" href="#/settings/account" data-area="account" aria-current="true">Account</a>
+            <a class="settings-nav-link" href="#/settings/appearance" data-area="appearance">Appearance</a>
+            <a class="settings-nav-link" href="#/settings/board" data-area="board">Board</a>
+            <a class="settings-nav-link" href="#/settings/engine" data-area="engine">Engine</a>
           </nav>
           <div class="settings-content">
-            <section class="card set" id="set-account" data-testid="settings-account">
-              <h2>Account</h2>
+            <section class="card set" id="set-account" data-area="account" data-testid="settings-account">
               <div id="settings-account-body" data-testid="settings-account-body" role="status" aria-label="Loading account"><div class="acct-id"><span class="skeleton-dot acct-skeleton-avatar"></span><span class="acct-id-text"><span class="skeleton-bar skeleton-line" style="width:42%"></span><span class="skeleton-bar skeleton-thin" style="width:26%"></span><span class="acct-id-meta"><span class="skeleton-bar acct-skeleton-tag"></span><span class="skeleton-bar acct-skeleton-pill"></span></span></span></div></div>
               <!-- Chess accounts sit with the account: each linked Lichess
                    identity IS you ("Self") in Games and Scout. -->
@@ -688,8 +685,7 @@
               </div>
               <div class="acct-block" id="settings-account-data" data-testid="settings-account-data"></div>
             </section>
-            <section class="card set" id="set-appearance">
-              <h2>Appearance</h2>
+            <section class="card set sw-grid" id="set-appearance" data-area="appearance">
               <div class="pf-row">
                 <span class="pf-row-text">
                   <span class="pf-row-label" id="settings-theme-label">Color theme</span>
@@ -705,27 +701,38 @@
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </select>
-            </section>
-            <section class="card set" id="set-board">
-              <h2>Board</h2>
-              <div class="set-row">
-                <span id="piece-style-label">Piece set</span>
+              <div class="pf-row">
+                <span class="pf-row-text">
+                  <span class="pf-row-label" id="settings-accent-label">Accent color</span>
+                </span>
+                <div class="accent-swatches" role="group" aria-labelledby="settings-accent-label" id="settings-accent-pickers"></div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-row-text">
+                  <span class="pf-row-label" id="settings-board-colors-label">Board colors</span>
+                </span>
+                <div class="board-color-swatches" role="group" aria-labelledby="settings-board-colors-label" id="settings-board-colors"></div>
+              </div>
+              <div class="pf-row">
+                <span class="pf-row-text">
+                  <span class="pf-row-label" id="piece-style-label">Piece set</span>
+                </span>
                 <div class="seg" role="group" aria-labelledby="piece-style-label" id="piece-style-picker"></div>
               </div>
+            </section>
+            <section class="card set" id="set-board" data-area="board">
               <div class="sw-grid" id="board-prefs"></div>
             </section>
-            <section class="card set" id="set-engine">
+            <section class="card set" id="set-engine" data-area="engine" hidden>
               <h2>
-                Engine
+                Stockfish
                 <button type="button" class="pf-info" id="engine-info" aria-label="About Engine settings" title="About Engine settings" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
-                <span class="spacer"></span>
-                <button class="btn sm" id="settings-refresh">Refresh</button>
               </h2>
               <div class="pf-info-pop" id="engine-info-pop" hidden>
                 Stockfish runs in this browser. If isolation headers are missing, Analyze and Build show a banner.
               </div>
               <div class="set-row"><span>Mode</span><b>Browser only</b></div>
-              <div class="set-row"><span>Engine</span><b id="settings-stockfish-version">checking…</b></div>
+              <div class="set-row"><span>Engine</span><span class="set-row-value"><b id="settings-stockfish-version">checking…</b><button type="button" class="btn sm" id="settings-refresh">Refresh</button></span></div>
               <div class="dl-row" id="settings-dl-stockfish" data-testid="settings-dl-stockfish"></div>
               <div class="pf-row">
                 <span class="pf-row-text"><span class="pf-row-label" id="settings-net-label">Net</span></span>
@@ -750,7 +757,7 @@
               <div class="set-row"><span>Browser Stockfish</span><span class="status-pill" id="settings-browser-engine-status">checking…</span></div>
               <p class="note warn" id="settings-stockfish-status"></p>
             </section>
-            <section class="card set" id="set-maia">
+            <section class="card set" id="set-maia" data-area="engine" hidden>
               <h2>
                 Maia3
                 <button type="button" class="pf-info" id="maia-info" aria-label="About Maia3 settings" title="About Maia3 settings" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
@@ -761,7 +768,7 @@
               <div class="dl-row" id="settings-dl-maia" data-testid="settings-dl-maia"></div>
               <p class="faint small" id="settings-maia-usage" data-testid="settings-maia-usage"></p>
             </section>
-            <section class="card set" id="set-strength">
+            <section class="card set" id="set-strength" data-area="engine" hidden>
               <h2>
                 Playing strength
                 <button type="button" class="pf-info" id="strength-info" aria-label="About Playing strength" title="About Playing strength" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>

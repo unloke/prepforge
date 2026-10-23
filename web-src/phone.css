@@ -519,19 +519,13 @@
     left: 12px;
     height: 2px;
     border-radius: 1px;
-    background: var(--text);
+    background: var(--accent);
     opacity: 0;
     transition: opacity var(--dur-fast) var(--ease-out);
   }
   #view-settings .settings-nav-link.is-active::after { opacity: 1; }
-  /* The heading names the open section on the title's line. The row is the
-     shared 44px header (phone.css above); Settings only opens it to the left,
-     so the page title and the section sit together. */
-  #view-settings .page-head { justify-content: flex-start; align-items: center; gap: 8px; }
-  #view-settings .settings-here { margin: 0; font-size: 17px; }
-  #view-settings .settings-here::before { margin-right: 8px; }
-  /* A jump lands the card below the sticky strip. */
-  #view-settings .settings-content > .set { scroll-margin-top: 72px; }
+  /* The desktop label column draws its line on the left edge; the strip has none. */
+  #view-settings .settings-nav-link::before { display: none; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }
   /* A long section title plus its info and action buttons (Maia3: "Download",
@@ -558,7 +552,6 @@
   /* Settings row buttons are the shared .btn at the shared phone height; only
      the padding grows for a thumb. */
   #view-settings .set :is(.btn, .btn.sm) { padding: 0 14px; font-size: 15px; }
-  #view-settings .set h2 .btn { margin-left: 8px; font-size: 14px; text-transform: none; letter-spacing: 0; }
   #view-settings .set .seg-btn { padding: 0 12px; }
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,

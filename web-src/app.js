@@ -1758,6 +1758,7 @@ async function init() {
   // the app does not fabricate a pref blob.
   applyPref("theme");
   applyPref("accent");
+  applyPref("boardTheme");
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
     systemTheme?.addEventListener?.("change", () => {
