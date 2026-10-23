@@ -769,10 +769,11 @@ export function createAnalyzeView({
     const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, (y / EVAL_CHART_H) * plotH);
     // The readout is clipped to the chosen side's room rather than slid across
     // the pointer (see placeEvalReadout). The plot sits inside the wrap's gutter,
-    // so its offset is added.
+    // so the readout is placed from the wrap's own corner (an SVG has no offsetLeft).
+    const origin = chart.parentElement ? chart.parentElement.getBoundingClientRect() : rect;
     tooltip.style.maxWidth = `${spot.maxWidth}px`;
-    tooltip.style.left = `${spot.left + (chart.offsetLeft || 0)}px`;
-    tooltip.style.top = `${spot.top + (chart.offsetTop || 0)}px`;
+    tooltip.style.left = `${spot.left + rect.left - origin.left}px`;
+    tooltip.style.top = `${spot.top + rect.top - origin.top}px`;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("d", `M${x} 0V${EVAL_CHART_H}M0 ${y}H${EVAL_CHART_W}`);
