@@ -81,3 +81,12 @@ describe("Analyze desktop geometry", () => {
     expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
   });
 });
+
+describe("Analyze engine pane", () => {
+  it("draws one line stepper, the pane's, not the floating window's copy", () => {
+    // The docked window carries its own line stepper; the pane's stepper beside
+    // the head is the only one shown in the Analyze slot.
+    expect(css).toMatch(/#analysis-engine-slot \.engine-lines \{ display: none; \}/);
+    expect(html).toContain('id="analyze-lines-readout"');
+  });
+});

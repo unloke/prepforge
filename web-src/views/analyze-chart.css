@@ -496,7 +496,9 @@
 .engine-pane .an-pane-head > b { grid-area: 1 / 1; }
 .ep-depth,
 #analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
-#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
+/* The floating window's own line stepper is not drawn in the pane: the pane's
+   stepper beside the head is the one control. */
+#analysis-engine-slot .engine-lines { display: none; }
 .engine-pane .ev-engine { grid-area: 1 / 5; }
 #analysis-engine-slot .engine-window-body,
 #analysis-engine-slot .engine-window-unlock,
