@@ -826,75 +826,73 @@
 /* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
 #eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
 
-/* Moves: the mainline is a three-column grid (number | White | Black); a
-   variation the reader explores interrupts it as a full-width row. Only the
-   direct children of the mainline are grid cells: variation moves keep the
-   shared inline tree flow. The list sits inside the scrolling panel, so it
-   does not contain overscroll: at its top/bottom the wheel moves the panel
-   (or the page when stacked) instead of feeling stuck.
-   On a wide panel the sheet is sized by the panel (see the scroll rules
-   above) and is the panel's only scroller; this cap is what a stacked layout
-   uses, where the panel is as tall as its content. It used to be 190px
-   everywhere, which showed eight move pairs on a 900px screen. */
+/* Moves: a score sheet. One row per move pair; White and Black sit in two
+   equal columns, so Black lines up under White with no gutter. Rows are a fixed
+   22px pitch, so a long game grows the list without moving anything above it.
+   The sheet is the panel's only scroller (the cap is the stacked layout's). */
 .moves-grid {
   max-height: clamp(190px, 40dvh, 440px);
   overflow: auto;
   border: 0;
   border-radius: 8px;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 .moves-grid .mtree-line.is-main {
   display: grid;
-  /* The two sides of a move belong to each other: sized to their content they
-     sit next to one another, the way a score sheet prints them. The trailing
-     track soaks up the rest of the sheet so a variation row, which spans every
-     track, still draws its rule across the full width. */
-  grid-template-columns: 32px max-content max-content minmax(0, 1fr);
-  column-gap: 18px;
+  grid-template-columns: 2.4em minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 0;
 }
-.moves-grid .mtree-line.is-main > .mtree-num {
-  grid-column: 1;
-  margin: 0;
-  padding: 3px 6px;
-  background: var(--panel-soft);
+.moves-grid .mtree-num {
+  line-height: 22px;
   color: var(--label);
   font-size: var(--fs-s);
+  margin: 0;
+  padding: 0 6px 0 0;
   text-align: right;
 }
-.moves-grid .mtree-line.is-main > .mtree-move {
-  display: flex;
+.moves-grid .mtree-line.is-main > .mtree-num { grid-column: 1; }
+/* A move is a token of its own height; its box is the click target and its
+   hover fill. The selected move is marked by one 1px accent line on its
+   bottom edge, as wide as its SAN, not a filled tile. */
+.moves-grid .mtree-move {
+  display: inline-flex;
   align-items: center;
-  /* The grade belongs to the move beside it: pushed to the far end of the
-     column it sat 190px away, closer to the next move than to its own. */
-  justify-content: flex-start;
-  gap: 6px;
+  gap: 4px;
+  height: 22px;
   margin: 0;
-  padding: 3px 8px;
+  padding: 0 6px;
   border-radius: 0;
-  font-weight: 550;
-  text-align: left;
+  vertical-align: top;
+  font-weight: 500;
+  line-height: 22px;
 }
+.moves-grid .mtree-line.is-main > .mtree-move { justify-self: start; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
 .moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
-/* The selected cell's ink. The shared tree paints the current move with
-   --accent-ink, but the mainline ink rule (4 classes) out-ranks it, so on this
-   grid the current move read --text on the accent fill: 2.9:1, and its grade
-   glyph came out in --text too. The cell is a filled pill, so its ink is the
-   accent's (`accent-ink`, white in light and near-black in dark) and the
-   glyph takes the cell's ink instead of its grade colour. Measured after:
-   5.9:1 at 1440x900. */
-.moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
-/* The mainline's trail is the sheet's own order: filling every move played so
-   far turned the sheet into two blue columns. A variation keeps its trail. */
-.moves-grid .mtree-line.is-main > .mtree-move.on-path { background: none; color: inherit; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
-/* The move list keeps the shared tree's own tiles: the selected move is filled
-   and raised there too, so Analyze reads like the rest of the app. */
+.moves-grid .mtree-move.is-current,
+.moves-grid .mtree-move.is-current.is-opp {
+  background: none;
+  color: var(--text);
+  font-weight: 650;
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.moves-grid .mtree-move.is-current.is-disabled { opacity: 1; }
+/* The path to the current move is drawn by the variation rails alone, so no
+   move on the way here carries a fill. */
+.moves-grid .mtree-move.on-path { background: none; color: inherit; }
+.moves-grid .mtree-move.is-current .mtree-glyph { color: inherit; }
+/* A variation: one row of its own under the pair it branches from, indented
+   behind the shared rail, its moves at a quieter size than the mainline. */
 .moves-grid .mtree-line.is-main > .mtree-var {
   grid-column: 1 / -1;
-  margin: 2px 8px;
-  line-height: 1.8;
+  margin: 0;
+  padding: 0 0 2px calc(var(--mtree-indent) + var(--mtree-rail));
+  font-size: 12.5px;
+  line-height: 22px;
 }
+.moves-grid .mtree-var .mtree-num { line-height: 22px; }
+.moves-grid .mtree-glyph { font-size: 12px; font-weight: 700; }
 .mtree-glyph {
   font-style: normal;
   font-size: var(--fs-s);
