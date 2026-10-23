@@ -393,9 +393,9 @@ function initBuildDockLayout() {
   if (!dock || !resizer) return;
   const stored = Number(readDockStore(BUILD_DOCK_HEIGHT_KEY));
   if (Number.isFinite(stored) && stored > 0) applyBuildDockHeight(stored, { pinned: true });
-  // Folded until the user opens it: the Explorer is reference data, and the
-  // tree and the candidates are the screen.
-  setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) !== "0", { remember: false });
+  // Open unless the user folded it: the Explorer is the data the screen's
+  // question needs, so it fills the column under the tree by default.
+  setBuildDockFolded(readDockStore(BUILD_DOCK_FOLDED_KEY) === "1", { remember: false });
   fold?.addEventListener("click", (event) => {
     setBuildDockFolded(!buildDockFolded());
     if (event.detail !== 0) fold.blur();

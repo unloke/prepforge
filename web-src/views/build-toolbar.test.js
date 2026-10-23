@@ -15,8 +15,8 @@ it("the trail and the candidates sit in one toolbar", () => {
   expect(toolbar[1]).toMatch(/id="build-branchbar"/);
 });
 
-it("the inspector is folded until the user opens it", () => {
-  expect(session).toMatch(/readDockStore\(BUILD_DOCK_FOLDED_KEY\) !== "0"/);
+it("the inspector is open unless the user folded it, and remembers the choice", () => {
+  expect(session).toMatch(/readDockStore\(BUILD_DOCK_FOLDED_KEY\) === "1"/);
   expect(session).toMatch(/folded \? "1" : "0"/);
 });
 
