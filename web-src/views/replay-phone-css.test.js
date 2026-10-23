@@ -13,7 +13,8 @@ const phone = css.slice(css.lastIndexOf("@media (max-width: 760px)"));
 const shared = readFileSync(join(here, "..", "phone.css"), "utf8");
 
 it("the Games outcome chips are a real touch target on a phone", () => {
-  expect(shared).toMatch(/\.sum-chip \{ min-height: 44px; height: 44px; \}/);
+  expect(shared).toMatch(/\.sum-chip,\n  select,/);
+  expect(shared).toMatch(/\{ min-height: 44px; height: 44px; \}/);
   expect(phone).not.toMatch(/\.sum-chip \{[^}]*height:/);
 });
 

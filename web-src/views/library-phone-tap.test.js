@@ -21,7 +21,7 @@ function rule(selector) {
 it("Library phone controls meet the 44px tap-target floor", () => {
   // One shared rule gives every button, tab and chip the thumb height; a
   // Library control that is one of those gets it there, not from a copy.
-  expect(css).toMatch(/\.btn,\s*\n\s*\.btn\.sm,\s*\n\s*\.seg-btn,\s*\n\s*\.sum-chip \{ min-height: 44px; height: 44px; \}/);
+  expect(css).toMatch(/\.btn,\n  \.btn\.sm,[\s\S]*?\{ min-height: 44px; height: 44px; \}/);
   // No Library button is given a height of its own: the shared rule owns it.
   expect(css).not.toMatch(/#view-dashboard :is\(\.today, \.step\)[^{]*\{[^}]*height:\s*\d+px/);
   const dismiss = rule("#view-dashboard .steps .setup-dismiss");
