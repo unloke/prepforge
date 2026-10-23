@@ -211,9 +211,12 @@ export function parseSpeedBucket(timeControl) {
   return "classical";
 }
 
+// Lichess exports carry [GameId]. [Site] is lichess.org/game/<id> now, so its
+// first path segment was "game" for every game and dedup kept only one.
 function parseGameId(block) {
-  const site = headerValue(block, "Site") || "";
-  const match = site.match(/lichess\.org\/([a-zA-Z0-9]+)/);
+  const id = headerValue(block, "GameId");
+  if (id) return id;
+  const match = (headerValue(block, "Site") || "").match(/lichess\.org\/(?:game\/)?([a-zA-Z0-9]+)/);
   return match ? match[1] : null;
 }
 
