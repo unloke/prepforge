@@ -134,7 +134,7 @@ describe("visual system tokens", () => {
     const head = /\.workspace \.page-head \{([^}]+)\}/.exec(desktop)?.[1] || "";
     expect(head).toMatch(/display:\s*flex/);
     const title = /\.workspace \.page-head h1 \{([^}]+)\}/.exec(desktop)?.[1] || "";
-    expect(title).toMatch(/font-size:\s*32px/);
+    expect(title).toMatch(/font-size:\s*26px/);
     // The head's icon mirrors a control the desktop card head already shows in
     // words: it would be a second "New repertoire" on the same screen.
     expect(desktop).toMatch(/\.page-head \.page-head-btn \{ display: none; \}/);

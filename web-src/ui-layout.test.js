@@ -549,9 +549,10 @@ describe("workspace chrome layout", () => {
     // section you picked and the card you landed on were in different columns.
     expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
     expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*880px[^}]*margin:\s*0 auto/);
-    // The desktop page names itself: the phone header is hidden on wide
-    // screens, so without this the Settings view has no heading at all.
-    expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*flex/);
+    // The desktop page names itself through the shell's one page-head rule;
+    // Settings adds only the inline section name beside it.
+    expect(css).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*\.workspace\s+\.page-head\s*\{[^}]*display:\s*flex/);
+    expect(settingsCss).not.toMatch(/#view-settings\s+\.page-head\s+h1/);
     expect(settingsCss).toContain(".set-row");
     expect(settingsCss).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.

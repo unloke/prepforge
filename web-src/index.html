@@ -15,56 +15,56 @@
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 45 45" focusable="false"><path d="M14 36h22v4H11z"></path><path d="M16 34c1-10 8-11 7-19-3 1-6 1-9-1 3-6 9-8 15-5 5 3 7 8 6 14l-2 11z"></path><circle class="brand-cut" cx="29" cy="14" r="1.4"></circle></svg></span>
         <span class="brand-name">PrepForge</span>
       </div>
-      <div class="nav-group">
-        <div class="nav-group-label"><span>Prepare</span></div>
-        <button class="tab nav-item is-active" data-view="dashboard" data-testid="nav-dashboard" aria-label="Library" title="Library — your repertoires" aria-current="page">
+      <div class="nav-group" role="group" aria-label="Prepare">
+        <button class="tab nav-item is-active" data-view="dashboard" data-testid="nav-dashboard" aria-label="Library — your repertoires" aria-current="page">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.8l3.7-1 3.3 15.4-3.7.9z" transform="scale(.92) translate(1 1)"/></svg>
           <span class="nav-label">Library</span>
         </button>
-        <button class="tab nav-item" data-view="build" data-testid="nav-build" aria-label="Repertoire" title="Repertoire — build your lines" aria-current="false">
+        <button class="tab nav-item" data-view="build" data-testid="nav-build" aria-label="Repertoire — build your lines" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 12h4a6 6 0 0 0 6 0"/></svg>
           <span class="nav-label">Repertoire</span>
         </button>
-        <button class="tab nav-item" data-view="analyze" data-testid="nav-analyze" aria-label="Analyze" title="Analyze — check a game" aria-current="false">
+        <button class="tab nav-item" data-view="analyze" data-testid="nav-analyze" aria-label="Analyze — check a game" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M5 16l4-5 3 3 6-8"/><circle cx="18" cy="6" r="1.2"/></svg>
           <span class="nav-label">Analyze</span>
         </button>
       </div>
-      <div class="nav-group">
-        <div class="nav-group-label"><span>Practice</span></div>
-        <button class="tab nav-item" data-view="train" data-testid="nav-train" aria-label="Train" title="Train — drill your openings" aria-current="false">
+      <div class="rail-sep" aria-hidden="true"></div>
+      <div class="nav-group" role="group" aria-label="Practice">
+        <button class="tab nav-item" data-view="train" data-testid="nav-train" aria-label="Train — drill your openings" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/></svg>
           <span class="nav-label">Train</span>
         </button>
       </div>
-      <div class="nav-group">
-        <div class="nav-group-label"><span>Review</span></div>
-        <button class="tab nav-item" data-view="replay" data-replay-section="games" data-testid="nav-replay" aria-label="Games" title="Games — review my games" aria-current="false">
+      <div class="rail-sep" aria-hidden="true"></div>
+      <div class="nav-group" role="group" aria-label="Review">
+        <button class="tab nav-item" data-view="replay" data-replay-section="games" data-testid="nav-replay" aria-label="Games — review my games" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
           <span class="nav-label">Games</span>
         </button>
-        <button class="tab nav-item" data-view="replay" data-replay-section="scout" data-testid="nav-scout" aria-label="Scout" title="Scout — prep against an opponent" aria-current="false">
+        <button class="tab nav-item" data-view="replay" data-replay-section="scout" data-testid="nav-scout" aria-label="Scout — prep against an opponent" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="15" r="3.5"/><circle cx="17" cy="15" r="3.5"/><path d="M10.5 15h3M5 11.5 7.5 5h2l1 6M19 11.5 16.5 5h-2l-1 6"/></svg>
           <span class="nav-label">Scout</span>
         </button>
       </div>
-      <div class="nav-group">
-        <div class="nav-group-label"><span>Share</span></div>
-        <button class="tab nav-item" data-view="teams" data-testid="nav-teams" aria-label="Teams" title="Teams — share repertoires" aria-current="false">
+      <div class="rail-sep" aria-hidden="true"></div>
+      <div class="nav-group" role="group" aria-label="Share">
+        <button class="tab nav-item" data-view="teams" data-testid="nav-teams" aria-label="Teams — share repertoires" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.6-3.3 2.8-5 5.5-5s4.9 1.7 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.4 4.5 4"/></svg>
           <span class="nav-label">Teams</span>
         </button>
       </div>
       <div class="rail-foot">
-        <button class="btn ghost rail-btn palette-open" id="open-palette" data-testid="open-palette" type="button" title="Command palette (Ctrl+K)" aria-label="Open command palette">
+        <div class="rail-sep" aria-hidden="true"></div>
+        <button class="btn ghost rail-btn palette-open" id="open-palette" data-testid="open-palette" type="button" aria-label="Open command palette">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg><span class="nav-label">Search <kbd>Ctrl K</kbd></span>
         </button>
-        <button class="btn ghost rail-btn" id="theme-toggle" data-testid="theme-toggle" type="button" title="Switch to dark theme" aria-label="Switch to dark theme">
+        <button class="btn ghost rail-btn" id="theme-toggle" data-testid="theme-toggle" type="button" aria-label="Toggle light and dark theme">
           <svg class="ic theme-ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>
           <svg class="ic theme-ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
           <span class="nav-label">Theme</span>
         </button>
-        <button class="tab nav-item" data-view="settings" data-testid="rail-settings" aria-label="Settings" title="Settings" aria-current="false">
+        <button class="tab nav-item" data-view="settings" data-testid="rail-settings" aria-label="Settings" aria-current="false">
           <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
           <span class="nav-label">Settings</span>
         </button>
