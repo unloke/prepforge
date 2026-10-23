@@ -86,6 +86,30 @@ describe("visual system tokens", () => {
     }
   });
 
+  // Every control the app draws shares one radius. Selects and the segmented
+  // control used to carry their own (4px in a dialog, 7px on the track, 5px on
+  // its option), so the same control read as three different shapes.
+  it("draws every control on the shared control radius", () => {
+    expect(ruleBody(".btn")).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(ruleBody(".seg")).toMatch(/border-radius:\s*calc\(var\(--radius\) \+ 2px\)/);
+    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*var\(--radius\)/);
+    // The <select> base rule is the one that gives a dropdown the app's box.
+    const selectRule = css.match(/(?:^|\n)select \{([^}]+)\}/g)
+      ?.map((rule) => rule.replace(/^[\n]*/, ""))
+      .find((rule) => rule.includes("--control-h")) || "";
+    expect(selectRule).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(selectRule).toMatch(/height:\s*var\(--control-h\)/);
+    expect(selectRule).toMatch(/appearance:\s*none/);
+    expect(selectRule).toMatch(/background-image:\s*var\(--select-chevron\)/);
+  });
+
+  // The keyboard ring marks the focused control; it must not reshape it.
+  it("the focus ring leaves the control's own radius alone", () => {
+    const ring = css.match(/(?:^|\n):focus-visible \{([^}]+)\}/)?.[1] || "";
+    expect(ring).toMatch(/outline:\s*2px solid var\(--accent\)/);
+    expect(ring).not.toMatch(/border-radius/);
+  });
+
   it("locks the Train coach height so Maia copy cannot shove the board", () => {
     expect(css).toContain(".train-coach");
     expect(ruleBody(".train-coach")).toMatch(/display:\s*grid/);

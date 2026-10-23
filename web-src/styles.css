@@ -1167,17 +1167,21 @@ h2 {
   scale: 0.9;
 }
 
+/* Segmented control: a track with the chosen option on a panel-coloured plate.
+   The plate takes the app's one control radius; the track is that radius plus
+   its own 2px of padding, so the two curves stay concentric. (The pair was 7/5,
+   a radius found nowhere else in the app.) */
 .seg {
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  border-radius: 7px;
+  border-radius: calc(var(--radius) + 2px);
   background: var(--surface-3);
 }
 
 .seg-btn {
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   font-size: var(--fs-s);
