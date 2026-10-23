@@ -579,29 +579,23 @@
    one-line caption; the Expect / Style reads, the first moves and the game-plan
    actions follow the table. The intel and plan wrappers are flattened with
    display: contents so their children order as one column. */
-@media (min-width: 761px) {
-  .color-sec { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; }
-  .color-sec > .cs-head { order: 0; padding: 12px 0 0; }
-  .color-sec .intel,
-  .color-sec .plan { display: contents; }
-  .color-sec .intel > *,
-  .color-sec .plan > * { order: 4; }
-  .color-sec .intel > .scout-intel-headline { order: 1; margin: 0; max-width: none; font-size: 14px; }
-  .color-sec .plan > .scout-lines-head,
-  .color-sec .plan > .scout-lines { order: 2; }
-  .color-sec .plan > .scout-ranked-note { order: 3; }
-  .color-sec .scout-lines-head { padding: 0 12px; }
-}
+.color-sec { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; }
+.color-sec > .cs-head { order: 0; padding: 12px 0 0; }
+.color-sec .intel,
+.color-sec .plan { display: contents; }
+.color-sec .intel > *,
+.color-sec .plan > * { order: 4; }
+.color-sec .intel > .scout-intel-headline { order: 1; margin: 0; max-width: none; font-size: 14px; }
+.color-sec .plan > .scout-lines-head,
+.color-sec .plan > .scout-lines { order: 2; }
+.color-sec .plan > .scout-ranked-note { order: 3; }
+.color-sec .scout-lines-head { padding: 0 12px; }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* The first screen was the toolbar, the profile and a 150px section head; the
      first line sat 1,228px down. On a phone the lines are the page: the head
-     names the player and colour, the plan follows, and the summary sentence
-     closes the card underneath. */
-  .color-sec { display: flex; flex-direction: column; }
-  .cs-head { order: 0; }
-  .plan { order: 1; }
-  .intel { order: 2; }
+     names the player and colour, then the caption and the table; the reads and
+     the game plan's first moves follow (the order is set for every width above). */
   /* The identity card repeats the player the section head names and the score
      the colour tabs already show. On a phone it keeps the sample-size chips
      and the two actions, and gives the rest of its height to the lines. */
@@ -638,7 +632,9 @@
      the first line row can reach the first screen. */
   .cs-head { gap: 6px 10px; }
   .cs-head .spacer { display: none; }
-  .cs-head .cov { flex: 1 1 100%; min-width: 0; }
+  /* The coverage and "Add all gaps" share the second row: the bar takes the
+     room the button leaves, so the caption and the table start one row higher. */
+  .cs-head .cov { flex: 1 1 200px; min-width: 0; }
   .cs-head .scout-coverage-label { min-width: 0; white-space: normal; }
   /* The add-to-prep button is the row's only action: it needs a thumb. */
   .scout-add-icon { width: 44px; height: 44px; font-size: 18px; }
