@@ -1991,11 +1991,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--label);
   font-size: var(--fs-xs);
 }
-/* Queue chips: one neutral chip, one coloured dot. Three tinted pills in red,
-   amber and violet beside a green bar and a blue selection made a row of five
-   colours where only one thing (what is waiting) is being said. The dot keeps
-   the chess hue, so the kind is still read at a glance; the chip itself is the
-   row's quiet surface. */
+/* Queue chips reuse the mastery-kind colours (colour means chess). */
 .kchip::before {
   content: "";
   width: 6px;
@@ -2003,14 +1999,24 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 50%;
   background: currentColor;
 }
-.kchip.k-weak,
-.kchip.k-due,
-.kchip.k-new { background: var(--surface-3); color: var(--text); }
-.kchip.k-weak::before { background: var(--k-weak); }
-.kchip.k-due::before { background: var(--k-due); }
-.kchip.k-new::before { background: var(--k-new); }
-button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
-button.kchip:hover { background: var(--line); }
+.kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
+.kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
+.kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
+/* In a Library row the queue is one neutral chip with one coloured dot: three
+   tinted pills in red, amber and violet beside a green mastery bar and the
+   selected row's tint made five colours where the row says one thing (what is
+   waiting). The dot keeps the chess hue, so the kind is still read at a glance;
+   the chip itself is the row's quiet surface. Scout's and Train's chips keep
+   their tint — outside a table row a lone chip has no bar or selection to
+   compete with. */
+.lib-row .kchip.k-weak,
+.lib-row .kchip.k-due,
+.lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
+.lib-row .kchip.k-weak::before { background: var(--k-weak); }
+.lib-row .kchip.k-due::before { background: var(--k-due); }
+.lib-row .kchip.k-new::before { background: var(--k-new); }
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
+button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
