@@ -1,28 +1,41 @@
-/* The inline unlock row (engine-unlock.js): a quiet panel step with the one
-   action in the accent, and progress as a flat fill along its foot. */
+/* The download offer for a local engine (engine-unlock.js): one line on the
+   host's own ground that names the engine, says what it adds and takes one tap.
+   A download in progress is a 2px fill along its foot. The coach's row is the
+   same line at 22px (is-inline). The full engine and model downloads, with
+   their sizes and state, live in Settings > Engine. */
 [data-unlock-place][hidden] { display: none; }
+[data-unlock-place] { container: unlock / inline-size; }
 
 .unlock {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
   align-items: center;
-  gap: 2px 8px;
-  min-height: 48px;
-  padding: 8px 4px 8px 12px;
-  border-radius: var(--radius-card);
-  background: var(--panel-soft);
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 0 0 10px;
+  border-left: 2px solid var(--line-strong);
+  font-size: var(--fs-s);
+}
+.unlock[data-mode="error"] { border-left-color: var(--danger-strong); }
+.unlock-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
   overflow: hidden;
 }
-.unlock[data-mode="progress"] { grid-template-columns: minmax(0, 1fr); padding-right: 12px; }
-.unlock-text { display: grid; gap: 1px; min-width: 0; }
-.unlock-text b { font-size: var(--fs); font-weight: 600; color: var(--text); }
-.unlock-line { font-size: var(--fs-s); color: var(--muted); line-height: 1.35; }
-.unlock[data-mode="progress"] .unlock-line { font-variant-numeric: tabular-nums; }
+.unlock-text b { flex: none; font-weight: 600; color: var(--text); }
+.unlock-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.unlock[data-mode="progress"] .unlock-line,
+.unlock-size { font-variant-numeric: tabular-nums; }
 .unlock[data-mode="error"] .unlock-line { color: var(--danger-strong); }
-.unlock-size { font-weight: 500; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.unlock > .btn { flex: none; }
+.unlock-size { margin-left: 4px; opacity: 0.85; }
 
 .unlock-x {
+  flex: none;
   display: inline-grid;
   place-items: center;
   width: 28px;
@@ -35,6 +48,7 @@
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .unlock-x:hover { background: var(--surface-3); color: var(--text); }
+.unlock-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .unlock-x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 
 .unlock-bar {
@@ -42,7 +56,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
+  height: 2px;
   background: var(--accent-soft);
 }
 .unlock-bar i {
@@ -60,22 +74,23 @@
   .unlock-bar.is-busy i { animation: none; width: 100% !important; opacity: 0.5; }
 }
 
-/* The one-line form, for a host whose rows have a fixed height (the coach's
-   Humans row): the same parts on one 22px line, the gain clipping first. */
+/* A narrow host keeps the name and the one action; the size goes first. */
+@container unlock (max-width: 360px) {
+  .unlock .unlock-size { display: none; }
+}
+
+/* The one-line form for a host whose rows have a fixed height (the coach's
+   Humans row): the same parts on 22px, no ground and no edge. */
 .unlock.is-inline {
-  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 6px;
   min-height: 0;
   height: 22px;
   padding: 0;
   border: 0;
-  border-radius: 0;
   background: none;
-  overflow: visible;
 }
-.unlock.is-inline .unlock-text { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; overflow: hidden; }
+.unlock.is-inline .unlock-text { gap: 6px; }
 .unlock.is-inline .unlock-text b { font-size: var(--fs-s); }
-.unlock.is-inline .unlock-line { overflow: hidden; text-overflow: ellipsis; }
 .unlock.is-inline .btn { height: 22px; min-height: 22px; padding: 0 8px; font-size: 12px; }
 .unlock.is-inline .unlock-x { width: 22px; height: 22px; }
 .unlock.is-inline .unlock-bar { bottom: -3px; height: 2px; border-radius: 1px; }
@@ -85,61 +100,13 @@
 .coach-card > .coach-unlock { grid-row: 3; }
 .train-play-setup [data-unlock-place],
 #coverage-drawer [data-unlock-place] { margin: 2px 0 8px; }
-/* Scout: the promo is a slim notice on the report's own edge — name, what it
-   adds and the one action on a single 40px line that shares both edges with the
-   card below — instead of a 720px card that lined up with nothing. On a phone it
-   keeps the stacked row. */
 .scout-main > [data-unlock-place] { margin-bottom: 12px; }
-@media (min-width: 761px) {
-  .scout-main > [data-unlock-place] .unlock {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    min-height: 40px;
-    padding: 0 6px 0 12px;
-  }
-  .scout-main > [data-unlock-place] .unlock-text { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  .scout-main > [data-unlock-place] .unlock-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-}
-/* On the page ground (Scout) the row takes the card surface to stand off it. */
-.scout-main > [data-unlock-place] .unlock { background: var(--panel); }
 
-/* Every slot is a container: the row answers to the room its host gives it. */
-[data-unlock-place] { container: unlock / inline-size; }
-
-/* A narrow slot stacks the action under the text, so the gain reads on one or
-   two lines instead of a narrow column beside the button. */
-@container unlock (max-width: 440px) {
-  .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 4px; padding: 10px 4px 12px 12px; }
-  .unlock:not(.is-inline) .unlock-x { grid-column: 2; grid-row: 1; align-self: start; }
-  .unlock:not(.is-inline) > .btn { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
-}
-/* A finger-sized dismiss on a phone. */
+/* A phone keeps its finger-sized targets: the action and the dismiss are 44px. */
 @media (max-width: 760px) {
-  .unlock:not(.is-inline) .unlock-x { width: 40px; height: 40px; margin-top: -6px; }
-  /* Scout's promo stays one compact row on a phone: the name over its gain,
-     the action and the dismiss beside them, rather than a third stacked block
-     above the empty card. */
-  .scout-main > [data-unlock-place] .unlock:not(.is-inline) {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 6px;
-    min-height: 0;
-    padding: 8px 4px 8px 12px;
-  }
-  .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-text { min-width: 0; }
-  .scout-main > [data-unlock-place] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: end; align-self: center; }
-  .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
-}
-
-/* The engine card on a phone is a short band over the board: its row stays one
-   line, the gain clipping first, so the band grows by one line and no more. */
-@media (max-width: 760px) {
-  .engine-window-unlock .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto auto; min-height: 0; padding: 4px 0 4px 10px; gap: 6px; }
-  .engine-window-unlock .unlock:not(.is-inline) .unlock-text { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; overflow: hidden; }
-  .engine-window-unlock .unlock:not(.is-inline) .unlock-line { overflow: hidden; text-overflow: ellipsis; }
-  .engine-window-unlock .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; }
-  .engine-window-unlock .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
-}
-@container unlock (max-width: 440px) {
-  .unlock.is-inline .unlock-size { display: none; }
+  .unlock:not(.is-inline) { min-height: 44px; }
+  .unlock:not(.is-inline) > .btn { min-height: 44px; }
+  .unlock:not(.is-inline) .unlock-x { width: 44px; height: 44px; }
 }
 /* A short laptop window: the Build inspector is already at its ceiling over the
    Explorer rows, so the engine card there keeps its lines and leaves the offer to
