@@ -17,7 +17,7 @@ const rule = (selector) => {
 const BODY = [
   ".train-row-meta", ".train-chip", ".train-blitz-row", ".train-coach-sub", ".train-scope-chip", ".train-count",
   ".train-outlook-lead", ".train-outlook-rest", ".train-outlook-quiet", ".train-picker-head", ".train-picker-group", ".train-pick", ".train-pick-sub",
-  ".train-session-meta", ".un-row", ".sum-cells span", ".delta", ".train-recent", "#view-train .seg-btn", "#view-train .kchip",
+  ".train-session-meta", ".un-row", ".sum-line", ".delta", ".train-recent", "#view-train .seg-btn", "#view-train .kchip",
 ];
 
 it("the panel's own labels, counters and rows are at the body size", () => {

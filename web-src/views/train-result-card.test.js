@@ -56,7 +56,8 @@ it("a game reports how it ended and how far it went, and names why when it could
 });
 
 it("the cells fill the row they are in", () => {
-  expect(shell).toMatch(/\.sum-cells \{[^}]*grid-template-columns: repeat\(auto-fit, minmax\(\d+px, 1fr\)\)/);
+  expect(shell).toMatch(/\.sum-line \{/);
+  expect(shell).not.toMatch(/\.sum-cells/);
 });
 
 it("no emoji in the Train markup", () => {

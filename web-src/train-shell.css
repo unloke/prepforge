@@ -184,10 +184,14 @@
 
 /* ---- Result: fixed shape, the what-changed line reserved ---------------- */
 .train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 650; }
-.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
-.sum-cells div { display: flex; flex-direction: column; min-width: 0; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
-.sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
-.sum-cells span { overflow: hidden; color: var(--label); font-size: var(--fs); text-overflow: ellipsis; white-space: nowrap; }
+/* The result's figures are one line of text, not tiles: the value in ink, its
+   word in the muted voice, the dots between them. */
+.sum-line { margin: 0; color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+.sum-line b { color: var(--text); font-weight: 650; }
+.sum-sep { margin: 0 6px; }
+/* Back to Train is a text link beside Again, not a second button. */
+#view-train .train-summary-actions .train-link { flex: 0 0 auto; height: 36px; padding: 0 8px; border: 0; background: none; color: var(--accent-text); font-weight: 600; }
+#view-train .train-summary-actions .train-link:hover { text-decoration: underline; background: none; }
 .delta { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 20px; font-size: var(--fs); }
 .delta[hidden] { display: flex; visibility: hidden; }
 #view-train[data-train-mode="play"] .delta[hidden],

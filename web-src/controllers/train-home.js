@@ -482,7 +482,7 @@ export function showTrainResult(result) {
   state.trainResult = result;
   document.getElementById("train-summary-title").textContent = result.title;
   document.getElementById("train-summary-stats").innerHTML =
-    html`${result.cells.map(([value, label]) => html`<div><b>${value}</b><span>${label}</span></div>`)}`;
+    html`${result.cells.map(([value, label], i) => html`${i ? html`<span class="sum-sep">·</span>` : ""}<span><b>${value}</b> ${label}</span>`)}`;
   const delta = document.getElementById("train-summary-delta");
   delta.hidden = !result.delta;
   delta.innerHTML = result.delta || "";
