@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { hooks } from "../core/hooks.js";
 import { localGameOver, pvSan } from "../chess-local.js";
-import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
+import { clampPly, decodeLine, encodeLine, moveLineHtml, walkLine } from "../move-text.js";
 import { boardLine } from "../line-preview.js";
 import { formatEngineEval } from "../engine-eval.js";
 import { paintUnlocks } from "../engine-unlock.js";
@@ -362,14 +362,16 @@ class EngineWidget {
     this.closeBtn.addEventListener("click", () => setEngineOn(activeViewName(), false));
     this.linesUpBtn.addEventListener("click", () => this._setMultipv(this.multipv + 1));
     this.linesDownBtn.addEventListener("click", () => this._setMultipv(this.multipv - 1));
-    // A line is for the board: clicking it (or one of its moves) plays it out there,
-    // ◀ ▶ / ← → step through it, and "Exit line" (or Esc) returns. The game, the
-    // analysis tree and repertoires are never touched.
+    // A line is for the move list: clicking one of its moves plays the line up to
+    // that move into the analysis tree, as a variation from the position on the
+    // board, and a branch that is already there is selected instead of added
+    // twice. Clicking the row itself plays its first move; Enter/Space do the same
+    // from the keyboard. Nothing here walks a line on the board on its own.
     this.pvsEl.addEventListener("click", (event) => {
       const row = event.target.closest(".engine-pv[data-line]");
       if (!row) return;
       const move = event.target.closest(".pv-move[data-p]");
-      this._previewLine(Number(row.dataset.line), move ? Number(move.dataset.p) + 1 : null);
+      this._playLine(row, move ? Number(move.dataset.p) + 1 : 1);
     });
     // The rows are real controls, so Enter/Space must work too.
     this.pvsEl.addEventListener("keydown", (event) => {
@@ -377,12 +379,38 @@ class EngineWidget {
       const row = event.target.closest(".engine-pv[data-line]");
       if (!row) return;
       event.preventDefault(); // Space would otherwise scroll the dock
-      this._previewLine(Number(row.dataset.line), null);
+      this._playLine(row, 1);
     });
   }
 
   isPreviewing() {
     return !!this.preview;
+  }
+
+  // The lines the card shows, played into the analysis tree up to `ply` (1 = the
+  // first move). The moves come from the row's own encoded line, so a repaint
+  // between the click and this handler cannot swap the line under it; a row with
+  // no moves yet has nothing to play.
+  _playLine(row, ply) {
+    if (activeViewName() !== "analyze") return;
+    const line = decodeLine(row.dataset.mt);
+    // The rows belong to the position the search was asked for: once the board
+    // has moved on they are on their way out, and their moves no longer start
+    // from the position on screen.
+    if (!line || line.baseFen !== appState.analysisBoardFen) return;
+    const session = getAnalyzeSession();
+    if (!session) return;
+    const at = clampPly(line, ply);
+    return at ? this._playMoves(session, line.plies.slice(0, at)) : undefined;
+  }
+
+  async _playMoves(session, plies) {
+    for (const step of plies) {
+      await session.onAnalysisBoardMove(step.uci, step.fenBefore);
+      // A move that did not land (illegal from here, or a newer board took over)
+      // makes the rest of the line meaningless from this position.
+      if (appState.analysisBoardFen !== step.fen) return;
+    }
   }
 
   // Put line `index` of the current search on the board at `ply` (1 = after its first
@@ -518,8 +546,11 @@ class EngineWidget {
       : "";
     let cls = index === 0 ? "engine-pv is-top" : "engine-pv";
     if (previewing) cls += " is-previewing";
+    // The row carries its line as the moves do (data-mt), so a click on the row's
+    // own space plays the same line the row shows, not one the search has since
+    // replaced.
     return (
-      html`<div class="${cls}" data-line="${index}" role="button" tabindex="0" aria-pressed="${!!previewing}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
+      html`<div class="${cls}" data-line="${index}" data-mt="${encodeLine(fen, line.pv_uci || [])}" role="button" tabindex="0" aria-pressed="${!!previewing}"><span class="engine-pv-eval">${evalText}</span><span class="engine-pv-line">${moves || "..."}</span></div>`
     );
   }
 

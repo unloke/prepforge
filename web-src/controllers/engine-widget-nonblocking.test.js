@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { pvSan } from "../chess-local.js";
 import { createPassFeed } from "./engine-pass-feed.js";
-import { clampPly, moveLineHtml, walkLine } from "../move-text.js";
+import { clampPly, decodeLine, encodeLine, moveLineHtml, walkLine } from "../move-text.js";
 
 // The full net's unlock row sits above the lines, never in place of them: while it
 // is up the lite search keeps running, and nothing it does stops or restarts it.
@@ -77,7 +77,7 @@ function harness({ choice = "ask", store = noPassStore(), view = "analyze", pvSa
       row.innerHTML = choiceNow === "ask" ? html`<div class="unlock" data-place="${row.dataset.unlockPlace}">Full Stockfish</div>` : "";
     },
     createPassFeed, hooks,
-    clampPly, moveLineHtml, walkLine, boardLine: { open: vi.fn(), step: () => false, exit: vi.fn() },
+    clampPly, decodeLine, encodeLine, moveLineHtml, walkLine, boardLine: { open: vi.fn(), step: () => false, exit: vi.fn() },
     analysisStore: async () => store,
   };
   const code = widgetSource.slice(widgetSource.indexOf("class EngineWidget {"));
