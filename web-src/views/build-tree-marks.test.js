@@ -24,3 +24,9 @@ it("side lines and the main line differ in weight under Build's tree", () => {
   expect(css).toMatch(/#builder-tree \.mtree-line\.is-main > \.mtree-move \{ font-weight: 650; \}/);
   expect(css).toMatch(/#builder-tree \.mtree-var \.mtree-move \{ font-weight: 450; \}/);
 });
+
+it("the move menu's ⋯ handle is big enough to read as three dots, not a dash", () => {
+  const handle = /\.mtree-move \.mtree-more \{[\s\S]*?\}/.exec(css)[0];
+  expect(handle).toMatch(/font-size:\s*14px/);
+  expect(handle).toMatch(/width:\s*18px/);
+});

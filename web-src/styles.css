@@ -3291,13 +3291,15 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   right: -6px;
   display: grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--panel);
   color: var(--text);
-  font-size: 11px;
+  /* 14px: at 11px the three dots of ⋯ render as one dash. */
+  font-size: 14px;
+  font-weight: 700;
   line-height: 1;
   opacity: 0;
   pointer-events: none;
