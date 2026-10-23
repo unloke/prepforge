@@ -826,50 +826,50 @@
 /* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
 #eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
 
-/* Moves: a score sheet. One row per move pair; White and Black sit in two
-   equal columns, so Black lines up under White with no gutter. Rows are a fixed
-   22px pitch, so a long game grows the list without moving anything above it.
-   The sheet is the panel's only scroller (the cap is the stacked layout's). */
+/* Moves: a score sheet that flows, as in a book or Lichess's inline mode:
+   "1. e4 e5 2. Nf3 Nc6" wraps across the panel's width. A move is a compact
+   token on one 22px line; its box is the click target and its hover fill. The
+   move number is quiet. A variation is one indented, quieter paragraph under
+   the move it branches from, and the mainline flows on after it. The sheet is
+   the panel's only scroller. */
 .moves-grid {
   max-height: clamp(190px, 40dvh, 440px);
   overflow: auto;
   border: 0;
   border-radius: 8px;
   font-size: 13px;
+  line-height: 22px;
   font-variant-numeric: tabular-nums;
 }
-.moves-grid .mtree-line.is-main {
-  display: grid;
-  grid-template-columns: 2.4em minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 0;
-}
+.moves-grid .mtree-line.is-main { display: block; }
 .moves-grid .mtree-num {
-  line-height: 22px;
+  margin: 0;
+  padding: 0 0 0 8px;
   color: var(--label);
   font-size: var(--fs-s);
-  margin: 0;
-  padding: 0 6px 0 0;
-  text-align: right;
+  line-height: 22px;
 }
-.moves-grid .mtree-line.is-main > .mtree-num { grid-column: 1; }
-/* A move is a token of its own height; its box is the click target and its
-   hover fill. The selected move is marked by one 1px accent line on its
-   bottom edge, as wide as its SAN, not a filled tile. */
 .moves-grid .mtree-move {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  display: inline-block;
   height: 22px;
-  margin: 0;
-  padding: 0 6px;
+  margin: 0 1px;
+  padding: 0 4px;
   border-radius: 0;
   vertical-align: top;
   font-weight: 500;
   line-height: 22px;
 }
-.moves-grid .mtree-line.is-main > .mtree-move { justify-self: start; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
+/* A variation keeps its own moves in the flow, one step quieter than the line:
+   a rail, a smaller size, muted ink, and no italic or bold. */
+.moves-grid .mtree-var {
+  margin: 2px 0 4px var(--mtree-indent);
+  padding: 0 0 0 calc(var(--mtree-indent) + var(--mtree-rail));
+  font-size: 12.5px;
+  line-height: 22px;
+}
+.moves-grid .mtree-var .mtree-move { font-weight: 400; font-style: normal; }
+/* The selected move: one 1px accent line under its label, as wide as the
+   label, in ink. No fill, so the sheet stays a text page. */
 .moves-grid .mtree-move.is-current,
 .moves-grid .mtree-move.is-current.is-opp {
   background: none;
@@ -882,17 +882,8 @@
    move on the way here carries a fill. */
 .moves-grid .mtree-move.on-path { background: none; color: inherit; }
 .moves-grid .mtree-move.is-current .mtree-glyph { color: inherit; }
-/* A variation: one row of its own under the pair it branches from, indented
-   behind the shared rail, its moves at a quieter size than the mainline. */
-.moves-grid .mtree-line.is-main > .mtree-var {
-  grid-column: 1 / -1;
-  margin: 0;
-  padding: 0 0 2px calc(var(--mtree-indent) + var(--mtree-rail));
-  font-size: 12.5px;
-  line-height: 22px;
-}
-.moves-grid .mtree-var .mtree-num { line-height: 22px; }
-.moves-grid .mtree-glyph { font-size: 12px; font-weight: 700; }
+/* A grade sign follows its move as a small mark in the grade's colour. */
+.moves-grid .mtree-glyph { margin-left: 2px; font-size: 12px; font-weight: 700; }
 .mtree-glyph {
   font-style: normal;
   font-size: var(--fs-s);
@@ -1597,8 +1588,8 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
   .best-line { font-size: 14px; line-height: 28px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
-  .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
-  .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
+  .moves-grid .mtree-move { min-height: 36px; line-height: 36px; }
+  .moves-grid .mtree-num { line-height: 36px; }
   .rp-row { min-height: 36px; }
   .rp-n, .rp-phase { height: 36px; line-height: 36px; }
   .km-go { min-height: 44px; }

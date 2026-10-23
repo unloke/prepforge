@@ -465,9 +465,7 @@ describe("workspace chrome layout", () => {
     expect(rule(".coach-prose")).toMatch(/min-height: 0/);
     expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
-    // The score sheet: a number column and two equal move columns with no
-    // gutter, so Black lines up under White; a variation spans all three.
-    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*2\.4em\s+minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/);
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/display:\s*block/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);    // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
     expect(css).not.toContain(".coach-scroll");
