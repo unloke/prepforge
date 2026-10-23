@@ -309,11 +309,16 @@ async function runViewport(vp) {
     await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `repertoire-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
   }
 
-  // Dock: Explorer is open by default and shows real W/D/L rows; tabs are a
-  // single-select tablist (Coverage replaces Explorer, Engine docks the widget).
+  // Dock: the inspector starts folded to its tab strip, so the tree has the
+  // panel; unfolding it shows the real W/D/L rows. Tabs are a single-select
+  // tablist (Coverage replaces Explorer, Engine docks the widget).
   console.log(`[${vp.name}] at dock step; tree trained=${trained}`);
+  check((await page.locator("#build-inspector.is-folded").count()) === 1, "the inspector should start folded");
+  // On a phone the Explorer is a pane of its own, not a folding strip.
+  if (vp.width >= 1100) await page.locator("#build-dock-fold").click();
+  else await page.locator("#build-panes [data-pane=\"explorer\"]").click();
   await page.locator("#explorer-rows .explorer-row").first().waitFor({ timeout: 4000 }).catch(() => {});
-  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open by default");
+  check((await page.locator("#explorer-drawer:not([hidden])").count()) === 1, "explorer panel should be open once unfolded");
   const exRows = await page.locator("#explorer-rows .explorer-row").count();
   check(exRows === 3, `explorer should list 3 fixture moves, got ${exRows}`);
   check((await page.locator("#build-tool-explorer[aria-selected='true']").count()) === 1, "Explorer tab should be selected");

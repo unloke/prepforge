@@ -33,3 +33,8 @@ it("the toolbar stacks only in a narrow panel", () => {
 it("on a phone the toolbar stacks by viewport: the panel is display: contents there", () => {
   expect(css).toMatch(/@media \(max-width: 760px\) \{\s*\.build-toolbar \{ flex-wrap: wrap; \}/);
 });
+
+it("a phone's Explorer or Coverage pane opens the dock, which is folded by default", () => {
+  const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  expect(app).toMatch(/if \(pane !== "moves"\) setBuildDockFolded\(false, \{ remember: false \}\);/);
+});
