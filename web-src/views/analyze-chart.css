@@ -985,21 +985,6 @@
 }
 .rp-summary .rp-acc { font-size: var(--fs-s); font-weight: 650; }
 
-/* Accuracy headers over the grade table: each side's name and figure flank
-   the centred label, and the table's columns line up under them. */
-.rp-sides {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: end;
-  gap: 8px;
-  padding: 0 8px;
-}
-.rp-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rp-black { align-items: flex-end; text-align: right; }
-.rp-black .rp-name { flex-direction: row-reverse; }
-.rp-acc-label { color: var(--muted); font-size: var(--fs-s); padding-bottom: 3px; }
-.rp-result { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 6px; }
-
 /* Grade counts: one row per grade, the two sides' counts flanking the grade. */
 .rp-counts, .rp-ph { display: flex; flex-direction: column; }
 .rp-row {
@@ -1034,6 +1019,14 @@
   font-variant-numeric: tabular-nums;
 }
 .rp-row > .rp-n:last-child { text-align: right; }
+/* The accuracy row: each side's figure in its own column, the disc names the side. */
+.rp-acc-row { min-height: 26px; }
+.rp-acc-n { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; }
+.rp-black ~ .rp-acc-n { justify-self: end; }
+.rp-acc-row .rp-acc-n:last-child { justify-content: flex-end; }
+.rp-acc-row .rp-grade { color: var(--muted); }
+.rp-result { display: flex; gap: 8px; margin: 2px 8px 0; color: var(--text); font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rp-result span { color: var(--muted); font-weight: 400; }
 button.rp-n { cursor: pointer; }
 button.rp-n:hover { background: var(--surface-3); }
 button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }

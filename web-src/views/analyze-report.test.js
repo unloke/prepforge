@@ -152,9 +152,9 @@ describe("the report", () => {
     const html = String(reportHtml(buildGameReport({
       moves: MOVES,
       evalGraph: GRAPH,
-      headers: { White: "me_user", Black: "opp_one", Opening: "Ruy Lopez", ECO: "C60" },
+      headers: { White: "me_user", Black: "opp_one", Result: "0-1", Opening: "Ruy Lopez", ECO: "C60" },
     })));
-    const order = ["rp-sides", "rp-counts", "rp-moments", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
+    const order = ["rp-counts", "rp-moments", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The moment's own move sits inside the row's jump; its better move is a link.
@@ -164,6 +164,9 @@ describe("the report", () => {
     expect(html).toMatch(/<button type="button" class="rp-n" data-side="black" data-grade="blunder"/);
     expect(html).toMatch(/<span class="rp-n is-zero">0<\/span>/);
     expect(html).toContain("Ruy Lopez · C60");
+    // The result is written once, labelled; no repeated name header.
+    expect(html.split("Result").length - 1).toBe(1);
+    expect(html).not.toContain("rp-sides");
     // No standing explanation in the report.
     expect(html).not.toMatch(/how|means|click|tap/i);
   });

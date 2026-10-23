@@ -257,13 +257,18 @@ function moveLink(move, label, opts) {
   return move?.fen_before && move.uci ? moveTokenHtml(move.fen_before, [move.uci], 0, label, opts) : label;
 }
 
-function sideHeadHtml(report) {
+// The accuracy row heads the grade table: each side's figure in its own column.
+function accuracyRowHtml(report) {
   const cell = (side) => {
-    const s = report.sides[side];
-    const name = s.name || (side === "white" ? "White" : "Black");
-    return html`<div class="rp-col rp-${side}"><span class="rp-name" title="${name}"><i class="rp-disc" aria-hidden="true"></i>${name}</span><b class="rp-acc">${s.accuracy == null ? "–" : s.accuracy}</b></div>`;
+    const acc = report.sides[side].accuracy;
+    return html`<span class="rp-n rp-acc-n"><i class="rp-disc" aria-hidden="true"></i>${acc == null ? "–" : `${acc}%`}</span>`;
   };
-  return html`<div class="rp-sides" aria-label="Accuracy">${cell("white")}<span class="rp-acc-label">Accuracy${report.result ? html`<span class="rp-result">${report.result}</span>` : ""}</span>${cell("black")}</div>`;
+  return html`<div class="rp-row rp-acc-row" role="row">${cell("white")}<span class="rp-grade" role="rowheader">Accuracy</span>${cell("black")}</div>`;
+}
+
+// The game's result, once, labelled.
+function resultHtml(report) {
+  return report.result ? html`<p class="rp-result"><span>Result</span> ${report.result}</p>` : "";
 }
 
 function countsHtml(report) {
@@ -274,7 +279,7 @@ function countsHtml(report) {
       ? html`<button type="button" class="rp-n" data-side="${side}" data-grade="${g.key}" aria-label="${`${side === "white" ? "White" : "Black"} ${g.label}: ${n}, go to the next one`}">${n}</button>`
       : html`<span class="rp-n is-zero">0</span>`;
   };
-  return html`<div class="rp-counts" role="table" aria-label="Move grades">${rows.map(
+  return html`<div class="rp-counts" role="table" aria-label="Move grades">${accuracyRowHtml(report)}${rows.map(
     (g) => html`<div class="rp-row g-${g.key}" role="row">${cell("white", g)}<span class="rp-grade" role="rowheader"><i class="rp-glyph" aria-hidden="true">${classBadgeSymbol(g.members[0]) || ""}</i>${g.label}</span>${cell("black", g)}</div>`,
   )}</div>`;
 }
@@ -322,7 +327,7 @@ function summaryHtml(report, open) {
 /** The report as markup (no listeners). `open` shows the full report under the summary line. */
 export function reportHtml(report, open = true) {
   if (!report) return "";
-  const full = html`${report.graded ? html`${sideHeadHtml(report)}${countsHtml(report)}` : ""}${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
+  const full = html`${report.graded ? html`${countsHtml(report)}${resultHtml(report)}` : ""}${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
   return report.graded ? html`${summaryHtml(report, open)}${open ? full : ""}` : full;
 }
 
