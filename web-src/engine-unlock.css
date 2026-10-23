@@ -82,7 +82,6 @@
 
 /* Where a row sits in a host. */
 .engine-window-unlock[data-unlock-place] { padding: 6px 0 4px; }
-.coach-card > .coach-unlock { grid-row: 3; }
 .train-play-setup [data-unlock-place],
 #coverage-drawer [data-unlock-place] { margin: 2px 0 8px; }
 /* Scout: the promo is a slim notice on the report's own edge — name, what it
