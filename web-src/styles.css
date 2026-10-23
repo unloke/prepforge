@@ -6097,3 +6097,16 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .pgn-file-row {
   margin-top: 6px;
 }
+
+/* Build's tree: the main line reads as the line, side lines step back and
+   sit under their fork, and a position with no answer on our side carries
+   one mark. Scoped here (not in the shared move-tree rules that Analyze
+   uses): the classes come from build.js's decorate(). */
+#builder-tree .mtree-line.is-main > .mtree-move { font-weight: 650; }
+#builder-tree .mtree-var { --mtree-indent: 14px; }
+#builder-tree .mtree-var .mtree-move { font-weight: 450; }
+#builder-tree .mtree-move.is-gap::after {
+  content: " ?";
+  color: var(--negative);
+  font-weight: 700;
+}

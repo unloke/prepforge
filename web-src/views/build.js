@@ -344,7 +344,12 @@ export function createBuildView({
         const classes = [];
         if (b.mastery) classes.push(`m-${b.mastery}`);
         if (!b.is_enabled) classes.push("is-disabled");
-        if (b.move_side !== appState.build.color) classes.push("is-opp");
+        const opp = b.move_side !== appState.build.color;
+        if (opp) classes.push("is-opp");
+        // The one gap the tree marks: the opponent has just moved here and
+        // no answer is recorded. A line that ends on our own move is finished.
+        const gap = opp && !(node.children && node.children.length);
+        if (gap) classes.push("is-gap");
         // The move this session just made: one rise, once, so a line the user
         // added is distinguishable from the seventy already there.
         if (b.id === appState.buildJustAddedId) classes.push("is-added");
@@ -360,7 +365,7 @@ export function createBuildView({
         const open = openNotes.has(String(b.id)) ? " is-open" : "";
         return {
           classes,
-          title: [status, "Right-click for move options"].filter(Boolean).join(" · "),
+          title: [status, gap ? "No answer recorded here" : "", "Right-click for move options"].filter(Boolean).join(" · "),
           ...(status ? { label: status } : {}),
           after: b.comment
             ? html`<div class="mtree-comment${open}" data-note-for="${String(b.id)}">${noteHtml(b)}</div>`
