@@ -145,6 +145,7 @@ export function reviewMoments(moves = [], evalGraph = [], reps = [], selfSide = 
         grade: marked,
         departure: ply === departure?.ply,
         by: ply === departure?.ply ? departure.by : null,
+        prepared: ply === departure?.ply ? departure.prepared : false,
         repName: ply === departure?.ply ? departure.repName : "",
         before: formatEval(row?.prev),
         after: formatEval(row?.point),
@@ -213,6 +214,7 @@ export function prepDeparture(moves = [], reps = [], selfSide = null) {
   if (!moves.length || !pool.length) return null;
   let deepest = -1;
   let deepestRep = null;
+  let deepestWalk = null;
   for (const rep of pool) {
     let walk = rep.rootId;
     let matched = 0;
@@ -225,13 +227,16 @@ export function prepDeparture(moves = [], reps = [], selfSide = null) {
     if (matched > deepest) {
       deepest = matched;
       deepestRep = rep;
+      deepestWalk = walk;
     }
   }
   if (deepest <= 0 || deepest >= moves.length) return null;
   const move = moves[deepest];
   const ply = Number(move.ply) || deepest + 1;
   const by = selfSide ? (sideOfMove(move, ply) === selfSide ? "you" : "opponent") : null;
-  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "", by };
+  // `prepared`: the book had a move to play here, the one the coach would drill.
+  const prepared = (deepestRep.kids?.get(deepestWalk)?.length || 0) > 0;
+  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "", by, prepared };
 }
 
 /**

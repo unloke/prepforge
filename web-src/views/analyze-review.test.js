@@ -29,17 +29,21 @@ function movesOf(sans, grades) {
 
 const repertoire = (ucis, color = "white") => {
   const children = new Map();
+  const kids = new Map();
   let walk = "n0";
   ucis.forEach((uci, i) => {
-    children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
+    const node = { id: `n${i + 1}`, san: uci };
+    children.set(`${walk}|${uci}`, node);
+    kids.set(walk, [node]);
     walk = `n${i + 1}`;
   });
-  return { rootId: "n0", children, name: "Italian", color };
+  return { rootId: "n0", children, kids, name: "Italian", color };
 };
 
 const FOUR = ["e2e4", "e7e5", "g1f3", "b8c6"];
+// The book goes on with 3.Bc4, so 3.Bb5 leaves a prepared move behind.
 const GAME = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"], ["best", "best", "best", "blunder", "best", "best"]);
-const LIST = reviewMoments(GAME, GRAPH, [repertoire(FOUR)], "white");
+const LIST = reviewMoments(GAME, GRAPH, [repertoire([...FOUR, "f1c4"])], "white");
 const SHOWN = { graded: true };
 
 describe("review bar model", () => {
@@ -65,6 +69,11 @@ describe("review bar model", () => {
     expect(reviewBarModel({ moments: LIST, ply: 5, ...SHOWN, signedIn: true })).toMatchObject({ act: "train", actLabel: "Add to training" });
     expect(reviewBarModel({ moments: LIST, ply: 5, ...SHOWN, signedIn: false }).act).toBeNull();
     expect(reviewBarModel({ moments: LIST, ply: 4, ...SHOWN, signedIn: true }).act).toBeNull();
+  });
+
+  it("offers nothing on a departure the book had no move prepared for, as the coach says nothing there", () => {
+    const list = reviewMoments(GAME, GRAPH, [repertoire(FOUR)], "white");
+    expect(reviewBarModel({ moments: list, ply: 5, ...SHOWN, signedIn: true })).toMatchObject({ kind: "You left prep", act: null });
   });
 
   it("names the opponent's departure as the repertoire add", () => {

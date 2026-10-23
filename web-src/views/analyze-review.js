@@ -19,7 +19,9 @@ export function reviewBarModel({ moments = [], ply = 0, graded = false, running 
   const st = reviewState(moments, ply);
   const focus = st.focus;
   const stop = st.current?.departure && st.current.by ? st.current : null;
-  const act = stop && signedIn ? (stop.by === "opponent" ? "build" : "train") : null;
+  // The coach offers the novelty to add, or the prepared move to drill (only when
+  // the book had one there); a stop with nothing prepared has no action.
+  const act = stop && signedIn && (stop.by === "opponent" || stop.prepared) ? (stop.by === "opponent" ? "build" : "train") : null;
   return {
     hidden: false,
     prevDisabled: !st.prev,

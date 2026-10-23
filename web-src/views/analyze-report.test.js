@@ -108,6 +108,11 @@ describe("key moments", () => {
     expect(moments[0]).toMatchObject({ ply: 5, grade: "blunder", departure: true, by: "you", repName: "Italian" });
   });
 
+  it("says whether the book had a move prepared at the departure", () => {
+    expect(prepDeparture(MOVES, [repertoire(FOUR)], "white")).toMatchObject({ ply: 5, prepared: false });
+    expect(prepDeparture(MOVES, [repertoire([...FOUR, "f1c4"])], "white")).toMatchObject({ ply: 5, prepared: true });
+  });
+
   it("walks only the user's colour when the side is known, and gives the departure's side", () => {
     const white4 = repertoire(FOUR, "Italian", "white");
     const black4 = repertoire(FOUR, "Black book", "black");
@@ -154,12 +159,15 @@ describe("phases", () => {
 // The shape analyze-book.js caches: one child per (parent node, uci).
 const repertoire = (ucis, name = "Italian", color = "white") => {
   const children = new Map();
+  const kids = new Map();
   let walk = "n0";
   ucis.forEach((uci, i) => {
-    children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
+    const node = { id: `n${i + 1}`, san: uci };
+    children.set(`${walk}|${uci}`, node);
+    kids.set(walk, [node]);
     walk = `n${i + 1}`;
   });
-  return { rootId: "n0", children, name, color };
+  return { rootId: "n0", children, kids, name, color };
 };
 
 describe("opening and prep", () => {
