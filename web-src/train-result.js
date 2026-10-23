@@ -11,7 +11,7 @@ export function smartResult(smart, stats, after = null) {
   const cells = [[served, nounOf(served, "card")]];
   if (firstTries) cells.push([pct(stats.correct || 0, stats.mistakes || 0), "first try"]);
   if (stats.learned) cells.push([stats.learned, "learned"]);
-  if (firstTries) cells.push([stats.best || 0, "best run"]);
+  if (firstTries) cells.push([stats.best || 0, "best streak"]);
   if (stats.skipped) cells.push([stats.skipped, "skipped"]);
   return {
     mode: "smart",

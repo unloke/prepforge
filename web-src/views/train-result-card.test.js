@@ -11,7 +11,7 @@ const source = readFileSync(new URL("../train-result.js", import.meta.url), "utf
 
 it("a queue counts the cards it served, skipped ones included", () => {
   const result = smartResult({ cardsDone: 3, healthBefore: null }, { correct: 2, mistakes: 1, skipped: 2, best: 2 });
-  expect(result.cells).toEqual([[5, "cards"], ["67%", "first try"], [2, "best run"], [2, "skipped"]]);
+  expect(result.cells).toEqual([[5, "cards"], ["67%", "first try"], [2, "best streak"], [2, "skipped"]]);
   expect(result.title).toBe("Queue complete");
 });
 
