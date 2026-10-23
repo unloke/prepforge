@@ -2114,7 +2114,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
-.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
+.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* The word names the number; the desktop column header already does, so the
    phone row is the only place that needs it. */
 #view-dashboard .lib-mastery-word { display: none; }
@@ -2125,11 +2125,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    unrelated quantities in green and blue. */
 .lib-mbar {
   flex: 1;
-  min-width: 60px;
-  height: 8px;
+  min-width: 48px;
+  max-width: 112px;
+  height: 4px;
   border-radius: 999px;
   background: var(--surface-3);
-  box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
   position: relative;
 }
@@ -2160,19 +2160,15 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
-/* In a Library row the queue is one neutral chip with one coloured dot: three
-   tinted pills in red, amber and violet beside a green mastery bar and the
-   selected row's tint made five colours where the row says one thing (what is
-   waiting). The dot keeps the chess hue, so the kind is still read at a glance;
-   the chip itself is the row's quiet surface. Scout's and Train's chips keep
-   their tint — outside a table row a lone chip has no bar or selection to
-   compete with. */
+/* In a Library row the queue is three neutral counts in fixed-width slots: the
+   coloured dots and tints competed with the mastery bars for the eye. The kind
+   is still read from its word; Scout's and Train's chips keep their tint,
+   since outside a table row a lone chip has nothing to compete with. */
 .lib-row .kchip.k-weak,
 .lib-row .kchip.k-due,
 .lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
-.lib-row .kchip.k-weak::before { background: var(--k-weak); }
-.lib-row .kchip.k-due::before { background: var(--k-due); }
-.lib-row .kchip.k-new::before { background: var(--k-new); }
+.lib-row .kchip::before { display: none; }
+.lib-cell-queue .kchip { min-width: 72px; justify-content: flex-start; padding-left: 0; font-variant-numeric: tabular-nums; }
 /* A kind chip is a button when it opens something: one press feedback and one
    hover, in the family's own ink. */
 button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
@@ -2266,7 +2262,6 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   transform: rotate(-45deg) translate(1px, -1px);
 }
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
-.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
 /* The Library is one column at every width, so the old two-track fallbacks
    have nothing left to do. */

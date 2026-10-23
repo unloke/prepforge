@@ -242,8 +242,10 @@ export function createDashboardView({
           // is an empty ring. A step number beside two ticks read as two
           // different lists, and a phone shows no number at all.
           const mark = html`<span class="step-n${step.done ? " is-done" : ""}" aria-hidden="true"></span>`;
+          // A finished step has its tick and nothing else: a "Done" word beside
+          // it was a second status mark on the same row.
           const cta = step.done
-            ? html`<span class="step-done">Done</span>`
+            ? ""
             : step.locked
             ? ""
             : !step.action
