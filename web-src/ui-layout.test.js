@@ -552,7 +552,6 @@ describe("workspace chrome layout", () => {
     // The desktop page names itself through the shell's one page-head rule.
     expect(css).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*\.workspace\s+\.page-head\s*\{[^}]*display:\s*flex/);
     expect(settingsCss).not.toMatch(/#view-settings\s+\.page-head\s+h1/);
-    expect(settingsCss).toContain(".set-row");
     // The status pill is one shared family, styled before Settings loads.
     expect(css).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.

@@ -183,7 +183,13 @@ async function runViewport(vp) {
   // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.
   if (vp.width <= 760) {
     const small = await page.evaluate(() => [...document.querySelectorAll('#view-settings .pf-switch, #view-settings .pf-info, #view-settings .set .seg-btn, #view-settings .set .btn')]
-      .map((el) => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height, what: el.id || el.className }; })
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        // A switch keeps its drawn track and grows its tap area with ::after insets.
+        const after = getComputedStyle(el, "::after");
+        const grow = after.content === "none" ? 0 : Math.max(0, -parseFloat(after.top) || 0) + Math.max(0, -parseFloat(after.bottom) || 0);
+        return { w: r.width, h: r.height + grow, what: el.id || el.className };
+      })
       // A control may be narrow (a 38px switch track, a "1" worker chip): the
       // touch target is its height, which must reach 40px.
       .filter((r) => r.w > 0 && r.h > 0 && r.h < 40)
