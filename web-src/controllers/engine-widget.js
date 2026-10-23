@@ -137,7 +137,10 @@ class EngineWidget {
   // profile moves the search onto the full net once its bytes land.
   _paintUnlock() {
     if (!this.unlockEl) return;
-    this.unlockEl.dataset.unlockPlace = activeViewName() === "build" ? "engine-build" : "engine-analyze";
+    const analyze = activeViewName() !== "build";
+    this.unlockEl.dataset.unlockPlace = analyze ? "engine-analyze" : "engine-build";
+    // Analyze's offer is one quiet row under the lines, not a card.
+    this.unlockEl.dataset.unlockStyle = analyze ? "inline" : "";
     paintUnlocks(this.el);
     this._paintPvs();
   }
