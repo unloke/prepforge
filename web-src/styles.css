@@ -2128,12 +2128,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 }
 /* Next steps is a band under the table: its steps run across the width in one
    row while they fit, so the card closes the page in two lines rather than a
-   tall stack under a full-width table. */
+   tall stack under a full-width table. A step needs room for its title beside
+   its action: at 320px "Link your Lichess account" broke in two, and at 240px
+   three steps left the third alone on a ragged second line. */
 @media (min-width: 761px) {
   .steps { display: flex; flex-wrap: wrap; align-items: center; }
   .steps > .card-head { flex: 1 1 100%; }
   .steps > .setup-bar { flex: 1 1 100%; }
-  .steps > .step { flex: 1 1 0; min-width: 240px; }
+  .steps > .step { flex: 1 1 0; min-width: 320px; }
 }
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
