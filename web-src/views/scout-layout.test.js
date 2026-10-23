@@ -52,3 +52,10 @@ it("the selected colour tab is a 1px accent line as wide as its label", () => {
   expect(rule(".scout-color-tab")).toMatch(/border-bottom:\s*1px solid transparent/);
   expect(rule(".scout-color-tab.is-active")).toMatch(/border-bottom-color:\s*var\(--accent\)/);
 });
+
+// The phone's engine offer waits under the report, so the opponent's lines are
+// the first thing a thumb meets below the controls.
+it("on a phone the engine offer follows the report", () => {
+  const phone = readFileSync(join(root, "..", "phone.css"), "utf8");
+  expect(phone).toMatch(/#view-replay \.scout-main > \[data-unlock-place="scout"\] \{ order: 2; \}/);
+});
