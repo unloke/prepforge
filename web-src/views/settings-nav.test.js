@@ -47,6 +47,8 @@ function fakeNav() {
       clientWidth: 320,
       scrollLeft: 0,
       dataset: {},
+      listeners: {},
+      addEventListener(name, fn) { this.listeners[name] = fn; },
       querySelector: (sel) => (sel === ".settings-nav-link.is-active" ? links.find((l) => l.classList.contains("is-active")) ?? null : null),
       querySelectorAll: (sel) => (sel === ".settings-nav-link" ? links : []),
     };
@@ -129,6 +131,32 @@ describe("Settings section navigation", () => {
       expect(view).toContain(`>${label}</a>`);
     }
     expect(view).toContain('data-testid="settings-current"');
+  });
+
+  it("marks the strip's cut-off edge so the last tab reads as scrollable", () => {
+    // A phone fits five of six tabs: the sixth is cut mid-word ("Playin"). The
+    // strip names the edge that still has tabs behind it, and the stylesheet
+    // fades that edge instead of leaving a broken word.
+    const { view, nav } = setup();
+    view.bindSectionNav();
+    expect(nav.dataset.edge).toBe("end");
+    nav.scrollLeft = 80;
+    nav.listeners.scroll();
+    expect(nav.dataset.edge).toBe("both");
+    nav.scrollLeft = nav.scrollWidth - nav.clientWidth;
+    nav.listeners.scroll();
+    expect(nav.dataset.edge).toBe("start");
+    // Every tab visible: no fade at either edge.
+    nav.scrollWidth = nav.clientWidth;
+    nav.scrollLeft = 0;
+    nav.listeners.scroll();
+    expect(nav.dataset.edge).toBe("");
+  });
+
+  it("fades only the edge the stylesheet is told about", () => {
+    const phone = phoneCss.slice(phoneCss.indexOf("@media (max-width: 760px)"));
+    expect(phone).toMatch(/#view-settings \.settings-nav\[data-edge="end"\] \{[\s\S]*?mask-image: linear-gradient\(to right/);
+    expect(phone).toMatch(/#view-settings \.settings-nav\[data-edge="both"\] \{[\s\S]*?mask-image/);
   });
 
   it("keeps the strip on a phone instead of hiding it", () => {

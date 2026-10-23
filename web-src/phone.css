@@ -475,6 +475,20 @@
     /* Cards pass under the strip while the page scrolls; the hairline says
        the strip ends there, and the open tab's bar sits on it. */
     box-shadow: inset 0 -1px 0 var(--line);
+    /* Six sections do not fit one phone row, so the last tab is cut by the
+       edge and reads as a broken word ("Playin"). Fade the edge that still has
+       tabs behind it (settings.js sets data-edge); the cut label then reads as
+       "more this way", and the fade goes away at the end of the strip. */
+    --edge-fade: 28px;
+  }
+  #view-settings .settings-nav[data-edge="end"] {
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--edge-fade)), transparent);
+  }
+  #view-settings .settings-nav[data-edge="start"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--edge-fade));
+  }
+  #view-settings .settings-nav[data-edge="both"] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent);
   }
   #view-settings .settings-nav::-webkit-scrollbar { display: none; }
   /* A row of text tabs, like a native segmented header: the open one is ink

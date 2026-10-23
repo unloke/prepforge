@@ -415,6 +415,19 @@ export function createSettingsView({
     });
     const sections = () =>
       Array.from(document.querySelectorAll("#view-settings .card[id]"));
+    // A phone fits five of the six tabs: fade the edge that still has tabs
+    // behind it, so a half-drawn label reads as "there is more" and not as a
+    // broken word. The attribute is the only thing the stylesheet reads.
+    const paintEdges = () => {
+      const max = nav.scrollWidth - nav.clientWidth;
+      nav.dataset.edge = max <= 1 ? "" : nav.scrollLeft <= 1 ? "end" : nav.scrollLeft >= max - 1 ? "start" : "both";
+    };
+    paintEdges();
+    nav.addEventListener("scroll", paintEdges, { passive: true });
+    // The view is display:none until it opens, so the strip has no width yet at
+    // bind time; this fires again when it does (and when a resize or a font
+    // change alters the tabs' width).
+    if (typeof ResizeObserver === "function") new ResizeObserver(paintEdges).observe(nav);
     let spyTick = false;
     const onScroll = () => {
       if (spyTick) return;
