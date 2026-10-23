@@ -394,6 +394,12 @@
     padding: 6px 6px 6px 2px;
   }
   #view-teams .team-detail .card-head .spacer { flex: 1 1 0; flex-basis: 0; height: auto; min-width: 0; }
+  /* Invite is a link icon on a phone: its word took the room the name needs. */
+  #view-teams #team-detail-invite { width: 44px; height: 44px; padding: 0; justify-content: center; }
+  #view-teams #team-detail-invite .invite-word { display: none; }
+  /* The team's own role is its members' rows (Owner beside your name): the
+     header badge gave the name's room away on a phone. */
+  #view-teams #team-detail-role { display: none; }
   #view-teams .team-detail .card-head h2 {
     flex: 0 1 auto;
     min-width: 0;

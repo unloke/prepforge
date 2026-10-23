@@ -188,6 +188,13 @@ async function runViewport(vp) {
   check(await page.locator("#team-detail-delete:not([hidden])").count() === 1, "owner should see Delete");
   check(await page.locator("#team-detail-invite:not([hidden])").count() === 1, "owner should see Invite");
   check(await page.locator("#team-add-member:not([hidden])").count() === 1, "owner should see Add member");
+  if (vp.width <= 760) {
+    // The header's name is the one thing a phone must not cut: Invite is an icon there.
+    const nameFits = await page.locator("#view-teams .team-detail .card-head h2").evaluate((h) => h.scrollWidth <= h.clientWidth + 1);
+    check(nameFits, "the open team's name must not be cut on a phone");
+    const inviteBox = await page.locator("#team-detail-invite").boundingBox();
+    check(inviteBox && inviteBox.width >= 44 && inviteBox.height >= 44, `Invite needs a 44px target on a phone, got ${JSON.stringify(inviteBox)}`);
+  }
 
   // Two tabs over ONE panel: Members visible, Shared hidden.
   const membersShown = await page.locator("#team-panel-members:not([hidden])").count();
