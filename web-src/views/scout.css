@@ -574,6 +574,24 @@
 }
 .scout-panel .scout-empty.empty-state.big h3 { font-size: 14px; }
 .scout-panel .scout-empty.empty-state.big p { max-width: none; font-size: 13px; color: var(--muted); }
+/* Desktop report order inside a colour section: the ranked lines are the answer,
+   so the table comes first under the head. The weak-spot sentence is its
+   one-line caption; the Expect / Style reads, the first moves and the game-plan
+   actions follow the table. The intel and plan wrappers are flattened with
+   display: contents so their children order as one column. */
+@media (min-width: 761px) {
+  .color-sec { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; }
+  .color-sec > .cs-head { order: 0; padding: 12px 0 0; }
+  .color-sec .intel,
+  .color-sec .plan { display: contents; }
+  .color-sec .intel > *,
+  .color-sec .plan > * { order: 4; }
+  .color-sec .intel > .scout-intel-headline { order: 1; margin: 0; max-width: none; font-size: 14px; }
+  .color-sec .plan > .scout-lines-head,
+  .color-sec .plan > .scout-lines { order: 2; }
+  .color-sec .plan > .scout-ranked-note { order: 3; }
+  .color-sec .scout-lines-head { padding: 0 12px; }
+}
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* The first screen was the toolbar, the profile and a 150px section head; the

@@ -67,3 +67,12 @@ it("the identity is one row and the engine status is out of the flow on desktop"
   expect(rule(".scout-main > .scout-profile")).toMatch(/background:\s*none/);
   expect(rule(".scout-engine-progress")).toMatch(/position:\s*absolute/);
 });
+
+// The ranked lines come first under the colour tabs on the desktop. The
+// weak-spot sentence is the table's one-line caption; the reads and the plan's
+// first moves and actions come after the table.
+it("on desktop the ranked lines come first, the caption is one line above them", () => {
+  expect(css).toMatch(/\.color-sec \.plan > \.scout-lines-head,\s*\.color-sec \.plan > \.scout-lines \{ order: 2; \}/);
+  expect(css).toMatch(/\.color-sec \.intel > \.scout-intel-headline \{ order: 1;[^}]*font-size: 14px/);
+  expect(css).toMatch(/\.color-sec \.intel > \*,\s*\.color-sec \.plan > \* \{ order: 4; \}/);
+});
