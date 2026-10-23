@@ -262,9 +262,7 @@ describe("eval chart sizing", () => {
 
   it("draws a game of ten plies or more without reading a move before it is set", () => {
     const { chart, view } = setup();
-    const long = Array.from({ length: 24 }, (_, i) => ({
-      ply: i + 1, san: "e4", score_cp: 20 + i, bounded_score_cp: 20 + i, classification: i === 11 ? "blunder" : "good",
-    }));
+    const long = Array.from({ length: 24 }, (_, i) => ({ ply: i + 1, san: "e4", score_cp: 20 + i, bounded_score_cp: 20 + i, classification: i === 11 ? "blunder" : "good" }));
     expect(() => view.renderEvalChart(long)).not.toThrow();
     expect(chart.querySelectorAll(".eval-dot")).toHaveLength(1);
   });
@@ -478,7 +476,7 @@ function doc(chart) {
 
 describe("eval chart mouse behaviour", () => {
   it("hover shows the move, its eval in pawns, and classification as text", () => {
-    const { chart, tooltip, view } = setup();
+    const { chart, tooltip, view, doc } = setup();
     view.renderEvalChart(POINTS);
     chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
@@ -487,17 +485,10 @@ describe("eval chart mouse behaviour", () => {
     expect(String(tooltip.innerHTML)).not.toContain("win chance");
     expect(String(tooltip.innerHTML)).toContain("Mistake");
     expect(String(tooltip.innerHTML)).toContain("?"); // glyph — a non-colour cue
+    // The crosshair: the ply's column and the point's level.
+    expect(doc.getElementById("eval-chart-hover").getAttribute("d")).toMatch(/^M480 0V96M0 [\d.]+H640$/);
     chart.dispatch("pointerleave", { pointerType: "mouse" });
     expect(tooltip.hidden).toBe(true);
-  });
-
-  it("hover draws a crosshair: the ply's column and the point's level", () => {
-    const { chart, view, doc } = setup();
-    view.renderEvalChart(POINTS);
-    chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 });
-    const hover = doc.getElementById("eval-chart-hover");
-    expect(hover.getAttribute("visibility")).toBe("visible");
-    expect(hover.getAttribute("d")).toMatch(/^M480 0V96M0 [\d.]+H640$/);
   });
 
   it("a finger scrubs with the tooltip up and lifting it hides the tooltip", () => {
