@@ -55,6 +55,14 @@ it("keeps every bottom bar destination at a 44px hit height", () => {
   expect(item).toMatch(/height:\s*56px/);
 });
 
+// box-sizing is border-box, so the bar's own 1px top rule is drawn inside its
+// height: at 56 the 56px rows pushed their last pixel past the bottom of the
+// screen (measured: item bottom 845 at a 844 viewport).
+it("the bottom bar holds its 56px rows inside the screen", () => {
+  const bar = rule(".tabbar {");
+  expect(bar).toMatch(/height:\s*calc\(57px \+ env\(safe-area-inset-bottom\)\)/);
+});
+
 // Every custom property a phone rule reads must be one the app defines. The
 // disabled board pill named `--faint`, which exists nowhere: the declaration was
 // dropped at computed-value time, so the pill fell back to inherited ink and read

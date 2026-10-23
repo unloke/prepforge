@@ -1297,8 +1297,11 @@
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
   /* The tab bar is chrome: it is the same white as the cards and sits on the
-     page ground, told apart by a tone step rather than a shadow. */
-  .tabbar { height: calc(56px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); box-shadow: none; }
+     page ground, told apart by a tone step rather than a shadow. The box is
+     57px because box-sizing is border-box and the 1px top rule is drawn inside
+     it: at 56 the row's own 56px height pushed its last pixel past the bottom
+     edge of the screen. */
+  .tabbar { height: calc(57px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); box-shadow: none; }
   .tabbar .tabbar-item {
     min-height: 0;
     height: 56px;
