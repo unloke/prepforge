@@ -14,6 +14,7 @@ import {
   prepDeparture,
   renderReportBlock,
   reportHtml,
+  reviewState,
   sideAccuracy,
 } from "./analyze-report.js";
 
@@ -48,6 +49,7 @@ function movesOf(sans, grades = [], best = {}) {
   });
 }
 const MOVES = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["best", "best", "excellent", "blunder", "good"], { 4: "d7d6" });
+const FOUR = ["e2e4", "e7e5", "g1f3", "b8c6"];
 
 describe("accuracy", () => {
   it("averages each side's win-chance fidelity, from its own side", () => {
@@ -84,12 +86,51 @@ describe("key moments", () => {
   });
 
   it("adds the move that left the player's own preparation", () => {
-    const moments = reviewMoments(MOVES, GRAPH, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
+    const moments = reviewMoments(MOVES, GRAPH, [repertoire(FOUR)]);
     expect(moments.map((m) => [m.ply, m.grade, m.departure])).toEqual([[4, "blunder", false], [5, null, true]]);
   });
 
   it("lists nothing when no move carries a marked grade", () => {
     expect(reviewMoments(movesOf(["e4", "e5"], ["best", "good"]), GRAPH)).toEqual([]);
+  });
+
+  it("keeps brilliant and great moves on both sides, and drops inaccuracies", () => {
+    const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"], ["great", "brilliant", "inaccuracy", "inaccuracy", "great", "mistake"]);
+    expect(reviewMoments(moves, GRAPH).map((m) => [m.ply, m.side, m.grade])).toEqual([
+      [1, "white", "great"], [2, "black", "brilliant"], [5, "white", "great"], [6, "black", "mistake"],
+    ]);
+  });
+
+  it("makes a departure that is also a blunder one stop, labelled by who left the book", () => {
+    const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["best", "best", "best", "best", "blunder"]);
+    const moments = reviewMoments(moves, GRAPH, [repertoire(FOUR)], "white");
+    expect(moments).toHaveLength(1);
+    expect(moments[0]).toMatchObject({ ply: 5, grade: "blunder", departure: true, by: "you", repName: "Italian" });
+  });
+
+  it("walks only the user's colour when the side is known, and gives the departure's side", () => {
+    const white4 = repertoire(FOUR, "Italian", "white");
+    const black4 = repertoire(FOUR, "Black book", "black");
+    expect(prepDeparture(MOVES, [black4, white4], "white")).toMatchObject({ ply: 5, repName: "Italian", by: "you" });
+    expect(prepDeparture(MOVES, [white4], "black")).toBeNull();
+    expect(prepDeparture(MOVES, [white4], null)).toMatchObject({ ply: 5, by: null });
+    expect(reviewMoments(MOVES, GRAPH, [black4], "white").map((m) => [m.ply, m.departure])).toEqual([[4, false]]);
+  });
+
+  it("reads a departure by the opponent as the opponent's move", () => {
+    const moves = movesOf(["e4", "e5", "Bc4", "Nc6"]);
+    const black = repertoire(["e2e4", "e7e5", "g1f3", "g8f6"], "Black book", "black");
+    expect(prepDeparture(moves, [black], "black")).toMatchObject({ ply: 3, by: "opponent", repName: "Black book" });
+  });
+
+  it("states where a ply sits between and on the moments", () => {
+    const list = reviewMoments(MOVES, GRAPH, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
+    expect(reviewState(list, 0)).toMatchObject({ index: 0, count: 2, current: null, focus: list[0], prev: null, next: list[0] });
+    expect(reviewState(list, 4)).toMatchObject({ index: 0, current: list[0], focus: list[0], prev: null, next: list[1] });
+    expect(reviewState(list, 4).focus.ply).toBe(4);
+    expect(reviewState(list, 7)).toMatchObject({ index: 1, current: null, focus: list[1], prev: list[1], next: null });
+    expect(reviewState(list, 5).current).toBe(list[1]);
+    expect(reviewState([], 3)).toEqual({ index: -1, count: 0, current: null, focus: null, prev: null, next: null });
   });
 
   it("reads a mate and a finished game as players do", () => {
@@ -111,14 +152,14 @@ describe("phases", () => {
 });
 
 // The shape analyze-book.js caches: one child per (parent node, uci).
-const repertoire = (ucis, name = "Italian") => {
+const repertoire = (ucis, name = "Italian", color = "white") => {
   const children = new Map();
   let walk = "n0";
   ucis.forEach((uci, i) => {
     children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
     walk = `n${i + 1}`;
   });
-  return { rootId: "n0", children, name };
+  return { rootId: "n0", children, name, color };
 };
 
 describe("opening and prep", () => {

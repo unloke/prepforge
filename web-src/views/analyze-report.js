@@ -119,14 +119,15 @@ const REVIEW_GRADES = new Set(["brilliant", "great", "mistake", "blunder"]);
 
 /**
  * The moves a review lists, in game order: every brilliant, great, mistake and
- * blunder, and the move that left the player's own preparation. Each carries its
- * eval before and after, the win chance it cost (mistakes and blunders), and the
- * better move the run found. The report's list and the smart-review lane both
+ * blunder, and the move that left preparation (the user's or the opponent's).
+ * Each carries its eval before and after, the win chance it cost (mistakes and
+ * blunders), the better move the run found, and `by` ("you" | "opponent", or null
+ * when the user's side is unknown). The report's list and the review bar both
  * read this one function, so they name the same moves.
  */
-export function reviewMoments(moves = [], evalGraph = [], reps = []) {
+export function reviewMoments(moves = [], evalGraph = [], reps = [], selfSide = null) {
   const byPly = new Map(plies(evalGraph, moves).map((row) => [row.ply, row]));
-  const departure = prepDeparture(moves, reps);
+  const departure = prepDeparture(moves, reps, selfSide);
   return moves
     .filter((move) => REVIEW_GRADES.has(reportGradeOf(move.classification)) || Number(move.ply) === departure?.ply)
     .map((move) => {
@@ -143,6 +144,8 @@ export function reviewMoments(moves = [], evalGraph = [], reps = []) {
         move,
         grade: marked,
         departure: ply === departure?.ply,
+        by: ply === departure?.ply ? departure.by : null,
+        repName: ply === departure?.ply ? departure.repName : "",
         before: formatEval(row?.prev),
         after: formatEval(row?.point),
         loss: row && (grade === "mistake" || grade === "blunder") ? Math.round(row.loss) : null,
@@ -203,11 +206,14 @@ const known = (value) => (value && !/^[?*.\s]+$/.test(String(value)) ? String(va
 // first mainline move no repertoire continues is the departure; a game still
 // inside the book, or a player with no repertoire for that colour, reports
 // nothing. A book that never enters the line is not a departure at move 1.
-export function prepDeparture(moves = [], reps = []) {
-  if (!moves.length || !reps.length) return null;
+// With the user's side known, only that colour's repertoires are walked; `by`
+// says whose move left the book, and is null when the side is unknown.
+export function prepDeparture(moves = [], reps = [], selfSide = null) {
+  const pool = selfSide ? reps.filter((rep) => rep.color === selfSide) : reps;
+  if (!moves.length || !pool.length) return null;
   let deepest = -1;
   let deepestRep = null;
-  for (const rep of reps) {
+  for (const rep of pool) {
     let walk = rep.rootId;
     let matched = 0;
     for (const move of moves) {
@@ -224,7 +230,22 @@ export function prepDeparture(moves = [], reps = []) {
   if (deepest <= 0 || deepest >= moves.length) return null;
   const move = moves[deepest];
   const ply = Number(move.ply) || deepest + 1;
-  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "" };
+  const by = selfSide ? (sideOfMove(move, ply) === selfSide ? "you" : "opponent") : null;
+  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "", by };
+}
+
+/**
+ * Where a ply sits in the review: the moment on it (`current`), the ones either
+ * side (`prev`, `next`), and the one the bar's label shows (`focus`: the current
+ * moment, else the next, else the last one passed). `index` is focus's position
+ * in the list, -1 when there is none.
+ */
+export function reviewState(moments = [], ply = 0) {
+  const current = moments.find((m) => m.ply === ply) || null;
+  const next = moments.find((m) => m.ply > ply) || null;
+  const prev = [...moments].reverse().find((m) => m.ply < ply) || null;
+  const focus = current ?? next ?? prev;
+  return { index: focus ? moments.indexOf(focus) : -1, count: moments.length, current, focus, prev, next };
 }
 
 /**
@@ -232,7 +253,7 @@ export function prepDeparture(moves = [], reps = []) {
  * moments, phases, the opening and the prep departure. Null when nothing was
  * analysed.
  */
-export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps = [], names = {} } = {}) {
+export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null } = {}) {
   if (!moves.length) return null;
   const accuracy = sideAccuracy(evalGraph, moves);
   const counts = gradeCounts(moves);
@@ -245,7 +266,7 @@ export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps
       }]),
     ),
     result: known(headers.Result || names.result),
-    moments: reviewMoments(moves, evalGraph, reps),
+    moments: reviewMoments(moves, evalGraph, reps, selfSide),
     phases: phaseBreakdown(evalGraph, moves),
     opening: openingFromHeaders(headers),
     graded: moves.some((m) => reportGradeOf(m.classification)),
@@ -336,9 +357,9 @@ export function reportHtml(report, open = true) {
 // `onGrade(side, grade)` to the next move of that side by that side. The
 // summary toggles the full report; the host's `data-open` keeps that state
 // across re-renders, and the report starts collapsed.
-export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, onJump = () => {}, onGrade = () => {} } = {}) {
+export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
   if (!host) return;
-  const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names });
+  const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names, selfSide });
   const draw = () => {
     host.innerHTML = reportHtml(report, host.dataset.open === "true");
   };
