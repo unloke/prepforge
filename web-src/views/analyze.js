@@ -124,12 +124,21 @@ export function createAnalyzeView({
   // Where the hovered point's readout sits, in the wrap's coordinates. It takes
   // the side of the plot away from the pointer and the half of the band away
   // from the point, so neither the column being pointed at nor the curve it
-  // names is ever under it. `cursorPx` and `pointY` are in plot pixels, read off
-  // the live box.
+  // names is ever under it. A phone's plot is narrower than the longest readout
+  // ("8. O-O-O · −2.35 · ?! Inaccuracy" is 166px of a 276px graph): clamping the
+  // box back inside the plot slid it across the pointer at dead centre, so the
+  // side is chosen by the room it has and the readout is clipped to that room.
+  // `cursorPx` and `pointY` are in plot pixels, read off the live box.
   function placeEvalReadout(plotW, plotH, cursorPx, width, height, pointY) {
-    const left = cursorPx >= plotW / 2 ? cursorPx - READOUT_GAP - width : cursorPx + READOUT_GAP;
+    const [leftRoom, rightRoom] = [cursorPx - READOUT_GAP, plotW - cursorPx - READOUT_GAP].map((r) => Math.max(0, r));
+    // The side away from the pointer, unless only the other side can hold the
+    // readout uncut; failing both, the roomier one.
+    const preferLeft = cursorPx >= plotW / 2;
+    const [farRoom, nearRoom] = preferLeft ? [leftRoom, rightRoom] : [rightRoom, leftRoom];
+    const onLeft = farRoom >= width ? preferLeft : nearRoom >= width ? !preferLeft : farRoom >= nearRoom;
+    const room = onLeft ? leftRoom : rightRoom;
     const top = pointY <= plotH / 2 ? plotH - height - READOUT_EDGE : READOUT_EDGE;
-    return { left: Math.max(0, Math.min(left, plotW - width)), top };
+    return { left: onLeft ? Math.max(0, cursorPx - READOUT_GAP - Math.min(width, room)) : cursorPx + READOUT_GAP, maxWidth: room, top };
   }
 
   // Engine evaluation as players read it: "+1.4" / "−0.3" in pawns (White's
@@ -718,13 +727,16 @@ export function createAnalyzeView({
       tooltipMarkup = markup;
       tooltip.innerHTML = markup;
     }
-    // Shown before measuring: a hidden box is 0 wide and would skip the clamp.
+    // Shown before measuring: a hidden box is 0 wide.
     tooltip.hidden = false;
     const plotW = rect.width || EVAL_CHART_W;
     const plotH = rect.height || EVAL_CHART_H;
     const cursorPx = Number.isFinite(cursorX) ? cursorX - rect.left : (x / EVAL_CHART_W) * plotW;
     const pointY = (evalChartYOf(pointWinPct(point)) / EVAL_CHART_H) * plotH;
     const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, pointY);
+    // The readout is clipped to the chosen side's room rather than slid across
+    // the pointer (see placeEvalReadout).
+    tooltip.style.maxWidth = `${spot.maxWidth}px`;
     tooltip.style.left = `${spot.left}px`;
     tooltip.style.top = `${spot.top}px`;
     if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"), { avoid: chart });

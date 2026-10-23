@@ -198,12 +198,36 @@ describe("eval chart tooltip boundaries", () => {
     for (const x of [0, width / 2, width]) {
       chart.dispatch("pointermove", { pointerType: "mouse", clientX: x });
       const left = Number.parseFloat(tooltip.style.left);
+      const right = left + Math.min(180, Number.parseFloat(tooltip.style.maxWidth));
       expect(left).toBeGreaterThanOrEqual(0);
-      expect(left + 180).toBeLessThanOrEqual(width);
-      // Left half of the plot: the readout opens to the right of the cursor;
-      // right half: it opens to the left. Either way the cursor's column is clear.
+      expect(right).toBeLessThanOrEqual(width);
+      // The cursor's column is clear: the readout opens on the far side, or is
+      // clipped short of it when that side is the only one with room.
+      expect(x >= left && x <= right).toBe(false);
       if (x < width / 2) expect(left).toBeGreaterThan(x);
-      else if (x > width / 2) expect(left + 180).toBeLessThan(x);
+      else if (x > width / 2) expect(right).toBeLessThanOrEqual(x);
+    }
+  });
+
+  // A phone's graph is 276px wide and the longest readout is 166px: at dead
+  // centre neither side has room for it, and clamping the box back inside the
+  // plot slid it across the pointer. It is clipped to the side's room instead.
+  it("never covers the pointer when the readout is wider than either side", () => {
+    const width = 276;
+    const tipWidth = 166;
+    const { chart, tooltip, view } = setup();
+    chart.rectWidth = width;
+    tooltip.offsetWidth = tipWidth;
+    tooltip.offsetHeight = 18;
+    view.renderEvalChart(POINTS);
+    for (let x = 0; x <= width; x += 2) {
+      chart.dispatch("pointermove", { pointerType: "mouse", clientX: x });
+      const left = Number.parseFloat(tooltip.style.left);
+      const maxWidth = Number.parseFloat(tooltip.style.maxWidth);
+      const right = left + Math.min(tipWidth, maxWidth);
+      expect(left).toBeGreaterThanOrEqual(0);
+      expect(right).toBeLessThanOrEqual(width);
+      expect(x >= left && x <= right).toBe(false);
     }
   });
 
@@ -282,7 +306,7 @@ describe("report grades", () => {
 
 describe("coach note", () => {
   it("keeps the verdict readable and scrolls text inside its reserved row", () => {
-    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 15px/);
+    expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*font-size: 16px/);
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*min-height: 0/);
     expect(ALL_STYLES).toMatch(/\.coach-prose \{[^}]*overflow-y: auto/);
   });
@@ -556,13 +580,15 @@ describe("Analyze on a phone", () => {
     expect(band).toMatch(/order: 0/);
     expect(band).toMatch(/height: var\(--phone-eval-h\)/);
     expect(band).toMatch(/padding: 6px var\(--phone-gutter\)/);
-    expect(phone).toMatch(/--phone-eval-h: 56px/);
+    // 64px, not 56: the readout is a whole line and the graph under it has to
+    // stay clear of the curve it names.
+    expect(phone).toMatch(/--phone-eval-h: 64px/);
   });
 
   it("gives the eval figure the band's ink and its largest size", () => {
     const rule = phone.match(/#analysis-eval-card \.eval-now \{[^}]*\}/);
     expect(rule).not.toBeNull();
-    expect(rule[0]).toMatch(/font-size:\s*18px/);
+    expect(rule[0]).toMatch(/font-size:\s*20px/);
     expect(rule[0]).toMatch(/color:\s*var\(--text\)/);
   });
 
