@@ -1758,7 +1758,10 @@ textarea:focus-visible {
   .teams > .team-detail,
   .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
   .teams:has(> .team-detail:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); }
-  .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
+  /* An open team is as tall as its members or repertoires, not the window: a
+     card stretched to the view's height left 600px of blank under two rows. The
+     placeholder keeps the view's height, as it did. */
+  .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; align-self: start; }
   .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }

@@ -32,7 +32,7 @@ describe("Teams is a work surface", () => {
   });
 
   it("lets the open team's panel fill the card", () => {
-    expect(shared).toMatch(/\.teams > \.team-detail:not\(\[hidden\]\) \{ display: flex; flex-direction: column; \}/);
+    expect(shared).toMatch(/\.teams > \.team-detail:not\(\[hidden\]\) \{ display: flex; flex-direction: column; align-self: start; \}/);
     expect(shared).toMatch(/\[data-team-panel\] \{ flex: 1 1 auto; min-height: 0; overflow: auto; \}/);
   });
 
