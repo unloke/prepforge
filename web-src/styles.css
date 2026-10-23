@@ -1605,19 +1605,36 @@ h2 {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 .lib .card { padding: 0; }
+/* The Library head is two rows at every width: the card's name with the two
+   actions that add to it, then the controls that narrow it (filters, search).
+   Run as one wrapping row, "New repertoire" dropped under the search as soon
+   as the card was narrower than 1180, so the table's first row started 88px
+   down at one width and 50px at another. */
 .lib .card-head {
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
   margin: 0;
-  padding: 10px 12px;
+  padding: 12px;
 }
 .lib .card-head h2 {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
 }
-.lib .card-head { gap: 8px 10px; }
+/* Where the head's three controls sit on a desktop. The phone draws its own
+   grid (phone.css), so these placements stop at the phone breakpoint. */
+@media (min-width: 761px) {
+  .lib-actions { grid-column: 2; grid-row: 1; }
+  /* A segmented control is as wide as its options. Stretched across the card's
+     first column the five filters read as a progress bar, not a control. */
+  .lib-list .card-head .seg { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
+  .lib-list .card-head .search-field { grid-column: 2; grid-row: 2; width: 220px; margin-left: 0; }
+}
 .count {
   min-width: 18px;
   padding: 0 5px;
@@ -1628,6 +1645,25 @@ h2 {
   font-weight: 600;
   text-align: center;
   line-height: 18px;
+}
+
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own — the same rule Settings keeps. The + beside it is the
+   phone's route to New repertoire; on a desktop the card head already carries
+   that action, so only the name is shown. */
+@media (min-width: 761px) {
+  #view-dashboard .page-head {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+  }
+  #view-dashboard .page-head h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  #view-dashboard .page-head-btn { display: none; }
 }
 
 /* Today strip. It and the next steps arrive once, when their data lands. */
@@ -1704,6 +1740,15 @@ h2 {
   text-align: right;
 }
 .today-recap b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Below 1100px the week's history no longer fits beside the queue: squeezing
+   both left the queue's second line wrapping over three lines beside a 328px
+   column of stats. The history moves to its own right-aligned line under the
+   strip, and the queue keeps the width. */
+@media (max-width: 1100px) and (min-width: 761px) {
+  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .today > .btn { grid-column: 3; grid-row: 1; }
+  .today-aside { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: 14px; }
+}
 /* Lifetime counts (games · repertoires · sessions): the quietest line in the
    strip. Nothing here is what the Train button turns on. */
 .today-counts { color: var(--label); }
