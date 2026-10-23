@@ -275,7 +275,7 @@ describe("dashboard setup checklist", () => {
     await view.loadDashboard();
     expect(String(todayCard.innerHTML)).not.toContain("Reviews clear");
     expect(String(todayCard.innerHTML)).not.toContain("Queue is clear");
-    expect(String(todayCard.innerHTML)).toContain("<b>1 weak spot to review</b>");
+    expect(String(todayCard.innerHTML)).toContain('<p class="today-queue">1 weak spot to review</p>');
     expect(String(todayCard.innerHTML)).toContain("33 new moves to learn");
     expect(String(todayCard.innerHTML)).not.toContain("Learn new moves");
   });
@@ -379,7 +379,7 @@ describe("dashboard setup checklist", () => {
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 5, due: 3 } },
     ]);
     await view.loadDashboard();
-    expect(String(todayCard.innerHTML)).toContain("<b>3 due now</b>");
+    expect(String(todayCard.innerHTML)).toContain('<p class="today-queue">3 due now</p>');
     expect(String(todayCard.innerHTML)).toContain("5 new moves to learn");
     expect(String(todayCard.innerHTML)).toMatch(/data-testid="dashboard-train-now">Train</);
   });

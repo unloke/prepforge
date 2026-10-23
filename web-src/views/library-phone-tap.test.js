@@ -62,3 +62,12 @@ it("source chips and their × are 44px rows on a phone", () => {
   expect(x[0]).toMatch(/width:\s*44px/);
   expect(x[0]).toMatch(/height:\s*44px/);
 });
+
+// The queue chips in a Library row are buttons that open Train, and at the
+// shared chip's 18px they were under the 24px minimum target under a thumb.
+// They take 24px; the row's own 64px tap still opens the repertoire, so the
+// queue line does not become a stack of buttons.
+it("the Library row's queue chips are 24px targets on a phone", () => {
+  const chip = rule("#view-dashboard .lib-row button.kchip {");
+  expect(chip).toMatch(/min-height:\s*24px/);
+});
