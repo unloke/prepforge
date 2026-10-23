@@ -47,7 +47,6 @@ export function createSettingsView({
   const router = createSettingsRouter({
     showArea: showSettingsArea,
     navEl: document.querySelector(".settings-nav"),
-    titleEl: document.getElementById("settings-current"),
   });
 
   function paintSwitch(el, on) {

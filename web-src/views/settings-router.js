@@ -1,6 +1,7 @@
 // Settings areas: one view per area, reached by the app's own route
 // (#/settings/engine; the workspace codec reads the view and ignores the rest).
-// The nav link, the view's title and the hash name the same area. The app
+// The nav link and the hash name the same area; the view's title stays
+// "Settings". The app
 // rewrites the hash to #/settings on a view switch, so the last area is kept in
 // memory and the hash wins only when it names one.
 
@@ -10,9 +11,8 @@ export const SETTINGS_AREAS = ["account", "appearance", "board", "engine"];
  * @param {Object} options
  * @param {(area: string) => void} options.showArea - shows the area's cards and hides the rest
  * @param {HTMLElement} options.navEl - the .settings-nav element
- * @param {HTMLElement} options.titleEl - the view's title; it takes the area's name
  */
-export function createSettingsRouter({ showArea, navEl, titleEl }) {
+export function createSettingsRouter({ showArea, navEl }) {
   let current = "account";
   const areaFromHash = () => {
     const area = location.hash.match(/^#\/settings\/(\w+)$/)?.[1];
@@ -26,7 +26,6 @@ export function createSettingsRouter({ showArea, navEl, titleEl }) {
       link.classList.toggle("is-active", active);
       if (!active) return link.removeAttribute("aria-current");
       link.setAttribute("aria-current", "true");
-      titleEl.textContent = link.textContent.trim();
     });
     showArea(area);
   }
