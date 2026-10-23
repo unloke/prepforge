@@ -89,14 +89,13 @@
 .scout-main > .scout-profile .scout-colour-split { color: inherit; }
 /* The engine offer is one quiet line, not a card: the name, the gain in muted
    type, the action at the right. It sits on the panel ground like the identity. */
-.scout-main > [data-unlock-place="scout"] .unlock {
+.scout-main > [data-unlock-place="scout"] > [data-engine] { /* taste-skill-ignore: the attribute name is the JS hook */
   min-height: 0;
   padding: 4px 0;
   border-radius: 0;
   background: none;
   overflow: visible;
 }
-.scout-main > [data-unlock-place="scout"] .unlock-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .scout-profile[hidden] { display: none; }
 .prof-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }

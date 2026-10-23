@@ -79,7 +79,7 @@ it("on desktop the ranked lines come first, the caption is one line above them",
 
 // One Maia offer, as a quiet line with no card frame.
 it("the engine offer is a quiet line on the panel ground, not a card", () => {
-  const offer = rule('.scout-main > [data-unlock-place="scout"] .unlock');
+  const offer = rule('.scout-main > [data-unlock-place="scout"] > [data-engine]');
   expect(offer).toMatch(/background:\s*none/);
   expect(offer).toMatch(/border-radius:\s*0/);
 });

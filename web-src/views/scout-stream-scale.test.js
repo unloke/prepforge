@@ -203,7 +203,7 @@ describe("scout colour recommendation", () => {
   it("hugs its sentence instead of stretching across the profile card", () => {
     // A 256px sentence sat in a 575px grey strip: the box said "banner", the
     // content said "one line of figures".
-    const rule = css.match(/\.scout-color-rec \{[^}]*\}/)[0];
+    const rule = css.match(/\n\.scout-color-rec \{[^}]*\}/)[0];
     expect(rule).toContain("align-self: flex-start;");
   });
 });
