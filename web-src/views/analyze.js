@@ -850,6 +850,65 @@ export function createAnalyzeView({
     axis.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(axis);
 
+    // Y-scale: win percentage ticks on the left edge (3-5 ticks per app-screens §6.3).
+    const yAxisTicks = [0, 25, 50, 75, 100];
+    yAxisTicks.forEach((winPct) => {
+      const tickY = yOf(winPct);
+      // Tick mark line
+      const tickLine = document.createElementNS(svgNS, "line");
+      tickLine.setAttribute("class", "eval-ytick");
+      tickLine.setAttribute("x1", "0");
+      tickLine.setAttribute("x2", "6");
+      tickLine.setAttribute("y1", String(tickY));
+      tickLine.setAttribute("y2", String(tickY));
+      tickLine.setAttribute("vector-effect", "non-scaling-stroke");
+      chart.appendChild(tickLine);
+      // Win% label
+      const tickLabel = document.createElementNS(svgNS, "text");
+      tickLabel.setAttribute("class", "eval-ytick-label");
+      tickLabel.setAttribute("x", "10");
+      tickLabel.setAttribute("y", String(tickY + 4));
+      tickLabel.setAttribute("font-size", "9px");
+      tickLabel.setAttribute("fill", "var(--muted)");
+      tickLabel.textContent = `${winPct}%`;
+      chart.appendChild(tickLabel);
+    });
+
+    // Move numbers along the x-axis at the bottom (only when enough moves).
+    if (points.length >= 10) {
+      const numTickStep = Math.ceil(points.length / 8); // ~8 labels max
+      coords.forEach((c, i) => {
+        if (i === 0 || i % numTickStep !== 0 || i === points.length - 1) return;
+        const moveNum = Math.floor(i / 2) + 1;
+        const moveText = document.createElementNS(svgNS, "text");
+        moveText.setAttribute("class", "eval-move-num");
+        moveText.setAttribute("x", String(c.x));
+        moveText.setAttribute("y", String(height - 4));
+        moveText.setAttribute("font-size", "9px");
+        moveText.setAttribute("fill", "var(--muted)");
+        moveText.setAttribute("text-anchor", "middle");
+        moveText.textContent = moveNum.toString();
+        chart.appendChild(moveText);
+      });
+    }
+
+    // Current move marker (vertical dashed line at selected ply).
+    const currentPly = showAnalysisPly();
+    if (currentPly != null && currentPly > 0) {
+      const currentIndex = coords.findIndex((c) => c.ply === currentPly);
+      if (currentIndex >= 0) {
+        const currentMarker = document.createElementNS(svgNS, "line");
+        currentMarker.setAttribute("class", "eval-current-marker");
+        currentMarker.setAttribute("x1", String(coords[currentIndex].x));
+        currentMarker.setAttribute("x2", String(coords[currentIndex].x));
+        currentMarker.setAttribute("y1", String(plotPadY));
+        currentMarker.setAttribute("y2", String(height - plotPadY));
+        currentMarker.setAttribute("stroke-dasharray", "3,3");
+        currentMarker.setAttribute("vector-effect", "non-scaling-stroke");
+        chart.appendChild(currentMarker);
+      }
+    }
+
     // Hover/focus indicator (hidden until the pointer or keyboard asks).
     const hover = document.createElementNS(svgNS, "line");
     hover.setAttribute("id", "eval-chart-hover");
