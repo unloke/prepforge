@@ -45,9 +45,9 @@ it("every Home row puts its action in the same place; only the due queue is fill
     expect(row).toMatch(new RegExp(`</div>\\s*<button class="${fill}"`));
     expect(row.indexOf("train-row-go")).toBeLessThan(row.indexOf("train-row-opts"));
   }
-  // Maia's download slot sits under the rows, after Practice closes, not inside it.
-  expect(rows[2].indexOf("data-unlock-place")).toBeGreaterThan(rows[2].indexOf("</section>"));
-  expect(home).toContain('<div data-unlock-place="train-practice" hidden></div>');
+  // Maia's download slot sits inside Practice (shown only for vs Maia, see
+  // train-shell.css), not under the history.
+  expect(rows[2]).toContain('<div data-unlock-place="train-practice" hidden></div>');
   // No row keeps a second action row of its own.
   expect(home).not.toContain("train-row-actions");
 });

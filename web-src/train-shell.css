@@ -78,6 +78,7 @@
 /* Every row's primary action: one fill, the app's control height. */
 .train-row-go { min-width: 92px; padding: 0 16px; font-weight: 600; }
 .train-row-opts { grid-area: opts; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.train-row > [data-unlock-place],
 .train-row-error { grid-column: 1 / -1; }
 .train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
 .train-row-error[hidden] { display: none; }
@@ -210,8 +211,7 @@
 /* Home's foot (the recent runs, Maia's download) sits on the rows' text edge:
    the rows are cards with 12px inside, so their text starts 12px in from the
    panel. */
-#train-home > .train-recent,
-#train-home > [data-unlock-place] { padding-inline: 12px; }
+#train-home > .train-recent { padding-inline: 12px; }
 .train-recent-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
 .train-recent-name { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .train-recent-row b { font-variant-numeric: tabular-nums; }
