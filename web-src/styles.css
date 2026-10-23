@@ -1855,10 +1855,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     transform: translateY(6px);
   }
 }
+/* Selection is one tone step and one 3px bar, in the page's own ink rather than
+   the accent: the accent marks the screen's action, and a selected row is a
+   place, not a button. A blue tint under a blue bar under a two-tone bar under
+   three coloured chips was four colour systems in one row. */
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
   position: relative;
-  background: var(--accent-soft);
+  background: var(--surface-3);
 }
 .lib-row.is-selected::before {
   content: "";
@@ -1866,7 +1870,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   inset-block: 0;
   left: 0;
   width: 3px;
-  background: var(--accent);
+  background: var(--text);
 }
 .lib-row.is-disabled .name { color: var(--label); }
 /* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
@@ -1912,11 +1916,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    phone row is the only place that needs it. */
 #view-dashboard .lib-mastery-word { display: none; }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
-   missing one) and enough height to compare rows at a glance. */
+   missing one) and enough height to compare rows at a glance. One hue: the
+   trained-but-not-mastered part is the same green, paler, so the bar reads as
+   one measure ("how much of this repertoire have you got") rather than two
+   unrelated quantities in green and blue. */
 .lib-mbar {
   flex: 1;
   min-width: 60px;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--line);
@@ -1929,7 +1936,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: inherit;
   transition: width var(--dur-slow) var(--ease-out);
 }
-.lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
+.lib-mbar i.is-started { background: color-mix(in srgb, var(--k-mastered) 32%, var(--surface-3)); }
 .lib-mbar i.is-mastered { background: var(--k-mastered); }
 .lib-mastery-none {
   width: auto;
@@ -1939,7 +1946,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   color: var(--label);
   font-size: var(--fs-xs);
 }
-/* Queue chips reuse the mastery-kind colours (colour means chess). */
+/* Queue chips: one neutral chip, one coloured dot. Three tinted pills in red,
+   amber and violet beside a green bar and a blue selection made a row of five
+   colours where only one thing (what is waiting) is being said. The dot keeps
+   the chess hue, so the kind is still read at a glance; the chip itself is the
+   row's quiet surface. */
 .kchip::before {
   content: "";
   width: 6px;
@@ -1947,11 +1958,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: 50%;
   background: currentColor;
 }
-.kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
-.kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
-.kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
-button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
-button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
+.kchip.k-weak,
+.kchip.k-due,
+.kchip.k-new { background: var(--surface-3); color: var(--text); }
+.kchip.k-weak::before { background: var(--k-weak); }
+.kchip.k-due::before { background: var(--k-due); }
+.kchip.k-new::before { background: var(--k-new); }
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
+button.kchip:hover { background: var(--line); }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
