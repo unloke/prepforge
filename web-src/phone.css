@@ -198,18 +198,19 @@
   }
   #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
-     reads as a cut-off row, so the chips are sized to fit the width instead.
-     They share one row and grow to fill it: at 14px with 14px padding they
-     needed 390px and "Disabled" fell alone onto a second row. */
+     reads as a cut-off row. They were five 44px pills at 13px, which filled
+     the width and read as the screen's buttons rather than its filters. They
+     are one track with one filled option: the same target height, no pill
+     around each word. */
   #view-dashboard .lib-list .seg {
     display: flex;
     flex-wrap: nowrap;
-    gap: 4px;
+    gap: 2px;
     max-width: 100%;
     margin: 0;
     padding: 0;
-    border: 0;
-    background: none;
+    border-radius: 12px;
+    background: var(--surface-3);
   }
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
@@ -217,16 +218,16 @@
     min-width: 0;
     min-height: 44px;
     height: 44px;
-    padding: 0 8px;
+    padding: 0 6px;
     border: 0;
-    border-radius: 22px;
-    background: var(--surface-3);
-    color: var(--text);
+    border-radius: 10px;
+    background: none;
+    color: var(--muted);
     font-size: 13px;
     font-weight: 550;
     white-space: nowrap;
   }
-  #view-dashboard .lib-list .seg-btn.is-active { background: var(--text); color: var(--panel); }
+  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 650; }
   .search-field {
     width: 100%;
     height: 44px;
