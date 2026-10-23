@@ -311,9 +311,9 @@
      choice row, then the action across the card. */
   #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: var(--phone-gap); height: auto; }
   #view-replay :is(.games-panel, .scout-panel) > .toolbar {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
     gap: 0;
     margin: 0;
     padding: 0 14px;
@@ -322,6 +322,9 @@
     background: var(--panel);
     box-shadow: none;
   }
+  #view-replay .toolbar > .src,
+  #view-replay .toolbar > .inline-field,
+  #view-replay .toolbar > .sum-chips { grid-column: 1 / -1; }
   /* The source is two rows: its name, then the chip and Add. Three columns
      squeezed the chip to a two-word sliver at 390px. */
   #view-replay .toolbar > .src {
@@ -394,7 +397,9 @@
   /* The page's one action docks above the tab bar, where the thumb rests:
      Check on Games, Start on Scout. Up in the source card it sat in the top
      third of the screen, the hardest place to reach one-handed. The page keeps
-     room under its last row for it. */
+     room under its last row for it. The 12px ground ring is a plate, not a
+     shadow: rows scrolling under the pill would otherwise peek past its
+     corners. */
   #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn) {
     position: fixed;
     z-index: 30;
@@ -406,7 +411,7 @@
     height: 50px;
     margin: 0;
     border-radius: 25px;
-    box-shadow: 0 0 0 12px var(--bg); /* taste-skill-ignore: the ground around a docked button, so rows pass under it cleanly */
+    outline: 12px solid var(--bg);
   }
   .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
   #view-replay .toolbar > .counter { margin: 10px 0 12px; }
