@@ -825,23 +825,6 @@ export function createAnalyzeView({
     axis.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(axis);
 
-    // Current move marker (vertical dashed line at selected ply).
-    const currentPly = showAnalysisPly();
-    if (currentPly != null && currentPly > 0) {
-      const currentIndex = coords.findIndex((c) => c.ply === currentPly);
-      if (currentIndex >= 0) {
-        const currentMarker = document.createElementNS(svgNS, "line");
-        currentMarker.setAttribute("class", "eval-current-marker");
-        currentMarker.setAttribute("x1", String(coords[currentIndex].x));
-        currentMarker.setAttribute("x2", String(coords[currentIndex].x));
-        currentMarker.setAttribute("y1", String(plotPadY));
-        currentMarker.setAttribute("y2", String(height - plotPadY));
-        currentMarker.setAttribute("stroke-dasharray", "3,3");
-        currentMarker.setAttribute("vector-effect", "non-scaling-stroke");
-        chart.appendChild(currentMarker);
-      }
-    }
-
     // Hover crosshair (hidden until the pointer or keyboard asks): the ply's column
     // and the point's level, drawn by showEvalChartTooltip.
     const hover = document.createElementNS(svgNS, "path");

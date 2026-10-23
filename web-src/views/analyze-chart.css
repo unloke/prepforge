@@ -323,7 +323,6 @@
   background: var(--surface-3);
 }
 #analysis-eval-card {
-  --an-eval-h: 112px;
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(64px, 1fr);
@@ -796,7 +795,6 @@
   --eval-area-white: var(--eval-side-white);
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
-.eval-chart .eval-current-marker { stroke: var(--accent-text); stroke-width: 1.5; opacity: 0.7; vector-effect: non-scaling-stroke; }
 .eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
 .eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
 .eval-chart .eval-line {
@@ -1344,6 +1342,10 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 /* The evaluation under the board takes its height out of the board's square. */
 #view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
   --board-chrome: calc(42px + 8px + var(--an-eval-h));
+}
+/* A tall desktop window gives the navigator a plot of about 100px. */
+@media (min-width: 1200px) and (min-height: 800px) {
+  #view-analyze { --an-eval-h: 148px; }
 }
 @media (min-width: 761px) {
   /* A short window keeps two lines of verdict, so the panes keep their room. */
