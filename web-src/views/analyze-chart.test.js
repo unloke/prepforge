@@ -263,6 +263,13 @@ describe("eval chart sizing", () => {
     expect(chart.listeners.animationend).toBeUndefined();
   });
 
+  it("draws a game of ten plies or more without reading a move before it is set", () => {
+    const { chart, view } = setup();
+    const long = Array.from({ length: 24 }, (_, i) => ({ ply: i + 1, san: "e4", score_cp: 20 + i, bounded_score_cp: 20 + i, classification: i === 11 ? "blunder" : "good" }));
+    expect(() => view.renderEvalChart(long)).not.toThrow();
+    expect(chart.querySelectorAll(".eval-dot")).toHaveLength(1);
+  });
+
   it("draws a short phone chart once instead of redrawing itself forever", () => {
     const { chart, appState, view } = setup();
     chart.rectHeight = 30;
@@ -341,7 +348,7 @@ describe("the panel's one filled action", () => {
 
 describe("score sheet ink", () => {
   it("signs only the moves that stand out, not every sound one", () => {
-    expect(ANALYZE_SOURCE).toMatch(/const glyph = group && group !== "good" ? classBadgeSymbol(cls)/);
+    expect(ANALYZE_SOURCE).toContain('const glyph = group && group !== "good" ? classBadgeSymbol(cls) : "";');
   });
 
   it("marks the selected move with one 1px accent line, not a filled tile", () => {
@@ -478,7 +485,7 @@ function doc(chart) {
 
 describe("eval chart mouse behaviour", () => {
   it("hover shows the move, its eval in pawns, and classification as text", () => {
-    const { chart, tooltip, view } = setup();
+    const { chart, tooltip, view, doc } = setup();
     view.renderEvalChart(POINTS);
     chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
@@ -487,6 +494,8 @@ describe("eval chart mouse behaviour", () => {
     expect(String(tooltip.innerHTML)).not.toContain("win chance");
     expect(String(tooltip.innerHTML)).toContain("Mistake");
     expect(String(tooltip.innerHTML)).toContain("?"); // glyph — a non-colour cue
+    // The crosshair: the ply's column and the point's level.
+    expect(doc.getElementById("eval-chart-hover").getAttribute("d")).toMatch(/^M480 0V96M0 [\d.]+H640$/);
     chart.dispatch("pointerleave", { pointerType: "mouse" });
     expect(tooltip.hidden).toBe(true);
   });
@@ -630,8 +639,3 @@ describe("Analyze on a phone", () => {
   });
 });
 
-describe("eval chart on long games", () => {
-  it("declares the chart points before the x-axis move numbers read them", () => {
-    expect(ANALYZE_SOURCE.indexOf("const coords = points.map(")).toBeLessThan(ANALYZE_SOURCE.indexOf("// Move numbers along the x-axis"));
-  });
-});

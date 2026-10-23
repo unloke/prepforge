@@ -120,6 +120,43 @@ export function createAnalyzeView({
     return Math.round(clamped * (points.length - 1));
   }
 
+  // The axes are HTML, not SVG text: the plot stretches to its box, and text inside
+  // a stretched SVG came out squeezed (9px labels about 6px high on the desktop
+  // card). The win share runs down the gutter beside the plot, and the move numbers
+  // sit in the row under it, one per full move at a round step.
+  function renderEvalAxes(chart, points) {
+    const wrap = chart.parentElement;
+    if (!wrap) return;
+    const lanes = {};
+    ["scale", "moves"].forEach((name) => {
+      let lane = wrap.querySelector(`:scope > .eval-${name}`);
+      if (!lane) {
+        lane = document.createElement("div");
+        lane.className = `eval-${name}`;
+        lane.setAttribute("aria-hidden", "true");
+        wrap.appendChild(lane);
+      }
+      lane.textContent = "";
+      lanes[name] = lane;
+    });
+    const label = (lane, cls, pos, text) => {
+      const span = document.createElement("span");
+      span.className = cls;
+      span.style[cls === "eval-ytick" ? "top" : "left"] = `${pos.toFixed(2)}%`;
+      span.textContent = text;
+      lane.appendChild(span);
+    };
+    [0, 50, 100].forEach((winPct) => label(lanes.scale, "eval-ytick", (evalChartYOf(winPct) / EVAL_CHART_H) * 100, `${winPct}%`));
+    const lastMove = points.length ? Math.ceil(points[points.length - 1].ply / 2) : 0;
+    const step = Math.max(1, Math.ceil(lastMove / 8));
+    points.forEach((point, i) => {
+      const moveNo = Math.ceil(point.ply / 2);
+      if (point.ply % 2 === 1 && moveNo > 1 && moveNo % step === 0) {
+        label(lanes.moves, "eval-move-num", (evalChartXOf(i, points.length) / EVAL_CHART_W) * 100, String(moveNo));
+      }
+    });
+  }
+
   // Where the hovered point's readout sits, in the wrap's coordinates. It takes
   // the side of the plot away from the pointer and the half of the band away
   // from the point, so neither the column being pointed at nor the curve it
@@ -731,17 +768,18 @@ export function createAnalyzeView({
     const plotW = rect.width || EVAL_CHART_W;
     const plotH = rect.height || EVAL_CHART_H;
     const cursorPx = Number.isFinite(cursorX) ? cursorX - rect.left : (x / EVAL_CHART_W) * plotW;
-    const pointY = (evalChartYOf(pointWinPct(point)) / EVAL_CHART_H) * plotH;
-    const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, pointY);
+    const y = evalChartYOf(pointWinPct(point));
+    const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, (y / EVAL_CHART_H) * plotH);
     // The readout is clipped to the chosen side's room rather than slid across
-    // the pointer (see placeEvalReadout).
+    // the pointer (see placeEvalReadout). The plot sits inside the wrap's gutter,
+    // so the readout is placed from the wrap's own corner (an SVG has no offsetLeft).
+    const origin = chart.parentElement ? chart.parentElement.getBoundingClientRect() : rect;
     tooltip.style.maxWidth = `${spot.maxWidth}px`;
-    tooltip.style.left = `${spot.left}px`;
-    tooltip.style.top = `${spot.top}px`;
+    tooltip.style.left = `${spot.left + rect.left - origin.left}px`;
+    tooltip.style.top = `${spot.top + rect.top - origin.top}px`;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
-      hover.setAttribute("x1", String(x));
-      hover.setAttribute("x2", String(x));
+      hover.setAttribute("d", `M${x} 0V${EVAL_CHART_H}M0 ${y}H${EVAL_CHART_W}`);
       hover.setAttribute("visibility", "visible");
     }
   }
@@ -853,73 +891,6 @@ export function createAnalyzeView({
     axis.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(axis);
 
-    // Y-scale: win percentage ticks on the left edge (3-5 ticks per app-screens §6.3).
-    const yAxisTicks = [0, 25, 50, 75, 100];
-    yAxisTicks.forEach((winPct) => {
-      const tickY = yOf(winPct);
-      // Tick mark line
-      const tickLine = document.createElementNS(svgNS, "line");
-      tickLine.setAttribute("class", "eval-ytick");
-      tickLine.setAttribute("x1", "0");
-      tickLine.setAttribute("x2", "6");
-      tickLine.setAttribute("y1", String(tickY));
-      tickLine.setAttribute("y2", String(tickY));
-      tickLine.setAttribute("vector-effect", "non-scaling-stroke");
-      chart.appendChild(tickLine);
-      // Win% label
-      const tickLabel = document.createElementNS(svgNS, "text");
-      tickLabel.setAttribute("class", "eval-ytick-label");
-      tickLabel.setAttribute("x", "10");
-      tickLabel.setAttribute("y", String(tickY + 4));
-      tickLabel.setAttribute("font-size", "9px");
-      tickLabel.setAttribute("fill", "var(--muted)");
-      tickLabel.textContent = `${winPct}%`;
-      chart.appendChild(tickLabel);
-    });
-
-    // Hover/focus indicator (hidden until the pointer or keyboard asks).
-    const hover = document.createElementNS(svgNS, "line");
-    hover.setAttribute("id", "eval-chart-hover");
-    hover.setAttribute("class", "eval-hover");
-    hover.setAttribute("y1", "0");
-    hover.setAttribute("y2", String(height));
-    hover.setAttribute("x1", "-10");
-    hover.setAttribute("x2", "-10");
-    hover.setAttribute("visibility", "hidden");
-    hover.setAttribute("vector-effect", "non-scaling-stroke");
-    chart.appendChild(hover);
-
-    if (!points || !points.length) {
-      hideEvalChartTooltip();
-      updateEvalChartCursor();
-      bindEvalChartInteractions();
-      return;
-    }
-
-    const coords = points.map((point, index) => {
-      const x = evalChartXOf(index, points.length);
-      const y = yOf(pointWinPct(point));
-      return { x, y, ply: point.ply, classification: point.classification };
-    });
-
-    // Move numbers along the x-axis at the bottom (only when enough moves).
-    if (points.length >= 10) {
-      const numTickStep = Math.ceil(points.length / 8); // ~8 labels max
-      coords.forEach((c, i) => {
-        if (i === 0 || i % numTickStep !== 0 || i === points.length - 1) return;
-        const moveNum = Math.floor(i / 2) + 1;
-        const moveText = document.createElementNS(svgNS, "text");
-        moveText.setAttribute("class", "eval-move-num");
-        moveText.setAttribute("x", String(c.x));
-        moveText.setAttribute("y", String(height - 4));
-        moveText.setAttribute("font-size", "9px");
-        moveText.setAttribute("fill", "var(--muted)");
-        moveText.setAttribute("text-anchor", "middle");
-        moveText.textContent = moveNum.toString();
-        chart.appendChild(moveText);
-      });
-    }
-
     // Current move marker (vertical dashed line at selected ply).
     const currentPly = showAnalysisPly();
     if (currentPly != null && currentPly > 0) {
@@ -936,6 +907,29 @@ export function createAnalyzeView({
         chart.appendChild(currentMarker);
       }
     }
+
+    // Hover crosshair (hidden until the pointer or keyboard asks): the ply's column
+    // and the point's level, drawn by showEvalChartTooltip.
+    const hover = document.createElementNS(svgNS, "path");
+    hover.setAttribute("id", "eval-chart-hover");
+    hover.setAttribute("class", "eval-hover");
+    hover.setAttribute("visibility", "hidden");
+    hover.setAttribute("vector-effect", "non-scaling-stroke");
+    chart.appendChild(hover);
+
+    renderEvalAxes(chart, points || []);
+    if (!points || !points.length) {
+      hideEvalChartTooltip();
+      updateEvalChartCursor();
+      bindEvalChartInteractions();
+      return;
+    }
+
+    const coords = points.map((point, index) => {
+      const x = evalChartXOf(index, points.length);
+      const y = yOf(pointWinPct(point));
+      return { x, y, ply: point.ply, classification: point.classification };
+    });
 
     // One straight segment per move. The area between the curve and the centre
     // line is drawn twice and clipped to each half: light where White is better

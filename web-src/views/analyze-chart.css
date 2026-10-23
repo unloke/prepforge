@@ -750,6 +750,30 @@
 .eval-chart-wrap {
   position: relative;
 }
+/* The axes lie over the plot's own edges, on a chip in the field's tone, so the
+   plot keeps the card's box: the labels read without moving the board. */
+.eval-scale,
+.eval-moves {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.eval-scale > span,
+.eval-moves > span {
+  position: absolute;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--panel) 84%, var(--eval-side-black));
+  color: var(--muted);
+  font: 11px/14px var(--font);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.eval-scale > .eval-ytick { left: 2px; transform: translateY(-50%); }
+.eval-moves > .eval-move-num { top: calc(100% - 15px); transform: translateX(-50%); }
+:root[data-theme="dark"] :is(.eval-scale, .eval-moves) > span {
+  background: color-mix(in srgb, var(--panel) 84%, var(--eval-side-white));
+}
 .eval-chart {
   display: block;
   width: 100%;
@@ -772,9 +796,6 @@
   --eval-area-white: var(--eval-side-white);
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
-.eval-chart .eval-ytick { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.eval-chart .eval-ytick-label { font-family: var(--font); text-anchor: start; dominant-baseline: middle; }
-.eval-chart .eval-move-num { font-family: var(--font); text-anchor: middle; }
 .eval-chart .eval-current-marker { stroke: var(--accent-text); stroke-width: 1.5; opacity: 0.7; vector-effect: non-scaling-stroke; }
 .eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
 .eval-chart .eval-area-black { fill: var(--eval-side-black); stroke: none; }
