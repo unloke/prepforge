@@ -394,12 +394,13 @@
   gap: 8px;
 }
 .an-tab {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   height: 30px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: none;
   color: var(--muted);
   font: inherit;
@@ -415,12 +416,24 @@
   flex: none;
   display: none;
   gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--surface-3);
+  /* The strip sits on a 1px rule, and the chosen tab is a 2px accent line on it,
+     as wide as its label (the shared .seg control): no track, no filled plate. */
+  border-bottom: 1px solid var(--line);
+}
+.an-tab::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 .an-tab:hover { color: var(--text); }
-.an-tab[aria-selected="true"] { background: var(--panel); color: var(--text); }
+.an-tab[aria-selected="true"] { color: var(--text); font-weight: 650; }
+.an-tab[aria-selected="true"]::after { opacity: 1; }
 .an-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .an-tab[hidden],
 .an-tab[data-pane="coach"] { display: none; }

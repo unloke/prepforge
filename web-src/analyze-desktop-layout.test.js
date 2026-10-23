@@ -28,6 +28,9 @@ describe("Analyze's desktop panel", () => {
     // The tab strip is off at a side-by-side width; only the stacked and phone
     // bands turn it on.
     expect(css).toMatch(/\.an-tabs \{[^}]*display: none;/);
+    // The chosen tab is the shared accent line on the strip's rule, not a plate.
+    expect(css).toMatch(/\.an-tab\[aria-selected="true"\]::after \{ opacity: 1; \}/);
+    expect(css).not.toMatch(/\.an-tab\[aria-selected="true"\] \{ background: var\(--panel\)/);
     expect(css).toMatch(/@media \(min-width: 761px\) and \(max-width: 860px\)[\s\S]*?\.an-tabs \{ display: flex;/);
   });
 
