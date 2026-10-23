@@ -95,6 +95,7 @@
             <section class="lib-list card is-loading">
               <header class="card-head">
                 <h2>Repertoires <span class="count" id="dashboard-rep-count" hidden></span></h2>
+                <p class="lib-counts" id="dashboard-counts" data-testid="dashboard-counts" title="Saved analyses, repertoires and training sessions"></p>
                 <div class="seg" role="group" aria-label="Filter repertoires">
                   <button type="button" class="seg-btn is-active" data-lib-filter="all" aria-pressed="true">All</button>
                   <button type="button" class="seg-btn" data-lib-filter="white" aria-pressed="false">White</button>
@@ -554,7 +555,7 @@
               <span class="spacer"></span>
               <div id="replay-summary" class="sum-chips" role="group" aria-label="Filter by outcome" hidden></div>
             </div>
-            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
+            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
           </section>
           <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <header class="page-head"><h1>Scout</h1></header>
@@ -620,7 +621,7 @@
               <h2 id="team-detail-name">Team</h2>
               <span class="team-role-badge" id="team-detail-role"></span>
               <span class="spacer"></span>
-              <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite by link: anyone signed in who opens it joins as a member" hidden>Invite</button>
+              <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite by link: anyone signed in who opens it joins as a member" aria-label="Invite" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M7 9.5a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.8.8M9 6.5a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.8-.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="invite-word">Invite</span></button>
               <button class="btn icon" id="team-detail-rename" data-testid="team-detail-rename" title="Rename team" aria-label="Rename team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
               <button class="btn icon danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" aria-label="Delete team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <button class="btn icon" id="team-detail-close" title="Close" aria-label="Close team details">×</button>

@@ -62,9 +62,10 @@
    no rows should not paint 800px of white under the message. */
 #view-replay .ledger:has(.ledger-empty) { align-self: start; }
 #view-replay .ledger:has(.ledger-empty) .ledger-table { overflow: visible; }
-/* Nothing to detail yet: the ledger takes the whole triage instead of leaving
-   half the page as bare ground beside an empty card. */
-#view-replay .triage:has(.ledger-empty) { grid-template-columns: minmax(0, 1fr); }
+/* Nothing to detail yet: the card is one narrow block at the page's start, the
+   width a five-column table needs. Stretched across the page it left the
+   message floating in 1,300px of ground. */
+#view-replay .triage:has(.ledger-empty) { grid-template-columns: minmax(0, min(760px, 100%)); }
 #view-replay .ledger-error { display: contents; }
 /* A Check result arrives row by row instead of as one block: the shared
    `.list-enter` stagger, slowed to 60ms here because the ledger is the whole
@@ -87,7 +88,10 @@
      used to spill 15px past the card and scroll it sideways. The badge column
      fits the longest badge, "Opponent left prep" (154px at 13px); it ran
      into the game column at 124px. */
-  grid-template-columns: 156px minmax(160px, 260px) 52px minmax(120px, 1fr) 80px;
+  /* The columns are sized to their content and packed to the left: a 1fr
+     opening column pushed Departure to the card's far edge across a void. */
+  grid-template-columns: 156px minmax(160px, 240px) 52px minmax(120px, 200px) 80px;
+  justify-content: start;
   align-items: center;
   gap: 16px;
   width: 100%;
@@ -236,6 +240,13 @@
 /* ≤1279: the detail column narrows. */
 @media (max-width: 1279px) {
   .triage { grid-template-columns: minmax(0, 1fr) 380px; }
+}
+/* On a desktop the card is as tall as its rows (a three-game check left a
+   band of empty card beside the detail), and a long sample scrolls inside its
+   own height. */
+@media (min-width: 761px) {
+  #view-replay .ledger:not(:has(.ledger-empty)) { align-self: start; }
+  #view-replay .ledger-table { max-height: calc(100dvh - 320px); }
 }
 /* A narrow ledger drops the Opening column. Its width follows the detail
    column, which follows the window's height, so this is the ledger's own. */

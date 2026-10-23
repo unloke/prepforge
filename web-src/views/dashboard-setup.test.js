@@ -27,6 +27,7 @@ describe("dashboard setup checklist", () => {
   let elements;
   let container;
   let todayCard;
+  let countsCard;
   let steps;
   let api;
   let goToView;
@@ -48,6 +49,7 @@ describe("dashboard setup checklist", () => {
 
   beforeEach(() => {
     container = makeContainer();
+    countsCard = { innerHTML: "" };
     todayCard = {
       hidden: true,
       get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); },
@@ -64,6 +66,7 @@ describe("dashboard setup checklist", () => {
     elements = new Map([
       ["dashboard-repertoires", container],
       ["dashboard-today", todayCard],
+      ["dashboard-counts", countsCard],
       ["dashboard-steps", steps],
     ]);
     globalThis.document = {
@@ -133,11 +136,12 @@ describe("dashboard setup checklist", () => {
 
   it("a done step never carries a locked/blocked explanation (round 2, symptom 1)", async () => {
     // The account once trained (8 sessions) but has no repertoire now: the step
-    // rendered "Done" and "Unlocks once you have a repertoire." together. Steps
+    // rendered a tick and "Unlocks once you have a repertoire." together. Steps
     // keep no standing detail copy at all — the disabled Train says why.
     mockDashboard({ repertoires: 0, training_sessions: 8 });
     await view.loadDashboard();
-    expect(String(steps.innerHTML)).toMatch(/data-setup-step="train"[^]*?Done/);
+    expect(String(steps.innerHTML)).toMatch(/class="step is-done" data-setup-step="train"/);
+    expect(String(steps.innerHTML)).not.toContain("step-done");
     expect(String(steps.innerHTML)).not.toContain("Unlocks once");
     expect(String(steps.innerHTML)).not.toMatch(/<div class="step-text"><b>[^<]+<\/b><p>/);
     // The open repertoire step is where the lock is named.
@@ -152,7 +156,7 @@ describe("dashboard setup checklist", () => {
     await view.loadDashboard();
     expect(steps.hidden).toBe(false);
     expect(String(steps.innerHTML)).toContain("1 of 3 done");
-    expect(String(steps.innerHTML)).toMatch(/data-setup-step="repertoire"[^>]*>.*Done/s);
+    expect(String(steps.innerHTML)).toMatch(/class="step is-done" data-setup-step="repertoire"/);
     expect(String(steps.innerHTML)).toContain('data-lib-action="lichess"');
     expect(String(steps.innerHTML)).toContain('data-lib-action="train"');
     expect(String(steps.innerHTML)).not.toMatch(/data-lib-action="train" disabled/);
@@ -191,10 +195,9 @@ describe("dashboard setup checklist", () => {
   it("counts saved analyses, not Lichess games", async () => {
     mockDashboard({ games: 3 });
     await view.loadDashboard();
-    const counts = String(todayCard.innerHTML);
+    const counts = String(countsCard.innerHTML);
     expect(counts).toContain("<b>3</b> analyses");
     expect(counts).not.toContain("<b>3</b> games");
-    expect(counts).toContain('title="Saved analyses, repertoires and training sessions"');
   });
 
   it("follows the repertoire listing, not the earlier dashboard read", async () => {
@@ -275,7 +278,7 @@ describe("dashboard setup checklist", () => {
     await view.loadDashboard();
     expect(String(todayCard.innerHTML)).not.toContain("Reviews clear");
     expect(String(todayCard.innerHTML)).not.toContain("Queue is clear");
-    expect(String(todayCard.innerHTML)).toContain('<p class="today-queue">1 weak spot to review</p>');
+    expect(String(todayCard.innerHTML)).toContain('<p class="today-queue" data-testid="today-queue">1 weak spot to review</p>');
     expect(String(todayCard.innerHTML)).toContain("33 new moves to learn");
     expect(String(todayCard.innerHTML)).not.toContain("Learn new moves");
   });
@@ -379,7 +382,7 @@ describe("dashboard setup checklist", () => {
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: { untrained: 5, due: 3 } },
     ]);
     await view.loadDashboard();
-    expect(String(todayCard.innerHTML)).toContain('<p class="today-queue">3 due now</p>');
+    expect(String(todayCard.innerHTML)).toContain('<p class="today-queue" data-testid="today-queue">3 due now</p>');
     expect(String(todayCard.innerHTML)).toContain("5 new moves to learn");
     expect(String(todayCard.innerHTML)).toMatch(/data-testid="dashboard-train-now">Train</);
   });
@@ -388,17 +391,17 @@ describe("dashboard setup checklist", () => {
     const rep = (id) => ({ id, name: id, color: "white", is_active: true, health: null });
     mockDashboard({ repertoires: 2 }, [rep("rep-1"), rep("rep-2")]);
     await view.loadDashboard();
-    expect(String(todayCard.innerHTML)).toContain("<b>2</b> repertoires");
+    expect(String(countsCard.innerHTML)).toContain("<b>2</b> repertoires");
 
     // Create / import / delete end in a listing refresh and never re-read
     // /api/dashboard, so the count has to come from that listing.
     api.mockResolvedValue({ repertoires: [rep("rep-1"), rep("rep-2"), rep("rep-3")] });
     await view.loadDashboardRepertoires();
-    expect(String(todayCard.innerHTML)).toContain("<b>3</b> repertoires");
+    expect(String(countsCard.innerHTML)).toContain("<b>3</b> repertoires");
 
     api.mockResolvedValue({ repertoires: [] });
     await view.loadDashboardRepertoires();
-    expect(String(todayCard.innerHTML)).toContain("<b>0</b> repertoires");
+    expect(String(countsCard.innerHTML)).toContain("<b>0</b> repertoires");
   });
 
   it("uses singular labels when a lifetime count is one", async () => {
@@ -406,7 +409,7 @@ describe("dashboard setup checklist", () => {
       { id: "rep-1", name: "e4", color: "white", is_active: true, health: null },
     ]);
     await view.loadDashboard();
-    const counts = String(todayCard.innerHTML);
+    const counts = String(countsCard.innerHTML);
     expect(counts).toContain("<b>1</b> analysis");
     expect(counts).toContain("<b>1</b> repertoire");
     expect(counts).toContain("<b>1</b> session");

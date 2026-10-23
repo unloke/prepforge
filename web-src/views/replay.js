@@ -26,11 +26,11 @@ const MINI_FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 // not a Check has run.
 const LEDGER_HEAD = html`<div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div>`;
 
-// The ledger with nothing in it: the card, its columns, and one message
-// centred in the table body. An empty Games page used to be two lines of text
-// floating on the page ground with no sign of the table they were about.
+// The ledger with nothing in it: the card and one message in it. Its column
+// labels were dropped here: over a table with no rows they only spread five
+// words across the page.
 function replayEmptyLedger(body, { headHtml = "" } = {}) {
-  return html`${headHtml}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui>${LEDGER_HEAD}<div class="ledger-empty empty-state big">${body}</div></div></section></div>`;
+  return html`${headHtml}<div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="ledger-empty empty-state big">${body}</div></div></section></div>`;
 }
 
 // An opponent who leaves the repertoire within the first couple of moves didn't play a
