@@ -1,5 +1,10 @@
 export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 
+// The accent presets. `blue` is the default and carries no override in
+// styles.css; every other name here must have a `:root[data-accent="…"]` block
+// (light) and a dark counterpart, each measured to 4.5:1.
+export const ACCENT_MODES = Object.freeze(["blue", "orange"]);
+
 // The persisted color theme, kept in the shared prefs blob. Writing the blob
 // rewrites every other pref as well, so a first paint reads it without writing
 // (a never-written blob is the defaults, not an edit), while a user choice
@@ -32,6 +37,14 @@ export function storeTheme(value, storage = globalThis.localStorage) {
 
 export function normalizeTheme(value) {
   return THEME_MODES.includes(value) ? value : "system";
+}
+
+export function normalizeAccent(value) {
+  return ACCENT_MODES.includes(value) ? value : "blue";
+}
+
+export function readStoredAccent(storage = globalThis.localStorage) {
+  return normalizeAccent(readStoredPrefs(storage).accent);
 }
 
 export function systemPrefersDark(matchMedia = globalThis.matchMedia) {
@@ -67,4 +80,29 @@ export function applyTheme(value, { root = document.documentElement, matchMedia 
     }
   }
   return theme;
+}
+
+// Applies the accent preset the same way the theme is applied: one attribute
+// on <html>, read by the `:root[data-accent="…"]` blocks in styles.css. Blue is
+// the default and writes no attribute, so a user who never picked one keeps the
+// CSS default (and a browser with the attribute set by hand cannot get stuck
+// on a preset the app does not know).
+export function applyAccent(value, { root = document.documentElement } = {}) {
+  const accent = normalizeAccent(value);
+  if (accent === "blue") delete root.dataset.accent;
+  else root.dataset.accent = accent;
+  return accent;
+}
+
+// The one call the Settings picker makes next round: setAccent("orange").
+// Writes the pref (through the shared blob, so the theme and every other pref
+// survive) and applies it. The storage and root are injectable for tests.
+export function setAccent(value, { storage = globalThis.localStorage, root } = {}) {
+  const accent = normalizeAccent(value);
+  try {
+    storage.setItem(PREFS_KEY, JSON.stringify({ ...readStoredPrefs(storage), accent }));
+  } catch (_) {
+    /* storage unavailable: the accent still applies for this session */
+  }
+  return root ? applyAccent(accent, { root }) : applyAccent(accent);
 }

@@ -7,21 +7,44 @@
      every views/*.css). Dark values are re-declared once in the dark-theme
      block further down; nothing else overrides them.
 
-     Colour: neutral graphite surfaces, ONE accent (ink blue) reserved for
-     selection, primary actions and focus. Every other hue is semantic and
-     keeps the same meaning in every view (status, mastery/queue kinds, prep
-     outcome, move classification) -- "colour means chess".
+     ROLE MAPPING (app-sheet "Data terminal", app-screens §9). The sheet's role
+     names on the left, the token names the app already uses on the right:
 
-     Surfaces are separated by a small step in tone, never by a line:
-     --bg is the page, --surface-3 the recessed track, --panel-soft the quiet
-     fill, --panel the raised card.
+       ground      --bg          the page
+       surface     --panel       cards and panels: one step from the ground,
+                                 DARKER than it in dark (the sheet's move)
+       raised      --float       everything that floats: menus, dialogs,
+                                 popovers, notices, the promotion picker
+       quiet fill  --panel-soft  a well inside a card (code, empty states)
+       active      --surface-3   hover and pressed fills, recessed tracks
+       border      --line        rule between surfaces inside a card
+       rule        --line-soft   the quieter rule (nested separation)
+       control     --line-strong every form-control and outlined-button edge
+       text        --text        body and figures
+       muted       --muted       secondary copy
+       faint       --label       meta, small labels, placeholders
+       accent      --accent*     selection marks, the one primary action
+       status      --good/--warn/--danger (+ -soft, -text)  state only
+       chart       --grid, --chart-span, the board and mark tokens
+
+     Colour: neutral graphite surfaces, ONE accent reserved for selection,
+     primary actions and focus. Every other hue is semantic and keeps the same
+     meaning in every view (status, mastery/queue kinds, prep outcome, move
+     classification) -- "colour means chess". The accent is user-selectable
+     (theme.js setAccent); the presets below redeclare its six tokens for each
+     theme, so every rule that reads them follows the pick.
+
+     Surfaces are separated by a small step in tone, never by a line. What
+     floats takes --float, a step ABOVE the ground in both themes, so it never
+     melts into the page (the owner's promotion-picker complaint).
      ==================================================================== */
 
   /* -- Surfaces -------------------------------------------------------- */
-  --bg: #f3f3f1;         /* page ground */
-  --surface-3: #efefec;  /* recessed tracks, hover fills */
-  --panel-soft: #f8f8f6; /* quiet fills inside a card */
-  --panel: #ffffff;      /* raised cards */
+  --bg: #f3f3f1;         /* ground: the page */
+  --panel: #ffffff;      /* surface: cards and panels */
+  --panel-soft: #f8f8f6; /* quiet fill inside a card */
+  --surface-3: #efefec;  /* active step: hover, pressed, recessed track */
+  --float: #ffffff;      /* raised: anything that floats over the page */
 
   /* -- Text ------------------------------------------------------------ */
   --text: #1b1c1e;   /* body */
@@ -45,7 +68,8 @@
   /* Text-safe companion for --accent (AA on panel/panel-soft/bg and on
      --accent-soft; pinned by visual-system.test.js). */
   --accent-text: #2447a8;
-  --focus-ring: rgba(47, 91, 211, 0.35);
+  /* Derived from --accent, so an accent preset moves the focus ring with it. */
+  --focus-ring: color-mix(in srgb, var(--accent) 35%, transparent);
 
   /* -- Semantic status -------------------------------------------------- */
   --danger: #c73a2c;
@@ -192,35 +216,40 @@
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
-/* The dark palette keeps the warm amber identity but lifts text and borders
-   independently instead of inverting the light theme. This preserves contrast
-   for boards, data labels, and status colors in low-light study sessions. */
 /* The dark palette lifts text and borders independently instead of inverting
    the light theme. This preserves contrast for boards, data labels and status
    colours in low-light study sessions. Every token declared above is re-declared
-   here -- the two blocks together are the whole colour system. */
+   here -- the two blocks together are the whole colour system.
+
+   Dark is the reference theme (app-sheet). Its one move: cards sit DARKER than
+   the ground (--panel below --bg), and the ground itself is a near-black
+   neutral, never navy or slate. Separation is a tone step; a border is a
+   whisper (1.2-1.4:1 on the surface it edges). What floats takes --float, a
+   step ABOVE the ground, so a menu, a dialog or the promotion picker reads as
+   a surface lifted off the page instead of a black hole in it. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces */
-  --bg: #111315;
-  --surface-3: #262a2f;
-  --panel-soft: #1e2226;
-  --panel: #191c1f;
+  /* Surfaces: ground, then a step down for cards, then a step up for floats. */
+  --bg: #17181a;
+  --panel: #131416;
+  --panel-soft: #0f1012;
+  --surface-3: #22252a;
+  --float: #232629;
 
   /* Text */
   --text: #e8eaec;
-  --muted: #a9aeb4;
-  --label: #a9aeb4;
+  --muted: #b0b5ba;
+  --label: #969ba1;
 
   /* Hairlines */
-  --line: #2b3035;
-  --line-soft: #25292d;
-  --line-strong: #3a4046;
+  --line: #26292d;
+  --line-soft: #1e2124;
+  --line-strong: #3b4046;
 
   /* The select chevron is an SVG data URL, so it cannot take a var(): it is
      redeclared with the dark --label grey. */
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a9aeb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23969ba1' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* The accent */
   --accent: #6d8ff0;
@@ -230,7 +259,6 @@
   --accent-text: #93abf2;
   --on-accent: #ffffff;
   --accent-ink: #0d1020;
-  --focus-ring: rgba(109, 143, 240, 0.42);
 
   /* Semantic status */
   --danger: #ef6b5b;
@@ -305,6 +333,33 @@
   --explorer-draw-ink: #111315;
   --eval-side-white: #e9eaec;
   --eval-side-black: #0e0f11;
+}
+
+/* ---- Accent presets ------------------------------------------------------
+   The user picks the accent (product.md, "Accent is a user choice"). The
+   choice is a `data-accent` attribute on <html>, set before first paint by
+   theme.js next to the theme; `blue` is the default and needs no override.
+   A preset redeclares the six accent tokens only -- everything else keeps its
+   value, so a preset cannot drift the surfaces or the text tiers. Each pair
+   is measured: --accent-text clears 4.5:1 on --panel, --panel-soft, --bg and
+   its own --accent-soft; --accent-ink clears 4.5:1 on --accent. Both themes
+   are pinned by visual-system.test.js, so a third preset is added only with
+   its measurements. */
+:root[data-accent="orange"] {
+  --accent: #c2410c;
+  --accent-soft: #fdeee3;
+  --accent-line: #f6cfb4;
+  --accent-strong: #a8470f;
+  --accent-text: #9a4109;
+  --accent-ink: #ffffff;
+}
+:root[data-theme="dark"][data-accent="orange"] {
+  --accent: #f0932b;
+  --accent-soft: #33240f;
+  --accent-line: #5a3a17;
+  --accent-strong: #f7b273;
+  --accent-text: #f7b273;
+  --accent-ink: #0d1020;
 }
 
 /* `hidden` always wins: no view's display rule can resurrect a hidden element. */
@@ -457,15 +512,13 @@ h2 {
 }
 
 /* Left icon rail (desktop > 760px). A fixed 60px track reserved by body
-   padding; the rail itself is a fixed panel that grows past the track as an
-   OVERLAY (hover, or keyboard focus inside it), so main content and the board
-   never move or resize. It opens after a 60ms delay and collapses as soon as
-   the pointer or focus leaves; mouse clicks don't hold it open (it relies on
-   :focus-visible, not :focus-within). Clicking a destination adds
-   .is-nav-collapsed (rail-nav.js) so the overlay closes at once, until the
-   pointer leaves the rail. */
+   padding. It is a true icon rail: it never opens. The mark sits at the top,
+   the destinations follow in groups split by 20px hairlines, the four
+   utilities sit at the bottom, and every icon carries its name in a tooltip on
+   hover and keyboard focus. The open destination is the sheet's move: a 1px
+   accent line on the rail's edge, as tall as the row, with the icon in ink —
+   not a filled tile. */
 .rail {
-  --rail-open: 204px;
   position: fixed;
   top: 0;
   bottom: 0;
@@ -473,130 +526,101 @@ h2 {
   z-index: var(--z-chrome);
   width: 60px;
   min-width: 0;
+  /* Chrome, not a floating surface: the card step keeps navigation behind the
+     screen's own content, and the accent stays on the selection line. */
   background: var(--panel);
   display: flex;
   flex-direction: column;
-  padding: 10px 8px 12px;
-  gap: 8px;
+  padding: 8px;
+  gap: 4px;
   overflow: hidden auto;
-  transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
-.rail:has(:focus-visible) {
-  width: var(--rail-open);
-  box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
-  transition-delay: 60ms;
-}
-
+/* The mark is the app's own knight, drawn from the piece set and set in the
+   accent: the product's face at the top of the shell, not a square with a
+   letter in it. */
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 32px;
-  padding: 0 9px;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.02em;
+  justify-content: center;
+  height: 40px;
+  padding: 0;
   white-space: nowrap;
 }
 
-/* The mark is the app's own knight, drawn from the piece set: a silhouette
-   that still reads at 26px, not a glyph that changes with the platform font. */
 .brand-mark {
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
-  border-radius: 7px;
-  background: var(--text);
-  color: var(--panel);
   flex: none;
 }
-.brand-mark svg { width: 19px; height: 19px; display: block; }
+.brand-mark svg { width: 22px; height: 22px; display: block; }
 .brand-mark path,
-.brand-mark circle { fill: currentColor; stroke: none; }
-.brand-mark .brand-cut { fill: var(--text); }
+.brand-mark circle { fill: var(--accent); stroke: none; }
+.brand-mark .brand-cut { fill: var(--panel); }
 
 .nav-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 }
 
-.nav-group-label {
-  position: relative;
-  height: 18px;
-  line-height: 18px;
-  font-size: 11.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--label);
-  padding: 0 13px;
-  white-space: nowrap;
+/* A short hairline between groups: the only thing that separates Prepare,
+   Practice, Review and Share in an unlabelled rail. */
+.rail-sep {
+  width: 20px;
+  height: 1px;
+  margin: 8px auto;
+  background: var(--line); /* taste-skill-ignore: an icon rail needs a divider */
+  flex: none;
 }
 
-.nav-group-label span {
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-
-/* Collapsed: labels fade out and group headings become divider lines. */
-.nav-group-label::after {
-  content: "";
+/* The visible name lives in the tooltip and the accessible name; the label
+   span stays in the DOM for assistive tech and the phone's own markup. */
+.rail .brand-name,
+.rail .nav-label {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 50%;
-  border-top: 1px solid var(--line); /* taste-skill-ignore: a collapsed rail needs a divider */
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-
-.nav-group:first-of-type .nav-group-label::after {
-  display: none;
-}
-
-.brand-name,
-.nav-label {
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-out);
-}
-
-.rail:has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
-  opacity: 1;
-  transition-delay: 90ms;
-}
-
-.rail:has(:focus-visible) .nav-group-label::after {
-  opacity: 0;
-}
-
-/* Hover opens the rail except under a touch pointer. A touch screen wide
-   enough for the rail (a phone on its side, a tablet) keeps :hover after a tap,
-   so a tap on the rail's edge or a group label left the 204px overlay open over
-   the board and the panel until the next tap elsewhere. Keyed on a coarse
-   pointer, not on (hover: hover): a browser with no pointer device at all
-   (headless CI) reports hover: none and must still open on hover. */
-@media not (pointer: coarse) {
-  .rail:not(.is-nav-collapsed):hover {
-    width: var(--rail-open);
-    box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
-    transition-delay: 60ms;
-  }
-  .rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span) {
-    opacity: 1;
-    transition-delay: 90ms;
-  }
-  .rail:not(.is-nav-collapsed):hover .nav-group-label::after { opacity: 0; }
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .rail-foot {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border-top: 1px solid var(--line); /* taste-skill-ignore: a collapsed rail needs a divider */
-  padding-top: 10px;
+  gap: 2px;
+}
+
+/* Tooltips. position: fixed takes them out of the rail's scroll clipping (a
+   short window still scrolls the rail) and the flex static position centres
+   each one on its row; the translate moves it past the 60px rail. */
+.rail :is(.tab, .rail-btn)::before {
+  content: attr(aria-label);
+  position: fixed;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a tooltip floats, so it gets an edge */
+  border-radius: var(--radius);
+  background: var(--float);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: a tooltip is a real overlay */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(calc(38px + 50%), -50%);
+  transition: opacity var(--dur-fast) var(--ease-out) 80ms, visibility 0s linear var(--dur-fast);
+}
+.rail :is(.tab, .rail-btn):is(:hover, :focus-visible)::before {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--dur-fast) var(--ease-out) 80ms;
 }
 
 .ic {
@@ -610,11 +634,10 @@ h2 {
   stroke-linejoin: round;
 }
 
-/* Primary navigation items: rail rows on desktop, bottom tabs on mobile.
-   Icons never move between states; labels fade in when the rail overlays. */
+/* Primary navigation items: rail rows on desktop, bottom tabs on mobile. */
 .tab {
   position: relative;
-  height: 38px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -635,15 +658,49 @@ h2 {
   color: var(--text);
 }
 
-/* The open destination: one filled tile, the label in ink. It used to be a pale
-   accent-soft tile with the label in accent-strong AND a 3px accent bar hanging
-   outside the tile's left edge, which drew the accent twice and let the bar
-   read as a clip mark. The accent belongs to the screen's action; the rail's
-   selection is a tone step, the same way a hover is. */
+/* The open destination. Selection is the same device as every other mark in
+   the app: one thin accent line on the nearest edge (the rail's edge here),
+   not a filled tile. The icon and its label brighten; the accent is only the
+   line. */
 .tab.is-active {
-  background: var(--surface-3);
   color: var(--text);
   font-weight: 600;
+}
+
+/* Desktop rail rows: a 44px square target with the icon centred. */
+.rail .tab,
+.rail .rail-btn,
+.rail .account-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  color: var(--label);
+}
+.rail .tab:hover,
+.rail .rail-btn:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+.rail .tab:active,
+.rail .rail-btn:active,
+.rail .account-btn:active {
+  color: var(--text);
+  background: var(--line-strong);
+}
+.rail .tab.is-active {
+  background: transparent;
+  color: var(--text);
+}
+.rail .tab.is-active::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -8px;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
 }
 
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
@@ -676,14 +733,14 @@ h2 {
 
 .tabbar-item.is-active {
   background: none;
-  color: var(--accent-strong);
+  color: var(--text);
 }
 
 /* Mobile More sheet: real navigation to the secondary destinations. A .modal
    <dialog> like every other one; on a phone (the only place it opens) every
    .modal rises from the bottom edge, and this one floats a little above it. */
 .sheet {
-  background: var(--panel);
+  background: var(--float);
   border-radius: 14px 14px 0 0;
   padding: 8px 12px calc(16px + env(safe-area-inset-bottom));
   grid-template-columns: 1fr 1fr;
@@ -878,7 +935,7 @@ h2 {
   display: grid;
   gap: 8px;
   padding: 12px;
-  background: var(--panel);
+  background: var(--float);
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a floating popover is a real overlay */
 }
@@ -1027,7 +1084,7 @@ h2 {
   padding: 4px;
   overflow-x: auto; /* one row when it fits, wraps below 761px (phone.css) */
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--float);
   scrollbar-width: none;
 }
 .settings-nav::-webkit-scrollbar { display: none; }
@@ -1151,57 +1208,77 @@ h2 {
   scale: 0.9;
 }
 
-/* Segmented control: a track with the chosen option on a panel-coloured plate.
-   The plate takes the app's one control radius; the track is that radius plus
-   its own 2px of padding, so the two curves stay concentric. (The pair was 7/5,
-   a radius found nowhere else in the app.) */
+/* Segmented control and tabs: the sheet's one selection mark. The options sit
+   on a plain row whose nearest edge is a 1px rule, and the chosen option is a
+   2px accent line exactly as wide as its label, lying on that rule. No track,
+   no filled plate, no pill: the accent is a line and never a fill, so a row of
+   filters reads as a row of words with one of them chosen. (The old control
+   was a surface-3 track with a panel-coloured plate sliding on it, which is
+   the filled-segmented-control tell the sheet rules out.) */
 .seg {
   display: inline-flex;
   gap: 2px;
-  padding: 2px;
-  border-radius: calc(var(--radius) + 2px);
-  background: var(--surface-3);
+  border-bottom: 1px solid var(--line); /* the nearest existing edge */
 }
 
 .seg-btn {
+  position: relative;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--muted);
   font-size: var(--fs-s);
   font-weight: 550;
   padding: 0 10px;
-  min-height: 26px;
+  min-height: 28px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+/* The mark: inset by the button's own padding, so it is exactly the label's
+   width and not the hit area's. */
+.seg-btn::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
 
 .seg-btn:hover {
-  background: var(--panel-soft);
-}
-
-.seg-btn:active {
-  transform: scale(0.96);
+  color: var(--text);
 }
 
 .seg-btn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: -3px;
 }
 
-/* Segmented control: the chosen tile is a panel-coloured plate on the
-   surface-3 track. One tone step carries the selection - no resting shadow,
-   no ring. Text stays on --text in both states so contrast holds in light
-   and dark. */
+/* The chosen option: ink label and the line. The label keeps the ink rather
+   than taking the accent, so a chosen filter never reads as the screen's one
+   action. */
 .seg-btn.is-active {
-  background: var(--panel);
+  color: var(--text);
+  font-weight: 650;
+}
+
+.seg-btn.is-active::after {
+  opacity: 1;
 }
 
 .seg-btn:disabled {
   color: var(--label);
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.seg-btn:disabled::after {
+  background: var(--label);
 }
 
 .pf-info {
@@ -1309,20 +1386,19 @@ h2 {
   min-height: 0;
 }
 
-/* The page's own name, on desktop. The phone sheet hides `.page-head` at every
-   width and only the phone media query brings it back, so Library and Teams
-   opened on a wide screen with nothing naming the page: the eye landed on a
-   table. Games, Scout and Settings re-show the row themselves; this is the
-   shell's copy of it for the rest. */
+/* The page's own name, on desktop. One title row for every view that has one:
+   the same 44px height, the same 26/700 title and the same 20px gap to the
+   first block. The phone sheet has the same rule at its own title size below
+   761px, so a page does not change its header shape when the rail folds. */
 @media (min-width: 761px) {
-  .workspace .page-head { display: flex; align-items: baseline; gap: 10px; }
-  .workspace .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .workspace .page-head { display: flex; align-items: baseline; gap: 10px; min-height: 44px; }
+  .workspace .page-head h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
   /* The head's icon button mirrors a control the desktop card head already
      shows in words, so on a wide screen it would be a second "New repertoire". */
   .workspace .page-head .page-head-btn { display: none; }
   /* A container that gaps its children (the Library column) spaces the title
      itself; only a page that stacks its blocks in flow needs the margin. */
-  .view > .page-head { margin: 0 0 10px; }
+  .view > .page-head { margin: 0 0 var(--gap-group); }
 }
 
 .view {
@@ -1691,24 +1767,10 @@ h2 {
   line-height: 18px;
 }
 
-/* The phone header is hidden on wide screens, so on desktop the page needs a
-   name of its own — the same rule Settings keeps. The + beside it is the
-   phone's route to New repertoire; on a desktop the card head already carries
-   that action, so only the name is shown. */
-@media (min-width: 761px) {
-  #view-dashboard .page-head {
-    display: flex;
-    align-items: baseline;
-    margin: 0;
-  }
-  #view-dashboard .page-head h1 {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-  }
-  #view-dashboard .page-head-btn { display: none; }
-}
+/* The phone header is hidden on wide screens, so on desktop the shared
+   `.page-head` rule names the page. The + beside it is the phone's route to
+   New repertoire; on a desktop the card head already carries that action, and
+   the shared rule hides the icon button. */
 
 /* Today strip. It and the next steps arrive once, when their data lands. */
 #view-dashboard .today.is-enter,
@@ -3363,7 +3425,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-width: 240px;
   padding: 8px 10px;
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--float);
   color: var(--text);
   /* The panel's own reading size: at 12px the one sentence that explains the
      numbers was the smallest thing in the view it explains. */
@@ -3659,7 +3721,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-card);
+  gap: var(--gap-group);
 }
 .toolbar {
   display: flex;
@@ -3714,10 +3776,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
-    gap: 12px 24px;
+    gap: var(--gap-group) 24px;
   }
   .review > section > .page-head { display: block; align-self: center; }
-  .review > section > .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
   .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
   .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
   /* Games and Scout are worked in, not read: their empty states are one
@@ -3740,7 +3801,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-card);
+  gap: var(--gap-group);
 }
 .scout-grid {
   flex: 1 1 auto;
@@ -3824,7 +3885,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
      was hidden while the toolbar showed, so Games and Scout were two unnamed
      rows. The title comes back over its own controls. */
   .review > section > .page-head { display: block; }
-  .review > section > .page-head h1 { margin: 0 0 2px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .review > section > .page-head h1 { margin: 0 0 2px; }
 }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -4484,7 +4545,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   overflow-y: auto;
   padding: 6px;
   border-radius: 6px;
-  background: var(--panel);
+  background: var(--float);
   color: var(--text);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating menu is a real overlay */
   /* The menu arrives where it was opened, under the button or at the cursor,
@@ -4611,7 +4672,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   max-height: calc(100dvh - min(14vh, 120px) - 12px);
   overflow: auto;
   overscroll-behavior: contain;
-  background: var(--panel);
+  background: var(--float);
   color: var(--text);
   border-radius: 8px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a dialog is a real overlay */
@@ -5062,7 +5123,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   column-gap: 10px;
   padding: 10px 6px 10px 12px;
   border-radius: 12px;
-  background: var(--panel);
+  background: var(--float);
   box-shadow: var(--shadow-2); /* taste-skill-ignore: a floating notice is a real overlay */
   color: var(--text);
   font-size: var(--fs);
@@ -5214,7 +5275,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 180px;
   max-width: 90vw;
   max-height: 80vh;
-  background: var(--panel);
+  background: var(--float);
   border: 1px solid var(--line);
   border-radius: 12px;
   box-shadow: 0 18px 44px rgba(28, 28, 28, 0.18), 0 4px 12px rgba(28, 28, 28, 0.08);
@@ -5627,6 +5688,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Promotion picker: site-styled Queen / Rook / Bishop / Knight chooser shared
    by the Analyze / Build / Train boards. Pops over the board stack so the
    choice reads as part of the board, not a detached modal. */
+/* Promotion picker overlay: the board dims just enough that the picker reads
+   as a surface lifted over it. One flat scrim (no gradient, app-screens §13);
+   dark dims harder because its ground is already near black. */
 .promotion-picker-overlay {
   inset: 0;
   margin: 0;
@@ -5638,18 +5702,26 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: rgba(20, 18, 14, 0.24);
   border-radius: 4px;
 }
+:root[data-theme="dark"] .promotion-picker-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
 .promotion-picker-overlay:popover-open { display: grid; }
 
+/* The picker is the app's one "float over the board" surface, so it takes the
+   raised token and a real edge in both themes: on dark that is a step ABOVE
+   the ground (#232629 on #17181a) plus --line-strong, which is what stops it
+   melting into the page (the owner's complaint). The shadow only deepens what
+   the tone step already separates. */
 .promotion-picker {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   padding: 8px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--float);
   color: var(--text);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: a popover over the board is a real overlay */
 }
 
 .promotion-option {
@@ -5749,7 +5821,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   width: min(560px, calc(100vw - 32px));
   max-width: none;
   max-height: calc(88vh - 16px);
-  background: var(--panel);
+  background: var(--float);
   color: var(--text);
   border-radius: var(--radius-card);
   box-shadow: 0 16px 40px color-mix(in srgb, var(--text) 18%, transparent); /* taste-skill-ignore: the command sheet is a real overlay */
@@ -5851,15 +5923,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
-/* Rail foot: Search and Theme read as rail rows (icon, label on expand) on
-   the shared quiet button (.btn.ghost). */
+/* Rail foot: Search and Theme are rail rows on the shared quiet button
+   (.btn.ghost), icon only, with the shared tooltip. */
 .rail-btn {
   position: relative;
-  justify-content: flex-start;
-  gap: 12px;
-  width: 100%;
-  height: 38px;
-  padding: 0 13px;
+  justify-content: center;
+  gap: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 0;
   white-space: nowrap;
 }
@@ -5898,26 +5970,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
-}
-
-/* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px
-   laptop viewport without a scrollbar. */
-@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
-  .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
-  .rail .tab,
-  .rail .rail-btn { height: 40px; }
-  .rail .nav-group-label { height: 14px; line-height: 14px; }
-  .rail-foot { gap: 2px; padding-top: 6px; }
-  .rail .account-btn { height: 40px; }
-}
-
-/* Below ~560px of height the rows and the group dividers no longer both fit:
-   at 40px rows the 528px window overflowed the rail by 57px and pushed the
-   account chip off the bottom. The dividers are only a hairline between
-   already-separated groups, so on a short window the rail drops them and the
-   rows keep their height. */
-@media (min-width: 761px) and (max-height: 560px) {
-  .rail .nav-group-label { display: none; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a

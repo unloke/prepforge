@@ -1751,9 +1751,10 @@ async function init() {
     ensureCoverageView: () => coverageEntry.ensureCoverageView(),
     paintGenerateVisibility, syncViewHeads, updateBuildReadOnlyUi,
   };
-  // First paint reads the stored theme; it never writes, so opening the app
-  // does not fabricate a pref blob.
+  // First paint reads the stored theme and accent; it never writes, so opening
+  // the app does not fabricate a pref blob.
   applyPref("theme");
+  applyPref("accent");
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
     systemTheme?.addEventListener?.("change", () => {

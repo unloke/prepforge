@@ -568,11 +568,10 @@
     transition: opacity var(--dur-fast) var(--ease-out);
   }
   #view-settings .settings-nav-link.is-active::after { opacity: 1; }
-  /* The heading names the open section on the title's line. */
-  /* Title and section share a baseline, so the row sizes itself (the 56px box
-     left the title at its top with 30px of air under it); the tab strip
-     follows straight on as the title's own sub-header. */
-  #view-settings .page-head { display: flex; justify-content: flex-start; align-items: baseline; gap: 8px; min-height: 0; margin-bottom: 0; padding: 14px 0 8px; }
+  /* The heading names the open section on the title's line. The row is the
+     shared 44px header (phone.css above); Settings only opens it to the left,
+     so the page title and the section sit together. */
+  #view-settings .page-head { justify-content: flex-start; align-items: center; gap: 8px; }
   #view-settings .settings-here { margin: 0; font-size: 17px; }
   #view-settings .settings-here::before { margin-right: 8px; }
   /* A jump lands the card below the sticky strip. */
@@ -1370,25 +1369,19 @@
      hover fill sat on it as a grey block after every switch. The press is the
      tab's scale; the open destination is its ink. */
   .tabbar .tabbar-item:hover { background: none; }
-  /* The open destination is ink, not the accent: the accent belongs to the one
-     action on the screen. */
+  /* The open destination is ink; the mark is the same 1px accent line the
+     desktop rail uses, on the bar's nearest edge (its top), as wide as the
+     label it names. */
   .tabbar .tabbar-item.is-active { color: var(--text); font-weight: 650; }
-  /* The open destination also sits on a recessed pill behind its icon, so it
-     reads at a glance and not only by the weight of a 12px label. */
-  .tabbar .tabbar-item { position: relative; isolation: isolate; }
-  .tabbar .tabbar-item::before {
+  .tabbar .tabbar-item { position: relative; }
+  .tabbar .tabbar-item.is-active::after {
     content: "";
     position: absolute;
-    z-index: -1;
-    top: 4px;
+    top: 0;
     left: 50%;
-    width: 52px;
-    height: 30px;
-    border-radius: 15px;
-    background: var(--surface-3);
-    opacity: 0;
-    transform: translateX(-50%) scaleX(0.6);
-    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    transform: translateX(-50%);
   }
-  .tabbar .tabbar-item.is-active::before { opacity: 1; transform: translateX(-50%); }
 }

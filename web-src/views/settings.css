@@ -7,24 +7,9 @@
 
 /* ---- Section nav ------------------------------------------------------- */
 
-/* The phone header is hidden on wide screens, so on desktop the page needs a
-   name of its own: the title spans the width above the section strip. */
-@media (min-width: 761px) {
-  #view-settings .page-head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin: 0 0 10px;
-  }
-  #view-settings .page-head h1 {
-    margin: 0;
-    /* The desktop page has no rail title above it, so its h1 carries the size;
-       the phone's is the shell's 22px title row. */
-    font-size: 32px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-}
+/* The page title row is the shell's (`styles.css` `.page-head`): one height,
+   one title size and one gap on every view. Settings adds only the inline
+   section name that sits on the title's baseline. */
 
 /* The section you are in, named beside the page title: the heading and the
    strip answer "where am I" with the same word at the same moment. */

@@ -88,11 +88,15 @@ describe("visual system tokens", () => {
 
   // Every control the app draws shares one radius. Selects and the segmented
   // control used to carry their own (4px in a dialog, 7px on the track, 5px on
-  // its option), so the same control read as three different shapes.
+  // its option), so the same control read as three different shapes. The
+  // segmented control is now the sheet's accent-line selection: words on a
+  // rule, no box, so it has no radius to share.
   it("draws every control on the shared control radius", () => {
     expect(ruleBody(".btn")).toMatch(/border-radius:\s*var\(--radius\)/);
-    expect(ruleBody(".seg")).toMatch(/border-radius:\s*calc\(var\(--radius\) \+ 2px\)/);
-    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(ruleBody(".seg")).not.toMatch(/border-radius/);
+    // The option is a word on a rule, not a box: it squares its corners so a
+    // browser's own button radius never creeps back in.
+    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*0/);
     // The <select> base rule is the one that gives a dropdown the app's box.
     const selectRule = css.match(/(?:^|\n)select \{([^}]+)\}/g)
       ?.map((rule) => rule.replace(/^[\n]*/, ""))
@@ -130,7 +134,7 @@ describe("visual system tokens", () => {
     const head = /\.workspace \.page-head \{([^}]+)\}/.exec(desktop)?.[1] || "";
     expect(head).toMatch(/display:\s*flex/);
     const title = /\.workspace \.page-head h1 \{([^}]+)\}/.exec(desktop)?.[1] || "";
-    expect(title).toMatch(/font-size:\s*32px/);
+    expect(title).toMatch(/font-size:\s*26px/);
     // The head's icon mirrors a control the desktop card head already shows in
     // words: it would be a second "New repertoire" on the same screen.
     expect(desktop).toMatch(/\.page-head \.page-head-btn \{ display: none; \}/);
@@ -419,6 +423,66 @@ describe("semantic text colors meet WCAG AA", () => {
       /[^-]color:\s*var\(--(warn|good|brilliant|accent)\)/,
     );
   });
+});
+
+describe("accent presets meet WCAG AA in both themes", () => {
+  // The user picks the accent (product.md). A preset may not weaken the
+  // contrast the default blue already guarantees: its text-safe token clears
+  // 4.5:1 on every surface it can sit on, and the ink on its fill does too.
+  function luminance(hex) {
+    const c = hex.replace("#", "");
+    const f = (i) => {
+      const v = parseInt(c.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(0) + 0.7152 * f(2) + 0.0722 * f(4);
+  }
+  function contrast(a, b) {
+    const x = luminance(a);
+    const y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function block(selector) {
+    const start = css.indexOf(selector);
+    expect(start, `${selector} must exist`).toBeGreaterThan(-1);
+    const open = css.indexOf("{", start);
+    const out = {};
+    for (const m of css.slice(open, css.indexOf("}", open)).matchAll(/(--[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+      out[m[1]] = m[2];
+    }
+    return out;
+  }
+  // The base surfaces of a theme: the :root block above the dark one for
+  // light, the dark block itself for dark.
+  function baseTokens(theme) {
+    const darkStart = css.indexOf(':root[data-theme="dark"]');
+    return theme === "dark" ? block(':root[data-theme="dark"]') : block(":root");
+  }
+
+  const presets = [...css.matchAll(/:root(\[data-accent="([a-z]+)"\])/g)].map((m) => m[2]);
+  // Blue is the default and declares no override: it is the light/dark base
+  // tokens, checked by the guards above.
+  expect([...new Set(presets)]).toEqual(["orange"]);
+
+  for (const name of [...new Set(presets)]) {
+    for (const [theme, selector] of [
+      ["light", `:root[data-accent="${name}"]`],
+      ["dark", `:root[data-theme="dark"][data-accent="${name}"]`],
+    ]) {
+      it(`${theme} ${name}: the accent text token clears 4.5:1 on every surface`, () => {
+        const accent = block(selector);
+        const base = baseTokens(theme);
+        for (const token of ["--accent", "--accent-soft", "--accent-line", "--accent-strong", "--accent-text", "--accent-ink"]) {
+          expect(accent[token], `${selector} must declare ${token}`).toMatch(/^#[0-9a-fA-F]{6}$/);
+        }
+        for (const bgName of ["--panel", "--panel-soft", "--bg", "--accent-soft"]) {
+          const bg = bgName === "--accent-soft" ? accent[bgName] : base[bgName];
+          expect(contrast(accent["--accent-text"], bg), `${theme} ${name} --accent-text on ${bgName}`).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(contrast(accent["--accent-ink"], accent["--accent"]), `${theme} ${name} ink on accent`).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  }
 });
 
 describe("status semantics", () => {
