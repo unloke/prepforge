@@ -406,7 +406,8 @@ export function createAnalyzeView({
         }
         const cls = String(node.classification || "unknown");
         const group = CLASS_GROUP_OF[cls.toLowerCase()];
-        const glyph = group ? classBadgeSymbol(cls) : "";
+        // A sound move carries no sign: the list marks only what stands out.
+        const glyph = group && group !== "good" ? classBadgeSymbol(cls) : "";
         // "unknown" is the absent-grade sentinel: nothing to show or read out.
         const grade = group ? CLASS_GROUPS.find((g) => g.key === group).label : "";
         return {

@@ -340,6 +340,10 @@ describe("the panel's one filled action", () => {
 });
 
 describe("score sheet ink", () => {
+  it("signs only the moves that stand out, not every sound one", () => {
+    expect(ANALYZE_SOURCE).toMatch(/const glyph = group && group !== "good" ? classBadgeSymbol(cls)/);
+  });
+
   it("marks the selected move with one 1px accent line, not a filled tile", () => {
     // The selection rule: a thin accent line on the token's bottom edge, the
     // label in ink, no fill. The grade glyph keeps the move's ink.
