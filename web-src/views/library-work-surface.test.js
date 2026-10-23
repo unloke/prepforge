@@ -51,6 +51,14 @@ it("the checklist's rows stay a list on an empty library", () => {
   expect(step).not.toMatch(/max-height/);
 });
 
+it("a step keeps its title beside its action", () => {
+  // The steps run across the card while they fit, on a minimum width. At 240px
+  // a step was narrower than its title plus its button, so "Link your Lichess
+  // account" broke in two and the third step dropped alone onto a second line.
+  const step = rule(".steps > .step {");
+  expect(step).toMatch(/min-width:\s*320px/);
+});
+
 it("the error card stands where the empty card stands", () => {
   // Both are the only thing in the list card, so both stand in the middle of
   // it. The error used to float at the top with the whole surface empty under
