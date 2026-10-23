@@ -335,12 +335,14 @@
   }
   #view-replay .toolbar > .src > .src-label { grid-column: 1 / -1; color: var(--muted); font-size: 14px; }
   #view-replay .toolbar > .src > .src-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  /* No source yet: the empty card below says what to add, so the row is just
+     its name and Add on one line instead of a label over a blank cell. */
+  #view-replay .toolbar > .src:has(> .src-chips:empty) { grid-template-columns: minmax(0, 1fr) auto; }
+  #view-replay .toolbar > .src:has(> .src-chips:empty) > .src-label { grid-column: auto; }
+  #view-replay .toolbar > .src:has(> .src-chips:empty) > .src-chips { display: none; }
   /* A selected source is a state, not the screen's action: it takes the
      recessed fill and ink text like every other selected control here. */
   #view-replay .toolbar .src-chip { background: var(--surface-3); color: var(--text); }
-  /* No source yet is a note in the row, not a chip: as a grey pill its words
-     wrapped into a two-line lozenge beside Add. */
-  #view-replay .toolbar .src-empty { padding: 0; border-radius: 0; background: none; color: var(--muted); font-size: 14px; text-wrap: balance; }
   #view-replay .toolbar > .src > .btn {
     justify-self: end;
     min-height: 44px;

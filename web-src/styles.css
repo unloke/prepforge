@@ -762,14 +762,6 @@ h2 {
   flex-wrap: wrap;
 }
 
-.src-empty {
-  padding: 3px 9px;
-  border-radius: 12px;
-  background: var(--surface-3);
-  color: var(--label);
-  font-size: var(--fs-s);
-}
-
 .src-chip {
   display: inline-flex;
   align-items: center;
@@ -1954,14 +1946,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 48px 24px;
+  gap: 6px;
+  padding: 24px 16px;
   border: 0;
   background: none;
 }
-.empty-state.big h3 { color: var(--text); font-size: 16px; text-wrap: balance; }
-/* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
-.empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
+.empty-state.big h3 { color: var(--text); font-size: 16px; font-weight: 600; text-wrap: balance; }
+/* Compact instruction copy, aligned with app-screen density. */
+.empty-state.big p { max-width: 420px; margin: 0; font-size: 13px; text-wrap: pretty; color: var(--muted); }
 .empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 
@@ -3543,10 +3535,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a white toolbar on a white card is told apart by its edge */
-  border-radius: var(--radius-card);
-  background: var(--panel);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+/* One control height across the row: the source chips, the sample/colour
+   select, Add and Check are all 30px, so their baselines line up. */
+@media (min-width: 761px) {
+  .toolbar .src-chip,
+  .toolbar .btn.sm { height: var(--control-h); min-height: var(--control-h); }
 }
 .toolbar .spacer { flex: 1; }
 .src { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -3587,11 +3584,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 
-/* Desktop Games and Scout: the page names itself, as Settings does, and the
-   controls sit on the title's row instead of in a white strip of their own. The
-   strip was a 48px band of 13px controls over the whole width, which read as a
-   cramped form line; on the title row they read as the page's own controls and
-   the results get the height. */
+/* Desktop Games and Scout: title and controls share one row, no toolbar card.
+   Controls align to a common baseline (src chips + inline field + button),
+   same height everywhere, no extra vertical space. */
 @media (min-width: 861px) {
   .review > :is(.games-panel, .scout-panel):not([hidden]) {
     display: grid;
@@ -3603,8 +3598,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .review > section > .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
   .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
   .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
-  /* An empty Scout is a card the report lands in, the way the Games ledger is
-     before its first Check, not a line of text floating on the page ground. */
+  /* Empty states are compact cards inside the panel grid; Maia promo stays
+     scoped to the grid instead of overflowing. */
   .scout-panel .scout-empty { border-radius: var(--radius-card); background: var(--panel); }
 }
 

@@ -672,7 +672,6 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".src-chip");
     expect(css).toContain(".src-popover");
     expect(css).toContain(".src-kind");
-    expect(css).toContain(".src-empty");
     // Games + Scout share one selection system: the Source Composer primitive.
     expect(app).toContain("views/shared/source-composer.js");
     expect(app).toContain("openSourceComposer");

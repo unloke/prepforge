@@ -85,7 +85,21 @@
 .coach-card > .coach-unlock { grid-row: 3; }
 .train-play-setup [data-unlock-place],
 #coverage-drawer [data-unlock-place] { margin: 2px 0 8px; }
-.scout-main > [data-unlock-place] { max-width: 720px; margin-bottom: 12px; }
+/* Scout: the promo is a slim notice on the report's own edge — name, what it
+   adds and the one action on a single 40px line — instead of a 720px card that
+   lined up with nothing. On a phone it keeps the stacked row. */
+.scout-main > [data-unlock-place] { margin-bottom: 12px; }
+@media (min-width: 761px) {
+  .scout-main > [data-unlock-place] .unlock {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    width: fit-content;
+    max-width: 100%;
+    min-height: 40px;
+    padding: 0 6px 0 12px;
+  }
+  .scout-main > [data-unlock-place] .unlock-text { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .scout-main > [data-unlock-place] .unlock-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 /* On the page ground (Scout) the row takes the card surface to stand off it. */
 .scout-main > [data-unlock-place] .unlock { background: var(--panel); }
 
@@ -102,6 +116,19 @@
 /* A finger-sized dismiss on a phone. */
 @media (max-width: 760px) {
   .unlock:not(.is-inline) .unlock-x { width: 40px; height: 40px; margin-top: -6px; }
+  /* Scout's promo stays one compact row on a phone: the name over its gain,
+     the action and the dismiss beside them, rather than a third stacked block
+     above the empty card. */
+  .scout-main > [data-unlock-place] .unlock:not(.is-inline) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px;
+    min-height: 0;
+    padding: 8px 4px 8px 12px;
+  }
+  .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-text { min-width: 0; }
+  .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-line { font-size: 12px; }
+  .scout-main > [data-unlock-place] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: end; align-self: center; }
+  .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
 }
 
 /* The engine card on a phone is a short band over the board: its row stays one

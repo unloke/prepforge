@@ -193,10 +193,9 @@ function paintGamesSource() {
     return;
   }
   const selection = gamesSourceSelection();
-  const { chips, selfState } = selectionChips(selection, lichessAccounts());
+  const { chips } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
   const label = n > 0 ? `Self · ${n} linked account${n === 1 ? "" : "s"}` : "Self · all linked";
-  const visible = chips.length ? chips : [{ kind: "self", label }];
   tray.hidden = false;
   // Signed in with nothing linked and no usernames added: "Self · all linked"
   // named an empty set and Check stayed disabled without saying why.
@@ -205,19 +204,16 @@ function paintGamesSource() {
       html`<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess to use your games</button>`;
     return;
   }
-  tray.innerHTML = html`${visible
+  // Nothing picked: the ledger's empty state names the next step, so the tray
+  // stays empty rather than carrying a sentence of its own.
+  tray.innerHTML = chips.length ? html`${chips
     .map((c) =>
       c.kind === "self"
         ? html`<span class="src-chip is-self" data-games-chip-self>${label}</span>`
         : c.kind === "external"
           ? html`<span class="src-chip" data-games-chip="${c.id}">${c.label}<button type="button" class="src-chip-x" data-games-unpick-external="${c.id}" aria-label="Remove ${c.label} from Games sources">×</button></span>`
           : html`<span class="src-chip" data-games-chip="${c.id}">${c.label}${c.primary ? html` <span class="conn-primary">Primary</span>` : ""}<button type="button" class="src-chip-x" data-games-unpick="${c.id}" aria-label="Remove ${c.label} from Games sources">×</button></span>`
-    )}`;
-  if ((selfState === "none" || (!chips.length && selection.linkedMode !== "all")) && !selection.external.length) {
-    tray.innerHTML =
-      html`<span class="src-empty">No sources — open Add and pick one</span>`;
-    return;
-  }
+    )}` : "";
   const hint = document.getElementById("games-idle-hint");
   if (hint) hint.textContent = gamesIdleHint();
 }
