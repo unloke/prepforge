@@ -29,6 +29,18 @@ it("keeps the page header's action a thumb target in ink", () => {
   expect(button).toMatch(/color:\s*var\(--text\)/);
 });
 
+// The title row is the top of the page, not a band: at 56px tall with a 20px
+// margin inside a container that also gapped its children by 20px, Library,
+// Games, Scout and Teams opened with ~50px of dead ground under the title.
+it("the page title row is the action's height and adds no margin of its own", () => {
+  const head = rule(".page-head {");
+  expect(head).toMatch(/min-height:\s*44px/);
+  expect(head).toMatch(/margin:\s*0;/);
+  expect(head).not.toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
+  // A page that stacks blocks in normal flow still gets one gap from the shell.
+  expect(rule(".view > .page-head {")).toMatch(/margin-bottom:\s*var\(--phone-gap\)/);
+});
+
 it("draws the bottom bar as chrome: a tone step, no shadow, ink selection", () => {
   const bar = rule(".tabbar {");
   expect(bar).toMatch(/border-top:\s*1px solid var\(--line\)/);

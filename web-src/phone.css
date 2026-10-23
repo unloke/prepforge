@@ -65,15 +65,21 @@
   }
   /* The header is a title row, not a hero: the page's own content is what the
      screen is about, so the name sits at the app-title size (22px) instead of
-     a 32px display size that out-shouts the list under it. */
+     a 32px display size that out-shouts the list under it. Its height is the
+     action button's, not a 56px band around a 30px line. */
   .page-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    min-height: 56px;
-    margin: 0 0 var(--phone-gap);
+    min-height: 44px;
+    margin: 0;
   }
+  /* The header carries no margin of its own: a container that already gaps its
+     children (the Library column, the Games panel) would then space it twice,
+     which is what put ~50px of dead ground under the title. Only a page that
+     stacks its blocks in normal flow gets the gap from here. */
+  .view > .page-head { margin-bottom: var(--phone-gap); }
   .page-head h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
   .page-head-btn {
     display: flex;
