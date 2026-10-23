@@ -276,8 +276,10 @@
   #view-dashboard .lib-row .rep-sub { font-size: 13px; }
   /* The desktop row carries a mastery figure in its own column; the phone row
      dropped it, so a phone could not tell a trained repertoire from an
-     untrained one. On a phone the figure is the row's trailing value, on the
-     name's line, and the queue chips keep their own line under the name. */
+     untrained one. On a phone it closes the name's line at 13px — the size of
+     the row's other quiet facts — and the queue keeps the line under it, so the
+     right edge is one value beside the name rather than two lines of numbers
+     beside the ⋯. */
   #view-dashboard .lib-row .lib-opt {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -287,24 +289,17 @@
     min-width: 0;
   }
   #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; }
-  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; display: flex; align-items: baseline; }
+  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; align-self: start; justify-self: end; display: flex; padding-top: 2px; }
   #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
   #view-dashboard .lib-row .lib-mbar { display: none; }
-  /* The figure over its word, right-aligned: "0% mastered" on one line took
-     88px from the name, which cut it to "Throwaway de…" and wrapped the
-     colour line under it. */
-  #view-dashboard .lib-row .lib-mastery { flex-direction: column; align-items: flex-end; width: auto; gap: 0; line-height: 1.2; }
-  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  #view-dashboard .lib-row .lib-mastery-word { display: block; color: var(--label); font-size: 12px; }
+  #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
+  #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
   /* A shared repertoire is read-only; its name line already says so. */
   #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
-  /* An untrained repertoire has no figure, only a note, and the note is wide
-     enough to cut the name down to three letters when it shares the name's
-     line. It takes the row's own line under the name instead. */
-  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-opt {
-    grid-template-areas: "rep rep" "mastery mastery" "queue queue";
-  }
-  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { padding-left: 38px; }
+  /* An untrained repertoire has no figure, only a note, and the note belongs
+     where the queue would be: under the name, at the name's left edge. */
+  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { grid-area: queue; justify-self: start; padding-left: 38px; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 44px; height: 44px; opacity: 1; }
 

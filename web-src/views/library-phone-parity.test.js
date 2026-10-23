@@ -60,9 +60,8 @@ it("the phone repertoire row keeps the mastery figure", () => {
 it("an untrained repertoire keeps its name whole on a phone", () => {
   // The note that says a repertoire has no trained moves is as wide as the
   // name it shared a line with, so the name was cut to three letters. The note
-  // takes the row's own line under the name instead.
-  const opt = rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-opt {");
-  expect(opt).toMatch(/grid-template-areas:\s*"rep rep"/);
+  // takes the queue's place under the name instead.
+  expect(rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery {")).toMatch(/grid-area:\s*queue/);
   // Aligned with the name, not with the colour dot.
   expect(rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
 });
