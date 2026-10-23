@@ -56,6 +56,10 @@
 .train-outlook-cell span { color: var(--label); font-size: var(--fs); }
 .train-outlook-cell:first-child b { color: var(--accent-text); }
 
+/* A row is the app's card primitive, one tone step inside the panel: the
+   panel is already --panel, so a --panel fill here could only be told apart by
+   a hairline drawn around every row. The rest of the app separates surfaces by
+   tone; so does this. */
 .train-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -63,9 +67,9 @@
   align-items: center;
   gap: 8px 12px;
   padding: 12px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: var(--radius-card);
-  background: var(--panel);
+  background: var(--panel-soft);
 }
 .train-row-text { grid-area: text; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .train-row-title { margin: 0; font-size: 15px; font-weight: 650; width: fit-content; }

@@ -152,6 +152,13 @@
   --radius-card: 10px; /* cards, popovers, dialogs */
   --radius-chip: 4px; /* status and kind pills: one step under a control */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  /* -- Spacing scale ----------------------------------------------------
+     Two gaps do the work: between cards, and between the groups a page is
+     made of. Items inside one card sit closer than --gap-card, so a card
+     reads as one unit and the page reads as a few blocks rather than a list
+     of equal gaps. Pages used to set 10, 12, 14 and 20px for the same job. */
+  --gap-card: 12px;    /* between cards in a column or grid */
+  --gap-group: 20px;   /* between a page's groups (Today strip, table, steps) */
   /* The chevron a <select> draws for itself: one glyph, themed by the token so
      the arrow is legible on both grounds. */
   --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%2367696e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -1571,7 +1578,7 @@ h2 {
   flex-direction: column;
   /* The Today strip is its own band: the gap to the table is wider than the
      gap inside a card, so the two do not read as one surface. */
-  gap: 20px;
+  gap: var(--gap-group);
   max-width: 1640px;
 }
 #view-dashboard,
@@ -1593,7 +1600,7 @@ h2 {
 }
 .teams {
   display: grid;
-  gap: 12px;
+  gap: var(--gap-card);
   align-items: start;
 }
 
@@ -1744,7 +1751,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 12px;
+  gap: var(--gap-card);
   align-items: start;
 }
 .lib-grid:has(> .steps[hidden]) { grid-template-columns: minmax(0, 1fr); }
@@ -3308,7 +3315,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--gap-card);
   padding: 14px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -3543,7 +3550,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .review {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-card);
   height: 100%;
   min-height: 0;
 }
@@ -3552,7 +3559,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-card);
 }
 .toolbar {
   display: flex;
@@ -3625,14 +3632,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-card);
 }
 .scout-grid {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 12px;
+  gap: var(--gap-card);
 }
 /* position: relative makes the scrolling columns the containing block for
    absolutely-positioned descendants (the .visually-hidden chart summaries).
@@ -3641,7 +3648,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    dragged down into empty space. */
 .scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; container: scout-main / inline-size; }
 .scout-main > * { flex-shrink: 0; }
-.scout-results { display: flex; flex-direction: column; gap: 10px; }
+.scout-results { display: flex; flex-direction: column; gap: var(--gap-card); }
 /* The detail card ends with its content: a line's detail runs 448-536px tall,
    and stretching the card to the 808px grid row left a 284px white hole under
    it. It still caps at the row and scrolls if a detail runs longer. */
