@@ -108,7 +108,12 @@ async function hydrateBuild(payload, selectedNodeId = null) {
     boards.build.setOrientation(payload.color === "black" ? "black" : "white");
   }
   renderBuildRepHeader();
-  const nextNodeId = selectedNodeId || payload.selected_node_id || payload.nodes[0]?.id;
+  // The opening node must exist in this payload. A node that a concurrent edit
+  // removed (an anchor passed in, or a stale selection) made selectBuildNode
+  // return at once, so the tree was never painted and the skeleton stayed up.
+  const known = (id) => !!id && appState.buildNodeById.has(id);
+  const root = payload.nodes.find((node) => node.depth === 0) || payload.nodes[0];
+  const nextNodeId = [selectedNodeId, payload.selected_node_id].find(known) || root?.id;
   await selectBuildNode(nextNodeId);
   // R-02: put this repertoire's unsynced local edits back onto the tree the
   // server just sent, and re-prune what is queued for deletion.
