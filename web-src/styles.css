@@ -335,6 +335,16 @@
   --eval-side-black: #0e0f11;
 }
 
+/* ---- Board colour themes --------------------------------------------------
+   The board reads --square-light and --square-dark on <html data-board>, set
+   before first paint by theme.js (applyBoardTheme). `slate` is the default and
+   takes the theme values above. A swatch in Settings carries the same pair on
+   itself, so the picker shows the board it will make. One pair is the same in
+   both themes: the squares are the board's colours, not the page's. */
+:root[data-board="classic"], .board-color-swatch[data-board="classic"] { --square-light: #f0d9b5; --square-dark: #b58863; }
+:root[data-board="green"], .board-color-swatch[data-board="green"] { --square-light: #eeeed2; --square-dark: #769656; }
+:root[data-board="walnut"], .board-color-swatch[data-board="walnut"] { --square-light: #e6c9a0; --square-dark: #8a5a33; }
+
 /* ---- Accent presets ------------------------------------------------------
    The user picks the accent (product.md, "Accent is a user choice"). The
    choice is a `data-accent` attribute on <html>, set before first paint by
@@ -1059,15 +1069,6 @@ h2 {
   gap: 12px;
   min-width: 0;
 }
-/* One column, in the strip's order. Every section is in the page at once, so
-   the strip is anchor navigation that tracks the scroll (settings.js marks the
-   card you are in) rather than a tab set that switches panes: a tab set would
-   hide five cards the page already has. The cards follow the strip's order —
-   Board is third in the markup (it sits with the other personal cards) and
-   last in the strip, so it is ordered last here too. A two-column masonry put
-   it beside Engine instead, and the tab you picked and the card it landed on
-   were in different columns. */
-.settings-content > #set-board { order: 1; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }

@@ -83,24 +83,16 @@ export async function whenSettingsReady() {
   return view;
 }
 
-// Open Settings through its tab (same path as a rail click) and jump to a
-// section once the view is ready — no fixed delay.
+// Open Settings through its tab (same path as a rail click), then show the
+// area that holds the section. A block inside a card (Chess accounts lives in
+// Account) opens that card's area.
 export async function openSettingsSection(sectionId) {
   const tab = document.querySelector('.tab[data-view="settings"]');
   if (tab) tab.click();
   else switchView("settings");
   await whenSettingsReady();
-  const link = document.querySelector(`.settings-nav-link[href="#${sectionId}"]`);
-  if (link) {
-    link.click();
-    return;
-  }
-  // A block inside a card (Chess accounts lives in Account): open that card.
-  // Scrolling the block itself to the top pushed the card's own top off the
-  // screen, and the strip's scroll spy then marked the next card down (the
-  // deep link said Account, the strip said Board).
-  const card = document.getElementById(sectionId)?.closest(".card[id]");
-  if (card) document.querySelector(`.settings-nav-link[href="#${card.id}"]`)?.click();
+  const area = document.getElementById(sectionId)?.closest("[data-area]")?.dataset.area;
+  document.querySelector(`.settings-nav-link[data-area="${area}"]`)?.click();
 }
 
 let settingsActionsPromise = null;

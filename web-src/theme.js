@@ -5,6 +5,10 @@ export const THEME_MODES = Object.freeze(["system", "light", "dark"]);
 // (light) and a dark counterpart, each measured to 4.5:1.
 export const ACCENT_MODES = Object.freeze(["blue", "orange"]);
 
+// The board's square colours. `slate` is the default and carries no override;
+// every other name has a `:root[data-board="…"]` block in styles.css.
+export const BOARD_MODES = Object.freeze(["slate", "classic", "green", "walnut"]);
+
 // The persisted color theme, kept in the shared prefs blob. Writing the blob
 // rewrites every other pref as well, so a first paint reads it without writing
 // (a never-written blob is the defaults, not an edit), while a user choice
@@ -92,6 +96,15 @@ export function applyAccent(value, { root = document.documentElement } = {}) {
   if (accent === "blue") delete root.dataset.accent;
   else root.dataset.accent = accent;
   return accent;
+}
+
+// Board colours: one attribute on <html>, like the accent. Unknown names fall
+// back to the default, so a hand-edited pref cannot leave the board unpainted.
+export function applyBoardTheme(value, { root = document.documentElement } = {}) {
+  const board = BOARD_MODES.includes(value) ? value : "slate";
+  if (board === "slate") delete root.dataset.board;
+  else root.dataset.board = board;
+  return board;
 }
 
 // The one call the Settings picker makes next round: setAccent("orange").

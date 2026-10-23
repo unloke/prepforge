@@ -7,25 +7,7 @@
 
 /* ---- Section nav ------------------------------------------------------- */
 
-/* The page title row is the shell's (`styles.css` `.page-head`): one height,
-   one title size and one gap on every view. Settings adds only the inline
-   section name that sits on the title's baseline. */
 
-/* The section you are in, named beside the page title: the heading and the
-   strip answer "where am I" with the same word at the same moment. */
-.settings-here {
-  margin: 0;
-  color: var(--muted);
-  font-size: 17px;
-  font-weight: 600;
-}
-.settings-here::before {
-  content: "/";
-  margin-right: 10px;
-  color: var(--line-strong);
-  font-weight: 400;
-}
-.settings-here span { color: var(--text); }
 
 .settings-nav {
   width: fit-content;
@@ -58,12 +40,23 @@
 
 /* ---- Cards + rows ------------------------------------------------------ */
 
-/* A jump to a section lands its title below the sticky strip, not under it
-   (settings.js measures the strip; this is the first-paint value). */
-.settings-content > .set { scroll-margin-top: 64px; }
-
 .set {
   padding: 12px 14px;
+}
+/* A section with a title is a row: the title in a label column, its rows in
+   the panel beside it (app-screens 8.2). The title and the panel share the top
+   edge. A card with no title of its own (the view's h1 names it) stays full
+   width, and a phone stacks both. */
+@media (min-width: 761px) {
+  .settings-content > .set:has(> h2) {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+    padding: 16px 20px;
+  }
+  .settings-content > .set:has(> h2) > h2 { grid-column: 1; grid-row: 1; margin: 6px 0 0; }
+  .settings-content > .set:has(> h2) > :not(h2) { grid-column: 2; }
 }
 .set h2 {
   display: flex;
@@ -244,36 +237,6 @@
 .conn-menu-item:hover { background: var(--surface-3); }
 .conn-menu-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .conn-menu-item.is-danger { color: var(--danger-strong); }
-
-/* ---- Motion ------------------------------------------------------------ */
-
-/* The page arrives with the view's own cross-fade and nothing else: a second
-   rise on the title, the strip and each card read as the page loading twice.
-
-   A jump from the strip lands on its card: an accent ring and a faint tint
-   come up and fade, so the eye finds the card even when the page could not
-   scroll it to the top. Opacity only; reduced motion shows the ring without
-   the fade and settings.js takes it off. */
-.settings-content > .set { position: relative; }
-.settings-content > .set.is-landed::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 2px var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  animation: set-land 1400ms var(--ease-out) both;
-}
-@keyframes set-land {
-  0% { opacity: 0; }
-  14% { opacity: 1; }
-  55% { opacity: 1; }
-  100% { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .settings-content > .set.is-landed::after { animation: none; opacity: 1; }
-}
 
 /* ---- Responsive -------------------------------------------------------- */
 
@@ -477,77 +440,66 @@
   background: var(--rule);
   margin: 16px -14px;
 }
+/* Accent presets: a name with its colour dot. The chosen one takes a 2px line
+   exactly as wide as its label, on the bottom edge (the app's one selection
+   mark). The dot colours are the presets' own, light and dark. */
 .set .accent-swatches,
 .set .board-color-swatches {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px 20px;
 }
-.accent-swatch {
-  appearance: none;
-  background: transparent;
-  border: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-control);
-  cursor: pointer;
-  position: relative;
-  padding: 0;
-  display: grid;
-  place-items: center;
-}
-.accent-swatch:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
-}
-.accent-line {
-  width: 24px;
-  height: 3px;
-  border-radius: 2px;
-  background: currentColor;
-}
-.accent-swatch[aria-pressed="true"] .accent-line {
-  background: var(--text);
-  box-shadow: 0 0 0 2px var(--active);
-}
-.accent-preview {
-  margin-top: 8px;
-}
-.accent-control-sample {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: var(--radius-card);
-  background: var(--raised);
-  border: 1px solid var(--border);
-}
-.accent-control-sample .btn {
-  font-size: 13px;
-  font-weight: 600;
-}
+.accent-swatch,
 .board-color-swatch {
   appearance: none;
-  background: transparent;
-  border: 0;
-  width: 56px;
-  height: 40px;
-  border-radius: var(--radius-control);
-  cursor: pointer;
+  position: relative;
   display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.accent-swatch:hover,
+.board-color-swatch:hover { color: var(--text); }
+.accent-swatch:focus-visible,
+.board-color-swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.accent-swatch[aria-pressed="true"],
+.board-color-swatch[aria-pressed="true"] { color: var(--text); }
+.accent-swatch[aria-pressed="true"]::after,
+.board-color-swatch[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 2px;
+  background: var(--accent);
+}
+.accent-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.accent-swatch[data-accent="blue"] { --swatch: #2f5bd3; }
+.accent-swatch[data-accent="orange"] { --swatch: #c2410c; }
+:root[data-theme="dark"] .accent-swatch[data-accent="blue"] { --swatch: #6d8ff0; }
+:root[data-theme="dark"] .accent-swatch[data-accent="orange"] { --swatch: #f0932b; }
+/* The board preview: a 2x2 board in the theme's own squares, named beside it. */
+.board-mini {
+  display: grid;
+  grid-template-columns: repeat(2, 14px);
+  border-radius: 3px;
   overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
-.board-color-swatch:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
-}
-.board-color-swatch[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 2px var(--active);
-}
-.board-square {
-  flex: 1;
-  height: 100%;
-}
-.board-square.dark {
-  border-left: 1px solid var(--rule);
-}
+.board-square { width: 14px; height: 14px; }
+.board-square.light { background: var(--square-light); }
+.board-square.dark { background: var(--square-dark); }

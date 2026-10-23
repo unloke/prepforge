@@ -524,14 +524,6 @@
     transition: opacity var(--dur-fast) var(--ease-out);
   }
   #view-settings .settings-nav-link.is-active::after { opacity: 1; }
-  /* The heading names the open section on the title's line. The row is the
-     shared 44px header (phone.css above); Settings only opens it to the left,
-     so the page title and the section sit together. */
-  #view-settings .page-head { justify-content: flex-start; align-items: center; gap: 8px; }
-  #view-settings .settings-here { margin: 0; font-size: 17px; }
-  #view-settings .settings-here::before { margin-right: 8px; }
-  /* A jump lands the card below the sticky strip. */
-  #view-settings .settings-content > .set { scroll-margin-top: 72px; }
   #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
   #view-settings .set { padding: 0 16px; }
   /* A long section title plus its info and action buttons (Maia3: "Download",

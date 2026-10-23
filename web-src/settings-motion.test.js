@@ -14,13 +14,6 @@ describe("settings motion", () => {
     expect(css).toMatch(/::view-transition-new\(view\) \{[^}]*animation:\s*view-enter/);
   });
 
-  it("lands a jump on its card with a ring that fades, and keeps the ring still for reduced motion", () => {
-    expect(settings).toMatch(/\.set\.is-landed::after \{[^}]*box-shadow: inset 0 0 0 2px var\(--accent\)[^}]*animation: set-land/);
-    const frames = /@keyframes set-land \{([\s\S]*?)\n\}/.exec(settings)[1];
-    expect(frames).not.toMatch(/transform|width|height|top|left/);
-    expect(settings).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.settings-content > \.set\.is-landed::after \{ animation: none; opacity: 1; \}/);
-  });
-
   it("keeps the entrance to opacity and travel", () => {
     const frames = /@keyframes view-enter \{([\s\S]*?)\n\}/.exec(css)[1];
     expect(frames).not.toMatch(/width|height|top:|left:|margin|padding/);

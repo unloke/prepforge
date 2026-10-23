@@ -1,8 +1,11 @@
-// Settings Appearance area — accent presets and board color themes.
-// Replaces inline appearance controls in index.html with modular rendering.
+// Settings Appearance area: theme, accent preset, board colours and piece set.
+// Every choice applies at once; the previews are the real controls on the page
+// (the accent sample uses the primary button, the board swatch is a 2x2 board).
 
-import { ACCENT_MODES, readStoredAccent, setAccent } from "../theme.js";
-import { html } from "../html.js";
+import { ACCENT_MODES, BOARD_MODES, readStoredAccent, setAccent } from "../theme.js";
+
+const ACCENT_LABELS = { blue: "Blue", orange: "Orange" };
+const BOARD_LABELS = { slate: "Slate", classic: "Classic", green: "Green", walnut: "Walnut" };
 
 export function createAppearanceSection({ pref, setPref }) {
   let bound = false;
@@ -32,8 +35,7 @@ export function createAppearanceSection({ pref, setPref }) {
 
     themeSeg.querySelectorAll(".seg-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const value = btn.dataset.themeValue;
-        setPref("theme", value);
+        setPref("theme", btn.dataset.themeValue);
         renderTheme();
       });
     });
@@ -44,7 +46,6 @@ export function createAppearanceSection({ pref, setPref }) {
     if (!container) return;
 
     const current = readStoredAccent() || "blue";
-
     container.innerHTML = "";
 
     ACCENT_MODES.forEach((accent) => {
@@ -53,89 +54,48 @@ export function createAppearanceSection({ pref, setPref }) {
       btn.className = "accent-swatch";
       btn.dataset.accent = accent;
       btn.setAttribute("aria-pressed", String(accent === current));
-      btn.setAttribute("title", `${accent.charAt(0).toUpperCase() + accent.slice(1)} accent`);
 
-      // Create colored line element for the swatch
-      const line = document.createElement("span");
-      line.className = "accent-line";
-      btn.append(line);
-
-      container.append(btn);
-
-      // Bind click handler
+      // The dot is the preset's own colour; the selected name is underlined by CSS.
+      const dot = document.createElement("span");
+      dot.className = "accent-dot";
+      btn.append(dot, ACCENT_LABELS[accent] || accent);
       btn.addEventListener("click", () => {
         setAccent(accent);
         renderAccentPresets();
-        updateAccentSample();
       });
+      container.append(btn);
     });
-
-    // Also update the sample preview
-    updateAccentSample();
-  }
-
-  function updateAccentSample() {
-    const sample = document.getElementById("settings-accent-sample");
-    if (!sample) return;
-
-    // The sample button will automatically pick up the current accent via CSS
-    // because it has class="btn primary" which uses --primary, set by accent preset
   }
 
   function renderBoardColors() {
     const container = document.getElementById("settings-board-colors");
     if (!container) return;
 
-    const currentPair = [pref("boardLight"), pref("boardDark")] || ["classic", null];
-    const lightColor = currentPair[0] || "#f0d9b5";
-    const darkColor = currentPair[1] || "#b58863";
-
-    // Board color themes from existing CSS variables
-    const themes = [
-      { name: "classic", light: "#f0d9b5", dark: "#b58863" },
-      { name: "green", light: "#dee3c6", dark: "#769456" },
-      { name: "blue", light: "#cce0ff", dark: "#5e7fa0" },
-      { name: "dark", light: "#c3bcbb", dark: "#787270" },
-      { name: "seafoam", light: "#d1f2eb", dark: "#43a198" },
-    ];
-
+    const current = pref("boardTheme") || "slate";
     container.innerHTML = "";
 
-    themes.forEach((theme) => {
+    BOARD_MODES.forEach((board) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "board-color-swatch";
-      btn.dataset.themeName = theme.name;
-      btn.setAttribute("aria-pressed", String(theme.name === currentPair[0]));
-      btn.setAttribute("title", `${theme.name.charAt(0).toUpperCase() + theme.name.slice(1)} board`);
+      btn.dataset.board = board;
+      btn.setAttribute("aria-pressed", String(board === current));
 
-      // Two squares showing the pair
-      const squareLight = document.createElement("div");
-      squareLight.className = "board-square light";
-      squareLight.style.backgroundColor = theme.light;
-
-      const squareDark = document.createElement("div");
-      squareDark.className = "board-square dark";
-      squareDark.style.backgroundColor = theme.dark;
-
-      btn.append(squareLight, squareDark);
-      container.append(btn);
-
-      // Bind click handler
+      // A 2x2 board in this theme's own squares.
+      const mini = document.createElement("span");
+      mini.className = "board-mini";
+      for (const tone of ["light", "dark", "dark", "light"]) {
+        const square = document.createElement("span");
+        square.className = `board-square ${tone}`;
+        mini.append(square);
+      }
+      btn.append(mini, BOARD_LABELS[board] || board);
       btn.addEventListener("click", () => {
-        setPref("boardLight", theme.name);
-        setPref("boardDark", null); // null means use CSS default
+        setPref("boardTheme", board);
         renderBoardColors();
       });
+      container.append(btn);
     });
-  }
-
-  function bindBoardColors() {
-    // Handlers attached during render
-  }
-
-  function dispose() {
-    // No persistent state to clean up
   }
 
   return {
@@ -144,10 +104,6 @@ export function createAppearanceSection({ pref, setPref }) {
       renderAccentPresets();
       renderBoardColors();
     },
-    bind: () => {
-      bindTheme();
-      bindBoardColors();
-    },
-    dispose,
+    bind: bindTheme,
   };
 }

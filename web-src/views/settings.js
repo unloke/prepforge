@@ -9,7 +9,6 @@ import { subscribeDownloads } from "../engine/engine-downloads.js";
 
 import "./settings.css";
 import { createAccountSection } from "./settings-account.js";
-import { jumpToSection } from "./settings-jump.js";
 import { createSettingsRouter } from "./settings-router.js";
 import { createAppearanceSection } from "./settings-appearance.js";
 
@@ -46,10 +45,9 @@ export function createSettingsView({
   const downloads = createSettingsDownloads({ showConfirmModal, setPref });
   const appearanceSection = createAppearanceSection({ pref, setPref });
   const router = createSettingsRouter({
-    renderArea,
+    showArea: showSettingsArea,
     navEl: document.querySelector(".settings-nav"),
-    hereEl: document.getElementById("settings-current"),
-    contentEl: document.querySelector("#view-settings .settings-content"),
+    titleEl: document.getElementById("settings-current"),
   });
 
   function paintSwitch(el, on) {
@@ -229,7 +227,8 @@ export function createSettingsView({
     renderEngineProfile();
     void renderStockfishVersion();
     renderStrengthControls();
-    renderThemeControl();
+    appearanceSection.render();
+    router.open();
     let connections = Promise.resolve();
     try {
       connections = Promise.resolve(renderConnections()).catch(() => {});
@@ -343,39 +342,12 @@ export function createSettingsView({
     onAccountsChanged();
   }
 
-  // Render individual settings areas by name (hash route compatible).
-  async function renderArea(areaName, { showOthers = false } = {}) {
-    // Area names map to section ids without "set-" prefix
-    const areaMap = {
-      account: "set-account",
-      appearance: "set-appearance",
-      engine: "set-engine",
-      maia: "set-maia",
-      strength: "set-strength",
-      board: "set-board",
-    };
-    const sectionId = areaMap[areaName];
-    if (!sectionId) return Promise.resolve();
-
-    // If not showing others, hide all sections except the requested one
-    if (!showOthers) {
-      document.querySelectorAll("#view-settings .settings-content > .card").forEach((card) => {
-        card.hidden = card.id !== sectionId;
-      });
-    }
-
-    // Trigger initial rendering of elements in this section
-    switch (areaName) {
-      case "account":
-        return accountSection.render().catch(() => {});
-      case "appearance":
-        appearanceSection.render();
-        return Promise.resolve();
-      case "engine":
-        return renderEngineCard().catch(() => {});
-      default:
-        return Promise.resolve();
-    }
+  // One area is one view: its cards show and the rest hide. renderSettings
+  // loads the data on every open, so a switch only moves the frame.
+  function showSettingsArea(area) {
+    document.querySelectorAll("#view-settings .settings-content > .card").forEach((card) => {
+      card.hidden = card.dataset.area !== area;
+    });
   }
 
   // One info pop is open at most: opening one closes the rest.
@@ -405,113 +377,11 @@ export function createSettingsView({
     });
   }
 
-  // Section nav: click scrolls the card into view and marks the link active; a
-  // scroll spy keeps the active marker honest while the user scrolls by hand.
-  // The same id names the section beside the page title, so the heading and the
-  // strip never disagree. On a phone the strip is one row that scrolls
-  // sideways, so the open link is brought into it.
-  function markActiveSection(id) {
-    let label = "";
-    let current = null;
-    document.querySelectorAll(".settings-nav .settings-nav-link").forEach((link) => {
-      const active = link.getAttribute("href") === `#${id}`;
-      link.classList.toggle("is-active", active);
-      // aria-current is the accessible form of the same mark.
-      if (!active) return link.removeAttribute("aria-current");
-      link.setAttribute("aria-current", "true");
-      label = link.textContent.trim();
-      current = link;
-    });
-    const here = document.getElementById("settings-current");
-    if (here && label) here.textContent = label;
-    const nav = document.querySelector(".settings-nav");
-    if (nav && current && nav.scrollWidth > nav.clientWidth) {
-      const left = current.offsetLeft;
-      const right = left + current.offsetWidth;
-      if (left < nav.scrollLeft) nav.scrollLeft = Math.max(0, left - 16);
-      else if (right > nav.scrollLeft + nav.clientWidth - 28) nav.scrollLeft = right - nav.clientWidth + 44;
-    }
-  }
-
-  function bindSectionNav() {
-    const nav = document.querySelector(".settings-nav");
-    if (!nav || nav.dataset.navBound === "1") return;
-    nav.dataset.navBound = "1";
-    // The markup paints Account as the open section; this names it in the
-    // heading too, so the two agree from the first frame.
-    markActiveSection((nav.querySelector(".settings-nav-link.is-active")?.getAttribute("href") || "").slice(1) || "set-account");
-    // A clicked link stays the active marker while its scroll settles: a short
-    // page cannot always bring the target to the spy line, so the spy would
-    // otherwise hand the marker to a taller neighbour mid-scroll.
-    let lockedId = null;
-    nav.querySelectorAll(".settings-nav-link").forEach((link) => {
-      link.addEventListener("click", (event) => {
-        const id = (link.getAttribute("href") || "").slice(1);
-        const target = id && document.getElementById(id);
-        if (!target) return;
-        event.preventDefault();
-        markActiveSection(id);
-        lockedId = id;
-        jumpToSection(target, () => {
-          if (lockedId === id) lockedId = null;
-        });
-      });
-    });
-    const sections = () =>
-      Array.from(document.querySelectorAll("#view-settings .card[id]"));
-    // A phone fits five of the six tabs: fade the edge that still has tabs
-    // behind it, so a half-drawn label reads as "there is more" and not as a
-    // broken word. The attribute is the only thing the stylesheet reads.
-    const paintEdges = () => {
-      const max = nav.scrollWidth - nav.clientWidth;
-      nav.dataset.edge = max <= 1 ? "" : nav.scrollLeft <= 1 ? "end" : nav.scrollLeft >= max - 1 ? "start" : "both";
-    };
-    paintEdges();
-    nav.addEventListener("scroll", paintEdges, { passive: true });
-    // The view is display:none until it opens, so the strip has no width yet at
-    // bind time; this fires again when it does (and when a resize or a font
-    // change alters the tabs' width).
-    if (typeof ResizeObserver === "function") new ResizeObserver(paintEdges).observe(nav);
-    let spyTick = false;
-    const onScroll = () => {
-      if (spyTick) return;
-      spyTick = true;
-      requestAnimationFrame(() => {
-        spyTick = false;
-        if (lockedId) {
-          markActiveSection(lockedId);
-          return;
-        }
-        const list = sections();
-        // When the viewport is taller than content, nothing hijacks the click's
-        // choice—only scroll events change the marker. Keep the nav synced while
-        // scrolling so it matches what the user actually sees.
-        if (document.documentElement.scrollHeight - window.innerHeight < window.innerHeight * 0.5) return;
-        // The last card whose top passed the probe line - also the right answer
-        // when the line sits in the gap between two cards. At the bottom of the
-        // page a last card too short to reach the line still counts, once it
-        // sits in the upper half of the screen.
-        const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
-        const probe = window.innerHeight * (atEnd ? 0.5 : 0.35);
-        // By position, not markup order: the markup groups Board with the
-        // personal cards for the two-column page, and one column shows it last.
-        let current = list[0]?.id ?? null;
-        let lowest = -Infinity;
-        for (const section of list) {
-          const top = section.getBoundingClientRect().top;
-          if (top <= probe && top > lowest) { lowest = top; current = section.id; }
-        }
-        if (current) markActiveSection(current);
-      });
-    };
-    document.addEventListener("scroll", onScroll, { passive: true });
-  }
-
   function bind() {
     if (eventsBound) return;
     eventsBound = true;
+    window.addEventListener("hashchange", router.hashChanged);
 
-    // Hash router handles navigation - no scroll-based section nav needed
     accountSection.bind();
     appearanceSection.bind();
 
@@ -634,7 +504,6 @@ export function createSettingsView({
     dispose() { for (const unsubscribe of unsubscribers.splice(0)) unsubscribe(); },
     renderSettings,
     refreshEngineCard,
-    renderArea,
     renderBrowserEngineStatus,
     renderDownloads: downloads.render,
     renderStrengthControls,

@@ -1,8 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   ACCENT_MODES,
   applyAccent,
+  applyBoardTheme,
   applyTheme,
+  BOARD_MODES,
   effectiveTheme,
   normalizeAccent,
   normalizeTheme,
@@ -56,6 +59,30 @@ describe("persisted theme", () => {
   it("still applies a pick when storage is unavailable", () => {
     const broken = { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } };
     expect(storeTheme("dark", broken)).toBe("dark");
+  });
+});
+
+describe("board colour themes", () => {
+  it("keeps slate as the default and writes the attribute only for a named board", () => {
+    expect(BOARD_MODES).toContain("slate");
+    const root = { dataset: {} };
+    expect(applyBoardTheme("green", { root })).toBe("green");
+    expect(root.dataset.board).toBe("green");
+    expect(applyBoardTheme("slate", { root })).toBe("slate");
+    expect(root.dataset).not.toHaveProperty("board");
+  });
+
+  it("paints the default for an unknown name instead of leaving the board unstyled", () => {
+    const root = { dataset: { board: "classic" } };
+    expect(applyBoardTheme("violet", { root })).toBe("slate");
+    expect(root.dataset).not.toHaveProperty("board");
+  });
+
+  it("has a CSS pair for every named board", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    for (const board of BOARD_MODES.filter((name) => name !== "slate")) {
+      expect(css).toMatch(new RegExp(`:root\\[data-board="${board}"\\][^{]*\\{[^}]*--square-light`));
+    }
   });
 });
 
