@@ -17,6 +17,8 @@ const sources = view.slice(view.indexOf('id="analyze-open"'));
 describe("Analyze's desktop panel", () => {
   it("keeps the score sheet on screen without a tab", () => {
     expect(panes).toContain('id="analysis-results"');
+    // The sheet has its own heading, so it never reads as the engine's lines.
+    expect(panes).toMatch(/id="analysis-results"[^>]*>\s*<header class="an-pane-head"><b>Moves<\/b><\/header>/);
     // No tab is needed to see it: the pane is shown whenever a game is on the
     // board, and only the stacked and phone bands gate panes on data-pane.
     expect(css).not.toMatch(/^#view-analyze:not\(\[data-pane="moves"\]\) \.moves-pane/m);
