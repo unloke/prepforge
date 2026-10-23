@@ -86,14 +86,13 @@
 .train-play-setup [data-unlock-place],
 #coverage-drawer [data-unlock-place] { margin: 2px 0 8px; }
 /* Scout: the promo is a slim notice on the report's own edge — name, what it
-   adds and the one action on a single 40px line — instead of a 720px card that
-   lined up with nothing. On a phone it keeps the stacked row. */
+   adds and the one action on a single 40px line that shares both edges with the
+   card below — instead of a 720px card that lined up with nothing. On a phone it
+   keeps the stacked row. */
 .scout-main > [data-unlock-place] { margin-bottom: 12px; }
 @media (min-width: 761px) {
   .scout-main > [data-unlock-place] .unlock {
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    width: fit-content;
-    max-width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     min-height: 40px;
     padding: 0 6px 0 12px;
   }
@@ -126,7 +125,6 @@
     padding: 8px 4px 8px 12px;
   }
   .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-text { min-width: 0; }
-  .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-line { font-size: 12px; }
   .scout-main > [data-unlock-place] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: end; align-self: center; }
   .scout-main > [data-unlock-place] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
 }
