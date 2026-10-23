@@ -119,14 +119,15 @@ const REVIEW_GRADES = new Set(["brilliant", "great", "mistake", "blunder"]);
 
 /**
  * The moves a review lists, in game order: every brilliant, great, mistake and
- * blunder, and the move that left the player's own preparation. Each carries its
- * eval before and after, the win chance it cost (mistakes and blunders), and the
- * better move the run found. The report's list and the smart-review lane both
+ * blunder, and the move that left preparation (the user's or the opponent's).
+ * Each carries its eval before and after, the win chance it cost (mistakes and
+ * blunders), the better move the run found, and `by` ("you" | "opponent", or null
+ * when the user's side is unknown). The report's list and the review bar both
  * read this one function, so they name the same moves.
  */
-export function reviewMoments(moves = [], evalGraph = [], reps = []) {
+export function reviewMoments(moves = [], evalGraph = [], reps = [], selfSide = null) {
   const byPly = new Map(plies(evalGraph, moves).map((row) => [row.ply, row]));
-  const departure = prepDeparture(moves, reps);
+  const departure = prepDeparture(moves, reps, selfSide);
   return moves
     .filter((move) => REVIEW_GRADES.has(reportGradeOf(move.classification)) || Number(move.ply) === departure?.ply)
     .map((move) => {
@@ -143,6 +144,9 @@ export function reviewMoments(moves = [], evalGraph = [], reps = []) {
         move,
         grade: marked,
         departure: ply === departure?.ply,
+        by: ply === departure?.ply ? departure.by : null,
+        prepared: ply === departure?.ply ? departure.prepared : false,
+        repName: ply === departure?.ply ? departure.repName : "",
         before: formatEval(row?.prev),
         after: formatEval(row?.point),
         loss: row && (grade === "mistake" || grade === "blunder") ? Math.round(row.loss) : null,
@@ -203,11 +207,15 @@ const known = (value) => (value && !/^[?*.\s]+$/.test(String(value)) ? String(va
 // first mainline move no repertoire continues is the departure; a game still
 // inside the book, or a player with no repertoire for that colour, reports
 // nothing. A book that never enters the line is not a departure at move 1.
-export function prepDeparture(moves = [], reps = []) {
-  if (!moves.length || !reps.length) return null;
+// With the user's side known, only that colour's repertoires are walked; `by`
+// says whose move left the book, and is null when the side is unknown.
+export function prepDeparture(moves = [], reps = [], selfSide = null) {
+  const pool = selfSide ? reps.filter((rep) => rep.color === selfSide) : reps;
+  if (!moves.length || !pool.length) return null;
   let deepest = -1;
   let deepestRep = null;
-  for (const rep of reps) {
+  let deepestWalk = null;
+  for (const rep of pool) {
     let walk = rep.rootId;
     let matched = 0;
     for (const move of moves) {
@@ -219,12 +227,30 @@ export function prepDeparture(moves = [], reps = []) {
     if (matched > deepest) {
       deepest = matched;
       deepestRep = rep;
+      deepestWalk = walk;
     }
   }
   if (deepest <= 0 || deepest >= moves.length) return null;
   const move = moves[deepest];
   const ply = Number(move.ply) || deepest + 1;
-  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "" };
+  const by = selfSide ? (sideOfMove(move, ply) === selfSide ? "you" : "opponent") : null;
+  // `prepared`: the book had a move to play here, the one the coach would drill.
+  const prepared = (deepestRep.kids?.get(deepestWalk)?.length || 0) > 0;
+  return { ply, label: moveRef(move, ply), move, repName: deepestRep?.name || "", by, prepared };
+}
+
+/**
+ * Where a ply sits in the review: the moment on it (`current`), the ones either
+ * side (`prev`, `next`), and the one the bar's label shows (`focus`: the current
+ * moment, else the next, else the last one passed). `index` is focus's position
+ * in the list, -1 when there is none.
+ */
+export function reviewState(moments = [], ply = 0) {
+  const current = moments.find((m) => m.ply === ply) || null;
+  const next = moments.find((m) => m.ply > ply) || null;
+  const prev = [...moments].reverse().find((m) => m.ply < ply) || null;
+  const focus = current ?? next ?? prev;
+  return { index: focus ? moments.indexOf(focus) : -1, count: moments.length, current, focus, prev, next };
 }
 
 /**
@@ -232,7 +258,7 @@ export function prepDeparture(moves = [], reps = []) {
  * moments, phases, the opening and the prep departure. Null when nothing was
  * analysed.
  */
-export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps = [], names = {} } = {}) {
+export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null } = {}) {
   if (!moves.length) return null;
   const accuracy = sideAccuracy(evalGraph, moves);
   const counts = gradeCounts(moves);
@@ -245,7 +271,7 @@ export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps
       }]),
     ),
     result: known(headers.Result || names.result),
-    moments: reviewMoments(moves, evalGraph, reps),
+    moments: reviewMoments(moves, evalGraph, reps, selfSide),
     phases: phaseBreakdown(evalGraph, moves),
     opening: openingFromHeaders(headers),
     graded: moves.some((m) => reportGradeOf(m.classification)),
@@ -286,14 +312,25 @@ function countsHtml(report) {
 }
 
 const KIND_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
+const LEFT_PREP = { you: "You left prep", opponent: "Opponent left prep" };
 
-// One row per review move: the move (a jump to it), its kind, the eval it moved
-// and the win chance it cost, and the better move as a link on the same line.
+// A key moment's kind in words: its grade, and whose move left the book.
+export function momentKind(m) {
+  if (!m) return "";
+  return [m.grade && KIND_WORD[m.grade], m.departure && (LEFT_PREP[m.by] || "Left prep")].filter(Boolean).join(" · ");
+}
+
+// One row per review move: the move (a jump to it) and its kind. A graded move
+// shows the eval it moved and, for a mistake or blunder, the win chance it cost
+// and the better move on a line under it. A departure shows whose move left the
+// book and the repertoire's name, with no eval.
 function momentsHtml(report) {
   if (!report.moments.length) return "";
-  return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map(
-    (m) => html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${[m.grade && KIND_WORD[m.grade], m.departure && "Left prep"].filter(Boolean).join(" · ")}</span><span class="km-eval">${m.before} → ${m.after}</span><span class="km-loss">${m.loss == null ? "" : `−${m.loss}%`}</span></button>${m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : ""}</li>`,
-  )}</ol></section>`;
+  return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map((m) => {
+    const best = m.loss != null && m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : "";
+    const rep = m.departure && m.repName ? html`<span class="km-best">${m.repName}</span>` : "";
+    return html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${momentKind(m)}</span><span class="km-eval">${m.grade ? `${m.before} → ${m.after}` : ""}</span><span class="km-loss">${m.loss == null ? "" : `−${m.loss}%`}</span></button>${best}${rep}</li>`;
+  })}</ol></section>`;
 }
 
 function phasesHtml(report) {
@@ -336,9 +373,11 @@ export function reportHtml(report, open = true) {
 // `onGrade(side, grade)` to the next move of that side by that side. The
 // summary toggles the full report; the host's `data-open` keeps that state
 // across re-renders, and the report starts collapsed.
-export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, onJump = () => {}, onGrade = () => {} } = {}) {
-  if (!host) return;
-  const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names });
+// Returns the built report (null when nothing was analysed), so the caller can
+// read the same moments the block lists.
+export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
+  const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names, selfSide });
+  if (!host) return report;
   const draw = () => {
     host.innerHTML = reportHtml(report, host.dataset.open === "true");
   };
@@ -359,4 +398,5 @@ export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, r
     const jump = event.target.closest?.("[data-ply]");
     if (jump) onJump(Number(jump.dataset.ply));
   };
+  return report;
 }

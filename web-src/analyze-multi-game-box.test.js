@@ -189,7 +189,7 @@ function harness() {
       return {
         game_id: `game-${prep.selectIndex + 1}`, engine: "sf-test", depth: 4, summary: {},
         moves: treeOf(prep.pgn).moves.map((m) => ({ ...m, classification: "good", comment: "" })),
-        eval_graph: [], critical_moments: [], position_evals: {},
+        eval_graph: [], position_evals: {},
       };
     }),
     showConfirmModal: vi.fn(async () => false),

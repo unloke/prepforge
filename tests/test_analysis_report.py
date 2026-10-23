@@ -1,4 +1,3 @@
-from prepforge_chess.core.models import MoveClassification
 from prepforge_chess.services.browser_compute import classify_precomputed_game
 from prepforge_chess.services.analysis_report import AnalysisReportBuilder
 from prepforge_chess.services.pgn_import import PgnImportService
@@ -28,17 +27,11 @@ def _analysis_result():
     return classify_precomputed_game(game, positions, engine_name="test", depth=10)
 
 
-def test_analysis_report_builds_eval_graph_and_jump_targets():
-    result = _analysis_result()
-    result.move_results[4].classification = MoveClassification.INACCURACY
-    result.move_results[4].comment = "clear but recoverable drop"
-
-    report = AnalysisReportBuilder().build(result)
+def test_analysis_report_builds_eval_graph():
+    report = AnalysisReportBuilder().build(_analysis_result())
 
     assert len(report.eval_graph) == 6
     assert report.eval_graph[0].ply == 1
-    assert report.critical_moments[0].ply == 5
-    assert report.jump_plies == [5]
 
 
 def test_analysis_payload_eval_graph_carries_mate_distance():

@@ -1055,6 +1055,7 @@ const viaAnalyzeSession = (name) => (...args) => (analyzeSession
   ? analyzeSession[name](...args)
   : loadAnalyzeSession().then((loaded) => loaded[name](...args)));
 const analysisTreeNav = viaAnalyzeSession("analysisTreeNav");
+const reviewNav = viaAnalyzeSession("reviewNav");
 const discardAnalyzeCheckpoint = viaAnalyzeSession("discardAnalyzeCheckpoint");
 const hideAnalysisHandoff = viaAnalyzeSession("hideAnalysisHandoff");
 const loadPgnIntoAnalyze = viaAnalyzeSession("loadPgnIntoAnalyze");
@@ -1646,6 +1647,12 @@ function bindEvents() {
     // there: Analyze and Build each have one; every other view has none, so ← →
     // must do nothing on it. This handler lives on the document, so it cannot be
     // released with a view; the view name is the guard instead.
+    // Shift+← / Shift+→ in Analyze: the previous / next key moment (the review bar).
+    if (view === "analyze" && event.shiftKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      void reviewNav(event.key === "ArrowLeft" ? "prev" : "next").catch(() => {});
+      return;
+    }
     const inBuild = view === "build";
     const stepsBoard = inBuild || view === "analyze";
     const arrows = event.key === "ArrowLeft" || event.key === "ArrowRight";
@@ -1727,7 +1734,7 @@ async function init() {
   createBook({ editRepertoire });
   analyzeLoader = createAnalyzeView({
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
-    selectNode: selectAnalysisNode, reveal: revealAnalysisResults,
+    selectNode: selectAnalysisNode, reveal: revealAnalysisResults, selfSide: analysisSelfSide,
   });
   libraryEntry = createLibrary({
     switchView, hydrateBuild, syncViewHeads, openTrain, editRepertoire,

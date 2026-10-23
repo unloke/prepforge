@@ -175,7 +175,6 @@ async function openPage() {
         game_id: "smoke-game", engine: "stockfish (browser)", depth: 4, summary: {},
         position_evals: {}, moves,
         eval_graph: moves.map((m) => ({ ply: m.ply, san: m.san, score_cp: m.score_cp, bounded_score_cp: m.score_cp ?? 0, classification: m.classification })),
-        critical_moments: [],
       });
     }
     if (path.startsWith("/api/repertoires")) return json({ repertoires: [], shared: [] });

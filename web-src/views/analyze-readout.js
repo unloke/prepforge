@@ -57,7 +57,21 @@ export function formatPointEval(point) {
 // (plus the class glyph), so the readout never depends on colour alone.
 // With the game's move for that ply, the SAN is a move token: the chart's hover
 // peeks at the position after it (the readout itself takes no pointer).
-export function evalChartTooltipHtml(point, { isCurrent = false, move = null } = {}) {
+// The departure notch: the one moment with no eval event, so a thin line from the
+// chart's top edge down to the curve at that ply.
+export function departureNotch(x, y) {
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  line.setAttribute("class", "eval-departure");
+  line.setAttribute("x1", String(x));
+  line.setAttribute("x2", String(x));
+  line.setAttribute("y1", "0");
+  line.setAttribute("y2", String(y));
+  line.setAttribute("vector-effect", "non-scaling-stroke");
+  line.setAttribute("aria-hidden", "true");
+  return line;
+}
+
+export function evalChartTooltipHtml(point, { isCurrent = false, move = null, leftPrep = false } = {}) {
   if (!point) return "";
   const raw = String(point.classification || "").toLowerCase();
   const label = raw ? raw.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : "";
@@ -68,6 +82,6 @@ export function evalChartTooltipHtml(point, { isCurrent = false, move = null } =
     ? moveTokenHtml(move.fen_before, [move.uci], 0, san, { focusable: false })
     : san;
   return (
-    html`${moveNo}<b>${sanHtml}</b> · ${formatPointEval(point)}${label ? ` · ${glyph} ${label}` : ""}${isCurrent ? " · current" : ""}`
+    html`${moveNo}<b>${sanHtml}</b> · ${formatPointEval(point)}${label ? ` · ${glyph} ${label}` : ""}${leftPrep ? " · left prep" : ""}${isCurrent ? " · current" : ""}`
   );
 }
