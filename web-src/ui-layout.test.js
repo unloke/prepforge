@@ -445,8 +445,8 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     const head = view.slice(view.indexOf('class="cc-head"'), view.indexOf('class="coach-prose"'));
     // The Evaluation card holds the eval figure, win meter, the game graph and
-    // the whole-game progress; the live engine is its own pillar beside the
-    // report and the score sheet, all behind one tab strip.
+    // the whole-game progress. The engine's lines, the score sheet and the
+    // report follow in the panel's one column.
     const body = view.slice(view.indexOf('class="panel-scroll"'));
     const card = body.slice(body.indexOf('id="analysis-eval-card"'), body.indexOf("</section>", body.indexOf('id="analysis-eval-card"')));
     for (const id of ["analysis-chart-caption", "analysis-eval-meter", "eval-chart-live", "eval-chart", "analysis-job-dock"]) {
@@ -519,7 +519,7 @@ describe("workspace chrome layout", () => {
     expect(view).toContain('class="tabs" role="tablist"');
     expect(view).toContain('id="team-invite-foot"');
     // Page grid in the eager sheet: the lists beside the team, then one column.
-    expect(css).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); \}/);
+    expect(css).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
     expect(teamsCss).toContain(".team-row.is-selected");
     // The old page intro, stacked-card chrome and generic list rows are gone.
@@ -544,10 +544,11 @@ describe("workspace chrome layout", () => {
     // take the whole window: a fixed side column was easy to miss.
     expect(css).toMatch(/\.settings\s*\{[^}]*display:\s*block/);
     expect(css).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky[^}]*background:\s*var\(--panel\)/);
-    // A wide window gets two card columns, so the six cards fit on one screen
-    // instead of running 1.6 screens down a single column.
-    expect(css).toMatch(/@media\s*\(min-width:\s*1200px\)[\s\S]*?\.settings-content\s*\{[^}]*column-count:\s*2/);
-    expect(css).toMatch(/\.settings-content\s*>\s*\.set\s*\{[^}]*break-inside:\s*avoid/);
+    // One column of cards in the strip's own order, capped and centred: a
+    // two-column masonry listed Board third and drew it beside Engine, so the
+    // section you picked and the card you landed on were in different columns.
+    expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
+    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*880px[^}]*margin:\s*0 auto/);
     // The desktop page names itself: the phone header is hidden on wide
     // screens, so without this the Settings view has no heading at all.
     expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*flex/);
@@ -672,7 +673,6 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".src-chip");
     expect(css).toContain(".src-popover");
     expect(css).toContain(".src-kind");
-    expect(css).toContain(".src-empty");
     // Games + Scout share one selection system: the Source Composer primitive.
     expect(app).toContain("views/shared/source-composer.js");
     expect(app).toContain("openSourceComposer");
@@ -747,8 +747,9 @@ describe("workspace chrome layout", () => {
     // board's height and hold hundreds of px of empty tone under a short game.
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
     expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
-    // On a wide panel the score sheet fills its pillar and is its only scroller.
-    expect(analyzeCss).toMatch(/@media \(min-width: 1101px\) and \(min-height: 700px\) \{[\s\S]*?\.moves-pane > \.moves-grid \{ flex: 1 1 auto; max-height: none; \}/);
+    // One column at every side-by-side width: the sheet keeps its own cap and
+    // scrolls inside it, so a long game never stretches the panel.
+    expect(analyzeCss).toMatch(/\.an-panes > \.moves-pane:not\(\[hidden\]\) \{ flex: none; \}/);
     expect(ruleBody(".panel-scroll")).toMatch(/overflow:\s*auto/);
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,120}?overflow:\s*hidden/);
     // Panels that need independent scroll keep it: coach prose, inspector,

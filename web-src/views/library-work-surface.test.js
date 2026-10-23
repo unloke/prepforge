@@ -1,10 +1,11 @@
-// The Library is a work surface: on a desktop the table card takes the height
-// it is given instead of floating as a short card over empty ground.
+// The Library card ends at its last row.
 //
-// It used to stop at the last row, so a page with three repertoires showed a
-// table in the top third and half a screen of nothing. The setup checklist is
-// a short list beside it and keeps its own height. These rules pin that split
-// so a density pass cannot turn the page back into a floating card.
+// The table card used to be told to take the height it was given, so a page
+// with three repertoires showed them in the top third and about 70% of the card
+// was empty white below them; the setup checklist beside it ended far short, so
+// the row of cards finished ragged as well. A list is not a work surface: it
+// sizes to its rows. The one case that still needs a floor is the empty library,
+// whose card centres the first-run invitation.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -22,22 +23,24 @@ function rule(selector) {
   return css.slice(open, css.indexOf("}", open));
 }
 
-// The desktop block that turns the Library into a work surface. The sheet has
-// one desktop media query per view, so take the one that holds the grid rule.
-const gridRule = css.indexOf(".lib-grid { flex: 1 1 auto");
+// The desktop block that lays the Library out. The sheet has one desktop media
+// query per view, so take the one that holds the grid rule.
+const gridRule = css.indexOf(".lib-grid { align-items: start");
 const desktop = css.slice(css.lastIndexOf("@media (min-width: 1021px) {", gridRule));
 
-it("the Library grid takes the height it is given", () => {
+it("the Library grid sizes to its rows", () => {
+  // No flex growth: the card is as tall as the table in it.
   const grid = desktop.slice(desktop.indexOf(".lib-grid {"), desktop.indexOf(".lib-grid {") + 200);
-  expect(grid).toMatch(/flex:\s*1 1 auto/);
-  expect(grid).toMatch(/align-items:\s*stretch/);
+  expect(grid).toMatch(/align-items:\s*start/);
+  expect(grid).not.toMatch(/flex:\s*1 1 auto/);
+  expect(desktop).not.toMatch(/\.lib \{ min-height: 100% \}/);
 });
 
-it("the setup checklist keeps its own height beside the table", () => {
-  const steps = rule(".lib-grid > .steps {");
-  expect(steps).toMatch(/align-self:\s*start/);
-  // On an empty library there is no table, so the checklist may grow.
-  expect(rule(".lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps {")).toMatch(/align-self:\s*stretch/);
+it("the empty library's card is its invitation, not a floor", () => {
+  // The card had a 320px floor and then a 236px one; both held a blank band
+  // under the invitation (102px, then 48px). The invitation is the card's only
+  // content, so the card is its height.
+  expect(css).not.toMatch(/\.lib-list\.is-empty:not\(\.is-error\)\) > \.lib-list \{ min-height/);
 });
 
 it("the checklist's rows stay a list on an empty library", () => {
@@ -46,6 +49,14 @@ it("the checklist's rows stay a list on an empty library", () => {
   const step = rule(".lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step {");
   expect(step).toMatch(/flex:\s*0 0 auto/);
   expect(step).not.toMatch(/max-height/);
+});
+
+it("a step keeps its title beside its action", () => {
+  // The steps run across the card while they fit, on a minimum width. At 240px
+  // a step was narrower than its title plus its button, so "Link your Lichess
+  // account" broke in two and the third step dropped alone onto a second line.
+  const step = rule(".steps > .step {");
+  expect(step).toMatch(/min-width:\s*320px/);
 });
 
 it("the error card stands where the empty card stands", () => {

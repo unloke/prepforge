@@ -120,21 +120,25 @@ describe("the Due row", () => {
     expect(dueStartState({ cards: 5 }, { signedIn: true, hasRepertoire: true })).toEqual({ label: "Start", action: "start" });
   });
 
-  it("says Resume with what is left only for an unfinished queue of this scope", () => {
-    expect(dueStartState({ cards: 5, resumed: true, left: 3 }, { signedIn: true, hasRepertoire: true }).label).toBe("Resume · 3 cards left");
-    expect(dueStartState({ cards: 5, resumed: true, left: 1 }, { signedIn: true, hasRepertoire: true }).label).toBe("Resume · 1 card left");
+  it("says Resume for an unfinished queue of this scope, and the row's line counts what is left", () => {
+    expect(dueStartState({ cards: 5, resumed: true, left: 3 }, { signedIn: true, hasRepertoire: true }).label).toBe("Resume");
+    expect(dueMeta({ cards: 5, resumed: true, left: 3 })).toBe("3 cards left");
+    expect(dueMeta({ cards: 5, resumed: true, left: 1 })).toBe("1 card left");
   });
 
-  it("lists only the card kinds that are there", () => {
-    expect(dueMeta({ weak: 1, due: 0, new: 2, polish: 0 })).toBe("1 weak · 2 new");
-    expect(dueMeta({ weak: 0, due: 0, new: 0 })).toBe("Nothing due");
+  it("the Due row's line is the session's size, not the outlook's counts again", () => {
+    expect(dueMeta({ cards: 4, weak: 1, due: 1, new: 1, polish: 1 })).toBe("4 cards");
+    expect(dueMeta({ cards: 1 })).toBe("1 card");
+    expect(dueMeta({ cards: 0 })).toBe("Nothing due");
     expect(dueMeta(null)).toBe("");
   });
 
-  it("the outlook is three numbers with their words, no caption", () => {
+  it("the outlook leads with what is due now, then the two horizons behind it", () => {
     const out = String(outlookHtml({ now: 1, today: 4, week: 9 }));
-    expect(out.match(/train-outlook-cell/g)).toHaveLength(3);
-    expect(out).toContain("<b>4</b><span>today</span>");
+    expect(out).toContain('<span class="train-outlook-lead"><b>1</b> due now</span>');
+    expect(out).toContain("4 by tonight · 9 this week");
+    // A horizon that adds nothing is not said: one figure, then silence.
+    expect(String(outlookHtml({ now: 2, today: 2, week: 2 }))).not.toContain("train-outlook-rest");
     expect(String(outlookHtml(null))).toBe("");
   });
 

@@ -86,6 +86,71 @@ describe("visual system tokens", () => {
     }
   });
 
+  // Every control the app draws shares one radius. Selects and the segmented
+  // control used to carry their own (4px in a dialog, 7px on the track, 5px on
+  // its option), so the same control read as three different shapes.
+  it("draws every control on the shared control radius", () => {
+    expect(ruleBody(".btn")).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(ruleBody(".seg")).toMatch(/border-radius:\s*calc\(var\(--radius\) \+ 2px\)/);
+    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*var\(--radius\)/);
+    // The <select> base rule is the one that gives a dropdown the app's box.
+    const selectRule = css.match(/(?:^|\n)select \{([^}]+)\}/g)
+      ?.map((rule) => rule.replace(/^[\n]*/, ""))
+      .find((rule) => rule.includes("--control-h")) || "";
+    expect(selectRule).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(selectRule).toMatch(/height:\s*var\(--control-h\)/);
+    expect(selectRule).toMatch(/appearance:\s*none/);
+    expect(selectRule).toMatch(/background-image:\s*var\(--select-chevron\)/);
+  });
+
+  // The keyboard ring marks the focused control; it must not reshape it.
+  it("the focus ring leaves the control's own radius alone", () => {
+    const ring = css.match(/(?:^|\n):focus-visible \{([^}]+)\}/)?.[1] || "";
+    expect(ring).toMatch(/outline:\s*2px solid var\(--accent\)/);
+    expect(ring).not.toMatch(/border-radius/);
+  });
+
+  // A row's action is the shared button at the shared height. Train's rows set
+  // their own 34px and "I'm Feeling Lucky" sat as bare text beside an outlined
+  // Play: a text button next to a boxed one reads as a caption, not a control.
+  it("puts a row's primary on the shared button height", () => {
+    const train = readFileSync(join(root, "train-shell.css"), "utf8");
+    const go = /(?:^|\n)\.train-row-go \{([^}]+)\}/.exec(train)?.[1] || "";
+    expect(go).not.toMatch(/height:/);
+    expect(go).toMatch(/min-width:\s*92px/);
+  });
+
+  // phone.css hides `.page-head` at every width; only its own media query brings
+  // it back. Library and Teams were therefore nameless on a wide screen, and the
+  // inspector failed them for having no h1 at 1440.
+  it("names every page on a wide screen, not just the ones with a local rule", () => {
+    const desktop = css.match(
+      /@media \(min-width: 761px\) \{([^}]*\{[^}]*\}[^}]*)*?\n\}/,
+    )?.[0] || "";
+    const head = /\.workspace \.page-head \{([^}]+)\}/.exec(desktop)?.[1] || "";
+    expect(head).toMatch(/display:\s*flex/);
+    const title = /\.workspace \.page-head h1 \{([^}]+)\}/.exec(desktop)?.[1] || "";
+    expect(title).toMatch(/font-size:\s*32px/);
+    // The head's icon mirrors a control the desktop card head already shows in
+    // words: it would be a second "New repertoire" on the same screen.
+    expect(desktop).toMatch(/\.page-head \.page-head-btn \{ display: none; \}/);
+    for (const view of ["dashboard", "teams"]) {
+      const slice = html.slice(html.indexOf(`id="view-${view}"`));
+      expect(slice.slice(0, slice.indexOf("</section>"))).toContain('class="page-head"');
+    }
+  });
+
+  // A button answers the pointer with contrast, not weight: the edge steps to
+  // the muted ink as the fill steps to the page tone. The ghost has no edge to
+  // darken, so it must keep its border transparent instead of growing one.
+  it("answers a hover with a darker edge, and a ghost with none", () => {
+    const hover = /\.btn:hover:not\(:disabled, \.is-coming-soon\) \{([^}]+)\}/.exec(css)?.[1] || "";
+    expect(hover).toMatch(/border-color:\s*var\(--muted\)/);
+    expect(hover).toMatch(/background:\s*var\(--surface-3\)/);
+    const ghost = /\.btn\.ghost:hover:not\(:disabled, \.is-coming-soon\) \{([^}]+)\}/.exec(css)?.[1] || "";
+    expect(ghost).toMatch(/border-color:\s*transparent/);
+  });
+
   it("locks the Train coach height so Maia copy cannot shove the board", () => {
     expect(css).toContain(".train-coach");
     expect(ruleBody(".train-coach")).toMatch(/display:\s*grid/);
@@ -193,9 +258,13 @@ describe("seven views share chrome families", () => {
     const home = html.slice(html.indexOf('id="train-home"'), html.indexOf('id="train-progress-panel"'));
     const rows = [...home.matchAll(/<section class="train-row" data-row="([a-z_]+)">/g)].map((m) => m[1]);
     expect(rows).toEqual(["smart", "all_lines", "play"]);
-    // One primary action on Home: the Due queue's Start.
-    expect(home.match(/class="btn primary/g)).toHaveLength(1);
+    // One primary per row, in the same place and the same style: each mode's
+    // Start is the one filled action of its own card, at the card's top right.
+    expect(home.match(/class="btn primary train-row-go"/g)).toHaveLength(3);
+    expect(home.match(/class="btn primary/g)).toHaveLength(3);
     expect(home).toMatch(/class="btn primary train-row-go" id="start-train"/);
+    expect(home).toMatch(/class="btn primary train-row-go" id="start-rehearse"/);
+    expect(home).toMatch(/class="btn primary train-row-go" id="start-play"/);
     // No mode tabs, no second History.
     expect(html).not.toContain('id="train-modes"');
     expect(html.match(/data-train-history/g)).toHaveLength(1);

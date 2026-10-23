@@ -41,5 +41,8 @@ it("the result card's cells are soft fields and what changed is one unruled line
 
 it("Home's rows are cards of the app's own card primitive", () => {
   expect(rule(".train-row")).toMatch(/border-radius: var\(--radius-card\)/);
-  expect(rule(".train-row")).toMatch(/background: var\(--panel\)/);
+  // One tone step inside the panel, not a hairline around every row: the panel
+  // is already --panel, so a --panel row could only be told apart by an edge.
+  expect(rule(".train-row")).toMatch(/background: var\(--panel-soft\)/);
+  expect(rule(".train-row")).toMatch(/border: 0/);
 });

@@ -1,6 +1,7 @@
 // Deleting the repertoire that is open in Build: the page must stop showing
-// the deleted tree (its name, its position and that position's legal moves
-// under a "No repertoire" caption) and offer the empty start position.
+// the deleted tree (its name, its position and that position's legal moves)
+// and offer the empty start position. The board bar carries no caption: the
+// head already says "No repertoire open" and the panel offers the start.
 import { describe, expect, it, vi } from "vitest";
 import { localBoardInfo } from "./chess-local.js";
 import { appSource } from "./test-app-source.js";
@@ -40,7 +41,7 @@ describe("closing the open repertoire", () => {
     expect(position.fen).toBe(START_FEN);
     expect(position.legalMoves).toContain("e2e4");
     expect(board.setAnnotations).toHaveBeenCalledWith([], []);
-    expect(label.textContent).toBe("No repertoire");
+    expect(label.textContent).toBe("");
     for (const fn of ["renderBuildRepHeader", "renderBuilderTree", "syncWorkspaceUrl", "scheduleExplorerRefresh"]) {
       expect(deps[fn]).toHaveBeenCalled();
     }

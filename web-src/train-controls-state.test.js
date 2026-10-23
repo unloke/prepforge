@@ -89,8 +89,8 @@ describe("Home rows", () => {
     deps.api.mockResolvedValue({ next_session: { cards: 4, resumed: true, left: 2, due: 2 }, outlook: { now: 2, today: 2, week: 3 } });
     await createTrainHome(deps).paintTrainHome();
     expect(deps.api).toHaveBeenCalledWith(expect.stringContaining("summary?repertoire_id=r1&preview=true"));
-    expect(doc.getElementById("start-train").textContent).toBe("Resume · 2 cards left");
-    expect(doc.getElementById("train-due-meta").textContent).toBe("2 due");
+    expect(doc.getElementById("start-train").textContent).toBe("Resume");
+    expect(doc.getElementById("train-due-meta").textContent).toBe("2 cards left");
   });
 
   it("a repertoire opponent with nothing picked cannot start a game", async () => {

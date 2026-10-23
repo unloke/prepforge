@@ -88,7 +88,7 @@ export function createAccountSection({
       }
     }
     el.innerHTML =
-      html`<div class="acct-id"><span class="acct-avatar" aria-hidden="true">${initialOf(displayName || rawEmail)}</span><div class="acct-id-text"><div class="acct-id-name"><b data-acct-name${displayName ? "" : html` class="is-placeholder" title="No display name set: this part of your email is shown"`}>${shownName}</b><button type="button" class="btn sm ghost acct-edit" data-acct="rename" aria-label="Edit display name">Edit</button></div><div class="acct-id-email">${email}</div><div class="acct-id-meta"><span class="acct-tag">${method}</span>${planTag}</div></div><button type="button" class="btn sm acct-signout" data-acct="signout">Sign out</button></div>${account.hasPassword
+      html`<div class="acct-id"><span class="acct-avatar" aria-hidden="true">${initialOf(displayName || rawEmail)}</span><div class="acct-id-text"><div class="acct-id-name"><b data-acct-name${displayName ? "" : html` class="is-placeholder" title="No display name set: this part of your email is shown"`}>${shownName}</b><button type="button" class="btn sm ghost acct-edit" data-acct="rename" aria-label="Edit display name">Edit</button></div><div class="acct-id-email">${email}</div><div class="acct-id-meta"><span class="status-pill">${method}</span>${planTag}</div></div><button type="button" class="btn sm acct-signout" data-acct="signout">Sign out</button></div>${account.hasPassword
         ? row(
           "Password",
           html`<button type="button" class="btn sm" data-acct="password">Change password</button>`,

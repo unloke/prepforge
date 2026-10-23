@@ -67,6 +67,11 @@ describe("Settings → Account", () => {
     });
     await section.refresh();
     expect(String(body.innerHTML)).toContain("a@b.com");
+    // The sign-in method and the plan are the same kind of label as every other
+    // Settings chip, so they share the one pill (measured: 18px, 4px radius).
+    expect(String(body.innerHTML)).toContain('<span class="status-pill">Email sign-in</span>');
+    expect(String(body.innerHTML)).toContain('<span class="status-pill ">Free plan</span>');
+    expect(String(body.innerHTML)).not.toContain("acct-tag");
     expect(String(body.innerHTML)).toContain('data-acct="password"');
     expect(String(body.innerHTML)).toContain('data-acct="upgrade"');
     expect(String(body.innerHTML)).not.toContain('data-acct="portal"');

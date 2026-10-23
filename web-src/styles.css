@@ -152,6 +152,16 @@
   --radius-card: 10px; /* cards, popovers, dialogs */
   --radius-chip: 4px; /* status and kind pills: one step under a control */
   --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  /* -- Spacing scale ----------------------------------------------------
+     Two gaps do the work: between cards, and between the groups a page is
+     made of. Items inside one card sit closer than --gap-card, so a card
+     reads as one unit and the page reads as a few blocks rather than a list
+     of equal gaps. Pages used to set 10, 12, 14 and 20px for the same job. */
+  --gap-card: 12px;    /* between cards in a column or grid */
+  --gap-group: 20px;   /* between a page's groups (Today strip, table, steps) */
+  /* The chevron a <select> draws for itself: one glyph, themed by the token so
+     the arrow is legible on both grounds. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%2367696e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --switch-w: 34px;   /* one switch everywhere; a context may grow the hit box */
   --switch-h: 20px;
   --knob: 16px;
@@ -207,6 +217,10 @@
   --line: #2b3035;
   --line-soft: #25292d;
   --line-strong: #3a4046;
+
+  /* The select chevron is an SVG data URL, so it cannot take a var(): it is
+     redeclared with the dark --label grey. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a9aeb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* The accent */
   --accent: #6d8ff0;
@@ -383,11 +397,12 @@ button,
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
-   mouse click. Applies to every interactive control for consistency. */
+   mouse click. Applies to every interactive control for consistency. The ring
+   follows the element's own radius; this rule used to set `border-radius: 4px`
+   here, which reshaped whatever it landed on. */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
-  border-radius: 4px;
 }
 /* The skip link's target. A click on empty space focuses it, and the next key
    press would ring the whole workspace. */
@@ -401,6 +416,33 @@ select:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
 }
+
+/* A <select> is a control like a button: one radius, one height, the app's own
+   chevron instead of the platform's. Before this rule each context drew its own
+   (30px in a toolbar, 26px in the inspector, 32px in a dialog, the browser
+   arrow everywhere), so the same control read as three different things and the
+   system arrow sat on the app's flat surfaces like a browser widget. */
+select {
+  height: var(--control-h);
+  min-height: var(--control-h);
+  padding: 0 26px 0 10px;
+  border: 1px solid var(--line-strong); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
+  background-color: var(--panel);
+  background-image: var(--select-chevron);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  color: var(--text);
+  font-size: var(--fs-s);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+select:hover:not(:disabled) { border-color: var(--muted); }
+select:disabled { color: var(--label); cursor: not-allowed; }
 
 h1,
 h2,
@@ -593,22 +635,15 @@ h2 {
   color: var(--text);
 }
 
+/* The open destination: one filled tile, the label in ink. It used to be a pale
+   accent-soft tile with the label in accent-strong AND a 3px accent bar hanging
+   outside the tile's left edge, which drew the accent twice and let the bar
+   read as a clip mark. The accent belongs to the screen's action; the rail's
+   selection is a tone step, the same way a hover is. */
 .tab.is-active {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  background: var(--surface-3);
+  color: var(--text);
   font-weight: 600;
-}
-
-/* Collapsed rail: the active page is an accent tile plus a 3px edge bar. */
-.rail .tab.is-active::before {
-  content: "";
-  position: absolute;
-  left: -8px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
 }
 
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
@@ -760,14 +795,6 @@ h2 {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.src-empty {
-  padding: 3px 9px;
-  border-radius: 12px;
-  background: var(--surface-3);
-  color: var(--label);
-  font-size: var(--fs-s);
 }
 
 .src-chip {
@@ -978,8 +1005,13 @@ h2 {
   max-width: none;
   padding: 16px;
 }
+/* One column of cards, capped and centred like the other pages, so a row's
+   label and value stay a glance apart on a wide window (a full-width card put
+   them ~600px apart) and the page keeps equal margins. */
 .settings {
   display: block;
+  max-width: 880px;
+  margin: 0 auto;
 }
 /* The six sections are one strip under the title at every width: it is the
    page's only navigation, so it keeps a surface of its own instead of reading
@@ -1005,28 +1037,15 @@ h2 {
   gap: 12px;
   min-width: 0;
 }
-/* One column keeps the strip's order: Board, which the markup places with the
-   other personal cards for the two-column page, reads last. */
-@media (max-width: 1199px) {
-  .settings-content > #set-board { order: 1; }
-}
-/* Six cards in one column ran 1.6 screens on a wide window and left a third
-   of the page empty. Two columns fit the page on one screen and read down the
-   first and into the second: you and your board (Account, Appearance, Board),
-   then the engines (Engine, Maia3, Playing strength). Grouped that way the two
-   columns also end within a card of each other; the strip's order put the tall
-   Engine card under Account and left the right column 250px short. */
-@media (min-width: 1200px) {
-  .settings-content {
-    display: block;
-    column-count: 2;
-    column-gap: 12px;
-  }
-  .settings-content > .set {
-    break-inside: avoid;
-    margin-bottom: 12px;
-  }
-}
+/* One column, in the strip's order. Every section is in the page at once, so
+   the strip is anchor navigation that tracks the scroll (settings.js marks the
+   card you are in) rather than a tab set that switches panes: a tab set would
+   hide five cards the page already has. The cards follow the strip's order —
+   Board is third in the markup (it sits with the other personal cards) and
+   last in the strip, so it is ordered last here too. A two-column masonry put
+   it beside Engine instead, and the tab you picked and the card it landed on
+   were in different columns. */
+.settings-content > #set-board { order: 1; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
@@ -1132,17 +1151,21 @@ h2 {
   scale: 0.9;
 }
 
+/* Segmented control: a track with the chosen option on a panel-coloured plate.
+   The plate takes the app's one control radius; the track is that radius plus
+   its own 2px of padding, so the two curves stay concentric. (The pair was 7/5,
+   a radius found nowhere else in the app.) */
 .seg {
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  border-radius: 7px;
+  border-radius: calc(var(--radius) + 2px);
   background: var(--surface-3);
 }
 
 .seg-btn {
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   font-size: var(--fs-s);
@@ -1251,17 +1274,12 @@ h2 {
   }
 }
 
-/* Modal select field */
+/* Modal select field: the shared <select> box, sized for a dialog's rows. */
 .modal-field select {
-  height: 32px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--panel);
-  color: var(--text);
+  height: 32px;
   font-family: inherit;
 }
 
@@ -1289,6 +1307,22 @@ h2 {
      the top with room to grow; study views fill it exactly and scroll inside. */
   flex: 1 1 auto;
   min-height: 0;
+}
+
+/* The page's own name, on desktop. The phone sheet hides `.page-head` at every
+   width and only the phone media query brings it back, so Library and Teams
+   opened on a wide screen with nothing naming the page: the eye landed on a
+   table. Games, Scout and Settings re-show the row themselves; this is the
+   shell's copy of it for the rest. */
+@media (min-width: 761px) {
+  .workspace .page-head { display: flex; align-items: baseline; gap: 10px; }
+  .workspace .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  /* The head's icon button mirrors a control the desktop card head already
+     shows in words, so on a wide screen it would be a second "New repertoire". */
+  .workspace .page-head .page-head-btn { display: none; }
+  /* A container that gaps its children (the Library column) spaces the title
+     itself; only a page that stacks its blocks in flow needs the margin. */
+  .view > .page-head { margin: 0 0 10px; }
 }
 
 .view {
@@ -1365,8 +1399,11 @@ h2 {
     transform var(--dur-fast) var(--ease-out);
 }
 
+/* Hover raises contrast, not weight: the edge steps down to the muted ink and
+   the fill to the page tone, so a button answers the pointer on a white card
+   where a one-step fill alone was barely a difference. */
 .btn:hover:not(:disabled, .is-coming-soon) {
-  border-color: var(--line-strong);
+  border-color: var(--muted);
   background: var(--surface-3);
 }
 
@@ -1409,14 +1446,18 @@ h2 {
   color: var(--danger-strong);
 }
 
-/* Ghost: no fill or border until hover — a quiet text action. */
+/* Ghost: no fill or border until hover — a quiet text action. It carries the
+   ink, not the muted grey: a grey label on the page ground read as disabled
+   next to the outlined button beside it (Build's "Browse…"). Quietness is the
+   missing edge, not a lighter word. */
 .btn.ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--muted);
+  color: var(--text);
 }
 
 .btn.ghost:hover:not(:disabled, .is-coming-soon) {
+  border-color: transparent;
   background: var(--surface-3);
   color: var(--text);
 }
@@ -1545,7 +1586,7 @@ h2 {
   flex-direction: column;
   /* The Today strip is its own band: the gap to the table is wider than the
      gap inside a card, so the two do not read as one surface. */
-  gap: 20px;
+  gap: var(--gap-group);
   max-width: 1640px;
 }
 #view-dashboard,
@@ -1567,30 +1608,33 @@ h2 {
 }
 .teams {
   display: grid;
-  gap: 12px;
+  gap: var(--gap-card);
   align-items: start;
 }
 
-/* Desktop: the two lists (directory, incoming shares) stack in a narrow column
-   and the team takes the rest. An open team is a work surface and takes the
-   view's height; the placeholder card spans the list column and ends where it
-   ends, so a short directory never leaves a screen-tall blank card beside two
-   strips. With no team yet (or signed out) the directory has nothing to list:
-   the placeholder is the first-run panel with its own New team, and the shares
-   card sits beside it at the same height. */
+/* Desktop: two panes of the same height, like a list beside a work surface. The
+   left column holds the two lists at their own height; the right pane is where
+   the team goes, so it holds the view's height whether a team is open or not
+   (a placeholder that stopped 250px down left two thirds of the window as bare
+   ground, and its message read as floating in a small box). With no team yet
+   (or signed out) the directory has nothing to list: the placeholder is the
+   first-run panel with its own New team, and the shares card sits beside it. */
 @media (min-width: 1021px) {
-  .teams { grid-template-columns: 300px minmax(0, 1fr); }
+  .teams { grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
   .teams > .card.dir,
-  .teams > .card.incoming { grid-column: 1; }
+  .teams > .card.incoming { grid-column: 1; align-self: start; }
   .teams > .team-detail,
   .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
-  .teams:has(> .team-detail:not([hidden])) { min-height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+  .teams:has(> .team-detail:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); }
   .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
   .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: stretch; }
+  /* The first-run panel is the pane too: it takes the height and holds the one
+     step where the team would appear, instead of a short card with the rest of
+     the window under it. */
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1 / -1; align-self: stretch; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: start; }
   .teams[data-empty="signed-out"] > .team-empty { grid-column: 1 / -1; } /* a guest has no shares card */
 }
 #team-empty-new { display: none; }
@@ -1605,19 +1649,36 @@ h2 {
   .workspace:has(> .view.is-active#view-teams) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
 .lib .card { padding: 0; }
+/* The Library head is two rows at every width: the card's name with the two
+   actions that add to it, then the controls that narrow it (filters, search).
+   Run as one wrapping row, "New repertoire" dropped under the search as soon
+   as the card was narrower than 1180, so the table's first row started 88px
+   down at one width and 50px at another. */
 .lib .card-head {
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 12px;
   margin: 0;
-  padding: 10px 12px;
+  padding: 12px;
 }
 .lib .card-head h2 {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13.5px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
 }
-.lib .card-head { gap: 8px 10px; }
+/* Where the head's three controls sit on a desktop. The phone draws its own
+   grid (phone.css), so these placements stop at the phone breakpoint. */
+@media (min-width: 761px) {
+  .lib-actions { grid-column: 2; grid-row: 1; }
+  /* A segmented control is as wide as its options. Stretched across the card's
+     first column the five filters read as a progress bar, not a control. */
+  .lib-list .card-head .seg { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
+  .lib-list .card-head .search-field { grid-column: 2; grid-row: 2; width: 220px; margin-left: 0; }
+}
 .count {
   min-width: 18px;
   padding: 0 5px;
@@ -1630,78 +1691,125 @@ h2 {
   line-height: 18px;
 }
 
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own — the same rule Settings keeps. The + beside it is the
+   phone's route to New repertoire; on a desktop the card head already carries
+   that action, so only the name is shown. */
+@media (min-width: 761px) {
+  #view-dashboard .page-head {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+  }
+  #view-dashboard .page-head h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  #view-dashboard .page-head-btn { display: none; }
+}
+
 /* Today strip. It and the next steps arrive once, when their data lands. */
 #view-dashboard .today.is-enter,
 #view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
-/* The strip is one band: what is waiting on the left, the week's history and
-   the action on the right. Stacked as four lines in one narrow column, the
-   queue was the second line and the card kept a hole the width of the window. */
+/* The strip answers one question — what to study next — and answers it in one
+   line. The queue is the strip's loudest text; the streak beside it is the
+   quiet meta, and the week's history and the lifetime counts are two small
+   lines at the far end, over the action. Read as four 13px grey lines on one
+   row, nothing led and the queue was the third thing the eye found. */
 .today {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 18px;
+  gap: 8px 20px;
 }
-.lib .today { padding: 12px 14px; }
+.lib .today { padding: 14px 16px; }
 .today-streak {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
   white-space: nowrap;
 }
-/* A live streak says so with the figure's colour; at 0 it stays in ink. */
+/* A trained-today streak says so with the figure's colour; until then it is a
+   count like any other and stays in ink. */
 .today-streak[data-lit="1"] .today-count { color: var(--good-text); }
 .today-count {
   font-size: 26px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 .today-unit {
   color: var(--muted);
   font-size: var(--fs-s);
   line-height: 1.2;
 }
-.today-unit small { display: block; color: var(--label); font-size: var(--fs-s); }
-/* The strip is one band: what is waiting on the left, the week's history and
-   the action on the right. Stacked as four lines in one narrow column, the
-   queue was the second line and the card kept a hole the width of the window. */
+.today-unit small { display: block; color: var(--label); font-size: var(--fs-xs); }
 .today-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
-.today-note,
-.today-recap { color: var(--muted); font-size: var(--fs-s); }
-.today-queue { color: var(--text); font-size: 16px; }
-.today-queue b { font-size: inherit; }
+/* The one thing the button turns on, at the size a fact is read at. */
+.today-queue {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+/* What else is waiting, in one quieter line under it. */
+.today-more,
+.today-recap,
+.today-counts {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  line-height: 1.35;
+}
+.today-more b { color: var(--text); font-weight: 600; }
+/* Colour says good or bad, not up or down: two more mastered moves and one
+   fewer weak spot are both progress. */
+.today-recap .up { color: var(--good-text); }
+.today-recap .down { color: var(--danger-strong); }
 .today-aside {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 2px;
-  margin-left: auto;
   min-width: 0;
+  text-align: right;
 }
-.today-recap .up { color: var(--good-text); }
-.today-recap .down { color: var(--danger); }
-/* Lifetime counts (games · repertoires · sessions): one quiet line beside the
-   recap. Nothing here is what the Train button turns on, so it takes no
-   clickable weight and no tile chrome. */
-.today-counts { color: var(--label); font-size: var(--fs-s); }
-.today-counts b { color: var(--muted); font-variant-numeric: tabular-nums; }
-/* Streak-at-risk: replaces the note line when local midnight is <5h away and
+.today-recap b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Below 1100px the week's history no longer fits beside the queue: squeezing
+   both left the queue's second line wrapping over three lines beside a 328px
+   column of stats. The history moves to its own right-aligned line under the
+   strip, and the queue keeps the width. */
+@media (max-width: 1100px) and (min-width: 761px) {
+  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .today > .btn { grid-column: 3; grid-row: 1; }
+  .today-aside { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: 14px; }
+}
+/* Lifetime counts (games · repertoires · sessions): the quietest line in the
+   strip. Nothing here is what the Train button turns on. */
+.today-counts { color: var(--label); }
+.today-counts b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Streak-at-risk: replaces the second line when local midnight is <5h away and
    nothing has been trained yet: same slot, louder voice. */
 .today-warning {
-  align-self: flex-start;
-  padding: 3px 8px;
-  border-radius: 5px;
-  background: var(--warn-soft);
+  margin: 0;
   color: var(--warn-text);
   font-size: var(--fs-s);
   font-weight: 600;
+  line-height: 1.35;
 }
-.today > .btn { height: 38px; padding: 0 18px; font-size: 14px; }
+/* Today's action is the shared `.btn.primary`: same height, padding and size as
+   the two buttons on the card head below it. It used to be a 38px box at 14px
+   beside their 30px at 13px, which read as a different control family. */
+.today > .btn { padding: 0 16px; }
 /* Today's payload failed: the strip's slot carries the message and the retry,
    at the same quiet weight as the rest of the strip. */
 .today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
@@ -1709,18 +1817,19 @@ h2 {
 .btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
-/* Grid: list + preview (spans both rows) + steps under the list */
-/* Grid: the repertoire list, with "Next steps" as a side column when there
-   are any (the old start-position preview board carried no information). */
+/* Grid: the repertoire table, with "Next steps" as a band under it while the
+   setup is unfinished. As a 340px side card the checklist ended half a screen
+   above the table's last row and floated in a column of empty ground, and the
+   table lost 340px of the width its four columns need. Both cards now run the
+   page's one width and end at their own content. */
 .lib-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap-card);
   align-items: start;
 }
-.lib-grid:has(> .steps[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .lib-list { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; }
-.steps { grid-column: 2; grid-row: 1; overflow: hidden; }
+.steps { grid-column: 1; grid-row: 2; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
 .search-field {
@@ -1838,10 +1947,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
     transform: translateY(6px);
   }
 }
+/* Selection is one tone step and one 3px bar, in the page's own ink rather than
+   the accent: the accent marks the screen's action, and a selected row is a
+   place, not a button. A blue tint under a blue bar under a two-tone bar under
+   three coloured chips was four colour systems in one row. */
 .lib-row.is-selected,
 .lib-row.is-selected:hover {
   position: relative;
-  background: var(--accent-soft);
+  background: var(--surface-3);
 }
 .lib-row.is-selected::before {
   content: "";
@@ -1849,7 +1962,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   inset-block: 0;
   left: 0;
   width: 3px;
-  background: var(--accent);
+  background: var(--text);
 }
 .lib-row.is-disabled .name { color: var(--label); }
 /* ARIA: the option role covers the info cells; the ⋯ button is its sibling. */
@@ -1895,11 +2008,14 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    phone row is the only place that needs it. */
 #view-dashboard .lib-mastery-word { display: none; }
 /* Mastery bar: a visible track (so 0% still reads as an empty bar, not a
-   missing one) and enough height to compare rows at a glance. */
+   missing one) and enough height to compare rows at a glance. One hue: the
+   trained-but-not-mastered part is the same green, paler, so the bar reads as
+   one measure ("how much of this repertoire have you got") rather than two
+   unrelated quantities in green and blue. */
 .lib-mbar {
   flex: 1;
   min-width: 60px;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: var(--surface-3);
   box-shadow: inset 0 0 0 1px var(--line);
@@ -1912,7 +2028,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   border-radius: inherit;
   transition: width var(--dur-slow) var(--ease-out);
 }
-.lib-mbar i.is-started { background: color-mix(in srgb, var(--k-learning) 55%, var(--surface-3)); }
+.lib-mbar i.is-started { background: color-mix(in srgb, var(--k-mastered) 32%, var(--surface-3)); }
 .lib-mbar i.is-mastered { background: var(--k-mastered); }
 .lib-mastery-none {
   width: auto;
@@ -1933,6 +2049,19 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
+/* In a Library row the queue is one neutral chip with one coloured dot: three
+   tinted pills in red, amber and violet beside a green mastery bar and the
+   selected row's tint made five colours where the row says one thing (what is
+   waiting). The dot keeps the chess hue, so the kind is still read at a glance;
+   the chip itself is the row's quiet surface. Scout's and Train's chips keep
+   their tint — outside a table row a lone chip has no bar or selection to
+   compete with. */
+.lib-row .kchip.k-weak,
+.lib-row .kchip.k-due,
+.lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
+.lib-row .kchip.k-weak::before { background: var(--k-weak); }
+.lib-row .kchip.k-due::before { background: var(--k-due); }
+.lib-row .kchip.k-new::before { background: var(--k-new); }
 button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
 button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1963,6 +2092,10 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* `pretty` keeps a lone last word ("…you play Y.") from wrapping by itself. */
 .empty-state.big p { max-width: 460px; margin: 0; text-wrap: pretty; }
 .empty-state.big .row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+/* The Library's empty card is nothing but its invitation, so the 48px block
+   padding left a blank band above it as tall as the words. 32px still centres
+   the invitation in a card of its own height. */
+.lib-rep-list .empty-state.big { padding: 32px 24px; }
 .es-mark { color: var(--label); font-size: 34px; line-height: 1; }
 
 /* Side dot (repertoire colour) */
@@ -2021,45 +2154,35 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
 .step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
-/* ≤ 1279px: lower-value columns drop, the preview narrows */
-@media (max-width: 1279px) {
-  .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr) 290px; }
-}
-/* ≤ 1020px: single column. The 1279px rule above uses
-   `.lib-grid:not(:has(> .steps[hidden]))` (specificity 0,2,0), so the plain
-   `.lib-grid` selector here would lose to it and keep the two-column track on
-   phones - squeezing the list to ~70px. Match the same specificity. */
-@media (max-width: 1020px) {
-  .lib-grid,
-  .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr); }
-  .lib-list,
-  .steps { grid-column: auto; grid-row: auto; }
-}
-/* A list page is a work surface: the table takes the height it is given
-   instead of floating as a short card over empty ground. The setup checklist
-   stays at the top of its column — it is a short list, not a surface.
-   The empty library (signed out / first run) does the same, capped: the empty
-   state centres in its card and the Get started steps grow. */
+/* The Library is one column at every width, so the old two-track fallbacks
+   have nothing left to do. */
 @media (min-width: 1021px) {
-  .lib { min-height: 100%; }
-  .lib-grid { flex: 1 1 auto; min-height: 0; align-items: stretch; }
-  /* The checklist is a short list, not a surface: with a table beside it, it
-     keeps its own height at the top of the column instead of stretching into
-     an empty card. (On an empty library there is no table, so it grows.) */
-  .lib-grid > .steps { align-self: start; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { align-self: stretch; }
+  /* A list page ends at its last row. The table used to be told to take the
+     height it was given, so three repertoires sat in a card that ran to the
+     bottom of the window with about 70% of it empty white. */
+  .lib-grid { align-items: start; }
   /* The error card and the empty card are the only thing in this card, so both
      stand in the middle of it. The error used to float at the top of the card
      with the whole surface empty under it. */
   .lib-grid:has(> .lib-list.is-empty) > .lib-list { display: flex; flex-direction: column; }
   .lib-list.is-empty > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
-  /* The checklist is a list: its rows sit next to each other. Letting them
-     grow to fill the card spread three steps over half a screen of white. */
+  /* The checklist's rows sit next to each other: it ends where its last step
+     ends instead of spreading three steps over half a screen of white. */
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 0 0 auto; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
+}
+/* Next steps is a band under the table: its steps run across the width in one
+   row while they fit, so the card closes the page in two lines rather than a
+   tall stack under a full-width table. A step needs room for its title beside
+   its action: at 320px "Link your Lichess account" broke in two, and at 240px
+   three steps left the third alone on a ragged second line. */
+@media (min-width: 761px) {
+  .steps { display: flex; flex-wrap: wrap; align-items: center; }
+  .steps > .card-head { flex: 1 1 100%; }
+  .steps > .setup-bar { flex: 1 1 100%; }
+  .steps > .step { flex: 1 1 0; min-width: 320px; }
 }
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
@@ -2850,7 +2973,22 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .rep-name b { overflow: hidden; text-overflow: ellipsis; }
 .rep-color-sub { color: var(--label); font-size: var(--fs-s); }
 .rep-menu-btn { margin-left: auto; flex: none; opacity: 1; }
-.build-empty { flex: 1; justify-content: center; }
+/* With nothing open, the start block is the first thing in the panel body: it
+   sits at the top of the room, where the eye starts, instead of floating in
+   the middle of 700px of empty column. The panel ends with it, like Train's:
+   a full-height white sheet under three buttons reads as content that failed
+   to load. */
+#view-build #build-sidebar.is-empty { height: auto; align-self: start; }
+#view-build .build-empty {
+  flex: none;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 20px var(--build-pad, 14px) 24px;
+  text-align: left;
+}
+#view-build .build-empty h3 { font-size: 17px; font-weight: 650; }
+#view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
 /* With no repertoire open the panel's bands give way to the empty state. The
    class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
    ancestor of the tree it made every crumb rebuild re-style the page. */
@@ -3210,17 +3348,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   margin-bottom: 6px;
 }
 .dock-tools .spacer { flex: 1; }
-.dock-select {
-  min-height: 26px;
-  padding: 0 6px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-s);
-}
-.dock-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .inspector-info {
   width: 24px;
   min-width: 0;
@@ -3290,7 +3417,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--gap-card);
   padding: 14px;
   overflow: auto;
   overscroll-behavior: contain;
@@ -3444,12 +3571,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-size: 13.5px;
   font-weight: 700;
 }
-.btn.lg {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 18px;
-  font-size: var(--fs);
-}
+/* The Today strip's one action is a `.btn.primary` like every other primary
+   button in the app. It used to be `.btn.lg`, a 36px box that stood 6px taller
+   than the two buttons on the Library's card head beside it; one control height
+   is what makes a page of controls read as one system. */
 .note {
   padding: 7px 9px;
   border-radius: var(--radius);
@@ -3527,7 +3652,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .review {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-card);
   height: 100%;
   min-height: 0;
 }
@@ -3536,31 +3661,27 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-card);
 }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--line); /* taste-skill-ignore: a white toolbar on a white card is told apart by its edge */
-  border-radius: var(--radius-card);
-  background: var(--panel);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+/* One control height across the row: the source chips, the sample/colour
+   select, Add and Check are all 30px, so their baselines line up. */
+@media (min-width: 761px) {
+  .toolbar .src-chip,
+  .toolbar .btn.sm { height: var(--control-h); min-height: var(--control-h); }
 }
 .toolbar .spacer { flex: 1; }
 .src { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .src-label { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 .inline-field { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
-.inline-field select {
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
-  font-size: 12px;
-}
 .sum-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .sum-chip {
   height: 26px;
@@ -3587,11 +3708,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .replay-results { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .toolbar .counter { margin-left: auto; color: var(--muted); font-size: var(--fs-s); font-weight: 650; }
 
-/* Desktop Games and Scout: the page names itself, as Settings does, and the
-   controls sit on the title's row instead of in a white strip of their own. The
-   strip was a 48px band of 13px controls over the whole width, which read as a
-   cramped form line; on the title row they read as the page's own controls and
-   the results get the height. */
+/* Desktop Games and Scout: title and controls share one row, no toolbar card.
+   Controls align to a common baseline (src chips + inline field + button),
+   same height everywhere, no extra vertical space. */
 @media (min-width: 861px) {
   .review > :is(.games-panel, .scout-panel):not([hidden]) {
     display: grid;
@@ -3603,6 +3722,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .review > section > .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
   .review > section > .toolbar { min-height: 40px; padding: 0; border: 0; background: none; }
   .review > section > :is(.replay-results, .scout-grid) { grid-column: 1 / -1; }
+  /* Games and Scout are worked in, not read: their empty states are one
+     compact note in the frame the results will fill, not a 48px-padded hero. */
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big { gap: 4px; padding: 22px 16px; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big h3 { font-size: 15px; font-weight: 600; }
+  #view-replay :is(.ledger-empty, .scout-empty).empty-state.big p { font-size: 13px; color: var(--muted); }
   /* An empty Scout is a card the report lands in, the way the Games ledger is
      before its first Check, not a line of text floating on the page ground. */
   .scout-panel .scout-empty { border-radius: var(--radius-card); background: var(--panel); }
@@ -3618,14 +3742,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--gap-card);
 }
 .scout-grid {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 12px;
+  gap: var(--gap-card);
 }
 /* position: relative makes the scrolling columns the containing block for
    absolutely-positioned descendants (the .visually-hidden chart summaries).
@@ -3634,7 +3758,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    dragged down into empty space. */
 .scout-main { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: auto; padding-right: 2px; container: scout-main / inline-size; }
 .scout-main > * { flex-shrink: 0; }
-.scout-results { display: flex; flex-direction: column; gap: 10px; }
+.scout-results { display: flex; flex-direction: column; gap: var(--gap-card); }
 /* The detail card ends with its content: a line's detail runs 448-536px tall,
    and stretching the card to the 808px grid row left a 284px white hole under
    it. It still caps at the row and scrolls if a detail runs longer. */
@@ -3698,6 +3822,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .review,
   .games-panel,
   .replay-results { height: auto; }
+  /* Between the phone shell and the two-column desktop grid the page title
+     was hidden while the toolbar showed, so Games and Scout were two unnamed
+     rows. The title comes back over its own controls. */
+  .review > section > .page-head { display: block; }
+  .review > section > .page-head h1 { margin: 0 0 2px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-replay) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
@@ -4743,15 +4872,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 .modal-field input,
-.modal-field select,
 .modal-field textarea {
   height: 32px;
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
   padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  border: 1px solid var(--line); /* taste-skill-ignore: a form field keeps its outline */
+  border-radius: var(--radius);
   background: var(--panel);
   color: var(--text);
 }
@@ -5813,10 +5941,19 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
   .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
   .rail .tab,
-  .rail .rail-btn { height: 34px; }
+  .rail .rail-btn { height: 40px; }
   .rail .nav-group-label { height: 14px; line-height: 14px; }
   .rail-foot { gap: 2px; padding-top: 6px; }
-  .rail .account-btn { height: 36px; }
+  .rail .account-btn { height: 40px; }
+}
+
+/* Below ~560px of height the rows and the group dividers no longer both fit:
+   at 40px rows the 528px window overflowed the rail by 57px and pushed the
+   account chip off the bottom. The dividers are only a hairline between
+   already-separated groups, so on a short window the rail drops them and the
+   rows keep their height. */
+@media (min-width: 761px) and (max-height: 560px) {
+  .rail .nav-group-label { display: none; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a
