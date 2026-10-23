@@ -31,16 +31,20 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* A failed source is one block on the panel ground with a red edge, not a red
+   slab: the negative colour marks the fact, the retry sits on the right of it. */
 .scout-error {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   padding: 14px 16px;
+  border-left: 2px solid var(--danger);
   border-radius: var(--radius-card);
-  background: var(--danger-soft);
+  background: var(--panel);
   color: var(--text);
 }
+.scout-error .btn { margin-left: auto; }
 /* The failure title and its sentence are the reading layer, set one step above
    the report's meta like every other running sentence on the page. */
 .scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-size: 16px; font-weight: 700; }
