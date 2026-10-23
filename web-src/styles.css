@@ -1725,18 +1725,19 @@ h2 {
 .btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
-/* Grid: list + preview (spans both rows) + steps under the list */
-/* Grid: the repertoire list, with "Next steps" as a side column when there
-   are any (the old start-position preview board carried no information). */
+/* Grid: the repertoire table, with "Next steps" as a band under it while the
+   setup is unfinished. As a 340px side card the checklist ended half a screen
+   above the table's last row and floated in a column of empty ground, and the
+   table lost 340px of the width its four columns need. Both cards now run the
+   page's one width and end at their own content. */
 .lib-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: start;
 }
-.lib-grid:has(> .steps[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .lib-list { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; }
-.steps { grid-column: 2; grid-row: 1; overflow: hidden; }
+.steps { grid-column: 1; grid-row: 2; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
 .search-field {
@@ -2037,45 +2038,33 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
 .step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
-/* ≤ 1279px: lower-value columns drop, the preview narrows */
-@media (max-width: 1279px) {
-  .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr) 290px; }
-}
-/* ≤ 1020px: single column. The 1279px rule above uses
-   `.lib-grid:not(:has(> .steps[hidden]))` (specificity 0,2,0), so the plain
-   `.lib-grid` selector here would lose to it and keep the two-column track on
-   phones - squeezing the list to ~70px. Match the same specificity. */
-@media (max-width: 1020px) {
-  .lib-grid,
-  .lib-grid:not(:has(> .steps[hidden])) { grid-template-columns: minmax(0, 1fr); }
-  .lib-list,
-  .steps { grid-column: auto; grid-row: auto; }
-}
-/* A list page is a work surface: the table takes the height it is given
-   instead of floating as a short card over empty ground. The setup checklist
-   stays at the top of its column — it is a short list, not a surface.
-   The empty library (signed out / first run) does the same, capped: the empty
-   state centres in its card and the Get started steps grow. */
+/* The Library is one column at every width, so the old two-track fallbacks
+   have nothing left to do. */
 @media (min-width: 1021px) {
-  .lib { min-height: 100%; }
-  .lib-grid { flex: 1 1 auto; min-height: 0; align-items: stretch; }
-  /* The checklist is a short list, not a surface: with a table beside it, it
-     keeps its own height at the top of the column instead of stretching into
-     an empty card. (On an empty library there is no table, so it grows.) */
-  .lib-grid > .steps { align-self: start; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { align-self: stretch; }
+  /* A list page ends at its last row. The table used to be told to take the
+     height it was given, so three repertoires sat in a card that ran to the
+     bottom of the window with about 70% of it empty white. */
+  .lib-grid { align-items: start; }
   /* The error card and the empty card are the only thing in this card, so both
      stand in the middle of it. The error used to float at the top of the card
      with the whole surface empty under it. */
   .lib-grid:has(> .lib-list.is-empty) > .lib-list { display: flex; flex-direction: column; }
   .lib-list.is-empty > .lib-rep-list { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
-  .lib-grid:has(> .lib-list.is-empty:not(.is-error)) > .steps { display: flex; flex-direction: column; }
-  /* The checklist is a list: its rows sit next to each other. Letting them
-     grow to fill the card spread three steps over half a screen of white. */
+  /* The checklist's rows sit next to each other: it ends where its last step
+     ends instead of spreading three steps over half a screen of white. */
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step { flex: 0 0 auto; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 16px 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-n { width: 28px; height: 28px; font-size: var(--fs-s); }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text b { font-size: 14px; }
   .lib-grid:has(> .lib-list.is-empty:not(.is-error)) .step-text p { margin-top: 2px; font-size: 13px; }
+}
+/* Next steps is a band under the table: its steps run across the width in one
+   row while they fit, so the card closes the page in two lines rather than a
+   tall stack under a full-width table. */
+@media (min-width: 761px) {
+  .steps { display: flex; flex-wrap: wrap; align-items: center; }
+  .steps > .card-head { flex: 1 1 100%; }
+  .steps > .setup-bar { flex: 1 1 100%; }
+  .steps > .step { flex: 1 1 0; min-width: 240px; }
 }
 /* ≤ 760px: no preview pane (a tap opens the workspace), two-line rows,
    44px touch targets. */
