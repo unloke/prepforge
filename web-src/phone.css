@@ -297,6 +297,11 @@
   #view-dashboard .lib-row .lib-mastery-word { display: inline; color: var(--label); font-size: 13px; }
   /* A shared repertoire is read-only; its name line already says so. */
   #view-dashboard .lib-row.is-shared .lib-cell-mastery { display: none; }
+  /* The queue chip is the row's own action under a thumb, and at 18px it was
+     under the 24px minimum target. It grows to 24px, the most it can take
+     inside a row without turning the queue line into a stack of buttons; the
+     row itself is the 64px target for opening the repertoire. */
+  #view-dashboard .lib-row button.kchip { min-height: 24px; padding: 0 9px; font-size: 13px; }
   /* An untrained repertoire has no figure, only a note, and the note belongs
      where the queue would be: under the name, at the name's left edge. */
   #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { grid-area: queue; justify-self: start; padding-left: 38px; }
