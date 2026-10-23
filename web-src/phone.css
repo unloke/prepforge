@@ -123,6 +123,9 @@
   /* A failed read is one card: it spans the whole strip, not one grid cell. */
   #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
   #view-dashboard .today > .btn { grid-area: train; }
+  /* With no repertoire the empty card below carries New repertoire and Import
+     PGN: a second New repertoire in the strip made three on one phone screen. */
+  #view-dashboard .today > [data-lib-action="new"] { display: none; }
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
      the controls only — the filters on one row, then search and import. */
