@@ -110,6 +110,26 @@ describe("visual system tokens", () => {
     expect(ring).not.toMatch(/border-radius/);
   });
 
+  // phone.css hides `.page-head` at every width; only its own media query brings
+  // it back. Library and Teams were therefore nameless on a wide screen, and the
+  // inspector failed them for having no h1 at 1440.
+  it("names every page on a wide screen, not just the ones with a local rule", () => {
+    const desktop = css.match(
+      /@media \(min-width: 761px\) \{([^}]*\{[^}]*\}[^}]*)*?\n\}/,
+    )?.[0] || "";
+    const head = /\.workspace \.page-head \{([^}]+)\}/.exec(desktop)?.[1] || "";
+    expect(head).toMatch(/display:\s*flex/);
+    const title = /\.workspace \.page-head h1 \{([^}]+)\}/.exec(desktop)?.[1] || "";
+    expect(title).toMatch(/font-size:\s*32px/);
+    // The head's icon mirrors a control the desktop card head already shows in
+    // words: it would be a second "New repertoire" on the same screen.
+    expect(desktop).toMatch(/\.page-head \.page-head-btn \{ display: none; \}/);
+    for (const view of ["dashboard", "teams"]) {
+      const slice = html.slice(html.indexOf(`id="view-${view}"`));
+      expect(slice.slice(0, slice.indexOf("</section>"))).toContain('class="page-head"');
+    }
+  });
+
   it("locks the Train coach height so Maia copy cannot shove the board", () => {
     expect(css).toContain(".train-coach");
     expect(ruleBody(".train-coach")).toMatch(/display:\s*grid/);

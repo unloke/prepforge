@@ -1325,6 +1325,22 @@ h2 {
   min-height: 0;
 }
 
+/* The page's own name, on desktop. The phone sheet hides `.page-head` at every
+   width and only the phone media query brings it back, so Library and Teams
+   opened on a wide screen with nothing naming the page: the eye landed on a
+   table. Games, Scout and Settings re-show the row themselves; this is the
+   shell's copy of it for the rest. */
+@media (min-width: 761px) {
+  .workspace .page-head { display: flex; align-items: baseline; gap: 10px; }
+  .workspace .page-head h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  /* The head's icon button mirrors a control the desktop card head already
+     shows in words, so on a wide screen it would be a second "New repertoire". */
+  .workspace .page-head .page-head-btn { display: none; }
+  /* A container that gaps its children (the Library column) spaces the title
+     itself; only a page that stacks its blocks in flow needs the margin. */
+  .view > .page-head { margin: 0 0 10px; }
+}
+
 .view {
   display: none;
 }
