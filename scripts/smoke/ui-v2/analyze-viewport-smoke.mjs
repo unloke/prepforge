@@ -578,15 +578,12 @@ async function runViewport(vp) {
   const variation = await page.evaluate(() => {
     const grid = document.querySelector("#analysis-moves .mtree-line.is-main").getBoundingClientRect();
     const v = document.querySelector("#analysis-moves .mtree-var").getBoundingClientRect();
-    const blacks = [...document.querySelectorAll("#analysis-moves .mtree-line.is-main > .mtree-move.is-black")].map((el) => el.getBoundingClientRect().left);
     return {
       fullWidth: v.width > grid.width * 0.8,
-      blackAligned: blacks.every((l) => Math.abs(l - blacks[0]) < 2),
     };
   });
   if (vp.width > 760) {
     check(variation.fullWidth, "a variation should span the full grid width");
-    check(variation.blackAligned, "Black moves should stay in one column around a variation");
   }
   if (vp.width <= 760) {
     // The phone's screen is one column: the eval band (figure and graph), the

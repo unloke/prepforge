@@ -8,6 +8,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
 
+// The x-axis move numbers read the chart points: they must follow the declaration.
+const ANALYZE_SOURCE = readFileSync(new URL("./analyze.js", import.meta.url), "utf8");
+
 const STYLES = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 // The chart rules ship in a lazy sheet (loaded with the Analyze view) so the
 // eager styles.css stays under its deploy budget. The token contract spans both:
@@ -337,17 +340,23 @@ describe("the panel's one filled action", () => {
 });
 
 describe("score sheet ink", () => {
-  it("paints the selected move in the accent's ink, glyph included", () => {
-    // The mainline ink rule and the grade-glyph rules both out-ranked the
-    // shared tree's .is-current colour, so on this grid the selected move read
-    // --text on the accent fill (2.9:1 at 1440x900) and its glyph came out in
-    // --text on the same fill. Both now take the accent's ink.
+  it("signs only the moves that stand out, not every sound one", () => {
+    expect(ANALYZE_SOURCE).toMatch(/const glyph = group && group !== "good" ? classBadgeSymbol(cls)/);
+  });
+
+  it("marks the selected move with one 1px accent line, not a filled tile", () => {
+    // The selection rule: a thin accent line on the token's bottom edge, the
+    // label in ink, no fill. The grade glyph keeps the move's ink.
     const row = CHART_STYLES.match(
-      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \{([^}]+)\}/,
+      /\.moves-grid \.mtree-move\.is-current,\s*\.moves-grid \.mtree-move\.is-current\.is-opp \{([^}]+)\}/,
     )?.[1] || "";
-    expect(row).toMatch(/color:\s*var\(--accent-ink\)/);
+    expect(row).toMatch(/background:\s*none/);
+    expect(row).toMatch(/color:\s*var\(--text\)/);
+    expect(row).toMatch(/box-shadow:\s*inset 0 -1px 0 var\(--accent\)/);
+    // Rows keep a fixed 22px pitch, so a long game grows the sheet without moving the rows above.
+    expect(CHART_STYLES).toMatch(/\.moves-grid \.mtree-move \{[^}]*height: 22px/);
     expect(CHART_STYLES).toMatch(
-      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
+      /\.moves-grid \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
     );
   });
 });
@@ -618,5 +627,11 @@ describe("Analyze on a phone", () => {
   // The graph beside the figure is the same win-chance series: no meter.
   it("does not repeat the graph's win share in the band", () => {
     expect(phone).toMatch(/#analysis-eval-card \.ev-meter \{ display: none; \}/);
+  });
+});
+
+describe("eval chart on long games", () => {
+  it("declares the chart points before the x-axis move numbers read them", () => {
+    expect(ANALYZE_SOURCE.indexOf("const coords = points.map(")).toBeLessThan(ANALYZE_SOURCE.indexOf("// Move numbers along the x-axis"));
   });
 });

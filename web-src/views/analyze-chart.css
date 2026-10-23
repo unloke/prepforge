@@ -834,75 +834,64 @@
 /* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
 #eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
 
-/* Moves: the mainline is a three-column grid (number | White | Black); a
-   variation the reader explores interrupts it as a full-width row. Only the
-   direct children of the mainline are grid cells: variation moves keep the
-   shared inline tree flow. The list sits inside the scrolling panel, so it
-   does not contain overscroll: at its top/bottom the wheel moves the panel
-   (or the page when stacked) instead of feeling stuck.
-   On a wide panel the sheet is sized by the panel (see the scroll rules
-   above) and is the panel's only scroller; this cap is what a stacked layout
-   uses, where the panel is as tall as its content. It used to be 190px
-   everywhere, which showed eight move pairs on a 900px screen. */
+/* Moves: a score sheet that flows, as in a book or Lichess's inline mode:
+   "1. e4 e5 2. Nf3 Nc6" wraps across the panel's width. A move is a compact
+   token on one 22px line; its box is the click target and its hover fill. The
+   move number is quiet. A variation is one indented, quieter paragraph under
+   the move it branches from, and the mainline flows on after it. The sheet is
+   the panel's only scroller. */
 .moves-grid {
   max-height: clamp(190px, 40dvh, 440px);
   overflow: auto;
   border: 0;
   border-radius: 8px;
   font-size: 13px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
 }
-.moves-grid .mtree-line.is-main {
-  display: grid;
-  /* The two sides of a move belong to each other: sized to their content they
-     sit next to one another, the way a score sheet prints them. The trailing
-     track soaks up the rest of the sheet so a variation row, which spans every
-     track, still draws its rule across the full width. */
-  grid-template-columns: 32px max-content max-content minmax(0, 1fr);
-  column-gap: 18px;
-}
-.moves-grid .mtree-line.is-main > .mtree-num {
-  grid-column: 1;
+.moves-grid .mtree-line.is-main { display: block; }
+.moves-grid .mtree-num {
   margin: 0;
-  padding: 3px 6px;
-  background: var(--panel-soft);
+  padding: 0 0 0 8px;
   color: var(--label);
   font-size: var(--fs-s);
-  text-align: right;
+  line-height: 22px;
 }
-.moves-grid .mtree-line.is-main > .mtree-move {
-  display: flex;
-  align-items: center;
-  /* The grade belongs to the move beside it: pushed to the far end of the
-     column it sat 190px away, closer to the next move than to its own. */
-  justify-content: flex-start;
-  gap: 6px;
-  margin: 0;
-  padding: 3px 8px;
+.moves-grid .mtree-move {
+  display: inline-block;
+  height: 22px;
+  margin: 0 1px;
+  padding: 0 4px;
   border-radius: 0;
-  font-weight: 550;
-  text-align: left;
+  vertical-align: top;
+  font-weight: 500;
+  line-height: 22px;
 }
-.moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
-/* The selected cell's ink. The shared tree paints the current move with
-   --accent-ink, but the mainline ink rule (4 classes) out-ranks it, so on this
-   grid the current move read --text on the accent fill: 2.9:1, and its grade
-   glyph came out in --text too. The cell is a filled pill, so its ink is the
-   accent's (`accent-ink`, white in light and near-black in dark) and the
-   glyph takes the cell's ink instead of its grade colour. Measured after:
-   5.9:1 at 1440x900. */
-.moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
-/* The mainline's trail is the sheet's own order: filling every move played so
-   far turned the sheet into two blue columns. A variation keeps its trail. */
-.moves-grid .mtree-line.is-main > .mtree-move.on-path { background: none; color: inherit; }
-.moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
-/* The move list keeps the shared tree's own tiles: the selected move is filled
-   and raised there too, so Analyze reads like the rest of the app. */
-.moves-grid .mtree-line.is-main > .mtree-var {
-  grid-column: 1 / -1;
-  margin: 2px 8px;
-  line-height: 1.8;
+/* A variation keeps its own moves in the flow, one step quieter than the line:
+   a rail, a smaller size, muted ink, and no italic or bold. */
+.moves-grid .mtree-var {
+  margin: 2px 0 4px var(--mtree-indent);
+  padding: 0 0 0 calc(var(--mtree-indent) + var(--mtree-rail));
+  font-size: 12.5px;
+  line-height: 22px;
 }
+.moves-grid .mtree-var .mtree-move { font-weight: 400; font-style: normal; }
+/* The selected move: one 1px accent line under its label, as wide as the
+   label, in ink. No fill, so the sheet stays a text page. */
+.moves-grid .mtree-move.is-current,
+.moves-grid .mtree-move.is-current.is-opp {
+  background: none;
+  color: var(--text);
+  font-weight: 650;
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.moves-grid .mtree-move.is-current.is-disabled { opacity: 1; }
+/* The path to the current move is drawn by the variation rails alone, so no
+   move on the way here carries a fill. */
+.moves-grid .mtree-move.on-path { background: none; color: inherit; }
+.moves-grid .mtree-move.is-current .mtree-glyph { color: inherit; }
+/* A grade sign follows its move as a small mark in the grade's colour. */
+.moves-grid .mtree-glyph { margin-left: 2px; font-size: 12px; font-weight: 700; }
 .mtree-glyph {
   font-style: normal;
   font-size: var(--fs-s);
@@ -1646,8 +1635,8 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
   .best-line { font-size: 14px; line-height: 28px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
-  .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
-  .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
+  .moves-grid .mtree-move { min-height: 36px; line-height: 36px; }
+  .moves-grid .mtree-num { line-height: 36px; }
   .rp-row { min-height: 36px; }
   .rp-n, .rp-phase { height: 36px; line-height: 36px; }
   .km-go { min-height: 44px; }
