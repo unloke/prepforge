@@ -33,12 +33,16 @@
   input:not([type="checkbox"], [type="radio"], [type="range"]),
   select,
   textarea { font-size: 16px; }
-  /* Every control a thumb reaches is a thumb-sized target. The shared 30px
-     control height is a mouse height; `.btn.sm` was overridden to 36 here, which
-     left the Library's "Clear filter" and its "Try again" (the two buttons a
-     dead-end screen offers) 8px under the floor. Dense rows that need to stay
-     dense (the Build inspector's tools) set their own height further down. */
-  .btn.sm { min-height: 44px; height: 44px; }
+  /* Every control a thumb reaches is a thumb-sized target: one height for every
+     button (the 30px control height is a mouse height), one radius from the
+     shared rule. A view that needs a denser row changes its layout, not the
+     button's geometry. */
+  .btn,
+  .btn.sm,
+  .seg-btn,
+  .sum-chip { min-height: 44px; height: 44px; }
+  .btn.icon,
+  .btn.sm.icon { width: 44px; min-width: 44px; }
   /* The Train and Explorer switches are drawn at 44x26, about an iOS switch,
      and their tap area grows to the 44px a thumb needs without moving them.
      The 38x22 desktop switch was the right size for a pointer and the wrong
@@ -163,8 +167,6 @@
     line-height: 1.35;
     text-wrap: pretty;
   }
-  #view-dashboard .today .btn { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
-
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
      the controls only — the filters on one row, then search and import. */
@@ -185,29 +187,16 @@
   #view-dashboard .lib-cols { display: none; }
   /* Import PGN needs its own place on a phone: the page head's + is New
      repertoire, so with the header actions hidden a phone could not add a PGN
-     at all. It takes the pill of the search field beside it, so the two read
-     as one row of controls; New repertoire keeps the +. */
+     at all. It sits beside the search field and takes the shared button. */
   #view-dashboard .lib-list .seg { grid-area: filters; }
   #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
   #view-dashboard .lib-actions { grid-area: import; display: flex; gap: 8px; }
   #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
-  #view-dashboard .lib-actions #dashboard-import-pgn {
-    flex: none;
-    height: 44px;
-    padding: 0 14px;
-    border: 0;
-    border-radius: 12px;
-    background: var(--surface-3);
-    color: var(--text);
-    font-size: 14px;
-    font-weight: 550;
-  }
-  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
+  #view-dashboard .lib-actions #dashboard-import-pgn { flex: none; }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
-     reads as a cut-off row. They were five 44px pills at 13px, which filled
-     the width and read as the screen's buttons rather than its filters. They
-     are one track with one filled option: the same target height, no pill
-     around each word. */
+     reads as a cut-off row. They are the shared tab strip at the phone's
+     target height — the chosen one is the accent line under its word, never a
+     filled plate (the sheet's one selection mark). */
   #view-dashboard .lib-list .seg {
     display: flex;
     flex-wrap: nowrap;
@@ -215,37 +204,24 @@
     max-width: 100%;
     margin: 0;
     padding: 0;
-    border-radius: 12px;
-    background: var(--surface-3);
   }
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: 1 1 auto;
     min-width: 0;
-    min-height: 44px;
-    height: 44px;
     padding: 0 6px;
-    border: 0;
-    border-radius: 10px;
-    background: none;
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: 550;
     white-space: nowrap;
   }
-  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 650; }
+  /* The search field is the shared field at the phone's target height: same
+     edge, radius and fill, one thumb-sized box. */
   .search-field {
     width: 100%;
     height: 44px;
     margin: 0;
-    padding: 0 14px;
-    border: 0;
-    border-radius: 12px;
-    background: var(--surface-3);
+    padding: 0 12px;
   }
-  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
   .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
-  .search-field input { height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
+  .search-field input { height: 100%; min-height: 0; padding: 0; }
   #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -340,7 +316,6 @@
      over the error. Import needs the same server that just failed. */
   #view-dashboard .lib-list.is-error .lib-actions { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
-  #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
   /* Games and Scout: the same grouped card — where the games come from, one
      choice row, then the action across the card. */
@@ -383,14 +358,10 @@
   #view-replay .toolbar .src-chip { background: var(--surface-3); color: var(--text); }
   #view-replay .toolbar > .src > .btn {
     justify-self: end;
-    min-height: 44px;
-    height: 44px;
     margin: 0 -8px 0 0;
-    padding: 0 8px;
     border: 0;
     background: none;
     color: var(--text);
-    font-size: 15px;
     font-weight: 600;
   }
   #view-replay .toolbar > .src > .btn:active { background: var(--surface-3); }
@@ -411,10 +382,7 @@
   #view-replay .toolbar > :is(#lichess-compare-btn, #scout-btn) {
     justify-content: center;
     width: 100%;
-    min-height: 48px;
     margin: 10px 0 14px;
-    border-radius: 12px;
-    font-size: 16px;
   }
   #view-replay .toolbar > #scout-reset-btn:not([hidden]) { min-height: 44px; margin: -8px 0 10px; border: 0; color: var(--text); }
   #view-replay .toolbar > .counter { margin: -6px 0 12px; color: var(--muted); font-size: 13px; text-align: center; }
@@ -442,10 +410,7 @@
     right: var(--phone-gutter);
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
     width: auto;
-    min-height: 50px;
-    height: 50px;
     margin: 0;
-    border-radius: 25px;
     outline: 12px solid var(--bg);
   }
   .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
@@ -484,8 +449,7 @@
   }
   #view-teams .team-detail .card-head .team-role-badge { flex: none; }
   #view-teams .team-detail .card-head .btn { flex: none; }
-  #view-teams .team-detail .card-head .btn.icon { width: 44px; min-width: 44px; height: 44px; padding: 0; }
-  #view-teams .team-detail .card-head #team-detail-invite { height: 40px; min-height: 40px; padding: 0 14px; border-radius: 20px; }
+  #view-teams .team-detail .card-head #team-detail-invite { padding: 0 14px; }
   #team-detail-close { order: -1; font-size: 0; color: var(--text); }
   #team-detail-close::before {
     content: "";
@@ -1101,7 +1065,7 @@
   #build-inspector .dock-tools { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px 6px; }
   /* The pane's tools stay compact in type but not in reach: 40px is the
      smallest box a thumb hits without a second try. */
-  #build-inspector :is(.seg-btn, .btn, .dock-select) { min-height: 40px; height: 40px; padding: 0 12px; font-size: 14px; }
+  #build-inspector :is(.seg-btn, .btn, .dock-select) { padding: 0 12px; font-size: 14px; }
   /* A select keeps room for the chevron the shared rule draws inside its right
      padding; the 12px above would put the label under the arrow. */
   #build-inspector .dock-select { padding-right: 30px; }
@@ -1148,9 +1112,9 @@
     justify-content: stretch;
     gap: 8px;
   }
-  #view-build .build-empty .btn { min-height: 44px; height: 44px; padding: 0 12px; border-radius: 12px; font-size: 15px; }
+  #view-build .build-empty .btn { padding: 0 12px; }
   #view-build .build-empty .btn.primary { flex: 1 1 100%; }
-  #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; border: 0; background: var(--surface-3); }
+  #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; }
 
   /* ---- Train: Home and Result are pages, a Session is the board ---------
      Home and Result are read, not played on: no board, no thumb bar, the tab
@@ -1293,9 +1257,9 @@
   .modal-field > span { font-size: 13px; }
   .modal-field :is(input, select) { height: 48px; padding: 0 14px; border-radius: 12px; }
   .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
-  .modal-footer .btn { flex: 1 1 0; min-height: 50px; height: 50px; border-radius: 25px; font-size: 16px; }
+  .modal-footer .btn { flex: 1 1 0; font-size: 16px; }
   .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
-  .auth-modal .auth-google { min-height: 50px; border-radius: 25px; font-size: 16px; }
+  .auth-modal .auth-google { font-size: 16px; }
   .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
   .auth-footer { flex-direction: column-reverse; align-items: stretch; }
   .auth-footer .btn { flex: none; width: 100%; }

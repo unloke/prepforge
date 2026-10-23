@@ -176,7 +176,10 @@ describe("scout phone composition", () => {
     // score the colour tabs already show; the chips and actions stay.
     expect(phone).toMatch(/\.scout-panel \.prof-id,\n\s*\.scout-panel \.scout-color-rec \{ display: none; \}/);
     expect(phone).toContain(".scout-panel .prof-row .spacer { display: none; }");
-    expect(phone).toContain(".prof-row .btn { min-height: 44px; }");
+    // The profile row's buttons are thumb targets through the shared phone rule.
+    const shared = readFileSync(resolve(here, "../phone.css"), "utf8");
+    expect(shared).toMatch(/\.btn,\s*\n\s*\.btn\.sm,\s*\n\s*\.seg-btn,\s*\n\s*\.sum-chip \{ min-height: 44px; height: 44px; \}/);
+    expect(phone).not.toMatch(/\.prof-row \.btn \{[^}]*height:/);
   });
 });
 

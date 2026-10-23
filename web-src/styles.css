@@ -447,8 +447,10 @@ button,
   /* Press feedback on the row-body controls that are not .btn. */
   transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+/* The move row is wider than a thumb's press: it travels instead of shrinking
+   (see .btn:active). */
 .mtree-move:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 
 /* Unified keyboard focus ring — visible only for keyboard users, never on
@@ -1231,7 +1233,9 @@ h2 {
   font-size: var(--fs-s);
   font-weight: 550;
   padding: 0 10px;
-  min-height: 28px;
+  /* A tab is a control: it takes the row's control height, so a strip of tabs
+     beside a select and a button is one line, not three heights. */
+  min-height: var(--control-h);
   cursor: pointer;
   white-space: nowrap;
   transition: color var(--dur-fast) var(--ease-out);
@@ -1485,8 +1489,11 @@ h2 {
   background: var(--surface-3);
 }
 
+/* Press moves the control down a pixel instead of shrinking it: a scale on a
+   wide button releases outside the shrunk edge and the click is lost, so the
+   one press feedback in the app is a travel every width can take. */
 .btn:active:not(:disabled, .is-coming-soon) {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 
 .btn.primary {
@@ -1565,27 +1572,30 @@ h2 {
   width: 100%;
 }
 
-/* Disabled and engine-unavailable actions read inert: the muted fill lands
-   after the variants, so a disabled .btn.primary cannot keep its accent fill. */
+/* Disabled and engine-unavailable actions read inert without going under the
+   contrast floor: the muted fill and ink land after the variants, so a disabled
+   .btn.primary cannot keep its accent fill, and the label stays legible (a
+   translucent label fails 4.5:1 on the surface it sits on). */
 .btn:disabled,
 .btn.is-coming-soon {
-  opacity: 0.55;
   cursor: not-allowed;
   background: var(--surface-3);
   border-color: var(--line-strong);
-  color: var(--label);
+  color: var(--muted);
 }
 
 /* Reachable but inert: the control still handles the click (that is the point
    it opens the connect flow), it just reads as unavailable. */
 .btn.is-unavailable {
-  opacity: 0.55;
   cursor: not-allowed;
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: var(--muted);
 }
 .btn.is-unavailable:hover {
-  border-color: var(--line);
-  background: none;
-  color: inherit;
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+  color: var(--muted);
 }
 .btn.is-unavailable:active {
   transform: none;
@@ -3774,7 +3784,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .sum-chip:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 .sum-chip.t-good { color: var(--good-text); }
 .sum-chip.t-bad { color: var(--danger); }

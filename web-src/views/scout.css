@@ -548,11 +548,8 @@
      dot and label stay together; the count takes the second line. */
   .scout-color-tab { min-height: 44px; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 0; text-align: center; }
   .scout-color-tab small { flex-basis: 100%; }
-  /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
-     are the only way to switch sample size or start the prep. */
-  .speed,
-  .scout-panel .btn.sm { min-height: 40px; }
-  .speed { padding: 0 11px; border-radius: 20px; }
+  /* The speed filter is a chip, not a .btn: it keeps the phone's target height. */
+  .speed { min-height: 44px; padding: 0 11px; }
   .scout-intel-charts { grid-template-columns: 1fr; }
   .first-moves { grid-template-columns: 1fr; }
   .line-row { grid-template-columns: 1fr auto; min-height: 44px; }
@@ -573,9 +570,7 @@
   .cs-head .scout-coverage-label { min-width: 0; white-space: normal; }
   /* The add-to-prep button is the row's only action: it needs a thumb. */
   .scout-add-icon { width: 44px; height: 44px; font-size: 18px; }
-  .scout-side .actions .btn { min-height: 44px; }
-  .prof-row .btn { min-height: 44px; }
-  .scout-source-warnings .btn { margin-left: 0; min-height: 44px; width: 100%; }
+  .scout-source-warnings .btn { margin-left: 0; width: 100%; }
   /* A first-move row is the drilldown: a thumb needs the whole row, not 27px. */
   .fm { min-height: 44px; }
 }

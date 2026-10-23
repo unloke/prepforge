@@ -305,9 +305,7 @@
 }
 @media (max-width: 760px) {
   .slider input { width: 130px; }
-  .set .btn.sm,
-  .set .seg-btn,
-  .conn-menu-btn,
+  /* The nav links are anchors, not .btn: they keep their own thumb height. */
   .settings-nav-link { min-height: 44px; }
   /* Touch targets: the switch and the 24px ⓘ are thumb targets on a
      phone. The switch keeps its parts and grows its hit box to 40px (the track
