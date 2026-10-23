@@ -119,7 +119,7 @@ describe("train up-next preview", () => {
     expect(text).toContain("6...e6 7.f4");
   });
 
-  it("names the starting position on a first-move card instead of a blank row", () => {
+  it("a first-move card names no position: its row is the repertoire and the move, not a repeated 'First move'", () => {
     const appState = {
       smart: {
         cardIndex: 0,
@@ -133,9 +133,9 @@ describe("train up-next preview", () => {
     const view = makeView(appState, elements);
     view.renderSmartProgress({ total_cards: 2, card_index: 0, kind: "due", targets_total: 1, target_index: 0 });
     const html = String(elements["train-upnext"].innerHTML);
-    expect((html.match(/un-line/g) || []).length).toBe(1);
-    // "Start" was the Start button's word in a row that has no button.
-    expect(html).toContain(">First move<");
+    expect((html.match(/un-line/g) || []).length).toBe(0);
+    expect(html).toContain("Ruy Lopez");
+    expect(html).not.toContain("First move");
     expect(html).not.toContain(">Start<");
   });
 

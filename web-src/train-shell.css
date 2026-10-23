@@ -266,6 +266,7 @@
 .train-due-pos:empty { display: none; }
 /* A quiet tag: the kind is words in the muted voice, not a filled pill. */
 .un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 600; }
+.un-row .un-kind { justify-self: start; }
 
 /* ---- Rehearse is one line: its title and count, its repertoire, its action. */
 .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; grid-template-areas: "text opts go"; padding: 10px 12px; }
