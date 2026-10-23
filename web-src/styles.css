@@ -3908,8 +3908,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: var(--gap-card);
+  /* Desktop composition: plan column (63%) + detail card (376px fixed, ~25%) */
+  grid-template-columns: 1fr 376px;
+  gap: 24px;
 }
 /* position: relative makes the scrolling columns the containing block for
    absolutely-positioned descendants (the .visually-hidden chart summaries).
@@ -3966,7 +3967,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 1279px) {
-  .scout-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+  .scout-grid { grid-template-columns: 1fr 340px; }
 }
 /* Scout stacks at ≤1020; Games keeps ledger + detail side by side (and the
    viewport-height shell) down to 860px, see views/replay.css. */

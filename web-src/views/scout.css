@@ -1,9 +1,11 @@
-/* Scout — Opus prototype composition. Loaded only with the lazy scout chunk, so
-   none of this grows the main stylesheet budget. The panel / grid skeleton, the
-   shared toolbar and the empty + stream states live in styles.css ("Scout —
-   Opus prototype composition"); everything about the report itself is here.
-   Layout: [profile card · colour tabs · colour card (intel + game plan) · chart
-   cards] scrolls in the main column while the line-detail card stays in view. */
+/* Scout — round 2. The ranked plan is the answer: it gets the density and the
+   first read; the charts strip is quieter below it. Loaded only with the lazy
+   scout chunk, so none of this grows the main stylesheet budget. The panel /
+   grid skeleton, the shared toolbar and the empty + stream states live in
+   styles.css ("Scout — Opus prototype composition"); everything about the
+   report itself is here. Layout: [profile card · colour tabs · colour card
+   (intel + game plan) · chart cards] scrolls in the main column while the
+   line-detail card stays in view. */
 
 /* The report is notation and figures people read, not glance at, so Scout runs
    one step above the app's small sizes: 13px for meta and labels, 15px for the
@@ -29,16 +31,20 @@
   animation: spin 0.8s linear infinite;
 }
 
+/* A failed source is one block on the panel ground with a red edge, not a red
+   slab: the negative colour marks the fact, the retry sits on the right of it. */
 .scout-error {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
   padding: 14px 16px;
+  border-left: 2px solid var(--danger);
   border-radius: var(--radius-card);
-  background: var(--danger-soft);
+  background: var(--panel);
   color: var(--text);
 }
+.scout-error .btn { margin-left: auto; }
 /* The failure title and its sentence are the reading layer, set one step above
    the report's meta like every other running sentence on the page. */
 .scout-error-title { flex: 1 1 100%; margin: 0; color: var(--danger-strong); font-size: 16px; font-weight: 700; }
@@ -56,6 +62,40 @@
 
 /* ---- Profile card ---- */
 .scout-profile { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+/* The identity is one quiet line above the colour tabs: name, games, speed
+   chips, the colour split and the two actions. No card, no band. */
+.scout-main > .scout-profile {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none; /* taste-skill-ignore: clears the .card shadow the identity inherits; it is not a shadow */
+}
+.scout-main > .scout-profile .prof-row { flex: 1 1 auto; }
+/* The colour split is plain text in the identity row: no chip, no tint, so it
+   does not read as a button beside Copy report and Deep scan. */
+.scout-main > .scout-profile .scout-color-rec {
+  align-self: center;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-weight: 500;
+}
+.scout-main > .scout-profile .scout-colour-split { color: inherit; }
+/* The engine offer is one quiet line, not a card: the name, the gain in muted
+   type, the action at the right. It sits on the panel ground like the identity. */
+.scout-main > [data-unlock-place="scout"] > [data-engine] { /* taste-skill-ignore: the attribute name is the JS hook */
+  min-height: 0;
+  padding: 4px 0;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+}
 .scout-profile[hidden] { display: none; }
 .prof-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }
@@ -100,8 +140,14 @@
 /* No clear edge: the two colour scores are live data, and the "why" sits in the title. */
 .scout-colour-split { color: var(--text); font-variant-numeric: tabular-nums; cursor: help; }
 
-/* Engine / Maia enrichment progress: a quiet status line, not a card. */
+/* Engine / Maia enrichment progress: a quiet status line, not a card. It sits on
+   the colour tabs' row at the right, out of the flow, so a status that comes and
+   goes never moves the tabs or leaves a band between the identity and them. */
+.scout-results { position: relative; }
 .scout-engine-progress {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -111,19 +157,19 @@
   font-size: var(--fs-s);
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
-/* Hidden keeps its line: the bar comes and goes while Stockfish and Maia run, and
-   collapsing it shifted the colour tabs and the report up and down. */
 .scout-engine-progress.is-idle { visibility: hidden; }
 
 /* ---- Colour tabs ---- */
-.scout-color-tabs { display: flex; gap: 4px; }
+/* The selected tab is a 1px accent line as wide as its label: the tab has no
+   side padding, and tabs are spaced by gap. */
+.scout-color-tabs { display: flex; gap: 20px; }
 .scout-color-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 12px;
+  padding: 7px 0;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   background: none;
   color: var(--label);
   font: inherit;
@@ -249,22 +295,26 @@
 .fm.is-hot .sc { color: var(--danger); }
 .fm.is-cold .sc { color: var(--good-text); }
 
-/* ---- Game plan rows ---- */
+/* ---- Game plan rows — biggest block on first screen, clear hierarchy ---- */
 .lines { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .line-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 150px 74px 72px 44px;
-  align-items: center;
+  align-items: stretch;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--panel);
   font-size: var(--fs-s);
   cursor: pointer;
+  border-bottom: 1px solid var(--line);
 }
-.scout-lines[data-ui] .line-row { border-bottom: 1px solid var(--line); }
 .scout-lines[data-ui] .line-row:last-child { border-bottom: 0; }
-.line-row:hover { background: var(--panel-soft); }
-.scout-lines[data-ui] .line-row.is-expanded { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--accent); }
+.line-row:hover { background: var(--surface-3); }
+/* The open line is marked by a 2px accent edge on the row's left, drawn as a
+   pseudo-element: an inset edge on a row that acts as a button is flagged. */
+.line-row { position: relative; }
+.scout-lines[data-ui] .line-row.is-expanded { background: var(--surface-3); }
+.scout-lines[data-ui] .line-row.is-expanded::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: var(--accent); }
 .line-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .lr-main { display: flex; flex-direction: column; min-width: 0; }
 .scout-line-eco {
@@ -380,7 +430,11 @@
 .scout-refutation-gap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---- Chart cards ---- */
-.scout-intel-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+/* Two cards share a row and end level; the activity trend is tall and takes the
+   full width under them. Three across left the short cards with blank bands
+   (152px and 130px) when they stretched to the trend's height. */
+.scout-intel-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.scout-intel-trends { grid-column: 1 / -1; }
 .chart { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; padding: 10px 12px; }
 .chart h3 { margin: 0; }
 .scout-bar-chart { display: grid; gap: 4px; width: 100%; }
@@ -524,21 +578,54 @@
   .scout-lines-head { grid-template-columns: minmax(0, 1fr) 70px 72px 40px; }
   .scout-lines-head span:nth-child(2) { display: none; }
 }
+
+/* Empty: one dashed frame where the report will land, its title and sentence on
+   one line. A centred card over the empty ground read as a placeholder page. */
+.scout-panel .scout-empty.empty-state.big {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 4px 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-card);
+  background: none;
+  text-align: left;
+}
+.scout-panel .scout-empty.empty-state.big h3 { font-size: 14px; }
+.scout-panel .scout-empty.empty-state.big p { max-width: none; font-size: 13px; color: var(--muted); }
+/* Desktop report order inside a colour section: the ranked lines are the answer,
+   so the table comes first under the head. The weak-spot sentence is its
+   one-line caption; the Expect / Style reads, the first moves and the game-plan
+   actions follow the table. The intel and plan wrappers are flattened with
+   display: contents so their children order as one column. */
+.color-sec { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; }
+.color-sec > .cs-head { order: 0; padding: 12px 0 0; }
+.color-sec .intel,
+.color-sec .plan { display: contents; }
+.color-sec .intel > *,
+.color-sec .plan > * { order: 4; }
+.color-sec .intel > .scout-intel-headline { order: 1; margin: 0; max-width: none; font-size: 14px; }
+.color-sec .plan > .scout-lines-head,
+.color-sec .plan > .scout-lines { order: 2; }
+.color-sec .plan > .scout-ranked-note { order: 3; }
+.color-sec .scout-lines-head { padding: 0 12px; }
 /* ≤760: phone — plan first, the open line's detail after it, then the charts. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   /* The first screen was the toolbar, the profile and a 150px section head; the
      first line sat 1,228px down. On a phone the lines are the page: the head
-     names the player and colour, the plan follows, and the summary sentence
-     closes the card underneath. */
-  .color-sec { display: flex; flex-direction: column; }
-  .cs-head { order: 0; }
-  .plan { order: 1; }
-  .intel { order: 2; }
+     names the player and colour, then the caption and the table; the reads and
+     the game plan's first moves follow (the order is set for every width above). */
   /* The identity card repeats the player the section head names and the score
      the colour tabs already show. On a phone it keeps the sample-size chips
      and the two actions, and gives the rest of its height to the lines. */
   .scout-panel .prof-id,
   .scout-panel .scout-color-rec { display: none; }
+  /* A phone has no room beside the tabs for the status, so it is in the flow only
+     while it has something to say: idle, it takes no height at all. */
+  .scout-engine-progress { position: static; }
+  .scout-engine-progress.is-idle { display: none; }
   .scout-panel .scout-profile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; }
   .scout-panel .prof-row { flex: 1 1 100%; }
   .scout-panel .prof-row .spacer { display: none; }
@@ -566,7 +653,9 @@
      the first line row can reach the first screen. */
   .cs-head { gap: 6px 10px; }
   .cs-head .spacer { display: none; }
-  .cs-head .cov { flex: 1 1 100%; min-width: 0; }
+  /* The coverage and "Add all gaps" share the second row: the bar takes the
+     room the button leaves, so the caption and the table start one row higher. */
+  .cs-head .cov { flex: 1 1 200px; min-width: 0; }
   .cs-head .scout-coverage-label { min-width: 0; white-space: normal; }
   /* The add-to-prep button is the row's only action: it needs a thumb. */
   .scout-add-icon { width: 44px; height: 44px; font-size: 18px; }

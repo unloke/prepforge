@@ -98,7 +98,7 @@ describe("scout accent budget", () => {
     // line" chip and the engine note read as calls to action when they are data.
     expect(css).not.toMatch(/\.c-main \{[^}]*--accent/);
     expect(css).not.toMatch(/\.scout-color-rec \{[^}]*--accent-soft/);
-    expect(css).toMatch(/\.line-row\.is-expanded \{[^}]*inset 3px 0 0 var\(--accent\)/);
+    expect(css).toMatch(/\.line-row\.is-expanded::before \{[^}]*background: var\(--accent\)/);
   });
 });
 
@@ -166,9 +166,11 @@ describe("scout phone composition", () => {
   it("puts the game plan before the summary sentence on a phone", () => {
     // The head, a 250px summary band and the plan stacked in source order put
     // the first line 1,228px down at 390x844. The plan is what the page is for.
-    expect(phone).toMatch(/\.cs-head \{ order: 0; \}/);
-    expect(phone).toMatch(/\.plan \{ order: 1; \}/);
-    expect(phone).toMatch(/\.intel \{ order: 2; \}/);
+    // The order is one rule set for every width (scout.css): the table comes
+    // after the head and before the reads and the plan's first moves.
+    const sheet = readFileSync(resolve(here, "./scout.css"), "utf8");
+    expect(sheet).toMatch(/\.color-sec \.plan > \.scout-lines-head,\s*\.color-sec \.plan > \.scout-lines \{ order: 2; \}/);
+    expect(sheet).toMatch(/\.color-sec \.intel > \*,\s*\.color-sec \.plan > \* \{ order: 4; \}/);
   });
 
   it("keeps the speed chips and the two actions, and drops the repeated identity", () => {
@@ -201,7 +203,7 @@ describe("scout colour recommendation", () => {
   it("hugs its sentence instead of stretching across the profile card", () => {
     // A 256px sentence sat in a 575px grey strip: the box said "banner", the
     // content said "one line of figures".
-    const rule = css.match(/\.scout-color-rec \{[^}]*\}/)[0];
+    const rule = css.match(/\n\.scout-color-rec \{[^}]*\}/)[0];
     expect(rule).toContain("align-self: flex-start;");
   });
 });
