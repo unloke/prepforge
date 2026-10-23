@@ -207,6 +207,11 @@
 .train-summary-actions .btn[hidden] { display: none; }
 .train-recent { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs); }
 .train-recent[hidden] { display: none; }
+/* Home's foot (the recent runs, Maia's download) sits on the rows' text edge:
+   the rows are cards with 12px inside, so their text starts 12px in from the
+   panel. */
+#train-home > .train-recent,
+#train-home > [data-unlock-place] { padding-inline: 12px; }
 .train-recent-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
 .train-recent-name { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .train-recent-row b { font-variant-numeric: tabular-nums; }
