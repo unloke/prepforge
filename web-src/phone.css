@@ -97,69 +97,32 @@
      steps left. */
   #view-dashboard .lib { gap: var(--phone-gap); }
   #view-dashboard .lib-grid { gap: var(--phone-gap); }
-  /* The strip answers one question — what to study next — so the queue is the
-     largest line on it and the streak is the quiet meta above. The action
-     keeps the accent and takes a thumb-sized pill. */
+  /* The strip answers one question, what is due: the queue is its one large
+     line, the streak a quiet line under it, and the action a thumb-sized pill
+     at the foot. The recap and the lifetime counts are desktop-only. */
   #view-dashboard .today.card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "streak train"
-      "queue  queue"
-      "more   more";
-    align-items: center;
-    gap: 2px 12px;
-    min-height: 64px;
+      "queue"
+      "more"
+      "streak"
+      "train";
+    gap: 6px;
     padding: 12px 14px 14px;
     background: var(--panel);
   }
-  #view-dashboard .today-streak {
-    grid-area: streak;
-    flex-direction: row;
-    align-items: baseline;
-    gap: 5px;
-    width: auto;
-    height: auto;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    line-height: 1.1;
-  }
-  /* A streak is a fact, not a state: it is read, not warned about, so it keeps
-     the ink and lets the queue carry the emphasis. */
-  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 650; }
-  #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
-  #view-dashboard .today-unit small { display: none; }
+  #view-dashboard .today-body,
+  #view-dashboard .today-aside { display: contents; }
   #view-dashboard .today-recap,
-  #view-dashboard .today-counts { display: none; }
-  /* The aside is only the counts and the recap: with both hidden it would
-     leave an empty grid cell. */
-  #view-dashboard .today-aside { display: none; }
-  #view-dashboard .today-body { display: contents; }
-  #view-dashboard .today-warning { grid-area: more; margin-top: 4px; font-size: 13px; }
-  /* A failed read is one card: the strip's grid would clip it into the 40px
-     streak slot, so it spans the full row instead. */
+  #view-dashboard .lib-counts { display: none; }
+  #view-dashboard .today-queue { grid-area: queue; font-size: 18px; line-height: 1.25; text-wrap: pretty; }
+  #view-dashboard .today-more,
+  #view-dashboard .today-warning { grid-area: more; font-size: 13px; line-height: 1.35; text-wrap: pretty; }
+  #view-dashboard .today-streak { grid-area: streak; font-size: 13px; text-align: left; }
+  /* A failed read is one card: it spans the whole strip, not one grid cell. */
   #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
   #view-dashboard .today > .btn { grid-area: train; }
-  /* The queue never breaks between a figure and its unit, and never leaves a
-     "·" at the end of a line: the two lines are separate elements now, and the
-     queue is two lines at most. */
-  #view-dashboard .today-queue {
-    grid-area: queue;
-    color: var(--text);
-    font-size: 17px;
-    font-weight: 650;
-    line-height: 1.3;
-    text-wrap: pretty;
-  }
-  #view-dashboard .today-more {
-    grid-area: more;
-    margin-top: 2px;
-    font-size: 13px;
-    line-height: 1.35;
-    text-wrap: pretty;
-  }
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
      the controls only — the filters on one row, then search and import. */

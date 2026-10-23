@@ -173,39 +173,34 @@ async function runViewport(vp) {
   check((await page.locator("#dashboard-repertoires .list-item").count()) === 0, "rows must not use the legacy list-item card");
   // The lifetime counts are one quiet line, not the old tile row.
   check((await page.locator("#dashboard-today .metric").count()) === 0, "today strip should not keep the metric tiles");
-  const countsShown = await page.locator("#dashboard-today .today-counts").isVisible();
-  check(countsShown === (vp.width > 760), `today counts visible=${countsShown} at ${vp.width}px`);
+  const countsShown = await page.locator("#dashboard-counts").isVisible();
+  check(countsShown === (vp.width > 760), `library counts visible=${countsShown} at ${vp.width}px`);
   if (vp.width > 760) {
-    const counts = (await page.locator("#dashboard-today .today-counts").textContent()) || "";
+    const counts = (await page.locator("#dashboard-counts").textContent()) || "";
     check(counts.includes("12") && counts.includes("3") && counts.includes("7"), `counts should carry games/repertoires/sessions, got "${counts}"`);
   }
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
-  // The Today strip is one band: the queue leads at the strip's reading size,
-  // the rest of the queue is one quieter line under it, and the week's history
-  // has its own cell at the right. Read as four equal 13px lines, the queue was
-  // the third thing the eye found.
+  // The Today strip answers what is due: the queue is its first line and its
+  // loudest text, the streak is the quiet line beside it, and the lifetime
+  // counts sit under the Repertoires heading. The check reads the sizes the
+  // user sees, not the markup, so the queue's second line may be absent.
   const queueFirst = await page.evaluate(() => {
     const body = document.querySelector("#dashboard-today .today-body");
-    if (!body) return false;
-    const kids = [...body.children];
-    return kids.length > 0 && kids[0].classList.contains("today-queue");
+    return !!body && body.firstElementChild?.classList.contains("today-queue");
   });
   check(queueFirst, "the queue must be the first line of the Today body");
   const queueSize = await page.evaluate(() => {
     const q = document.querySelector("#dashboard-today .today-queue");
-    const more = document.querySelector("#dashboard-today .today-more");
-    if (!q || !more) return null;
-    return { q: parseFloat(getComputedStyle(q).fontSize), more: parseFloat(getComputedStyle(more).fontSize) };
+    const s = document.querySelector("#dashboard-today .today-streak");
+    if (!q || !s) return null;
+    return { q: parseFloat(getComputedStyle(q).fontSize), streak: parseFloat(getComputedStyle(s).fontSize) };
   });
-  check(queueSize && queueSize.q >= 16 && queueSize.more < queueSize.q,
+  check(queueSize && queueSize.q >= 16 && queueSize.q > queueSize.streak,
     `the queue must be the strip's loudest line, got ${JSON.stringify(queueSize)}`);
-  const countsInAside = await page.evaluate(() => {
-    const aside = document.querySelector("#dashboard-today .today-aside");
-    return !!aside && !!aside.querySelector(".today-counts");
-  });
-  check(countsInAside, "the lifetime counts must sit in the Today aside");
+  const countsUnderHeading = await page.evaluate(() => !!document.querySelector("#dashboard-rep-count")?.closest(".card-head")?.querySelector("#dashboard-counts"));
+  check(countsUnderHeading, "the lifetime counts must sit beside the Repertoires heading");
 
   // Phone: the page head's + is New repertoire, so Import PGN needs its own
   // route. It used to live only in the hidden header actions: a phone could
