@@ -29,3 +29,8 @@ it("a failed source is a panel block with a red edge, not a red slab", () => {
 it("the retry action sits at the end of the error row", () => {
   expect(rule(".scout-error .btn")).toMatch(/margin-left:\s*auto/);
 });
+
+it("the activity trend spans the chart row; the two cards beside it share a row", () => {
+  expect(rule(".scout-intel-charts")).toMatch(/repeat\(2,/);
+  expect(rule(".scout-intel-trends")).toMatch(/grid-column:\s*1 \/ -1/);
+});

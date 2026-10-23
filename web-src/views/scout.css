@@ -386,7 +386,11 @@
 .scout-refutation-gap-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---- Chart cards ---- */
-.scout-intel-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+/* Two cards share a row and end level; the activity trend is tall and takes the
+   full width under them. Three across left the short cards with blank bands
+   (152px and 130px) when they stretched to the trend's height. */
+.scout-intel-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.scout-intel-trends { grid-column: 1 / -1; }
 .chart { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; padding: 10px 12px; }
 .chart h3 { margin: 0; }
 .scout-bar-chart { display: grid; gap: 4px; width: 100%; }
