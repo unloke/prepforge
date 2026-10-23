@@ -106,7 +106,8 @@ async function main() {
     const plotX = (ratio) => ratio * CHART_W;
 
     // --- 1. Mouse hover: text tooltip (SAN, eval, classification). ---
-    await page.mouse.move(xForRatio(0.75), chartBox.y + chartBox.height / 2); // ply 4
+    const hoverAt = [xForRatio(0.75), chartBox.y + chartBox.height / 2]; // ply 4
+    await page.mouse.move(...hoverAt);
     await until(
       page,
       () => {
@@ -114,7 +115,23 @@ async function main() {
         return t && !t.hidden && t.textContent.includes("Nc6");
       },
       5_000,
-    );
+    ).catch(async (e) => {
+      // A timeout alone says nothing about why; name what was under the pointer.
+      const state = await page.evaluate(([x, y]) => {
+        const t = document.getElementById("eval-chart-tooltip");
+        const under = document.elementFromPoint(x, y);
+        const box = document.getElementById("eval-chart").getBoundingClientRect();
+        return {
+          under: under && `${under.tagName}#${under.id}.${under.getAttribute("class")}`,
+          tooltip: t && { hidden: t.hidden, text: t.textContent },
+          chart: [box.x, box.y, box.width, box.height].map(Math.round),
+          viewport: [innerWidth, innerHeight],
+        };
+      }, hoverAt);
+      fail(`${e.message}
+state: ${JSON.stringify(state)}
+measured: ${JSON.stringify(chartBox)}`);
+    });
     const tooltipText = await page.evaluate(
       () => document.getElementById("eval-chart-tooltip").textContent,
     );
