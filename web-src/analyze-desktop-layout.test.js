@@ -51,6 +51,14 @@ describe("Analyze's desktop panel", () => {
   });
 });
 
+describe("Analyze title", () => {
+  it("names the loaded game in the page's h1, under the board", () => {
+    // The caption is the screen's title (inspector: every screen has one h1);
+    // it stays empty until a game is loaded, so no standing label is drawn.
+    expect(html).toMatch(/<h1 class="board-label board-caption" id="analysis-board-caption"/);
+  });
+});
+
 describe("Analyze evaluation placement", () => {
   it("puts the evaluation under the board only on the stacked and phone bands", async () => {
     // At a wide desktop the evaluation is the panel's second block, beside the
