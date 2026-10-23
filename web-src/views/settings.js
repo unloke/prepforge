@@ -10,6 +10,8 @@ import { subscribeDownloads } from "../engine/engine-downloads.js";
 import "./settings.css";
 import { createAccountSection } from "./settings-account.js";
 import { jumpToSection } from "./settings-jump.js";
+import { createSettingsRouter } from "./settings-router.js";
+import { createAppearanceSection } from "./settings-appearance.js";
 
 export function createSettingsView({
   appState,
@@ -42,6 +44,13 @@ export function createSettingsView({
     refreshAuthStatus,
   });
   const downloads = createSettingsDownloads({ showConfirmModal, setPref });
+  const appearanceSection = createAppearanceSection({ pref, setPref });
+  const router = createSettingsRouter({
+    renderArea,
+    navEl: document.querySelector(".settings-nav"),
+    hereEl: document.getElementById("settings-current"),
+    contentEl: document.querySelector("#view-settings .settings-content"),
+  });
 
   function paintSwitch(el, on) {
     if (!el) return;
@@ -334,6 +343,41 @@ export function createSettingsView({
     onAccountsChanged();
   }
 
+  // Render individual settings areas by name (hash route compatible).
+  async function renderArea(areaName, { showOthers = false } = {}) {
+    // Area names map to section ids without "set-" prefix
+    const areaMap = {
+      account: "set-account",
+      appearance: "set-appearance",
+      engine: "set-engine",
+      maia: "set-maia",
+      strength: "set-strength",
+      board: "set-board",
+    };
+    const sectionId = areaMap[areaName];
+    if (!sectionId) return Promise.resolve();
+
+    // If not showing others, hide all sections except the requested one
+    if (!showOthers) {
+      document.querySelectorAll("#view-settings .settings-content > .card").forEach((card) => {
+        card.hidden = card.id !== sectionId;
+      });
+    }
+
+    // Trigger initial rendering of elements in this section
+    switch (areaName) {
+      case "account":
+        return accountSection.render().catch(() => {});
+      case "appearance":
+        appearanceSection.render();
+        return Promise.resolve();
+      case "engine":
+        return renderEngineCard().catch(() => {});
+      default:
+        return Promise.resolve();
+    }
+  }
+
   // One info pop is open at most: opening one closes the rest.
   function closeInfoPops() {
     for (const pop of document.querySelectorAll("#view-settings .pf-info-pop")) pop.hidden = true;
@@ -466,8 +510,10 @@ export function createSettingsView({
   function bind() {
     if (eventsBound) return;
     eventsBound = true;
-    bindSectionNav();
+
+    // Hash router handles navigation - no scroll-based section nav needed
     accountSection.bind();
+    appearanceSection.bind();
 
     // Segmented theme control: direct buttons (no select needed). The hidden
     // native #settings-theme select is still synced for assistive tech that
@@ -588,6 +634,7 @@ export function createSettingsView({
     dispose() { for (const unsubscribe of unsubscribers.splice(0)) unsubscribe(); },
     renderSettings,
     refreshEngineCard,
+    renderArea,
     renderBrowserEngineStatus,
     renderDownloads: downloads.render,
     renderStrengthControls,
@@ -596,7 +643,5 @@ export function createSettingsView({
     renderConnections,
     refreshConnections,
     renderAccount: () => accountSection.render(),
-    bindSectionNav,
-    markActiveSection,
   };
 }
