@@ -519,7 +519,7 @@ describe("workspace chrome layout", () => {
     expect(view).toContain('class="tabs" role="tablist"');
     expect(view).toContain('id="team-invite-foot"');
     // Page grid in the eager sheet: the lists beside the team, then one column.
-    expect(css).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); \}/);
+    expect(css).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
     expect(teamsCss).toContain(".team-row.is-selected");
     // The old page intro, stacked-card chrome and generic list rows are gone.
@@ -544,10 +544,11 @@ describe("workspace chrome layout", () => {
     // take the whole window: a fixed side column was easy to miss.
     expect(css).toMatch(/\.settings\s*\{[^}]*display:\s*block/);
     expect(css).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky[^}]*background:\s*var\(--panel\)/);
-    // A wide window gets two card columns, so the six cards fit on one screen
-    // instead of running 1.6 screens down a single column.
-    expect(css).toMatch(/@media\s*\(min-width:\s*1200px\)[\s\S]*?\.settings-content\s*\{[^}]*column-count:\s*2/);
-    expect(css).toMatch(/\.settings-content\s*>\s*\.set\s*\{[^}]*break-inside:\s*avoid/);
+    // One column of cards in the strip's own order, capped and centred: a
+    // two-column masonry listed Board third and drew it beside Engine, so the
+    // section you picked and the card you landed on were in different columns.
+    expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
+    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*880px[^}]*margin:\s*0 auto/);
     // The desktop page names itself: the phone header is hidden on wide
     // screens, so without this the Settings view has no heading at all.
     expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*flex/);

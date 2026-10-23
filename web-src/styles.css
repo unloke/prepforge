@@ -978,8 +978,13 @@ h2 {
   max-width: none;
   padding: 16px;
 }
+/* One column of cards, capped and centred like the other pages, so a row's
+   label and value stay a glance apart on a wide window (a full-width card put
+   them ~600px apart) and the page keeps equal margins. */
 .settings {
   display: block;
+  max-width: 880px;
+  margin: 0 auto;
 }
 /* The six sections are one strip under the title at every width: it is the
    page's only navigation, so it keeps a surface of its own instead of reading
@@ -1005,28 +1010,14 @@ h2 {
   gap: 12px;
   min-width: 0;
 }
-/* One column keeps the strip's order: Board, which the markup places with the
-   other personal cards for the two-column page, reads last. */
-@media (max-width: 1199px) {
-  .settings-content > #set-board { order: 1; }
-}
-/* Six cards in one column ran 1.6 screens on a wide window and left a third
-   of the page empty. Two columns fit the page on one screen and read down the
-   first and into the second: you and your board (Account, Appearance, Board),
-   then the engines (Engine, Maia3, Playing strength). Grouped that way the two
-   columns also end within a card of each other; the strip's order put the tall
-   Engine card under Account and left the right column 250px short. */
-@media (min-width: 1200px) {
-  .settings-content {
-    display: block;
-    column-count: 2;
-    column-gap: 12px;
-  }
-  .settings-content > .set {
-    break-inside: avoid;
-    margin-bottom: 12px;
-  }
-}
+/* One column, in the strip's order: Account (with the connections block),
+   Appearance, Board, then the engines. Every section is in the page at once, so
+   the strip is anchor navigation that tracks the scroll (settings.js marks the
+   card you are in); the cards stay one column because a two-column masonry put
+   Board beside Engine while the strip lists it third, and the tab you picked
+   and the card you landed on were in different columns. Six cards in one
+   column scroll in the order the strip names, which is the point of the strip. */
+.settings-content > #set-board { order: 0; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .workspace:has(> .view.is-active#view-settings) { padding: 8px 8px calc(64px + env(safe-area-inset-bottom)); }
 }
