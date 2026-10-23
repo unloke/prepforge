@@ -1571,26 +1571,29 @@ h2 {
   align-items: start;
 }
 
-/* Desktop: the two lists (directory, incoming shares) stack in a narrow column
-   and the team takes the rest. An open team is a work surface and takes the
-   view's height; the placeholder card spans the list column and ends where it
-   ends, so a short directory never leaves a screen-tall blank card beside two
-   strips. With no team yet (or signed out) the directory has nothing to list:
-   the placeholder is the first-run panel with its own New team, and the shares
-   card sits beside it at the same height. */
+/* Desktop: two panes of the same height, like a list beside a work surface. The
+   left column holds the two lists at their own height; the right pane is where
+   the team goes, so it holds the view's height whether a team is open or not
+   (a placeholder that stopped 250px down left two thirds of the window as bare
+   ground, and its message read as floating in a small box). With no team yet
+   (or signed out) the directory has nothing to list: the placeholder is the
+   first-run panel with its own New team, and the shares card sits beside it. */
 @media (min-width: 1021px) {
-  .teams { grid-template-columns: 300px minmax(0, 1fr); }
+  .teams { grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
   .teams > .card.dir,
-  .teams > .card.incoming { grid-column: 1; }
+  .teams > .card.incoming { grid-column: 1; align-self: start; }
   .teams > .team-detail,
   .teams > .team-empty { grid-column: 2; grid-row: 1 / span 2; align-self: stretch; }
-  .teams:has(> .team-detail:not([hidden])) { min-height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+  .teams:has(> .team-detail:not([hidden])) { grid-template-rows: auto minmax(0, 1fr); }
   .teams > .team-detail:not([hidden]) { display: flex; flex-direction: column; }
   .teams > .team-detail > [data-team-panel] { flex: 1 1 auto; min-height: 0; overflow: auto; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) { grid-template-columns: minmax(0, 1fr) 330px; }
   .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.dir { display: none; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1; }
-  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: stretch; }
+  /* The first-run panel is the pane too: it takes the height and holds the one
+     step where the team would appear, instead of a short card with the rest of
+     the window under it. */
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .team-empty { grid-column: 1; grid-row: 1 / -1; align-self: stretch; }
+  .teams:is([data-empty="no-teams"], [data-empty="signed-out"]) > .card.incoming { grid-column: 2; grid-row: 1; align-self: start; }
   .teams[data-empty="signed-out"] > .team-empty { grid-column: 1 / -1; } /* a guest has no shares card */
 }
 #team-empty-new { display: none; }

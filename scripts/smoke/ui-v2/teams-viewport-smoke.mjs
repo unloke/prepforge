@@ -286,21 +286,26 @@ async function runViewport(vp) {
     await page.waitForTimeout(300);
   }
 
-  // With no team picked the directory and the incoming shares stack in one
-  // column and the placeholder beside them ends where that column ends: no
-  // screen-tall blank card (only an open team takes the view's height).
+  // With no team picked the placeholder is the work surface beside the lists:
+  // it takes the height of the view (a placeholder that stopped 250px down left
+  // most of the window as bare ground), and the two lists stay at their own
+  // height at the top of their column instead of stretching to fill it.
   if (vp.width >= 1021) {
     const boxes = await page.evaluate(() => {
-      const box = (sel) => document.querySelector(sel)?.getBoundingClientRect() || { height: 0, bottom: 0 };
-      const [middle, dir, incoming] = ["team-empty", "card.dir", "card.incoming"].map((c) => box(`#view-teams .teams > .${c}`));
+      const box = (sel) => document.querySelector(sel)?.getBoundingClientRect() || { height: 0, bottom: 0, top: 0 };
+      const [middle, dir, incoming, teams] = ["team-empty", "card.dir", "card.incoming", ""].map((c) => box(c ? `#view-teams .teams > .${c}` : "#view-teams .teams"));
       return {
         middle: Math.round(middle.height), dir: Math.round(dir.height), incoming: Math.round(incoming.height),
-        endGap: Math.round(Math.abs(middle.bottom - Math.max(dir.bottom, incoming.bottom))),
+        teams: Math.round(teams.height), dirTop: Math.round(dir.top), teamsTop: Math.round(teams.top),
+        incomingTop: Math.round(incoming.top), dirBottom: Math.round(dir.bottom), incomingBottom: Math.round(incoming.bottom),
       };
     });
-    check(boxes.endGap <= 2, `the placeholder should end where the list column ends, ${boxes.endGap}px off`);
-    check(boxes.middle > boxes.dir && boxes.middle > boxes.incoming,
-      `the placeholder should span the list column, got ${JSON.stringify(boxes)}`);
+    check(Math.abs(boxes.middle - boxes.teams) <= 2,
+      `the placeholder should fill the view's height like an open team, got ${boxes.middle} of ${boxes.teams}`);
+    check(boxes.dirTop === boxes.teamsTop && boxes.incomingTop > boxes.dirBottom,
+      `the lists should stack from the top of their column, got ${JSON.stringify(boxes)}`);
+    check(boxes.dir < boxes.middle && boxes.incoming < boxes.middle,
+      `the lists should keep their own height, got ${JSON.stringify(boxes)}`);
   }
 
   // Overflow + console errors.
