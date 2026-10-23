@@ -175,17 +175,48 @@ describe("the report", () => {
 
   it("jumps to a moment's move and to the next move of a counted grade", () => {
     const calls = [];
-    const host = { set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    const host = { dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
     renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, onJump: (ply) => calls.push(["jump", ply]), onGrade: (side, grade) => calls.push(["grade", side, grade]) });
-    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
+    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" || sel === "[data-toggle-summary]" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
     host.onclick({ target: target({ ply: "4" }) });
     host.onclick({ target: target({ side: "black", grade: "blunder" }) });
     expect(calls).toEqual([["jump", 4], ["grade", "black", "blunder"]]);
   });
 
   it("clears the block when there is nothing analysed", () => {
-    const host = { set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    const host = { dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
     renderReportBlock(host, { moves: [], evalGraph: [] });
     expect(host.innerHTML).toBe("");
+  });
+});
+
+describe("the report's summary", () => {
+  const headers = { White: "me_user", Black: "opp_one" };
+  const fakeHost = () => ({ dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } });
+
+  it("starts as one line that names both sides and their errors, and opens the full report", () => {
+    const report = buildGameReport({ moves: MOVES, evalGraph: GRAPH, headers });
+    const closed = String(reportHtml(report, false));
+    expect(closed).toMatch(/<button type="button" class="rp-summary" data-toggle-summary aria-expanded="false">/);
+    expect(closed).toContain("me_user");
+    expect(closed).toContain("no errors");
+    expect(closed).not.toContain("rp-counts");
+    expect(String(reportHtml(report, true))).toMatch(/aria-expanded="true"[\s\S]*rp-counts/);
+
+    const host = fakeHost();
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, headers });
+    expect(host.innerHTML).not.toContain("rp-counts");
+    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? {} : null) } });
+    expect(host.dataset.open).toBe("true");
+    expect(host.innerHTML).toContain("rp-counts");
+    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? {} : null) } });
+    expect(host.innerHTML).not.toContain("rp-counts");
+  });
+
+  it("keeps the open state when the block is written again", () => {
+    const host = fakeHost();
+    host.dataset.open = "true";
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, headers });
+    expect(host.innerHTML).toContain("rp-counts");
   });
 });

@@ -261,7 +261,7 @@ function sideHeadHtml(report) {
   const cell = (side) => {
     const s = report.sides[side];
     const name = s.name || (side === "white" ? "White" : "Black");
-    return html`<div class="rp-side rp-${side}"><span class="rp-name" title="${name}"><i class="rp-disc" aria-hidden="true"></i>${name}</span><b class="rp-acc">${s.accuracy == null ? "–" : s.accuracy}</b></div>`;
+    return html`<div class="rp-col rp-${side}"><span class="rp-name" title="${name}"><i class="rp-disc" aria-hidden="true"></i>${name}</span><b class="rp-acc">${s.accuracy == null ? "–" : s.accuracy}</b></div>`;
   };
   return html`<div class="rp-sides" aria-label="Accuracy">${cell("white")}<span class="rp-acc-label">Accuracy${report.result ? html`<span class="rp-result">${report.result}</span>` : ""}</span>${cell("black")}</div>`;
 }
@@ -302,19 +302,49 @@ function openingHtml(report) {
     : ""}</section>`;
 }
 
-/** The report as markup (no listeners). Empty when nothing was analysed. */
-export function reportHtml(report) {
+// The errors a side made, in words: "2 blunders, 1 mistake" or "no errors".
+const errorsText = (counts) => {
+  const part = (n, word) => (n ? `${n} ${word}${n > 1 ? "s" : ""}` : "");
+  return [part(counts.blunder || 0, "blunder"), part(counts.mistake || 0, "mistake")].filter(Boolean).join(", ") || "no errors";
+};
+
+// The one line that says how each side played. It is the report's toggle:
+// collapsed by default, it opens the full report beneath it.
+function summaryHtml(report, open) {
+  const side = (key) => {
+    const s = report.sides[key];
+    const name = s.name || (key === "white" ? "White" : "Black");
+    return html`<span class="rp-side rp-${key}"><i class="rp-disc" aria-hidden="true"></i><span class="rp-name">${name}</span><b class="rp-acc">${s.accuracy == null ? "–" : `${s.accuracy}%`}</b><span class="rp-errs">${errorsText(s.counts)}</span></span>`;
+  };
+  return html`<button type="button" class="rp-summary" data-toggle-summary aria-expanded="${open ? "true" : "false"}">${side("white")}${side("black")}<i class="rp-chev" aria-hidden="true"></i></button>`;
+}
+
+/** The report as markup (no listeners). `open` shows the full report under the summary line. */
+export function reportHtml(report, open = true) {
   if (!report) return "";
-  return html`${report.graded ? html`${sideHeadHtml(report)}${countsHtml(report)}` : ""}${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
+  const full = html`${report.graded ? html`${sideHeadHtml(report)}${countsHtml(report)}` : ""}${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
+  return report.graded ? html`${summaryHtml(report, open)}${open ? full : ""}` : full;
 }
 
 // Write the report into `host`. `onJump(ply)` goes to a move of the game;
-// `onGrade(side, grade)` to the next move of that grade by that side.
+// `onGrade(side, grade)` to the next move of that side by that side. The
+// summary toggles the full report; the host's `data-open` keeps that state
+// across re-renders, and the report starts collapsed.
 export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, onJump = () => {}, onGrade = () => {} } = {}) {
   if (!host) return;
-  host.innerHTML = reportHtml(buildGameReport({ moves: moves || [], evalGraph, headers, reps, names }));
+  const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names });
+  const draw = () => {
+    host.innerHTML = reportHtml(report, host.dataset.open === "true");
+  };
+  draw();
   host.onclick = (event) => {
     if (event.target.closest?.(".move-ref")) return;
+    if (event.target.closest?.("[data-toggle-summary]")) {
+      host.dataset.open = host.dataset.open === "true" ? "false" : "true";
+      draw();
+      host.querySelector?.("[data-toggle-summary]")?.focus();
+      return;
+    }
     const grade = event.target.closest?.("[data-grade]");
     if (grade) {
       onGrade(grade.dataset.side, grade.dataset.grade);
