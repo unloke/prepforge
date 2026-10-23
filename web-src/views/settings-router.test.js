@@ -64,7 +64,7 @@ describe("Settings area router", () => {
   });
 
   it("back and forward show the area in the hash", () => {
-    const { handlers, shown, router } = setup("");
+    const { shown, router } = setup("");
     router.open();
     globalThis.location.hash = "#/settings/appearance";
     router.hashChanged();
