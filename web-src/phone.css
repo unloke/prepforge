@@ -573,12 +573,12 @@
   #view-settings .status-pill { font-size: 13px; }
   #view-settings .set .faint,
   #view-settings .set .note { margin: 8px 0; font-size: 13px; }
-  /* Sign out takes its own line under the identity, on the text's edge:
-     beside the name it left the name and its Edit
-     167px, which cut the name to "onlyformu…" with space to spare below. */
+  /* Sign out takes its own line under the identity, on the name's own edge
+     (avatar 48px + the block's 12px gap): beside the name it cut the name to
+     "onlyformu…", and 8px short of that edge it read as a stray button. */
   #view-settings .acct-id { gap: 4px 12px; padding: 12px 0; flex-wrap: wrap; }
   #view-settings .acct-id-text { flex: 1 1 calc(100% - 60px); }
-  #view-settings .acct-signout { align-self: flex-start; margin: 0 0 0 52px; }
+  #view-settings .acct-signout { align-self: flex-start; margin: 2px 0 0 60px; }
   /* The linked account's ⋯ is a thumb target, and its menu is an action sheet
      at the thumb like every other phone menu, not a 132px popover over the
      row under it. */
