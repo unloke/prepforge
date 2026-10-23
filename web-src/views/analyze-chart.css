@@ -95,11 +95,11 @@
   display: grid;
   grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) auto;
   gap: 0;
-  /* Head, three 24px lines of verdict (plus its 4px padding), the Humans row and
-     one 6px gap before each of them. The prep row contributes nothing while it is
-     hidden, so the card ends on the Humans row; when the note does appear it takes
-     its 22px + gap out of the scrolling verdict, and nothing outside moves. */
-  height: calc(var(--coach-head) + var(--coach-line) * 3 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
+  /* Head, two 24px lines of verdict (plus its 4px padding), the Humans row and
+     one 6px gap before each of them. A verdict longer than two lines scrolls
+     inside its row; the card never grows for it. The prep row contributes nothing
+     while it is hidden, so the card ends on the Humans row. */
+  height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
   padding: 0;
   background: none;
   border: 0;
