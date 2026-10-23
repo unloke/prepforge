@@ -48,7 +48,7 @@ it("clearing the Games results drops the ledger, the filter and the selection", 
   expect(summary.hidden).toBe(true);
   expect(summary.innerHTML).toBe("");
   expect(results.innerHTML).toContain("No games checked yet");
-  expect(hint.textContent).toBe("Pick a sample size, then run a check.");
+  expect(hint.textContent).toBe("Choose a sample, then press Check.");
   expect(saved).toEqual([["replay", { filter: null, openIndex: null }]]);
   expect(paintGamesSource).toHaveBeenCalled();
 });

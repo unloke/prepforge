@@ -444,14 +444,15 @@ describe("replay empty states", () => {
     expect(markup).toContain("Try a larger sample.");
   });
 
-  it("keeps the ledger columns when there is nothing to list", () => {
+  it("keeps the empty state inside the ledger card when there is nothing to list", () => {
     // An empty Games page was two lines of text on the page ground, with no
     // sign of the table they belonged to. Every empty state now sits in the
-    // ledger body, under the same column headers as the rows.
+    // ledger card's body. Its column labels are gone: over no rows they only
+    // spread five words across the page.
     makeView(elements).renderReplayResults({ games: [], misses_recorded: 0 });
     const markup = String(elements["replay-results"].innerHTML);
     expect(markup).toContain("Games to review");
-    expect(markup).toContain("lr head col-head");
+    expect(markup).not.toContain("lr head col-head");
     // The shared empty state, but inside the ledger body, never on the ground.
     expect(markup).toMatch(/class="ledger-table"[^]*class="ledger-empty empty-state big"/);
     expect(markup.split("empty-state big")).toHaveLength(2);
