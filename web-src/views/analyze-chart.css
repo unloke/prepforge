@@ -1131,18 +1131,13 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .drawer[open] summary::before {
   content: "▾";
 }
+/* A PGN box is code-like text, so it keeps the mono face; its box, edge and
+   focus ring are the shared field's. */
 .drawer textarea {
   display: block;
-  box-sizing: border-box;
   width: 100%;
   min-height: 96px;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--panel-soft);
-  color: var(--text);
   font: 13px/1.45 var(--mono);
-  resize: vertical;
 }
 .analysis-history {
   display: flex;
@@ -1637,7 +1632,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
      PGN), so a drawer's own summary would name the same action twice. */
   #analyze-open > .drawer > summary { display: none; }
   #analyze-open > .drawer:not([open]) { display: none; }
-  #pgn-input { min-height: 120px; border-radius: 10px; }
+  #pgn-input { min-height: 120px; }
   #analyze-open .pgn-file-row { display: none; }
   #analyze-open .history-item { min-height: 48px; font-size: 15px; }
   #analyze-open .history-item .hi-open { padding: 8px 2px; font-size: 15px; }

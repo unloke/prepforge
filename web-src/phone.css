@@ -23,7 +23,6 @@
     --phone-bar-h: 56px;
     --phone-reserve: max(180px, 32dvh);
     --phone-gutter: 16px;
-    --phone-radius: 14px;
     /* The gap between blocks on a phone. Items inside one block sit closer
        than this, so a group reads as one unit. */
     --phone-gap: 20px;
@@ -34,15 +33,19 @@
   select,
   textarea { font-size: 16px; }
   /* Every control a thumb reaches is a thumb-sized target: one height for every
-     button (the 30px control height is a mouse height), one radius from the
-     shared rule. A view that needs a denser row changes its layout, not the
-     button's geometry. */
+     button, tab, chip and field (the 30px control height is a mouse height),
+     one radius from the shared rule. A view that needs a denser row changes its
+     layout, not the control's geometry. */
   .btn,
   .btn.sm,
   .seg-btn,
-  .sum-chip { min-height: 44px; height: 44px; }
+  .sum-chip,
+  select,
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+  textarea { min-height: 44px; height: 44px; }
   .btn.icon,
   .btn.sm.icon { width: 44px; min-width: 44px; }
+  textarea { height: auto; }
   /* The Train and Explorer switches are drawn at 44x26, about an iOS switch,
      and their tap area grows to the 44px a thumb needs without moving them.
      The 38x22 desktop switch was the right size for a pointer and the wrong
@@ -62,10 +65,6 @@
     min-height: 100dvh;
     max-width: none;
     padding: calc(8px + env(safe-area-inset-top)) var(--phone-gutter) calc(80px + env(safe-area-inset-bottom));
-  }
-  .view.is-active:is(#view-dashboard, #view-replay, #view-teams, #view-settings) .card {
-    border: 0;
-    border-radius: var(--phone-radius);
   }
   /* The header is a title row, not a hero: the page's own content is what the
      screen is about, so the name sits at the app-title size (22px) instead of
@@ -222,7 +221,7 @@
   }
   .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
   .search-field input { height: 100%; min-height: 0; padding: 0; }
-  #view-dashboard .lib-rep-list { border-radius: var(--phone-radius); background: var(--panel); overflow: hidden; }
+  #view-dashboard .lib-rep-list { border-radius: var(--radius-card); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
     align-items: center;
@@ -328,7 +327,7 @@
     margin: 0;
     padding: 0 14px;
     border: 0;
-    border-radius: var(--phone-radius);
+    border-radius: var(--radius-card);
     background: var(--panel);
     box-shadow: none;
   }
@@ -377,7 +376,7 @@
     color: var(--text);
     font-size: 16px;
   }
-  #view-replay .toolbar > .inline-field select { width: auto; min-width: 120px; height: 44px; border: 0; background-color: var(--surface-3); }
+  #view-replay .toolbar > .inline-field select { width: auto; min-width: 120px; }
   #view-replay .toolbar > .spacer { display: none; }
   #view-replay .toolbar > :is(#lichess-compare-btn, #scout-btn) {
     justify-content: center;
@@ -392,7 +391,7 @@
      both read the same way. Games' ledger already carries the frame. */
   #view-replay .scout-empty.empty-state.big {
     padding: 40px 24px;
-    border-radius: var(--phone-radius);
+    border-radius: var(--radius-card);
     background: var(--panel);
   }
   #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
@@ -418,7 +417,6 @@
 
   /* Teams: rows in the directory and the incoming shares are thumb rows. */
   #view-teams :is(.team-row, .mem-row, .shared-rep-row) { min-height: 52px; align-items: center; }
-  #view-teams .card { border-radius: var(--phone-radius); }
   /* A card's head on a phone is a title row, not a banner: 10px of pad over a
      44px button made the directory's head 64px, taller than the 22px page
      title above it and twice the 18px name it holds. The head keeps a small
@@ -598,7 +596,7 @@
     min-width: 0;
     padding: 6px 0;
     border: 0;
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
@@ -617,7 +615,7 @@
   #view-settings .slider input[type="range"] { flex: 1 1 auto; width: auto; min-width: 0; }
   #view-settings .set-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
   #view-settings #piece-style-picker { flex-wrap: nowrap; gap: 8px; padding: 0; border: 0; background: none; }
-  #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 44px; height: auto; padding: 6px 8px 6px 6px; border-radius: 10px; background: var(--surface-3); }
+  #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 44px; height: auto; padding: 6px 8px 6px 6px; border-radius: var(--radius); background: var(--surface-3); }
 
   /* Teams: with teams in the directory, the detail is opened by tapping one;
      an empty "No team selected" card under the list is a desktop pane with
@@ -849,7 +847,7 @@
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
     height: 64px;
     padding-bottom: 0;
-    border-radius: 16px 16px 0 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
     box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
     transform: translateY(calc(100% + var(--phone-bar-h) + 40px));
     visibility: hidden;
@@ -872,7 +870,7 @@
     gap: 12px;
     max-height: 82dvh;
     padding: 6px var(--phone-gutter) calc(20px + env(safe-area-inset-bottom));
-    border-radius: 18px 18px 0 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
     background: var(--panel);
     box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a bottom sheet is a real overlay */
     overflow-y: auto;
@@ -1049,7 +1047,7 @@
   #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty),
   #build-sidebar > .panel-body > .shared-banner:not([hidden]) {
     border: 0;
-    border-radius: var(--phone-radius);
+    border-radius: var(--radius-card);
     background: var(--panel);
   }
   #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
@@ -1156,7 +1154,7 @@
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
   #view-train .train-back { min-height: 44px; height: 44px; }
-  #view-train .train-row { padding: 14px; border-radius: var(--phone-radius); }
+  #view-train .train-row { padding: 14px; border-radius: var(--radius-card); }
   #view-train .train-row-go { height: 44px; min-height: 44px; }
   #view-train .train-lucky { height: 40px; min-height: 40px; padding: 0 12px; font-size: 15px; }
   /* Practice's options pack from the left and wrap in order, so nothing floats
@@ -1172,7 +1170,7 @@
     margin: 0;
     padding: 14px;
     border: 0;
-    border-radius: var(--phone-radius);
+    border-radius: var(--radius-card);
     background: var(--panel);
     box-shadow: none;
     font-size: 14px;
@@ -1193,7 +1191,7 @@
     width: auto;
     max-height: 70dvh;
     border: 0;
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
@@ -1212,7 +1210,7 @@
     max-height: 72dvh;
     padding: 6px 0;
     border: 0;
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
@@ -1246,7 +1244,7 @@
   .modal {
     max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
     padding-bottom: env(safe-area-inset-bottom);
-    border-radius: 18px 18px 0 0;
+    border-radius: var(--radius-card) var(--radius-card) 0 0;
   }
   .modal:not([open], :popover-open) { transform: translateY(24%); }
   @starting-style {
@@ -1255,7 +1253,7 @@
   .modal-title { display: flex; align-items: center; min-height: 56px; padding: 6px 8px 6px var(--phone-gutter); font-size: 18px; }
   .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
   .modal-field > span { font-size: 13px; }
-  .modal-field :is(input, select) { height: 48px; padding: 0 14px; border-radius: 12px; }
+  .modal-field :is(input, select) { padding: 0 14px; }
   .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
   .modal-footer .btn { flex: 1 1 0; font-size: 16px; }
   .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
@@ -1276,7 +1274,7 @@
     max-width: none;
     margin: auto 8px calc(8px + env(safe-area-inset-bottom));
     padding: 6px 0;
-    border-radius: 16px;
+    border-radius: var(--radius-card);
   }
   .sheet-grab { margin: 2px auto 6px; }
   .sheet-item {
@@ -1306,7 +1304,7 @@
     min-height: 44px;
     padding: 4px 2px 4px 12px;
     column-gap: 8px;
-    border-radius: var(--phone-radius);
+    border-radius: var(--radius-card);
     font-size: 14px;
   }
   .notice-text { font-size: 12px; }

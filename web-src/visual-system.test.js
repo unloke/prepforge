@@ -97,13 +97,13 @@ describe("visual system tokens", () => {
     // The option is a word on a rule, not a box: it squares its corners so a
     // browser's own button radius never creeps back in.
     expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*0/);
-    // The <select> base rule is the one that gives a dropdown the app's box.
-    const selectRule = css.match(/(?:^|\n)select \{([^}]+)\}/g)
-      ?.map((rule) => rule.replace(/^[\n]*/, ""))
-      .find((rule) => rule.includes("--control-h")) || "";
-    expect(selectRule).toMatch(/border-radius:\s*var\(--radius\)/);
-    expect(selectRule).toMatch(/height:\s*var\(--control-h\)/);
-    expect(selectRule).toMatch(/appearance:\s*none/);
+    // One field rule gives every select, text input and textarea the app's box;
+    // the select only adds its own chevron and cursor on top of it.
+    const fieldRule = css.match(/(?:^|\n)select,\ninput:not\([^)]*\),\ntextarea \{([^}]+)\}/)?.[1] || "";
+    expect(fieldRule).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(fieldRule).toMatch(/height:\s*var\(--control-h\)/);
+    expect(fieldRule).toMatch(/appearance:\s*none/);
+    const selectRule = css.match(/(?:^|\n)select \{\n  padding-right:[^}]+\}/)?.[0] || "";
     expect(selectRule).toMatch(/background-image:\s*var\(--select-chevron\)/);
   });
 
