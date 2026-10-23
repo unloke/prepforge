@@ -38,10 +38,6 @@ const PHASES = [
   { key: "endgame", label: "Endgame" },
 ];
 
-// A swing smaller than this (win-chance points) is not a key moment.
-const MOMENT_MIN_LOSS = 8;
-const MOMENT_MAX = 5;
-
 // The evaluation of a point in the graph is White's, so the mover's is its
 // complement when Black played. A missing point is a level position: the first
 // ply has no predecessor in the graph.
@@ -118,35 +114,41 @@ export function sideAccuracy(evalGraph, moves = []) {
   return white == null || black == null ? null : { white, black };
 }
 
-// The moves the game turned on: the largest win-chance drops anyone allowed, in
-// game order. Each names the better move the run found, when it found one.
-export function keyMoments(evalGraph, moves = [], { max = MOMENT_MAX, minLoss = MOMENT_MIN_LOSS } = {}) {
-  return plies(evalGraph, moves)
-    .filter((row) => row.loss >= minLoss)
-    .sort((a, b) => b.loss - a.loss)
-    .slice(0, max)
-    .sort((a, b) => a.ply - b.ply)
-    .map((row) => {
-      const bestUci = row.move?.best_move_uci && row.move.best_move_uci !== row.move.uci ? row.move.best_move_uci : null;
-      const bestSan = bestUci ? sanOf(row.move?.fen_before, bestUci) : null;
+// The grades a review lists, and the move that left the player's preparation.
+const REVIEW_GRADES = new Set(["brilliant", "great", "mistake", "blunder"]);
+
+/**
+ * The moves a review lists, in game order: every brilliant, great, mistake and
+ * blunder, and the move that left the player's own preparation. Each carries its
+ * eval before and after, the win chance it cost (mistakes and blunders), and the
+ * better move the run found. The report's list and the smart-review lane both
+ * read this one function, so they name the same moves.
+ */
+export function reviewMoments(moves = [], evalGraph = [], reps = []) {
+  const byPly = new Map(plies(evalGraph, moves).map((row) => [row.ply, row]));
+  const departure = prepDeparture(moves, reps);
+  return moves
+    .filter((move) => REVIEW_GRADES.has(reportGradeOf(move.classification)) || Number(move.ply) === departure?.ply)
+    .map((move) => {
+      const ply = Number(move.ply);
+      const row = byPly.get(ply);
+      const grade = reportGradeOf(move.classification);
+      const marked = REVIEW_GRADES.has(grade) ? grade : null;
+      const bestUci = move.best_move_uci && move.best_move_uci !== move.uci ? move.best_move_uci : null;
+      const bestSan = bestUci ? sanOf(move.fen_before, bestUci) : null;
       return {
-        ply: row.ply,
-        side: row.side,
-        label: moveRef(row.move, row.ply),
-        move: row.move,
-        grade: reportGradeOf(row.move?.classification),
-        loss: Math.round(row.loss),
-        before: formatEval(row.prev),
-        after: formatEval(row.point),
+        ply,
+        side: sideOfMove(move, ply),
+        label: moveRef(move, ply),
+        move,
+        grade: marked,
+        departure: ply === departure?.ply,
+        before: formatEval(row?.prev),
+        after: formatEval(row?.point),
+        loss: row && (grade === "mistake" || grade === "blunder") ? Math.round(row.loss) : null,
         best: bestSan ? { san: bestSan, uci: bestUci } : null,
       };
     });
-}
-
-// The one move that decided the game (the largest key moment), or null.
-export function biggestSwing(evalGraph, moves = []) {
-  const [top] = keyMoments(evalGraph, moves, { max: 1, minLoss: 1 });
-  return top || null;
 }
 
 // Grade counts per side.
@@ -243,10 +245,9 @@ export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps
       }]),
     ),
     result: known(headers.Result || names.result),
-    moments: keyMoments(evalGraph, moves),
+    moments: reviewMoments(moves, evalGraph, reps),
     phases: phaseBreakdown(evalGraph, moves),
     opening: openingFromHeaders(headers),
-    departure: prepDeparture(moves, reps),
     graded: moves.some((m) => reportGradeOf(m.classification)),
   };
 }
@@ -284,10 +285,14 @@ function countsHtml(report) {
   )}</div>`;
 }
 
+const KIND_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
+
+// One row per review move: the move (a jump to it), its kind, the eval it moved
+// and the win chance it cost, and the better move as a link on the same line.
 function momentsHtml(report) {
   if (!report.moments.length) return "";
   return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map(
-    (m) => html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}<i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i></span><span class="km-eval">${m.before} → ${m.after}</span><span class="km-loss">−${m.loss}%</span></button>${m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : ""}</li>`,
+    (m) => html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${[m.grade && KIND_WORD[m.grade], m.departure && "Left prep"].filter(Boolean).join(" · ")}</span><span class="km-eval">${m.before} → ${m.after}</span><span class="km-loss">${m.loss == null ? "" : `−${m.loss}%`}</span></button>${m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : ""}</li>`,
   )}</ol></section>`;
 }
 
@@ -300,11 +305,7 @@ function phasesHtml(report) {
 }
 
 function openingHtml(report) {
-  const { opening, departure } = report;
-  if (!opening && !departure) return "";
-  return html`<section class="rp-sec rp-opening"><h3 class="rp-h">Opening</h3>${opening ? html`<p class="rp-opening-name">${opening}</p>` : ""}${departure
-    ? html`<p class="rp-prep"><span>Left prep at</span> ${moveLink(departure.move, departure.label)}${departure.repName ? html`<span class="rp-rep">${departure.repName}</span>` : ""}</p>`
-    : ""}</section>`;
+  return report.opening ? html`<section class="rp-sec rp-opening"><h3 class="rp-h">Opening</h3><p class="rp-opening-name">${report.opening}</p></section>` : "";
 }
 
 // The errors a side made, in words: "2 blunders, 1 mistake" or "no errors".
@@ -327,7 +328,7 @@ function summaryHtml(report, open) {
 /** The report as markup (no listeners). `open` shows the full report under the summary line. */
 export function reportHtml(report, open = true) {
   if (!report) return "";
-  const full = html`${report.graded ? html`${countsHtml(report)}${resultHtml(report)}` : ""}${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
+  const full = html`${momentsHtml(report)}${report.graded ? html`${countsHtml(report)}${resultHtml(report)}` : ""}${phasesHtml(report)}${openingHtml(report)}`;
   return report.graded ? html`${summaryHtml(report, open)}${open ? full : ""}` : full;
 }
 

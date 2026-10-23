@@ -1049,11 +1049,14 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 /* Key moments: the move, the eval it swung, the win chance it cost; the better
    move under it as a link. */
 .rp-km { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
-.km { display: flex; flex-direction: column; border-radius: 6px; }
+.km { display: flex; align-items: center; gap: 8px; padding-right: 8px; border-radius: 6px; }
 .km.is-current { background: var(--accent-soft); }
 .km-go {
+  flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto 48px;
+  grid-template-columns: 8px 72px 116px 120px 52px;
+  justify-content: start;
   align-items: center;
   gap: 8px;
   min-height: 26px;
@@ -1072,7 +1075,13 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .km-loss { color: var(--danger); font-size: var(--fs-s); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .km.g-inaccuracy .km-loss { color: var(--inaccuracy-text); }
 .km.g-mistake .km-loss { color: var(--warn-text); }
-.km-best { padding: 0 8px 4px 24px; color: var(--muted); font-size: var(--fs-s); }
+.km-best { flex: none; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+.km-kind { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
+.km-kind .rp-glyph { margin-right: 4px; }
+.km.g-brilliant .km-kind { color: var(--brilliant-text); }
+.km.g-great .km-kind { color: var(--great-text); }
+.km.g-mistake .km-kind { color: var(--warn-text); }
+.km.g-blunder .km-kind { color: var(--danger); }
 .km-best .move-ref { color: var(--good-text); font-weight: 600; }
 
 /* Phases: each side's accuracy in it; the phase's name goes to its first move. */

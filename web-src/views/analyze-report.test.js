@@ -5,11 +5,10 @@ import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
 
 import {
-  biggestSwing,
   buildGameReport,
   formatEval,
   gradeCounts,
-  keyMoments,
+  reviewMoments,
   openingFromHeaders,
   phaseBreakdown,
   prepDeparture,
@@ -73,20 +72,24 @@ describe("grade counts", () => {
 });
 
 describe("key moments", () => {
-  it("names the moves that lost the most win chance, in game order, with the better move", () => {
-    const moments = keyMoments(GRAPH, MOVES);
-    expect(moments).toHaveLength(1);
-    const [m] = moments;
-    expect(m).toMatchObject({ ply: 4, side: "black", label: "2…Nc6", grade: "blunder", before: "+0.6", after: "+2.4" });
-    expect(m.loss).toBeGreaterThan(10);
-    expect(m.best).toEqual({ san: "d6", uci: "d7d6" });
-    expect(biggestSwing(GRAPH, MOVES).label).toBe("2…Nc6");
+  const SWINGS = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["brilliant", "best", "great", "blunder", "mistake"], { 4: "d7d6" });
+
+  it("lists the brilliant, great, mistake and blunder moves in game order, with the better move", () => {
+    const moments = reviewMoments(SWINGS, GRAPH);
+    expect(moments.map((m) => [m.ply, m.grade])).toEqual([[1, "brilliant"], [3, "great"], [4, "blunder"], [5, "mistake"]]);
+    expect(moments[2]).toMatchObject({ label: "2…Nc6", side: "black", before: "+0.6", after: "+2.4", departure: false });
+    expect(moments[2].loss).toBeGreaterThan(10);
+    expect(moments[2].best).toEqual({ san: "d6", uci: "d7d6" });
+    expect(moments[0].loss).toBeNull();
   });
 
-  it("stays quiet on a game that never left level", () => {
-    const flat = MOVES.map((m) => ({ ply: m.ply, san: m.san, score_cp: 0 }));
-    expect(keyMoments(flat, MOVES)).toEqual([]);
-    expect(biggestSwing(flat, MOVES)).toBeNull();
+  it("adds the move that left the player's own preparation", () => {
+    const moments = reviewMoments(MOVES, GRAPH, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
+    expect(moments.map((m) => [m.ply, m.grade, m.departure])).toEqual([[4, "blunder", false], [5, null, true]]);
+  });
+
+  it("lists nothing when no move carries a marked grade", () => {
+    expect(reviewMoments(movesOf(["e4", "e5"], ["best", "good"]), GRAPH)).toEqual([]);
   });
 
   it("reads a mate and a finished game as players do", () => {
@@ -107,23 +110,23 @@ describe("phases", () => {
   });
 });
 
+// The shape analyze-book.js caches: one child per (parent node, uci).
+const repertoire = (ucis, name = "Italian") => {
+  const children = new Map();
+  let walk = "n0";
+  ucis.forEach((uci, i) => {
+    children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
+    walk = `n${i + 1}`;
+  });
+  return { rootId: "n0", children, name };
+};
+
 describe("opening and prep", () => {
   it("joins the opening's name and code, and drops what the PGN lacks", () => {
     expect(openingFromHeaders({ Opening: "Ruy Lopez", ECO: "C60" })).toBe("Ruy Lopez · C60");
     expect(openingFromHeaders({ ECO: "C60" })).toBe("C60");
     expect(openingFromHeaders({})).toBe("");
   });
-
-  // The shape analyze-book.js caches: one child per (parent node, uci).
-  const repertoire = (ucis, name = "Italian") => {
-    const children = new Map();
-    let walk = "n0";
-    ucis.forEach((uci, i) => {
-      children.set(`${walk}|${uci}`, { id: `n${i + 1}` });
-      walk = `n${i + 1}`;
-    });
-    return { rootId: "n0", children, name };
-  };
 
   it("names the first mainline move no repertoire continues, and the repertoire", () => {
     const departure = prepDeparture(MOVES, [repertoire(["e2e4", "e7e5", "g1f3", "b8c6"])]);
@@ -154,7 +157,7 @@ describe("the report", () => {
       evalGraph: GRAPH,
       headers: { White: "me_user", Black: "opp_one", Result: "0-1", Opening: "Ruy Lopez", ECO: "C60" },
     })));
-    const order = ["rp-counts", "rp-moments", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
+    const order = ["rp-moments", "rp-counts", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // The moment's own move sits inside the row's jump; its better move is a link.
