@@ -59,3 +59,11 @@ it("on a phone the engine offer follows the report once there is one", () => {
   const phone = readFileSync(join(root, "..", "phone.css"), "utf8");
   expect(phone).toMatch(/\.scout-panel:has\(#scout-results:not\(:empty\)\) \.scout-main > \[data-unlock-place="scout"\] \{ order: 2; \}/);
 });
+
+// The identity is one line above the tabs, and the engine status takes no height
+// in that line: on the desktop it sits over the tabs' row, out of the flow.
+it("the identity is one row and the engine status is out of the flow on desktop", () => {
+  expect(rule(".scout-main > .scout-profile")).toMatch(/flex-direction:\s*row/);
+  expect(rule(".scout-main > .scout-profile")).toMatch(/background:\s*none/);
+  expect(rule(".scout-engine-progress")).toMatch(/position:\s*absolute/);
+});

@@ -62,6 +62,19 @@
 
 /* ---- Profile card ---- */
 .scout-profile { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+/* The identity is one quiet line above the colour tabs: name, games, speed
+   chips, the colour split and the two actions. No card, no band. */
+.scout-main > .scout-profile {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.scout-main > .scout-profile .prof-row { flex: 1 1 auto; }
 .scout-profile[hidden] { display: none; }
 .prof-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .prof-row .spacer { flex: 1; }
@@ -106,8 +119,14 @@
 /* No clear edge: the two colour scores are live data, and the "why" sits in the title. */
 .scout-colour-split { color: var(--text); font-variant-numeric: tabular-nums; cursor: help; }
 
-/* Engine / Maia enrichment progress: a quiet status line, not a card. */
+/* Engine / Maia enrichment progress: a quiet status line, not a card. It sits on
+   the colour tabs' row at the right, out of the flow, so a status that comes and
+   goes never moves the tabs or leaves a band between the identity and them. */
+.scout-results { position: relative; }
 .scout-engine-progress {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -117,8 +136,6 @@
   font-size: var(--fs-s);
 }
 .scout-engine-progress progress { width: 72px; height: 4px; accent-color: var(--accent); }
-/* Hidden keeps its line: the bar comes and goes while Stockfish and Maia run, and
-   collapsing it shifted the colour tabs and the report up and down. */
 .scout-engine-progress.is-idle { visibility: hidden; }
 
 /* ---- Colour tabs ---- */
@@ -572,6 +589,10 @@
      and the two actions, and gives the rest of its height to the lines. */
   .scout-panel .prof-id,
   .scout-panel .scout-color-rec { display: none; }
+  /* A phone has no room beside the tabs for the status, so it is in the flow only
+     while it has something to say: idle, it takes no height at all. */
+  .scout-engine-progress { position: static; }
+  .scout-engine-progress.is-idle { display: none; }
   .scout-panel .scout-profile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; }
   .scout-panel .prof-row { flex: 1 1 100%; }
   .scout-panel .prof-row .spacer { display: none; }
