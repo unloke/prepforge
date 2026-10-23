@@ -324,6 +324,10 @@
      lone pill floating over the page. */
   #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .lib-actions { display: none; }
   #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .card-head { display: none; }
+  /* A failed load has nothing to filter or search, and its card carries the one
+     action that can help (Try again); the Import pill was left floating alone
+     over the error. Import needs the same server that just failed. */
+  #view-dashboard .lib-list.is-error .lib-actions { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
   #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
