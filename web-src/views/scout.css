@@ -75,6 +75,18 @@
   box-shadow: none; /* taste-skill-ignore: clears the .card shadow the identity inherits; it is not a shadow */
 }
 .scout-main > .scout-profile .prof-row { flex: 1 1 auto; }
+/* The colour split is plain text in the identity row: no chip, no tint, so it
+   does not read as a button beside Copy report and Deep scan. */
+.scout-main > .scout-profile .scout-color-rec {
+  align-self: center;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-s);
+  font-weight: 500;
+}
+.scout-main > .scout-profile .scout-colour-split { color: inherit; }
 /* The engine offer is one quiet line, not a card: the name, the gain in muted
    type, the action at the right. It sits on the panel ground like the identity. */
 .scout-main > [data-unlock-place="scout"] .unlock {

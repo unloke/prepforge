@@ -83,3 +83,10 @@ it("the engine offer is a quiet line on the panel ground, not a card", () => {
   expect(offer).toMatch(/background:\s*none/);
   expect(offer).toMatch(/border-radius:\s*0/);
 });
+
+// The colour split reads as text in the identity row, not as a chip beside the buttons.
+it("the colour split in the identity row is plain text, not a tinted chip", () => {
+  const split = rule(".scout-main > .scout-profile .scout-color-rec");
+  expect(split).toMatch(/background:\s*none/);
+  expect(split).toMatch(/padding:\s*0/);
+});
