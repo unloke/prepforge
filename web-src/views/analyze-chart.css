@@ -518,7 +518,6 @@
 .rv-maia:active { background: var(--line-soft); }
 .rv-act[hidden],
 .rv-maia[hidden] { display: none; }
-.rv-size { margin-left: 6px; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
 /* A thumb reaches 44px, the phone's touch target. */
 @media (max-width: 760px) {
   .review-bar { min-height: 44px; }

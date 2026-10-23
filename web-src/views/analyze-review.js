@@ -4,9 +4,6 @@
 import { classBadgeSymbol } from "../move-grades.js";
 import { momentKind, reviewState } from "./analyze-report.js";
 
-// The Maia3 model's download (maia3-weights-loader.js: 46 MB).
-export const MAIA_DOWNLOAD = "46 MB";
-
 // On a stop where prep was left, the coach line's own action for it: the
 // opponent's novelty goes to Build, the user's missed prep is drilled.
 export const REVIEW_ACTION = {

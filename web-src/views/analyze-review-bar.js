@@ -4,7 +4,7 @@
 // the coach line's own button; "Find great moves" turns Maia analysis on and runs
 // the game again.
 import { setPref } from "../core/prefs.js";
-import { MAIA_DOWNLOAD, reviewBarModel } from "./analyze-review.js";
+import { reviewBarModel } from "./analyze-review.js";
 import { reviewState } from "./analyze-report.js";
 
 export function createReviewBar({ appState, showAnalysisPly }) {
@@ -72,7 +72,6 @@ export function createReviewBar({ appState, showAnalysisPly }) {
     act.dataset.act = m.act || "";
     put("[data-rv-act]", m.actLabel);
     bar.querySelector("[data-rv-maia]").hidden = !m.maia;
-    put(".rv-size", MAIA_DOWNLOAD);
   }
 
   // The report's moments are the bar's list, so the two always name the same moves.
