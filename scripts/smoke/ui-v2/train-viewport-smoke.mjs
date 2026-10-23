@@ -136,7 +136,7 @@ async function runViewport(vp) {
     await openTrain(quietPage);
     await quietPage.waitForFunction(() => !document.getElementById("train-outlook").hidden, null, { timeout: 2500 }).catch(() => {});
     const quiet = await quietPage.evaluate(() => ({
-      cells: document.querySelectorAll("#train-outlook .train-outlook-cell").length,
+      cells: document.querySelectorAll("#train-outlook .train-outlook-lead, #train-outlook .train-outlook-rest").length,
       text: document.getElementById("train-outlook").textContent.trim(),
     }));
     check(quiet.cells === 0 && /^Nothing due · next in 3 days$/.test(quiet.text), `nothing due is one quiet line, got ${JSON.stringify(quiet)}`);
@@ -159,7 +159,7 @@ async function runViewport(vp) {
     return {
       screen: document.getElementById("view-train").dataset.trainScreen,
       homeHidden: document.getElementById("train-home").hidden,
-      cells: [...document.querySelectorAll("#train-outlook .train-outlook-cell")].map((c) => c.textContent.trim()),
+      cells: [...document.querySelectorAll("#train-outlook .train-outlook-lead, #train-outlook .train-outlook-rest")].map((c) => c.textContent.trim()),
       meta: document.getElementById("train-due-meta").textContent.trim(),
       starts: ["start-train", "start-rehearse", "start-play"].map((id) => ({ id, text: document.getElementById(id).textContent.trim(), box: box(document.getElementById(id)) })),
       rehearseScope: document.querySelector("#train-rehearse-scope span").textContent.trim(),
@@ -171,8 +171,8 @@ async function runViewport(vp) {
     };
   });
   check(home.screen === "home" && !home.homeHidden, `Train opens on Home, got ${home.screen}`);
-  check(home.cells.length === 3 && home.cells[0].startsWith("2"), `the outlook is three numbers, got ${JSON.stringify(home.cells)}`);
-  check(home.meta === "1 weak · 1 due · 1 new · 1 polish", `Due names what Start serves, got ${JSON.stringify(home.meta)}`);
+  check(home.cells.length === 2 && home.cells[0] === "2 due now", `the outlook leads with what is due now, got ${JSON.stringify(home.cells)}`);
+  check(home.meta === "4 cards", `the row's line is the session's size, got ${JSON.stringify(home.meta)}`);
   check(home.rehearseScope === "Caro-Kann: Advance", `Rehearse names its repertoire, got ${JSON.stringify(home.rehearseScope)}`);
   check(!home.hint, "Hint exists only in a drill");
   check(!home.back, "Home has no Back");

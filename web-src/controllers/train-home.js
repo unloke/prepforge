@@ -255,19 +255,23 @@ async function loadPreview() {
   return preview.loading;
 }
 
-// What a Start of the Due row would serve, or why it cannot.
+// What a Start of the Due row would serve, or why it cannot. The button says
+// the verb; how many cards it holds is the row's own line (dueMeta), so Resume
+// does not repeat the count inside a button label.
 export function dueStartState(next, { signedIn, hasRepertoire }) {
   if (!signedIn) return { label: "Sign in to train", action: "signin" };
   if (!hasRepertoire) return { label: "Open Library", action: "library" };
   if (next && Number(next.cards) === 0) return { label: "Open Repertoire", action: "build" };
-  if (next?.resumed) return { label: `Resume · ${countOf(next.left, "card")} left`, action: "start" };
+  if (next?.resumed) return { label: "Resume", action: "start" };
   return { label: "Start", action: "start" };
 }
 
+// What a Start would serve. The outlook above already counts what is due, so
+// this line says the one thing it cannot: how many cards the session holds.
 export function dueMeta(next) {
   if (!next) return "";
-  const parts = ["weak", "due", "new", "polish"].filter((k) => Number(next[k]) > 0).map((k) => `${next[k]} ${k}`);
-  return parts.length ? parts.join(" · ") : "Nothing due";
+  if (Number(next.cards) === 0) return "Nothing due";
+  return next.resumed ? `${countOf(next.left, "card")} left` : countOf(next.cards, "card");
 }
 
 // "in 40 min", "in 5 h", "tomorrow", "in 3 days".
@@ -279,13 +283,20 @@ export function dueIn(iso, now = Date.now()) {
   return days === 1 ? "tomorrow" : `in ${days} days`;
 }
 
+// The Due row's one figure and the two that follow it. "Due now" is what the
+// row is about, so it is the figure in ink and the only one at full size; the
+// two horizons behind it are a quieter line, not two more tiles beside it.
 export function outlookHtml(outlook, now = Date.now()) {
   if (!outlook) return "";
   if (!outlook.now && !outlook.today && !outlook.week) {
     return outlook.next ? html`<span class="train-outlook-quiet">Nothing due · next ${dueIn(outlook.next, now)}</span>` : "";
   }
-  const cell = (value, label) => html`<span class="train-outlook-cell"><b>${value}</b><span>${label}</span></span>`;
-  return html`${cell(outlook.now, "due now")}${cell(outlook.today, "today")}${cell(outlook.week, "this week")}`;
+  const rest = [];
+  if (Number(outlook.today) > Number(outlook.now)) rest.push(`${outlook.today} by tonight`);
+  if (Number(outlook.week) > Number(outlook.today)) rest.push(`${outlook.week} this week`);
+  return html`<span class="train-outlook-lead"><b>${outlook.now}</b> due now</span>${rest.length
+    ? html`<span class="train-outlook-rest">${rest.join(" · ")}</span>`
+    : ""}`;
 }
 
 function setChip(id, text, disabled = false) {

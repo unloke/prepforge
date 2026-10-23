@@ -38,23 +38,22 @@
 #view-train[data-train-screen="session"] :is(.train-title, .train-history-btn),
 #view-train[data-train-screen="result"] :is(.train-title, .train-head-prog, .train-coach, .train-count) { display: none; }
 
-/* ---- Home: the outlook, then one row per job --------------------------- */
-.train-home { display: flex; flex-direction: column; gap: 10px; }
+/* ---- Home: one row per job, the primary action in the same place in each - */
+.train-home { display: flex; flex-direction: column; gap: 12px; }
 .train-home[hidden] { display: none; }
-.train-outlook { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+/* The Due row's outlook is a line inside the row, under its title: one figure
+   at size, the two horizons behind it in the row's meta voice, and the session
+   size after them. */
+.train-outlook { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .train-outlook[hidden] { display: none; }
-.train-outlook:has(> .train-outlook-quiet) { display: block; }
-.train-outlook-quiet { color: var(--label); font-size: var(--fs); }
-.train-outlook-cell {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--panel-soft);
-}
-.train-outlook-cell b { font-size: 20px; font-weight: 650; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.train-outlook-cell span { color: var(--label); font-size: var(--fs); }
-.train-outlook-cell:first-child b { color: var(--accent-text); }
+.train-outlook-lead { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+.train-outlook-lead b { margin-right: 4px; color: var(--accent-text); font-size: 20px; font-weight: 650; line-height: 1.1; }
+.train-outlook-rest { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+.train-outlook-quiet { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+/* Title on its own line; the outlook and the session's size share the one
+   under it, so the row is two lines of text, not three. */
+.train-row[data-row="smart"] .train-row-text { flex-flow: row wrap; align-items: baseline; column-gap: 10px; }
+.train-row[data-row="smart"] .train-row-title { flex: 1 0 100%; }
 
 .train-row {
   display: grid;
