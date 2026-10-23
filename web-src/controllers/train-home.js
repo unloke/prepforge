@@ -2,6 +2,7 @@ import { html } from "../html.js";
 import { countOf } from "../plural.js";
 import { closeTrainPicker, openTrainPicker, trainRepertoireItems } from "../train-picker.js";
 import { recentRuns } from "../train-history.js";
+import { lineTail } from "../views/train.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
 // rehearsal and practice games. This module owns the loop's chrome: which
 // screen is up (data-train-screen on #view-train), the Home rows and their
@@ -13,6 +14,7 @@ let d; // deps bound once by createTrainHome
 
 const MODE_NAMES = { smart: "Due queue", all_lines: "Rehearse", play: "Practice" };
 const BOOK_NAMES = { explorer: "Lichess explorer", maia: "Maia", repertoire: "my repertoires" };
+const KIND_NAMES = { weak: "Weak spot", due: "Due review", new: "New move", polish: "Polish" };
 const PREVIEW_TTL = 30000;
 const preview = { key: "", at: 0, data: null, loading: null, error: false };
 const ROW_ERROR_IDS = { smart: "train-due-error", all_lines: "train-rehearse-error", play: "train-play-error" };
@@ -315,6 +317,15 @@ function paintRecent(el, runs, emptyText = "") {
     : html`<span class="faint">${emptyText}</span>`}`;
 }
 
+// The first due cards, each a row that narrows the Due queue to its repertoire
+// (the Start button then serves that narrowed queue).
+function paintDueNext(upcoming) {
+  const list = document.getElementById("train-due-next");
+  const rows = upcoming || [];
+  list.hidden = !rows.length;
+  list.innerHTML = rows.map((row) => html`<li><button type="button" class="train-due-line" data-repertoire-id="${row.repertoire_id}" title="Narrow the due queue to ${row.repertoire_name}"><span class="un-kind">${KIND_NAMES[row.kind] || row.kind}</span><span class="train-due-rep"><span class="color-dot ${row.color === "black" ? "black" : "white"}"></span>${row.repertoire_name}</span><b class="train-due-san">${row.san}</b><span class="train-due-pos">${row.line ? lineTail(row.line) : ""}</span></button></li>`).join("");
+}
+
 export async function paintTrainHome() {
   const state = d.appState;
   const signedIn = !!state.signedIn;
@@ -358,11 +369,13 @@ export async function paintTrainHome() {
   const outlook = document.getElementById("train-outlook");
   if (!signedIn || !reps.length) {
     outlook.hidden = true;
+    paintDueNext(null);
     return;
   }
   const data = await loadPreview();
   if (trainScreenOf(state) !== "home") return;
   paintDue(data?.next_session);
+  paintDueNext(data?.next_session?.upcoming);
   outlook.innerHTML = outlookHtml(data?.outlook);
   outlook.hidden = !outlook.innerHTML;
 }
@@ -497,6 +510,12 @@ function bind() {
   $("start-rehearse").addEventListener("click", (e) => rowAction(e.currentTarget, () =>
     openTrain({ mode: "all_lines", repertoireId: d.appState.trainingRepertoireId })));
   $("start-play").addEventListener("click", () => openTrain({ mode: "play" }));
+  $("train-due-next").addEventListener("click", (e) => {
+    const line = e.target.closest(".train-due-line");
+    if (!line) return;
+    setDueScope(line.dataset.repertoireId);
+    void paintTrainHome();
+  });
   $("feeling-lucky").addEventListener("click", async () => {
     await openTrain({ mode: "play", autostart: false });
     void d.onFeelingLucky();

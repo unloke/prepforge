@@ -233,3 +233,45 @@
 /* A drill panel with nothing in it yet (a rehearsal before its first answer)
    draws no empty box under the banner. */
 #train-progress-panel:not(:has(> :not([hidden]):not(.train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
+
+/* ---- Home's lead: Due queue is the one big block. Its count is the largest
+   figure on Home, its Start the one filled action, and the next cards sit
+   under it as rows that narrow the queue to their repertoire. */
+.train-row[data-row="smart"] { grid-template-areas: "text go" "opts opts" "next next"; }
+.train-row[data-row="smart"] .train-outlook-lead b { font-size: 32px; line-height: 1; }
+.train-due-next { grid-area: next; display: flex; flex-direction: column; gap: 2px; margin: 4px -8px -4px; padding: 0; list-style: none; }
+.train-due-next[hidden] { display: none; }
+.train-due-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.train-due-line:hover { background: var(--surface-3); }
+.train-due-line:active { transform: translateY(1px); }
+.train-due-line:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.train-due-rep { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.train-due-rep .color-dot { margin-right: 6px; vertical-align: 0; }
+.train-due-san { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+.train-due-pos { flex: none; max-width: 40%; overflow: hidden; color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.train-due-pos:empty { display: none; }
+/* A quiet tag: the kind is words in the muted voice, not a filled pill. */
+.un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 600; }
+
+/* ---- Rehearse is one line: its title and count, its repertoire, its action. */
+.train-row[data-row="all_lines"] { grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; grid-template-areas: "text opts go"; padding: 10px 12px; }
+.train-row[data-row="all_lines"] .train-row-text { flex-flow: row wrap; align-items: baseline; column-gap: 8px; }
+.train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-end; }
+@media (max-width: 640px) {
+  .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts"; }
+  .train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-start; }
+}

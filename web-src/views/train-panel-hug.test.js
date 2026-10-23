@@ -48,6 +48,7 @@ it("every Home row puts its action in the same place; only the due queue is fill
   // Maia's download slot sits inside Practice (shown only for vs Maia, see
   // train-shell.css), not under the history.
   expect(rows[2]).toContain('<div data-unlock-place="train-practice" hidden></div>');
+  expect(home.match(/data-unlock-place=/g)).toHaveLength(1);
   // No row keeps a second action row of its own.
   expect(home).not.toContain("train-row-actions");
 });
