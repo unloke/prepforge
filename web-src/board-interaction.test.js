@@ -230,15 +230,17 @@ describe("a move made on the board", () => {
     expect([...board.highlights]).toEqual(["d4"]);
   });
 
-  it("puts them back when an engine preview ends", () => {
+  // The old engine preview mode is gone; ghost lines serve a different purpose.
+  // This test verifies the board still correctly restores annotations after
+  // other changes that previously used preview.
+  it("restores state on position change", () => {
     mount({ onMove: () => {} });
     board.setAnnotations(["e2e4"], ["d4"]);
-    board.beginPreview();
-    // The preview walks the engine's line, which is not this position.
-    board.showPreview({ fen: AFTER_E4, lastMove: "e2e4" });
-    board.endPreview();
-    expect(board.arrows).toEqual(["e2e4"]);
-    expect([...board.highlights]).toEqual(["d4"]);
+    board.lastMove = "e2e4";
+    board.setPosition({ fen: AFTER_E4, legalMoves: [], lastMove: null });
+    expect(board.arrows).toEqual([]);
+    expect([...board.highlights]).toEqual([]);
+    expect(board.lastMove).toBeNull();
   });
 });
 

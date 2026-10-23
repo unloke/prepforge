@@ -18,7 +18,8 @@ import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
 import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
-import { moveTextHtml, moveTokenHtml } from "../move-text.js";
+import { moveTextHtml, moveTokenHtml, decodeLine } from "../move-text.js";
+import { ghostOnBoard, clearGhost } from "../line-preview.js";
 import { analysisTextContext } from "../move-links.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
@@ -624,11 +625,24 @@ function savedCoachQuality(ctx) {
 }
 
 // The Coach speaks in one short paragraph. Set its text + tone (subtle colour); the
-// left rule takes the move's grade when there is one.
+// left rule takes the move's grade when there is one. On hover/focus, a move link
+// paints a faint ghost line on the board and clears on leave; no popover appears.
 function setCoachProse(text, tone = "info", state = "instant", quality = null) {
   const el = document.getElementById("coach-prose");
   if (!el) return;
-  el.innerHTML = moveTextHtml(text || "", analysisTextContext());
+  el.innerHTML = moveTextHtml(text || "", analysisTextContext(), { cls: "move-ref" });
+  // Wire up mouseenter/mouseleave handlers for ghost preview on tokens within this card.
+  el.querySelectorAll('.move-ref').forEach((span) => {
+    span.addEventListener('mouseenter', () => {
+      const mt = span.dataset.mt;
+      const p = Number(span.dataset.p);
+      const line = decodeLine(mt);
+      if (line && line.plies[p]) {
+        ghostOnBoard({ board: boards.analysis, line, ply: p + 1 });
+      }
+    });
+    span.addEventListener('mouseleave', () => clearGhost(boards.analysis));
+  });
   el.dataset.state = state;
   el.dataset.quality = COACH_QUALITY_GROUP[String(quality || "").toLowerCase()] || "";
   for (const t of COACH_TONES) el.classList.toggle(`is-${t}`, t === tone);

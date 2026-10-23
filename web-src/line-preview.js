@@ -1,72 +1,110 @@
-// Looking at a move without making it, in two sizes.
+// Ghost lines on the main board for coach text moves, plus the move peek
+// everywhere else that still needs one (move list rows, engine PV labels,
+// Scout/Train summaries).
 //
-// boardLine: a line walked on a view's own board (engine PVs, a note's line, a
-// coverage gap). The real position is saved on entry and put back on exit; ◀ ▶ /
-// ← → step, Esc or "Exit line" leaves. The game, the analysis tree and the
-// repertoire are never touched. One line at a time, whoever opened it.
+// The ghost: hover (or focus) a move reference in coach prose and its line
+// appears faintly on the Analyze board as dashed arrows that fade along the
+// path. No position change, no layout shift. On touch: a tap shows the ghost,
+// a second tap clears it.
 //
-// The peek: a small board beside a move token (move-text.js markup, or any control
-// a view registers with registerPeekSource) showing the position after it. Mouse:
-// hover. Keyboard: focus, Esc closes. Touch: a tap pins it with an explicit
-// "Show on board" where the view has a board to show it on. Clicking (or Enter on)
-// a `.move-ref` acts on the view's board through the view's own apply handler;
-// views without one (Train, Scout, Games…) only show the peek.
+// The peek: small board beside any move token outside coach text, showing
+// the position after it. Mouse: hover; keyboard: focus, Esc closes; touch:
+// tap pins, tap again applies or clears.
 import { html } from "./html.js";
-import { clampPly, decodeLine, previewLabel, previewPosition, stepPreview } from "./move-text.js";
+import { previewPosition, decodeLine } from "./move-text.js";
 import { parseFenBoard, pieceSvg } from "./board/ui.js";
-import { releasePreviewCaption, setPreviewCaption, takePreviewCaption } from "./controllers/preview-caption.js";
+
+// --- Peek -------------------------------------------------------------------
 
 let session = null;
 
-function endedSession(restored) {
-  const s = session;
-  if (!s) return;
-  session = null;
-  releasePreviewCaption(s.caption, restored);
-  s.onChange?.(null);
-}
-
 function showSession() {
   const s = session;
+  if (!s) return;
   s.board.showPreview(previewPosition(s.line, s.ply));
-  setPreviewCaption(s.caption, previewLabel(s.line, s.ply, s.name));
   s.onChange?.(s);
 }
 
 export const boardLine = {
-  /** Walk `line` (move-text walkLine shape) on `board` at `ply`; `onChange(s|null)` follows it. */
-  open({ board, view, line, ply = 1, name = "Line", owner = null, onChange = null }) {
+  /** Walk `line` (move-text walkLine shape) on `board` at `ply`; onChange fires when open/closed. */
+  open({ board, line, ply = 1, onChange = null }) {
     if (!board || !line) return;
     if (session && session.board !== board) this.exit();
-    if (session && session.owner !== owner) {
-      // Another source takes the same board over: the board stays in preview.
-      const prev = session.onChange;
-      session.onChange = null;
-      prev?.(null);
-    }
     if (!session) {
-      board.beginPreview({ onEnd: ({ restored }) => endedSession(restored) });
-      session = { caption: takePreviewCaption(view) };
+      session = { board, onChange };
     }
-    Object.assign(session, { board, line, name, owner, onChange, ply: clampPly(line, ply) });
+    Object.assign(session, { line, ply });
     showSession();
   },
-  /** Step the open line; false when none is open. */
   step(action) {
     if (!session) return false;
-    session.ply = stepPreview(session.line, session.ply, action);
+    const n = session.line?.plies?.length || 0;
+    let newPly = Number(session.ply) || 0;
+    if (action === "prev") newPly = Math.max(0, newPly - 1);
+    if (action === "next") newPly = Math.min(n, newPly + 1);
+    if (action === "start") newPly = 0;
+    if (action === "end") newPly = n;
+    session.ply = newPly;
     showSession();
     return true;
   },
   exit() {
-    session?.board.endPreview({ restore: true });
+    session?.onChange?.(null);
+    session = null;
   },
   get active() {
     return session;
   },
 };
 
-// --- Peek -------------------------------------------------------------------
+// --- Ghost ------------------------------------------------------------------
+
+export function ghostOnBoard({ board, line, ply }) {
+  if (!board || !line) return;
+  const ucis = [];
+  for (let i = 0; i < Math.min(ply, line.plies.length); i += 1) {
+    ucis.push(line.plies[i].uci);
+  }
+  board.setGhost(ucis);
+}
+
+export function clearGhost(board) {
+  if (board) board.setGhost([]);
+}
+
+// A single line at a time per board; the caller drives lifecycle through
+// onChange so it never runs behind the board's real position.
+export const boardGhost = {
+  /** Show `line` (move-text walkLine shape) on `board`; ``ply`` is how far to draw. */
+  open({ board, line, ply = 1, onChange = null }) {
+    if (!board || !line) return;
+    if (session && session.board !== board) this.exit();
+    if (!session) {
+      session = { board, onChange };
+    }
+    Object.assign(session, { line, ply });
+    showSession();
+  },
+  step(action) {
+    if (!session) return false;
+    const n = session.line?.plies?.length || 0;
+    let newPly = Number(session.ply) || 0;
+    if (action === "prev") newPly = Math.max(0, newPly - 1);
+    if (action === "next") newPly = Math.min(n, newPly + 1);
+    if (action === "start") newPly = 0;
+    if (action === "end") newPly = n;
+    session.ply = newPly;
+    showSession();
+    return true;
+  },
+  exit() {
+    session?.board.setGhost([]);
+    session = null;
+  },
+  get active() {
+    return session;
+  },
+};
 
 const sources = [];
 /** Hover peek for an existing control: `resolve(el)` → `{ fen, lastMove, label }` or null. */
