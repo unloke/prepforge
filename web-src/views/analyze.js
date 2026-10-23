@@ -10,7 +10,7 @@ import { prepDeparture, renderReportBlock, reportGradeOf } from "./analyze-repor
 import { createReviewBar } from "./analyze-review-bar.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
 import { departureNotch, evalChartTooltipHtml, formatPointEval, placeEvalReadout } from "./analyze-readout.js";
-import { moveLineHtml, moveTokenHtml, walkLine } from "../move-text.js";
+import { moveLineHtml, walkLine } from "../move-text.js";
 
 // The board, the move list, the eval display and the engine's controls are
 // real interface: they keep their own lines, sizes and borders. The marker is

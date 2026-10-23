@@ -43,14 +43,16 @@ export function createReviewBar({ appState, showAnalysisPly }) {
     const bar = globalThis.document?.getElementById("analysis-review");
     if (!bar) return;
     bind(bar);
+    // "Find great moves" runs the PGN box again, so it needs a game in the box.
     const maia = appState.analysis?.quality?.maia;
+    const boxed = !!document.getElementById("pgn-input")?.value.trim();
     const m = reviewBarModel({
       moments,
       ply: Number(appState.analysisPly) || 0,
       graded,
       running: !!document.querySelector('#analysis-eval-card .notice[data-state="running"]'),
       signedIn: !!appState.signedIn,
-      maiaOff: !!maia && maia.available === false,
+      maiaOff: !!maia && maia.available === false && boxed,
     });
     bar.hidden = m.hidden;
     if (m.hidden) return;

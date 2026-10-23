@@ -519,6 +519,12 @@
 .rv-act[hidden],
 .rv-maia[hidden] { display: none; }
 .rv-size { margin-left: 6px; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+/* A thumb reaches 44px, the phone's touch target. */
+@media (max-width: 760px) {
+  .review-bar { min-height: 44px; }
+  .rv-step { width: 44px; height: 44px; }
+  .rv-act, .rv-maia { height: 44px; }
+}
 /* The report opened is a compact read, not a second column: it keeps under half
    the screen and scrolls inside itself, so the score sheet stays where it is. */
 .an-panes > .report-pane > summary { margin-bottom: 0; }
