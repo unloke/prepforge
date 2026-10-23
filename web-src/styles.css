@@ -628,22 +628,15 @@ h2 {
   color: var(--text);
 }
 
+/* The open destination: one filled tile, the label in ink. It used to be a pale
+   accent-soft tile with the label in accent-strong AND a 3px accent bar hanging
+   outside the tile's left edge, which drew the accent twice and let the bar
+   read as a clip mark. The accent belongs to the screen's action; the rail's
+   selection is a tone step, the same way a hover is. */
 .tab.is-active {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
+  background: var(--surface-3);
+  color: var(--text);
   font-weight: 600;
-}
-
-/* Collapsed rail: the active page is an accent tile plus a 3px edge bar. */
-.rail .tab.is-active::before {
-  content: "";
-  position: absolute;
-  left: -8px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
 }
 
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
