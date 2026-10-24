@@ -426,7 +426,16 @@
     margin: 0;
     outline: 0;
   }
-  #view-replay .toolbar > .sum-chips:not([hidden]) { padding-bottom: 12px; }
+  /* The outcome filters are one strip that scrolls sideways, as the Chess.com
+     app sets its archive filters: four chips wrapped to two rows of boxes. */
+  #view-replay .toolbar > .sum-chips:not([hidden]) {
+    flex-wrap: nowrap;
+    margin: 0 -14px;
+    padding: 0 14px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #view-replay .toolbar > .sum-chips > * { flex: none; }
   /* The empty answer is a card of its own under the control card, sized to
      its message: on Games and Scout the tab has either rows or nothing, and
      both read the same way. Games' ledger already carries the frame. */
@@ -1188,11 +1197,20 @@
   #view-train .train-row { padding: 14px; border-radius: var(--radius-card); }
   #view-train .train-row-go { height: 44px; min-height: 44px; }
   #view-train .train-lucky { height: 40px; min-height: 40px; padding: 0 12px; font-size: 15px; }
-  /* Practice's options pack from the left and wrap in order, so nothing floats
-     at the right edge of one line while the next line starts under it. */
+  /* Practice: the opponent and the colour share the first line (the opponent
+     at the start, the colour at the end, as a Chess.com app game setup), and
+     I'm Feeling Lucky is a quiet line under them. The three wrapped onto three
+     ragged lines at 393px. */
   #view-train [data-row="play"] .train-row-opts { justify-content: flex-start; }
-  #view-train [data-row="play"] .train-lucky,
-  #view-train [data-row="play"] .train-color { margin-left: 0; }
+  #view-train [data-row="play"] .train-row-opts > .train-color { order: 1; margin-left: auto; }
+  #view-train [data-row="play"] .train-lucky {
+    order: 2;
+    margin: 0 0 0 -10px;
+    border: 0;
+    background: none;
+    color: var(--accent-strong);
+  }
+  #view-train [data-row="play"] .train-row-opts::after { content: ""; order: 1; flex-basis: 100%; }
   #view-train .train-chip { min-height: 40px; font-size: 15px; }
   #view-train .seg-btn { min-height: 40px; height: 40px; font-size: 14px; }
   #view-train .un-rep { display: block; min-width: 0; }

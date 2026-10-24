@@ -1629,10 +1629,22 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
   #analysis-explain .coach-bookline { max-height: none; }
-  /* The review bar takes the thumb's row height: its buttons are 40px here. */
-  #analysis-explain:has(> .coach-review:not([hidden])) { --coach-review: calc(44px + var(--coach-gap)); }
-  #analysis-explain .coach-review { height: 44px; }
-  #analysis-explain .cr-step { width: 40px; height: 40px; }
+  /* The review bar takes the header's row, beside the grading switch, as in
+     Chess.com's app: a row of its own under the verdict left the verdict no
+     room on a 660px phone (the Humans row and the bar took all of it). */
+  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { justify-content: flex-end; height: 44px; }
+  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :is(.phase-chip, .cc-switch-label) { display: none; }
+  #analysis-explain > .coach-review {
+    order: -1;
+    position: relative;
+    z-index: 1;
+    gap: 4px;
+    height: 44px;
+    margin: 0 48px -50px 0;
+  }
+  #analysis-explain .cr-step { width: 36px; height: 40px; }
+  #analysis-explain .cr-count { display: none; }
+  #analysis-explain .coach-review > .btn { height: 40px; min-height: 40px; padding: 0 8px; }
   #analysis-explain .cr-label { height: 44px; line-height: 44px; }
   /* The engine-offer row keeps its one line, but its two controls are a thumb's
      size here (they were 22px: a pointer's row). The row's height is the

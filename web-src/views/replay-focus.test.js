@@ -247,8 +247,8 @@ describe("replay focus internals", () => {
   it("tints ledger results by outcome and omits arrow legend for stayed games", () => {
     makeView(elements).renderReplayResults({ games: [stayedGame], misses_recorded: 0 });
     const html = String(elements["replay-results"].innerHTML);
-    // 1-0 with user_color white is a real win.
-    expect(String(html)).toContain("r-win");
+    // 1-0 with user_color white is a real win, marked before the score.
+    expect(String(html)).toContain('<span class="res r-win" title="Won"><i class="res-mark" aria-hidden="true"></i>1-0</span>');
     // No departure → no departure legend entry, no arrow legend.
     expect(String(html)).not.toContain("k-dep");
     expect(String(html)).not.toContain("k-arrow-good");
