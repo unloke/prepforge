@@ -31,12 +31,9 @@ it("Import PGN stays reachable on a phone", () => {
   const newRep = rule("#view-dashboard .lib-actions #dashboard-new-rep");
   expect(newRep).toMatch(/display:\s*none/);
 
-  // It is a thumb target through the shared phone rule, not a copy of its own:
-  // the row places it, phone.css gives every button the 44px height.
-  const phone = css;
-  expect(phone).toMatch(/\.btn,\n  \.btn\.sm,[\s\S]*?\{ min-height: 44px; height: 44px; \}/);
+  // A 44px target, like the rest of the phone controls.
   const importBtn = rule("#view-dashboard .lib-actions #dashboard-import-pgn");
-  expect(importBtn).not.toMatch(/height:/);
+  expect(importBtn).toMatch(/height:\s*44px/);
 });
 
 it("the phone Library header is a grid: chips on top, search and import below", () => {

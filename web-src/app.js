@@ -262,7 +262,6 @@ const buildGoForward = viaBuildSession("buildGoForward");
 const buildGoRoot = viaBuildSession("buildGoRoot");
 const buildGoToEnd = viaBuildSession("buildGoToEnd");
 const createRepertoirePrompt = viaBuildSession("createRepertoirePrompt");
-const generateFromCurrentNode = viaBuildSession("generateFromCurrentNode");
 const hydrateBuild = viaBuildSession("hydrateBuild");
 const onBuildBoardMove = viaBuildSession("onBuildBoardMove");
 const onInspectorInfo = viaBuildSession("onInspectorInfo");
@@ -706,10 +705,6 @@ function setBuildLoading(on, { restore = true } = {}) {
   if (boards.build) {
     boards.build.setPosition({ fen: boards.build.fen, legalMoves: [], lastMove: null });
   }
-  // The skeleton replaces the tree but the rule's subject is still the previous
-  // repertoire: repaint so the head drops the button the old tree made true
-  // (nothing here is settled yet, so it cannot apply).
-  paintGenerateVisibility();
   if (appState.currentView !== "build") switchView("build", { fromUrl: true });
   paintBuildEmpty();
   const nameEl = document.getElementById("build-rep-name");
@@ -1169,14 +1164,6 @@ function paintBuildEmpty() {
   if (sidebar) sidebar.classList.toggle("is-empty", !appState.build);
 }
 
-// Generate's head button has exactly one rule, and it lives in the build view
-// (it reads the tree). Every path that changes what that rule reads must
-// repaint it, so app.js reaches the same paint the header uses.
-function paintGenerateVisibility() {
-  if (buildView) return buildView.paintGenerateVisibility();
-  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
-}
-
 // Train sessions (smart queue, rehearsal, practice games, Feeling Lucky) live in
 // controllers/train-session.js, loaded the first time Train is used. The wrappers
 // below wait for it, so a click that lands before the chunk does is not lost.
@@ -1586,7 +1573,6 @@ function bindEvents() {
   document.getElementById("build-parent").addEventListener("click", buildGoBack);
   document.getElementById("build-next").addEventListener("click", buildGoForward);
   document.getElementById("build-end").addEventListener("click", buildGoToEnd);
-  document.getElementById("build-generate-node").addEventListener("click", generateFromCurrentNode);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
   document.getElementById("build-empty-import").addEventListener("click", () => document.getElementById("dashboard-import-input").click());
@@ -1761,7 +1747,7 @@ async function init() {
     get coverageView() { return coverageEntry?.coverageView; },
     ensureBuildView, paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     ensureCoverageView: () => coverageEntry.ensureCoverageView(),
-    paintGenerateVisibility, syncViewHeads, updateBuildReadOnlyUi,
+    syncViewHeads, updateBuildReadOnlyUi,
   };
   // First paint reads the stored theme and accent; it never writes, so opening
   // the app does not fabricate a pref blob.

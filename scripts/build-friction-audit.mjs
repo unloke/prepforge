@@ -659,51 +659,6 @@ async function main() {
     if (ctx) await ctx.close();
   }
 
-  // --- Recovery: Engine unavailable — Generate gated (NOT required) ---
-  {
-    const { ctx, page } = await newContext({ width: 1280, height: 800 });
-    await ctx.route("**/*", async (route) => {
-      const response = await route.fetch();
-      const newHeaders = { ...response.headers() };
-      delete newHeaders["cross-origin-opener-policy"];
-      delete newHeaders["cross-origin-embedder-policy"];
-      await route.fulfill({ response, headers: newHeaders });
-    });
-    try {
-      await page.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 60000 });
-      await gotoBuild(page);
-      const snap = await page.evaluate(() => {
-        const btn = document.getElementById("build-generate-node");
-        return {
-          crossOriginIsolated: self.crossOriginIsolated,
-          genDisabled: btn?.disabled ?? null,
-          genAriaDisabled: btn?.getAttribute("aria-disabled") || "",
-          genGated: btn?.classList.contains("is-coming-soon"),
-          genTitle: btn?.getAttribute("title") || "",
-          status: document.getElementById("notices")?.textContent?.trim() || "",
-        };
-      });
-      record("3-recovery", "engine-gate", {
-        expected: "No COI → Generate disabled with recovery title (inspect only)",
-        actual: snap,
-        recovery: "Use COOP/COEP-capable browser; Settings engine panel",
-        priority: snap.genGated && snap.genDisabled ? "P2 — gating OK" : "P1 — unclear engine gate",
-        pass:
-          !snap.crossOriginIsolated &&
-          snap.genDisabled === true &&
-          snap.genAriaDisabled === "true" &&
-          /unavailable|cross-origin/i.test(snap.genTitle),
-      });
-    } catch (err) {
-      record("3-recovery", "engine-gate", {
-        actual: { error: err.message },
-        pass: false,
-        priority: "P1",
-      });
-    }
-    await ctx.close();
-  }
-
   // --- Recovery: Sync failure — dirty/error state (NOT required) ---
   {
     let ctx;

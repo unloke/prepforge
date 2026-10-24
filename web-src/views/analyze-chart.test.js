@@ -8,8 +8,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAnalyzeView } from "./analyze.js";
 
-// The x-axis move numbers read the chart points: they must follow the declaration.
-
 const STYLES = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
 // The chart rules ship in a lazy sheet (loaded with the Analyze view) so the
 // eager styles.css stays under its deploy budget. The token contract spans both:
@@ -262,13 +260,6 @@ describe("eval chart sizing", () => {
     expect(chart.listeners.animationend).toBeUndefined();
   });
 
-  it("draws a game of ten plies or more without reading a move before it is set", () => {
-    const { chart, view } = setup();
-    const long = Array.from({ length: 24 }, (_, i) => ({ ply: i + 1, san: "e4", score_cp: 20 + i, bounded_score_cp: 20 + i, classification: i === 11 ? "blunder" : "good" }));
-    expect(() => view.renderEvalChart(long)).not.toThrow();
-    expect(chart.querySelectorAll(".eval-dot")).toHaveLength(1);
-  });
-
   it("draws a short phone chart once instead of redrawing itself forever", () => {
     const { chart, appState, view } = setup();
     chart.rectHeight = 30;
@@ -327,7 +318,7 @@ describe("coach note", () => {
     const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
     expect(rule).toMatch(/--coach-head: 26px/);
     expect(rule).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
-    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 2 \+ 4px \+ var\(--coach-foot\) \+ var\(--coach-gap\) \* 2\)/);
+    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 4px \+ var\(--coach-foot\) \+ var\(--coach-gap\) \* 2\)/);
     // The rows are spaced by their own top margin, never by a grid gap: a gap is
     // charged after the hidden prep row too, and lands as dead space below the
     // Humans row.
@@ -346,19 +337,17 @@ describe("the panel's one filled action", () => {
 });
 
 describe("score sheet ink", () => {
-  it("marks the selected move with one 1px accent line, not a filled tile", () => {
-    // The selection rule: a thin accent line on the token's bottom edge, the
-    // label in ink, no fill. The grade glyph keeps the move's ink.
+  it("paints the selected move in the accent's ink, glyph included", () => {
+    // The mainline ink rule and the grade-glyph rules both out-ranked the
+    // shared tree's .is-current colour, so on this grid the selected move read
+    // --text on the accent fill (2.9:1 at 1440x900) and its glyph came out in
+    // --text on the same fill. Both now take the accent's ink.
     const row = CHART_STYLES.match(
-      /\.moves-grid \.mtree-move\.is-current,\s*\.moves-grid \.mtree-move\.is-current\.is-opp \{([^}]+)\}/,
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \{([^}]+)\}/,
     )?.[1] || "";
-    expect(row).toMatch(/background:\s*none/);
-    expect(row).toMatch(/color:\s*var\(--text\)/);
-    expect(row).toMatch(/box-shadow:\s*inset 0 -1px 0 var\(--accent\)/);
-    // Rows keep a fixed 22px pitch, so a long game grows the sheet without moving the rows above.
-    expect(CHART_STYLES).toMatch(/\.moves-grid \.mtree-move \{[^}]*height: 22px/);
+    expect(row).toMatch(/color:\s*var\(--accent-ink\)/);
     expect(CHART_STYLES).toMatch(
-      /\.moves-grid \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
+      /\.moves-grid \.mtree-line\.is-main > \.mtree-move\.is-current \.mtree-glyph \{ color: inherit; \}/,
     );
   });
 });
@@ -480,7 +469,7 @@ function doc(chart) {
 
 describe("eval chart mouse behaviour", () => {
   it("hover shows the move, its eval in pawns, and classification as text", () => {
-    const { chart, tooltip, view, doc } = setup();
+    const { chart, tooltip, view } = setup();
     view.renderEvalChart(POINTS);
     chart.dispatch("pointermove", { pointerType: "mouse", clientX: 480 }); // ratio .75 -> idx 3 (ply 4)
     expect(tooltip.hidden).toBe(false);
@@ -489,8 +478,6 @@ describe("eval chart mouse behaviour", () => {
     expect(String(tooltip.innerHTML)).not.toContain("win chance");
     expect(String(tooltip.innerHTML)).toContain("Mistake");
     expect(String(tooltip.innerHTML)).toContain("?"); // glyph — a non-colour cue
-    // The crosshair: the ply's column and the point's level.
-    expect(doc.getElementById("eval-chart-hover").getAttribute("d")).toMatch(/^M480 0V96M0 [\d.]+H640$/);
     chart.dispatch("pointerleave", { pointerType: "mouse" });
     expect(tooltip.hidden).toBe(true);
   });
@@ -633,4 +620,3 @@ describe("Analyze on a phone", () => {
     expect(phone).toMatch(/#analysis-eval-card \.ev-meter \{ display: none; \}/);
   });
 });
-

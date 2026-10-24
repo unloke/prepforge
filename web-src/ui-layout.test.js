@@ -345,7 +345,7 @@ describe("workspace chrome layout", () => {
     // in-repertoire dot, the crumb separator and the fork chip's number all read
     // at that floor now; on a phone the save chip and fork share take the same
     // token instead of a 12px literal.
-    expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*11px/);
+    expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*12px/);
     expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
     expect(ruleBody(".crumb-sep")).toMatch(/font-size:\s*var\(--fs-s\)/);
     expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
@@ -406,20 +406,19 @@ describe("workspace chrome layout", () => {
     expect(app).toContain("setBoardCaption(analysisGameName(");
     // Both actions say what they do ("Last game" was a bare download glyph).
     expect(view).toMatch(/id="fetch-my-game"[^>]*>.*?<span class="bl">Last game<\/span>/);
-    // Build's head names its primary action in words and is the panel's title
-    // and nothing else: the name at title size, then its two actions. The size
-    // summary spends no strip of the head; it closes the panel instead.
+    // Build's head is the panel's title and its menu, nothing else: Generate is
+    // an occasional action and lives in the menu, so the head never changes
+    // shape as the position does.
     const build = html.slice(html.indexOf('id="view-build"'));
     const buildHead = build.slice(build.indexOf('id="build-rep-header"'), build.indexOf("<div class=\"panel-body\""));
-    expect(buildHead).toContain('class="btn primary" id="build-generate-node"');
-    expect(buildHead).toMatch(/id="build-generate-node"[^>]*><svg[^>]*>.*?<span class="bl">Generate<\/span>/);
+    expect(buildHead).not.toContain("build-generate-node");
     expect(buildHead).toContain('id="build-menu"');
     expect(buildHead).toContain('id="build-rep-name"');
     expect(buildHead).not.toContain('id="build-rep-stats"');
-    // The head does not wrap: one title line, one row of actions. The name is
-    // the panel's title, one step above the 13px ledger under it.
-    expect(ruleBody("#build-rep-header")).toMatch(/min-height:\s*52px/);
-    expect(ruleBody("#build-rep-header .rep-name")).toMatch(/font-size:\s*17px/);
+    // The head does not wrap: one title line and the menu. The name is a label
+    // at the ledger's own scale, not a headline.
+    expect(ruleBody("#build-rep-header")).toMatch(/min-height:\s*44px/);
+    expect(ruleBody("#build-rep-header .rep-name")).toMatch(/font-size:\s*14px/);
     // The size summary is a caption on that name (its tooltip), so the panel
     // has no foot band: it described the whole tree, which the trail, the tree
     // and the name already show what matters of.
@@ -462,7 +461,7 @@ describe("workspace chrome layout", () => {
     expect(rule(".coach-prose")).toMatch(/min-height: 0/);
     expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
-    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/display:\s*block/);
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content\s+minmax\(0,\s*1fr\)/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);    // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
     expect(css).not.toContain(".coach-scroll");
@@ -711,19 +710,13 @@ describe("workspace chrome layout", () => {
     for (const selector of [".lr", ".res.r-win", ".res.r-loss", ".open-prev", ".moveline .inprep", ".kind-badge.t-bad"]) {
       expect(replayRule(selector), selector).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
     }
-    // Segmented control: the sheet's one selection mark. The options are words
-    // on a plain row over a 1px rule; the chosen one is a 2px accent line
-    // exactly as wide as its label, and no option is a filled plate.
+    // Segmented control (prototype): body text on the surface-3 track in both
+    // states; the selected tile is a raised panel-coloured chip.
     const segBtn = ruleBody(".seg-btn");
-    expect(segBtn).toMatch(/color:\s*var\(--muted\)/);
+    expect(segBtn).toMatch(/color:\s*var\(--text\)/);
     const segActive = css.match(/\.seg-btn\.is-active\s*\{([^}]+)\}/)?.[1] || "";
-    expect(segActive).toMatch(/color:\s*var\(--text\)/);
-    expect(segActive).not.toMatch(/background/);
-    const segMark = css.match(/\.seg-btn::after\s*\{([^}]+)\}/)?.[1] || "";
-    expect(segMark).toMatch(/background:\s*var\(--accent\)/);
-    expect(segMark).toMatch(/left:\s*10px/);
-    expect(segMark).toMatch(/right:\s*10px/);
-    expect(css).toMatch(/\.seg-btn\.is-active::after\s*\{\s*opacity:\s*1/);
+    expect(segActive).toMatch(/background:\s*var\(--panel\)/);
+    expect(segActive).not.toMatch(/color:/);
     const segDisabled = css.match(/\.seg-btn:disabled\s*\{([^}]+)\}/)?.[1] || "";
     expect(segDisabled).toMatch(/color:\s*var\(--label\)/);
     // Shared switches use tokens for track + knob in both states.

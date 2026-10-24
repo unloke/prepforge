@@ -95,11 +95,11 @@
   display: grid;
   grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) auto;
   gap: 0;
-  /* Head, two 24px lines of verdict (plus its 4px padding), the Humans row and
-     one 6px gap before each of them. A verdict longer than two lines scrolls
-     inside its row; the card never grows for it. The prep row contributes nothing
-     while it is hidden, so the card ends on the Humans row. */
-  height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
+  /* Head, three 24px lines of verdict (plus its 4px padding), the Humans row and
+     one 6px gap before each of them. The prep row contributes nothing while it is
+     hidden, so the card ends on the Humans row; when the note does appear it takes
+     its 22px + gap out of the scrolling verdict, and nothing outside moves. */
+  height: calc(var(--coach-head) + var(--coach-line) * 3 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
   padding: 0;
   background: none;
   border: 0;
@@ -192,19 +192,6 @@
 .coach-prose[data-quality="mistake"] { border-left-color: var(--warn); }
 .coach-prose[data-quality="blunder"] { border-left-color: var(--danger); }
 .coach-prose[data-quality="missed"] { border-left-color: var(--missed); }
-/* The sentence's move references are its only controls, and the only place a move
-   link does something with the board. A touch of the accent marks them at rest;
-   the underline waits for the pointer or the keyboard, where it marks the one
-   being read — three faint rules in one sentence read as ruled text, not links.
-   Colour only: the words stay in the sentence's own face and size. */
-.coach-prose .move-ref {
-  color: var(--accent-text);
-  text-decoration-color: transparent;
-}
-.coach-prose .move-ref:hover,
-.coach-prose .move-ref:focus-visible {
-  text-decoration-color: currentColor;
-}
 .coach-bookline {
   margin: 0;
   font-size: var(--fs-s);
@@ -323,6 +310,7 @@
   background: var(--surface-3);
 }
 #analysis-eval-card {
+  --an-eval-h: 112px;
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(64px, 1fr);
@@ -393,13 +381,12 @@
   gap: 8px;
 }
 .an-tab {
-  position: relative;
   flex: 1 1 0;
   min-width: 0;
   height: 30px;
   padding: 0 10px;
   border: 0;
-  border-radius: 0;
+  border-radius: 6px;
   background: none;
   color: var(--muted);
   font: inherit;
@@ -415,24 +402,12 @@
   flex: none;
   display: none;
   gap: 2px;
-  /* The strip sits on a 1px rule, and the chosen tab is a 2px accent line on it,
-     as wide as its label (the shared .seg control): no track, no filled plate. */
-  border-bottom: 1px solid var(--line);
-}
-.an-tab::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: -1px;
-  height: 2px;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-out);
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-3);
 }
 .an-tab:hover { color: var(--text); }
-.an-tab[aria-selected="true"] { color: var(--text); font-weight: 650; }
-.an-tab[aria-selected="true"]::after { opacity: 1; }
+.an-tab[aria-selected="true"] { background: var(--panel); color: var(--text); }
 .an-tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .an-tab[hidden],
 .an-tab[data-pane="coach"] { display: none; }
@@ -458,72 +433,7 @@
 /* The score sheet keeps its own cap (.moves-grid) and scrolls inside it: the
    panel is as tall as its column, so a long game never stretches it. */
 .an-panes > .moves-pane:not([hidden]) { flex: none; }
-
-/* The review bar: one row above the report fold, under the board's eval card.
-   Its height is fixed and the label ellipsises, so stepping through the moments
-   never moves the controls beneath it. */
-.review-bar {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 34px;
-  min-width: 0;
-  padding: 0 4px;
-  border-block: 1px solid var(--line-soft);
-  font-size: var(--fs-s);
-}
-.review-bar[hidden] { display: none; }
-.rv-step {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-.rv-step:hover:not(:disabled) { background: var(--surface-3); color: var(--text); }
-.rv-step:active:not(:disabled) { background: var(--line-soft); }
-.rv-step:focus-visible,
-.rv-act:focus-visible,
-.rv-maia:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.rv-step:disabled { opacity: 0.35; cursor: default; }
-.rv-now { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; overflow: hidden; }
-.rv-now .rp-glyph { flex: none; }
-.rv-move { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
-.rv-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-.rv-count { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
-.rv-act,
-.rv-maia {
-  flex: none;
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--accent-text);
-  font: inherit;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.rv-act:hover,
-.rv-maia:hover { background: var(--surface-3); }
-.rv-act:active,
-.rv-maia:active { background: var(--line-soft); }
-.rv-act[hidden],
-.rv-maia[hidden] { display: none; }
-/* A thumb reaches 44px, the phone's touch target. */
-@media (max-width: 760px) {
-  .review-bar { min-height: 44px; }
-  .rv-step { width: 44px; height: 44px; }
-  .rv-act, .rv-maia { height: 44px; }
-}
+.an-panes > .engine-pane + .moves-pane { border-top: 1px solid var(--line-soft); padding-top: 6px; }
 /* The report opened is a compact read, not a second column: it keeps under half
    the screen and scrolls inside itself, so the score sheet stays where it is. */
 .an-panes > .report-pane > summary { margin-bottom: 0; }
@@ -534,6 +444,7 @@
   scrollbar-width: thin;
 }
 .an-panes > .report-pane[open] > summary { margin-bottom: 10px; }
+#analysis-find-great { align-self: start; margin-top: 10px; }
 
 /* Nothing to report yet (no game analysed): the fold is not offered. */
 .an-panes > .report-pane:has(#analysis-summary:empty):has(#analysis-handoff[hidden]) {
@@ -563,18 +474,11 @@
 .engine-pane .an-pane-head > b { grid-area: 1 / 1; }
 .ep-depth,
 #analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
-/* The floating window's own line stepper is not drawn in the pane: the pane's
-   stepper beside the head is the one control. */
-#analysis-engine-slot .engine-lines { display: none; }
+#analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
 .engine-pane .ev-engine { grid-area: 1 / 5; }
-/* The pane's stepper is a bare "− 1 +" at the head's left, not a pill that
-   stretches across the free column (it read as an empty input). */
-.engine-pane > .an-pane-head .engine-lines { justify-self: start; gap: 6px; padding: 0; border: 0; background: none; }
-.engine-pane .ep-none { color: var(--muted); }
 #analysis-engine-slot .engine-window-body,
 #analysis-engine-slot .engine-window-unlock,
-.engine-pane > .best-line,
-.engine-pane > .coach-unlock { grid-column: 1 / -1; }
+.engine-pane > .best-line { grid-column: 1 / -1; }
 .ep-depth { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 #view-analyze:has(#analysis-eval-card.is-engine) :is(#analysis-best-line, .ep-depth) { display: none; }
 #analysis-engine-slot .engine-head-label,
@@ -583,13 +487,8 @@
 #analysis-engine-slot .engine-window-resize,
 #analysis-engine-slot .engine-bar { display: none; }
 #analysis-engine-slot .engine-window-body { display: block; padding: 0; }
-/* Engine shows one line in a fixed-height slot by default; expanded state holds
-   three lines at the same pitch. Fixed heights prevent layout shift while the
-   engine thinks. One line = 28px track plus header spacing; three lines = 88px. */
-#analysis-engine-slot.is-expanded .engine-window-pvs { max-height: 88px; }
-#analysis-engine-slot:not(.is-expanded) .engine-window-pvs { max-height: 28px; }
-#analysis-engine-slot .engine-window-pvs { overflow: auto; scrollbar-width: thin; }
 .best-line {
+  display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 6px;
   min-height: 22px;
@@ -744,13 +643,7 @@
   border-radius: 4px;
   background: none;
 }
-#analysis-engine-slot .engine-pv[role="button"]:hover { background: var(--panel-soft); }
-#analysis-engine-slot .engine-pv[role="button"]:active { background: var(--surface-3); }
-#analysis-engine-slot .engine-pv:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-/* Each move in a line is its own target (clicking it plays the line up to that
-   move), so it says so under the pointer. */
-#analysis-engine-slot .pv-move { cursor: pointer; border-radius: 2px; }
-#analysis-engine-slot .pv-move:hover { text-decoration: underline; text-underline-offset: 2px; }
+#analysis-engine-slot .engine-pv:hover { background: var(--panel-soft); }
 #analysis-engine-slot .engine-pv.is-expanded { height: auto; }
 #analysis-engine-slot .engine-pv-eval,
 #analysis-engine-slot .engine-pv.is-top .engine-pv-eval {
@@ -815,34 +708,10 @@
 .eval-chart-wrap {
   position: relative;
 }
-/* The axes lie over the plot's own edges, on a chip in the field's tone, so the
-   plot keeps the card's box: the labels read without moving the board. */
-.eval-scale,
-.eval-moves {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.eval-scale > span,
-.eval-moves > span {
-  position: absolute;
-  padding: 0 3px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--panel) 84%, var(--eval-side-black));
-  color: var(--muted);
-  font: 11px/14px var(--font);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.eval-scale > .eval-ytick { left: 2px; transform: translateY(-50%); }
-.eval-moves > .eval-move-num { top: calc(100% - 15px); transform: translateX(-50%); }
-:root[data-theme="dark"] :is(.eval-scale, .eval-moves) > span {
-  background: color-mix(in srgb, var(--panel) 84%, var(--eval-side-white));
-}
 .eval-chart {
   display: block;
   width: 100%;
-  height: 96px;
+  height: 64px;
   /* The plies run edge to edge: the first/last ply's ring and markers overhang
      the field instead of being clipped. */
   overflow: visible;
@@ -873,7 +742,6 @@
 .eval-chart .eval-cliff { stroke-width: 1.5; stroke-linecap: round; stroke: currentColor; }
 .eval-chart .eval-dot { fill: currentColor; stroke: none; }
 .eval-chart .eval-cursor { stroke: var(--accent); stroke-width: 2; }
-.eval-chart .eval-departure { stroke: var(--muted); stroke-width: 1; }
 .eval-chart .eval-cursor-dot {
   fill: none;
   stroke: var(--accent);
@@ -920,64 +788,75 @@
 /* The readout keeps its own edge: it is a chart interface fragment (data-ui). */
 #eval-chart-tooltip[data-ui] { border: 1px solid var(--line-strong); }
 
-/* Moves: a score sheet that flows, as in a book or Lichess's inline mode:
-   "1. e4 e5 2. Nf3 Nc6" wraps across the panel's width. A move is a compact
-   token on one 22px line; its box is the click target and its hover fill. The
-   move number is quiet. A variation is one indented, quieter paragraph under
-   the move it branches from, and the mainline flows on after it. The sheet is
-   the panel's only scroller. */
+/* Moves: the mainline is a three-column grid (number | White | Black); a
+   variation the reader explores interrupts it as a full-width row. Only the
+   direct children of the mainline are grid cells: variation moves keep the
+   shared inline tree flow. The list sits inside the scrolling panel, so it
+   does not contain overscroll: at its top/bottom the wheel moves the panel
+   (or the page when stacked) instead of feeling stuck.
+   On a wide panel the sheet is sized by the panel (see the scroll rules
+   above) and is the panel's only scroller; this cap is what a stacked layout
+   uses, where the panel is as tall as its content. It used to be 190px
+   everywhere, which showed eight move pairs on a 900px screen. */
 .moves-grid {
   max-height: clamp(190px, 40dvh, 440px);
   overflow: auto;
   border: 0;
   border-radius: 8px;
   font-size: 13px;
-  line-height: 22px;
-  font-variant-numeric: tabular-nums;
 }
-.moves-grid .mtree-line.is-main { display: block; }
-.moves-grid .mtree-num {
+.moves-grid .mtree-line.is-main {
+  display: grid;
+  /* The two sides of a move belong to each other: sized to their content they
+     sit next to one another, the way a score sheet prints them. The trailing
+     track soaks up the rest of the sheet so a variation row, which spans every
+     track, still draws its rule across the full width. */
+  grid-template-columns: 32px max-content max-content minmax(0, 1fr);
+  column-gap: 18px;
+}
+.moves-grid .mtree-line.is-main > .mtree-num {
+  grid-column: 1;
   margin: 0;
-  padding: 0 0 0 8px;
+  padding: 3px 6px;
+  background: var(--panel-soft);
   color: var(--label);
   font-size: var(--fs-s);
-  line-height: 22px;
+  text-align: right;
 }
-.moves-grid .mtree-move {
-  display: inline-block;
-  height: 22px;
-  margin: 0 1px;
-  padding: 0 4px;
+.moves-grid .mtree-line.is-main > .mtree-move {
+  display: flex;
+  align-items: center;
+  /* The grade belongs to the move beside it: pushed to the far end of the
+     column it sat 190px away, closer to the next move than to its own. */
+  justify-content: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 8px;
   border-radius: 0;
-  vertical-align: top;
-  font-weight: 500;
-  line-height: 22px;
+  font-weight: 550;
+  text-align: left;
 }
-/* A variation keeps its own moves in the flow, one step quieter than the line:
-   a rail, a smaller size, muted ink, and no italic or bold. */
-.moves-grid .mtree-var {
-  margin: 2px 0 4px var(--mtree-indent);
-  padding: 0 0 0 calc(var(--mtree-indent) + var(--mtree-rail));
-  font-size: 12.5px;
-  line-height: 22px;
+.moves-grid .mtree-line.is-main > .mtree-move.is-white { grid-column: 2; }
+.moves-grid .mtree-line.is-main > .mtree-move.is-black { grid-column: 3; }
+/* The selected cell's ink. The shared tree paints the current move with
+   --accent-ink, but the mainline ink rule (4 classes) out-ranks it, so on this
+   grid the current move read --text on the accent fill: 2.9:1, and its grade
+   glyph came out in --text too. The cell is a filled pill, so its ink is the
+   accent's (`accent-ink`, white in light and near-black in dark) and the
+   glyph takes the cell's ink instead of its grade colour. Measured after:
+   5.9:1 at 1440x900. */
+.moves-grid .mtree-line.is-main > .mtree-move.is-current { color: var(--accent-ink); }
+/* The mainline's trail is the sheet's own order: filling every move played so
+   far turned the sheet into two blue columns. A variation keeps its trail. */
+.moves-grid .mtree-line.is-main > .mtree-move.on-path { background: none; color: inherit; }
+.moves-grid .mtree-line.is-main > .mtree-move.is-current .mtree-glyph { color: inherit; }
+/* The move list keeps the shared tree's own tiles: the selected move is filled
+   and raised there too, so Analyze reads like the rest of the app. */
+.moves-grid .mtree-line.is-main > .mtree-var {
+  grid-column: 1 / -1;
+  margin: 2px 8px;
+  line-height: 1.8;
 }
-.moves-grid .mtree-var .mtree-move { font-weight: 400; font-style: normal; }
-/* The selected move: one 1px accent line under its label, as wide as the
-   label, in ink. No fill, so the sheet stays a text page. */
-.moves-grid .mtree-move.is-current,
-.moves-grid .mtree-move.is-current.is-opp {
-  background: none;
-  color: var(--text);
-  font-weight: 650;
-  box-shadow: inset 0 -1px 0 var(--accent);
-}
-.moves-grid .mtree-move.is-current.is-disabled { opacity: 1; }
-/* The path to the current move is drawn by the variation rails alone, so no
-   move on the way here carries a fill. */
-.moves-grid .mtree-move.on-path { background: none; color: inherit; }
-.moves-grid .mtree-move.is-current .mtree-glyph { color: inherit; }
-/* A grade sign follows its move as a small mark in the grade's colour. */
-.moves-grid .mtree-glyph { margin-left: 2px; font-size: 12px; font-weight: 700; }
 .mtree-glyph {
   font-style: normal;
   font-size: var(--fs-s);
@@ -1280,26 +1159,32 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .drawer[open] summary::before {
   content: "▾";
 }
-/* A PGN box is code-like text, so it keeps the mono face; its box, edge and
-   focus ring are the shared field's. */
 .drawer textarea {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   min-height: 96px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+  color: var(--text);
   font: 13px/1.45 var(--mono);
+  resize: vertical;
 }
 .analysis-history {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-/* The open button fills the row: a row that highlights on hover but only
-   answered clicks on its text line dropped every click above or below it. */
 .history-item {
   display: flex;
-  align-items: stretch;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
+  padding: 6px 4px;
   border: 0;
+  cursor: pointer;
 }
 .history-item .hi-open {
   display: flex;
@@ -1308,7 +1193,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 6px 4px;
+  padding: 0;
   border: 0;
   background: none;
   color: inherit;
@@ -1321,7 +1206,6 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
    list stays a list of games and not a list of games with a bin each. */
 .history-item .hi-delete {
   flex: none;
-  align-self: center;
   opacity: 0;
   color: var(--label);
 }
@@ -1368,12 +1252,11 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     transform var(--dur-fast) var(--ease-out);
 }
 
-/* Press: the control gives a little under the finger. Not the full-width
-   history row: shrinking it moved its edge out from under a press near the
-   edge, and the release then landed outside it and fired no click. */
+/* Press: the control gives a little under the finger. */
 .ev-engine:active,
 .an-tab:active,
 .coach-bookaction:active,
+.history-item .hi-open:active,
 .history-item .hi-delete:active {
   transform: scale(0.97);
 }
@@ -1409,10 +1292,6 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 /* The evaluation under the board takes its height out of the board's square. */
 #view-analyze .study:has(.board-area > #analysis-eval-card:not([hidden])) {
   --board-chrome: calc(42px + 8px + var(--an-eval-h));
-}
-/* A tall desktop window gives the navigator a plot of about 100px. */
-@media (min-width: 1200px) and (min-height: 800px) {
-  #view-analyze { --an-eval-h: 148px; }
 }
 @media (min-width: 761px) {
   /* A short window keeps two lines of verdict, so the panes keep their room. */
@@ -1574,8 +1453,6 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-eval-card .ev-title { grid-area: 1 / 1; min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   #analysis-eval-card .eval-now { grid-area: 1 / 1; min-width: 0; color: var(--text); font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
   #analysis-eval-card .ev-meter { display: none; }
-  /* Three win-share labels in a 44px band cover the curve; the centre line is the scale. */
-  #analysis-eval-card .eval-scale { display: none; }
   #analysis-eval-card .eval-chart { border-radius: 6px; touch-action: pan-y; }
   #analysis-eval-card > .analysis-job-dock:not(:empty) {
     position: absolute;
@@ -1629,10 +1506,50 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     overflow: auto;
     overscroll-behavior: contain;
   }
-  /* On phones the coach head floats beside the text. The switch keeps its
-     shared 34x20 track and its shared 44px tap area, so the head's height is
-     the switch's own. */
-  #analysis-explain .cc-head .pf-switch { flex: none; }
+  /* On phones the coach head floats beside the text. The switch is a 22px
+     control: its own padding gives it a 44px target (the border-box stays at a
+     knob-tall 22px, so the header keeps its height). */
+  #analysis-explain .cc-head .pf-switch {
+    position: relative;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+  }
+  #analysis-explain .cc-head .pf-switch.is-on { background: none; }
+  #analysis-explain .cc-head .pf-switch .pf-knob { display: none; }
+  #analysis-explain .cc-head .pf-switch::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: 3px;
+    width: 34px;
+    height: 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--panel-soft);
+  }
+  /* The switch is a form control: it keeps its own edge (data-ui). */
+  #analysis-explain .cc-head .pf-switch[data-ui]::before {
+    border: 1px solid var(--line-strong);
+  }
+  #analysis-explain .cc-head .pf-switch::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  #analysis-explain .cc-head .pf-switch.is-on::before { border-color: var(--accent); background: var(--accent); }
+  #analysis-explain .cc-head .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
+  @media (prefers-reduced-motion: reduce) {
+    #analysis-explain .cc-head .pf-switch::after { transition: none; }
+  }
   #analysis-explain .coach-maia { height: 44px; overflow-x: auto; scrollbar-width: none; }
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
@@ -1640,18 +1557,18 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   /* The engine-offer row keeps its one line, but its two controls are a thumb's
      size here (they were 22px: a pointer's row). The row's height is the
      controls' height, so nothing overlaps the verdict above it. */
-  #analysis-engine-pane .coach-unlock .unlock.is-inline { height: 44px; }
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-text b,
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
+  #analysis-explain .coach-unlock .unlock.is-inline { height: 44px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 44px; height: 44px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-x svg { width: 16px; height: 16px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text b,
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { font-size: 13px; }
   /* The gain is a sentence ("What players at your rating would play"), not a
      number: on a phone's 358px row it clipped at "woul…" beside the two
      controls. It wraps to two 13px lines inside the same 44px, and the name
      drops to its own line above it rather than sharing one. */
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
-  #analysis-engine-pane .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-text { display: grid; gap: 0; white-space: normal; line-height: 15px; }
+  #analysis-explain .coach-unlock .unlock.is-inline .unlock-line { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 14px; white-space: normal; }
 
   /* The open pillar fills the room over the tabs; the tabs sit on the thumb bar. */
   .an-panes {
@@ -1677,8 +1594,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .an-tab { position: relative; height: auto; align-self: stretch; font-size: 14px; border-radius: 9px; }
   .an-tab::after { content: ""; position: absolute; inset: -3px 0; }
   .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
-  /* A phone shows the chart, board, engine and coach; the move list is not a
-     phone pane (the score sheet stays on desktop and the tablet). */
+  /* A phone steps the game under the board; it has no score sheet tab. */
   .an-tab[data-pane="moves"] { display: none; }
   .an-pane {
     flex: 1 1 auto;
@@ -1727,8 +1643,8 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
   .best-line { font-size: 14px; line-height: 28px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
-  .moves-grid .mtree-move { min-height: 36px; line-height: 36px; }
-  .moves-grid .mtree-num { line-height: 36px; }
+  .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
+  .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
   .rp-row { min-height: 36px; }
   .rp-n, .rp-phase { height: 36px; line-height: 36px; }
   .km-go { min-height: 44px; }
@@ -1750,10 +1666,10 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
      PGN), so a drawer's own summary would name the same action twice. */
   #analyze-open > .drawer > summary { display: none; }
   #analyze-open > .drawer:not([open]) { display: none; }
-  #pgn-input { min-height: 120px; }
+  #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
-  #analyze-open .history-item { min-height: 48px; font-size: 15px; }
-  #analyze-open .history-item .hi-open { padding: 8px 2px; font-size: 15px; }
+  #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
+  #analyze-open .history-item .hi-open { font-size: 15px; }
   #analyze-open .history-item .hi-meta { font-size: 13px; }
   /* Touch target, and always visible: a phone has no hover to reveal it. */
   #analyze-open .history-item .hi-delete {
@@ -1784,3 +1700,4 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain > :not(.cc-head),
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
 }
+

@@ -146,6 +146,8 @@ function buildMenuItems({ hasRep, isActive, isOwner = true }) {
     ["delete", "Delete..."],
   ];
   return [
+    // Generating writes moves, so it is there for anyone who can edit the tree.
+    ...(hasRep ? [["build-generate", "Generate moves…"]] : []),
     ...(hasRep ? (isOwner ? owned : [["build-export-pgn", "Export PGN"]]) : []),
     ["build-new-rep", "New repertoire..."],
   ];
@@ -188,7 +190,8 @@ function openBuildMenu(event) {
       const action = button.dataset.action;
       if (action === "build-node-menu") {
         openNodeContextMenu({ preventDefault() {}, clientX: anchor.right, clientY: anchor.bottom }, node.id);
-      } else if (action === "build-rename") await renameRepertoire();
+      } else if (action === "build-generate") await generateFromCurrentNode();
+      else if (action === "build-rename") await renameRepertoire();
       else if (action === "build-export-pgn") await exportBuild("pgn");
       else if (action === "build-new-rep") {
         await createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" });
@@ -227,13 +230,6 @@ async function renameRepertoire() {
   }
 }
 
-// The paint rule lives in the build view because it reads appState, exactly like
-// renderBuildBranchBar below.
-function paintGenerateVisibility() {
-  if (buildView) return buildView.paintGenerateVisibility();
-  void ensureBuildView().then((view) => view.paintGenerateVisibility()).catch(() => {});
-}
-
 async function selectBuildNode(nodeId) {
   if (!appState.buildNodeById.has(nodeId)) return;
   // Which way the board travels: into the current node's own child is a move
@@ -266,7 +262,6 @@ async function selectBuildNode(nodeId) {
   // (add/delete/collapse/note/grade/import) call renderBuilderTree themselves.
   if (buildView) buildView.updateBuildTreeSelection();
   else renderBuilderTree();
-  paintGenerateVisibility();
   if (engineWidget) engineWidget.onBoardChanged();
   scheduleExplorerRefresh();
 }

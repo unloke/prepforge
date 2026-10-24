@@ -190,9 +190,9 @@ describe("Repertoire ⋯ menu matches the Library menu (P2-14)", () => {
     expect(buildMenuItems({ hasRep: false, isActive: true }).map(([a]) => a)).toEqual(["build-new-rep"]);
   });
 
-  it("gives an editor of someone else's repertoire Export only", () => {
+  it("gives an editor of someone else's repertoire Generate and Export only", () => {
     expect(buildMenuItems({ hasRep: true, isActive: true, isOwner: false }).map(([a]) => a))
-      .toEqual(["build-export-pgn", "build-new-rep"]);
+      .toEqual(["build-generate", "build-export-pgn", "build-new-rep"]);
   });
 
   it("retires the 'builder' name in the Library menu", () => {

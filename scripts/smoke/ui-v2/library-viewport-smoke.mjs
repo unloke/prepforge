@@ -140,7 +140,8 @@ async function runViewport(vp) {
   });
 
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(900); // lazy dashboard chunk + render
+  // The lazy dashboard chunk renders skeleton rows first; wait for the real ones.
+  await page.waitForFunction(() => document.querySelector("#dashboard-repertoires .lib-row[data-repertoire-id]") && !document.querySelector("#dashboard-repertoires .lib-row.is-skeleton"), null, { timeout: 30_000 });
 
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
@@ -175,34 +176,40 @@ async function runViewport(vp) {
   check((await page.locator("#dashboard-repertoires .list-item").count()) === 0, "rows must not use the legacy list-item card");
   // The lifetime counts are one quiet line, not the old tile row.
   check((await page.locator("#dashboard-today .metric").count()) === 0, "today strip should not keep the metric tiles");
-  const countsShown = await page.locator("#dashboard-counts").isVisible();
-  check(countsShown === (vp.width > 760), `library counts visible=${countsShown} at ${vp.width}px`);
+  const countsShown = await page.locator("#dashboard-today .today-counts").isVisible();
+  check(countsShown === (vp.width > 760), `today counts visible=${countsShown} at ${vp.width}px`);
   if (vp.width > 760) {
-    const counts = (await page.locator("#dashboard-counts").textContent()) || "";
+    const counts = (await page.locator("#dashboard-today .today-counts").textContent()) || "";
     check(counts.includes("12") && counts.includes("3") && counts.includes("7"), `counts should carry games/repertoires/sessions, got "${counts}"`);
   }
   const colsShown = await page.locator("#lib-cols").isVisible();
   check(colsShown === (vp.width > 760), `column header visible=${colsShown} at ${vp.width}px`);
 
-  // The Today strip answers what is due: the queue is its first line and its
-  // loudest text, the streak is the quiet line beside it, and the lifetime
-  // counts sit under the Repertoires heading. The check reads the sizes the
-  // user sees, not the markup, so the queue's second line may be absent.
+  // The Today strip is one band: the queue leads at the strip's reading size,
+  // the rest of the queue is one quieter line under it, and the week's history
+  // has its own cell at the right. Read as four equal 13px lines, the queue was
+  // the third thing the eye found.
   const queueFirst = await page.evaluate(() => {
     const body = document.querySelector("#dashboard-today .today-body");
-    return !!body && body.firstElementChild?.classList.contains("today-queue");
+    if (!body) return false;
+    const kids = [...body.children];
+    return kids.length > 0 && kids[0].classList.contains("today-queue");
   });
   check(queueFirst, "the queue must be the first line of the Today body");
   const queueSize = await page.evaluate(() => {
     const q = document.querySelector("#dashboard-today .today-queue");
-    const s = document.querySelector("#dashboard-today .today-streak");
-    if (!q || !s) return null;
-    return { q: parseFloat(getComputedStyle(q).fontSize), streak: parseFloat(getComputedStyle(s).fontSize) };
+    // The streak warning takes the second line when midnight is near.
+    const more = document.querySelector("#dashboard-today :is(.today-more, .today-warning)");
+    if (!q || !more) return null;
+    return { q: parseFloat(getComputedStyle(q).fontSize), more: parseFloat(getComputedStyle(more).fontSize) };
   });
-  check(queueSize && queueSize.q >= 16 && queueSize.q > queueSize.streak,
+  check(queueSize && queueSize.q >= 16 && queueSize.more < queueSize.q,
     `the queue must be the strip's loudest line, got ${JSON.stringify(queueSize)}`);
-  const countsUnderHeading = await page.evaluate(() => !!document.querySelector("#dashboard-rep-count")?.closest(".card-head")?.querySelector("#dashboard-counts"));
-  check(countsUnderHeading, "the lifetime counts must sit beside the Repertoires heading");
+  const countsInAside = await page.evaluate(() => {
+    const aside = document.querySelector("#dashboard-today .today-aside");
+    return !!aside && !!aside.querySelector(".today-counts");
+  });
+  check(countsInAside, "the lifetime counts must sit in the Today aside");
 
   // Phone: the page head's + is New repertoire, so Import PGN needs its own
   // route. It used to live only in the hidden header actions: a phone could
@@ -269,17 +276,6 @@ async function runViewport(vp) {
   const barWidth = await page.locator("#dashboard-repertoires .lib-row:first-child .lib-mbar i.is-mastered").getAttribute("style");
   check(/width:\s*50%/.test(barWidth || ""), `first row mastery bar should be 50%, got "${barWidth}"`);
 
-  // Share: the row's ⋯ menu opens the share dialog with the access read, and
-  // the dialog lists the grant (a read that fails leaves the dialog empty).
-  // Before the row click below, which leaves the Library for the workspace.
-  await page.locator('[data-row-menu="rep-1"]').first().click();
-  await page.locator('#repertoire-context-menu [data-action="share"]').click();
-  await page.waitForTimeout(400);
-  const shareOpen = await page.locator("dialog.share-modal[open]").count();
-  check(shareOpen === 1, "Share... from the row menu must open the share dialog");
-  check(/Sam/.test(await page.locator("dialog.share-modal").textContent().catch(() => "")), "the share dialog must list the existing grant");
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(200);
   const row2 = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-2"]');
   // A click (or tap) on a row opens the workspace directly.
   await row2.click();

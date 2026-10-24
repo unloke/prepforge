@@ -1,7 +1,7 @@
 import { html } from "../html.js";
 import { reveal } from "../list-enter.js";
 import { countOf } from "../plural.js";
-import { moveTextHtml, plyOfFen } from "../move-text.js";
+import { encodeLine, moveTextHtml, plyOfFen } from "../move-text.js";
 // Build tab tree/header rendering (lazy-loaded from app.js).
 
 // A trained move's status, said the way a person says it. The tree paints only
@@ -91,38 +91,9 @@ export function createBuildView({
     return make(rootNode);
   }
 
-  // ONE rule decides the head's Generate button, and only this function reads it:
-  // it applies when a writable repertoire is loaded, its current position is
-  // settled, and either it is the start position (generating there grows the
-  // whole repertoire, so the button never leaves the place every visit
-  // begins) or no move of your own already answers it there. A position that
-  // owns the reply (or a read-only share, or a tree still loading) has nothing
-  // for the button to do, so it stays out of the head. The move menu reaches
-  // Generate at any position, so hiding it here never removes the capability.
-  function generateAppliesHere() {
-    if (isReadOnly()) return false;
-    if (appState.buildLoading) return false;
-    if (!appState.build || !appState.buildCurrentNodeId) return false;
-    if (!appState.buildNodeById.get(appState.buildCurrentNodeId)?.parent_id) return true;
-    const own = appState.build.color === "black" ? "black" : "white";
-    return !appState.build.nodes.some(
-      (n) => n.parent_id === appState.buildCurrentNodeId && n.depth > 0 && n.move_side === own
-    );
-  }
-
-  // The attribute alone carries visibility — no CSS state may override it (the
-  // head row used to force the button back with a :hover/:focus rule, which
-  // made it appear exactly where it did not apply).
-  function paintGenerateVisibility() {
-    const btn = document.getElementById("build-generate-node");
-    if (!btn) return;
-    btn.hidden = !generateAppliesHere();
-  }
-
   function renderBuildRepHeader() {
     const nameEl = document.getElementById("build-rep-name");
     if (!nameEl) return;
-    paintGenerateVisibility();
     if (!appState.build) {
       nameEl.textContent = "No repertoire open";
       return;
@@ -199,8 +170,12 @@ export function createBuildView({
             ? html`<small>${Math.round(n.maia_probability * 100)}%</small>`
             : "";
         const title = n.is_mainline ? `Play ${n.san} — main line` : `Play ${n.san}`;
+        // The chip names its move as a line from here, so pointing at it shows
+        // the move on the board (line-preview.js, peek).
+        const from = appState.buildNodeById.get(n.parent_id)?.fen;
+        const peek = from && n.uci ? html` data-mt="${encodeLine(from, [n.uci])}" data-p="0"` : "";
         return (
-          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="${title}"><span class="mtree-num">${num}</span>${n.san}${share}</button>`
+          html`<button class="${cls}" type="button" data-node-id="${String(n.id)}" title="${title}"${peek}><span class="mtree-num">${num}</span>${n.san}${share}</button>`
         );
       });
     // Over the window, "Show all" opens the whole list (and caps it again).
@@ -298,10 +273,6 @@ export function createBuildView({
 
   function renderBuilderTree() {
     paintedTree = null;
-    // The rule above reads the tree, so every re-render — including the ones
-    // that bail before the tree renderer runs — repaints the head. Otherwise the
-    // no-repertoire and root-only branches leave the previous visibility.
-    paintGenerateVisibility();
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {
@@ -406,7 +377,6 @@ export function createBuildView({
     if (focusBtn) moveTreeRenderer.scrollIntoViewWithin(container, focusBtn);
     renderBuildBranchBar();
     onTreeRendered();
-    paintGenerateVisibility();
   }
 
   // Stepping through the tree changes which move is current and nothing else
@@ -448,6 +418,5 @@ export function createBuildView({
     renderBuildBranchBar,
     renderBuildOpening,
     nameOpening,
-    paintGenerateVisibility,
   };
 }

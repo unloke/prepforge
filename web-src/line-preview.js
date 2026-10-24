@@ -2,9 +2,8 @@
 //
 // A move token (move-text.js markup) is a control: clicking it, or Enter/Space on
 // it, acts on the active view's board through the view's own apply handler. Views
-// without one (Train, Scout, Games…) leave the token to its row. Nothing hovers a
-// board beside the text any more: the coach's sentence draws its line on the board
-// the reader is already looking at (see "The coach's ghost" below).
+// without one (Train, Scout, Games…) leave the token to its row. Beside the Analyze
+// board, pointing at a move shows its position on that board (see "Peek" below).
 import { decodeLine, previewPosition } from "./move-text.js";
 
 // A token carries its line, or sits inside an element that does (a game's move list).
@@ -30,73 +29,77 @@ function act(target) {
   return true;
 }
 
-// --- The coach's ghost -------------------------------------------------------
-// The coach card's sentences are the one place a move reference draws its line on
-// the board: hovering or focusing "2.Nf3" puts the line the sentence walked on the
-// Analyze board as faint arrows, and leaving clears it. The text and the board sit
-// side by side, so the answer is on the board itself — nothing floats over the
-// panel and no layout moves. On touch there is no hover, so a tap shows the ghost
-// and a second tap (or a tap anywhere else) clears it; a coach reference is then a
-// look, not a jump.
-const GHOST_TOKEN = "#coach-prose [data-mt][data-p]";
-let ghostBoard = () => null;
-let ghostToken = null; // the token whose line is drawn, if any
-let ghostPinned = false; // a touch keeps its ghost until its own second tap
+// --- Peek ------------------------------------------------------------------
+// A move named beside the board (the coach's sentence or an engine line in
+// Analyze, a next-move chip in Build) shows its position on that board while the
+// reader points at it: the board
+// tints and the pieces stand where the move leaves them; leaving puts the real
+// position back. On touch there is no hover, so a tap peeks and a second tap (or a
+// tap anywhere else) ends it; a reference is then a look, not a jump.
+const PEEK_TOKEN = "#coach-prose [data-mt][data-p], #analysis-engine-slot [data-mt] [data-p], #build-branchbar [data-mt][data-p]";
+let peekBoard = () => null;
+let peekToken = null; // the token whose position the board shows, if any
+let peekPinned = false; // a touch keeps its peek until its own second tap
 
-function showGhost(token) {
-  const board = ghostBoard();
+function showPeek(token) {
+  const board = peekBoard();
   const pos = tokenPosition(token);
-  if (!board || !pos?.line) return false;
-  board.setGhost(pos.line.plies.slice(0, pos.ply).map((p) => p.uci));
-  ghostToken = token;
+  if (!board || !pos?.fen) return false;
+  board.peek(pos);
+  peekToken = token;
   return true;
 }
 
-/** Clear the coach's ghost from the board (also when its sentence is rewritten). */
-export function clearCoachGhost() {
-  if (!ghostToken) return;
-  ghostBoard()?.setGhost([]);
-  ghostToken = null;
-  ghostPinned = false;
+/** End a peek (also when the text that named it is rewritten). */
+export function clearPeek() {
+  if (!peekToken) return;
+  peekBoard()?.peek(null);
+  peekToken = null;
+  peekPinned = false;
 }
 
-// Touch: the same token again clears; another token moves the ghost to it.
-function tapGhost(token) {
-  if (ghostToken === token) {
-    clearCoachGhost();
+// Touch: the same token again clears; another token moves the peek to it.
+function tapPeek(token) {
+  if (peekToken === token) {
+    clearPeek();
     return true;
   }
-  ghostPinned = showGhost(token);
-  return ghostPinned;
+  peekPinned = showPeek(token);
+  return peekPinned;
 }
 
 const isTouch = (event) => event.pointerType === "touch";
 
-/** Follow the coach card's move references. `board()` names the board to draw on. */
-export function initCoachGhosts(board) {
-  ghostBoard = board;
+/** Follow move references beside the board. `board()` names the active view's board. */
+export function initPeeks(board) {
+  peekBoard = board;
   const doc = document;
+  // Any element the pointer enters decides: a token peeks, anything else ends a
+  // hover peek. Engine rows repaint under a resting pointer, so leaving is read
+  // from where the pointer goes, not from the token it left. A repaint under a
+  // pointer that has not moved fires pointerover too; that is not the reader
+  // pointing at anything, so it neither starts nor ends a peek (a game step
+  // with the mouse resting on an engine line shows the game, not the line).
+  let lastAt = "";
+  doc.addEventListener("pointermove", (event) => { lastAt = `${event.clientX},${event.clientY}`; });
   doc.addEventListener("pointerover", (event) => {
-    if (isTouch(event)) return;
-    const token = event.target.closest?.(GHOST_TOKEN);
-    if (!token || ghostToken === token || ghostPinned) return;
-    showGhost(token);
-  });
-  doc.addEventListener("pointerout", (event) => {
-    if (isTouch(event)) return;
-    const token = event.target.closest?.(GHOST_TOKEN);
-    if (!token || token.contains?.(event.relatedTarget)) return;
-    if (ghostToken === token && !ghostPinned) clearCoachGhost();
+    if (isTouch(event) || peekPinned || `${event.clientX},${event.clientY}` === lastAt) return;
+    const token = event.target.closest?.(PEEK_TOKEN);
+    if (token) {
+      if (token !== peekToken) showPeek(token);
+    } else {
+      clearPeek();
+    }
   });
   doc.addEventListener("focusin", (event) => {
-    const token = event.target.closest?.(GHOST_TOKEN);
-    if (token && token.matches?.(":focus-visible") && !ghostPinned) showGhost(token);
+    const token = event.target.closest?.(PEEK_TOKEN);
+    if (token && token.matches?.(":focus-visible") && !peekPinned) showPeek(token);
   });
   doc.addEventListener("focusout", (event) => {
-    if (ghostToken && event.target.closest?.(GHOST_TOKEN) === ghostToken && !ghostPinned) clearCoachGhost();
+    if (peekToken && event.target.closest?.(PEEK_TOKEN) === peekToken && !peekPinned) clearPeek();
   });
   doc.addEventListener("pointerdown", (event) => {
-    if (ghostPinned && !event.target.closest?.(GHOST_TOKEN)) clearCoachGhost();
+    if (peekPinned && !event.target.closest?.(PEEK_TOKEN)) clearPeek();
   }, true);
 }
 
@@ -115,9 +118,9 @@ export function initMoveLinks({ apply: applyFn = () => null } = {}) {
     if (!target) return;
     event.preventDefault();
     event.stopPropagation();
-    // A coach reference tapped on a phone is the ghost's; everywhere else, and on
-    // a mouse, the click does what it always did.
-    if (lastPointer === "touch" && target.matches?.(GHOST_TOKEN) && tapGhost(target)) return;
+    // A coach reference tapped on a phone is a peek; everywhere else, and on a
+    // mouse, the click does what it always did.
+    if (lastPointer === "touch" && target.matches?.("#coach-prose [data-mt][data-p]") && tapPeek(target)) return;
     act(target);
   }, true);
   doc.addEventListener("keydown", (event) => {

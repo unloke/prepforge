@@ -13,6 +13,7 @@ import { classBadgeSymbol } from "../move-grades.js";
 import { evaluationToWin, moveAccuracy } from "../explain.js";
 import { moveTokenHtml } from "../move-text.js";
 import { gamePhase } from "../coach/material.js";
+import { setPref } from "../core/prefs.js";
 
 const SIDES = ["white", "black"];
 
@@ -399,4 +400,18 @@ export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, r
     if (jump) onJump(Number(jump.dataset.ply));
   };
   return report;
+}
+
+// A review that ran without Maia offers to run the game again with it. That
+// runs the PGN box again, so it needs a game in the box.
+export function paintFindGreat(analysis) {
+  const btn = document.getElementById("analysis-find-great");
+  if (!btn) return;
+  btn.hidden = !(analysis?.quality?.maia?.available === false && document.getElementById("pgn-input")?.value.trim());
+  if (btn.dataset.bound) return;
+  btn.dataset.bound = "1";
+  btn.addEventListener("click", () => {
+    setPref("maiaAnalysis", true);
+    document.getElementById("run-analysis")?.click();
+  });
 }

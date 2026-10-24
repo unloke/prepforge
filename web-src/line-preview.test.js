@@ -1,5 +1,5 @@
-// Move links on the page: what a token does when it is clicked, and the coach's
-// ghost on the board. No board is drawn beside the text any more, so the
+// Move links on the page: what a token does when it is clicked, and the peek
+// on the Analyze board. No board is drawn beside the text any more, so the
 // module must never create one — the last test pins that.
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeLine } from "./move-text.js";
@@ -18,8 +18,9 @@ beforeAll(() => {
 });
 
 // A token as move-text.js writes it: its line in data-mt, its index in data-p.
-// `coach` puts it in the coach card, the one place a token draws on the board.
-function token(mt, p, { cls = "move-ref", coach = false, focusable = true } = {}) {
+// `coach` puts it in the coach card, `engine` in an engine line: the places a token peeks.
+const PEEK = "#coach-prose [data-mt][data-p], #analysis-engine-slot [data-mt] [data-p], #build-branchbar [data-mt][data-p]";
+function token(mt, p, { cls = "move-ref", coach = false, engine = false, focusable = true } = {}) {
   const el = {
     dataset: { mt, p: String(p) },
     classList: { contains: (c) => c === cls },
@@ -28,7 +29,7 @@ function token(mt, p, { cls = "move-ref", coach = false, focusable = true } = {}
   el.matches = (sel) => (sel === "#coach-prose [data-mt][data-p]" ? coach : sel === ":focus-visible" ? focusable : false);
   el.contains = (other) => other === el;
   el.closest = (sel) => {
-    if (sel === "#coach-prose [data-mt][data-p]") return coach ? el : null;
+    if (sel === PEEK) return coach || engine ? el : null;
     if (sel === ".move-ref[data-p]") return cls === "move-ref" ? el : null;
     return sel === "[data-mt]" ? el : null;
   };
@@ -39,17 +40,17 @@ const ev = (target, extra = {}) => ({ target, preventDefault: vi.fn(), stopPropa
 let mod;
 const applied = [];
 let canApply = true;
-const ghosts = [];
-const fakeBoard = { setGhost: (ucis) => ghosts.push(ucis) };
+const peeks = []; // the move each peek shows, null when it ends
+const fakeBoard = { peek: (pos) => peeks.push(pos ? pos.lastMove : null) };
 beforeAll(async () => {
   mod = await import("./line-preview.js");
-  mod.initCoachGhosts(() => fakeBoard);
+  mod.initPeeks(() => fakeBoard);
   mod.initMoveLinks({ apply: (t) => (canApply ? () => applied.push(t.dataset.p) : null) });
 });
 beforeEach(() => {
-  mod.clearCoachGhost();
+  mod.clearPeek();
   applied.length = 0;
-  ghosts.length = 0;
+  peeks.length = 0;
   canApply = true;
 });
 
@@ -98,57 +99,55 @@ describe("move links", () => {
   });
 });
 
-describe("the coach's ghost", () => {
+describe("the peek", () => {
   const LINE = encodeLine(START, ["e2e4", "e7e5", "g1f3"]);
   const hover = (t) => fire("pointerover", ev(t, { pointerType: "mouse" }));
-  const leave = (t) => fire("pointerout", ev(t, { pointerType: "mouse", relatedTarget: null }));
+  const elsewhere = { closest: () => null };
 
-  it("draws the sentence's line up to the move named, and clears on leave", () => {
+  it("shows the named move's position, and ends where the pointer goes next", () => {
     const first = token(LINE, 0, { coach: true });
     hover(first);
-    expect(ghosts.at(-1)).toEqual(["e2e4"]);
-    const second = token(LINE, 2, { coach: true });
-    hover(second); // straight from one token to the next swaps at once
-    expect(ghosts.at(-1)).toEqual(["e2e4", "e7e5", "g1f3"]);
-    leave(second);
-    expect(ghosts.at(-1)).toEqual([]);
+    expect(peeks).toEqual(["e2e4"]);
+    hover(token(LINE, 2, { coach: true })); // straight from one token to the next swaps at once
+    expect(peeks).toEqual(["e2e4", "g1f3"]);
+    hover(elsewhere);
+    expect(peeks).toEqual(["e2e4", "g1f3", null]);
   });
 
-  it("draws only for the coach card's text", () => {
-    hover(token(LINE, 1)); // the move list, an engine line: no ghost
-    expect(ghosts).toEqual([]);
+  it("peeks from engine lines too, and not from other text", () => {
+    hover(token(LINE, 1)); // the move list, a report: no peek
+    expect(peeks).toEqual([]);
+    hover(token(LINE, 1, { cls: "pv-move", engine: true }));
+    expect(peeks).toEqual(["e7e5"]);
   });
 
   it("shows on keyboard focus, and not on a mouse click's focus", () => {
     const t = token(LINE, 1, { coach: true });
     fire("focusin", ev(token(LINE, 1, { coach: true, focusable: false })));
-    expect(ghosts).toEqual([]);
+    expect(peeks).toEqual([]);
     fire("focusin", ev(t));
-    expect(ghosts.at(-1)).toEqual(["e2e4", "e7e5"]);
+    expect(peeks).toEqual(["e7e5"]);
     fire("focusout", ev(t));
-    expect(ghosts.at(-1)).toEqual([]);
+    expect(peeks).toEqual(["e7e5", null]);
   });
 
-  it("on touch, a tap shows the ghost instead of jumping, and a second tap clears it", () => {
+  it("on touch, a tap peeks instead of jumping, and a second tap ends it", () => {
     const t = token(LINE, 1, { coach: true });
-    fire("pointerdown", ev(t, { pointerType: "touch" }));
-    fire("click", ev(t));
+    const tap = (target) => { fire("pointerdown", ev(target, { pointerType: "touch" })); fire("click", ev(target)); };
+    tap(t);
     expect(applied).toEqual([]); // the tree did not move under the sentence
-    expect(ghosts.at(-1)).toEqual(["e2e4", "e7e5"]);
-    fire("pointerdown", ev(t, { pointerType: "touch" }));
-    fire("click", ev(t));
-    expect(ghosts.at(-1)).toEqual([]);
-    // A third tap brings it back; a tap elsewhere clears it.
-    fire("pointerdown", ev(t, { pointerType: "touch" }));
-    fire("click", ev(t));
-    expect(ghosts.at(-1)).toEqual(["e2e4", "e7e5"]);
-    fire("pointerdown", ev(token(LINE, 0), { pointerType: "touch", target: { closest: () => null } }));
-    expect(ghosts.at(-1)).toEqual([]);
+    expect(peeks).toEqual(["e7e5"]);
+    tap(t);
+    expect(peeks).toEqual(["e7e5", null]);
+    // A third tap brings it back; a tap elsewhere ends it.
+    tap(t);
+    fire("pointerdown", ev(elsewhere, { pointerType: "touch" }));
+    expect(peeks).toEqual(["e7e5", null, "e7e5", null]);
   });
 
-  it("clears when the sentence is rewritten under the pointer", () => {
+  it("ends when the sentence is rewritten under the pointer", () => {
     hover(token(LINE, 1, { coach: true }));
-    mod.clearCoachGhost();
-    expect(ghosts.at(-1)).toEqual([]);
+    mod.clearPeek();
+    expect(peeks.at(-1)).toBe(null);
   });
 });

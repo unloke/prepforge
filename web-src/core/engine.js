@@ -209,11 +209,6 @@ export function applyServerEngineGating() {
     gated,
     BROWSER_ENGINE_UNAVAILABLE,
   );
-  setButtonGated(
-    document.getElementById("build-generate-node"),
-    gated,
-    BROWSER_ENGINE_UNAVAILABLE,
-  );
   paintEngineBanners();
 }
 

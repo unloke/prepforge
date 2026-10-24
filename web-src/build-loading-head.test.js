@@ -20,7 +20,6 @@ function harness() {
     appState,
     html,
     boards: { build: { setPosition: vi.fn(), setBranchArrows: vi.fn() } },
-    paintGenerateVisibility: () => painted.push("paint"),
     switchView: vi.fn(),
     paintBuildEmpty: () => painted.push("empty"),
     document: { getElementById: (id) => (id === "build-empty" ? { hidden: true } : null) },
@@ -33,19 +32,16 @@ function harness() {
   return { setBuildLoading, appState, painted, deps };
 }
 
-describe("build loading repaints the head's Generate", () => {
+describe("build loading repaints the panel", () => {
   it("repaints when the skeleton goes up", () => {
     const h = harness();
     h.setBuildLoading(true);
     expect(h.appState.buildLoading).toBe(true);
-    // The rule reads buildLoading, so the paint above is what drops the button
-    // the previous repertoire had made true. The empty state is repainted too:
-    // it is what the panel's bands give way to while the tree loads.
-    expect(h.painted).toEqual(["paint", "empty"]);
+    // The empty state is what the panel's bands give way to while the tree loads.
+    expect(h.painted).toEqual(["empty"]);
   });
 
   it("re-renders the tree instead when the skeleton comes down", () => {
-    // The restore branch re-renders the tree, whose own paint covers it.
     const h = harness();
     h.setBuildLoading(false);
     expect(h.appState.buildLoading).toBe(false);

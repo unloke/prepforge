@@ -81,42 +81,6 @@ describe("board annotation layering", () => {
   });
 });
 
-describe("the coach's ghost line", () => {
-  // The ghost is one group of cut-out arrows, first in the overlay, one arrow per
-  // ply, each fainter than the one before so the line's order reads.
-  function ghostNodes(ghost) {
-    const start = source.indexOf("function renderAnnotations(");
-    const end = source.indexOf("export function squareCenter(", start);
-    const sqStart = end + "export ".length;
-    const sqEnd = source.indexOf("\n}\n", sqStart) + 3;
-    const document = { createElementNS: (_ns, tag) => fakeNode(tag) };
-    const fn = new Function("document", "buildArrowPath", "buildArrowHeadPath", "endsUnder", "files",
-      `${source.slice(start, end)}\n${source.slice(sqStart, sqEnd)}\nreturn renderAnnotations;`,
-    )(document, buildArrowPath, buildArrowHeadPath, endsUnder, ["a", "b", "c", "d", "e", "f", "g", "h"]);
-    const overlay = fakeNode("svg");
-    fn(overlay, [], "white", null, [], null, null, ghost);
-    return overlay.children;
-  }
-
-  it("draws the whole line first, under every real mark, fading by ply", () => {
-    const kids = ghostNodes(["e7e5", "g1f3", "b8c6"]);
-    expect(kids).toHaveLength(1);
-    expect(kids[0].attrs.class).toBe("annot-ghost");
-    expect(kids[0].children.map((p) => p.attrs.class)).toEqual(["annot-ghost-arrow", "annot-ghost-arrow", "annot-ghost-arrow"]);
-    const opacities = kids[0].children.map((p) => Number(p.attrs.opacity));
-    expect(opacities[0]).toBe(1);
-    expect(opacities[0]).toBeGreaterThan(opacities[1]);
-    expect(opacities[1]).toBeGreaterThan(opacities[2]);
-    expect(opacities.at(-1)).toBeGreaterThanOrEqual(0.4); // never fades away entirely
-  });
-
-  it("draws nothing for an empty or malformed line", () => {
-    expect(ghostNodes([])).toEqual([]);
-    expect(ghostNodes(["e7e5", "zz", "a1a1"])).toHaveLength(1);
-    expect(ghostNodes(["e7e5", "zz", "a1a1"])[0].children).toHaveLength(1);
-  });
-});
-
 describe("arrow scale", () => {
   it("thins the arrow but keeps its tip", () => {
     const from = { x: 56.25, y: 81.25 };

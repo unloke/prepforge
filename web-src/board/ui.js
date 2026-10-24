@@ -252,34 +252,12 @@ export function renderAnnotations(
   engineArrow = null,
   branchArrows = [],
   branchPick = null,
-  betterArrow = null,
-  ghost = null
+  betterArrow = null
 ) {
   overlay.setAttribute("viewBox", "0 0 100 100");
   overlay.innerHTML = "";
   const NS = "http://www.w3.org/2000/svg";
   const valid = (uci) => typeof uci === "string" && uci.length >= 4 && uci.slice(0, 2) !== uci.slice(2, 4);
-  // The ghost of a line a sentence beside the board names: the moves drawn as
-  // faint cut-out arrows, first move strongest, the rest stepping back by ply so
-  // the order reads without a number. One group, first in the overlay, so it
-  // never buries a real mark; it carries no meaning of its own beyond "the text
-  // says this line", so it is a neutral ink and not the accent, the engine's
-  // green or the better-move's violet.
-  const ghostMoves = (Array.isArray(ghost) ? ghost : []).filter(valid);
-  if (ghostMoves.length) {
-    const group = document.createElementNS(NS, "g");
-    group.setAttribute("class", "annot-ghost");
-    ghostMoves.forEach((uci, i) => {
-      const from = squareCenter(uci.slice(0, 2), orientation);
-      const to = squareCenter(uci.slice(2, 4), orientation);
-      const path = document.createElementNS(NS, "path");
-      path.setAttribute("d", buildArrowPath(from, to, { scale: 0.62 }));
-      path.setAttribute("class", "annot-ghost-arrow");
-      path.setAttribute("opacity", Math.max(0.4, 1 - i * 0.22).toFixed(2));
-      group.appendChild(path);
-    });
-    overlay.appendChild(group);
-  }
   // Colours and stroke come from CSS tokens (.annot-arrow rules) so board
   // arrows stay in step with the rest of the theme.
   const drawn = [];

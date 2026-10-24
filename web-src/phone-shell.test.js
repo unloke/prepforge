@@ -86,7 +86,7 @@ it("reads only tokens the app defines, and marks a disabled pill inert", () => {
   )];
   expect(undefinedReads).toEqual([]);
 
-  const pill = rule(":is(#run-analysis, #build-generate-node):disabled");
+  const pill = rule("#run-analysis:disabled");
   expect(pill).toMatch(/background: var\(--surface-3\)/);
   expect(pill).toMatch(/color: var\(--label\)/);
   expect(pill).not.toMatch(/--faint/);
