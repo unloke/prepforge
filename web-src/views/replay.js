@@ -349,6 +349,14 @@ export function createReplayView({
     return html`${lines.map((line) => html`<li>${line}</li>`)}`;
   }
 
+  // The score with Chess.com's archive mark before it: a square that says win,
+  // loss or draw from the user's side, so "0-1" reads as a win when they had Black.
+  function resultCellHtml(game) {
+    const cls = replayResultClass(game);
+    const word = { "r-win": "Won", "r-loss": "Lost", "r-draw": "Drawn" }[cls];
+    return html`<span class="res ${cls}" title="${word}"><i class="res-mark" aria-hidden="true"></i>${displayReplayResult(game.result)}</span>`;
+  }
+
   // "You" is resolved against the payload's own user_color, never guessed.
   function playerName(game, side) {
     return game.user_color === side ? "You" : game[side] || "?";
@@ -376,7 +384,7 @@ export function createReplayView({
       : meta.departure || "–";
     const line = encodeLine(START_FEN, history);
     return (
-      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span><span class="res ${replayResultClass(game)}">${displayReplayResult(game.result)}</span><span class="open-prev" data-mt="${line}">${preview}${preview.length ? "…" : ""}</span><span class="num" data-mt="${line}">${departure}</span></button>`
+      html`<button type="button" class="lr${open ? " is-open" : ""}" data-index="${index}" aria-pressed="${open}"><span><i class="kind-badge t-${meta.tone}">${meta.badge}</i></span><span class="players"><span class="pl"><b>${playerName(game, "white")}</b> vs <b>${playerName(game, "black")}</b></span>${source}</span>${resultCellHtml(game)}<span class="open-prev" data-mt="${line}">${preview}${preview.length ? "…" : ""}</span><span class="num" data-mt="${line}">${departure}</span></button>`
     );
   }
 

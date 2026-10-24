@@ -87,7 +87,7 @@
      used to spill 15px past the card and scroll it sideways. The badge column
      fits the longest badge, "Opponent left prep" (154px at 13px); it ran
      into the game column at 124px. */
-  grid-template-columns: 156px minmax(160px, 260px) 52px minmax(120px, 1fr) 80px;
+  grid-template-columns: 156px minmax(160px, 260px) 64px minmax(120px, 1fr) 80px;
   align-items: center;
   gap: 16px;
   width: 100%;
@@ -138,10 +138,29 @@
    header. A result is a fixed-width score between two text columns: centred, so
    "1-0" does not run into the first move beside it. */
 .res { font-weight: 700; white-space: nowrap; text-align: center; font-variant-numeric: tabular-nums; }
-/* A ledger, not a win/loss chart: the result column keeps the row's ink and
-   the outcome is carried by the Preparation badge. Green/red on every row put
-   six accent-coloured numbers on a ten-row sample and made the eye land on the
-   score instead of on what left prep. */
+/* The outcome is a small square before the score, as in Chess.com's game
+   archive: + won, − lost, = drawn, from the user's side. The score keeps the
+   row's ink, so the Preparation badge is still the loudest thing in the row. */
+.lr:not(.head) > .res { display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px; }
+.res-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--none-soft);
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+.res-mark::before { content: "="; }
+.r-win > .res-mark { background: var(--good); color: var(--bg); }
+.r-win > .res-mark::before { content: "+"; }
+.r-loss > .res-mark { background: var(--danger); color: var(--bg); }
+.r-loss > .res-mark::before { content: "−"; }
 .lr-date { white-space: nowrap; }
 .lr.head > :nth-child(3) { text-align: center; }
 .lr.head > :nth-child(5) { text-align: right; }
@@ -240,7 +259,7 @@
 /* A narrow ledger drops the Opening column. Its width follows the detail
    column, which follows the window's height, so this is the ledger's own. */
 @container ledger (max-width: 700px) {
-  .lr { grid-template-columns: 156px minmax(110px, 1fr) 52px 80px; }
+  .lr { grid-template-columns: 156px minmax(110px, 1fr) 64px 80px; }
   .lr > :nth-child(4) { display: none; }
 }
 /* ≤1020: narrow laptop / split screen. Ledger and detail stay side by side
@@ -263,14 +282,15 @@
   .lr.head { display: none; }
   .lr {
     grid-template-columns: 1fr auto;
-    grid-template-areas: "badge res" "players dep";
+    grid-template-areas: "players res" "badge dep";
     gap: 4px 10px;
     min-height: 44px;
   }
   .ledger-table .lr:not(.head) { contain-intrinsic-size: auto 52px; }
   .lr > :nth-child(1) { grid-area: badge; }
   .lr > :nth-child(2) { grid-area: players; }
-  .lr > :nth-child(3) { grid-area: res; text-align: right; }
+  .lr > :nth-child(3) { grid-area: res; justify-self: end; }
+  .lr .pl { font-size: 15px; }
   .lr > :nth-child(5) { grid-area: dep; }
   /* The triage is a flex column here, so the empty card's start alignment
      would shrink it to the message's width. */

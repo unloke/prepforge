@@ -327,6 +327,12 @@ describe("coach note", () => {
     expect(rule).toMatch(/gap: 0;/);
     expect(ALL_STYLES).toMatch(/\.coach-card > \.coach-prose \{ margin: var\(--coach-gap\) 0; \}/);
   });
+
+  it("puts the phone review bar in the header's row, so the verdict keeps its lines", () => {
+    // A row of its own under the Humans pills left the verdict 0px on a 660px phone.
+    expect(ALL_STYLES).toMatch(/#analysis-explain > \.coach-review \{[^}]*order: -1;[^}]*margin: 0 48px -50px 0;/);
+    expect(ALL_STYLES).toContain("#analysis-explain:has(> .coach-review:not([hidden])) .cc-head { justify-content: flex-end; height: 44px; }");
+  });
 });
 
 describe("the panel's one filled action", () => {
