@@ -19,7 +19,7 @@ function fakeRail() {
   };
 }
 
-const target = (matches) => ({ closest: (sel) => (sel === ".tab[data-view]" && matches ? {} : null) });
+const target = (matches) => ({ closest: (sel) => (sel.includes(".tab[data-view]") && matches ? {} : null) });
 
 describe("rail collapse after navigation", () => {
   it("collapses the hover overlay after a pointer click on a destination", () => {
@@ -28,6 +28,18 @@ describe("rail collapse after navigation", () => {
     rail.fire("click", { detail: 1, target: target(true) });
     expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(true);
     rail.fire("pointerleave");
+    expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(false);
+  });
+
+  it("collapses after a pointer click on the palette, which can open a page", () => {
+    const rail = fakeRail();
+    bindRailCollapseOnNavigate(rail);
+    rail.getBoundingClientRect = () => ({ right: 60 });
+    rail.fire("click", { detail: 1, target: { closest: (sel) => (sel.includes("#open-palette") ? {} : null) } });
+    // The palette opening over the resting pointer is not the pointer leaving.
+    rail.fire("pointerleave", { clientX: 30 });
+    expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(true);
+    rail.fire("pointerleave", { clientX: 300 });
     expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(false);
   });
 

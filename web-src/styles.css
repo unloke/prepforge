@@ -514,7 +514,7 @@ h2 {
   transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
-.rail:has(:focus-visible) {
+.rail:not(.is-nav-collapsed):has(:focus-visible) {
   width: var(--rail-open);
   box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
   transition-delay: 60ms;
@@ -592,12 +592,12 @@ h2 {
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
-.rail:has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
+.rail:not(.is-nav-collapsed):has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
   opacity: 1;
   transition-delay: 90ms;
 }
 
-.rail:has(:focus-visible) .nav-group-label::after {
+.rail:not(.is-nav-collapsed):has(:focus-visible) .nav-group-label::after {
   opacity: 0;
 }
 
