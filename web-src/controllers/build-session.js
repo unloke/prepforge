@@ -482,7 +482,9 @@ function initBuildDockLayout() {
     if (treeBox) {
       new ResizeObserver(([entry]) => {
         const height = entry.contentRect.height;
-        if (height < treeHeight) tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" });
+        // Scrolled on the next frame: a scroll inside the observer resizes the
+        // dock's bands again in the same pass and trips a ResizeObserver loop.
+        if (height < treeHeight) requestAnimationFrame(() => tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" }));
         treeHeight = height;
       }).observe(treeBox);
     }
