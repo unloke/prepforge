@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createAnalyzeView } from "./analyze.js";
 
 function render(quality) {
-  const host = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
+  const host = { dataset: { open: "true" }, get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); }, querySelectorAll: () => [] };
   globalThis.document = { getElementById: (id) => (id === "analysis-summary" ? host : null) };
   const appState = { analysis: { quality }, analysisVarNodes: new Map() };
   const view = createAnalyzeView({
@@ -70,10 +70,13 @@ describe("coach engine-review switch", () => {
   });
 
   it("is a 44px touch target in the phone coach head", () => {
-    const phone = css.slice(css.lastIndexOf("@media (max-width: 760px)"));
-    const rule = phone.match(/#analysis-explain .cc-head .pf-switch {[^}]*}/)[0];
-    expect(rule).toMatch(/width: 44px/);
-    expect(rule).toMatch(/height: 44px/);
-    expect(rule).toMatch(/box-sizing: border-box/);
+    // The switch keeps the shared 34x20 track at every width; the shared tap
+    // area is what reaches a thumb, so Analyze no longer redraws it.
+    const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+    const hit = shared.match(/\.pf-switch::after \{[^}]*\}/)[0];
+    const inset = Number(/inset:\s*-(\d+)px/.exec(hit)[1]);
+    const track = Number(/--switch-h:\s*(\d+)px/.exec(shared)[1]);
+    expect(track + 2 * inset).toBeGreaterThanOrEqual(44);
+    expect(css).not.toMatch(/#analysis-explain \.cc-head \.pf-switch::before/);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { clampPly, decodeLine, encodeLine, moveLineHtml, moveTextHtml, parseMoveText, plyOfFen, previewLabel, previewPosition, stepPreview, walkLine, walkPathText } from "./move-text.js";
+import { clampPly, decodeLine, encodeLine, moveLineHtml, moveTextHtml, parseMoveText, plyOfFen, previewPosition, walkLine, walkPathText } from "./move-text.js";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -23,23 +23,7 @@ describe("line walking and stepping", () => {
     expect(previewPosition(p, 0)).toEqual({ fen: START, lastMove: null });
     expect(previewPosition(p, 1)).toEqual({ fen: AFTER_E4, lastMove: "e2e4" });
     expect(previewPosition(p, 9).lastMove).toBe("e7e5");
-  });
-
-  it("steps forward and back inside the line without leaving it", () => {
-    const p = walkLine(START, ["e2e4", "e7e5", "g1f3"]);
-    expect(stepPreview(p, 1, "next")).toBe(2);
-    expect(stepPreview(p, 3, "next")).toBe(3);
-    expect(stepPreview(p, 1, "prev")).toBe(0);
-    expect(stepPreview(p, 0, "prev")).toBe(0);
-    expect(stepPreview(p, 2, "start")).toBe(0);
-    expect(stepPreview(p, 0, "end")).toBe(3);
     expect(clampPly(p, -4)).toBe(0);
-  });
-
-  it("labels where the preview is", () => {
-    const p = walkLine(START, ["e2e4", "e7e5"]);
-    expect(previewLabel(p, 2, "Line 1")).toBe("Line 1 · 1...e5 · 2/2");
-    expect(previewLabel(p, 0, "Line 2")).toBe("Line 2 · start · 0/2");
   });
 });
 
@@ -172,7 +156,7 @@ describe("markup", () => {
   it("escapes the prose and marks tokens as buttons with their line", () => {
     const out = String(moveTextHtml("<b>1.e4</b>", { fen: START }));
     expect(out).toContain("&lt;b&gt;");
-    expect(out).toMatch(/<span class="move-ref" role="button" tabindex="0" data-mt="[^"]+\|e2e4" data-p="0" aria-label="Preview 1.e4">1.e4<\/span>/);
+    expect(out).toMatch(/<span class="move-ref" role="button" tabindex="0" data-mt="[^"]+\|e2e4" data-p="0" aria-label="1.e4">1.e4<\/span>/);
     expect(String(moveTextHtml("no moves here", { fen: START }))).toBe("no moves here");
   });
 

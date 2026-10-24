@@ -1,5 +1,5 @@
 // Playwright smoke: Analyze board interaction — no stray focus ring on the board, and
-// engine lines (PVs) previewed on the board. Invoked by
+// engine lines (PVs) played into the move list. Invoked by
 // tests/e2e/test_analyze_board_smoke.py after uvicorn boots locally (E2E build:
 // VITE_ENABLE_SCOUT_E2E=1 + ?analyze_e2e=1).
 //
@@ -7,10 +7,9 @@
 //   1. clicking a square never leaves a focused square (no focus ring), and the arrow
 //      keys then step the game instead of moving a square cursor;
 //   2. the board stays one Tab stop; a typed square name moves keyboard focus there;
-//   3. clicking an engine line plays it on the board (accent frame + "Line 1 · …"
-//      label) while the row stays one line, the arrow keys and board-bar arrows step
-//      through it, and the game (ply) is untouched;
-//   4. "Exit line" and Esc restore the exact game position.
+//   3. clicking a move in an engine line plays the line up to it into the move list
+//      as a variation and selects that move, while the engine slot keeps its height;
+//   4. stepping back with the arrow keys returns to the exact game position.
 //
 // Env:
 //   E2E_BASE_URL — default http://127.0.0.1:9876
@@ -60,7 +59,6 @@ async function fixture() {
     position_evals: {},
     moves,
     eval_graph: moves.map((m) => ({ ply: m.ply, san: m.san, score_cp: 20, bounded_score_cp: 20, classification: "best" })),
-    critical_moments: [],
   };
 }
 
@@ -129,58 +127,39 @@ async function main() {
     await page.click("#analysis-end");
     await waitPly(6, "End did not return to the last move");
 
-    // --- 3. Engine line preview. ---
+    // --- 3. An engine line is played into the move list. ---
     const gameLabel = await label();
     const gamePieces = await boardPieces();
     await page.click("#open-engine-widget");
     await page
       .waitForSelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='3']", { timeout: ENGINE_TIMEOUT_MS })
       .catch(() => fail("engine produced no line with four moves"));
-    const firstMove = await e2e(
-      () => document.querySelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='0']").textContent,
+    const secondMove = await e2e(
+      () => document.querySelector("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='1']").textContent,
     );
-    const rowHeight = await e2e(() => document.querySelector("#engine-window-pvs .engine-pv[data-line='0']").offsetHeight);
-    await page.click("#engine-window-pvs .engine-pv[data-line='0'] .engine-pv-eval");
+    const slotHeight = await e2e(() => document.getElementById("engine-window-pvs").offsetHeight);
+    await page.click("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='1']");
     await page
-      .waitForFunction(() => document.getElementById("analysis-board").classList.contains("is-previewing"), null, { timeout: 5_000 })
-      .catch(() => fail("clicking an engine line did not put it on the board"));
-    check((await label()).startsWith(`Line 1 · 4.${firstMove} · 1/`), `label names the previewed move (got ${await label()})`);
-    check(!(await page.locator("#analysis-pv-exit").isHidden()), "Exit line is shown");
+      .waitForFunction(() => document.querySelector("#analysis-moves .mtree-move.is-current.is-variation"), null, { timeout: 5_000 })
+      .catch(() => fail("clicking a move in an engine line did not play it into the move list"));
     check(
-      (await e2e(() => document.querySelector("#engine-window-pvs .engine-pv[data-line='0']").offsetHeight)) === rowHeight,
-      "the previewed row stays one line",
+      (await e2e(() => document.querySelector("#analysis-moves .mtree-move.is-current")?.textContent || "")).includes(secondMove),
+      `the clicked move is selected in the move list (${secondMove})`,
     );
-    check((await getPly()) === 6, "the game ply is unchanged while previewing");
-    await page.keyboard.press("ArrowRight");
-    await page.keyboard.press("ArrowRight");
-    check(/ · 3\//.test(await label()), `ArrowRight steps the line (got ${await label()})`);
-    await page.click("#analysis-prev");
-    check(/ · 2\//.test(await label()), `the Previous button steps the line back (got ${await label()})`);
+    check((await boardPieces()) !== gamePieces, "the board shows the line's position");
     check(
-      (await e2e(() => document.querySelector(".pv-move.is-current")?.dataset.p)) === "1",
-      "the current move is marked in the line",
+      (await e2e(() => document.getElementById("engine-window-pvs").offsetHeight)) === slotHeight,
+      "the engine slot keeps its height while the engine restarts",
     );
-    await page.click("#engine-window-pvs .engine-pv[data-line='0'] .pv-move[data-p='3']");
-    check(/ · 4\//.test(await label()), "clicking a move in the line jumps to it");
-    await page.waitForTimeout(1200); // engine repaints keep the preview
-    check(/ · 4\//.test(await label()), "the preview survives engine repaints");
-    check((await getPly()) === 6, "the game ply is still unchanged");
 
     // --- 4. Back to the game. ---
-    await page.click("#analysis-pv-exit");
-    check((await label()) === gameLabel, "Exit line restores the game label");
-    check((await boardPieces()) === gamePieces, "Exit line restores the exact position");
-    check(
-      !(await e2e(() => document.getElementById("analysis-board").classList.contains("is-previewing"))),
-      "the preview frame is removed",
-    );
-    await page.click("#engine-window-pvs .engine-pv[data-line='0'] .engine-pv-eval");
-    await page.click("#analysis-start");
-    check(/ · 0\//.test(await label()), "Start goes to the start of the line, still previewing");
-    await page.keyboard.press("Escape");
-    check((await label()) === gameLabel, "Esc returns to the game");
     await page.keyboard.press("ArrowLeft");
-    await waitPly(5, "game navigation does not work after the preview");
+    await page.keyboard.press("ArrowLeft");
+    await waitPly(6, "stepping back out of the line did not return to the game");
+    check((await label()) === gameLabel, "the game label is restored");
+    check((await boardPieces()) === gamePieces, "the exact game position is restored");
+    await page.keyboard.press("ArrowLeft");
+    await waitPly(5, "game navigation does not work after the line");
     console.log("[analyze-board-smoke] passed.");
   } finally {
     await browser.close();

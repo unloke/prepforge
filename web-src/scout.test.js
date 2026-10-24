@@ -179,6 +179,11 @@ describe("parseGameBlock / parseMultiPgn", () => {
     expect(game.datestamp).toBe(Date.parse("2026-06-10T16:30:00Z"));
     expect(parseScoutDatestamp("2026.06.10")).toBe(Date.parse("2026-06-10T00:00:00Z"));
   });
+  it("reads the game id from the current Lichess export headers", () => {
+    const block = pgn({ moves: "1. e4 e5", site: "https://lichess.org/game/eY7fXzPX" });
+    expect(parseGameBlock(block, "foe").gameId).toBe("eY7fXzPX");
+    expect(parseGameBlock(`[GameId "Ab12Cd34"]\n${block}`, "foe").gameId).toBe("Ab12Cd34");
+  });
   it("drops non-standard variants and FEN setups", () => {
     expect(
       parseGameBlock(pgn({ moves: "1. e4 e5", variant: "Crazyhouse" }), "foe"),

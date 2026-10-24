@@ -88,18 +88,22 @@ describe("visual system tokens", () => {
 
   // Every control the app draws shares one radius. Selects and the segmented
   // control used to carry their own (4px in a dialog, 7px on the track, 5px on
-  // its option), so the same control read as three different shapes.
+  // its option), so the same control read as three different shapes. The
+  // segmented control is now the sheet's accent-line selection: words on a
+  // rule, no box, so it has no radius to share.
   it("draws every control on the shared control radius", () => {
     expect(ruleBody(".btn")).toMatch(/border-radius:\s*var\(--radius\)/);
-    expect(ruleBody(".seg")).toMatch(/border-radius:\s*calc\(var\(--radius\) \+ 2px\)/);
-    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*var\(--radius\)/);
-    // The <select> base rule is the one that gives a dropdown the app's box.
-    const selectRule = css.match(/(?:^|\n)select \{([^}]+)\}/g)
-      ?.map((rule) => rule.replace(/^[\n]*/, ""))
-      .find((rule) => rule.includes("--control-h")) || "";
-    expect(selectRule).toMatch(/border-radius:\s*var\(--radius\)/);
-    expect(selectRule).toMatch(/height:\s*var\(--control-h\)/);
-    expect(selectRule).toMatch(/appearance:\s*none/);
+    expect(ruleBody(".seg")).not.toMatch(/border-radius/);
+    // The option is a word on a rule, not a box: it squares its corners so a
+    // browser's own button radius never creeps back in.
+    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*0/);
+    // One field rule gives every select, text input and textarea the app's box;
+    // the select only adds its own chevron and cursor on top of it.
+    const fieldRule = css.match(/(?:^|\n)select,\ninput:not\([^)]*\),\ntextarea \{([^}]+)\}/)?.[1] || "";
+    expect(fieldRule).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(fieldRule).toMatch(/height:\s*var\(--control-h\)/);
+    expect(fieldRule).toMatch(/appearance:\s*none/);
+    const selectRule = css.match(/(?:^|\n)select \{\n  padding-right:[^}]+\}/)?.[0] || "";
     expect(selectRule).toMatch(/background-image:\s*var\(--select-chevron\)/);
   });
 
@@ -130,7 +134,7 @@ describe("visual system tokens", () => {
     const head = /\.workspace \.page-head \{([^}]+)\}/.exec(desktop)?.[1] || "";
     expect(head).toMatch(/display:\s*flex/);
     const title = /\.workspace \.page-head h1 \{([^}]+)\}/.exec(desktop)?.[1] || "";
-    expect(title).toMatch(/font-size:\s*32px/);
+    expect(title).toMatch(/font-size:\s*26px/);
     // The head's icon mirrors a control the desktop card head already shows in
     // words: it would be a second "New repertoire" on the same screen.
     expect(desktop).toMatch(/\.page-head \.page-head-btn \{ display: none; \}/);
@@ -258,13 +262,12 @@ describe("seven views share chrome families", () => {
     const home = html.slice(html.indexOf('id="train-home"'), html.indexOf('id="train-progress-panel"'));
     const rows = [...home.matchAll(/<section class="train-row" data-row="([a-z_]+)">/g)].map((m) => m[1]);
     expect(rows).toEqual(["smart", "all_lines", "play"]);
-    // One primary per row, in the same place and the same style: each mode's
-    // Start is the one filled action of its own card, at the card's top right.
-    expect(home.match(/class="btn primary train-row-go"/g)).toHaveLength(3);
-    expect(home.match(/class="btn primary/g)).toHaveLength(3);
+    // One primary on Home: the due queue's Start leads; Rehearse and Practice
+    // keep the same place at the card's top right as outlined actions.
+    expect(home.match(/class="btn primary/g)).toHaveLength(1);
     expect(home).toMatch(/class="btn primary train-row-go" id="start-train"/);
-    expect(home).toMatch(/class="btn primary train-row-go" id="start-rehearse"/);
-    expect(home).toMatch(/class="btn primary train-row-go" id="start-play"/);
+    expect(home).toMatch(/class="btn train-row-go" id="start-rehearse"/);
+    expect(home).toMatch(/class="btn train-row-go" id="start-play"/);
     // No mode tabs, no second History.
     expect(html).not.toContain('id="train-modes"');
     expect(html.match(/data-train-history/g)).toHaveLength(1);
@@ -364,7 +367,9 @@ describe("semantic text colors meet WCAG AA", () => {
     return out;
   }
   const light = tokensOf(css.slice(0, darkStart));
-  const dark = tokensOf(css.slice(darkStart));
+  // The board colour themes are overrides chosen by a pref, not the default
+  // palette, so they stay out of the dark block this test reads.
+  const dark = tokensOf(css.slice(darkStart, css.indexOf("/* ---- Board colour themes")));
 
   const TEXT_TOKENS = ["--label", "--warn-text", "--good-text", "--brilliant-text", "--accent-text"];
 
@@ -419,6 +424,66 @@ describe("semantic text colors meet WCAG AA", () => {
       /[^-]color:\s*var\(--(warn|good|brilliant|accent)\)/,
     );
   });
+});
+
+describe("accent presets meet WCAG AA in both themes", () => {
+  // The user picks the accent (product.md). A preset may not weaken the
+  // contrast the default blue already guarantees: its text-safe token clears
+  // 4.5:1 on every surface it can sit on, and the ink on its fill does too.
+  function luminance(hex) {
+    const c = hex.replace("#", "");
+    const f = (i) => {
+      const v = parseInt(c.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * f(0) + 0.7152 * f(2) + 0.0722 * f(4);
+  }
+  function contrast(a, b) {
+    const x = luminance(a);
+    const y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function block(selector) {
+    const start = css.indexOf(selector);
+    expect(start, `${selector} must exist`).toBeGreaterThan(-1);
+    const open = css.indexOf("{", start);
+    const out = {};
+    for (const m of css.slice(open, css.indexOf("}", open)).matchAll(/(--[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+      out[m[1]] = m[2];
+    }
+    return out;
+  }
+  // The base surfaces of a theme: the :root block above the dark one for
+  // light, the dark block itself for dark.
+  function baseTokens(theme) {
+    const darkStart = css.indexOf(':root[data-theme="dark"]');
+    return theme === "dark" ? block(':root[data-theme="dark"]') : block(":root");
+  }
+
+  const presets = [...css.matchAll(/:root(\[data-accent="([a-z]+)"\])/g)].map((m) => m[2]);
+  // Blue is the default and declares no override: it is the light/dark base
+  // tokens, checked by the guards above.
+  expect([...new Set(presets)]).toEqual(["orange"]);
+
+  for (const name of [...new Set(presets)]) {
+    for (const [theme, selector] of [
+      ["light", `:root[data-accent="${name}"]`],
+      ["dark", `:root[data-theme="dark"][data-accent="${name}"]`],
+    ]) {
+      it(`${theme} ${name}: the accent text token clears 4.5:1 on every surface`, () => {
+        const accent = block(selector);
+        const base = baseTokens(theme);
+        for (const token of ["--accent", "--accent-soft", "--accent-line", "--accent-strong", "--accent-text", "--accent-ink"]) {
+          expect(accent[token], `${selector} must declare ${token}`).toMatch(/^#[0-9a-fA-F]{6}$/);
+        }
+        for (const bgName of ["--panel", "--panel-soft", "--bg", "--accent-soft"]) {
+          const bg = bgName === "--accent-soft" ? accent[bgName] : base[bgName];
+          expect(contrast(accent["--accent-text"], bg), `${theme} ${name} --accent-text on ${bgName}`).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(contrast(accent["--accent-ink"], accent["--accent"]), `${theme} ${name} ink on accent`).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  }
 });
 
 describe("status semantics", () => {

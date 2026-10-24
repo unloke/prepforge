@@ -203,6 +203,8 @@ async function updateBookline() {
     el.innerHTML =
       html`${sanLinked(text, node.san, node.fenBefore, node.uci)} <button class="coach-bookaction" type="button" data-act="build">Add it to repertoire<span class="cba-arrow" aria-hidden="true">›</span></button>`;
     el.hidden = false;
+    // The user's reply in the game, when they played one, goes into the same line.
+    const reply = (node.children || []).find((child) => child.isMainline && child.side === rep.color);
     el.querySelector('[data-act="build"]').addEventListener("click", () => {
       // F-06: Analyze→Repertoire handoff — the novelty line + anchor position
       // travel with the jump into Build.
@@ -210,7 +212,7 @@ async function updateBookline() {
         source: "analyze",
         reason: "extend-book",
         gameId: appState.analysis?.game_id || null,
-        lineUcis: [...prefix, node.uci],
+        lineUcis: [...prefix, node.uci, ...(reply ? [reply.uci] : [])],
         ply: path.length,
         anchorFen: node.fenBefore,
         rootFen: appState.analysis?.moves?.[0]?.fen_before || null,

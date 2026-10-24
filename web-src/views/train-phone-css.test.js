@@ -37,11 +37,14 @@ it("every Train control is a thumb-sized target on a phone", () => {
     /#view-train \.train-summary-actions \.btn \{ height: 46px; min-height: 46px; \}/,
     /\.train-pick \{ min-height: 48px;/,
   ]) expect(phone.match(selector), selector.source).not.toBeNull();
-  // The switch is drawn 26px tall on a phone and its tap area adds 9px above
-  // and below: 44px, a thumb's height.
-  const size = css.match(/:is\(#train-blitz-toggle, #explorer-engine-toggle\) \{[^}]*height: (\d+)px/);
-  const hit = css.match(/:is\(#train-blitz-toggle, #explorer-engine-toggle\)::after \{[^}]*inset: -(\d+)px -\d+px/);
-  expect(Number(size[1]) + 2 * Number(hit[1])).toBeGreaterThanOrEqual(44);
+  // The switch is one shared control: a 34x20 track at every width with a
+  // shared tap area that adds 12px above and below, so 44px is reached without
+  // Train redrawing it.
+  const shared = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+  const hit = shared.match(/\.pf-switch::after \{[^}]*inset: -(\d+)px/);
+  const track = shared.match(/--switch-h:\s*(\d+)px/);
+  expect(Number(track[1]) + 2 * Number(hit[1])).toBeGreaterThanOrEqual(44);
+  expect(css).not.toMatch(/#train-blitz-toggle, #explorer-engine-toggle\) \{/);
 });
 
 it("the pickers open as a bottom sheet at the thumb", () => {
@@ -52,5 +55,5 @@ it("the pickers open as a bottom sheet at the thumb", () => {
 });
 
 it("the result cells share one row on a phone instead of orphaning the last", () => {
-  expect(phone).toContain(":root .sum-cells { grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); }");
+  expect(phone).not.toContain("sum-cells");
 });

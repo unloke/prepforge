@@ -230,15 +230,33 @@ describe("a move made on the board", () => {
     expect([...board.highlights]).toEqual(["d4"]);
   });
 
-  it("puts them back when an engine preview ends", () => {
+  // Analyze draws the engine's move and the move that should have been played;
+  // Build draws the fork's options. They are not part of the game's own marks,
+  // so nothing else on the board may take their setters away.
+  it("draws the engine's move, the better move and the fork's options", () => {
+    mount({ onMove: () => {} });
+    board.setEngineArrow("e2e4");
+    board.setBetterArrow("d2d4");
+    board.setBranchArrows(["g1f3", "b1c3"], "b1c3");
+    expect(board.engineArrow).toBe("e2e4");
+    expect(board.betterArrow).toBe("d2d4");
+    expect(board.branchArrows).toEqual(["g1f3", "b1c3"]);
+    expect(board.branchPick).toBe("b1c3");
+    board.setEngineArrow(null);
+    board.setBetterArrow("");
+    expect(board.engineArrow).toBe(null);
+    expect(board.betterArrow).toBe(null);
+  });
+
+  // A new real position clears the marks the user drew on the old one.
+  it("clears the drawn marks when the position changes", () => {
     mount({ onMove: () => {} });
     board.setAnnotations(["e2e4"], ["d4"]);
-    board.beginPreview();
-    // The preview walks the engine's line, which is not this position.
-    board.showPreview({ fen: AFTER_E4, lastMove: "e2e4" });
-    board.endPreview();
-    expect(board.arrows).toEqual(["e2e4"]);
-    expect([...board.highlights]).toEqual(["d4"]);
+    board.lastMove = "e2e4";
+    board.setPosition({ fen: AFTER_E4, legalMoves: [], lastMove: null });
+    expect(board.arrows).toEqual([]);
+    expect([...board.highlights]).toEqual([]);
+    expect(board.lastMove).toBeNull();
   });
 });
 

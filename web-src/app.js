@@ -17,7 +17,6 @@ import { createCoverage, runCoverageScanUI } from "./coverage-entry.js";
 import { createLibrary } from "./library-entry.js";
 import { installE2eHooks } from "./e2e-hooks.js";
 import { bindPhoneChrome, clearMaiaIdleTeardown, scheduleMaiaIdleTeardown } from "./phone-entry.js";
-import { boardLine } from "./line-preview.js";
 import { installMoveLinks } from "./move-links.js";
 import { moveTextHtml, walkPathText } from "./move-text.js";
 import { createSharedViewer, forkReadableRepertoire, renderReadOnlyBanner } from "./shared-viewer.js";
@@ -552,7 +551,6 @@ function switchView(name, { fromUrl = false } = {}) {
   if (appState.currentView === "teams" && name !== "teams") teamsController?.invalidateRequests();
   if (appState.currentView !== name) notices.clearStatusOnNavigate();
   if (name !== "analyze") analyzeSession?.positionCoach.cancel();
-  if (appState.currentView !== name) { engineWidget.exitPreview(); boardLine.exit(); }
   appState.currentView = name;
   // Navigating is user activity; if the Lichess watch is running, switching to
   // Analyze (where a fresh game matters most) tightens the poll cadence briefly.
@@ -1057,6 +1055,7 @@ const viaAnalyzeSession = (name) => (...args) => (analyzeSession
   ? analyzeSession[name](...args)
   : loadAnalyzeSession().then((loaded) => loaded[name](...args)));
 const analysisTreeNav = viaAnalyzeSession("analysisTreeNav");
+const reviewNav = viaAnalyzeSession("reviewNav");
 const discardAnalyzeCheckpoint = viaAnalyzeSession("discardAnalyzeCheckpoint");
 const hideAnalysisHandoff = viaAnalyzeSession("hideAnalysisHandoff");
 const loadPgnIntoAnalyze = viaAnalyzeSession("loadPgnIntoAnalyze");
@@ -1327,6 +1326,8 @@ function updateTrainTurnBadge(side) {
   badge.hidden = false;
   badge.dataset.side = side;
   badge.title = side === "white" ? "White to move" : "Black to move";
+  badge.setAttribute("role", "img");
+  badge.setAttribute("aria-label", badge.title);
   // Show the side-to-move as a real piece (king of that colour), not a bare
   // letter. Pieces are inline SVG (see pieceSvg) — there is no PNG asset.
   badge.innerHTML = pieceSvg(side === "white" ? "K" : "k");
@@ -1528,6 +1529,9 @@ function bindEvents() {
     const pane = button.dataset.pane;
     document.getElementById("view-build").dataset.pane = pane;
     panes.querySelectorAll("[data-pane]").forEach((b) => b.setAttribute("aria-selected", String(b === button)));
+    // The Explorer and Coverage panes are the inspector: a folded dock (its
+    // default) would show them empty. Unfolding is not remembered for desktop.
+    if (pane !== "moves") setBuildDockFolded(false, { remember: false });
     if (pane !== "moves" && buildDockTab !== pane) setBuildInspector(pane);
   });
   const dockTabs ={ explorer: "build-tool-explorer", coverage: "build-tool-coverage" };
@@ -1565,28 +1569,23 @@ function bindEvents() {
     .getElementById("explorer-engine-toggle")
     ?.addEventListener("click", () => setEngineOn("build", !engineWantedIn("build")));
   bindEvalChart();
-  // While an engine line is on the board, the board-bar arrows step through it.
-  const navOrPreview = (action, nav) => () => {
-    if (boardLine.step(action)) return;
-    nav();
-  };
-  document.getElementById("analysis-start").addEventListener("click", navOrPreview("start", () => {
+  document.getElementById("analysis-start").addEventListener("click", () => {
     void analysisTreeNav("start").catch(() => {});
-  }));
-  document.getElementById("analysis-prev").addEventListener("click", navOrPreview("prev", () => {
+  });
+  document.getElementById("analysis-prev").addEventListener("click", () => {
     void analysisTreeNav("prev").catch(() => {});
-  }));
-  document.getElementById("analysis-next").addEventListener("click", navOrPreview("next", () => {
+  });
+  document.getElementById("analysis-next").addEventListener("click", () => {
     void analysisTreeNav("next").catch(() => {});
-  }));
-  document.getElementById("analysis-end").addEventListener("click", navOrPreview("end", () => {
+  });
+  document.getElementById("analysis-end").addEventListener("click", () => {
     void analysisTreeNav("end").catch(() => {});
-  }));
+  });
 
-  document.getElementById("build-root").addEventListener("click", navOrPreview("start", buildGoRoot));
-  document.getElementById("build-parent").addEventListener("click", navOrPreview("prev", buildGoBack));
-  document.getElementById("build-next").addEventListener("click", navOrPreview("next", buildGoForward));
-  document.getElementById("build-end").addEventListener("click", navOrPreview("end", buildGoToEnd));
+  document.getElementById("build-root").addEventListener("click", buildGoRoot);
+  document.getElementById("build-parent").addEventListener("click", buildGoBack);
+  document.getElementById("build-next").addEventListener("click", buildGoForward);
+  document.getElementById("build-end").addEventListener("click", buildGoToEnd);
   document.getElementById("build-generate-node").addEventListener("click", generateFromCurrentNode);
   document.getElementById("build-menu").addEventListener("click", openBuildMenu);
   document.getElementById("build-empty-create").addEventListener("click", () => createRepertoirePrompt({ title: "New repertoire", defaultName: "New repertoire" }));
@@ -1638,31 +1637,22 @@ function bindEvents() {
     const inEditable = !!active && (["TEXTAREA", "INPUT", "SELECT"].includes(active.tagName) ||
       active.isContentEditable === true);
     if (inEditable) return;
-    // An engine line on the board: ← → step through it, Esc goes back to the game.
-    // The preview belongs to a board, so it answers only on the view that owns it.
     const view = activeViewName();
     // Ctrl/Cmd+Z takes back the last move added here (its Undo card restores it).
     if (view === "build" && (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z") {
       event.preventDefault();
       return void undoLastBuildAdd();
     }
-    if (boardLine.active && (view === "analyze" || view === "build")) {
-      const action = { ArrowLeft: "prev", ArrowRight: "next", Home: "start", End: "end" }[event.key];
-      if (action) {
-        event.preventDefault();
-        boardLine.step(action);
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        boardLine.exit();
-        return;
-      }
-    }
     // Arrow keys navigate the board of the view that is on screen — and only
     // there: Analyze and Build each have one; every other view has none, so ← →
     // must do nothing on it. This handler lives on the document, so it cannot be
     // released with a view; the view name is the guard instead.
+    // Shift+← / Shift+→ in Analyze: the previous / next key moment (the review bar).
+    if (view === "analyze" && event.shiftKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      void reviewNav(event.key === "ArrowLeft" ? "prev" : "next").catch(() => {});
+      return;
+    }
     const inBuild = view === "build";
     const stepsBoard = inBuild || view === "analyze";
     const arrows = event.key === "ArrowLeft" || event.key === "ArrowRight";
@@ -1744,7 +1734,7 @@ async function init() {
   createBook({ editRepertoire });
   analyzeLoader = createAnalyzeView({
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
-    selectNode: selectAnalysisNode, reveal: revealAnalysisResults,
+    selectNode: selectAnalysisNode, reveal: revealAnalysisResults, selfSide: analysisSelfSide,
   });
   libraryEntry = createLibrary({
     switchView, hydrateBuild, syncViewHeads, openTrain, editRepertoire,
@@ -1773,9 +1763,11 @@ async function init() {
     ensureCoverageView: () => coverageEntry.ensureCoverageView(),
     paintGenerateVisibility, syncViewHeads, updateBuildReadOnlyUi,
   };
-  // First paint reads the stored theme; it never writes, so opening the app
-  // does not fabricate a pref blob.
+  // First paint reads the stored theme and accent; it never writes, so opening
+  // the app does not fabricate a pref blob.
   applyPref("theme");
+  applyPref("accent");
+  applyPref("boardTheme");
   try {
     const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)");
     systemTheme?.addEventListener?.("change", () => {
@@ -2078,7 +2070,9 @@ async function loadSignedInWorkspace() {
   const settingsReady = loadSettingsController().then((settings) =>
     isCurrent() ? settings.loadSettingsOnce({ render: false }) : null
   ).catch((error) => { if (isCurrent()) setStatusError(error.message); });
-  const dashboardReady = loadDashboard();
+  // The Library paints itself when its read lands (and shows its own failure);
+  // the route restore must not wait for it.
+  loadDashboard().catch(() => {});
   try {
     const stored = getStoredLichessUsername();
     if (stored) setLichessUsername(stored);
@@ -2112,7 +2106,7 @@ async function loadSignedInWorkspace() {
   }
   await refreshAnalyzeRecovery();
   if (!isCurrent()) return;
-  await Promise.allSettled([settingsReady, dashboardReady]);
+  await settingsReady;
 }
 
 // The seams the core modules use to reach the views and the lazily loaded

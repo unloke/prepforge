@@ -1,16 +1,21 @@
 ﻿// Phone audit regression: the Games outcome chips are the only control that
-// narrows the ledger, and the shared `.sum-chip` is 26px tall. The Games
-// stylesheet must raise them to a reliable touch target at phone widths.
+// narrows the ledger, and the shared `.sum-chip` is 26px tall. phone.css raises
+// every button, tab and chip to the phone's target height once, so the Games
+// sheet keeps only its own padding.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "replay.css"), "utf8");
+const here = dirname(fileURLToPath(import.meta.url));
+const css = readFileSync(join(here, "replay.css"), "utf8");
 const phone = css.slice(css.lastIndexOf("@media (max-width: 760px)"));
+const shared = readFileSync(join(here, "..", "phone.css"), "utf8");
 
 it("the Games outcome chips are a real touch target on a phone", () => {
-  expect(phone).toMatch(/\.games-panel \.sum-chip \{[^}]*height: 40px/);
+  expect(shared).toMatch(/\.sum-chip,\n  select,/);
+  expect(shared).toMatch(/\{ min-height: 44px; height: 44px; \}/);
+  expect(phone).not.toMatch(/\.sum-chip \{[^}]*height:/);
 });
 
 it("keeps the Games ledger before the selected detail on a phone", () => {

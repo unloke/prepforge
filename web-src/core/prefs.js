@@ -1,10 +1,12 @@
 import { appState, boards } from "./state.js";
 import { hooks } from "./hooks.js";
-import { PREFS_KEY, applyTheme, readStoredPrefs, readStoredTheme, storeTheme } from "../theme.js";
+import { PREFS_KEY, applyAccent, applyBoardTheme, applyTheme, readStoredAccent, readStoredPrefs, readStoredTheme, setAccent, storeTheme } from "../theme.js";
 import { fetchLichessProfile } from "../lichess-profile.js";
 
 const DEFAULT_PREFS = {
   theme: "system",
+  accent: "blue",
+  boardTheme: "slate",
   coordinates: true,
   lastMovePulse: true,
   flipAnim: true,
@@ -36,11 +38,16 @@ export const PREF_LABELS = {
   bestArrow: "Engine best-move arrow",
 };
 
-// The stored blob is merged over the defaults, and the theme is normalized in
-// place: a hand-written or unknown theme must not survive as `undefined` and
-// then fail to match the Settings control it is painted next to.
+// The stored blob is merged over the defaults, and the theme and accent are
+// normalized in place: a hand-written or unknown value must not survive as
+// `undefined` and then fail to match the control it is painted next to.
 export function loadPrefs(storage = globalThis.localStorage) {
-  return { ...DEFAULT_PREFS, ...readStoredPrefs(storage), theme: readStoredTheme(storage) };
+  return {
+    ...DEFAULT_PREFS,
+    ...readStoredPrefs(storage),
+    theme: readStoredTheme(storage),
+    accent: readStoredAccent(storage),
+  };
 }
 
 export function pref(name) {
@@ -62,6 +69,10 @@ export function setPref(name, value) {
   if (name === "theme") {
     // One writer for the persisted theme, shared with the rail toggle.
     appState.prefs.theme = storeTheme(value, localStorage);
+  } else if (name === "accent") {
+    // One writer for the persisted accent (theme.js setAccent), so the Settings
+    // picker and any other caller keep the rest of the blob.
+    appState.prefs.accent = setAccent(value, { storage: localStorage });
   } else {
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify(appState.prefs));
@@ -80,6 +91,11 @@ export function applyPref(name) {
     // rail toggle's pick, whichever control made it.
     hooks.settingsPainted?.();
   }
+  if (name === "accent") {
+    applyAccent(pref("accent"));
+    hooks.settingsPainted?.();
+  }
+  if (name === "boardTheme") applyBoardTheme(pref("boardTheme"));
   if (name === "coordinates") {
     Object.values(boards).forEach((b) => b && b.applyCoordinates && b.applyCoordinates());
   }

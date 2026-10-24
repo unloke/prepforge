@@ -36,14 +36,6 @@ describe("arrow keys and the board on screen", () => {
     expect(stepsBoardBlock()).toMatch(/view === "build"/);
   });
 
-  it("does not answer a board line left over from another view", () => {
-    // A preview belongs to a board; on a view without one it must not swallow
-    // ← → (the arrows would step a hidden board).
-    const i = source.indexOf("if (boardLine.active && (");
-    expect(i).toBeGreaterThan(0);
-    expect(source.slice(i, i + 160)).toMatch(/view === "analyze" \|\| view === "build"/);
-  });
-
   it("keeps F and Escape on every view", () => {
     // These are not board steps: the flip follows the active board controller
     // (null on a view without one) and Escape closes what is open anywhere.

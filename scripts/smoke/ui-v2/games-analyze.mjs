@@ -54,7 +54,7 @@ export async function checkGamesAnalyze(page, games, check, shot) {
     const minHeight = window.innerWidth <= 760 ? 44 : 64;
     return { visible: !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= minHeight,
       areas: document.querySelectorAll('#eval-chart .eval-area').length,
-      grades: document.querySelectorAll('#analysis-moves .mtree-glyph').length,
+      grades: document.querySelectorAll('#analysis-moves .mtree-move[class*="cls-"]:not(.cls-unknown)').length,
       pgn: document.getElementById('pgn-input').value };
   });
   check(loaded.visible && loaded.areas === 2 && loaded.grades === review.moves.length,
@@ -69,7 +69,7 @@ export async function checkGamesAnalyze(page, games, check, shot) {
   await page.locator('#replay-results .focus [data-act="analyze"]').evaluate(el => el.click());
   await page.waitForFunction(() => document.querySelector('#analysis-moves .mtree-move.is-current')?.textContent.includes('d4'));
   check(await page.locator('#eval-chart .eval-area').count() === 0, 'a never-analysed game must not retain the previous game\'s chart');
-  check(await page.locator('#analysis-moves .mtree-glyph').count() === 0, 'a never-analysed game must not retain previous classifications');
+  check(await page.locator('#analysis-moves .mtree-move[class*="cls-"]:not(.cls-unknown)').count() === 0, 'a never-analysed game must not retain previous classifications');
   check(lookups.join(',') === `${games[0].lichess_id},${games[1].lichess_id}`, `each Games action must look up its own game: ${lookups}`);
   await shot('analyze-new');
 }

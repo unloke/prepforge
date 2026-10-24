@@ -559,7 +559,7 @@ def test_preview_counts_match_the_queue_start_serves_per_scope():
     assert preview["resumed"] == 0
     session = service.start_or_resume_mixed(owner, seed=5)
     counts = service.counts(session)
-    assert {k: v for k, v in preview.items() if k not in ("resumed", "left")} == counts
+    assert {k: v for k, v in preview.items() if k not in ("resumed", "left", "upcoming")} == counts
     assert preview["left"] == counts["cards"]
     # A started session is what the next Start of the same scope resumes.
     session = replace(session, current_index=1)

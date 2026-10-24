@@ -37,7 +37,11 @@ const api = (path) => {
     ], shared: [] };
   }
   if (path.startsWith("/api/train/smart/summary")) {
-    return { next_session: { cards: 4, weak: 1, due: 1, new: 1, polish: 1, resumed: 0, left: 4 }, outlook: { now: 2, today: 3, week: 6, next: null } };
+    return { next_session: { cards: 4, weak: 1, due: 1, new: 1, polish: 1, resumed: 0, left: 4, upcoming: [
+      { kind: "weak", repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black", line: "1.e4 c6 2.d4 d5 3.e5" },
+      { kind: "due", repertoire_id: "rep-2", repertoire_name: "London System", color: "white", line: "1.d4 d5 2.Nf3 Nf6" },
+      { kind: "new", repertoire_id: "rep-1", repertoire_name: "Caro-Kann: Advance", color: "black", line: "1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nf3" },
+    ] }, outlook: { now: 2, today: 3, week: 6, next: null } };
   }
   if (path.startsWith("/api/dashboard")) return { games: 0, repertoires: 2, training_sessions: 0, open_mistakes: 0, due_reviews: 5, due_soon: 1, streak: { current: 3, best: 9, trained_today: false }, recap: {}, recommendations: [] };
   if (path.startsWith("/api/lichess")) return { accounts: [] };

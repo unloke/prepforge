@@ -448,3 +448,41 @@ describe("the saved snapshot is the latest position, never an older one", () => 
     expect(paths).not.toContain("e2e4-e7e5-g1f3");
   });
 });
+
+// An engine line is played into the tree move by move (the engine card's click
+// hands the session each move in turn). The tree must grow one branch for it,
+// and the same line played again must land on that branch, not beside it.
+describe("a line played into the tree move by move", () => {
+  // The view rebuilds its tree on every selection (highlightCurrentMove); that is
+  // what gives the next move of a line its parent, so it is rebuilt here too.
+  const play = async (h, ucis) => {
+    for (const uci of ucis) {
+      await h.onAnalysisBoardMove(uci, h.appState.analysisBoardFen);
+      h.appState.analysisTree = h.fixture.view.buildAnalysisTree(h.appState.analysis.moves);
+    }
+  };
+
+  it("creates one variation per move, and replays of the line select them", async () => {
+    const h = harness();
+    await play(h, ["d2d4", "d7d5"]);
+    expect(h.selectedNodePath()).toBe("d2d4-d7d5");
+    expect(h.appState.analysisVarNodes.size).toBe(2);
+    const tip = h.appState.analysisBoardFen;
+    expect(h.saves.at(-1).pgn).toContain("(1. d4 d5)");
+
+    // Back to the position the line was played from, then the same click again.
+    await h.selectAnalysisNode("root");
+    await play(h, ["d2d4", "d7d5"]);
+    expect(h.appState.analysisVarNodes.size).toBe(2);
+    expect(h.selectedNodePath()).toBe("d2d4-d7d5");
+    expect(h.appState.analysisBoardFen).toBe(tip);
+  });
+
+  it("takes the mainline when the line follows it, without a variation", async () => {
+    const h = harness();
+    await play(h, ["e2e4", "e7e5"]);
+    expect(h.appState.analysisVarNodes.size).toBe(0);
+    expect(h.appState.analysisPly).toBe(2);
+    expect(h.appState.analysisCurrentNodeId).toBe("m2");
+  });
+});

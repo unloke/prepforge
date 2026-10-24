@@ -171,16 +171,9 @@
   align-items: center;
   gap: 8px;
 }
+/* The role select is the shared field, sized to the member row. */
 select.team-role-select {
-  height: 26px;
-  padding: 0 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-s);
-  cursor: pointer;
+  padding: 0 22px 0 8px;
 }
 /* Detail-head and member-row icon actions are ghost: no border or fill until
    hover; delete turns red only on hover. */
@@ -267,9 +260,6 @@ select.team-role-select {
 /* ---- Responsive --------------------------------------------------------- */
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  .teams .btn.sm,
-  .teams .btn.icon,
-  .team-role-select,
   .teams .tabs button { min-height: 44px; }
   .teams .card-head { flex-wrap: wrap; }
   /* The spacer breaks the head in two: the name and the role on the first

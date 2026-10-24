@@ -90,15 +90,4 @@ def analysis_result_to_payload(result: AnalysisResult) -> Dict[str, Any]:
             }
             for point in report.eval_graph
         ],
-        "critical_moments": [
-            {
-                "ply": moment.ply,
-                "san": moment.san,
-                "classification": moment.classification.value,
-                "best_move_uci": moment.best_move_uci,
-                "score_cp": moment.score_cp,
-                "comment": moment.comment,
-            }
-            for moment in report.critical_moments
-        ],
     }

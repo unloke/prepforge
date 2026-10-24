@@ -78,45 +78,31 @@ try {
       throw new Error(`${viewportWidth}px notice is out of its corner: ${JSON.stringify(long.status)}`);
     }
 
-    // Rail contract: collapsed width is the 60px track; hover expands to the
-    // 204px overlay without moving the topbar, main content, or the board.
+    // Rail contract: an icon rail, 60px wide, that stays 60px under the pointer
+    // and under keyboard focus, so nothing beside it moves. Each destination
+    // carries its name for assistive tech and the tooltip.
     if (before.rail.width !== 60) {
       throw new Error(`${viewportWidth}px rail track is ${before.rail.width}px, expected 60px`);
     }
+    const unnamed = await page.locator('#app-rail .nav-item').evaluateAll((els) => els.filter((el) => !el.getAttribute('aria-label')).length);
+    if (unnamed) throw new Error(`${viewportWidth}px rail has ${unnamed} destinations without a name`);
     await page.locator('#app-rail').hover();
     await page.waitForTimeout(300);
     const hovered = await snapshot();
-    if (hovered.rail.width < 200) {
-      throw new Error(`${viewportWidth}px rail did not overlay-expand on hover: ${JSON.stringify(hovered.rail)}`);
-    }
-    for (const key of ['main']) {
-      for (const coordinate of ['x', 'y', 'width', 'height']) {
-        if (before[key][coordinate] !== hovered[key][coordinate]) {
-          throw new Error(`${viewportWidth}px rail hover moved ${key}.${coordinate}`);
-        }
-      }
-    }
-    // Keyboard focus inside the rail expands it the same way (:focus-visible).
     await page.mouse.move(viewportWidth - 5, 5);
-    await page.waitForTimeout(300);
     for (let i = 0; i < 12; i += 1) {
       await page.keyboard.press('Tab');
-      const inRail = await page.evaluate(() => document.activeElement?.closest('#app-rail') !== null);
-      if (inRail) break;
+      if (await page.evaluate(() => document.activeElement?.closest('#app-rail') !== null)) break;
     }
     await page.waitForTimeout(300);
     const focused = await snapshot();
-    const focusInRail = await page.evaluate(() => document.activeElement?.closest('#app-rail') !== null);
-    if (focusInRail && focused.rail.width < 200) {
-      throw new Error(`${viewportWidth}px rail did not overlay-expand on keyboard focus`);
-    }
-    if (focused.rail.width < 200 && focused.rail.width !== 60) {
-      throw new Error(`${viewportWidth}px rail in unexpected state: ${JSON.stringify(focused.rail)}`);
-    }
-    for (const key of ['main']) {
+    for (const [state, snap] of [['hover', hovered], ['focus', focused]]) {
+      if (snap.rail.width !== 60) {
+        throw new Error(`${viewportWidth}px rail changed width on ${state}: ${JSON.stringify(snap.rail)}`);
+      }
       for (const coordinate of ['x', 'y', 'width', 'height']) {
-        if (before[key][coordinate] !== focused[key][coordinate]) {
-          throw new Error(`${viewportWidth}px rail focus moved ${key}.${coordinate}`);
+        if (before.main[coordinate] !== snap.main[coordinate]) {
+          throw new Error(`${viewportWidth}px rail ${state} moved main.${coordinate}`);
         }
       }
     }

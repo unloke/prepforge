@@ -93,6 +93,30 @@ describe("Home rows", () => {
     expect(doc.getElementById("train-due-meta").textContent).toBe("2 cards left");
   });
 
+  it("the Due row lists its next cards, and each narrows the queue to its repertoire", async () => {
+    const { deps } = setup({ signedIn: true });
+    deps.api.mockResolvedValue({
+      next_session: {
+        cards: 2, resumed: 0, left: 2, due: 1,
+        upcoming: [{ kind: "due", repertoire_id: "r1", repertoire_name: "Italian", color: "white", line: "1.e4 e5 2.Nf3" }],
+      },
+      outlook: { now: 1, today: 1, week: 2 },
+    });
+    await createTrainHome(deps).paintTrainHome();
+    const list = doc.getElementById("train-due-next");
+    expect(list.hidden).toBe(false);
+    expect(String(list.innerHTML)).toContain("Italian");
+    expect(String(list.innerHTML)).toContain('data-repertoire-id="r1"');
+    expect(String(list.innerHTML)).toContain("1...e5 2.Nf3");
+  });
+
+  it("Home says where finished runs will be listed before there is one", async () => {
+    const { deps } = setup({ signedIn: true });
+    await createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("train-recent-home").hidden).toBe(false);
+    expect(String(doc.getElementById("train-recent-home").innerHTML)).toContain("No finished runs yet");
+  });
+
   it("a repertoire opponent with nothing picked cannot start a game", async () => {
     const { deps } = setup({ playBook: "repertoire", playRepertoireIds: [] });
     await createTrainHome(deps).paintTrainHome();

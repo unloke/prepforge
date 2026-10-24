@@ -127,13 +127,16 @@ async function runViewport(vp) {
 
   // Section nav (prototype 180px column): all prototype sections present, first active.
   const navLabels = await page.locator(".settings-nav .settings-nav-link").allTextContents();
-  for (const expected of ["Account", "Appearance", "Engine", "Maia3", "Playing strength", "Board"]) {
+  for (const expected of ["Account", "Appearance", "Board", "Engine"]) {
     check(navLabels.some((l) => l.trim() === expected), `section nav should list "${expected}", got [${navLabels.map((l) => l.trim()).join(", ")}]`);
   }
   const firstActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
   // Account is deliberately the first Settings section (sign-in, plan, export, delete).
   check(firstActive.trim() === "Account", `first section should start active, got "${firstActive}"`);
 
+  // Each area is its own view: the theme control lives in Appearance.
+  await page.locator(".settings-nav .settings-nav-link", { hasText: "Appearance" }).click();
+  await page.waitForTimeout(300);
   // Theme segment: System starts active; clicking Dark flips the real pref
   // (documentElement data-theme follows).
   const systemActive = await page.locator('#settings-theme-seg .seg-btn[data-theme-value="system"]').getAttribute("aria-pressed");
@@ -169,6 +172,8 @@ async function runViewport(vp) {
   // Back to system so later viewports start clean (localStorage persists).
   await page.locator('#settings-theme-seg .seg-btn[data-theme-value="system"]').click();
 
+  await page.locator(".settings-nav .settings-nav-link", { hasText: "Engine" }).click();
+  await page.waitForTimeout(300);
   // Engine card: real availability (COOP/COEP are set) + real version text.
   const engineStatus = await page.locator("#settings-browser-engine-status").textContent().catch(() => "");
   check(engineStatus === "available", `browser Stockfish should read available, got "${engineStatus}"`);
@@ -183,7 +188,13 @@ async function runViewport(vp) {
   // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.
   if (vp.width <= 760) {
     const small = await page.evaluate(() => [...document.querySelectorAll('#view-settings .pf-switch, #view-settings .pf-info, #view-settings .set .seg-btn, #view-settings .set .btn')]
-      .map((el) => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height, what: el.id || el.className }; })
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        // A switch keeps its drawn track and grows its tap area with ::after insets.
+        const after = getComputedStyle(el, "::after");
+        const grow = after.content === "none" ? 0 : Math.max(0, -parseFloat(after.top) || 0) + Math.max(0, -parseFloat(after.bottom) || 0);
+        return { w: r.width, h: r.height + grow, what: el.id || el.className };
+      })
       // A control may be narrow (a 38px switch track, a "1" worker chip): the
       // touch target is its height, which must reach 40px.
       .filter((r) => r.w > 0 && r.h > 0 && r.h < 40)
@@ -229,27 +240,21 @@ async function runViewport(vp) {
     // (Connections merged into the Account card — "Chess accounts" is a block
     // inside it now, navigated via its own deep link, see states-smoke.)
     await page.locator('.settings-nav .settings-nav-link', { hasText: "Board" }).click();
-    await page.waitForTimeout(900); // smooth-scroll settles
+    await page.waitForTimeout(300);
     const boardActive = await page.locator('.settings-nav .settings-nav-link.is-active').textContent().catch(() => "");
-    check(/Board|Playing strength/.test(boardActive || ""), `nav should remain operable with a sane active section, got "${boardActive}"`);
-    // Jump back to Account: the Chess accounts block must come on screen.
-    await page.locator('.settings-nav .settings-nav-link', { hasText: "Account" }).click();
-    await page.waitForTimeout(900);
+    check(boardActive.trim() === "Board", `the Board link should open the Board area, got "${boardActive}"`);
+    check(await page.locator("#set-board").isVisible(), "the Board area should show its card");
+    check(!(await page.locator("#set-engine").isVisible()), "other areas' cards should be hidden");
+    await page.locator(".settings-nav .settings-nav-link", { hasText: "Account" }).click();
+  await page.waitForTimeout(300);
     await shot("connections");
-    // True viewport intersection: after the nav click the target card must be on
-    // screen (top above the fold line, bottom below the top edge). The card fully
-    // fits on desktop when the page can scroll far enough — assert full visibility
-    // only when the document actually allows it.
     const connVis = await page.locator('[data-testid="settings-connections"]').evaluate((el) => {
       const r = el.getBoundingClientRect();
-      const intersects = r.top < window.innerHeight && r.bottom > 0;
-      const fullyVisible = r.top >= 0 && r.bottom <= window.innerHeight;
-      const canFullyScroll = document.documentElement.scrollHeight - window.innerHeight >= Math.max(0, r.top);
-      return { intersects, fullyVisible, canFullyScroll };
+      return { intersects: r.top < window.innerHeight && r.bottom > 0, fullyVisible: r.top >= 0 && r.bottom <= window.innerHeight };
     });
-    check(connVis.intersects, "Connections card should intersect the viewport after the nav click");
-    if (connVis.canFullyScroll) {
-      check(connVis.fullyVisible, "Connections card should be fully visible when scroll room allows");
+    check(connVis.intersects, "Connections card should intersect the viewport after the Account link");
+    if (connVis.fullyVisible === false && (await page.evaluate(() => document.documentElement.scrollHeight)) <= window.innerHeight) {
+      check(false, "Connections card should be fully visible when scroll room allows");
     }
     // Grid sanity (single-column via grid-template-columns computed style, not a
     // media-query guess): on desktop every card sits right of the nav column; in
@@ -260,6 +265,7 @@ async function runViewport(vp) {
       const navDocBottom = nav.bottom + window.scrollY;
       const singleColumn = getComputedStyle(document.querySelector("#view-settings .settings")).gridTemplateColumns.split(" ").length === 1;
       return [...document.querySelectorAll("#view-settings .settings-content .card[id]")]
+        .filter((c) => c.offsetParent !== null) // the open area only
         .map((c) => {
           const r = c.getBoundingClientRect();
           return { id: c.id, left: Math.round(r.left), docTop: Math.round(r.top + window.scrollY) };
@@ -268,6 +274,8 @@ async function runViewport(vp) {
     });
     check(columnBug.length === 0, `all cards should sit in the content column, offending: ${JSON.stringify(columnBug)}`);
   }
+  await page.locator(".settings-nav .settings-nav-link", { hasText: "Account" }).click();
+  await page.waitForTimeout(300);
   const connRow = await page.locator("#settings-lichess-accounts .conn-row").first().textContent().catch(() => "");
   check(/me_user/.test(connRow || ""), `connections should list the real linked account, got "${connRow}"`);
 

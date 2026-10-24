@@ -6,10 +6,11 @@ import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.j
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
-import { renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { prepDeparture, renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { createReviewBar } from "./analyze-review-bar.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
-import { moveLineHtml, moveTokenHtml, walkLine } from "../move-text.js";
-import { hidePeek, peekAt } from "../line-preview.js";
+import { departureNotch, evalChartTooltipHtml, formatPointEval, placeEvalReadout } from "./analyze-readout.js";
+import { moveLineHtml, walkLine } from "../move-text.js";
 
 // The board, the move list, the eval display and the engine's controls are
 // real interface: they keep their own lines, sizes and borders. The marker is
@@ -46,9 +47,13 @@ export function createAnalyzeView({
   // Loading that cache, if a caller has one. Without it the prep row appears
   // with the first render that happens to follow the coach's own read.
   ensureBookLoaded = async () => {},
+  // The user's colour in this game ("white" | "black", null when unknown): the
+  // departure walks that colour's book and says whose move left it.
+  selfSide = () => null,
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
+  const reviewBar = createReviewBar({ appState, showAnalysisPly });
   // The pillars' tabs and the evaluation card's place (beside or under the board).
   const panes = typeof document !== "undefined"
     ? installAnalyzePanes({ onEvalMoved: () => requestAnimationFrame(() => rescaleEvalMarkers()) })
@@ -72,12 +77,6 @@ export function createAnalyzeView({
   // rescaleEvalMarkers so nothing distorts.
   const EVAL_CHART_W = 640;
   const EVAL_CHART_H = 96;
-  // The hover readout keeps this far from the pointer's own column, and this
-  // far off the band's edge on the side it takes.
-  const READOUT_GAP = 12;
-  const READOUT_EDGE = 3;
-  // Checkmate-on-board sentinel (game-analyzer terminalEval / engine.py mate_score).
-  const CHECKMATE_CP = 10000;
 
   // Plot inset, in screen pixels, top and bottom only: a marker at either extreme
   // stays wholly inside the frame. The plies run edge to edge, so the first/last
@@ -121,65 +120,41 @@ export function createAnalyzeView({
     return Math.round(clamped * (points.length - 1));
   }
 
-  // Where the hovered point's readout sits, in the wrap's coordinates. It takes
-  // the side of the plot away from the pointer and the half of the band away
-  // from the point, so neither the column being pointed at nor the curve it
-  // names is ever under it. A phone's plot is narrower than the longest readout
-  // ("8. O-O-O · −2.35 · ?! Inaccuracy" is 166px of a 276px graph): clamping the
-  // box back inside the plot slid it across the pointer at dead centre, so the
-  // side is chosen by the room it has and the readout is clipped to that room.
-  // `cursorPx` and `pointY` are in plot pixels, read off the live box.
-  function placeEvalReadout(plotW, plotH, cursorPx, width, height, pointY) {
-    const [leftRoom, rightRoom] = [cursorPx - READOUT_GAP, plotW - cursorPx - READOUT_GAP].map((r) => Math.max(0, r));
-    // The side away from the pointer, unless only the other side can hold the
-    // readout uncut; failing both, the roomier one.
-    const preferLeft = cursorPx >= plotW / 2;
-    const [farRoom, nearRoom] = preferLeft ? [leftRoom, rightRoom] : [rightRoom, leftRoom];
-    const onLeft = farRoom >= width ? preferLeft : nearRoom >= width ? !preferLeft : farRoom >= nearRoom;
-    const room = onLeft ? leftRoom : rightRoom;
-    const top = pointY <= plotH / 2 ? plotH - height - READOUT_EDGE : READOUT_EDGE;
-    return { left: onLeft ? Math.max(0, cursorPx - READOUT_GAP - Math.min(width, room)) : cursorPx + READOUT_GAP, maxWidth: room, top };
-  }
-
-  // Engine evaluation as players read it: "+1.4" / "−0.3" in pawns (White's
-  // point of view), "#3" / "#-2" for forced mates, "1-0" / "0-1" once the
-  // board itself is checkmate.
-  function formatPointEval(point) {
-    if (point.mate_in != null && point.mate_in !== 0) {
-      return point.mate_in > 0 ? `#${point.mate_in}` : `#-${Math.abs(point.mate_in)}`;
-    }
-    // A position that IS checkmate is stored as score_cp = ±100000 (no line to
-    // search); reading that as pawns printed "+1000.0".
-    if (point.score_cp != null && Math.abs(point.score_cp) >= CHECKMATE_CP) {
-      return point.score_cp > 0 ? "1-0" : "0-1";
-    }
-    // Older reports carry mate only as score_cp = null with bounded_score_cp = ±1000.
-    if (point.score_cp == null && Math.abs(point.bounded_score_cp || 0) >= 1000) {
-      return point.bounded_score_cp > 0 ? "+M" : "−M";
-    }
-    const cp = point.score_cp != null ? point.score_cp : point.bounded_score_cp;
-    if (cp === null || cp === undefined) return "0.00";
-    const pawns = cp / 100;
-    return `${pawns > 0 ? "+" : pawns < 0 ? "−" : ""}${Math.abs(pawns).toFixed(2)}`;
-  }
-
-  // Tooltip body for one ply — move, evaluation, and classification as TEXT
-  // (plus the class glyph), so the readout never depends on colour alone.
-  // With the game's move for that ply, the SAN is a move token: the chart's hover
-  // peeks at the position after it (the readout itself takes no pointer).
-  function evalChartTooltipHtml(point, { isCurrent = false, move = null } = {}) {
-    if (!point) return "";
-    const raw = String(point.classification || "").toLowerCase();
-    const label = raw ? raw.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : "";
-    const glyph = raw ? classBadgeSymbol(point.classification) : "";
-    const san = String(point.san || "?");
-    const moveNo = point.ply > 0 ? `${Math.ceil(point.ply / 2)}${point.ply % 2 ? "." : "…"} ` : "";
-    const sanHtml = move?.fen_before && move.uci && move.san === point.san
-      ? moveTokenHtml(move.fen_before, [move.uci], 0, san, { focusable: false })
-      : san;
-    return (
-      html`${moveNo}<b>${sanHtml}</b> · ${formatPointEval(point)}${label ? ` · ${glyph} ${label}` : ""}${isCurrent ? " · current" : ""}`
-    );
+  // The axes are HTML, not SVG text: the plot stretches to its box, and text inside
+  // a stretched SVG came out squeezed (9px labels about 6px high on the desktop
+  // card). The win share runs down the gutter beside the plot, and the move numbers
+  // sit in the row under it, one per full move at a round step.
+  function renderEvalAxes(chart, points) {
+    const wrap = chart.parentElement;
+    if (!wrap) return;
+    const lanes = {};
+    ["scale", "moves"].forEach((name) => {
+      let lane = wrap.querySelector(`:scope > .eval-${name}`);
+      if (!lane) {
+        lane = document.createElement("div");
+        lane.className = `eval-${name}`;
+        lane.setAttribute("aria-hidden", "true");
+        wrap.appendChild(lane);
+      }
+      lane.textContent = "";
+      lanes[name] = lane;
+    });
+    const label = (lane, cls, pos, text) => {
+      const span = document.createElement("span");
+      span.className = cls;
+      span.style[cls === "eval-ytick" ? "top" : "left"] = `${pos.toFixed(2)}%`;
+      span.textContent = text;
+      lane.appendChild(span);
+    };
+    [0, 50, 100].forEach((winPct) => label(lanes.scale, "eval-ytick", (evalChartYOf(winPct) / EVAL_CHART_H) * 100, `${winPct}%`));
+    const lastMove = points.length ? Math.ceil(points[points.length - 1].ply / 2) : 0;
+    const step = Math.max(1, Math.ceil(lastMove / 8));
+    points.forEach((point, i) => {
+      const moveNo = Math.ceil(point.ply / 2);
+      if (point.ply % 2 === 1 && moveNo > 1 && moveNo % step === 0) {
+        label(lanes.moves, "eval-move-num", (evalChartXOf(i, points.length) / EVAL_CHART_W) * 100, String(moveNo));
+      }
+    });
   }
 
   // The report's jumps: a move of the game, or the next move of one grade by one
@@ -199,19 +174,21 @@ export function createAnalyzeView({
   // The report pane: accuracy, grade counts, key moments, phases, the opening.
   // Where the game came from is the PGN box's own tag block (or, for a recalled
   // review, the names the history row carried); the book is the repertoire cache
-  // the coach already walks.
+  // the coach already walks. The review bar reads the same moments.
   function renderReport(moves) {
     const analysis = appState.analysis || {};
-    renderReportBlock(document.getElementById("analysis-summary"), {
+    const report = renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
       evalGraph: analysis.eval_graph || [],
       headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
       names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),
+      selfSide: selfSide(),
       onJump: jumpToPly,
       onGrade: jumpToGrade,
     });
     markCurrentMoment();
+    reviewBar.set(report);
   }
 
   // The key moment on the board is marked in the report as the reader steps.
@@ -407,7 +384,8 @@ export function createAnalyzeView({
         }
         const cls = String(node.classification || "unknown");
         const group = CLASS_GROUP_OF[cls.toLowerCase()];
-        const glyph = group ? classBadgeSymbol(cls) : "";
+        // A sound move carries no sign: the list marks only what stands out.
+        const glyph = group && group !== "good" ? classBadgeSymbol(cls) : "";
         // "unknown" is the absent-grade sentinel: nothing to show or read out.
         const grade = group ? CLASS_GROUPS.find((g) => g.key === group).label : "";
         return {
@@ -634,9 +612,11 @@ export function createAnalyzeView({
     const line = ev && Array.isArray(ev.pv) && ev.pv.length ? walkLine(fen, ev.pv.slice(0, 10)) : null;
     const depth = document.getElementById("analysis-best-depth");
     if (depth) depth.textContent = line && ev.depth ? `Depth ${ev.depth}` : "";
+    // No saved line here: the row keeps its line and reads as a missing value (a
+    // grey dash), so the engine's one-line slot never shows an empty box.
     if (!line) {
-      host.hidden = true;
-      host.innerHTML = "";
+      host.hidden = false;
+      host.innerHTML = html`<span class="engine-pv-eval ep-none">—</span>`;
       return;
     }
     const plies = line.plies;
@@ -647,6 +627,7 @@ export function createAnalyzeView({
   function updateEvalChartCursor() {
     paintBestLine();
     markCurrentMoment();
+    reviewBar.paint();
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;
     const dot = document.getElementById("eval-chart-cursor-dot");
@@ -697,9 +678,8 @@ export function createAnalyzeView({
   // Keyboard/hover focus ply within the chart (-1 = none). Arrows move it, Enter
   // commits it — the same call a mouse click makes.
   let evalChartFocusIdx = -1;
-  // A mouse hovering the graph peeks at the hovered ply; a finger scrubbing it
-  // moves the board itself, so it needs no peek.
-  let peekOnHover = false;
+  // The ply where the game left preparation (null when none), set by renderEvalChart.
+  let departurePly = null;
   let tooltipMarkup = "";
 
   // `cursorX` is the pointer's client x; the readout opens on the far side of
@@ -719,6 +699,7 @@ export function createAnalyzeView({
     const move = (appState.analysis?.moves || []).find((m) => Number(m.ply) === Number(point.ply)) || null;
     const markup = String(evalChartTooltipHtml(point, {
       isCurrent: point.ply === appState.analysisPly,
+      leftPrep: point.ply === departurePly,
       move,
     }));
     // Same markup as the last move: keep the measured width instead of writing
@@ -732,25 +713,24 @@ export function createAnalyzeView({
     const plotW = rect.width || EVAL_CHART_W;
     const plotH = rect.height || EVAL_CHART_H;
     const cursorPx = Number.isFinite(cursorX) ? cursorX - rect.left : (x / EVAL_CHART_W) * plotW;
-    const pointY = (evalChartYOf(pointWinPct(point)) / EVAL_CHART_H) * plotH;
-    const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, pointY);
+    const y = evalChartYOf(pointWinPct(point));
+    const spot = placeEvalReadout(plotW, plotH, cursorPx, tooltip.offsetWidth || 0, tooltip.offsetHeight || 0, (y / EVAL_CHART_H) * plotH);
     // The readout is clipped to the chosen side's room rather than slid across
-    // the pointer (see placeEvalReadout).
+    // the pointer (see placeEvalReadout). The plot sits inside the wrap's gutter,
+    // so the readout is placed from the wrap's own corner (an SVG has no offsetLeft).
+    const origin = chart.parentElement ? chart.parentElement.getBoundingClientRect() : rect;
     tooltip.style.maxWidth = `${spot.maxWidth}px`;
-    tooltip.style.left = `${spot.left}px`;
-    tooltip.style.top = `${spot.top}px`;
-    if (peekOnHover) peekAt(tooltip.querySelector?.("[data-mt]"), { avoid: chart });
+    tooltip.style.left = `${spot.left + rect.left - origin.left}px`;
+    tooltip.style.top = `${spot.top + rect.top - origin.top}px`;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
-      hover.setAttribute("x1", String(x));
-      hover.setAttribute("x2", String(x));
+      hover.setAttribute("d", `M${x} 0V${EVAL_CHART_H}M0 ${y}H${EVAL_CHART_W}`);
       hover.setAttribute("visibility", "visible");
     }
   }
 
   function hideEvalChartTooltip() {
     const tooltip = document.getElementById("eval-chart-tooltip");
-    if (tooltip && !tooltip.hidden && tooltip.querySelector?.("[aria-describedby]")) hidePeek();
     if (tooltip) tooltip.hidden = true;
     const hover = document.getElementById("eval-chart-hover");
     if (hover) hover.setAttribute("visibility", "hidden");
@@ -805,9 +785,7 @@ export function createAnalyzeView({
       const points = appState.evalChartPoints || [];
       if (!points.length) return;
       evalChartFocusIdx = evalChartNearestIndex(points, evalChartRatioAt(chart, event.clientX));
-      peekOnHover = true;
       showEvalChartTooltip(evalChartFocusIdx, event.clientX);
-      peekOnHover = false;
     });
     chart.addEventListener("pointerup", endScrub);
     chart.addEventListener("pointercancel", endScrub);
@@ -829,6 +807,7 @@ export function createAnalyzeView({
     measurePlotPads(chart);
     chart.innerHTML = "";
     appState.evalChartPoints = points || [];
+    departurePly = points?.length ? prepDeparture(appState.analysis?.moves || [], bookReps(), selfSide())?.ply ?? null : null;
     onEvalChartRendered();
     const width = EVAL_CHART_W;
     const height = EVAL_CHART_H;
@@ -858,18 +837,16 @@ export function createAnalyzeView({
     axis.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(axis);
 
-    // Hover/focus indicator (hidden until the pointer or keyboard asks).
-    const hover = document.createElementNS(svgNS, "line");
+    // Hover crosshair (hidden until the pointer or keyboard asks): the ply's column
+    // and the point's level, drawn by showEvalChartTooltip.
+    const hover = document.createElementNS(svgNS, "path");
     hover.setAttribute("id", "eval-chart-hover");
     hover.setAttribute("class", "eval-hover");
-    hover.setAttribute("y1", "0");
-    hover.setAttribute("y2", String(height));
-    hover.setAttribute("x1", "-10");
-    hover.setAttribute("x2", "-10");
     hover.setAttribute("visibility", "hidden");
     hover.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(hover);
 
+    renderEvalAxes(chart, points || []);
     if (!points || !points.length) {
       hideEvalChartTooltip();
       updateEvalChartCursor();
@@ -918,6 +895,8 @@ export function createAnalyzeView({
     polyline.setAttribute("vector-effect", "non-scaling-stroke");
     chart.appendChild(polyline);
 
+    const left = coords.find((c) => c.ply === departurePly);
+    if (left) chart.appendChild(departureNotch(left.x, left.y));
     // Colour the vertical cliff at each error/brilliant move so bad moves are unmissable.
     coords.forEach((c, i) => {
       if (i === 0) return;
@@ -990,7 +969,9 @@ export function createAnalyzeView({
     // repaint once they land, so the report carries it without holding it up.
     void ensureBookLoaded()
       .then(() => {
-        if (appState.analysis === payload) renderReport(payload.moves);
+        if (appState.analysis !== payload) return;
+        renderEvalChart(payload.eval_graph);
+        renderReport(payload.moves);
       })
       .catch(() => {});
   }
@@ -1000,6 +981,7 @@ export function createAnalyzeView({
     liveEvalChart,
     paintEvalHead,
     renderReport,
+    reviewStep: reviewBar.step,
     renderEvalChart,
     renderAnalysisTree,
     updateAnalysisTreeSelection,

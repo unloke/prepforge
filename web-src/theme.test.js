@@ -1,5 +1,20 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { applyTheme, effectiveTheme, normalizeTheme, readStoredPrefs, readStoredTheme, storeTheme } from "./theme.js";
+import {
+  ACCENT_MODES,
+  applyAccent,
+  applyBoardTheme,
+  applyTheme,
+  BOARD_MODES,
+  effectiveTheme,
+  normalizeAccent,
+  normalizeTheme,
+  readStoredAccent,
+  readStoredPrefs,
+  readStoredTheme,
+  setAccent,
+  storeTheme,
+} from "./theme.js";
 
 function fakeStorage(initial = null) {
   let value = initial;
@@ -44,6 +59,76 @@ describe("persisted theme", () => {
   it("still applies a pick when storage is unavailable", () => {
     const broken = { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } };
     expect(storeTheme("dark", broken)).toBe("dark");
+  });
+});
+
+describe("board colour themes", () => {
+  it("keeps slate as the default and writes the attribute only for a named board", () => {
+    expect(BOARD_MODES).toContain("slate");
+    const root = { dataset: {} };
+    expect(applyBoardTheme("green", { root })).toBe("green");
+    expect(root.dataset.board).toBe("green");
+    expect(applyBoardTheme("slate", { root })).toBe("slate");
+    expect(root.dataset).not.toHaveProperty("board");
+  });
+
+  it("paints the default for an unknown name instead of leaving the board unstyled", () => {
+    const root = { dataset: { board: "classic" } };
+    expect(applyBoardTheme("violet", { root })).toBe("slate");
+    expect(root.dataset).not.toHaveProperty("board");
+  });
+
+  it("has a CSS pair for every named board", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    for (const board of BOARD_MODES.filter((name) => name !== "slate")) {
+      expect(css).toMatch(new RegExp(`:root\\[data-board="${board}"\\][^{]*\\{[^}]*--square-light`));
+    }
+  });
+});
+
+describe("accent presets", () => {
+  it("keeps blue as the default and normalizes an unknown pick", () => {
+    expect(ACCENT_MODES).toContain("blue");
+    expect(normalizeAccent(undefined)).toBe("blue");
+    expect(normalizeAccent("violet")).toBe("blue");
+    expect(normalizeAccent("orange")).toBe("orange");
+  });
+
+  it("reads the pick from the shared prefs blob", () => {
+    expect(readStoredAccent(fakeStorage(JSON.stringify({ accent: "orange" })))).toBe("orange");
+    expect(readStoredAccent(fakeStorage(JSON.stringify({ accent: "neon" })))).toBe("blue");
+    expect(readStoredAccent(fakeStorage(null))).toBe("blue");
+  });
+
+  // Blue is the CSS default, so it writes no attribute: a page that never
+  // picked an accent renders exactly as the stylesheet declares it.
+  it("writes the attribute only for a non-default pick", () => {
+    const root = { dataset: {} };
+    expect(applyAccent("orange", { root })).toBe("orange");
+    expect(root.dataset.accent).toBe("orange");
+    expect(applyAccent("blue", { root })).toBe("blue");
+    expect(root.dataset).not.toHaveProperty("accent");
+  });
+
+  it("stores the pick beside the theme without dropping the other prefs", () => {
+    const storage = fakeStorage(JSON.stringify({ theme: "dark", sounds: false }));
+    const root = { dataset: {} };
+    expect(setAccent("orange", { storage, root })).toBe("orange");
+    expect(storage.parsed()).toEqual({ theme: "dark", sounds: false, accent: "orange" });
+    expect(root.dataset.accent).toBe("orange");
+    // An unknown value is normalized before it is stored, so a later read
+    // matches the control painted next to it.
+    expect(setAccent("neon", { storage, root })).toBe("blue");
+    expect(storage.parsed().accent).toBe("blue");
+    expect(storage.parsed().theme).toBe("dark");
+    expect(root.dataset).not.toHaveProperty("accent");
+  });
+
+  it("still applies the pick when storage is unavailable", () => {
+    const broken = { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } };
+    const root = { dataset: {} };
+    expect(setAccent("orange", { storage: broken, root })).toBe("orange");
+    expect(root.dataset.accent).toBe("orange");
   });
 });
 

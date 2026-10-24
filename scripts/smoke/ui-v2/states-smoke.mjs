@@ -384,7 +384,7 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   await page.waitForTimeout(3500);
   check(S, await page.locator("#view-settings").isVisible(), "Settings view should be active");
   const active = await attr(page.locator(".settings-nav-link.is-active"), "href");
-  check(S, active === "#set-account", `Account (with Chess accounts) should be the active section, got ${active}`);
+  check(S, active === "#/settings/account", `Account (with Chess accounts) should be the active section, got ${active}`);
   const inView = await page.evaluate(() => {
     const el = document.getElementById("set-connections");
     if (!el) return false;
@@ -419,7 +419,8 @@ for (const failing of ["/api/dashboard", "/api/repertoires"]) {
   const menu = page.locator("#account-menu");
   check(S, await menu.isVisible(), "rail account menu should open");
   const openLeft = (await menu.boundingBox())?.x ?? 0;
-  check(S, openLeft > 150, `menu should open beside the expanded rail, got left=${openLeft}`);
+  const railRight = await page.locator(".rail").evaluate((el) => el.getBoundingClientRect().right);
+  check(S, openLeft >= railRight - 1, `menu should open beside the rail (right=${railRight}), got left=${openLeft}`);
   // Moving into the menu collapses the rail (pointer and focus leave it).
   const box = await menu.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

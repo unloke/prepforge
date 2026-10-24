@@ -112,7 +112,6 @@
   /* A subline is never under 12px on a phone. */
   .modal.training-history { --th-meta: 12px; max-height: 82svh; }
   .th-head { padding: 14px 14px 10px; }
-  .th-head .btn { min-height: 44px; }
   .th-body { padding: 0 14px 4px; }
   .th-foot { padding: 10px 14px 12px; }
   /* Four figures do not fit a phone row: the lead takes its own line and the

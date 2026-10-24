@@ -19,26 +19,25 @@ function rule(selector) {
 }
 
 it("Library phone controls meet the 44px tap-target floor", () => {
-  for (const selector of [
-    "#view-dashboard .lib-list .seg-btn",
-    "#view-dashboard .today .btn",
-    "#view-dashboard .step .btn",
-    "#view-dashboard .lib-row .row-menu-btn",
-  ]) {
-    const body = rule(selector);
-    expect(body, selector).toMatch(/height:\s*44px/);
-  }
+  // One shared rule gives every button, tab and chip the thumb height; a
+  // Library control that is one of those gets it there, not from a copy.
+  expect(css).toMatch(/\.btn,\n  \.btn\.sm,[\s\S]*?\{ min-height: 44px; height: 44px; \}/);
+  // No Library button is given a height of its own: the shared rule owns it.
+  expect(css).not.toMatch(/#view-dashboard :is\(\.today, \.step\)[^{]*\{[^}]*height:\s*\d+px/);
   const dismiss = rule("#view-dashboard .steps .setup-dismiss");
   expect(dismiss).toMatch(/min-width:\s*44px/);
   expect(dismiss).toMatch(/height:\s*44px/);
+  const menu = rule("#view-dashboard .lib-row .row-menu-btn");
+  expect(menu).toMatch(/width:\s*44px/);
+  expect(menu).toMatch(/height:\s*44px/);
 });
 
 // The two buttons a dead-end Library screen offers — "Clear filter" on a search
 // that matches nothing, "Try again" when the list could not load — are
 // `.btn.sm`, which the phone block had overridden to 36px. Both are the only way
-// out of their state, so both take the floor.
+// out of their state, so both take the floor, from the shared rule.
 it("the dead-end buttons on the Library are thumb targets", () => {
-  const sm = rule(".btn.sm { min-height: 44px; height: 44px; }");
+  const sm = rule(".btn,\n  .btn.sm,");
   expect(sm).toMatch(/min-height:\s*44px/);
   expect(sm).toMatch(/height:\s*44px/);
   // Neither is given a smaller box of its own.

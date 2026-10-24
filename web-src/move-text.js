@@ -76,30 +76,12 @@ export function clampPly(line, ply) {
   return Math.max(0, Math.min(n, Math.round(Number(ply) || 0)));
 }
 
-/** The board position at preview ply `ply`: `{ fen, lastMove }`. */
+/** The board position at ply `ply` of a line: `{ fen, lastMove }`. */
 export function previewPosition(line, ply) {
   const at = clampPly(line, ply);
   if (!line || at === 0) return { fen: line?.baseFen || null, lastMove: null };
   const step = line.plies[at - 1];
   return { fen: step.fen, lastMove: step.uci };
-}
-
-/** Board-bar label while stepping: "Line 1 · 5...Qxe5 · 2/12" (ply 0: "… · start · 0/12"). */
-export function previewLabel(line, ply, name = "Line") {
-  const at = clampPly(line, ply);
-  const n = line?.plies?.length || 0;
-  const where = at === 0 ? "start" : line.plies[at - 1].label;
-  return `${name} · ${where} · ${at}/${n}`;
-}
-
-/** Step for a key or button: "prev" | "next" | "start" | "end". Returns the new ply. */
-export function stepPreview(line, ply, action) {
-  const n = line?.plies?.length || 0;
-  if (action === "start") return 0;
-  if (action === "end") return n;
-  if (action === "prev") return clampPly(line, ply - 1);
-  if (action === "next") return clampPly(line, ply + 1);
-  return clampPly(line, ply);
 }
 
 /** A token's line as markup data, and back. */
@@ -207,14 +189,15 @@ export function parseMoveText(text, ctx = {}) {
 
 /**
  * One token: `text` showing move `index` of `ucis` played from `baseFen`. A `.move-ref`
- * is a control of its own; `focusable: false` (a `.move-peek-ref` by default) sits
- * inside a control that already is one (a clickable row) and only peeks on hover.
+ * is a control of its own; `focusable: false` (a `.move-inline` by default) sits
+ * inside a control that already is one (a clickable row) and leaves the click to it.
+ * The accessible name is the numbered move, which the visible text may shorten.
  */
-export function moveTokenHtml(baseFen, ucis, index, text, { focusable = true, cls = focusable ? "move-ref" : "move-peek-ref", label = text, current = false } = {}) {
+export function moveTokenHtml(baseFen, ucis, index, text, { focusable = true, cls = focusable ? "move-ref" : "move-inline", label = text, current = false } = {}) {
   const data = encodeLine(baseFen, ucis);
   const c = `${cls}${current ? " is-current" : ""}`;
   return focusable
-    ? html`<span class="${c}" role="button" tabindex="0" data-mt="${data}" data-p="${index}" aria-label="${`Preview ${label}`}">${text}</span>`
+    ? html`<span class="${c}" role="button" tabindex="0" data-mt="${data}" data-p="${index}" aria-label="${label}">${text}</span>`
     : html`<span class="${c}" data-mt="${data}" data-p="${index}">${text}</span>`;
 }
 
@@ -231,7 +214,7 @@ export function moveTextHtml(text, ctx = {}, opts = {}) {
  * no chess work until a token is looked at. `current` marks one ply; `cls` names the
  * tokens and `${cls}-num` their move numbers.
  */
-export function moveLineHtml(baseFen, sans, ucis, { current = -1, focusable = true, cls = focusable ? "move-ref" : "move-peek-ref" } = {}) {
+export function moveLineHtml(baseFen, sans, ucis, { current = -1, focusable = true, cls = focusable ? "move-ref" : "move-inline" } = {}) {
   const n = sans?.length || 0;
   const known = (ucis || []).slice(0, n);
   const start = plyOfFen(baseFen);

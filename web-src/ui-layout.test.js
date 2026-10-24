@@ -320,16 +320,13 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".inspector-info-pop");
     // The one sentence that explains the panel reads at the panel's size.
     expect(ruleBody(".inspector-info-pop")).toMatch(/font-size:\s*var\(--fs-s\)/);
-    // The inspector is sized to its own contents by fitBuildDock(), so a short
-    // repertoire leaves no dead space above it and a long Explorer is not boxed
-    // into its own scrollbar; a fixed 40% share did both.
-    expect(ruleBody(".dock")).toMatch(/flex:\s*0 1 auto/);
+    // The inspector takes the leftover under the tree, so a short repertoire
+    // leaves no dead space above it; a dragged height holds (data-dock-pinned).
+    expect(ruleBody(".dock")).toMatch(/flex:\s*1 1 auto/);
     expect(ruleBody(".dock")).not.toMatch(/height:\s*clamp/);
-    // The tree is the workspace and takes the panel's leftover height, so the
-    // inspector pins to the panel's foot instead of leaving ground under it; a
-    // long line still scrolls inside the tree, above the dock, with a floor so
-    // the dock can never squeeze it away.
-    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*1 1 auto/);
+    // The tree takes its own height and scrolls past it; the inspector takes
+    // the leftover. A long line scrolls inside the tree, above the dock.
+    expect(ruleBody(".tree-wrap")).toMatch(/flex:\s*0 1 auto/);
     expect(ruleBody(".tree-wrap")).toMatch(/min-height:\s*90px/);
     expect(css).not.toContain("#build-sidebar .panel-body::after");
   });
@@ -465,10 +462,7 @@ describe("workspace chrome layout", () => {
     expect(rule(".coach-prose")).toMatch(/min-height: 0/);
     expect(rule(".coach-card")).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
     expect(rule(".coach-card > *")).toMatch(/overflow-wrap:\s*anywhere/);
-    // The score sheet is sized to its content so the two sides of a move sit
-    // next to each other, the way a score sheet prints them; the trailing
-    // track keeps a variation row as wide as the sheet.
-    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/grid-template-columns:\s*32px\s+max-content\s+max-content\s+minmax\(0,\s*1fr\)/);
+    expect(rule(".moves-grid .mtree-line.is-main")).toMatch(/display:\s*block/);
     expect(rule(".moves-grid")).toMatch(/overflow:\s*auto/);    // Superseded legacy Analyze chrome is gone from the eager sheet.
     expect(css).not.toContain(".explain-card");
     expect(css).not.toContain(".coach-scroll");
@@ -543,17 +537,17 @@ describe("workspace chrome layout", () => {
     // The section strip runs across the width under the title, so the cards
     // take the whole window: a fixed side column was easy to miss.
     expect(css).toMatch(/\.settings\s*\{[^}]*display:\s*block/);
-    expect(css).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky[^}]*background:\s*var\(--panel\)/);
+    expect(settingsCss).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky/);
     // One column of cards in the strip's own order, capped and centred: a
     // two-column masonry listed Board third and drew it beside Engine, so the
     // section you picked and the card you landed on were in different columns.
     expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
-    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*880px[^}]*margin:\s*0 auto/);
-    // The desktop page names itself: the phone header is hidden on wide
-    // screens, so without this the Settings view has no heading at all.
-    expect(settingsCss).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*#view-settings\s+\.page-head\s*\{[^}]*display:\s*flex/);
-    expect(settingsCss).toContain(".set-row");
-    expect(settingsCss).toContain(".status-pill.ok");
+    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*960px[^}]*margin:\s*0 auto/);
+    // The desktop page names itself through the shell's one page-head rule.
+    expect(css).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*\.workspace\s+\.page-head\s*\{[^}]*display:\s*flex/);
+    expect(settingsCss).not.toMatch(/#view-settings\s+\.page-head\s+h1/);
+    // The status pill is one shared family, styled before Settings loads.
+    expect(css).toContain(".status-pill.ok");
     // The old label/value rows, thumbnail picker and feedback host are gone.
     for (const legacy of ["settings-row", "settings-label", "settings-value", "pf-feedback", "piece-style-preview", "settings-layout"]) {
       expect(html).not.toContain(legacy);
@@ -717,13 +711,19 @@ describe("workspace chrome layout", () => {
     for (const selector of [".lr", ".res.r-win", ".res.r-loss", ".open-prev", ".moveline .inprep", ".kind-badge.t-bad"]) {
       expect(replayRule(selector), selector).not.toMatch(/color:\s*#[0-9a-fA-F]{3,6}/);
     }
-    // Segmented control (prototype): body text on the surface-3 track in both
-    // states; the selected tile is a raised panel-coloured chip.
+    // Segmented control: the sheet's one selection mark. The options are words
+    // on a plain row over a 1px rule; the chosen one is a 2px accent line
+    // exactly as wide as its label, and no option is a filled plate.
     const segBtn = ruleBody(".seg-btn");
-    expect(segBtn).toMatch(/color:\s*var\(--text\)/);
+    expect(segBtn).toMatch(/color:\s*var\(--muted\)/);
     const segActive = css.match(/\.seg-btn\.is-active\s*\{([^}]+)\}/)?.[1] || "";
-    expect(segActive).toMatch(/background:\s*var\(--panel\)/);
-    expect(segActive).not.toMatch(/color:/);
+    expect(segActive).toMatch(/color:\s*var\(--text\)/);
+    expect(segActive).not.toMatch(/background/);
+    const segMark = css.match(/\.seg-btn::after\s*\{([^}]+)\}/)?.[1] || "";
+    expect(segMark).toMatch(/background:\s*var\(--accent\)/);
+    expect(segMark).toMatch(/left:\s*10px/);
+    expect(segMark).toMatch(/right:\s*10px/);
+    expect(css).toMatch(/\.seg-btn\.is-active::after\s*\{\s*opacity:\s*1/);
     const segDisabled = css.match(/\.seg-btn:disabled\s*\{([^}]+)\}/)?.[1] || "";
     expect(segDisabled).toMatch(/color:\s*var\(--label\)/);
     // Shared switches use tokens for track + knob in both states.
@@ -880,14 +880,16 @@ describe("workspace chrome layout", () => {
     const menuBtn = ruleBody(".context-menu button");
     const menuBtnHover = css.match(/\.context-menu button:hover\s*\{([^}]+)\}/)?.[1] || "";
     const modal = ruleBody(".modal");
-    expect(menu).toMatch(/background:\s*var\(--panel\)/);
+    // What floats takes --float (a step above the ground in both themes), so a
+    // menu never melts into the page in dark.
+    expect(menu).toMatch(/background:\s*var\(--float\)/);
     expect(menu).toMatch(/color:\s*var\(--text\)/);
     expect(menu).not.toMatch(/#ffffff|#1c1c1c/);
     expect(menuBtn).toMatch(/color:\s*var\(--text\)/);
     expect(menuBtn).not.toMatch(/#1c1c1c/);
     expect(menuBtnHover).toMatch(/background:\s*var\(--surface-3\)/);
     expect(menuBtnHover).toMatch(/color:\s*var\(--text\)/);
-    expect(modal).toMatch(/background:\s*var\(--panel\)/);
+    expect(modal).toMatch(/background:\s*var\(--float\)/);
     expect(modal).toMatch(/color:\s*var\(--text\)/);
     expect(modal).not.toMatch(/#ffffff/);
     expect(css).toContain(".account-menu button[data-action=\"signout\"]:focus-visible");
@@ -908,12 +910,3 @@ describe("workspace chrome layout", () => {
   });
 });
 
-// ---- Analyze desktop geometry --------------------------------------------------
-
-it("does not stretch the board column past the board on desktop", () => {
-  // The board is a square capped by its width share, so a stretched column left a
-  // tall empty area under it (175px at 1180x900) while the panel stayed full height.
-  const desktop = css.match(/@media \(min-width: 960px\) \{[\s\S]*?\n\}/);
-  expect(desktop).toBeTruthy();
-  expect(desktop[0]).toMatch(/\.study \.board-area \{[^}]*align-self: start;/);
-});

@@ -91,7 +91,7 @@ describe("Ctrl/Cmd+Z in Repertoire", () => {
   });
 
   it("answers only on the Repertoire view and not while typing", () => {
-    const keys = app.slice(app.indexOf("const inEditable"), app.indexOf("if (boardLine.active"));
+    const keys = app.slice(app.indexOf("const inEditable"), app.indexOf("const inBuild = view"));
     expect(keys).toMatch(/view === "build" && \(event\.ctrlKey \|\| event\.metaKey\) && !event\.shiftKey/);
     expect(keys).toContain("return void undoLastBuildAdd();");
   });

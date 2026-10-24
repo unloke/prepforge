@@ -48,10 +48,12 @@ function setup({ appState = {}, api, pref = () => false, effective = 2377 } = {}
   };
   globalThis.document = {
     getElementById: (id) => elements[id] ?? null,
-    querySelector: () => null,
+    querySelector: (sel) => (sel === ".settings-nav" ? el() : null),
     querySelectorAll: () => [],
     addEventListener: vi.fn(),
   };
+  globalThis.window = { addEventListener: vi.fn() };
+  globalThis.location = { hash: "" };
   const state = { lichessUsername: "me", maiaAutoRating: 2377, maiaRatingPinned: null, ...appState };
   const saveSettings = vi.fn(async () => {});
   const view = createSettingsView({

@@ -11,7 +11,7 @@
   min-height: 48px;
   padding: 8px 12px 8px 14px;
 }
-.train-title { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.train-title { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
 .train-head-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; }
 .train-head-mode { font-weight: 650; white-space: nowrap; }
 .train-scope-chip {
@@ -184,10 +184,14 @@
 
 /* ---- Result: fixed shape, the what-changed line reserved ---------------- */
 .train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 650; }
-.sum-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
-.sum-cells div { display: flex; flex-direction: column; min-width: 0; padding: 8px; border-radius: 8px; background: var(--panel-soft); }
-.sum-cells b { font-size: 18px; font-variant-numeric: tabular-nums; }
-.sum-cells span { overflow: hidden; color: var(--label); font-size: var(--fs); text-overflow: ellipsis; white-space: nowrap; }
+/* The result's figures are one line of text, not tiles: the value in ink, its
+   word in the muted voice, the dots between them. */
+.sum-line { margin: 0; color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+.sum-line b { color: var(--text); font-weight: 650; }
+.sum-sep { margin: 0 6px; }
+/* Back to Train is a text link beside Again, not a second button. */
+#view-train .train-summary-actions .train-link { flex: 0 0 auto; height: 36px; padding: 0 8px; border: 0; background: none; color: var(--accent-text); font-weight: 600; }
+#view-train .train-summary-actions .train-link:hover { text-decoration: underline; background: none; }
 .delta { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 20px; font-size: var(--fs); }
 .delta[hidden] { display: flex; visibility: hidden; }
 #view-train[data-train-mode="play"] .delta[hidden],
@@ -208,6 +212,10 @@
 .train-summary-actions .btn[hidden] { display: none; }
 .train-recent { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs); }
 .train-recent[hidden] { display: none; }
+/* Home's foot (the recent runs, Maia's download) sits on the rows' text edge:
+   the rows are cards with 12px inside, so their text starts 12px in from the
+   panel. */
+#train-home > .train-recent { padding-inline: 12px; }
 .train-recent-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; }
 .train-recent-name { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .train-recent-row b { font-variant-numeric: tabular-nums; }
@@ -229,3 +237,45 @@
 /* A drill panel with nothing in it yet (a rehearsal before its first answer)
    draws no empty box under the banner. */
 #train-progress-panel:not(:has(> :not([hidden]):not(.train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
+
+/* ---- Home's lead: Due queue is the one big block. Its count is the largest
+   figure on Home, its Start the one filled action, and the next cards sit
+   under it as rows that narrow the queue to their repertoire. */
+.train-row[data-row="smart"] { grid-template-areas: "text go" "opts opts" "next next"; }
+.train-row[data-row="smart"] .train-outlook-lead b { font-size: 32px; line-height: 1; }
+.train-due-next { grid-area: next; display: flex; flex-direction: column; gap: 2px; margin: 4px -8px -4px; padding: 0; list-style: none; }
+.train-due-next[hidden] { display: none; }
+.train-due-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.train-due-line:hover { background: var(--surface-3); }
+.train-due-line:active { transform: translateY(1px); }
+.train-due-line:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.train-due-rep { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.train-due-rep .color-dot { margin-right: 6px; vertical-align: 0; }
+.train-due-pos { flex: none; max-width: 40%; overflow: hidden; font-size: var(--fs); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.train-due-pos:empty { display: none; }
+/* A quiet tag: the kind is words in the muted voice, not a filled pill. */
+.un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 600; }
+.un-row .un-kind { justify-self: start; }
+
+/* ---- Rehearse is one line: its title and count, its repertoire, its action. */
+.train-row[data-row="all_lines"] { grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; grid-template-areas: "text opts go"; padding: 10px 12px; }
+.train-row[data-row="all_lines"] .train-row-text { flex-flow: row wrap; align-items: baseline; column-gap: 8px; }
+.train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-end; }
+@media (max-width: 640px) {
+  .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts"; }
+  .train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-start; }
+}
