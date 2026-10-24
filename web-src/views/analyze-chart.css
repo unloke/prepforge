@@ -120,7 +120,10 @@
 /* The row keeps its three lines so the instrument below never moves, but the
    note's box (and its tone rule) is only as tall as what it says: a one-line
    "Make a move…" with a 75px rule under it read as an empty field. */
-.coach-card > .coach-prose { align-self: start; max-height: 100%; }
+/* Its box stops inside the row with its margins, and it sets its lines on the
+   card's reserved pitch: a 24px line in a 22px reservation (a short window)
+   ran the second line into the Humans row. */
+.coach-card > .coach-prose { align-self: start; max-height: calc(100% - var(--coach-gap) * 2); line-height: var(--coach-line); }
 .coach-card > .coach-bookline { margin-top: var(--coach-gap); }
 .coach-card > * {
   min-width: 0;
@@ -887,14 +890,16 @@
 .report { display: flex; flex-direction: column; gap: 12px; font-size: var(--fs); }
 .report:empty { display: none; }
 
-/* The summary line. The whole row is the control. */
+/* The summary: one row per player (name, accuracy, errors), the chevron at
+   the right. The whole block is the control. Side by side in one line the two
+   players ran into each other in a narrow panel ("1 mistakeAnonym…"). */
 .rp-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(3em, max-content) auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 20px;
+  gap: 2px 12px;
   width: 100%;
-  min-height: 32px;
-  padding: 0 8px;
+  padding: 4px 8px;
   border: 0;
   border-radius: 6px;
   background: none;
@@ -906,9 +911,11 @@
 }
 .rp-summary:hover { background: var(--surface-3); }
 .rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
-.rp-summary { gap: 12px; }
 .rp-summary .rp-disc { display: none; } /* the sides come in colour order; the names carry them */
-.rp-summary .rp-side { display: inline-flex; flex: 1 1 0; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; }
+.rp-summary .rp-side { display: contents; }
+.rp-summary .rp-acc { text-align: right; }
+.rp-summary .rp-errs { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rp-summary .rp-chev { grid-column: 4; grid-row: 1 / span 2; }
 .rp-errs { color: var(--muted); }
 .rp-chev {
   flex: none;
@@ -1343,8 +1350,14 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .an-panes > :is(.report-pane, .moves-pane) { grid-column: 2; grid-row: 2 / 4; }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open { grid-column: 2; grid-row: 1 / 4; }
   #view-analyze .panel-scroll > #analyze-open { min-height: 0; }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll > .analyze-main { display: flex; }
+  /* No game yet: the coach and engine on the left, both ways to open a game
+     (the source and the recent analyses) stacked on the right. The sheet is
+     display: contents here, so its folds are this grid's own items. The
+     report/moves switch has nothing to switch until a game is loaded. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); grid-auto-rows: min-content; align-content: start; gap: 6px 16px; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .panel-scroll > .analyze-main { display: flex; grid-column: 1; grid-row: 1 / span 4; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open > .drawer { grid-column: 2; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .an-tabs { display: none; }
 }
 
 /* A phone on its side keeps the tabs: the panel beside the board is 390px
