@@ -474,6 +474,18 @@ function initBuildDockLayout() {
     for (const band of dock.parentElement.children) {
       if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
     }
+    // The tree gives up the height the dock takes: when it shrinks (an Explorer
+    // answer lands after the move was picked), the current move stays in sight.
+    const tree = document.getElementById("builder-tree");
+    const treeBox = tree?.closest(".tree-wrap") || tree;
+    let treeHeight = 0;
+    if (treeBox) {
+      new ResizeObserver(([entry]) => {
+        const height = entry.contentRect.height;
+        if (height < treeHeight) tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" });
+        treeHeight = height;
+      }).observe(treeBox);
+    }
   }
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));
   resizer.addEventListener("keydown", (event) => {
@@ -735,6 +747,8 @@ function renderExplorerRows(stats, fen) {
   );
   const inRepNorm = new Set([...inRep].map(normalizeUci));
   const canAdd = !isBuildReadOnly();
+  // Each move's share of the games here: how often the reply has to be met.
+  const allGames = stats.moves.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
   rows.innerHTML =
     html`<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>${stats.moves
       .map((m) => {
@@ -750,7 +764,7 @@ function renderExplorerRows(stats, fen) {
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games">${games}</span>
+      <span class="explorer-games" title="${`${countOf(games, "game")}`}"><b class="explorer-share">${allGames ? `${Math.round((100 * (Number(m.total) || 0)) / allGames)}%` : ""}</b> ${games}</span>
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })}`;

@@ -337,6 +337,14 @@ describe("workspace chrome layout", () => {
     expect(session).not.toMatch(/\$\{appState\.build\.name\} · \$\{appState\.build\.color\}/);
   });
 
+  it("gives each Explorer move its share of the games, in ink before the muted count", () => {
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    expect(session).toMatch(/const allGames = stats\.moves\.reduce/);
+    expect(session).toMatch(/<b class="explorer-share">/);
+    expect(ruleBody(".explorer-games")).toMatch(/color:\s*var\(--muted\)/);
+    expect(ruleBody(".explorer-share")).toMatch(/color:\s*var\(--text\)/);
+  });
+
   it("sets the Build ledger's small type at the panel's own floor", () => {
     // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
     // still hardcodes 9-12px is the one squinting line. The Explorer share, the
