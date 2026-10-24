@@ -469,24 +469,23 @@ function initBuildDockLayout() {
   // short (an inner scrollbar) or a fork bar tall (a late jump) until some unrelated
   // repaint caught up.
   if (typeof ResizeObserver === "function") {
-    const observer = new ResizeObserver(() => fitBuildDock());
-    for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);
-    for (const band of dock.parentElement.children) {
-      if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
-    }
     // The tree gives up the height the dock takes: when it shrinks (an Explorer
     // answer lands after the move was picked), the current move stays in sight.
+    // Read here, not by a second observer on the tree: the fit above resizes the
+    // tree in this pass, and a second observer's notice would go undelivered
+    // (a ResizeObserver loop error). The scroll waits for the next frame.
     const tree = document.getElementById("builder-tree");
     const treeBox = tree?.closest(".tree-wrap") || tree;
     let treeHeight = 0;
-    if (treeBox) {
-      new ResizeObserver(([entry]) => {
-        const height = entry.contentRect.height;
-        // Scrolled on the next frame: a scroll inside the observer resizes the
-        // dock's bands again in the same pass and trips a ResizeObserver loop.
-        if (height < treeHeight) requestAnimationFrame(() => tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" }));
-        treeHeight = height;
-      }).observe(treeBox);
+    const observer = new ResizeObserver(() => {
+      fitBuildDock();
+      const height = treeBox?.clientHeight || 0;
+      if (height < treeHeight) requestAnimationFrame(() => tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" }));
+      treeHeight = height;
+    });
+    for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);
+    for (const band of dock.parentElement.children) {
+      if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
     }
   }
   resizer.addEventListener("dblclick", () => setBuildDockFolded(!buildDockFolded()));

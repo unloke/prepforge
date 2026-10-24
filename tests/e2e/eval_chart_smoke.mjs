@@ -106,15 +106,22 @@ async function main() {
 
     // --- 1. Mouse hover: text tooltip (SAN, eval, classification). ---
     const hoverAt = [xForRatio(0.75), chartBox.y + chartBox.height / 2]; // ply 4
-    await page.mouse.move(...hoverAt);
-    await until(
-      page,
-      () => {
-        const t = document.getElementById("eval-chart-tooltip");
-        return t && !t.hidden && t.textContent.includes("Nc6");
-      },
-      5_000,
-    ).catch(async (e) => {
+    // The chart binds its pointer handlers after it draws; a single move that
+    // lands before them shows nothing (seen on CI: the pointer on the chart,
+    // the tooltip hidden). Nudge the pointer by a pixel until a move is heard.
+    const tooltipShown = () => page.evaluate(() => {
+      const t = document.getElementById("eval-chart-tooltip");
+      return !!(t && !t.hidden && t.textContent.includes("Nc6"));
+    });
+    await (async () => {
+      const deadline = Date.now() + 5_000;
+      for (let i = 0; Date.now() < deadline; i++) {
+        await page.mouse.move(hoverAt[0] + (i % 2), hoverAt[1]);
+        if (await tooltipShown()) return;
+        await page.waitForTimeout(100);
+      }
+      throw new Error("timed out after 5000ms: the hover tooltip never named Nc6");
+    })().catch(async (e) => {
       // A timeout alone says nothing about why; name what was under the pointer.
       const state = await page.evaluate(([x, y]) => {
         const t = document.getElementById("eval-chart-tooltip");

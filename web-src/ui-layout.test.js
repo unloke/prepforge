@@ -369,7 +369,11 @@ describe("workspace chrome layout", () => {
     // Any drawer or panel band changing height refits the dock before the frame
     // paints (a ResizeObserver), so no paint path has to remember to ask; unfolding
     // refits too.
-    expect(session).toMatch(/new ResizeObserver\(\(\) => fitBuildDock\(\)\)/);
+    expect(session).toMatch(/new ResizeObserver\(\(\) => \{\s*fitBuildDock\(\);/);
+    // The tree's shrink is read in that same callback (a second observer on
+    // the tree raised a ResizeObserver loop error), and its scroll waits a frame.
+    expect(session.match(/new ResizeObserver/g)).toHaveLength(1);
+    expect(session).toMatch(/if \(height < treeHeight\) requestAnimationFrame\(/);
     expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
     // A height the user dragged is not overwritten by the next repaint.
     expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');
