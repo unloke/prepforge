@@ -165,7 +165,10 @@ class EngineWidget {
     }
     setEngineBestArrow(null);
     this.el.classList.remove("is-visible");
-    setTimeout(() => {
+    // The floating window fades out; docked in a panel there is no fade, so
+    // waiting left the last line standing under a header that had gone.
+    if (this.el.closest?.(".engine-slot")) this.el.hidden = true;
+    else setTimeout(() => {
       if (!this.el.classList.contains("is-visible")) this.el.hidden = true;
     }, 240);
     try {

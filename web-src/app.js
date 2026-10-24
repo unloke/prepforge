@@ -713,8 +713,6 @@ function setBuildLoading(on, { restore = true } = {}) {
     // The old tree's size is not this tree's: the caption goes with it.
     nameEl.title = "";
   }
-  const meta = document.getElementById("build-tree-meta");
-  if (meta) meta.innerHTML = "";
   const tree = document.getElementById("builder-tree");
   if (tree) {
     tree.innerHTML =

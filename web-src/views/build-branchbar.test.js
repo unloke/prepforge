@@ -171,7 +171,7 @@ describe("build tree — mastery legend", () => {
     globalThis.document = undefined;
   });
 
-  it("keeps breadcrumbs without a standing legend when nodes carry mastery", () => {
+  it("draws no standing legend when nodes carry mastery", () => {
     const e5 = makeNode({
       id: "e5", depth: 1, parent_id: "root", san: "e5", uci: "e7e5",
       move_side: "black", is_mainline: true, mastery: "mastered",
@@ -185,7 +185,6 @@ describe("build tree — mastery legend", () => {
       currentNodeId: "e5",
     });
     view.renderBuilderTree();
-    expect(String(meta.innerHTML)).toContain('aria-label="Position"');
     expect(String(meta.innerHTML)).not.toContain("legend");
   });
 

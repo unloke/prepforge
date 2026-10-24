@@ -25,7 +25,9 @@ export function createMoveTreeRenderer() {
         ? html`<span class="mtree-num">${node.moveNumber}${isWhite ? "." : "…"}</span>`
         : "";
     const deco = (opts.decorate && opts.decorate(node)) || {};
-    const classes = ["mtree-move"];
+    // The side places the move in its column where a view sets the main line
+    // as a score sheet (Build).
+    const classes = ["mtree-move", isWhite ? "is-w" : "is-b"];
     if (deco.classes) classes.push(...deco.classes);
     const isCurrent = node.id === opts.currentId;
     if (isCurrent) classes.push("is-current");
@@ -40,27 +42,30 @@ export function createMoveTreeRenderer() {
     );
   }
 
-  // Walk the line from startNode, emitting its alternatives beside it. A
-  // variation (renderMoveVariation) starts on the branch's own first move: its
-  // next move continues just that branch, so it is never interleaved with the
-  // parent line's other branches.
-  function renderMoveLine(startNode, opts) {
+  // Walk the line from startNode, emitting each move's alternatives right after
+  // it, as PGN does: "5. Be2 c5 (5... Nd7)". `alts` are startNode's own
+  // siblings. A variation (renderMoveVariation) starts on the branch's own
+  // first move: its next move continues just that branch, so it is never
+  // interleaved with the parent line's other branches.
+  function renderMoveLine(startNode, opts, alts = []) {
     const markup = [];
     let cur = startNode;
+    let pending = alts;
     let forceNumber = true;
     while (cur) {
       markup.push(renderMoveToken(cur, opts, forceNumber));
       forceNumber = false;
+      for (const alt of pending) {
+        markup.push(renderMoveVariation(alt, opts));
+        forceNumber = true;
+      }
       // The mainline is the continuation the repertoire marks as main
       // (is_mainline), not whichever sibling the flat node list happens to
       // list first: Build's fork bar and the server both call 3...Bf5 the
       // mainline even when 3...Na6 arrives earlier in the payload. A child
       // without the flag (Analyze's variation tree) falls back to array order.
       const kids = mainlineFirst(cur.children || []);
-      for (const alt of kids.slice(1)) {
-        markup.push(renderMoveVariation(alt, opts));
-        forceNumber = true;
-      }
+      pending = kids.slice(1);
       cur = kids[0] || null;
     }
     return html`${markup}`;
@@ -99,11 +104,8 @@ export function createMoveTreeRenderer() {
         html`<div class="mtree"><div class="empty-state">${opts.emptyText || "No moves yet."}</div></div>`
       );
     }
-    const ordered = mainlineFirst(kids);
-    const main = ordered[0];
-    const alts = ordered.slice(1);
-    const body = [renderMoveLine(main, opts), ...alts.map((alt) => renderMoveVariation(alt, opts))];
-    return html`<div class="mtree"><div class="mtree-line is-main">${body}</div></div>`;
+    const [main, ...alts] = mainlineFirst(kids);
+    return html`<div class="mtree"><div class="mtree-line is-main">${renderMoveLine(main, opts, alts)}</div></div>`;
   }
 
   // Brings el into view inside the nearest box that scrolls: the container itself, or

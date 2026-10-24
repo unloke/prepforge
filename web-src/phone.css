@@ -993,16 +993,14 @@
   .sheet-row[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
 
   /* ---- Repertoire ------------------------------------------------------
-     Header (back, name, size, ⋯) over the board; under it the Explorer with
-     the next moves, yours dotted, a tap adds one, then the line tree.
-     With nothing open the panel is the empty card, and that card is 170px of
-     content in a panel with 10+16px of padding and a 10px gap: 196px of room,
-     or its second action row is cut off by the thumb bar. The reserve was
-     244px, which left the body 156px at 390x660 (measured: the card's bottom at
-     628 under a bar whose top is 604). 304px is the smallest reserve that fits
-     the card whole at 390x660, 430x740 and 390x844, and the board still comes
-     out 300/380/390px wide. */
-  #view-build { --phone-reserve: max(304px, 40dvh); }
+     Header (back, name, ⋯) over the board; under it one pane at a time (the
+     line tree, Explorer or Coverage). The board takes the full width when the
+     screen leaves 250px for the header, the pane switch and a few tree rows
+     (430x740 does); a shorter screen trims the board, not the tree. With
+     nothing open the panel is the empty card, which needs 304px whole (its
+     second action row is otherwise under the thumb bar at 390x660). */
+  #view-build { --phone-reserve: max(250px, 34dvh); }
+  #view-build .study:has(> .sidebar.is-empty) { --phone-reserve: max(304px, 40dvh); }
   /* Header (back, name, ⋯) over the board: the board's top neighbour here (the
      board bar is the thumb bar below). Flow layout, one line, vertically
      centred; the tree's totals close the panel underneath the dock. */
@@ -1012,8 +1010,8 @@
     display: flex;
     align-items: center;
     column-gap: 8px;
-    min-height: 56px;
-    margin: 0 0 var(--phone-gap);
+    min-height: 48px;
+    margin: 0;
     /* The back and ⋯ buttons are 44px targets: a -8px margin pulled the icons
        to the board's edge but left the ⋯ hit area 8px past the screen. The
        header's own 4px inset keeps both whole on screen. */
@@ -1023,14 +1021,14 @@
   }
   /* The repertoire's name is this screen's title: it takes the shell's title
      size and ink, at the same left edge as the board under it. */
-  #build-rep-header .rep-title { flex: 1 1 0; justify-content: center; }
+  #build-rep-header .rep-title { flex: 1 1 0; flex-direction: column; align-items: stretch; justify-content: center; gap: 0; }
   #build-rep-header .rep-name {
     flex: none;
     width: 100%;
     min-width: 0;
     height: 24px;
     color: var(--text);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 650;
     letter-spacing: -0.01em;
     white-space: nowrap;
@@ -1052,12 +1050,12 @@
     display: flex;
     gap: 2px;
     margin: -10px -12px 0;
-    padding: 8px 12px;
+    padding: 6px 12px;
     background: var(--bg);
   }
   #build-panes > button {
     flex: 1 1 0;
-    min-height: 40px;
+    min-height: 34px;
     border: 0;
     border-radius: 8px;
     background: var(--surface-3);
@@ -1069,7 +1067,7 @@
   #build-panes > button[aria-selected="true"] { background: var(--line-strong); color: var(--text); }
   #view-build #build-sidebar.is-empty #build-panes,
   #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
-  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-tree-meta, #build-branchbar, #builder-tree),
+  #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-branchbar, #builder-tree),
   #build-inspector .dock-tabs { display: none !important; }
   #build-inspector .dock-tools { padding-top: 12px; }
   /* Saving state beside the tools that trigger it (the board bar's chip is
@@ -1116,19 +1114,18 @@
      grow to 40px (the readout between them is not a target). */
   .engine-step { position: relative; }
   .engine-step::after { content: ""; position: absolute; inset: -11px; }
-  #view-build :is(.tree-meta, .forkbar) { font-size: 13px; }
-  /* The next move is what the thumb reaches for, and the breadcrumb is the
-     only way back along the line: both get a real target. The move tokens
+  #view-build .forkbar { font-size: 13px; }
+  /* The next move is what the thumb reaches for: it gets a real target. The move tokens
      stay dense like a score sheet, but their rows get a gap so neighbours do
      not fuse. */
   #view-build .fork-chip { min-height: 44px; padding: 0 14px; }
   #view-build .fork-chip small { font-size: var(--fs-s); }
-  #view-build .mtree-crumb { min-height: 44px; padding: 0 6px; }
-  /* A move is a thumb target, not a mouse target: the tree runs on a 40px line
-     pitch and each move's hit area fills its line, while the drawn token keeps
-     the score sheet's size (its current-move fill and due/weak underline stay
-     on the text, not on a 40px box). */
-  #view-build .mtree { line-height: 40px; }
+  /* A move is a thumb target, not a mouse target: the main line runs on a
+     36px pitch (side lines 32px) and each move's hit area fills its line, while
+     the drawn token keeps the score sheet's size (its current-move fill and
+     due/weak dot stay on the text, not on the line's box). */
+  #view-build .mtree { line-height: 36px; }
+  #builder-tree .mtree-line.is-main > .mtree-var { line-height: 32px; }
   #view-build .mtree-move { position: relative; line-height: 1.6; }
   #view-build .mtree-move::after { content: ""; position: absolute; inset: -8px -1px; }
   #view-build .mtree-collapse { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; margin: -8px 0; }

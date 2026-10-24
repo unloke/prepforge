@@ -4,7 +4,7 @@
 // 1440x900 / 1180x900 / 390x844 checks:
 //   - no horizontal overflow, no console/page errors
 //   - rep header + board label render; sync chip reads Saved
-//   - breadcrumb strip renders; fork bar appears at the fork with chips + count
+//   - the current move is the one marked token; fork bar appears at the fork with chips + count
 //   - a rendered practical share (maia_probability) shows on a chip
 //   - trained moves carry mastery classes without a standing legend
 //   - the dock tabs (Explorer/Coverage/Engine) are a single-select tablist and
@@ -216,9 +216,11 @@ async function runViewport(vp) {
   const sync = await page.locator("#build-sync").textContent().catch(() => "");
   check(/Saved/.test(sync), `sync chip should read Saved, got "${sync}"`);
 
-  // Breadcrumb strip renders (we load at n5 = e5, path 1.e4 c6 2.d4 d5 3.e5).
-  const crumbs = await page.locator("#build-tree-meta .mtree-crumb").count();
-  check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
+  // The tree is the position: we load at n5 = e5, and that move is the one
+  // current token (there is no separate trail).
+  const current = await page.locator("#builder-tree .mtree-move.is-current").allTextContents();
+  check(current.length === 1 && /e5/.test(current[0]), `expected 3.e5 as the one current move, got ${JSON.stringify(current)}`);
+  check((await page.locator(".crumbs, #build-tree-meta").count()) === 0, "the panel should carry no position trail");
 
   // Build header: the size summary is a caption on the repertoire's name (its
   // tooltip), and the head holds no Generate button: the ⋯ menu reaches it at
@@ -249,8 +251,8 @@ async function runViewport(vp) {
   check((await nc6Chip.locator("small").count()) === 0, "Na6 (manual) chip must not fake a share");
 
   // Mastery stays on the moves; the panel has no standing colour legend.
-  const legend = await page.locator("#build-tree-meta .legend").count();
-  check(legend === 0, "breadcrumbs should not have a standing mastery legend");
+  const legend = await page.locator("#build-sidebar .legend").count();
+  check(legend === 0, "the panel should not have a standing mastery legend");
 
   // Tree rows carry mastery classes on own-side moves.
   const trained = await page.locator("#builder-tree .mtree-move.m-mastered, #builder-tree .mtree-move.m-learning, #builder-tree .mtree-move.m-due, #builder-tree .mtree-move.m-weak").count();

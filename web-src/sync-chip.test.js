@@ -11,11 +11,11 @@ describe("training save chip", () => {
   });
 
   it("still names a save in flight and a save waiting on sign-in", () => {
-    expect(syncChipVariant("syncing", "training").text).toBe("↻ Saving progress…");
+    expect(syncChipVariant("syncing", "training").text).toBe("Saving progress…");
     expect(syncChipVariant("blocked", "training").text).toContain("Waiting for sign-in");
   });
 
   it("leaves the Repertoire chip alone", () => {
-    expect(syncChipVariant("dirty", "repertoire").text).toBe("• Unsaved changes");
+    expect(syncChipVariant("dirty", "repertoire").text).toBe("Unsaved changes");
   });
 });

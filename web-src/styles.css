@@ -2955,8 +2955,9 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   white-space: nowrap;
 }
 
-/* Google-Docs-style save indicator for local-first Build sync. A quiet chip that
-   only earns attention when something's wrong (error). Tokens keep it on-theme. */
+/* Google-Docs-style save indicator for local-first Build sync. Saved is the
+   resting state, so it is plain grey words; only a problem (error) earns a
+   tinted chip. */
 .build-sync {
   margin-left: auto;
   flex: none;
@@ -2972,12 +2973,9 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   white-space: nowrap;
   transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
-.build-sync.is-saved {
-  color: var(--good-text);
-  background: var(--good-soft);
-}
-.build-sync.is-dirty {
-  color: var(--muted);
+.build-sync:is(.is-saved, .is-dirty) {
+  color: var(--label);
+  background: none;
 }
 .build-sync.is-syncing {
   color: var(--accent-strong);
@@ -2998,9 +2996,8 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 
 /* ===========================================================================
    Repertoire: Opus prototype composition
-   One raised panel beside the board: identity head, position trail,
-   fork picker, the move tree, and a bottom dock (Explorer / Coverage /
-   Engine). Mirrors prototype .panel / .tree-meta / .forkbar / .tree-wrap / .dock.
+   One raised panel beside the board: identity head, fork picker, the move
+   tree, and a bottom dock (Explorer / Coverage / Engine).
    =========================================================================== */
 .panel {
   display: flex;
@@ -3066,14 +3063,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 #view-build .build-empty .row { justify-content: flex-start; margin-top: 10px; }
 /* With no repertoire open the panel's bands give way to the empty state. The
    class is set by paintBuildEmpty() (app.js), not a `:has()` rule: on an
-   ancestor of the tree it made every crumb rebuild re-style the page. */
-#build-sidebar.is-empty .panel-body > :is(.build-toolbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
+   ancestor of the tree it made every tree rebuild re-style the page. */
+#build-sidebar.is-empty .panel-body > :is(.forkbar, .tree-wrap, .dock-resizer, .dock) { display: none; }
 /* The one line a new user reads here is running text, so it reads at the size
    the Library's empty state uses, not at the panel's dense 13px. */
 #view-build .empty-state.big p { color: var(--text); font-size: 16px; }
 
 /* Repertoire reads at 13px, and tells its sections apart by tone rather than
-   by rules. The panel is where the work happens — move tokens, breadcrumbs,
+   by rules. The panel is where the work happens — move tokens,
    Explorer rows and their numbers — and the shared 11/12px steps made the
    whole ledger squint; the 1px separators between five stacked bands made
    every band the same weight. */
@@ -3137,71 +3134,20 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
    kind of thing. */
 #build-sidebar { --build-pad: 14px; }
 
-/* The trail on its own row, the next move's candidates under it: sharing one
-   row, the candidates squeezed the trail until it scrolled its own start away. */
-.build-toolbar {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  background: var(--panel);
-}
-.tree-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  background: var(--panel);
-}
-.crumbs {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  padding: 6px var(--build-pad, 12px);
-  overflow-x: auto; /* one row; build.js keeps its current (last) crumb in view */
-  white-space: nowrap;
-  font-size: var(--fs-s);
-  scrollbar-width: none;
-}
-.crumbs::-webkit-scrollbar { display: none; }
-.mtree-crumb {
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  padding: 2px 4px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.mtree-crumb:hover { background: var(--surface-3); }
-.mtree-crumb.is-current { color: var(--text); font-weight: 650; }
-.crumbs .mtree-num { padding: 0; margin: 0; font-size: inherit; }
-/* The separator is a mark between crumbs, not a caption: it sits at the
-   trail's own size, and at 10px it pulled the eye below the moves it joins. */
-.crumb-sep { color: var(--label); font-size: var(--fs-s); padding: 0 1px; }
-.crumb-empty { color: var(--label); padding: 2px 4px; }
-/* The named opening of the shown line, at the trail's right end. A label,
-   so it gives way (ellipsis) before the trail does: the trail sizes from its
-   content and the label's far larger shrink factor takes the squeeze first.
-   The band keeps one row while a name is shown; the class comes from
-   renderBuildOpening() (build.js) because a `:has()` here made every crumb
-   rebuild re-style the page (95 ms per navigation at 10,000 moves). */
-/* The title block: the repertoire name, and under it the opening of the shown
-   line in quiet small type. One column, so the opening never takes a row of
-   the toolbar. */
+/* The title row: the repertoire name, then the opening of the shown line in
+   quiet small type on the same line. The opening gives way (ellipsis) first. */
 .rep-title {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 10px;
   flex: 1 1 auto;
   min-width: 0;
 }
 .build-opening {
+  flex: 1 1 0;
   min-width: 0;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3301,8 +3247,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   font-weight: 650;
   cursor: pointer;
 }
-/* The move number is read, not decorated: it takes the chip's own size, as
-   the breadcrumb's numbers take the trail's. */
+/* The move number is read, not decorated: it takes the chip's own size. */
 .fork-chip .mtree-num { padding: 0; margin: 0; font-size: inherit; font-weight: 500; }
 .fork-chip.is-main { font-weight: 750; }
 .fork-chip small { margin-left: 4px; color: var(--label); font-size: inherit; font-weight: 500; }
@@ -3352,10 +3297,28 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
      reads as a different kind of thing without a rule or a card. */
   background: var(--surface-3);
 }
+/* One row heads the dock: its tabs, the tools of the open tab, the fold. */
+.dock-head {
+  display: flex;
+  align-items: center;
+  column-gap: 8px;
+  min-width: 0;
+  padding: 0 4px 0 calc(var(--build-pad, 12px) - 10px);
+  container-type: inline-size;
+}
+/* A narrow panel (a 1000px window) keeps the row: the switch drops its word
+   (its tooltip and accessible name stay) and the segments tighten. */
+@container (max-width: 460px) {
+  .dock-engine-switch .pf-row-label { display: none; }
+  .dock-tools { gap: 4px; }
+  .dock-tools .seg-btn { padding: 0 7px; }
+  .dock-tabs button { padding-inline: 7px; }
+  .dock-fold { padding-inline: 4px; }
+}
 .dock-tabs {
   display: flex;
+  flex: none;
   gap: 2px;
-  padding: 0 calc(var(--build-pad, 12px) - 10px);
 }
 .dock-tabs button {
   display: inline-flex;
@@ -3420,29 +3383,37 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   margin-left: -28px;
 }
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
-.dock-tabs .dock-fold {
+.dock-fold {
+  flex: none;
   margin-left: auto;
   padding: 6px 8px;
-  border-bottom-color: transparent;
+  border: 0;
+  background: none;
   color: var(--label);
+  font: inherit;
   line-height: 1;
+  cursor: pointer;
 }
-.dock-tabs .dock-fold:hover { color: var(--text); }
+.dock-fold:hover { color: var(--text); }
 .dock-fold span { display: inline-block; transition: transform var(--dur-fast) var(--ease-out); }
-.dock.is-folded { flex: none !important; }
+/* Folded, the dock is its tab strip whatever height it was given open (a fit or
+   a drag leaves an inline floor), and the tree takes the column. */
+.dock.is-folded { flex: none !important; min-height: 0 !important; }
+.panel-body:has(> .dock.is-folded) > #builder-tree { flex-grow: 1 !important; }
 /* A dragged height is the user's: it holds, and the tree takes the rest. */
 .dock[data-dock-pinned="1"] { flex-grow: 0; }
 .dock.is-folded > .dock-body { display: none; }
 .dock.is-folded .dock-tabs { border-bottom: 0; }
 .dock.is-folded .dock-tabs button.is-active { border-bottom-color: transparent; }
 .dock.is-folded .dock-fold span { transform: rotate(180deg); }
+.dock.is-folded .dock-tools { visibility: hidden; }
 .dock-tools {
   position: relative;
   display: flex;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  min-width: 0;
 }
 .dock-tools .spacer { flex: 1; }
 .inspector-info {
@@ -4506,17 +4477,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   box-shadow: var(--shadow-1);
 }
 
-/* Build's selected move is calm: a soft accent fill and a 2px accent bar at
-   the move's own left edge, so the tree still has one "here" without a
-   saturated pill competing with the Generate button for the eye. Analyze's
-   move grid keeps the filled cell (its rows are tiles, and the fill is what
-   makes a cell read as current there). */
-#view-build .mtree-move.is-current {
-  background: var(--accent-soft);
-  color: var(--accent-strong);
-  box-shadow: inset 2px 0 0 var(--accent);
-}
-
 /* A faint trail marking the line that leads to the current move (Analyze's
    game list). Build does not paint it: its trail above the tree already says
    where you stand, and filling every move on the way here spent the accent on
@@ -4550,12 +4510,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   from { opacity: 0; transform: translateY(4px) scale(0.94); }
 }
 
-/* Training status, one mark per move: a 2px bar under a move that is DUE
+/* Training status, one mark per move: a dot before a move that is DUE
    (amber) or WEAK (red) — the two states that ask you to do something. Every
    other status (learning, mastered, untrained) stays unmarked and says its
    name in the move's tooltip, so a calm tree is not a tree without data. */
-.mtree-move.m-due { box-shadow: inset 0 -2px 0 var(--k-due); }
-.mtree-move.m-weak { box-shadow: inset 0 -2px 0 var(--k-weak); }
+.mtree-move:is(.m-due, .m-weak)::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 5px 0 -1px;
+  border-radius: 50%;
+  vertical-align: 0.12em;
+  background: var(--k-due);
+}
+.mtree-move.m-weak::before { background: var(--k-weak); }
 /* The selected move keeps full contrast whatever it is decorated with: the
    opponent-move grey (and a disabled move's fade) must not bleed onto the
    accent fill. Dark theme: white on the lighter accent is only ~3:1, so the
@@ -5432,7 +5401,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .fork-chip { padding-top: 2px; padding-bottom: 2px; }
   .dock-tabs button { padding-top: 5px; padding-bottom: 5px; }
   .dock-body { padding-top: 6px; padding-bottom: 6px; }
-  .dock-tools { margin-bottom: 4px; }
   #explorer-engine-slot { top: -6px; margin-top: -6px; margin-bottom: 4px; padding-top: 2px; }
   .engine-window.is-docked .engine-pv { height: 23px; min-height: 23px; }
   .engine-window.is-docked .engine-pv-line { line-height: 21px; }
@@ -5988,7 +5956,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-height: 44px;
   padding: 6px 8px 6px var(--build-pad, 14px);
 }
-#build-rep-header .rep-name { font-size: 14px; font-weight: 650; flex: 1 1 auto; }
+#build-rep-header .rep-name { font-size: 14px; font-weight: 650; flex: 0 1 auto; }
 #build-rep-header .rep-color-sub { font-size: 12px; font-weight: 400; }
 
 
@@ -6071,9 +6039,33 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
    sit under their fork, and a position with no answer on our side carries
    one mark. Scoped here (not in the shared move-tree rules that Analyze
    uses): the classes come from build.js's decorate(). */
-#builder-tree .mtree-line.is-main > .mtree-move { font-weight: 650; }
-#builder-tree .mtree-var { --mtree-indent: 14px; }
-#builder-tree .mtree-var .mtree-move { font-weight: 450; }
+/* The main line is a score sheet: one numbered row per move pair, White and
+   Black in their own columns, and each side line indented under the move it
+   leaves from, in smaller grey type that runs inline. */
+#builder-tree .mtree-line.is-main {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 7.5em) minmax(0, 7.5em) 1fr;
+  align-items: center;
+}
+#builder-tree .mtree-line.is-main > .mtree-num {
+  grid-column: 1;
+  justify-self: end;
+  padding: 0 6px 0 0;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+#builder-tree .mtree-line.is-main > .mtree-move {
+  justify-self: start;
+  padding: 3px 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+#builder-tree .mtree-line.is-main > .mtree-move.is-w { grid-column: 2; }
+#builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
+#builder-tree .mtree-line.is-main > :is(.mtree-var, .mtree-comment) { grid-column: 1 / -1; }
+#builder-tree .mtree-line.is-main > .mtree-var { margin: 1px 0 3px 2.4em; line-height: 1.6; }
+#builder-tree .mtree-var { --mtree-indent: 10px; }
+#builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 450; }
 #builder-tree .mtree-move.is-gap::after {
   content: " ?";
   color: var(--negative);

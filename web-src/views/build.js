@@ -102,29 +102,6 @@ export function createBuildView({
       html`<span class="color-dot ${appState.build.color}"></span><b>${appState.build.name}</b><span class="rep-color-sub"> · ${appState.build.color}</span>`;
   }
 
-  // Position trail: Start › 1.e4 › c6 › … — every crumb jumps to that node.
-  function renderBuildBreadcrumb() {
-    const root = appState.build && appState.build.nodes.find((n) => n.depth === 0);
-    const path = buildPath(appState.buildCurrentNodeId).filter((n) => n.depth > 0);
-    const start = root
-      ? html`<button class="mtree-crumb${path.length ? "" : " is-current"}" data-node-id="${String(root.id)}">Start</button>`
-      : html`<span class="crumb-empty">Start</span>`;
-    const inner = path
-      .map((node, i) => {
-        const prev = i > 0 ? path[i - 1] : null;
-        const isWhite = node.move_side === "white";
-        const needNumber = i === 0 || isWhite || !prev || prev.move_side !== "white";
-        const numberHtml = needNumber
-          ? html`<span class="mtree-num">${node.move_number}${isWhite ? "." : "…"}</span>`
-          : "";
-        const cur = node.id === appState.buildCurrentNodeId ? " is-current" : "";
-        return (
-          html`<span class="crumb-sep" aria-hidden="true">›</span>${numberHtml}<button class="mtree-crumb${cur}" data-node-id="${node.id}">${node.san}</button>`
-        );
-      });
-    return html`<nav class="crumbs" aria-label="Position">${start}${inner}</nav>`;
-  }
-
   // Which fork is showing its whole list. Opening it is a request for this
   // position only: stepping to another line closes it again, because the reason
   // to look at all thirty moves is the position you are standing on.
@@ -245,27 +222,6 @@ export function createBuildView({
     el.title = name;
   }
 
-  function renderTreeMeta() {
-    const meta = document.getElementById("build-tree-meta");
-    if (!meta) return;
-    meta.hidden = !appState.build;
-    meta.innerHTML = appState.build
-      ? renderBuildBreadcrumb()
-      : "";
-    renderBuildOpening();
-    meta.querySelectorAll(".mtree-crumb[data-node-id]").forEach((btn) => {
-      btn.addEventListener("click", (event) => {
-        void selectBuildNode(btn.dataset.nodeId).catch(() => {});
-        event.currentTarget.blur();
-      });
-    });
-    // The trail is one scrolling row ending at the current move; the opening
-    // label beside it gives way first (styles.css), then the trail scrolls:
-    // keep its end, the shown move, in view.
-    const crumbs = meta.querySelector?.(".crumbs");
-    if (crumbs) crumbs.scrollLeft = crumbs.scrollWidth;
-  }
-
   // The tree payload the container was last painted from. A re-read (hydrate
   // after training, sync, reload) swaps appState.build for a new object, so a
   // step that lands on the new payload must repaint, not move the mark.
@@ -276,7 +232,7 @@ export function createBuildView({
     const container = document.getElementById("builder-tree");
     const branchBar = document.getElementById("build-branchbar");
     if (!appState.build) {
-      renderTreeMeta();
+      renderBuildOpening();
       container.innerHTML =
         html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
       if (branchBar) branchBar.hidden = true;
@@ -286,7 +242,7 @@ export function createBuildView({
     }
     const root = buildNormalizedTree();
     if (!root || !root.children.length) {
-      renderTreeMeta();
+      renderBuildOpening();
       container.innerHTML = html`<div class="tree-empty">Play a move to add it to this line.</div>`;
       if (branchBar) branchBar.hidden = true;
       if (boards.build) boards.build.setBranchArrows([]);
@@ -340,7 +296,7 @@ export function createBuildView({
       },
       moveMenu: !isReadOnly(),
     });
-    renderTreeMeta();
+    renderBuildOpening();
     container.innerHTML = treeHtml;
     paintedTree = appState.build;
     // The arrival is over once the token has landed: drop the flag now so no
@@ -373,10 +329,11 @@ export function createBuildView({
       (id) => void selectBuildNode(id).catch(() => {}),
       (event, id) => openNodeContextMenu(event, id)
     );
-    const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
-    if (focusBtn) moveTreeRenderer.scrollIntoViewWithin(container, focusBtn);
+    // The fork bar and the dock fit change the tree's height: scroll after them.
     renderBuildBranchBar();
     onTreeRendered();
+    const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
+    if (focusBtn) moveTreeRenderer.scrollIntoViewWithin(container, focusBtn);
   }
 
   // Stepping through the tree changes which move is current and nothing else
@@ -403,18 +360,17 @@ export function createBuildView({
       renderBuilderTree();
       return;
     }
-    const current = container.querySelector(".mtree .mtree-move.is-current");
-    if (current) renderer.scrollIntoViewWithin(container, current);
-    renderTreeMeta();
+    renderBuildOpening();
     renderBuildBranchBar();
     onTreeRendered();
+    const current = container.querySelector(".mtree .mtree-move.is-current");
+    if (current) renderer.scrollIntoViewWithin(container, current);
   }
 
   return {
     renderBuildRepHeader,
     renderBuilderTree,
     updateBuildTreeSelection,
-    renderBuildBreadcrumb,
     renderBuildBranchBar,
     renderBuildOpening,
     nameOpening,
