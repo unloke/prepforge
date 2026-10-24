@@ -88,15 +88,11 @@ describe("visual system tokens", () => {
 
   // Every control the app draws shares one radius. Selects and the segmented
   // control used to carry their own (4px in a dialog, 7px on the track, 5px on
-  // its option), so the same control read as three different shapes. The
-  // segmented control is now the sheet's accent-line selection: words on a
-  // rule, no box, so it has no radius to share.
+  // its option), so the same control read as three different shapes.
   it("draws every control on the shared control radius", () => {
     expect(ruleBody(".btn")).toMatch(/border-radius:\s*var\(--radius\)/);
-    expect(ruleBody(".seg")).not.toMatch(/border-radius/);
-    // The option is a word on a rule, not a box: it squares its corners so a
-    // browser's own button radius never creeps back in.
-    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*0/);
+    expect(ruleBody(".seg")).toMatch(/border-radius:\s*calc\(var\(--radius\) \+ 2px\)/);
+    expect(ruleBody(".seg-btn")).toMatch(/border-radius:\s*var\(--radius\)/);
     // One field rule gives every select, text input and textarea the app's box;
     // the select only adds its own chevron and cursor on top of it.
     const fieldRule = css.match(/(?:^|\n)select,\ninput:not\([^)]*\),\ntextarea \{([^}]+)\}/)?.[1] || "";

@@ -183,7 +183,7 @@ describe("Boot route lifecycle", () => {
       hardFlushBuild: async () => {}, api: async () => ({ repertoire_id: "picked", nodes: [] }), hydrateBuild: vi.fn(),
       loadReturnState: () => null, syncWorkspaceUrl: vi.fn(), updateBuildReadOnlyUi: vi.fn(), setStatusError: vi.fn(),
       window: { location: { href: "http://x/#/dashboard" } }, parseWorkspaceLocation,
-      paintGenerateVisibility: vi.fn(), paintBuildEmpty: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(),
+      paintBuildEmpty: vi.fn(), renderBuildRepHeader: vi.fn(), renderBuilderTree: vi.fn(),
       syncViewHeads: vi.fn(), switchView: vi.fn(), localBoardInfo: () => ({ legal_moves: [] }) };
     const start = source.indexOf("function switchView(");
     const navigation = source.slice(start, source.indexOf("  if (appState.currentView", start));

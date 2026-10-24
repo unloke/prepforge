@@ -1,5 +1,5 @@
 import { html } from "../html.js";
-import { START_FEN, appState } from "../core/state.js";
+import { START_FEN, appState, boards } from "../core/state.js";
 import { syncAnalysisEvalCard } from "../core/engine.js";
 // The report's "left prep at" row walks the repertoire trees the Analyze coach
 // already loads, so the view reads that one cache rather than fetching again.
@@ -52,6 +52,7 @@ export async function ensureAnalyzeView() {
       onEvalChartRendered: () => syncAnalysisEvalCard(),
       bookReps: getBookReps,
       selfSide: () => analysisSelfSide(),
+      peek: (pos) => boards.analysis?.peek(pos),
       ensureBookLoaded,
     });
   }

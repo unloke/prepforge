@@ -269,7 +269,6 @@ export function renderBuilderTreeEmptyState() {
     html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
   if (branchBar) branchBar.hidden = true;
   if (boards.build) boards.build.setBranchArrows([]);
-  hooks.build?.paintGenerateVisibility();
   hooks.build?.syncViewHeads();
 }
 

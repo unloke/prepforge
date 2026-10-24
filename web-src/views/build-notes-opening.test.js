@@ -28,7 +28,7 @@ function harness({ readOnly = false } = {}) {
     get innerHTML() { return this._html ?? ""; }, set innerHTML(v) { this._html = String(v); },
     querySelector: () => null, querySelectorAll: () => [], ...extra,
   });
-  const elements = { "builder-tree": el(), "build-tree-meta": el(), "build-branchbar": el(), "build-opening": el(), "build-generate-node": el() };
+  const elements = { "builder-tree": el(), "build-tree-meta": el(), "build-branchbar": el(), "build-opening": el() };
   globalThis.document = { getElementById: (id) => elements[id] || null, querySelector: () => null };
   const renderer = createMoveTreeRenderer();
   const view = createBuildView({

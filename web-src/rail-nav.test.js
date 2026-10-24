@@ -60,9 +60,9 @@ describe("the desktop icon rail", () => {
     expect(css).toMatch(/\.rail :is\(\.tab, \.rail-btn\):is\(:hover, :focus-visible\)::before\s*\{[^}]*opacity:\s*1/);
   });
 
-  it("marks the open destination with the accent line, not a filled tile", () => {
-    expect(css).toMatch(/\.rail \.tab\.is-active::after\s*\{[^}]*background:\s*var\(--accent\)/);
-    expect(css).not.toMatch(/\.tab\.is-active\s*\{[^}]*background:\s*var\(--surface-3\)/);
+  it("marks the open destination with a tone step, not an accent bar on the edge", () => {
+    expect(css).toMatch(/\.rail \.tab\.is-active\s*\{[^}]*background:\s*var\(--surface-3\)/);
+    expect(css).not.toMatch(/\.tab\.is-active::after/);
   });
 
   it("names every destination for assistive tech and its tooltip", () => {

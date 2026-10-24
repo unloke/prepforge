@@ -97,35 +97,71 @@
      steps left. */
   #view-dashboard .lib { gap: var(--phone-gap); }
   #view-dashboard .lib-grid { gap: var(--phone-gap); }
-  /* The strip answers one question, what is due: the queue is its one large
-     line, the streak a quiet line under it, and the action a thumb-sized pill
-     at the foot. The recap and the lifetime counts are desktop-only. */
+  /* The strip answers one question — what to study next — so the queue is the
+     largest line on it and the streak is the quiet meta above. The action
+     keeps the accent and takes a thumb-sized pill. */
   #view-dashboard .today.card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "queue"
-      "more"
-      "streak"
-      "train";
-    gap: 6px;
+      "streak train"
+      "queue  queue"
+      "more   more";
+    align-items: center;
+    gap: 2px 12px;
+    min-height: 64px;
     padding: 12px 14px 14px;
     background: var(--panel);
   }
-  #view-dashboard .today-body,
-  #view-dashboard .today-aside { display: contents; }
+  #view-dashboard .today-streak {
+    grid-area: streak;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 5px;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    line-height: 1.1;
+  }
+  /* A streak is a fact, not a state: it is read, not warned about, so it keeps
+     the ink and lets the queue carry the emphasis. */
+  #view-dashboard .today-count { color: var(--muted); font-size: 13px; font-weight: 650; }
+  #view-dashboard .today-unit { display: block; color: var(--muted); font-size: 13px; }
+  #view-dashboard .today-unit small { display: none; }
   #view-dashboard .today-recap,
-  #view-dashboard .lib-counts { display: none; }
-  #view-dashboard .today-queue { grid-area: queue; font-size: 18px; line-height: 1.25; text-wrap: pretty; }
-  #view-dashboard .today-more,
-  #view-dashboard .today-warning { grid-area: more; font-size: 13px; line-height: 1.35; text-wrap: pretty; }
-  #view-dashboard .today-streak { grid-area: streak; font-size: 13px; text-align: left; }
-  /* A failed read is one card: it spans the whole strip, not one grid cell. */
+  #view-dashboard .today-counts { display: none; }
+  /* The aside is only the counts and the recap: with both hidden it would
+     leave an empty grid cell. */
+  #view-dashboard .today-aside { display: none; }
+  #view-dashboard .today-body { display: contents; }
+  #view-dashboard .today-warning { grid-area: more; margin-top: 4px; font-size: 13px; }
+  /* A failed read is one card: the strip's grid would clip it into the 40px
+     streak slot, so it spans the full row instead. */
   #view-dashboard .today-error { grid-column: 1 / -1; grid-area: queue; }
   #view-dashboard .today > .btn { grid-area: train; }
-  /* With no repertoire the empty card below carries New repertoire and Import
-     PGN: a second New repertoire in the strip made three on one phone screen. */
-  #view-dashboard .today > [data-lib-action="new"] { display: none; }
+  /* The queue never breaks between a figure and its unit, and never leaves a
+     "·" at the end of a line: the two lines are separate elements now, and the
+     queue is two lines at most. */
+  #view-dashboard .today-queue {
+    grid-area: queue;
+    color: var(--text);
+    font-size: 17px;
+    font-weight: 650;
+    line-height: 1.3;
+    text-wrap: pretty;
+  }
+  #view-dashboard .today-more {
+    grid-area: more;
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 1.35;
+    text-wrap: pretty;
+  }
+  #view-dashboard .today .btn { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
+
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
      the controls only — the filters on one row, then search and import. */
@@ -146,16 +182,29 @@
   #view-dashboard .lib-cols { display: none; }
   /* Import PGN needs its own place on a phone: the page head's + is New
      repertoire, so with the header actions hidden a phone could not add a PGN
-     at all. It sits beside the search field and takes the shared button. */
+     at all. It takes the pill of the search field beside it, so the two read
+     as one row of controls; New repertoire keeps the +. */
   #view-dashboard .lib-list .seg { grid-area: filters; }
   #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
   #view-dashboard .lib-actions { grid-area: import; display: flex; gap: 8px; }
   #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
-  #view-dashboard .lib-actions #dashboard-import-pgn { flex: none; }
+  #view-dashboard .lib-actions #dashboard-import-pgn {
+    flex: none;
+    height: 44px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 550;
+  }
+  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
-     reads as a cut-off row. They are the shared tab strip at the phone's
-     target height — the chosen one is the accent line under its word, never a
-     filled plate (the sheet's one selection mark). */
+     reads as a cut-off row. They were five 44px pills at 13px, which filled
+     the width and read as the screen's buttons rather than its filters. They
+     are one track with one filled option: the same target height, no pill
+     around each word. */
   #view-dashboard .lib-list .seg {
     display: flex;
     flex-wrap: nowrap;
@@ -163,24 +212,37 @@
     max-width: 100%;
     margin: 0;
     padding: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
   }
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: 1 1 auto;
     min-width: 0;
+    min-height: 44px;
+    height: 44px;
     padding: 0 6px;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 550;
     white-space: nowrap;
   }
-  /* The search field is the shared field at the phone's target height: same
-     edge, radius and fill, one thumb-sized box. */
+  #view-dashboard .lib-list .seg-btn.is-active { background: var(--panel); color: var(--text); font-weight: 650; }
   .search-field {
     width: 100%;
     height: 44px;
     margin: 0;
-    padding: 0 12px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--surface-3);
   }
+  .search-field:focus-within { box-shadow: 0 0 0 2px var(--accent); /* taste-skill-ignore: a focus ring is not elevation */ }
   .search-field .ic { flex: none; width: 18px; height: 18px; color: var(--muted); }
-  .search-field input { height: 100%; min-height: 0; padding: 0; }
+  .search-field input { height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
   #view-dashboard .lib-rep-list { border-radius: var(--radius-card); background: var(--panel); overflow: hidden; }
   #view-dashboard .lib-row {
     display: flex;
@@ -275,6 +337,7 @@
      over the error. Import needs the same server that just failed. */
   #view-dashboard .lib-list.is-error .lib-actions { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
+  #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
 
   /* Games and Scout: the same grouped card — where the games come from, one
      choice row, then the action across the card. */
@@ -755,7 +818,7 @@
   .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next):active { background: var(--line-strong); }
 
   /* The main action: a pill centred in the bar's free middle. */
-  :is(#run-analysis, #build-generate-node) {
+  #run-analysis {
     position: absolute;
     z-index: 6;
     left: var(--pill-left);
@@ -779,10 +842,9 @@
   }
   #run-analysis { --pill-left: 154px; }
   /* Repertoire has its own way out (the header's back button), so its bar
-     drops Views: Flip, the Generate pill, and the move arrows. */
+     drops Views: Flip and the move arrows. */
   #view-build .board-bar .bb-views { display: none; }
   #view-build .board-bar { grid-template-columns: 44px minmax(0, 1fr) 52px 52px; }
-  #build-generate-node { --pill-left: 58px; }
   /* Under 360px the icons and arrows leave the pill too little room for its
      name (Analyze kept 44px): tighten the bar so the action stays readable. */
   @media (max-width: 359px) {
@@ -790,7 +852,7 @@
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar .btn.icon { width: 40px; }
     .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
-    :is(#run-analysis, #build-generate-node) {
+    #run-analysis {
       right: 106px;
       max-width: calc(100% - var(--pill-left) - 106px);
       padding: 0 10px;
@@ -798,17 +860,17 @@
     }
     #run-analysis { --pill-left: 142px; }
   }
-  :is(#run-analysis, #build-generate-node) .bi { display: none; }
-  :is(#run-analysis, #build-generate-node) .bl { display: inline; }
-  :is(#run-analysis, #build-generate-node):hover { background: var(--accent); filter: none; }
-  :is(#run-analysis, #build-generate-node):active { filter: brightness(0.92); }
+  #run-analysis .bi { display: none; }
+  #run-analysis .bl { display: inline; }
+  #run-analysis:hover { background: var(--accent); filter: none; }
+  #run-analysis:active { filter: brightness(0.92); }
   /* A disabled pill reads inert: the same grey the shared `.btn:disabled` uses
      (--label, the token for quiet affordances), so it is the fill and the ink
      that say "not now" rather than the accent. It used to name --faint, which is
      not defined anywhere: the declaration was dropped at computed-value time and
      the pill fell back to inherited ink (measured at 390: rgb(27,28,30) on
      rgb(239,239,236), which read as a live button at 55% opacity). */
-  :is(#run-analysis, #build-generate-node):disabled { background: var(--surface-3); color: var(--label); }
+  #run-analysis:disabled { background: var(--surface-3); color: var(--label); }
   /* The save chip is the inspector head's (see #build-sync-head below): the
      board bar's copy would sit at the screen's bottom, far from the tree the
      edit happened in. */

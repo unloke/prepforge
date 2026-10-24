@@ -242,10 +242,8 @@ export function createDashboardView({
           // is an empty ring. A step number beside two ticks read as two
           // different lists, and a phone shows no number at all.
           const mark = html`<span class="step-n${step.done ? " is-done" : ""}" aria-hidden="true"></span>`;
-          // A finished step has its tick and nothing else: a "Done" word beside
-          // it was a second status mark on the same row.
           const cta = step.done
-            ? ""
+            ? html`<span class="step-done">Done</span>`
             : step.locked
             ? ""
             : !step.action
@@ -346,9 +344,9 @@ export function createDashboardView({
     const due = payload.due_reviews || 0;
     const soon = payload.due_soon || 0;
     // A streak-at-risk notice is the one line here that asks for something
-    // now, so it takes the queue's second line. "Train today to keep your
-    // 5-day streak" is not that: it restates the streak beside it and the
-    // button under it.
+    // now, so it takes the strip's second line in place of the week's summary.
+    // "Train today to keep your 5-day streak" is not that: it restates the
+    // figure beside it and the button under it.
     let warningHtml = "";
     if (!streak.trained_today && streak.current > 0) {
       const now = new Date();
@@ -361,7 +359,7 @@ export function createDashboardView({
         warningHtml = html`<p class="today-warning" role="alert">${left} left to keep your ${streak.current}-day streak</p>`;
       }
     }
-    const best = streak.best > 1 ? html` · best ${streak.best}` : "";
+    const best = streak.best > 1 ? html`<small>best ${streak.best}</small>` : "";
     const newMoves = newMovesToLearn();
     const weak = weakMovesToReview();
     const unopened = unopenedRepertoireCount();
@@ -394,8 +392,9 @@ export function createDashboardView({
       }
       recapHtml = html`<p class="today-recap">${bits.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</p>`;
     }
-    // The lifetime counters are not what a user decides on before pressing
-    // Train, so they sit under the repertoire list's heading, not in the strip.
+    // The three lifetime counters are not what a user decides on before
+    // pressing Train, and "Due review" already carries the queue number the
+    // strip leads with — so one quiet line holds them.
     const metric = (value, one, many) => html`<b>${value}</b> ${nounOf(value, one, many)}`;
     const repCount = ownRepertoireCount();
     const countsHtml = [
@@ -405,20 +404,22 @@ export function createDashboardView({
       metric(repCount ?? (payload.repertoires || 0), "repertoire"),
       metric(payload.training_sessions || 0, "session"),
     ].map((m, i) => html`${i ? html` &middot; ` : ""}${m}`);
-    paint(document.getElementById("dashboard-counts"), html`${countsHtml}`);
     const written = paint(card, html`
+    <div class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}"
+         title="Calendar days with at least one graded move${streak.best > 1 ? `; best ${streak.best}` : ""}">
+      <span class="today-count">${streak.current}</span>
+      <span class="today-unit">day streak</span>
+    </div>
     <div class="today-body">
-      <p class="today-queue" data-testid="today-queue">${queue.primary}</p>
+      <p class="today-queue">${queue.primary}</p>
       ${warningHtml || (queue.more.length
         ? html`<p class="today-more">${queue.more.map((bit, i) => html`${i ? html` &middot; ` : ""}${bit}`)}</p>`
-        : "")}
+        : best)}
     </div>
     <div class="today-aside">
-      <p class="today-streak" data-lit="${streak.trained_today ? "1" : "0"}"
-         title="Calendar days with at least one graded move">
-        <b>${streak.current}</b> day streak${best}
-      </p>
       ${recapHtml}
+      <p class="today-counts" data-testid="dashboard-counts"
+           title="Saved analyses, repertoires and training sessions">${countsHtml}</p>
     </div>
     ${firstRun
       ? html`<button class="btn primary" data-lib-action="new" data-testid="today-primary">New repertoire</button>`

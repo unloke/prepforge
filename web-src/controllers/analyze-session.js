@@ -19,7 +19,7 @@ import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/s
 import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
 import { describeMove } from "../explain.js";
 import { moveTextHtml, moveTokenHtml } from "../move-text.js";
-import { clearCoachGhost } from "../line-preview.js";
+import { clearPeek } from "../line-preview.js";
 import { analysisTextContext } from "../move-links.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { normalizeRepertoireColor, repertoireColorField } from "../repertoire-color.js";
@@ -626,12 +626,12 @@ function savedCoachQuality(ctx) {
 }
 
 // The Coach speaks in one short paragraph. Set its text + tone (subtle colour); the
-// left rule takes the move's grade when there is one. A new sentence drops the ghost
-// the last one was drawing: its token is about to be replaced under the pointer.
+// left rule takes the move's grade when there is one. A new sentence ends the peek
+// the last one was showing: its token is about to be replaced under the pointer.
 function setCoachProse(text, tone = "info", state = "instant", quality = null) {
   const el = document.getElementById("coach-prose");
   if (!el) return;
-  clearCoachGhost();
+  clearPeek();
   el.innerHTML = moveTextHtml(text || "", analysisTextContext());
   el.dataset.state = state;
   el.dataset.quality = COACH_QUALITY_GROUP[String(quality || "").toLowerCase()] || "";

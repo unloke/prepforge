@@ -221,35 +221,32 @@
    colours in low-light study sessions. Every token declared above is re-declared
    here -- the two blocks together are the whole colour system.
 
-   Dark is the reference theme (app-sheet). Its one move: cards sit DARKER than
-   the ground (--panel below --bg), and the ground itself is a near-black
-   neutral, never navy or slate. Separation is a tone step; a border is a
-   whisper (1.2-1.4:1 on the surface it edges). What floats takes --float, a
-   step ABOVE the ground, so a menu, a dialog or the promotion picker reads as
-   a surface lifted off the page instead of a black hole in it. */
+   Dark is the reference theme. Cards are a tone step above a near-black
+   neutral ground, never navy or slate; what floats (a menu, a dialog, the
+   promotion picker) takes --float, one step above the cards. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces: ground, then a step down for cards, then a step up for floats. */
-  --bg: #17181a;
-  --panel: #131416;
-  --panel-soft: #0f1012;
-  --surface-3: #22252a;
-  --float: #232629;
+  /* Surfaces: ground, then a step up for cards, then a step up for floats. */
+  --bg: #111315;
+  --panel: #191c1f;
+  --panel-soft: #1e2226;
+  --surface-3: #262a2f;
+  --float: #22262a;
 
   /* Text */
   --text: #e8eaec;
-  --muted: #b0b5ba;
-  --label: #969ba1;
+  --muted: #a9aeb4;
+  --label: #a9aeb4;
 
   /* Hairlines */
-  --line: #26292d;
-  --line-soft: #1e2124;
-  --line-strong: #3b4046;
+  --line: #2b3035;
+  --line-soft: #25292d;
+  --line-strong: #3a4046;
 
   /* The select chevron is an SVG data URL, so it cannot take a var(): it is
      redeclared with the dark --label grey. */
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23969ba1' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75l3-3' fill='none' stroke='%23a9aeb4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* The accent */
   --accent: #6d8ff0;
@@ -495,9 +492,8 @@ h2 {
    padding. It is a true icon rail: it never opens. The mark sits at the top,
    the destinations follow in groups split by 20px hairlines, the four
    utilities sit at the bottom, and every icon carries its name in a tooltip on
-   hover and keyboard focus. The open destination is the sheet's move: a 1px
-   accent line on the rail's edge, as tall as the row, with the icon in ink —
-   not a filled tile. */
+   hover and keyboard focus. The open destination is one tone step, like a
+   hover held. */
 .rail {
   position: fixed;
   top: 0;
@@ -638,11 +634,11 @@ h2 {
   color: var(--text);
 }
 
-/* The open destination. Selection is the same device as every other mark in
-   the app: one thin accent line on the nearest edge (the rail's edge here),
-   not a filled tile. The icon and its label brighten; the accent is only the
-   line. */
+/* The open destination is a tone step, the same way a hover is. An accent bar
+   on the rail's edge sat apart from its icon and read as a clip mark; the
+   accent belongs to the screen's action. */
 .tab.is-active {
+  background: var(--surface-3);
   color: var(--text);
   font-weight: 600;
 }
@@ -670,17 +666,8 @@ h2 {
   background: var(--line-strong);
 }
 .rail .tab.is-active {
-  background: transparent;
+  background: var(--surface-3);
   color: var(--text);
-}
-.rail .tab.is-active::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: -8px;
-  bottom: 0;
-  width: 2px;
-  background: var(--accent);
 }
 
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
@@ -1165,79 +1152,57 @@ h2 {
   scale: 0.9;
 }
 
-/* Segmented control and tabs: the sheet's one selection mark. The options sit
-   on a plain row whose nearest edge is a 1px rule, and the chosen option is a
-   2px accent line exactly as wide as its label, lying on that rule. No track,
-   no filled plate, no pill: the accent is a line and never a fill, so a row of
-   filters reads as a row of words with one of them chosen. (The old control
-   was a surface-3 track with a panel-coloured plate sliding on it, which is
-   the filled-segmented-control tell the sheet rules out.) */
+/* Segmented control: a track with the chosen option on a panel-coloured plate.
+   The plate takes the app's one control radius; the track is that radius plus
+   its own 2px of padding, so the two curves stay concentric. (The pair was 7/5,
+   a radius found nowhere else in the app.) */
 .seg {
   display: inline-flex;
   gap: 2px;
-  border-bottom: 1px solid var(--line); /* the nearest existing edge */
+  padding: 2px;
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--surface-3);
 }
 
 .seg-btn {
-  position: relative;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius);
   background: transparent;
-  color: var(--muted);
+  color: var(--text);
   font-size: var(--fs-s);
   font-weight: 550;
   padding: 0 10px;
-  /* A tab is a control: it takes the row's control height, so a strip of tabs
-     beside a select and a button is one line, not three heights. */
-  min-height: var(--control-h);
+  min-height: 26px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color var(--dur-fast) var(--ease-out);
-}
-
-/* The mark: inset by the button's own padding, so it is exactly the label's
-   width and not the hit area's. */
-.seg-btn::after {
-  content: "";
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: -1px;
-  height: 2px;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 
 .seg-btn:hover {
-  color: var(--text);
+  background: var(--panel-soft);
+}
+
+.seg-btn:active {
+  transform: scale(0.96);
 }
 
 .seg-btn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: -3px;
+  outline-offset: 1px;
 }
 
-/* The chosen option: ink label and the line. The label keeps the ink rather
-   than taking the accent, so a chosen filter never reads as the screen's one
-   action. */
+/* Segmented control: the chosen tile is a panel-coloured plate on the
+   surface-3 track. One tone step carries the selection - no resting shadow,
+   no ring. Text stays on --text in both states so contrast holds in light
+   and dark. */
 .seg-btn.is-active {
-  color: var(--text);
-  font-weight: 650;
-}
-
-.seg-btn.is-active::after {
-  opacity: 1;
+  background: var(--panel);
 }
 
 .seg-btn:disabled {
   color: var(--label);
   opacity: 0.7;
   cursor: not-allowed;
-}
-
-.seg-btn:disabled::after {
-  background: var(--label);
 }
 
 .pf-info {
@@ -1797,12 +1762,10 @@ textarea:focus-visible {
   .lib-list .card-head .seg { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
   .lib-list .card-head .search-field { grid-column: 2; grid-row: 2; width: 220px; margin-left: 0; }
 }
-/* A count is a number beside a word, not a chip: one line of the row's own
-   size, no pill around it. */
 .count {
   min-width: 18px;
   padding: 0 5px;
-  border-radius: var(--radius-chip);
+  border-radius: 9px;
   background: var(--surface-3);
   color: var(--muted);
   font-size: var(--fs-xs);
@@ -1811,52 +1774,86 @@ textarea:focus-visible {
   line-height: 18px;
 }
 
-/* The phone header is hidden on wide screens, so on desktop the shared
-   `.page-head` rule names the page. The + beside it is the phone's route to
-   New repertoire; on a desktop the card head already carries that action, and
-   the shared rule hides the icon button. */
+/* The phone header is hidden on wide screens, so on desktop the page needs a
+   name of its own — the same rule Settings keeps. The + beside it is the
+   phone's route to New repertoire; on a desktop the card head already carries
+   that action, so only the name is shown. */
+@media (min-width: 761px) {
+  #view-dashboard .page-head {
+    display: flex;
+    align-items: baseline;
+    margin: 0;
+  }
+  #view-dashboard .page-head h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+  #view-dashboard .page-head-btn { display: none; }
+}
 
 /* Today strip. It and the next steps arrive once, when their data lands. */
 #view-dashboard .today.is-enter,
 #view-dashboard .steps.is-enter { animation: view-enter var(--dur-slow) var(--ease-out) both; }
-/* The strip answers one question, what is due, and the Train button acts on
-   it. The queue is the one large line; the streak and the week's recap are
-   quiet lines on the right, figures in ink and the words in grey. */
+/* The strip answers one question — what to study next — and answers it in one
+   line. The queue is the strip's loudest text; the streak beside it is the
+   quiet meta, and the week's history and the lifetime counts are two small
+   lines at the far end, over the action. Read as four 13px grey lines on one
+   row, nothing led and the queue was the third thing the eye found. */
 .today {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px 24px;
+  gap: 8px 20px;
 }
 .lib .today { padding: 14px 16px; }
+.today-streak {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+/* A trained-today streak says so with the figure's colour; until then it is a
+   count like any other and stays in ink. */
+.today-streak[data-lit="1"] .today-count { color: var(--good-text); }
+.today-count {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.today-unit {
+  color: var(--muted);
+  font-size: var(--fs-s);
+  line-height: 1.2;
+}
+.today-unit small { display: block; color: var(--label); font-size: var(--fs-xs); }
 .today-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
+/* The one thing the button turns on, at the size a fact is read at. */
 .today-queue {
   margin: 0;
   color: var(--text);
-  font-size: 18px;
-  font-weight: 650;
+  font-size: 17px;
+  font-weight: 600;
   line-height: 1.25;
-  font-variant-numeric: tabular-nums;
 }
+/* What else is waiting, in one quieter line under it. */
 .today-more,
 .today-recap,
-.today-streak {
+.today-counts {
   margin: 0;
   color: var(--muted);
   font-size: var(--fs-s);
   line-height: 1.35;
 }
-.today-more b,
-.today-streak b,
-.today-recap b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-/* A trained-today streak says so with the figure's colour; until then it is a
-   count like any other and stays in ink. */
-.today-streak[data-lit="1"] b { color: var(--good-text); }
+.today-more b { color: var(--text); font-weight: 600; }
 /* Colour says good or bad, not up or down: two more mastered moves and one
    fewer weak spot are both progress. */
 .today-recap .up { color: var(--good-text); }
@@ -1869,26 +1866,22 @@ textarea:focus-visible {
   min-width: 0;
   text-align: right;
 }
-/* Below 1100px the recap no longer fits beside the queue, so it moves to its
-   own right-aligned line under the strip and the queue keeps the width. */
+.today-recap b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Below 1100px the week's history no longer fits beside the queue: squeezing
+   both left the queue's second line wrapping over three lines beside a 328px
+   column of stats. The history moves to its own right-aligned line under the
+   strip, and the queue keeps the width. */
 @media (max-width: 1100px) and (min-width: 761px) {
-  .today { grid-template-columns: minmax(0, 1fr) auto; }
-  .today > .btn { grid-column: 2; grid-row: 1; }
+  .today { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .today > .btn { grid-column: 3; grid-row: 1; }
   .today-aside { grid-column: 1 / -1; grid-row: 2; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: 14px; }
 }
-/* Lifetime counts sit beside the Repertoires heading: the quietest line on the
-   list, and nothing the Train button turns on. */
-.lib-counts {
-  margin: 0;
-  color: var(--label);
-  font-size: var(--fs-s);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.lib-counts:empty { display: none; }
-.lib-counts b { color: var(--muted); font-weight: 600; }
-/* Streak-at-risk: replaces the queue's second line when local midnight is <5h
-   away and nothing has been trained yet: same slot, louder voice. */
+/* Lifetime counts (games · repertoires · sessions): the quietest line in the
+   strip. Nothing here is what the Train button turns on. */
+.today-counts { color: var(--label); }
+.today-counts b { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Streak-at-risk: replaces the second line when local midnight is <5h away and
+   nothing has been trained yet: same slot, louder voice. */
 .today-warning {
   margin: 0;
   color: var(--warn-text);
@@ -1922,9 +1915,6 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .steps { grid-column: 1; grid-row: 2; overflow: hidden; }
 
 /* Filter chips + search share the card head row (prototype). */
-/* The search field is the shared field with a leading icon: the box carries the
-   edge, radius, fill and focus ring, and the input inside it is the bare text
-   line. Height and radius come from the field rule. */
 .search-field {
   display: flex;
   align-items: center;
@@ -1938,20 +1928,16 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   color: var(--label);
 }
-.search-field:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */
-}
+.search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */ }
 .search-field input {
   width: 100%;
   min-width: 0;
-  height: 100%;
+  height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 0;
   background: transparent;
-  box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */
 }
+.search-field input:focus-visible { box-shadow: none; /* taste-skill-ignore: the field carries the ring, not the input */ }
 
 /* One column-header treatment for every table in the app: the Library grid,
    the Games ledger and the Scout plan all label their columns the same way.
@@ -2100,7 +2086,7 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 }
 .lib-cell-queue { flex-wrap: wrap; }
 .lib-mastery { display: flex; align-items: center; gap: 8px; width: 100%; }
-.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lib-mastery b { min-width: 4ch; text-align: right; font-size: var(--fs-s); }
 /* The word names the number; the desktop column header already does, so the
    phone row is the only place that needs it. */
 #view-dashboard .lib-mastery-word { display: none; }
@@ -2111,11 +2097,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    unrelated quantities in green and blue. */
 .lib-mbar {
   flex: 1;
-  min-width: 48px;
-  max-width: 112px;
-  height: 4px;
+  min-width: 60px;
+  height: 8px;
   border-radius: 999px;
   background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
   position: relative;
 }
@@ -2146,20 +2132,21 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .kchip.k-weak { color: var(--danger-strong); background: color-mix(in srgb, var(--k-weak) 13%, transparent); }
 .kchip.k-due { color: var(--warn-text); background: color-mix(in srgb, var(--k-due) 15%, transparent); }
 .kchip.k-new { color: var(--accent-text); background: color-mix(in srgb, var(--k-new) 13%, transparent); }
-/* In a Library row the queue is three neutral counts in fixed-width slots: the
-   coloured dots and tints competed with the mastery bars for the eye. The kind
-   is still read from its word; Scout's and Train's chips keep their tint,
-   since outside a table row a lone chip has nothing to compete with. */
+/* In a Library row the queue is one neutral chip with one coloured dot: three
+   tinted pills in red, amber and violet beside a green mastery bar and the
+   selected row's tint made five colours where the row says one thing (what is
+   waiting). The dot keeps the chess hue, so the kind is still read at a glance;
+   the chip itself is the row's quiet surface. Scout's and Train's chips keep
+   their tint — outside a table row a lone chip has no bar or selection to
+   compete with. */
 .lib-row .kchip.k-weak,
 .lib-row .kchip.k-due,
 .lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
-.lib-row .kchip::before { display: none; }
-.lib-cell-queue .kchip { min-width: 72px; justify-content: flex-start; padding-left: 0; font-variant-numeric: tabular-nums; }
-/* A kind chip is a button when it opens something: one press feedback and one
-   hover, in the family's own ink. */
-button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
-button.kchip:hover { background: var(--line); }
-button.kchip:active { transform: translateY(1px); }
+.lib-row .kchip.k-weak::before { background: var(--k-weak); }
+.lib-row .kchip.k-due::before { background: var(--k-due); }
+.lib-row .kchip.k-new::before { background: var(--k-new); }
+button.kchip { border: 0; font-family: inherit; cursor: pointer; transition: box-shadow var(--dur-fast) var(--ease-out); }
+button.kchip:hover { box-shadow: inset 0 0 0 1px currentColor; }
 button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .row-menu-btn {
   justify-self: end;
@@ -2248,6 +2235,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   transform: rotate(-45deg) translate(1px, -1px);
 }
 .step.is-done .step-text b { color: var(--muted); font-weight: 600; }
+.step-done { color: var(--good-text); font-size: var(--fs-xs); font-weight: 650; }
 
 /* The Library is one column at every width, so the old two-track fallbacks
    have nothing left to do. */
@@ -2286,7 +2274,10 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
     padding: 8px 8px calc(64px + env(safe-area-inset-bottom));
   }
   .lib { gap: 10px; }
+  .today { grid-template-columns: auto 1fr; gap: 10px 12px; }
   .today > .btn { grid-column: 1 / -1; height: 44px; }
+  .today-streak { padding-right: 0; border-right: 0; }
+  .today-body { grid-column: 1 / -1; }
   .search-field { width: 100%; margin-left: 0; }
   .lib .card-head .seg { max-width: 100%; overflow-x: auto; }
   .lib-cols { display: none; }
@@ -2555,30 +2546,21 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   opacity: 0.8;
 }
 
-/* The ghost of a line the coach's sentence names (a move reference in the coach
-   card, hovered or focused). A cut-out arrow: translucent white with a dark keyline,
-   so it reads on both board colours and in both themes without taking a colour that
-   already means something on the board (accent = yours, green = the engine's,
-   violet = the better move). It sits under every real mark and fades in fast. */
-.annot-ghost {
+/* A peek: the board shows the position a move beside it names (board peek()).
+   The whole board takes an accent wash and frame, so it can never be mistaken for
+   the real position, and the real position's marks step aside until it is over. */
+.chessboard.is-peeking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
   pointer-events: none;
-  animation: annot-ghost-in var(--dur-fast) var(--ease-out);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 3px var(--accent);
 }
-.annot-ghost-arrow {
-  fill: var(--dot-white);
-  fill-opacity: 0.38;
-  stroke: var(--coord-on-dark);
-  stroke-opacity: 0.5;
-  stroke-width: 0.35;
-  stroke-linejoin: round;
-  paint-order: stroke;
-  filter: none;
-}
-@keyframes annot-ghost-in {
-  from { opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .annot-ghost { animation: none; }
+.chessboard.is-peeking .square-badge,
+.annotations.is-peeking {
+  visibility: hidden;
 }
 
 .square {
@@ -3152,17 +3134,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
    kind of thing. */
 #build-sidebar { --build-pad: 14px; }
 
-/* One toolbar row: the trail takes what the candidates leave, the candidates
-   sit at its right end. Each keeps its own scroll or wrap; a narrow panel
-   stacks them (the @container rule below). */
+/* The trail on its own row, the next move's candidates under it: sharing one
+   row, the candidates squeezed the trail until it scrolled its own start away. */
 .build-toolbar {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   min-width: 0;
   background: var(--panel);
 }
-.build-toolbar > .tree-meta { flex: 1 1 0; }
 .tree-meta {
   display: flex;
   flex-wrap: wrap;
@@ -3277,30 +3256,15 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 }
 
 .forkbar {
-  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px var(--build-pad, 12px) 4px 0;
+  padding: 0 var(--build-pad, 12px) 6px;
   background: var(--panel);
   min-width: 0;
 }
-.forkbar .fork-chips { flex-wrap: nowrap; }
+.forkbar .fork-chips { flex-wrap: wrap; }
 .forkbar .fork-more { white-space: nowrap; }
-@container build-panel (max-width: 440px) {
-  .build-toolbar { flex-wrap: wrap; }
-  .build-toolbar > .tree-meta { flex: 1 1 100%; }
-  .forkbar { padding: 0 var(--build-pad, 12px) 6px; }
-  .forkbar .fork-chips { flex-wrap: wrap; }
-}
-/* On a phone the panel is display: contents, so it is no container: the
-   toolbar stacks by the viewport instead (the trail on its own row). */
-@media (max-width: 760px) {
-  .build-toolbar { flex-wrap: wrap; }
-  .build-toolbar > .tree-meta { flex: 1 1 100%; }
-  .forkbar { padding: 0 var(--build-pad, 12px) 6px; }
-  .forkbar .fork-chips { flex-wrap: wrap; }
-}
 .fork-head {
   display: flex;
   align-items: center;
@@ -4217,19 +4181,26 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: grid;
   grid-template-columns: minmax(48px, 64px) minmax(44px, 68px) minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
-  padding: 5px 6px;
-  border-bottom: 1px solid var(--line);
-  font-size: var(--fs-s);
+  min-height: 30px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .explorer-head {
-  padding-top: 4px;
-  padding-bottom: 4px;
+  min-height: 26px;
   color: var(--label);
   font-size: var(--fs-xs);
   font-weight: 600;
+}
+/* A short window keeps the Explorer and five engine lines inside the dock's
+   ceiling: the rows tighten instead of the dock growing a scrollbar. */
+@media (max-height: 600px) {
+  .explorer-row { min-height: 26px; }
+  .explorer-head { min-height: 20px; }
 }
 
 .explorer-head span:nth-child(2) {
@@ -4385,7 +4356,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .explorer-bar {
   display: flex;
   min-width: 0;
-  height: 18px;
+  height: 22px;
   border-radius: 3px;
   overflow: hidden;
   background: var(--explorer-track);
@@ -4400,7 +4371,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -6005,21 +5976,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* Analyze has no head strip: its actions close the coach's line, so they take
    the row's leftover width rather than a row of their own. */
 #view-analyze .panel-actions { margin-left: auto; }
-#build-rep-header #build-generate-node { margin-left: auto; flex: none; }
 #build-rep-header .rep-menu-btn { margin-left: 0; }
 
-/* The head is the panel's title and nothing else: the repertoire's name at the
-   size a title is read at, then its two actions. Its size (lines, moves, moves
-   to train) is a caption on that name, in its tooltip: as a band at the panel's
-   foot it spent 38px of every build on a number read once. */
+/* The head is the panel's title and its menu: the repertoire's name one step
+   above the moves under it, the opening it is in quieter beneath. The panel is
+   a tool, so its title is a label, not a headline. */
 #build-rep-header {
-  min-height: 52px;
-  padding: 10px 10px 10px var(--build-pad, 14px);
+  min-height: 44px;
+  padding: 6px 8px 6px var(--build-pad, 14px);
 }
-#build-rep-header .rep-name { font-size: 17px; font-weight: 650; flex: 1 1 auto; }
-#build-rep-header .rep-color-sub { font-size: 13px; }
+#build-rep-header .rep-name { font-size: 14px; font-weight: 650; flex: 1 1 auto; }
+#build-rep-header .rep-color-sub { font-size: 12px; font-weight: 400; }
 
-#build-sidebar.is-empty #build-generate-node { display: none; }
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }

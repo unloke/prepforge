@@ -248,10 +248,14 @@ for (const vp of VIEWPORTS) {
   await page.goto(`${base}/#/build?rep=${REP_ID}`);
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
-  const generate = page.locator("#build-generate-node");
-  if (await generate.isVisible().catch(() => false)) {
-    await overlay(vp, page, "generate", { opener: "#build-generate-node", open: () => page.keyboard.press("Enter") });
-  } else check(`${vp.name} generate`, false, "Build's Generate button is not visible");
+  // Generate opens from the ⋯ menu; the dialog hands focus back to the menu button.
+  const menu = page.locator('[data-testid="build-menu"]');
+  if (await menu.isVisible().catch(() => false)) {
+    await overlay(vp, page, "generate", { opener: '[data-testid="build-menu"]', open: async () => {
+      await page.keyboard.press("Enter");
+      await page.locator('#repertoire-context-menu [data-action="build-generate"]').click();
+    } });
+  } else check(`${vp.name} generate`, false, "Build's menu button is not visible");
 
   await go("#/train");
   const history = page.locator("[data-train-history]:visible").first();

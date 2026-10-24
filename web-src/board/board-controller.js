@@ -27,7 +27,7 @@ class BoardController {
     this.lastMove = null;
     this.dragFrom = null;
     this.ghost = null;          // the piece following the pointer during a drag
-    this.ghostLine = [];        // a text's line drawn faintly on the board (setGhost)
+    this._peekReal = null;      // the real position while a peek shows another (peek)
     this._draggedMove = null;   // the move a drag released, so it lands without a slide
     this._soundedKey = null;    // the move whose sound was already played
     this.engineArrow = null;
@@ -82,8 +82,7 @@ class BoardController {
       this.engineArrow,
       this.branchArrows,
       this.branchPick,
-      this.betterArrow,
-      this.ghostLine
+      this.betterArrow
     );
   }
 
@@ -119,16 +118,28 @@ class BoardController {
     this._renderArrows();
   }
 
-  // --- Ghost line -----------------------------------------------------------
-  // A line the text beside the board names (a coach sentence's moves), drawn on
-  // the board itself as faint arrows under every real mark. Nothing about the
-  // position changes — no moves, no badge, no tree — so reading a sentence never
-  // moves the board the reader is looking at. One ghost at a time; [] clears it.
-  setGhost(ucis) {
-    const next = Array.isArray(ucis) ? ucis.filter((uci) => typeof uci === "string" && uci.length >= 4) : [];
-    if (next.length === this.ghostLine.length && next.every((uci, i) => uci === this.ghostLine[i])) return;
-    this.ghostLine = next;
-    this._renderArrows();
+  // --- Peek ----------------------------------------------------------------
+  // The position a move beside the board names (a coach sentence's move, a move
+  // of an engine line), shown on the board itself while the reader points at it:
+  // its pieces and last move on a tinted board, the marks of the real position
+  // hidden. The real position is kept and comes back on peek(null); the game,
+  // the tree and the engine never see a peek. A real position ends it.
+  peek(pos) {
+    if (pos?.fen) {
+      this._peekReal ||= { fen: this.fen, lastMove: this.lastMove };
+      this.fen = pos.fen;
+      this.lastMove = pos.lastMove || null;
+    } else if (this._peekReal) {
+      ({ fen: this.fen, lastMove: this.lastMove } = this._peekReal);
+      this._peekReal = null;
+    } else {
+      return;
+    }
+    const on = Boolean(this._peekReal);
+    this.board.classList.toggle("is-peeking", on);
+    this.overlay?.classList.toggle("is-peeking", on);
+    this._renderPieces();
+    this._updateClasses();
   }
 
   flip() {
@@ -479,6 +490,7 @@ class BoardController {
   // repertoire step, a takeback, an analysis branch — gets the same motion
   // without its caller having to say which direction the user went.
   setPosition({ fen, legalMoves = [], lastMove = null, cue, back = false }) {
+    this.peek(null);
     const fenChanged = this.fen !== fen;
     // The position itself, without the clocks: a confirmed render that differs
     // only in halfmove/fullmove is the same position arriving twice, not a move.

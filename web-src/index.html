@@ -95,7 +95,6 @@
             <section class="lib-list card is-loading">
               <header class="card-head">
                 <h2>Repertoires <span class="count" id="dashboard-rep-count" hidden></span></h2>
-                <p class="lib-counts" id="dashboard-counts" data-testid="dashboard-counts" title="Saved analyses, repertoires and training sessions"></p>
                 <div class="seg" role="group" aria-label="Filter repertoires">
                   <button type="button" class="seg-btn is-active" data-lib-filter="all" aria-pressed="true">All</button>
                   <button type="button" class="seg-btn" data-lib-filter="white" aria-pressed="false">White</button>
@@ -171,6 +170,7 @@
                   <p class="coach-prose" id="coach-prose" data-testid="coach-prose">Make a move and I'll tell you what I think.</p>
                   <div class="coach-maia" id="coach-maia" data-testid="coach-maia" hidden></div>
                   <p class="coach-bookline" id="coach-bookline" data-testid="coach-bookline" hidden></p>
+                  <div class="coach-unlock" data-unlock-place="analyze-coach" data-unlock-style="inline" hidden></div>
                 </section>
                 <!-- One Evaluation card: current eval + win meter, the live engine's
                      depth, line count and lines, the game graph, and the whole-game
@@ -219,32 +219,17 @@
                       <b>Engine</b>
                       <span class="ep-depth" id="analysis-best-depth"></span>
                       <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Live</button>
-                      <!-- Line count stepper: replace the floating window cluster in the pane. One line by default, expanded shows three. -->
-                      <div class="engine-lines" role="group" aria-label="Lines shown">
-                        <button class="engine-step" id="analyze-lines-down" type="button" title="Fewer lines" aria-label="Fewer lines">−</button>
-                        <span class="engine-lines-readout" id="analyze-lines-readout" title="Lines shown">1</span>
-                        <button class="engine-step" id="analyze-lines-up" type="button" title="More lines" aria-label="More lines">+</button>
-                      </div>
                     </header>
-                    <div class="engine-slot is-expanded" id="analysis-engine-slot"></div>
+                    <div class="engine-slot" id="analysis-engine-slot"></div>
                     <div class="best-line" id="analysis-best-line" data-testid="analysis-best-line" hidden></div>
-                    <div class="coach-unlock" data-unlock-place="analyze-coach" data-unlock-style="inline" hidden></div>
                   </section>
                   <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>
-                    <header class="an-pane-head"><b>Moves</b></header>
                     <div class="moves-grid" id="analysis-moves" data-testid="analysis-moves"></div>
-                  </div>
-                  <div class="review-bar" id="analysis-review" data-testid="analysis-review" hidden>
-                    <button type="button" class="rv-step" data-rv="prev" aria-label="Previous key moment" aria-keyshortcuts="Shift+ArrowLeft" title="Previous key moment (Shift+←)">‹</button>
-                    <span class="rv-now"><i class="rp-glyph" aria-hidden="true"></i><b class="rv-move"></b><span class="rv-kind"></span></span>
-                    <span class="rv-count"></span>
-                    <button type="button" class="rv-step" data-rv="next" aria-label="Next key moment" aria-keyshortcuts="Shift+ArrowRight" title="Next key moment (Shift+→)">›</button>
-                    <button type="button" class="rv-act" data-rv-act hidden></button>
-                    <button type="button" class="rv-maia" data-rv-maia title="Downloads Maia 3 (46 MB) and runs the game again" hidden>Find great moves</button>
                   </div>
                   <details class="drawer an-pane report-pane" id="analysis-report" data-testid="analysis-report" role="tabpanel" aria-labelledby="an-tab-report">
                     <summary>Game report</summary>
                     <div class="report" id="analysis-summary" data-testid="analysis-summary"></div>
+                    <button type="button" class="btn sm" id="analysis-find-great" data-testid="analysis-find-great" title="Downloads Maia 3 (46 MB) and runs the game again" hidden>Find great moves</button>
                     <div class="analysis-handoff" id="analysis-handoff" data-testid="analysis-handoff" hidden>
                       <button
                         class="btn"
@@ -331,7 +316,6 @@
                 <h1 class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</h1>
                 <span class="build-opening" id="build-opening" hidden></span>
               </div>
-              <button class="btn primary" id="build-generate-node" data-testid="build-generate-node" aria-label="Generate moves" title="Generate human-likely continuations from this position"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg><span class="bl">Generate</span></button>
               <button class="btn ghost icon row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
             <div class="panel-body">
@@ -563,7 +547,7 @@
               <span class="spacer"></span>
               <div id="replay-summary" class="sum-chips" role="group" aria-label="Filter by outcome" hidden></div>
             </div>
-            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
+            <div id="replay-results" class="replay-results"><div class="triage"><section class="ledger card" aria-label="Games to review"><header class="card-head"><h2>Games to review</h2></header><div class="ledger-table" data-ui><div class="lr head col-head" aria-hidden="true"><span>Preparation</span><span>Game</span><span>Result</span><span>First moves</span><span>Departure</span></div><div class="ledger-empty empty-state big"><h3>No games checked yet</h3><p id="games-idle-hint"></p></div></div></section></div></div>
           </section>
           <section class="replay-card-scout scout-panel" data-replay-panel="scout" role="tabpanel" aria-labelledby="nav-scout" hidden>
             <header class="page-head"><h1>Scout</h1></header>

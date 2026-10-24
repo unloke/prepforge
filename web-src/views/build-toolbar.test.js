@@ -1,5 +1,5 @@
-// The Build panel's header is one toolbar row: the position trail and the
-// candidates share a band. The inspector starts folded, and a folded dock
+// The Build panel's toolbar: the position trail on its own row, the next
+// move's candidates under it. The inspector starts folded, and a folded dock
 // keeps no height from an earlier fit, so the tree gets the panel.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -30,12 +30,8 @@ it("a folded dock keeps no height from an earlier fit", () => {
   expect(fit.indexOf("is-folded")).toBeLessThan(fit.indexOf("buildDockMaxHeight()"));
 });
 
-it("the toolbar stacks only in a narrow panel", () => {
-  expect(css).toMatch(/@container build-panel \(max-width: 440px\)/);
-});
-
-it("on a phone the toolbar stacks by viewport: the panel is display: contents there", () => {
-  expect(css).toMatch(/@media \(max-width: 760px\) \{\s*\.build-toolbar \{ flex-wrap: wrap; \}/);
+it("stacks the trail over the candidates at every width, so neither squeezes the other", () => {
+  expect(css).toMatch(/\.build-toolbar \{[^}]*flex-direction: column;/);
 });
 
 it("a phone's Explorer or Coverage pane opens the dock, which the user may have folded", () => {

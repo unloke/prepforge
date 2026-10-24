@@ -220,66 +220,20 @@ async function runViewport(vp) {
   const crumbs = await page.locator("#build-tree-meta .mtree-crumb").count();
   check(crumbs === 6, `expected 6 breadcrumbs (Start e4 c6 d4 d5 e5), got ${crumbs}`);
 
-  // Build header: size summary + Generate's applicability rule. The button only
-  // applies where a writable repertoire's move of yours is missing, so at 3.e5
-  // (where Bf5 already answers for black) it must be OUT of the head — and
-  // reachable from the ⋯ menu's "Move …" entry instead. The size summary is a
-  // caption on the repertoire's name (its tooltip), not a band of the panel.
+  // Build header: the size summary is a caption on the repertoire's name (its
+  // tooltip), and the head holds no Generate button: the ⋯ menu reaches it at
+  // every position, so the head never changes shape as the position does.
   const repStats = await page.locator("#build-rep-name").getAttribute("title").catch(() => "");
   check(/2 lines · 7 moves/.test(repStats || ""), `the repertoire's name should carry "2 lines · 7 moves", got "${repStats}"`);
-  const genAtE5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
-  check(genAtE5 === true, `Generate should be hidden at 3.e5 (your Bf5 reply exists), got hidden=${genAtE5}`);
-
-  // Move to 2...d5 — the tree ends on your move there, so Generate applies.
-  await page.locator('#builder-tree .mtree-move[data-node-id="n4"]').click();
-  await page.waitForTimeout(250);
-  const genAtD5 = await page.locator("#build-generate-node").evaluate((el) => el.hidden).catch(() => null);
-  const genShownAtD5 = await page.locator("#build-generate-node:visible").count();
-  check(genAtD5 === false, `Generate should apply at 2...d5, got hidden=${genAtD5}`);
-  check(genShownAtD5 === 1, "Generate should be visible in the head where it applies");
-
-  // Where it does not apply NOTHING reveals it: the hidden attribute is the
-  // only state, so a hover or a focused tree row can no longer force the button
-  // back (a head-row CSS rule used to override the attribute on :hover/:focus,
-  // which made the button appear exactly where it could not apply).
-  await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
-  await page.waitForTimeout(250);
-  if (vp.width > 760) {
-    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').hover();
-    await page.waitForTimeout(150);
-    const genOnHover = await page.locator("#build-generate-node:visible").count();
-    check(genOnHover === 0, "hovering the current move row must not reveal Generate");
-    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').focus();
-    await page.waitForTimeout(150);
-    const genOnFocus = await page.locator("#build-generate-node:visible").count();
-    check(genOnFocus === 0, "a focused tree row must not reveal Generate either");
-    await page.mouse.move(4, 4);
-    await page.evaluate(() => document.activeElement?.blur?.());
-    await page.waitForTimeout(150);
-    const genSettled = await page.locator("#build-generate-node").evaluate((el) => el.hidden);
-    check(genSettled === true, "Generate stays hidden at 3.e5");
-  }
-
-  // Back to 3.e5: the ⋯ menu still reaches Generate at any position.
+  check((await page.locator("#build-generate-node").count()) === 0, "the head should carry no Generate button");
   await page.locator('[data-testid="build-menu"]').click();
   await page.waitForTimeout(150);
   const moreItems = await page.locator("#repertoire-context-menu button").allTextContents();
-  check(moreItems.some((t) => /^Options for 3\./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
+  check(moreItems.some((t) => /^Options for 3./.test(t)), `the More menu should carry the current move's entry, got ${moreItems.join(" | ")}`);
+  check(moreItems.some((t) => /^Generate moves/.test(t)), `the More menu should carry Generate, got ${moreItems.join(" | ")}`);
   await page.keyboard.press("Escape");
   await page.evaluate(() => { const m = document.getElementById("repertoire-context-menu"); if (m) m.hidden = true; });
   await page.waitForTimeout(100);
-
-  // Phones: the same rule drives the board bar's pill.
-  if (vp.width <= 760) {
-    const genAtD5Phone = await page.evaluate(() => document.getElementById("build-generate-node").hidden);
-    check(genAtD5Phone === true, `the phone pill should also hide at 3.e5, got hidden=${genAtD5Phone}`);
-    await page.locator('#builder-tree .mtree-move[data-node-id="n4"]').click();
-    await page.waitForTimeout(250);
-    const genAtN4Phone = await page.locator("#build-generate-node:visible").count();
-    check(genAtN4Phone === 1, "the phone pill should show where Generate applies");
-    await page.locator('#builder-tree .mtree-move[data-node-id="n5"]').click();
-    await page.waitForTimeout(250);
-  }
 
   // Fork bar at e5: two chips, count, and the real practical share on Bf5.
   const barVisible = await page.locator("#build-branchbar:not([hidden])").count();
