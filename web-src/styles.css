@@ -4322,8 +4322,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .explorer-games {
   text-align: right;
-  color: var(--text);
+  color: var(--muted);
+  white-space: nowrap;
 }
+.explorer-share { color: var(--text); font-weight: 650; }
 
 /* Always full width: the split is the reading, the game count beside it is
    the confidence. */

@@ -91,15 +91,16 @@
   --coach-head: 26px;
   --coach-foot: 22px;
   --coach-gap: 6px;
+  --coach-review: 0px;
   flex: none;
   display: grid;
-  grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) auto;
+  grid-template-rows: var(--coach-head) minmax(0, 1fr) var(--coach-foot) auto auto;
   gap: 0;
   /* Head, three 24px lines of verdict (plus its 4px padding), the Humans row and
      one 6px gap before each of them. The prep row contributes nothing while it is
      hidden, so the card ends on the Humans row; when the note does appear it takes
      its 22px + gap out of the scrolling verdict, and nothing outside moves. */
-  height: calc(var(--coach-head) + var(--coach-line) * 3 + 4px + var(--coach-foot) + var(--coach-gap) * 2);
+  height: calc(var(--coach-head) + var(--coach-line) * 3 + 4px + var(--coach-foot) + var(--coach-gap) * 2 + var(--coach-review));
   padding: 0;
   background: none;
   border: 0;
@@ -110,6 +111,9 @@
 .coach-card > .coach-prose { grid-row: 2; }
 .coach-card > .coach-maia { grid-row: 3; }
 .coach-card > .coach-bookline { grid-row: 4; }
+.coach-card > .coach-review { grid-row: 5; }
+/* A reviewed game adds the review bar's row to the card. */
+.coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(30px + var(--coach-gap)); }
 /* The gap between rows is each row's own margin, not a grid gap: a grid gap is
    also charged after the prep row, and with the note hidden that 6px landed
    between the Humans row and the Evaluation card as dead space. A display:none
@@ -253,6 +257,59 @@
   padding-top: 0;
   overflow: auto;
 }
+/* The review bar: the previous and next key moment around the one in focus,
+   and at a mistake the better move or a try at finding it (Chess.com's Best,
+   Retry and Next). One 30px row; the label gives way before the buttons. */
+.coach-review {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  margin-top: var(--coach-gap);
+}
+.cr-step {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text);
+  cursor: pointer;
+}
+.cr-step svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cr-step:hover:not(:disabled) { background: var(--line); }
+.cr-step:disabled { opacity: 0.4; cursor: default; }
+.cr-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-s);
+  line-height: 30px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.cr-label > :not(.cr-text) { flex: none; }
+.cr-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cr-label .rp-glyph { font-style: normal; font-weight: 800; }
+.cr-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cr-label.is-right .cr-text { color: var(--good-text); }
+.cr-label.is-wrong .cr-text { color: var(--warn-text); }
+.coach-review > .btn { flex: none; }
+.coach-review > .cr-step + .btn { margin-left: auto; }
 /* The book line is a quiet link in the coach's own row, not a button in a box. */
 .coach-bookaction {
   display: inline-flex;
@@ -447,6 +504,13 @@
   #analyze-sidebar .panel-scroll > #analyze-open { flex: none; }
   .an-panes > .moves-pane:not([hidden]) { flex: 0 1 auto; overflow: visible; }
   .an-panes > .moves-pane > .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
+  /* How each side played heads the score sheet, as a review opens with it:
+     the report is no fold here, its players line is its toggle. */
+  .an-panes > .report-pane { order: 1; }
+  .an-panes > .moves-pane { order: 2; }
+  .an-panes > .report-pane > summary { display: none; }
+  .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
+  .an-panes > .report-pane { flex: none; max-height: min(45vh, 420px); overflow: auto; }
 }
 /* The report opened is a compact read, not a second column: it keeps under half
    the screen and scrolls inside itself, so the score sheet stays where it is. */
@@ -1296,14 +1360,14 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 @media (min-width: 761px) {
   /* A short window keeps two lines of verdict, so the panes keep their room. */
   @media (max-height: 640px) {
-    .coach-card { --coach-line: 22px; height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2); }
+    .coach-card { --coach-line: 22px; height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2 + var(--coach-review)); }
     #view-analyze { --an-eval-h: 100px; }
   }
 }
 /* A wide panel says a verdict in one or two lines; a third reserved line was
    an empty band over the engine. */
 @media (min-width: 1280px) {
-  .coach-card { height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2); }
+  .coach-card { height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2 + var(--coach-review)); }
 }
 
 /* Stacked tablet: the board (with the evaluation under it) is sized so the
@@ -1565,6 +1629,11 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
   #analysis-explain .coach-bookline { max-height: none; }
+  /* The review bar takes the thumb's row height: its buttons are 40px here. */
+  #analysis-explain:has(> .coach-review:not([hidden])) { --coach-review: calc(44px + var(--coach-gap)); }
+  #analysis-explain .coach-review { height: 44px; }
+  #analysis-explain .cr-step { width: 40px; height: 40px; }
+  #analysis-explain .cr-label { height: 44px; line-height: 44px; }
   /* The engine-offer row keeps its one line, but its two controls are a thumb's
      size here (they were 22px: a pointer's row). The row's height is the
      controls' height, so nothing overlaps the verdict above it. */

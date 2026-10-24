@@ -469,7 +469,20 @@ function initBuildDockLayout() {
   // short (an inner scrollbar) or a fork bar tall (a late jump) until some unrelated
   // repaint caught up.
   if (typeof ResizeObserver === "function") {
-    const observer = new ResizeObserver(() => fitBuildDock());
+    // The tree gives up the height the dock takes: when it shrinks (an Explorer
+    // answer lands after the move was picked), the current move stays in sight.
+    // Read here, not by a second observer on the tree: the fit above resizes the
+    // tree in this pass, and a second observer's notice would go undelivered
+    // (a ResizeObserver loop error). The scroll waits for the next frame.
+    const tree = document.getElementById("builder-tree");
+    const treeBox = tree?.closest(".tree-wrap") || tree;
+    let treeHeight = 0;
+    const observer = new ResizeObserver(() => {
+      fitBuildDock();
+      const height = treeBox?.clientHeight || 0;
+      if (height < treeHeight) requestAnimationFrame(() => tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" }));
+      treeHeight = height;
+    });
     for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);
     for (const band of dock.parentElement.children) {
       if (band !== dock && band !== resizer && band.id !== "builder-tree") observer.observe(band);
@@ -735,6 +748,8 @@ function renderExplorerRows(stats, fen) {
   );
   const inRepNorm = new Set([...inRep].map(normalizeUci));
   const canAdd = !isBuildReadOnly();
+  // Each move's share of the games here: how often the reply has to be met.
+  const allGames = stats.moves.reduce((sum, m) => sum + (Number(m.total) || 0), 0);
   rows.innerHTML =
     html`<div class="explorer-head" aria-hidden="true"><span>Move</span><span class="explorer-eval">Eval</span><span>Games</span><span>White / Draw / Black</span></div>${stats.moves
       .map((m) => {
@@ -750,7 +765,7 @@ function renderExplorerRows(stats, fen) {
         <span class="explorer-san">${m.san}${has ? html`<span class="explorer-inrep" title="In your repertoire">&#9679;</span>` : ""}</span>
       </button>
       <span class="explorer-eval">&hellip;</span>
-      <span class="explorer-games">${games}</span>
+      <span class="explorer-games" title="${`${countOf(games, "game")}`}"><b class="explorer-share">${allGames ? `${Math.round((100 * (Number(m.total) || 0)) / allGames)}%` : ""}</b> ${games}</span>
       <span class="explorer-bar" aria-hidden="true">${seg("explorer-bar-w", "White wins", m.whitePct)}${seg("explorer-bar-d", "Draws", m.drawPct)}${seg("explorer-bar-b", "Black wins", m.blackPct)}</span>
     </div>`;
       })}`;

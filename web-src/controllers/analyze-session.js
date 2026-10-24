@@ -68,7 +68,7 @@ export function createAnalyzeSession(deps) {
     }));
   return {
     analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
-    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
+    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, playMoveAt, positionCoach,
     rebuildAnalysisVariations, resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
     selectAnalysisNode, selectAnalysisNodePath, selectedNodePath, showAnalysisPly,
     reviewNav: (kind) => ensureAnalyzeView().then((view) => view.reviewStep(kind)),
@@ -712,10 +712,15 @@ function paintMaiaCoachLine(model) {
 async function playHumanPick(uci) {
   const tree = appState.analysisTree;
   const node = tree && tree.byId ? tree.byId.get(appState.analysisCurrentNodeId || "root") : null;
-  const parent = node && node.parent;
-  if (!parent || !uci) return;
-  await selectAnalysisNode(parent.id);
-  await onAnalysisBoardMove(uci, parent.fenAfter);
+  if (node?.parent) await playMoveAt(node.parent.id, uci);
+}
+
+// Play `uci` from the tree node `nodeId`: the existing move there, or a new branch.
+async function playMoveAt(nodeId, uci) {
+  const from = appState.analysisTree?.byId?.get(nodeId);
+  if (!from || !uci) return;
+  await selectAnalysisNode(from.id);
+  await onAnalysisBoardMove(uci, from.fenAfter);
 }
 
 function paintPhaseFromFen(fen) {

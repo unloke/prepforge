@@ -337,6 +337,13 @@ describe("workspace chrome layout", () => {
     expect(session).not.toMatch(/\$\{appState\.build\.name\} · \$\{appState\.build\.color\}/);
   });
 
+  it("gives each Explorer move its share of the games, in ink before the muted count", () => {
+    const session = readFileSync(join(root, "controllers", "build-session.js"), "utf8");
+    expect(session).toMatch(/const allGames = stats\.moves\.reduce[\s\S]*<b class="explorer-share">/);
+    expect(ruleBody(".explorer-games")).toMatch(/color:\s*var\(--muted\)/);
+    expect(ruleBody(".explorer-share")).toMatch(/color:\s*var\(--text\)/);
+  });
+
   it("sets the Build ledger's small type at the panel's own floor", () => {
     // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
     // still hardcodes 9-12px is the one squinting line. The Explorer share, the
@@ -361,7 +368,9 @@ describe("workspace chrome layout", () => {
     // Any drawer or panel band changing height refits the dock before the frame
     // paints (a ResizeObserver), so no paint path has to remember to ask; unfolding
     // refits too.
-    expect(session).toMatch(/new ResizeObserver\(\(\) => fitBuildDock\(\)\)/);
+    expect(session).toMatch(/new ResizeObserver\(\(\) => \{\s*fitBuildDock\(\);[\s\S]*if \(height < treeHeight\) requestAnimationFrame\(/);
+    // One observer reads the tree's shrink too (a second one looped); the scroll waits a frame.
+    expect(session.match(/new ResizeObserver/g)).toHaveLength(1);
     expect(session).toMatch(/if \(!folded\) fitBuildDock\(\);/);
     // A height the user dragged is not overwritten by the next repaint.
     expect(session).toContain('dock.dataset.dockPinned = pinned ? "1" : ""');

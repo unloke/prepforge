@@ -317,8 +317,10 @@ describe("coach note", () => {
     // the Evaluation card on every other ply.
     const rule = /\.coach-card \{([^}]*)\}/.exec(ALL_STYLES)[1];
     expect(rule).toMatch(/--coach-head: 26px/);
-    expect(rule).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto/);
-    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 4px \+ var\(--coach-foot\) \+ var\(--coach-gap\) \* 2\)/);
+    expect(rule).toMatch(/grid-template-rows: var\(--coach-head\) minmax\(0, 1fr\) var\(--coach-foot\) auto auto/);
+    // The review bar's row counts only when a reviewed game shows it.
+    expect(rule).toMatch(/height: calc\(var\(--coach-head\) \+ var\(--coach-line\) \* 3 \+ 4px \+ var\(--coach-foot\) \+ var\(--coach-gap\) \* 2 \+ var\(--coach-review\)\)/);
+    expect(rule).toMatch(/--coach-review: 0px/);
     // The rows are spaced by their own top margin, never by a grid gap: a gap is
     // charged after the hidden prep row too, and lands as dead space below the
     // Humans row.

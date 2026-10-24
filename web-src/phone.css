@@ -1107,7 +1107,7 @@
      one clips the label instead of widening the drawer. */
   #build-inspector .explorer-head > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #build-inspector .explorer-rows.has-eval :is(.explorer-head, .explorer-row) {
-    grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(40px, 52px) minmax(0, 1fr);
+    grid-template-columns: minmax(44px, 56px) minmax(40px, 48px) minmax(60px, 68px) minmax(0, 1fr);
     column-gap: 6px;
   }
   /* The engine's line steppers are 18px dots: the dots stay, their tap areas

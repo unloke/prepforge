@@ -6,7 +6,8 @@ import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.j
 import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
-import { paintFindGreat, renderReportBlock, reportGradeOf, reviewState } from "./analyze-report.js";
+import { paintFindGreat, renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { createReviewBar } from "./analyze-review.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
 
 // The board, the move list, the eval display and the engine's controls are
@@ -49,6 +50,8 @@ export function createAnalyzeView({
   selfSide = () => null,
   // Show a position on the Analyze board while the chart is hovered (board peek()).
   peek = () => {},
+  // Play `uci` from the tree node `nodeId` (a branch, or the existing move).
+  playMoveAt = async () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
@@ -214,11 +217,8 @@ export function createAnalyzeView({
     paintFindGreat(analysis);
   }
 
-  // `kind` is "next" or "prev".
-  function reviewStep(kind) {
-    const target = reviewState(report?.moments, Number(appState.analysisPly) || 0)[kind];
-    if (target) showAnalysisPly(target.ply);
-  }
+  // The review bar under the coach; Shift+←/→ step it too.
+  const review = createReviewBar({ appState, getReport: () => report, showAnalysisPly, selectAnalysisNode, playMoveAt });
 
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
@@ -226,6 +226,7 @@ export function createAnalyzeView({
     document.querySelectorAll?.("#analysis-summary [data-km-ply]").forEach((row) => {
       row.classList.toggle("is-current", Number(row.dataset.kmPly) === ply);
     });
+    review.paint();
   }
 
   function buildAnalysisTree(moves) {
@@ -980,7 +981,7 @@ export function createAnalyzeView({
     liveEvalChart,
     paintEvalHead,
     renderReport,
-    reviewStep,
+    reviewStep: review.step,
     renderEvalChart,
     renderAnalysisTree,
     updateAnalysisTreeSelection,
