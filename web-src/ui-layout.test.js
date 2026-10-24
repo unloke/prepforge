@@ -451,7 +451,7 @@ describe("workspace chrome layout", () => {
     const panes = body.slice(body.indexOf('id="analyze-panes"'), body.indexOf('id="analyze-open"'));
     for (const pane of ["coach", "engine", "report", "moves"]) expect(panes).toContain(`data-pane="${pane}"`);
     const enginePane = panes.slice(panes.indexOf('id="analysis-engine-pane"'), panes.indexOf("</section>", panes.indexOf('id="analysis-engine-pane"')));
-    for (const id of ["open-engine-widget", "analysis-engine-slot", "analysis-best-line"]) expect(enginePane).toContain(`id="${id}"`);
+    for (const id of ["open-engine-widget", "analysis-engine-slot"]) expect(enginePane).toContain(`id="${id}"`);
     for (const id of ["analysis-report", "analysis-summary", "analysis-handoff", "analysis-results"]) expect(panes).toContain(`id="${id}"`);
     expect(head).not.toContain('id="open-engine-widget"');
     expect(body.indexOf('id="analysis-eval-card"')).toBeGreaterThan(body.indexOf('id="analysis-explain"'));

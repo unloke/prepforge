@@ -435,12 +435,14 @@
 .an-panes > .moves-pane:not([hidden]) { flex: none; }
 .an-panes > .engine-pane + .moves-pane { border-top: 1px solid var(--line-soft); padding-top: 6px; }
 /* Beside the board the panel is the column's height (styles.css); the score
-   sheet grows into it before it scrolls, and the folds stay under it. */
+   sheet grows into it before it scrolls, and the folds stay under it. Only the
+   sheet gives up height: everything else keeps its own (no min-height: 0 up
+   the chain), so an opened fold makes the panel scroll instead of folding the
+   coach under it. */
 @media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
-  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
-  .an-panes { min-height: 0; }
+  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 1 auto; }
   #analyze-sidebar .panel-scroll > #analyze-open { flex: none; }
-  .an-panes > .moves-pane:not([hidden]) { flex: 0 1 auto; min-height: 0; }
+  .an-panes > .moves-pane:not([hidden]) { flex: 0 1 auto; overflow: visible; }
   .an-panes > .moves-pane > .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
 }
 /* The report opened is a compact read, not a second column: it keeps under half
@@ -481,35 +483,17 @@
 #analysis-engine-slot .engine-head-meta,
 #analysis-engine-slot .engine-head-tools { display: contents; }
 .engine-pane .an-pane-head > b { grid-area: 1 / 1; }
-.ep-depth,
 #analysis-engine-slot .engine-head-depth { grid-area: 1 / 2; }
 #analysis-engine-slot .engine-lines { grid-area: 1 / 4; }
 .engine-pane .ev-engine { grid-area: 1 / 5; }
 #analysis-engine-slot .engine-window-body,
-#analysis-engine-slot .engine-window-unlock,
-.engine-pane > .best-line { grid-column: 1 / -1; }
-.ep-depth { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-#view-analyze:has(#analysis-eval-card.is-engine) :is(#analysis-best-line, .ep-depth) { display: none; }
+#analysis-engine-slot .engine-window-unlock { grid-column: 1 / -1; }
 #analysis-engine-slot .engine-head-label,
 #analysis-engine-slot .engine-head-eval,
 #analysis-engine-slot .engine-window-close,
 #analysis-engine-slot .engine-window-resize,
 #analysis-engine-slot .engine-bar { display: none; }
 #analysis-engine-slot .engine-window-body { display: block; padding: 0; }
-.best-line {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 6px;
-  min-height: 22px;
-  padding: 0 4px;
-  font-size: 13px;
-  line-height: 22px;
-}
-/* A position the run has no line for keeps the row, so stepping never moves the
-   panes under it. */
-.best-line[hidden] { display: grid; visibility: hidden; }
-.best-line .engine-pv-eval { padding: 0; border: 0; border-radius: 0; background: none; color: var(--text); font-size: 11.5px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; }
-.best-line .engine-pv-line { min-width: 0; overflow-wrap: anywhere; }
 
 /* The current eval as plain figures; a small disc in the leading side's colour
    says who is better (the sign says it too), so stepping through a game never
@@ -1655,7 +1639,6 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
      accent circle or a row that overlaps its neighbour. */
   #analysis-engine-slot[data-ui] .engine-step { position: relative; width: 32px; height: 32px; }
   #analysis-engine-slot[data-ui] .engine-step::after { content: ""; position: absolute; inset: -6px; }
-  .best-line { font-size: 14px; line-height: 28px; }
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
   .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
   .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }

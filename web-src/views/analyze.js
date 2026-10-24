@@ -8,7 +8,6 @@ import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { paintFindGreat, renderReportBlock, reportGradeOf, reviewState } from "./analyze-report.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
-import { moveLineHtml, walkLine } from "../move-text.js";
 
 // The board, the move list, the eval display and the engine's controls are
 // real interface: they keep their own lines, sizes and borders. The marker is
@@ -526,14 +525,15 @@ export function createAnalyzeView({
       const share = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
       fill.style.transform = `scaleX(${share.toFixed(4)})`;
     }
-    // An empty Evaluation card is an empty grey block: hide it until it has a
-    // number, a game graph or the live engine to show. A job is a fourth thing
-    // it can show: the running graph and the job's own progress and Stop.
+    // The card is the game's: its graph, or a running job's graph, progress and
+    // Stop. Without either it stays hidden — the live engine's number is already
+    // on the engine's own line, and turning the engine on over an empty board
+    // must not pop up an empty grey block.
     const card = document.getElementById("analysis-eval-card");
-    if (card && !card.classList.contains("is-engine")) {
+    if (card) {
       const graph = document.getElementById("analysis-eval-graph");
       const job = document.querySelector("#analysis-job-dock .notice");
-      card.hidden = !text && (!graph || graph.hidden) && !job;
+      card.hidden = (!graph || graph.hidden) && !job;
     }
   }
 
@@ -630,30 +630,7 @@ export function createAnalyzeView({
     return onResult;
   }
 
-  // The engine pillar with the live engine off: the saved run's best line from
-  // the position on the board, as move links (a token peeks; a click walks the
-  // line on the board, or selects it where the game already has it).
-  function paintBestLine() {
-    const host = document.getElementById?.("analysis-best-line");
-    if (!host) return;
-    const node = appState.analysisTree?.byId.get(appState.analysisCurrentNodeId || "root");
-    const fen = node?.fenAfter;
-    const ev = fen ? appState.analysis?.position_evals?.[fen] : null;
-    const line = ev && Array.isArray(ev.pv) && ev.pv.length ? walkLine(fen, ev.pv.slice(0, 10)) : null;
-    const depth = document.getElementById("analysis-best-depth");
-    if (depth) depth.textContent = line && ev.depth ? `Depth ${ev.depth}` : "";
-    if (!line) {
-      host.hidden = true;
-      host.innerHTML = "";
-      return;
-    }
-    const plies = line.plies;
-    host.hidden = false;
-    host.innerHTML = html`<span class="engine-pv-eval">${formatPointEval(ev)}</span><span class="engine-pv-line">${moveLineHtml(fen, plies.map((p) => p.san), plies.map((p) => p.uci))}</span>`;
-  }
-
   function updateEvalChartCursor() {
-    paintBestLine();
     markCurrentMoment();
     const marker = document.getElementById("eval-chart-cursor");
     if (!marker) return;

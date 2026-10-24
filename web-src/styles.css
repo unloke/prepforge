@@ -3429,7 +3429,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .dock-tabs .dock-fold:hover { color: var(--text); }
 .dock-fold span { display: inline-block; transition: transform var(--dur-fast) var(--ease-out); }
-.dock.is-folded { flex: none !important; }
+/* Folded, the dock is its tab strip whatever height it was given open (a fit or
+   a drag leaves an inline floor), and the tree takes the column. */
+.dock.is-folded { flex: none !important; min-height: 0 !important; }
+.panel-body:has(> .dock.is-folded) > #builder-tree { flex-grow: 1 !important; }
 /* A dragged height is the user's: it holds, and the tree takes the rest. */
 .dock[data-dock-pinned="1"] { flex-grow: 0; }
 .dock.is-folded > .dock-body { display: none; }

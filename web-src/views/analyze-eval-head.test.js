@@ -175,7 +175,15 @@ describe("Evaluation card visibility", () => {
     const { view, ids, appState } = setup();
     appState.evalChartPoints = [{ ply: 1, score_cp: 120 }];
     appState.analysisPly = 1;
+    ids["analysis-eval-graph"].hidden = false;
     view.updateEvalChartCursor();
     expect(ids["analysis-eval-card"].hidden).toBe(false);
+  });
+
+  it("stays hidden when only the live engine is on", () => {
+    const { view, ids } = setup();
+    ids["analysis-eval-card"].classList.toggle("is-engine", true);
+    view.updateEvalChartCursor();
+    expect(ids["analysis-eval-card"].hidden).toBe(true);
   });
 });
