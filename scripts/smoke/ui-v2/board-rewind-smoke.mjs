@@ -378,8 +378,13 @@ const nodeUci = (rep, index) => rep.nodes[index].uci;
 async function clickNode(page, id) {
   await page.locator(`#builder-tree .mtree-move[data-node-id="${id}"]`).click();
 }
-async function clickCrumb(page, id) {
-  await page.locator(`#build-tree-meta .mtree-crumb[data-node-id="${id}"]`).click();
+// Jump to a node without stepping: the start through "Go to start", any other
+// node through its move in the tree (the phone's tree may sit in another pane).
+async function jumpTo(page, id) {
+  await page.evaluate((nodeId) => {
+    const move = document.querySelector(`#builder-tree .mtree-move[data-node-id="${nodeId}"]`);
+    (move || document.getElementById("build-root")).click();
+  }, String(id));
 }
 // The rail on a wide screen, the thumb bar on a phone: one name either way.
 async function openView(page, name) {
@@ -401,7 +406,7 @@ async function buildOrdinaryUndo(page) {
   // Forward: e2 -> e4 (a move being shown), then back to the root.
   await clickNode(page, rep.nodes[1].id);
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[0].id);
+  await jumpTo(page, rep.nodes[0].id);
   const { frames } = await stopProbe(page);
   checkTravel(frames, { movers: [["e4", "e2"]], still: ["a7", "e7"] }, size, "build undo e4");
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 0), "build undo e4");
@@ -419,7 +424,7 @@ async function buildEnPassant(page) {
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 5), "build en passant forward");
   // ... then back to 2...d5: the pawn returns e5 and the taken pawn reappears d5.
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[4].id);
+  await jumpTo(page, rep.nodes[4].id);
   const { frames } = await stopProbe(page);
   checkTravel(frames, { movers: [["d6", "e5"]], still: ["d5"] }, size, "build en passant back");
   await page.locator("#build-board").screenshot({ path: "tmp/round2/evidence/build-en-passant-back.png" });
@@ -447,7 +452,7 @@ async function buildReverseCapture(page) {
   }
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 6), "build capture forward");
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[5].id);
+  await jumpTo(page, rep.nodes[5].id);
   const { frames } = await stopProbe(page);
   checkTravel(frames, { movers: [["d6", "d8"]], still: ["d6"] }, size, "build reverse capture");
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 5), "build reverse capture");
@@ -468,7 +473,7 @@ async function buildCaptureTakeback(page) {
   // white pawn must travel home from c4 (not teleport), and the taken black pawn
   // must fade back in on d5 rather than pop.
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[2].id);
+  await jumpTo(page, rep.nodes[2].id);
   const { frames } = await stopProbe(page);
   checkTravel(frames, { movers: [["c4", "d5"]] }, size, "build capture takeback");
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 2), "build capture takeback");
@@ -513,7 +518,7 @@ async function buildCastle(page) {
   }
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 7), "build castle forward");
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[6].id);
+  await jumpTo(page, rep.nodes[6].id);
   const { frames } = await stopProbe(page);
   // Both pieces travel home: no teleporting rook.
   checkTravel(frames, { movers: [["g1", "e1"], ["f1", "h1"]] }, size, "build castle undo");
@@ -529,7 +534,7 @@ async function buildPromotion(page) {
   await page.waitForTimeout(200);
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 1), "build promotion forward");
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[0].id);
+  await jumpTo(page, rep.nodes[0].id);
   const { frames } = await stopProbe(page);
   checkTravel(frames, { movers: [["a8", "a7"]] }, size, "build promotion undo");
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 0), "build promotion undo");
@@ -543,7 +548,7 @@ async function buildRapidWalk(page) {
   for (let i = 0; i < 5; i += 1) {
     await clickNode(page, rep.nodes[5].id);
     await page.waitForTimeout(45);
-    await clickCrumb(page, rep.nodes[4].id);
+    await jumpTo(page, rep.nodes[4].id);
     await page.waitForTimeout(45);
   }
   await clickNode(page, rep.nodes[5].id);
@@ -606,7 +611,7 @@ async function buildSiblingCut(page) {
 
   // An ordinary undo first: d4 goes home to d2 ...
   await startProbe(page, "#build-board");
-  await clickCrumb(page, parent.id);
+  await jumpTo(page, parent.id);
   const undo = await stopProbe(page);
   checkTravel(undo.frames, { movers: [["d4", "d2"]] }, size, "build sibling undo");
   checkSettled(await settledDom(page, "#build-board"), parent.fen, "build sibling undo");
@@ -625,7 +630,7 @@ async function buildSiblingCut(page) {
 
   // Undo the bishop, then play the other sibling child: f1 -> c4 is the move.
   await startProbe(page, "#build-board");
-  await clickCrumb(page, parent.id);
+  await jumpTo(page, parent.id);
   const bishopUndo = await stopProbe(page);
   checkTravel(bishopUndo.frames, { movers: [["b5", "f1"]] }, size, "build sibling bishop undo");
   checkSettled(await settledDom(page, "#build-board"), parent.fen, "build sibling bishop undo");
@@ -645,7 +650,7 @@ async function buildFlipThenBack(page) {
   await page.waitForTimeout(500); // the flip animation's own budget
   const size = await squareSizeOf(page, "#build-board");
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[1].id);
+  await jumpTo(page, rep.nodes[1].id);
   const { frames } = await stopProbe(page);
   // a6's pawn goes home to a7 on a flipped board: the offset's magnitude is a
   // square, whichever way the board is drawn.
@@ -664,7 +669,7 @@ async function buildReducedMotion(page) {
   await clickNode(page, rep.nodes[5].id);
   await page.waitForTimeout(250);
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[4].id);
+  await jumpTo(page, rep.nodes[4].id);
   const { frames } = await stopProbe(page);
   const travellers = Object.keys(frames[0].snapshot).filter((square) => travelFrames(frames, square).length > 0);
   check(travellers.length === 0, `build reduced motion: no travel (${travellers.join(",")})`);
@@ -779,7 +784,7 @@ async function phoneBuildUndo(page) {
   await clickNode(page, rep.nodes[2].id);
   await page.waitForTimeout(250);
   await startProbe(page, "#build-board");
-  await clickCrumb(page, rep.nodes[1].id);
+  await jumpTo(page, rep.nodes[1].id);
   const { frames } = await stopProbe(page);
   checkTravel(frames, { movers: [["a6", "a7"]] }, size, "phone build undo");
   checkSettled(await settledDom(page, "#build-board"), nodeFen(rep, 1), "phone build undo");

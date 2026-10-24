@@ -1,12 +1,12 @@
 // Google-Docs style save chip shown under the Repertoire and Train boards.
 const SYNC_CHIP_VARIANTS = {
-  saved: { cls: "is-saved", text: "✓ Saved" },
-  dirty: { cls: "is-dirty", text: "• Unsaved changes" },
-  syncing: { cls: "is-syncing", text: "↻ Saving…" },
-  error: { cls: "is-error", text: "⚠ Offline — will retry" },
-  rejected: { cls: "is-error", text: "⚠ Some attempts couldn't be saved" },
+  saved: { cls: "is-saved", text: "Saved" },
+  dirty: { cls: "is-dirty", text: "Unsaved changes" },
+  syncing: { cls: "is-syncing", text: "Saving…" },
+  error: { cls: "is-error", text: "Offline — will retry" },
+  rejected: { cls: "is-error", text: "Some attempts couldn't be saved" },
   // R-01/R-04: unconfirmed work is never claimed as Saved.
-  blocked: { cls: "is-error", text: "⚠ Waiting for sign-in — edits kept" },
+  blocked: { cls: "is-error", text: "Waiting for sign-in — edits kept" },
 };
 
 // On Train the chip tracks graded attempts, not repertoire edits; "Unsaved
@@ -14,10 +14,10 @@ const SYNC_CHIP_VARIANTS = {
 // 2026-10-01 P2-7). The debounce between answers is the usual state, so it
 // says nothing: the chip only speaks while a save is on the wire or waiting.
 const TRAINING_TEXT = {
-  saved: "✓ Progress saved",
+  saved: "Progress saved",
   dirty: "",
-  syncing: "↻ Saving progress…",
-  blocked: "⚠ Waiting for sign-in — progress kept",
+  syncing: "Saving progress…",
+  blocked: "Waiting for sign-in — progress kept",
 };
 
 // The training states that have something to say (see TRAINING_TEXT).

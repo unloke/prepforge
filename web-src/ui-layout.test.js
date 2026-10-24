@@ -219,8 +219,8 @@ describe("workspace chrome layout", () => {
     expect(rule).toMatch(/display:\s*flex/);
     expect(rule).toMatch(/align-items:\s*center/);
     expect(rule).not.toMatch(/flex-wrap:\s*wrap/);
-    // The header is the board's top neighbour on a phone: it owns the gap.
-    expect(rule).toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
+    // The header sits on the board: no gap between them.
+    expect(rule).toMatch(/margin:\s*0;/);
     // The save chip lives beside the inspector tools here, not in the far-off
     // board bar.
     expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
@@ -230,12 +230,10 @@ describe("workspace chrome layout", () => {
     expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
   });
 
-  it("gives the phone Repertoire's next-move chips and trail a real thumb target", () => {
-    // Measured at 390: chips 27px, crumbs 21px, the collapse toggle 13px. The
-    // chip is the action the thumb reaches for on this screen, and the trail
-    // is the only way back along the line.
+  it("gives the phone Repertoire's next-move chips a real thumb target", () => {
+    // Measured at 390: chips 27px, the collapse toggle 13px. The chip is the
+    // action the thumb reaches for on this screen.
     expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 44px;/);
-    expect(phoneCss).toMatch(/#view-build \.mtree-crumb \{ min-height: 44px;/);
     expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
     // One line naming the action, not a paragraph about coverage: that was
     // standing explanation (AGENTS.md) and the ⓘ already carries the detail.
@@ -342,12 +340,10 @@ describe("workspace chrome layout", () => {
   it("sets the Build ledger's small type at the panel's own floor", () => {
     // #view-build raises --fs-xs/--fs-s to 13px; anything inside the panel that
     // still hardcodes 9-12px is the one squinting line. The Explorer share, the
-    // in-repertoire dot, the crumb separator and the fork chip's number all read
-    // at that floor now; on a phone the save chip and fork share take the same
+    // in-repertoire dot and the fork chip's number all read at that floor now; on a phone the save chip and fork share take the same
     // token instead of a 12px literal.
     expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*12px/);
     expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
-    expect(ruleBody(".crumb-sep")).toMatch(/font-size:\s*var\(--fs-s\)/);
     expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
     expect(phoneCss).toMatch(/#build-inspector \.build-sync \{[^}]*font-size:\s*var\(--fs-s\)/);
     expect(phoneCss).toMatch(/#view-build \.fork-chip small \{[^}]*font-size:\s*var\(--fs-s\)/);

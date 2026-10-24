@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 it("every control in the empty card carries the button system's surface", () => {
-  const card = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-tree-meta"'));
+  const card = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-branchbar"'));
   const buttons = [...card.matchAll(/<button class="([^"]*)"[^>]*>([^<]*)</g)];
   expect(buttons.map(([, , label]) => label)).toEqual(["New repertoire", "Import PGN", "Browse…"]);
   for (const [, cls, label] of buttons) {

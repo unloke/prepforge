@@ -14,20 +14,21 @@ const phone = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
 const body = phone.slice(phone.lastIndexOf("@media (max-width: 760px)"));
 
 it("leaves the empty card's room for the whole card on the shortest phone", () => {
-  const reserve = body.match(/#view-build \{ --phone-reserve: ([^;]+); \}/);
+  // The empty card has its own reserve: an open tree gives the board more.
+  const reserve = body.match(/#view-build \.study:has\(> \.sidebar\.is-empty\) \{ --phone-reserve: ([^;]+); \}/);
   expect(reserve, "the Repertoire reserve").not.toBeNull();
   const px = Number((reserve[1].match(/max\((\d+)px/) || [])[1]);
   expect(Number.isFinite(px), `a px reserve in "${reserve[1]}"`).toBe(true);
   // The card is 170px and the panel body adds 10px of top and 16px of bottom
   // padding, so the body needs 196px (measured: the card's scrollHeight was 170
-  // and the body's 196, at every viewport). At 390x660 the layout is: 108px
-  // (safe area + header) | board | panel body | 56px bar, the board being
+  // and the body's 196, at every viewport). At 390x660 the layout is: 80px
+  // (engine banner + header) | board | panel body | 56px bar, the board being
   // min(390, 660 - 56 - reserve) with the reserve max(px, 40dvh) = 304 at that
   // height.
   const card = 170 + 10 + 16;
   const effective = Math.max(px, 0.4 * 660);
   const board = Math.min(390, 660 - 56 - effective);
-  const panel = 660 - 108 - board - 56;
+  const panel = 660 - 80 - board - 56;
   expect(panel, `a ${px}px reserve at 390x660`).toBeGreaterThanOrEqual(card);
   // …and not so large that the board becomes a thumbnail: 300px of width is the
   // floor it keeps on that same phone.
@@ -37,7 +38,7 @@ it("leaves the empty card's room for the whole card on the shortest phone", () =
 it("does not spend the reserve on the card's copy", () => {
   // The empty card keeps its sentence: a shorter message is not the fix.
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  const card = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-tree-meta"'));
+  const card = html.slice(html.indexOf('id="build-empty"'), html.indexOf('id="build-branchbar"'));
   expect(card).toContain("Start a repertoire");
   expect(card).toContain("Open one from the Library, or play a move.");
   expect(card).toContain("New repertoire");

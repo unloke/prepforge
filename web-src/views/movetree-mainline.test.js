@@ -33,9 +33,9 @@ describe("move tree mainline order", () => {
     const nf6 = node("nf6", "Nf6");
     const e5 = node("e5", "e5", { mainline: true, children: [nf6, d4] });
     const { renderMoveTree } = createMoveTreeRenderer();
-    // e5, its alternative Nf6, then the main answer d4, then the c5 variation
-    // with its own continuation (not interleaved with e5's answers).
-    expect(ids(renderMoveTree({ children: [c5, e5] }, {}))).toEqual(["e5", "nf6", "d4", "c5", "c-nf3"]);
+    // PGN order: e5, then the c5 variation it replaces with its own
+    // continuation, then the main answer d4, then its alternative Nf6.
+    expect(ids(renderMoveTree({ children: [c5, e5] }, {}))).toEqual(["e5", "c5", "c-nf3", "d4", "nf6"]);
   });
 
   it("keeps the given order when no child is flagged (Analyze variations)", () => {

@@ -259,12 +259,7 @@ export function setBuildInspector(tool) {
 export function renderBuilderTreeEmptyState() {
   const container = document.getElementById("builder-tree");
   const branchBar = document.getElementById("build-branchbar");
-  const meta = document.getElementById("build-tree-meta");
   if (!container) return;
-  if (meta) {
-    meta.hidden = true;
-    meta.innerHTML = "";
-  }
   container.innerHTML =
     html`<div class="tree-empty">No repertoire open. Pick one from the Library, or play a move to start.</div>`;
   if (branchBar) branchBar.hidden = true;

@@ -119,13 +119,13 @@ describe("Train save chip names training progress (P2-7)", () => {
     expect(syncChipVariant("dirty", "training").text).not.toMatch(/Unsaved changes/);
     // The queued state says nothing at all: it is the ordinary debounce.
     expect(syncChipVariant("dirty", "training").text).toBe("");
-    expect(syncChipVariant("saved", "training").text).toBe("✓ Progress saved");
+    expect(syncChipVariant("saved", "training").text).toBe("Progress saved");
     expect(syncChipVariant("syncing", "training").cls).toBe("is-syncing");
   });
 
   it("keeps the Repertoire wording and every error state", () => {
-    expect(syncChipVariant("dirty").text).toBe("• Unsaved changes");
-    expect(syncChipVariant("error", "training").text).toBe("⚠ Offline — will retry");
+    expect(syncChipVariant("dirty").text).toBe("Unsaved changes");
+    expect(syncChipVariant("error", "training").text).toBe("Offline — will retry");
     expect(syncChipVariant("unknown", "training").cls).toBe("is-saved");
   });
 });
