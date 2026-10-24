@@ -78,9 +78,9 @@ try {
       throw new Error(`${viewportWidth}px notice is out of its corner: ${JSON.stringify(long.status)}`);
     }
 
-    // Rail contract: an icon rail, 60px wide, that stays 60px under the pointer
-    // and under keyboard focus, so nothing beside it moves. Each destination
-    // carries its name for assistive tech and the tooltip.
+    // Rail contract: a 60px track that expands to the 204px overlay under the
+    // pointer and under keyboard focus without moving the page beside it. Each
+    // destination carries its name for assistive tech and the tooltip.
     if (before.rail.width !== 60) {
       throw new Error(`${viewportWidth}px rail track is ${before.rail.width}px, expected 60px`);
     }
@@ -97,8 +97,8 @@ try {
     await page.waitForTimeout(300);
     const focused = await snapshot();
     for (const [state, snap] of [['hover', hovered], ['focus', focused]]) {
-      if (snap.rail.width !== 60) {
-        throw new Error(`${viewportWidth}px rail changed width on ${state}: ${JSON.stringify(snap.rail)}`);
+      if (snap.rail.width < 200) {
+        throw new Error(`${viewportWidth}px rail did not overlay-expand on ${state}: ${JSON.stringify(snap.rail)}`);
       }
       for (const coordinate of ['x', 'y', 'width', 'height']) {
         if (before.main[coordinate] !== snap.main[coordinate]) {

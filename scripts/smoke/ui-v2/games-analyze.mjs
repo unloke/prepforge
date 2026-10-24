@@ -47,6 +47,12 @@ export async function checkGamesAnalyze(page, games, check, shot) {
     await shot('analyze-failed');
     throw error;
   });
+  // The chart lays out after the score sheet (a slow runner shows the sheet
+  // first); give it the same window before measuring.
+  await page.waitForFunction(() => {
+    const graph = document.getElementById('analysis-eval-graph');
+    return graph && !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= (window.innerWidth <= 760 ? 44 : 64);
+  }, null, { timeout: 5000 }).catch(() => {});
   const loaded = await page.evaluate(() => {
     const graph = document.getElementById('analysis-eval-graph');
     // The chart is 64px tall, 44px in the phone's evaluation band; a 1px

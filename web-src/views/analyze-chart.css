@@ -434,6 +434,15 @@
    panel is as tall as its column, so a long game never stretches it. */
 .an-panes > .moves-pane:not([hidden]) { flex: none; }
 .an-panes > .engine-pane + .moves-pane { border-top: 1px solid var(--line-soft); padding-top: 6px; }
+/* Beside the board the panel is the column's height (styles.css); the score
+   sheet grows into it before it scrolls, and the folds stay under it. */
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
+  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
+  .an-panes { min-height: 0; }
+  #analyze-sidebar .panel-scroll > #analyze-open { flex: none; }
+  .an-panes > .moves-pane:not([hidden]) { flex: 0 1 auto; min-height: 0; }
+  .an-panes > .moves-pane > .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
+}
 /* The report opened is a compact read, not a second column: it keeps under half
    the screen and scrolls inside itself, so the score sheet stays where it is. */
 .an-panes > .report-pane > summary { margin-bottom: 0; }
@@ -1299,6 +1308,11 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
     .coach-card { --coach-line: 22px; height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2); }
     #view-analyze { --an-eval-h: 100px; }
   }
+}
+/* A wide panel says a verdict in one or two lines; a third reserved line was
+   an empty band over the engine. */
+@media (min-width: 1280px) {
+  .coach-card { height: calc(var(--coach-head) + var(--coach-line) * 2 + 4px + var(--coach-foot) + var(--coach-gap) * 2); }
 }
 
 /* Stacked tablet: the board (with the evaluation under it) is sized so the

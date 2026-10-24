@@ -1,6 +1,6 @@
 /* Settings — Opus prototype composition. Imported by the lazy views/settings.js
    module, so these rules split into the settings chunk and the main stylesheet
-   keeps its budget. The eager sheet owns the page grid (180px section nav + a
+   keeps its budget. The eager sheet owns the page grid (128px section nav + a
    760px card column, single column below 1020px); this sheet owns the nav
    links, cards, label/value rows, sliders, status pills and the connection
    account rows. */
@@ -15,8 +15,8 @@
 @media (min-width: 761px) {
   .settings {
     display: grid;
-    grid-template-columns: 184px minmax(0, 1fr);
-    column-gap: 32px;
+    grid-template-columns: 128px minmax(0, 1fr);
+    column-gap: 20px;
     align-items: start;
   }
   .settings > .page-head { grid-column: 1 / -1; }

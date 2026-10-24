@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createTeamsView } from "./teams.js";
 
@@ -181,10 +181,9 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(theirs).toContain('title="Open and read"');
   });
 
-  it("does not auto-open when there are several teams", async () => {
+  it("opens the first team beside the directory", async () => {
     const opened = [];
-    const hidden = [];
-    const { view, byId } = makeHarness({
+    const { view } = makeHarness({
       appState: { signedIn: true, authKnown: true, teams: [], selectedTeamId: null, accountUserId: "u1" },
       api: async () => ({
         teams: [
@@ -193,14 +192,9 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
         ],
       }),
       openTeamDetail: async (id) => opened.push(id),
-      hideTeamDetail: () => hidden.push(true),
     });
     await view.loadTeams();
-    expect(opened).toEqual([]);
-    expect(hidden).toHaveLength(1);
-    // The card names the state and the one step that changes it.
-    expect(byId("team-empty-title").textContent).toBe("No team selected");
-    expect(byId("team-empty-body").textContent).toBe("Choose a team from the directory.");
+    expect(opened).toEqual(["a"]);
   });
 
   it("signed out: the empty card says how to start", async () => {
@@ -292,7 +286,8 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
 describe("teams directory: opening a team", () => {
   const team = (id, name) => ({ id, name, role: "owner", member_count: 2 });
 
-  it("one team stays in the directory until the user opens it", async () => {
+  it("a phone keeps the directory until the user opens a team", async () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
     const calls = [];
     const { view, byId } = makeHarness({
       appState: { signedIn: true, authKnown: true, teams: [team("t1", "Taipei Knights")], selectedTeamId: null, accountUserId: "u1" },
@@ -301,9 +296,9 @@ describe("teams directory: opening a team", () => {
       hideTeamDetail: () => calls.push(["hide"]),
     });
     await view.loadTeams();
+    vi.unstubAllGlobals();
     expect(calls).toEqual([["hide"]]);
     expect(byId("team-empty-title").textContent).toBe("No team selected");
-    expect(byId("team-empty-body").textContent).toBe("Choose a team from the directory.");
   });
 
   it("a team the user picked re-opens after the list reloads", async () => {

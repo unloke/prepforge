@@ -19,15 +19,27 @@ function fakeRail() {
   };
 }
 
-const target = (matches) => ({ closest: (sel) => (sel === ".tab[data-view]" && matches ? {} : null) });
+const target = (matches) => ({ closest: (sel) => (sel.includes(".tab[data-view]") && matches ? {} : null) });
 
-describe("rail navigation class", () => {
-  it("adds the collapse class after a pointer click on a destination", () => {
+describe("rail collapse after navigation", () => {
+  it("collapses the hover overlay after a pointer click on a destination", () => {
     const rail = fakeRail();
     bindRailCollapseOnNavigate(rail);
     rail.fire("click", { detail: 1, target: target(true) });
     expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(true);
     rail.fire("pointerleave");
+    expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(false);
+  });
+
+  it("collapses after a pointer click on the palette, which can open a page", () => {
+    const rail = fakeRail();
+    bindRailCollapseOnNavigate(rail);
+    rail.getBoundingClientRect = () => ({ right: 60 });
+    rail.fire("click", { detail: 1, target: { closest: (sel) => (sel.includes("#open-palette") ? {} : null) } });
+    // The palette opening over the resting pointer is not the pointer leaving.
+    rail.fire("pointerleave", { clientX: 30 });
+    expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(true);
+    rail.fire("pointerleave", { clientX: 300 });
     expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(false);
   });
 
@@ -38,43 +50,26 @@ describe("rail navigation class", () => {
     rail.fire("click", { detail: 1, target: target(false) });
     expect(rail.classList.contains(RAIL_COLLAPSED_CLASS)).toBe(false);
   });
-});
 
-describe("the desktop icon rail", () => {
-  const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
-  const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
-  const rail = html.slice(html.indexOf('<nav class="rail"'), html.indexOf("</nav>"));
-
-  it("stays an icon rail: it never widens on hover or focus", () => {
-    // The rail used to grow to a 204px labelled overlay on hover; the sheet's
-    // icon rail keeps its 60px track and names each icon in a tooltip instead.
-    expect(css).not.toContain("--rail-open");
-    expect(css).not.toMatch(/\.rail:not\(\.is-nav-collapsed\):hover\s*\{[^}]*width:/s);
-    expect(css).toMatch(/\.rail\s*\{[^}]*width:\s*60px/s);
+  it("gates every hover-expansion rule on the collapse class", () => {
+    const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+    expect(css).not.toMatch(/\.rail:hover/);
+    expect(css).toContain(".rail:not(.is-nav-collapsed):hover");
   });
 
-  it("shows the name and job as a tooltip on hover and keyboard focus", () => {
-    const tip = /\.rail :is\(\.tab, \.rail-btn\)::before \{([^}]+)\}/.exec(css)?.[1] || "";
-    expect(tip).toMatch(/content:\s*attr\(aria-label\)/);
-    expect(tip).toMatch(/position:\s*fixed/);
-    expect(css).toMatch(/\.rail :is\(\.tab, \.rail-btn\):is\(:hover, :focus-visible\)::before\s*\{[^}]*opacity:\s*1/);
-  });
-
-  it("marks the open destination with a tone step, not an accent bar on the edge", () => {
-    expect(css).toMatch(/\.rail \.tab\.is-active\s*\{[^}]*background:\s*var\(--surface-3\)/);
-    expect(css).not.toMatch(/\.tab\.is-active::after/);
-  });
-
-  it("names every destination for assistive tech and its tooltip", () => {
+  it("names every collapsed rail destination for assistive tech and tooltips", () => {
+    const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+    const rail = html.slice(html.indexOf('<nav class="rail"'), html.indexOf("</nav>"));
     const tabs = [...rail.matchAll(/<button class="tab nav-item[^>]*>[\s\S]*?<span class="nav-label">([^<]+)<\/span>/g)];
     expect(tabs.length).toBe(8);
     for (const [markup, label] of tabs) {
-      // The accessible name is also the tooltip text (the `::before` reads
-      // aria-label), so every icon carries the destination's name and job.
-      expect(markup).toMatch(new RegExp(`aria-label="${label}( — [^"]+)?"`));
-      expect(markup).not.toContain("title=");
+      expect(markup).toContain(`aria-label="${label}"`);
+      // The tooltip leads with the name, then the destination's job in a few
+      // words, so Games ("review my games") and Scout ("prep against an
+      // opponent") no longer read as the same page (Settings is its own job).
+      expect(markup).toMatch(new RegExp(`title="${label}( — [^"]+)?"`));
     }
-    expect(rail).toContain('aria-label="Games — review my games"');
-    expect(rail).toContain('aria-label="Scout — prep against an opponent"');
+    expect(rail).toContain('title="Games — review my games"');
+    expect(rail).toContain('title="Scout — prep against an opponent"');
   });
 });

@@ -489,12 +489,15 @@ h2 {
 }
 
 /* Left icon rail (desktop > 760px). A fixed 60px track reserved by body
-   padding. It is a true icon rail: it never opens. The mark sits at the top,
-   the destinations follow in groups split by 20px hairlines, the four
-   utilities sit at the bottom, and every icon carries its name in a tooltip on
-   hover and keyboard focus. The open destination is one tone step, like a
-   hover held. */
+   padding; the rail itself is a fixed panel that grows past the track as an
+   OVERLAY (hover, or keyboard focus inside it), so main content and the board
+   never move or resize. It opens after a 60ms delay and collapses as soon as
+   the pointer or focus leaves; mouse clicks don't hold it open (it relies on
+   :focus-visible, not :focus-within). Clicking a destination adds
+   .is-nav-collapsed (rail-nav.js) so the overlay closes at once, until the
+   pointer leaves the rail. */
 .rail {
+  --rail-open: 204px;
   position: fixed;
   top: 0;
   bottom: 0;
@@ -502,101 +505,128 @@ h2 {
   z-index: var(--z-chrome);
   width: 60px;
   min-width: 0;
-  /* Chrome, not a floating surface: the card step keeps navigation behind the
-     screen's own content, and the accent stays on the selection line. */
   background: var(--panel);
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  gap: 4px;
+  padding: 10px 8px 12px;
+  gap: 8px;
   overflow: hidden auto;
+  transition: width var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
 
-/* The mark is the app's own knight, drawn from the piece set and set in the
-   accent: the product's face at the top of the shell, not a square with a
-   letter in it. */
+.rail:not(.is-nav-collapsed):has(:focus-visible) {
+  width: var(--rail-open);
+  box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
+  transition-delay: 60ms;
+}
+
 .brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 40px;
-  padding: 0;
+  gap: 10px;
+  height: 32px;
+  padding: 0 9px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
   white-space: nowrap;
 }
 
+/* The mark is the app's own knight, drawn from the piece set: a silhouette
+   that still reads at 26px, not a glyph that changes with the platform font. */
 .brand-mark {
   display: grid;
   place-items: center;
   width: 26px;
   height: 26px;
+  border-radius: 7px;
+  background: var(--text);
+  color: var(--panel);
   flex: none;
 }
-.brand-mark svg { width: 22px; height: 22px; display: block; }
+.brand-mark svg { width: 19px; height: 19px; display: block; }
 .brand-mark path,
-.brand-mark circle { fill: var(--accent); stroke: none; }
-.brand-mark .brand-cut { fill: var(--panel); }
+.brand-mark circle { fill: currentColor; stroke: none; }
+.brand-mark .brand-cut { fill: var(--text); }
 
 .nav-group {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
 }
 
-/* A short hairline between groups: the only thing that separates Prepare,
-   Practice, Review and Share in an unlabelled rail. */
-.rail-sep {
-  width: 20px;
-  height: 1px;
-  margin: 8px auto;
-  background: var(--line); /* taste-skill-ignore: an icon rail needs a divider */
-  flex: none;
-}
-
-/* The visible name lives in the tooltip and the accessible name; the label
-   span stays in the DOM for assistive tech and the phone's own markup. */
-.rail .brand-name,
-.rail .nav-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
+.nav-group-label {
+  position: relative;
+  height: 18px;
+  line-height: 18px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--label);
+  padding: 0 13px;
   white-space: nowrap;
+}
+
+.nav-group-label span {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+/* Collapsed: labels fade out and group headings become divider lines. */
+.nav-group-label::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  border-top: 1px solid var(--line); /* taste-skill-ignore: a collapsed rail needs a divider */
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.nav-group:first-of-type .nav-group-label::after {
+  display: none;
+}
+
+.brand-name,
+.nav-label {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.rail:not(.is-nav-collapsed):has(:focus-visible) :is(.brand-name, .nav-label, .nav-group-label span) {
+  opacity: 1;
+  transition-delay: 90ms;
+}
+
+.rail:not(.is-nav-collapsed):has(:focus-visible) .nav-group-label::after {
+  opacity: 0;
+}
+
+/* Hover opens the rail except under a touch pointer. A touch screen wide
+   enough for the rail (a phone on its side, a tablet) keeps :hover after a tap,
+   so a tap on the rail's edge or a group label left the 204px overlay open over
+   the board and the panel until the next tap elsewhere. Keyed on a coarse
+   pointer, not on (hover: hover): a browser with no pointer device at all
+   (headless CI) reports hover: none and must still open on hover. */
+@media not (pointer: coarse) {
+  .rail:not(.is-nav-collapsed):hover {
+    width: var(--rail-open);
+    box-shadow: var(--shadow-2); /* taste-skill-ignore: the open rail is a real overlay */
+    transition-delay: 60ms;
+  }
+  .rail:not(.is-nav-collapsed):hover :is(.brand-name, .nav-label, .nav-group-label span) {
+    opacity: 1;
+    transition-delay: 90ms;
+  }
+  .rail:not(.is-nav-collapsed):hover .nav-group-label::after { opacity: 0; }
 }
 
 .rail-foot {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-/* Tooltips. position: fixed takes them out of the rail's scroll clipping (a
-   short window still scrolls the rail) and the flex static position centres
-   each one on its row; the translate moves it past the 60px rail. */
-.rail :is(.tab, .rail-btn)::before {
-  content: attr(aria-label);
-  position: fixed;
-  padding: 6px 10px;
-  border: 1px solid var(--line-strong); /* taste-skill-ignore: a tooltip floats, so it gets an edge */
-  border-radius: var(--radius);
-  background: var(--float);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.3;
-  white-space: nowrap;
-  box-shadow: var(--shadow-2); /* taste-skill-ignore: a tooltip is a real overlay */
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translate(calc(38px + 50%), -50%);
-  transition: opacity var(--dur-fast) var(--ease-out) 80ms, visibility 0s linear var(--dur-fast);
-}
-.rail :is(.tab, .rail-btn):is(:hover, :focus-visible)::before {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--dur-fast) var(--ease-out) 80ms;
+  gap: 6px;
+  border-top: 1px solid var(--line); /* taste-skill-ignore: a collapsed rail needs a divider */
+  padding-top: 10px;
 }
 
 .ic {
@@ -610,10 +640,11 @@ h2 {
   stroke-linejoin: round;
 }
 
-/* Primary navigation items: rail rows on desktop, bottom tabs on mobile. */
+/* Primary navigation items: rail rows on desktop, bottom tabs on mobile.
+   Icons never move between states; labels fade in when the rail overlays. */
 .tab {
   position: relative;
-  height: 44px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -634,40 +665,15 @@ h2 {
   color: var(--text);
 }
 
-/* The open destination is a tone step, the same way a hover is. An accent bar
-   on the rail's edge sat apart from its icon and read as a clip mark; the
-   accent belongs to the screen's action. */
+/* The open destination: one filled tile, the label in ink. It used to be a pale
+   accent-soft tile with the label in accent-strong AND a 3px accent bar hanging
+   outside the tile's left edge, which drew the accent twice and let the bar
+   read as a clip mark. The accent belongs to the screen's action; the rail's
+   selection is a tone step, the same way a hover is. */
 .tab.is-active {
   background: var(--surface-3);
   color: var(--text);
   font-weight: 600;
-}
-
-/* Desktop rail rows: a 44px square target with the icon centred. */
-.rail .tab,
-.rail .rail-btn,
-.rail .account-btn {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  justify-content: center;
-  gap: 0;
-  color: var(--label);
-}
-.rail .tab:hover,
-.rail .rail-btn:hover {
-  color: var(--text);
-  background: var(--surface-3);
-}
-.rail .tab:active,
-.rail .rail-btn:active,
-.rail .account-btn:active {
-  color: var(--text);
-  background: var(--line-strong);
-}
-.rail .tab.is-active {
-  background: var(--surface-3);
-  color: var(--text);
 }
 
 /* Mobile bottom navigation (≤ 760px only; hidden on desktop). */
@@ -1024,13 +1030,11 @@ h2 {
   max-width: none;
   padding: 16px;
 }
-/* One column of cards, capped and centred like the other pages, so a row's
-   label and value stay a glance apart on a wide window (a full-width card put
-   them ~600px apart) and the page keeps equal margins. */
+/* Capped so a row's label and value stay a glance apart on a wide window,
+   and left on the canvas like the other pages' titles. */
 .settings {
   display: block;
   max-width: 960px;
-  margin: 0 auto;
 }
 .settings-content {
   display: flex;
@@ -2395,10 +2399,9 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* Analyze: one raised panel beside the board (head + scrolling body), so analysis
    output appearing below never moves the game header above it. Its composition
    (coach card, chart, move grid, class bars, drawers) is views/analyze-chart.css.
-   The panel ends where its content does, like Train's: stretched to the board's
-   height it was a white sheet holding a coach note, two drawers and, under a
-   short game, a move list with 359px of empty tone in it (measured at 1440x900).
-   Long content still caps at the viewport and scrolls inside. */
+   The panel is as tall as the board's column, so both end on one line, and the
+   score sheet takes the height: a long game shows more moves before it scrolls.
+   Long content caps at the viewport and scrolls inside. */
 #analyze-sidebar {
   gap: 0;
   max-height: var(--study-h);
@@ -2407,7 +2410,7 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 @media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6), (orientation: landscape) and (max-height: 520px) {
   #analyze-sidebar {
     height: auto;
-    align-self: start;
+    align-self: stretch;
   }
 }
 
@@ -5948,15 +5951,15 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 
 
-/* Rail foot: Search and Theme are rail rows on the shared quiet button
-   (.btn.ghost), icon only, with the shared tooltip. */
+/* Rail foot: Search and Theme read as rail rows (icon, label on expand) on
+   the shared quiet button (.btn.ghost). */
 .rail-btn {
   position: relative;
-  justify-content: center;
-  gap: 0;
-  width: 44px;
-  height: 44px;
-  padding: 0;
+  justify-content: flex-start;
+  gap: 12px;
+  width: 100%;
+  height: 38px;
+  padding: 0 13px;
   border: 0;
   white-space: nowrap;
 }
@@ -5992,6 +5995,26 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .lib-actions { width: 100%; }
   .lib-actions .btn { flex: 1; }
+}
+
+/* Rail density: brand + 8 destinations + 4 foot controls must fit a ~740px
+   laptop viewport without a scrollbar. */
+@media (min-width: 761px), (orientation: landscape) and (max-height: 520px) {
+  .rail { gap: 4px; padding-top: 8px; padding-bottom: 8px; }
+  .rail .tab,
+  .rail .rail-btn { height: 40px; }
+  .rail .nav-group-label { height: 14px; line-height: 14px; }
+  .rail-foot { gap: 2px; padding-top: 6px; }
+  .rail .account-btn { height: 40px; }
+}
+
+/* Below ~560px of height the rows and the group dividers no longer both fit:
+   at 40px rows the 528px window overflowed the rail by 57px and pushed the
+   account chip off the bottom. The dividers are only a hairline between
+   already-separated groups, so on a short window the rail drops them and the
+   rows keep their height. */
+@media (min-width: 761px) and (max-height: 560px) {
+  .rail .nav-group-label { display: none; }
 }
 
 /* Train coach banner: one fixed height (title + two clamped lines), so a

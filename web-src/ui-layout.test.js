@@ -537,11 +537,13 @@ describe("workspace chrome layout", () => {
     // take the whole window: a fixed side column was easy to miss.
     expect(css).toMatch(/\.settings\s*\{[^}]*display:\s*block/);
     expect(settingsCss).toMatch(/\.settings-nav\s*\{[^}]*position:\s*sticky/);
-    // One column of cards in the strip's own order, capped and centred: a
+    // One column of cards in the strip's own order, capped and left on the
+    // canvas like the other pages: a
     // two-column masonry listed Board third and drew it beside Engine, so the
     // section you picked and the card you landed on were in different columns.
     expect(css).not.toMatch(/\.settings-content\s*\{[^}]*column-count/);
-    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*960px[^}]*margin:\s*0 auto/);
+    expect(css).toMatch(/\.settings\s*\{[^}]*max-width:\s*960px/);
+    expect(css).not.toMatch(/\.settings\s*\{[^}]*margin:\s*0 auto/);
     // The desktop page names itself through the shell's one page-head rule.
     expect(css).toMatch(/@media\s*\(min-width:\s*761px\)[\s\S]*\.workspace\s+\.page-head\s*\{[^}]*display:\s*flex/);
     expect(settingsCss).not.toMatch(/#view-settings\s+\.page-head\s+h1/);
@@ -736,10 +738,11 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".sidebar")).toMatch(/overflow:\s*visible/);
     expect(ruleBody(".sidebar")).not.toMatch(/overflow-y/);
     expect(css).toMatch(/#analyze-sidebar\s*\{[^}]*overflow:\s*hidden/);
-    // The panel ends where its content does; it used to stretch to the
-    // board's height and hold hundreds of px of empty tone under a short game.
+    // Train's panel ends where its content does; it used to stretch to the
+    // board's height and hold hundreds of px of empty tone. Analyze's is the
+    // column's height and its score sheet fills it.
     expect(css).toMatch(/#view-train \.train-sidebar \{[\s\S]{0,200}?height: auto;[\s\S]{0,40}?align-self: start/);
-    expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: start/);
+    expect(css).toMatch(/#analyze-sidebar \{[\s\S]{0,120}?height: auto;[\s\S]{0,40}?align-self: stretch/);
     // One column at every side-by-side width: the sheet keeps its own cap and
     // scrolls inside it, so a long game never stretches the panel.
     expect(analyzeCss).toMatch(/\.an-panes > \.moves-pane:not\(\[hidden\]\) \{ flex: none; \}/);

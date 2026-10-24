@@ -8,6 +8,7 @@ import "./teams.css";
 import { loadTeamDirectory } from "../team-directory.js";
 import { enterRows } from "../list-enter.js";
 import { teamRowsSkeleton } from "./team-skeleton.js";
+import { PHONE_QUERY } from "../phone-layout.js";
 import { GRANT_ROLES, canCopy, roleAllows, roleLabel } from "../share-roles.js";
 
 export function createTeamsView({
@@ -111,12 +112,14 @@ export function createTeamsView({
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
       if (!isCurrent() || teams === null) return;
       renderTeamsList();
-      // Only a team the user picked opens on its own (a reload, or a member
-      // add/remove). A single-team directory used to auto-expand, which skipped
-      // the list and hid the empty card under "Choose a team / Select a team
-      // from the list" — the card now explains how to get a second team.
-      if (appState.selectedTeamId && appState.teams.some((team) => team.id === appState.selectedTeamId)) {
-        openTeamDetail(appState.selectedTeamId);
+      // The team the user picked reopens (a reload, or a member add/remove).
+      // Beside the directory the detail pane would otherwise be a blank card, so
+      // the first team opens; a phone shows the list first.
+      const picked = appState.teams.some((team) => team.id === appState.selectedTeamId)
+        ? appState.selectedTeamId
+        : !globalThis.matchMedia?.(PHONE_QUERY).matches && appState.teams[0]?.id;
+      if (picked) {
+        openTeamDetail(picked);
       } else {
         hideTeamDetail();
       }
