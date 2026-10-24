@@ -140,7 +140,8 @@ async function runViewport(vp) {
   });
 
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(900); // lazy dashboard chunk + render
+  // The lazy dashboard chunk renders skeleton rows first; wait for the real ones.
+  await page.waitForFunction(() => document.querySelector("#dashboard-repertoires .lib-row[data-repertoire-id]") && !document.querySelector("#dashboard-repertoires .lib-row.is-skeleton"), null, { timeout: 30_000 });
 
   const check = (ok, label) => { if (!ok) failures.push(`${vp.name}: ${label}`); };
 
