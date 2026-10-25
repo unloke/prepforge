@@ -176,7 +176,9 @@ describe("scout phone composition", () => {
     // score the colour tabs already show; the chips and actions stay.
     expect(phone).toMatch(/\.scout-panel \.prof-id,\n\s*\.scout-panel \.scout-color-rec \{ display: none; \}/);
     expect(phone).toContain(".scout-panel .prof-row .spacer { display: none; }");
-    expect(phone).toContain(".prof-row .btn { min-height: 44px; }");
+    // Chips on one row, the two actions as equal halves under them, at the chips' 40px.
+    expect(phone).toMatch(/\.scout-panel \.prof-row \{ display: grid;[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(phone).toContain(".prof-row .btn { min-height: 40px; }");
   });
 });
 

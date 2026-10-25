@@ -3920,7 +3920,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   .scout-main,
   .scout-results,
   .scout-section:not([hidden]) { display: contents; }
-  .scout-side { order: 1; }
+  /* Stretch, not start: the card is an inline-size container, so sized to its
+     content it has no width of its own and collapsed to its 24px of padding. */
+  .scout-side { order: 1; align-self: stretch; }
   .scout-intel-charts-strip { order: 2; }
 }
 

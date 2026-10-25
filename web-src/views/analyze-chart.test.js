@@ -610,7 +610,7 @@ describe("Analyze on a phone", () => {
 
   it("keeps every pane and the coach on the phone gutter", () => {
     expect(phone).toMatch(/\.an-pane \{[^}]*padding: 8px var\(--phone-gutter\)/);
-    expect(phone).toMatch(/#analysis-explain \{[^}]*padding: 8px var\(--phone-gutter\)/);
+    expect(phone).toMatch(/#analysis-explain \{[^}]*padding: \d+px var\(--phone-gutter\)/);
   });
 
   it("keeps Analyze in the thumb bar whichever pillar is open", () => {
@@ -618,9 +618,10 @@ describe("Analyze on a phone", () => {
   });
 
   it("paints the Humans picks at their words' height with a full thumb target", () => {
-    expect(phone).toMatch(/#analysis-explain \.hp \{ position: relative; flex-shrink: 0; height: 28px; \}/);
+    expect(phone).toMatch(/#analysis-explain \.hp \{ position: relative; flex-shrink: 0; height: 28px;/);
     expect(phone).toMatch(/#analysis-explain \.hp::after \{[^}]*inset: -8px 0;/);
-    expect(phone).toMatch(/#analysis-explain \.coach-maia \{[^}]*height: 44px/);
+    // A 32px row: five picks fit across 390px and the verdict keeps three lines.
+    expect(phone).toMatch(/#analysis-explain \.coach-maia \{[^}]*height: 32px/);
   });
 
   // The graph beside the figure is the same win-chance series: no meter.

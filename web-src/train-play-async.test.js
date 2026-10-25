@@ -58,6 +58,8 @@ describe("Play opponent response ownership", () => {
     expect(reason(new Error("weight fetch 404 for https://cdn/x.onnx"))).not.toContain("https://");
     expect(reason(new Error("sha256 mismatch for x.onnx: got ab != manifest cd"))).toContain("corrupted");
     expect(reason(new Error("Maia3 worker request failed"))).toBe("Maia3 worker request failed");
+    // A runtime that would not start is not shown as its raw WebAssembly trap.
+    expect(reason(new Error("no available backend found. ERR: [wasm] RuntimeError: call_indirect to a signature that does not match"))).toBe("Maia could not start in this browser. Reload the page and retry.");
     expect(reason(undefined)).toContain("could not start");
   });
 

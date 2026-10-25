@@ -40,9 +40,6 @@ async function checkHeaders() {
   if (coep !== "require-corp") fail(`COEP expected require-corp, got ${coep}`);
   ok("COOP/COEP headers present");
   const html = await r.text();
-  if (!html.includes("window.__ENGINE_ASSET_BASE=")) {
-    fail("HTML missing window.__ENGINE_ASSET_BASE injection");
-  }
   if (html.includes("/resolve/main/")) {
     console.warn(
       "[prod-engine-smoke] WARN: asset bases still use /resolve/main/ — pin to HF commit " +
@@ -93,16 +90,6 @@ async function browserChecks() {
     if (!isolated) fail("crossOriginIsolated is false — threaded WASM will not work");
     ok("crossOriginIsolated === true");
 
-    const bases = await page.evaluate(() => ({
-      engine: globalThis.__ENGINE_ASSET_BASE || null,
-      maia3: globalThis.__MAIA3_ASSET_BASE || null,
-    }));
-    if (!bases.engine) {
-      console.warn("[prod-engine-smoke] WARN: __ENGINE_ASSET_BASE unset — ORT wasm served same-origin");
-    } else {
-      ok(`__ENGINE_ASSET_BASE = ${bases.engine}`);
-    }
-
     // Warm the analyze tab so the same-origin Stockfish worker starts.
     await page.click('[data-testid="nav-analyze"]');
     await page.click('[data-testid="open-engine-widget"]');
@@ -127,8 +114,9 @@ async function browserChecks() {
     await maiaAction.click();
     await waitForMaiaReady(page);
     const ortWasmHits = wasmHits.filter((u) => /ort-wasm/i.test(u));
-    if (bases.engine && !ortWasmHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
-      fail(`ORT .wasm was not observed from the pinned HF base (seen: ${ortWasmHits.join(", ") || "none"})`);
+    // The runtime pair comes from one hashed folder on this origin, so glue and wasm match.
+    if (!ortWasmHits.some((u) => u.startsWith(PROD_URL) && /\/engine\/ort\/[0-9a-f]{8}\//.test(u))) {
+      fail(`ORT .wasm was not observed from this origin's hashed folder (seen: ${ortWasmHits.join(", ") || "none"})`);
     }
     if (!onnxHits.some((u) => /huggingface\.co|hf\.co/i.test(u))) {
       fail(`Maia ONNX was not observed from the pinned HF base (seen: ${onnxHits.join(", ") || "none"})`);

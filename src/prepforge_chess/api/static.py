@@ -9,13 +9,13 @@ Three things make this more than a bare ``StaticFiles`` mount:
   must carry ``CORP: same-origin`` (or be CORS). We set those here rather than in
   the global security middleware so the dev ``/docs`` page and the JSON API (which
   would otherwise break under ``require-corp``) stay unaffected.
-* **Runtime asset bases (Maia3 + engine WASM).** Large artifacts (Maia3 ONNX,
-  Stockfish/ORT ``.wasm``) are CDN/object-store hosted and stripped from the deploy
-  image. The shell resolves their base URLs at runtime from globals injected into a
-  single inline bootstrap ``<script>``: ``window.__MAIA3_ASSET_BASE`` from
-  ``PREPFORGE_MAIA3_ASSET_BASE`` and ``window.__ENGINE_ASSET_BASE`` from
-  ``PREPFORGE_ENGINE_ASSET_BASE`` (each empty → in-image ``/static/…`` dev fallback).
-  Both assignments share one script body so the CSP sha256 hash stays in sync.
+* **Runtime weight base (Maia3).** The Maia3 ONNX weights are CDN/object-store
+  hosted and stripped from the deploy image. The shell resolves their base URL at
+  runtime from ``window.__MAIA3_ASSET_BASE``, injected from
+  ``PREPFORGE_MAIA3_ASSET_BASE`` into an inline bootstrap ``<script>`` whose sha256
+  the CSP carries (empty → in-image ``/static/maia3/`` dev fallback). The engine
+  runtimes (Stockfish, onnxruntime-web) ship in the image, each in a folder named
+  by its files' hash, so a script and its ``.wasm`` always come from one release.
 * **Dev weights fallback.** A locally built tree has only the manifest under
   ``static/maia3/``; the real weights live (git-ignored) in
   ``web-src/public/maia3/``. We fall back to that source copy so local Maia3 "just
@@ -46,7 +46,6 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "web" / "static"
 DEV_MAIA3_DIR = Path(__file__).resolve().parents[3] / "web-src" / "public" / "maia3"
 
 MAIA3_ASSET_BASE_ENV = "PREPFORGE_MAIA3_ASSET_BASE"
-ENGINE_ASSET_BASE_ENV = "PREPFORGE_ENGINE_ASSET_BASE"
 
 # Cross-origin isolation headers. The document carries COOP+COEP (so it becomes
 # cross-origin isolated and can use SharedArrayBuffer); subresources carry CORP so
@@ -100,7 +99,9 @@ _IMMUTABLE_EXT = {".wasm", ".onnx", ".nnue"}
 # Only these (not every file under assets/) are safe to mark immutable — the
 # hash changes whenever the content does.
 _HASHED_NAME = re.compile(r"-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$")
-# The Stockfish build sits in engine/<hash of its files>/ (scripts/sync-stockfish.mjs).
+# Engine runtimes sit in folders named by their files' hash: engine/<hash>/ for
+# Stockfish (scripts/sync-stockfish.mjs), engine/ort/<hash>/ for onnxruntime-web
+# (scripts/sync-ort.mjs).
 _HASHED_DIR = re.compile(r"^[0-9a-f]{8}$")
 
 
@@ -113,7 +114,7 @@ def _static_mime(path: Path) -> str:
 
 
 def _cache_control(path: Path) -> str:
-    hashed_dir = path.parent.parent.name == "engine" and _HASHED_DIR.match(path.parent.name)
+    hashed_dir = _HASHED_DIR.match(path.parent.name) and "engine" in path.parent.parent.parts[-2:]
     if path.suffix.lower() in _IMMUTABLE_EXT or _HASHED_NAME.search(path.name) or hashed_dir:
         return "public, max-age=31536000, immutable"
     # App shell + unhashed assets (index.html, styles, icons): always revalidate so
@@ -192,10 +193,6 @@ def _maia3_asset_base() -> str:
     return os.environ.get(MAIA3_ASSET_BASE_ENV, "").strip()
 
 
-def _engine_asset_base() -> str:
-    return os.environ.get(ENGINE_ASSET_BASE_ENV, "").strip()
-
-
 def _window_global_assignment(name: str, value: str) -> str:
     """One ``window.<name> = …;`` assignment, JSON-encoded with breakout escape."""
     literal = json.dumps(value).replace("</", "<\\/")
@@ -206,21 +203,12 @@ def _asset_base_script() -> str | None:
     """The inline bootstrap script body (no ``<script>`` tags), or None when unset.
 
     This is the exact text the browser sees between the tags — both the injected
-    tag and the CSP sha256 hash are derived from it, so they always match. Maia3
-    and engine bases are emitted in the *same* body when configured so CSP only
-    needs one hash. Each value is JSON-encoded and its ``</`` sequences are
-    escaped to prevent a ``</script>`` breakout.
+    tag and the CSP sha256 hash are derived from it, so they always match. The
+    value is JSON-encoded and its ``</`` sequences are escaped to prevent a
+    ``</script>`` breakout.
     """
-    parts: list[str] = []
     maia3 = _maia3_asset_base()
-    if maia3:
-        parts.append(_window_global_assignment("__MAIA3_ASSET_BASE", maia3))
-    engine = _engine_asset_base()
-    if engine:
-        parts.append(_window_global_assignment("__ENGINE_ASSET_BASE", engine))
-    if not parts:
-        return None
-    return "".join(parts)
+    return _window_global_assignment("__MAIA3_ASSET_BASE", maia3) if maia3 else None
 
 
 def _csp_script_hash(script_body: str) -> str:

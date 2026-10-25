@@ -1475,7 +1475,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze {
     --phone-eval-h: 64px;
     --phone-tabs-h: 44px;
-    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 164px);
+    /* 166px of coach: the review bar, three lines of verdict and the Humans row,
+       while the board keeps half a 660px screen. */
+    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-tabs-h) + 166px);
   }
   #view-analyze .study { height: 100svh; }
   #view-analyze .board-stack {
@@ -1524,11 +1526,11 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     flex: 1 1 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     height: auto;
     min-height: 0;
     margin: 0;
-    padding: 8px var(--phone-gutter) 4px;
+    padding: 4px var(--phone-gutter);
     border-radius: 0;
     background: var(--bg);
     overflow: hidden;
@@ -1554,7 +1556,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     min-height: 0;
     padding-left: 10px;
     font-size: 16px;
-    line-height: 1.45;
+    line-height: 1.4;
     overflow: auto;
     overscroll-behavior: contain;
   }
@@ -1602,8 +1604,10 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   @media (prefers-reduced-motion: reduce) {
     #analysis-explain .cc-head .pf-switch::after { transition: none; }
   }
-  #analysis-explain .coach-maia { height: 44px; overflow-x: auto; scrollbar-width: none; }
-  #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; }
+  /* 32px of row for 28px pills (each keeps a 44px target): five picks fit across
+     a 390px phone, and the verdict above keeps three lines on a 664px one. */
+  #analysis-explain .coach-maia { height: 32px; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; gap: 4px; padding: 0 7px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
   #analysis-explain .coach-bookline { max-height: none; }
   /* The review bar takes the header's row, beside the grading switch, as in

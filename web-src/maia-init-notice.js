@@ -26,6 +26,8 @@ export function maiaErrorText(error) {
   if (/sha256 mismatch|size mismatch|truncated|exceeds manifest/i.test(message)) {
     return "The Maia download was incomplete or corrupted. Retry.";
   }
+  // onnxruntime-web could not start its WebAssembly runtime ("no available backend").
+  if (/no available backend|\[wasm\]|RuntimeError/.test(message)) return "Maia could not start in this browser. Reload the page and retry.";
   if (/network|fetch|offline|Failed to/i.test(message)) {
     return "The Maia download failed. Check your connection and retry.";
   }

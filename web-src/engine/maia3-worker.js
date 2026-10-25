@@ -25,7 +25,8 @@ import {
 } from "./maia3-inference.js";
 import { loadVerifiedWeights } from "./maia3-weights-loader.js";
 
-ort.env.wasm.wasmPaths = "/static/engine/ort/"; // vendored runtime (scripts/sync-ort.mjs)
+// The vendored runtime: its .mjs and .wasm in one hashed folder (scripts/sync-ort.mjs).
+ort.env.wasm.wasmPaths = globalThis.__ORT_DIR__;
 // Thread count is resolved per-init from the message the provider sends (Stage 4c). Pin a
 // safe single-threaded default at module load; init() overrides it before the first session
 // create. Threaded WASM needs SharedArrayBuffer (cross-origin isolation), so we also clamp
@@ -71,17 +72,11 @@ function feeds(tokens, count, selfElos, oppoElos) {
 async function init({
   id,
   assetBase,
-  ortWasmPaths: ortPaths,
   manifest,
   backend = "wasm",
   numThreads,
   defaultRating: rating,
 }) {
-  // ORT reads wasmPaths when the session is created; the provider resolves the base
-  // on the main thread (this worker can't see window.__ENGINE_ASSET_BASE).
-  if (ortPaths) {
-    ort.env.wasm.wasmPaths = ortPaths;
-  }
   // Contract gate before trusting any token shape / legal mask (history, token_dim,
   // time info, policy dim) against the runtime manifest.
   assertManifestContract(manifest);
