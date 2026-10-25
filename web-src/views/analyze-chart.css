@@ -500,13 +500,14 @@
    the chain), so an opened fold makes the panel scroll instead of folding the
    coach under it. */
 @media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
-  /* min-height: 0 lets the sheet, the one pane that gives, take the squeeze: at auto
-     the main block kept its content height and the whole panel scrolled, coach and
-     all, whenever a key moment brought a late move into view. */
-  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
+  /* The sheet's basis is its 120px floor, so the main block's own height counts
+     the sheet at that floor: the block never shrinks below it (a long list of
+     recent analyses makes the panel scroll instead), and grows into any room
+     left, which the sheet takes up to its full length. */
+  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 0 auto; }
   #analyze-sidebar .panel-scroll > #analyze-open { flex: none; }
-  .an-panes > .moves-pane:not([hidden]) { flex: 0 1 auto; overflow: visible; }
-  .an-panes > .moves-pane > .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
+  .an-panes > .moves-pane:not([hidden]) { flex: 1 1 auto; overflow: visible; }
+  .an-panes > .moves-pane > .moves-grid { flex: 1 1 120px; min-height: 120px; max-height: max-content; }
   /* How each side played heads the score sheet, as a review opens with it:
      the report is no fold here, its players line is its toggle. */
   .an-panes > .report-pane { order: 1; }
@@ -1421,13 +1422,10 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze[data-pane="moves"] .an-panes > .moves-pane:not([hidden]) { display: flex; }
 }
 
-/* Where the panel has no room for two more folds — a stacked tablet, a phone on
-   its side — the game's sources stay behind the board bar's Games button and
-   open over the panel. */
-@media (min-width: 761px) and (max-width: 860px) and (orientation: portrait),
-  (min-width: 761px) and (max-width: 860px) and (min-height: 521px),
-  (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6),
-  (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+/* With a game open the panel belongs to the game: its sources (a PGN, the
+   recent analyses) stay behind the board bar's Games button and open over the
+   panel, so a long list of past games never takes the score sheet's room. */
+@media (min-width: 761px), (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
   #analyze-sidebar { position: relative; }
   #view-analyze:has(#analysis-results:not([hidden])) .board-bar .bb-sheet { display: inline-flex; }
   #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
