@@ -241,7 +241,7 @@ describe("seven views share chrome families", () => {
     expect(app).toContain("PROMOTION_PIECES");
     expect(html).toContain('id="start-play"');
     expect(html).toContain('id="feeling-lucky"');
-    expect(html).toContain("I'm Feeling Lucky");
+    expect(html).toContain(">Random position<");
     expect(html).toContain('id="train-play-color"');
     expect(html).toContain('id="play-takeback"');
     expect(html).toContain('id="play-resign"');

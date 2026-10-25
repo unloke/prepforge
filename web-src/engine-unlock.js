@@ -73,7 +73,8 @@ export function unlockHtml(place, view, { inline = false } = {}) {
     return html`<div class="${cls}" data-mode="error" data-engine="${engine}"><span class="unlock-text"><b>${name}</b><span class="unlock-line" role="alert">${state.error}</span></span><button type="button" class="btn sm" data-unlock-act="get">Retry</button>${close}</div>`;
   }
   const action = mode === "enable" ? "Turn on" : html`Download <span class="unlock-size">${size}</span>`;
-  return html`<div class="${cls}" data-mode="${mode}" data-engine="${engine}"><span class="unlock-text"><b>${name}</b><span class="unlock-line">${gain}</span></span><button type="button" class="btn sm primary" data-unlock-act="get" data-testid="unlock-get-${place}">${action}</button>${close}</div>`;
+  // What the engine adds is the row's tooltip, not a standing line beside the button.
+  return html`<div class="${cls}" data-mode="${mode}" data-engine="${engine}" title="${gain}"><span class="unlock-text"><b>${name}</b></span><button type="button" class="btn sm primary" data-unlock-act="get" data-testid="unlock-get-${place}">${action}</button>${close}</div>`;
 }
 
 // Fill every slot under `root`. A slot whose row did not change mode only moves

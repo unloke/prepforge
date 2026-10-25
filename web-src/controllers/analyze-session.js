@@ -68,7 +68,7 @@ export function createAnalyzeSession(deps) {
     }));
   return {
     analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
-    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, playMoveAt, positionCoach,
+    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
     rebuildAnalysisVariations, resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
     selectAnalysisNode, selectAnalysisNodePath, selectedNodePath, showAnalysisPly,
     reviewNav: (kind) => ensureAnalyzeView().then((view) => view.reviewStep(kind)),
@@ -159,6 +159,8 @@ function savedPositionEvalRead(fen, depth) {
 // the coach then reads only once they have paused this long.
 const COACH_RAPID_STEP_MS = 120;
 const COACH_RAPID_SETTLE_MS = 160;
+
+const SAVED_ERROR_GRADES = new Set(["inaccuracy", "mistake", "blunder"]);
 
 // Shallowest interrupted/borrowed search the coach reuses as a position read.
 const COACH_MIN_REUSE_DEPTH = 10;
@@ -307,6 +309,9 @@ class PositionCoach {
       // would only re-word a settled answer, not worth a search of its own.
       const saved = savedMainlineMove(ctx.ply, prevFen, ctx.lastUci, fen);
       const wide = !saved?.classification && before.lines[0].uci === ctx.lastUci ? await this._eval(prevFen, token, 2) : null;
+      // The saved grade wins (below), so its best move must too: a shallower live read that
+      // still prefers the played move would word "Nbd6 is not the best move. Nbd6 was the move."
+      const savedBest = await this._savedBestLine(saved, before, token);
       if (token !== this.token || fen !== this.fen) return;
       const features = c.buildMoveFeatures({
         ply: ctx.ply ?? null,
@@ -319,7 +324,7 @@ class PositionCoach {
         prevFenBefore: prevMove ? prevMove.fenBefore : null,
         fenBefore: prevFen,
         fenAfter: fen,
-        beforeEval: { lines: wide && wide.lines.length > 1 ? wide.lines : before.lines },
+        beforeEval: { lines: savedBest ? [savedBest] : wide && wide.lines.length > 1 ? wide.lines : before.lines },
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       features.opponentRead = opponentRead;
@@ -522,6 +527,27 @@ class PositionCoach {
       if (!snap.error) return this._remember(fen, snap, 0);
     }
     return null;
+  }
+
+  // The saved best move as a before-line, when the saved run graded the move an error and
+  // named a better one the live read does not lead with: the line is that move, then the
+  // read of the position it reaches (White-POV like every coach read).
+  async _savedBestLine(saved, before, token) {
+    const best = saved && SAVED_ERROR_GRADES.has(saved.classification) ? saved.best_move_uci : null;
+    if (!best || before.lines[0]?.uci === best) return null;
+    let move;
+    try {
+      move = localBoardAfterMove(saved.fen_before, best).move;
+    } catch (_) {
+      return null;
+    }
+    const read = await this._eval(move.fen_after, token, 1);
+    const top = read && read.lines[0];
+    if (!top) return null;
+    return {
+      uci: best, san: move.san, cp: top.cp, mate: top.mate,
+      pvUci: [best, ...(top.pvUci || [])], pvSan: [move.san, ...(top.pvSan || [])],
+    };
   }
 
   // Cache a snapshot of `fen` (if it is for that position and deep enough) as a

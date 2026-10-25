@@ -57,7 +57,7 @@ export function createTrainSession(deps) {
 
 async function skipTrainingLine() {
   if (appState.play && appState.play.active) {
-    setStatus("Skip is for the spaced-repetition queue. Start or Feeling Lucky to change position.");
+    setStatus("Skip is for the spaced-repetition queue. Start or Random position to change position.");
     return;
   }
   if (appState.smart) {
@@ -774,7 +774,7 @@ async function runFeelingLuckyClick() {
     }
   }
   if (!appState.accountUsername) {
-    openAuthModal("login", { notice: "Sign in first, then try Feeling Lucky." });
+    openAuthModal("login", { notice: "Sign in first, then try a random position." });
     return;
   }
   // No Lichess-link hard gate: the live Lichess game-feed endpoints are

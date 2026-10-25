@@ -2,10 +2,10 @@ import { html } from "../html.js";
 import { classBadgeSymbol } from "../move-grades.js";
 import { reviewState } from "./analyze-report.js";
 
-// The review bar under the coach (Chess.com's Next, Best and Retry): step to the
-// previous or next key moment of the report, and at a mistake play the better
-// move or try to find it on the board.
-export function createReviewBar({ appState, getReport, showAnalysisPly, selectAnalysisNode, playMoveAt }) {
+// The review bar under the coach (Chess.com's Next and Retry): step to the
+// previous or next key moment of the report, and at a mistake try to find the
+// better move on the board. The engine's own line already shows that move.
+export function createReviewBar({ appState, getReport, showAnalysisPly, selectAnalysisNode }) {
   // A Retry in progress: the position before the moment (`fromId`), the move
   // the engine wanted there, and the moment's ply. It ends when the reader
   // leaves that position and its replies.
@@ -40,7 +40,7 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
   }
 
   // The review bar under the coach: ‹ the moment in focus › and, at a mistake
-  // with a better move, Best and Retry.
+  // with a better move, Retry.
   function paintReviewBar() {
     const bar = typeof document !== "undefined" && document.getElementById("coach-review");
     if (!bar) return;
@@ -65,8 +65,8 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
       wrong: "Not the best move",
     }[tried] || `${state.current ? "" : m.ply > ply ? "Next: " : "Back to "}${m.label} ${kind}`;
     const canFix = m.loss != null && m.best && (state.current || tried);
-    const actions = canFix
-      ? html`${tried === "right" ? "" : html`<button type="button" class="btn sm" data-review="best" title="${`Play ${m.best.san} on the board`}">Best</button>`}${tried === "try" ? "" : html`<button type="button" class="btn sm" data-review="retry" title="Find the better move yourself">Retry</button>`}`
+    const actions = canFix && tried !== "try" && tried !== "right"
+      ? html`<button type="button" class="btn sm" data-review="retry" title="Find the better move yourself">Retry</button>`
       : "";
     bar.hidden = false;
     bar.dataset.ply = String(m.ply);
@@ -93,10 +93,6 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
     }
     const fromId = appState.analysisTree?.byId?.get(`m${ply}`)?.parent?.id;
     if (!fromId || !moment.best) return;
-    if (kind === "best") {
-      retry = null;
-      return playMoveAt(fromId, moment.best.uci);
-    }
     if (kind === "retry") {
       retry = { fromId, best: moment.best.uci, san: moment.best.san, ply };
       await selectAnalysisNode(fromId);

@@ -264,6 +264,10 @@ const FADE_IN = [
 // that interrupts this one (a held ← / →) can only ever start the next motion
 // from a square that exists — and a piece that is still travelling has its
 // running transform replaced, never stacked.
+// Each piece's running slide, so the next one can replace it. Asking the piece
+// for getAnimations() instead flushed the page's styles on every step.
+const sliding = new WeakMap();
+
 export function playMoveMotion({ slides, held, restored }, squareOf, enabled = true) {
   const travel = enabled && !prefersReducedMotion();
   for (const { square, node } of held) {
@@ -279,11 +283,11 @@ export function playMoveMotion({ slides, held, restored }, squareOf, enabled = t
   for (const { dx, dy, to } of slides) {
     const piece = squareOf(to)?.querySelector(".piece:not(.piece-caught)");
     if (!piece) continue;
-    piece.getAnimations?.().forEach((running) => running.cancel());
-    piece.animate(
+    sliding.get(piece)?.cancel();
+    sliding.set(piece, piece.animate(
       [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }],
       { duration: MOVE_SLIDE_MS, easing: EASE },
-    );
+    ));
   }
   for (const square of restored) {
     const piece = squareOf(square)?.querySelector(".piece:not(.piece-caught)");

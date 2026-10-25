@@ -32,7 +32,7 @@ describe("command palette filter", () => {
       "New repertoire",
       "Start training",
       "Practice game",
-      "I'm Feeling Lucky",
+      "Random position",
       "Toggle light / dark theme",
     ]);
   });

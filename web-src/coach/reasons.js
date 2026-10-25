@@ -12,7 +12,7 @@
 //   block   - the move stops an enemy passed pawn on the square in front of it
 import { Chess } from "chess.js";
 import { playUci } from "./move-facts.js";
-import { seeCapture, PIECE_NAME, PIECE_VALUE } from "./material.js";
+import { capturesOn, seeCapture, PIECE_NAME } from "./material.js";
 
 const ERRORS = new Set(["inaccuracy", "mistake", "blunder"]);
 const isError = (f) => ERRORS.has(f.classification?.code);
@@ -53,11 +53,10 @@ function stays(fen, pv, sq, piece, plies) {
 // back. attackers() alone counts pinned pieces.
 function legalGuard(b, sq, from) {
   const work = board(b.fen());
-  const caps = work.moves({ verbose: true }).filter((m) => m.to === sq && m.captured);
+  const caps = capturesOn(work, sq);
   if (!caps.length) return false;
-  caps.sort((a, c) => PIECE_VALUE[a.piece] - PIECE_VALUE[c.piece]);
   work.move(caps[0]);
-  return work.moves({ verbose: true }).some((m) => m.from === from && m.to === sq && m.captured);
+  return work.moves({ square: from, verbose: true }).some((m) => m.to === sq && m.captured);
 }
 
 // What the move `uci` does for its own pieces: escape, defend or block. `pv` starts with `uci`.
