@@ -23,7 +23,7 @@ export const PALETTE_ACTIONS = [
   { id: "new-repertoire", label: "New repertoire", keywords: ["create", "new", "repertoire"] },
   { id: "start-training", label: "Start training", keywords: ["train", "practice", "start"] },
   { id: "play-human", label: "Practice game", keywords: ["play", "opponent", "human", "maia"] },
-  { id: "feeling-lucky", label: "I'm Feeling Lucky", keywords: ["lucky", "key", "position"] },
+  { id: "feeling-lucky", label: "Random position", keywords: ["lucky", "random", "key", "position"] },
   { id: "toggle-theme", label: "Toggle light / dark theme", keywords: ["theme", "dark", "light", "mode", "appearance"] },
 ];
 

@@ -1,5 +1,5 @@
 // The review bar under the Analyze coach (web-src/views/analyze-review.js):
-// which key moment it names, when it offers Best and Retry, and what a try on
+// which key moment it names, when it offers Retry, and what a try on
 // the board reads as.
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -33,13 +33,12 @@ function setup() {
   };
   globalThis.document = { getElementById: (id) => (id === "coach-review" ? bar : null) };
   const appState = { analysisTree: makeTree(), analysisCurrentNodeId: "root", analysisPly: 0 };
-  const calls = { show: [], select: [], play: [] };
+  const calls = { show: [], select: [] };
   const review = createReviewBar({
     appState,
     getReport: () => ({ moments: [blunder, great] }),
     showAnalysisPly: async (ply) => calls.show.push(ply),
     selectAnalysisNode: async (id) => { calls.select.push(id); appState.analysisCurrentNodeId = id; },
-    playMoveAt: async (id, uci) => calls.play.push([id, uci]),
   });
   const at = (id, ply) => { appState.analysisCurrentNodeId = id; appState.analysisPly = ply; review.paint(); };
   const click = (kind) => bar.addEventListener.mock.calls[0][1]({ target: { closest: () => ({ dataset: { review: kind }, disabled: false }) } });
@@ -52,7 +51,7 @@ describe("review bar", () => {
   it("is hidden while the report has no key moments", () => {
     const { bar, review } = setup();
     globalThis.document.getElementById("coach-review").hidden = false;
-    createReviewBar({ appState: {}, getReport: () => null, showAnalysisPly() {}, selectAnalysisNode() {}, playMoveAt() {} }).paint();
+    createReviewBar({ appState: {}, getReport: () => null, showAnalysisPly() {}, selectAnalysisNode() {} }).paint();
     expect(bar.hidden).toBe(true);
     expect(review.step).toBeTypeOf("function");
   });
@@ -63,26 +62,18 @@ describe("review bar", () => {
     expect(bar.hidden).toBe(false);
     expect(bar.innerHTML).toContain("Next: 2.Nf3 Blunder");
     expect(bar.innerHTML).toContain("1/2");
-    expect(bar.innerHTML).not.toContain('data-review="best"');
+    expect(bar.innerHTML).not.toContain('data-review="retry"');
   });
 
-  it("offers Best and Retry on a mistake with a better move, not on a great move", () => {
+  it("offers Retry on a mistake with a better move, not on a great move", () => {
     const { bar, at } = setup();
     at("m3", 3);
     expect(bar.innerHTML).toContain("2.Nf3 Blunder");
-    expect(bar.innerHTML).toContain('data-review="best"');
     expect(bar.innerHTML).toContain('data-review="retry"');
+    expect(bar.innerHTML).not.toContain('data-review="best"');
     at("m6", 6);
     expect(bar.innerHTML).toContain("3…Nc6 Great");
-    expect(bar.innerHTML).not.toContain('data-review="best"');
-  });
-
-  it("Best plays the engine's move from the position before the moment", async () => {
-    const { bar, calls, at, click } = setup();
-    at("m3", 3);
-    bar.dataset.ply = "3";
-    await click("best");
-    expect(calls.play).toEqual([["m2", "d2d4"]]);
+    expect(bar.innerHTML).not.toContain('data-review="retry"');
   });
 
   it("Retry goes back one move and asks for a better one; the engine's move is right, another is wrong", async () => {

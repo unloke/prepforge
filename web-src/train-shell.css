@@ -103,7 +103,6 @@
   border-radius: 0;
   background: none;
 }
-#view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) .unlock-line { display: none; }
 #view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: start; }
 #view-train [data-unlock-place="train-practice"] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
 #view-train [data-unlock-place="train-practice"] .unlock-bar { bottom: -4px; height: 2px; }

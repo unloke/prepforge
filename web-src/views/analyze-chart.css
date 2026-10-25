@@ -500,7 +500,10 @@
    the chain), so an opened fold makes the panel scroll instead of folding the
    coach under it. */
 @media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
-  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 1 auto; }
+  /* min-height: 0 lets the sheet, the one pane that gives, take the squeeze: at auto
+     the main block kept its content height and the whole panel scrolled, coach and
+     all, whenever a key moment brought a late move into view. */
+  #analyze-sidebar .panel-scroll > .analyze-main:has(#analysis-results:not([hidden])) { flex: 1 1 auto; min-height: 0; }
   #analyze-sidebar .panel-scroll > #analyze-open { flex: none; }
   .an-panes > .moves-pane:not([hidden]) { flex: 0 1 auto; overflow: visible; }
   .an-panes > .moves-pane > .moves-grid { flex: 0 1 auto; min-height: 120px; max-height: none; }
@@ -511,6 +514,10 @@
   .an-panes > .report-pane > summary { display: none; }
   .an-panes > .report-pane::details-content { content-visibility: visible; block-size: auto; }
   .an-panes > .report-pane { flex: none; max-height: min(45vh, 420px); overflow: auto; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary + .rp-body { display: none; }
+  #analysis-summary > .rp-summary { cursor: pointer; }
+  #analysis-summary > .rp-summary .rp-chev { visibility: visible; }
+  #analysis-summary > .rp-summary:hover { background: var(--surface-3); }
 }
 /* The report opened is a compact read, not a second column: it keeps under half
    the screen and scrolls inside itself, so the score sheet stays where it is. */
@@ -945,14 +952,16 @@
 .mtree-move.is-current .mtree-glyph { color: inherit; }
 
 /* ---- The game report ----------------------------------------------------
-   One summary line (the toggle, collapsed by default) that opens the full
-   report: accuracy and the grade counts as a small table, the key moments,
-   the phases, the opening. Type and rules, not tiles. Every figure is
-   tabular, every count and moment is a control that goes to its move, and
-   every move named is a move link. Rows are 24px on the grade table and
-   26px on the moments, the pitch of the move list. */
-.report { display: flex; flex-direction: column; gap: 12px; font-size: var(--fs); }
+   One summary line per player over the body: the key moments one line each,
+   then the grade counts and the phases as small tables (a column per grade or
+   phase, a row per side). Type and rules, not tiles. Every figure is tabular,
+   every count and moment is a control that goes to its move, and every move
+   named is a move link. The body folds under the summary only where the report
+   heads the score sheet (the wide panel); a tab of its own shows it whole. */
+.report, .rp-body { display: flex; flex-direction: column; gap: 12px; font-size: var(--fs); }
 .report:empty { display: none; }
+.rp-summary { cursor: default; }
+.rp-summary .rp-chev { visibility: hidden; }
 
 /* The summary: one row per player (name, accuracy, errors), the chevron at
    the right. The whole block is the control. Side by side in one line the two
@@ -971,10 +980,7 @@
   font: inherit;
   font-size: var(--fs-s);
   text-align: left;
-  cursor: pointer;
 }
-.rp-summary:hover { background: var(--surface-3); }
-.rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .rp-summary .rp-disc { display: none; } /* the sides come in colour order; the names carry them */
 .rp-summary .rp-side { display: contents; }
 .rp-summary .rp-acc { text-align: right; }
@@ -1000,7 +1006,7 @@
   background: var(--eval-side-white);
   box-shadow: inset 0 0 0 1px var(--line-strong); /* taste-skill-ignore: a white piece's disc needs its edge on a white panel */
 }
-.rp-black .rp-disc, .km-disc.km-black { background: var(--eval-side-black); }
+.rp-black .rp-disc, .rp-disc.rp-black, .km-disc.km-black { background: var(--eval-side-black); }
 .rp-name {
   display: inline-flex;
   align-items: center;
@@ -1023,28 +1029,28 @@
 }
 .rp-summary .rp-acc { font-size: var(--fs-s); font-weight: 650; }
 
-/* Grade counts: one row per grade, the two sides' counts flanking the grade. */
-.rp-counts, .rp-ph { display: flex; flex-direction: column; }
-.rp-row {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) 48px;
+/* Grades and phases: a column each, a row per side named by its disc. Equal
+   columns, so the two tables line up as one. */
+.rp-tr { display: flex; align-items: center; min-height: 24px; }
+.rp-tr + .rp-tr { border-top: 1px solid var(--rule, var(--line)); } /* taste-skill-ignore: rows of a real table (role=table) */
+.rp-tr > * { flex: 1 1 0; min-width: 0; }
+.rp-tr > :first-child { flex: 0 0 24px; }
+.rp-side-h { display: inline-flex; align-items: center; padding-left: 8px; }
+.rp-col {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  min-height: 24px;
+  padding: 2px 2px 4px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+  text-align: center;
 }
-.rp-row + .rp-row { border-top: 1px solid var(--rule, var(--line)); } /* taste-skill-ignore: rows of a real table (role=table) */
-.rp-grade {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--text);
-  font-size: var(--fs-s);
-}
+.rp-col-word, .rp-span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rp-glyph { font-style: normal; font-weight: 800; min-width: 1.4em; text-align: center; }
 .rp-n {
-  justify-self: stretch;
   height: 22px;
-  padding: 0 8px;
+  padding: 0 4px;
   border: 0;
   border-radius: 6px;
   background: none;
@@ -1053,21 +1059,12 @@
   font-size: var(--fs-s);
   font-weight: 600;
   line-height: 22px;
-  text-align: left;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.rp-row > .rp-n:last-child { text-align: right; }
-/* The accuracy row: each side's figure in its own column, the disc names the side. */
-.rp-acc-row { min-height: 26px; }
-.rp-acc-n { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-size: 14px; font-weight: 650; }
-.rp-black ~ .rp-acc-n { justify-self: end; }
-.rp-acc-row .rp-acc-n:last-child { justify-content: flex-end; }
-.rp-acc-row .rp-grade { color: var(--muted); }
-.rp-result { display: flex; gap: 8px; margin: 2px 8px 0; color: var(--text); font-size: var(--fs-s); font-weight: 600; font-variant-numeric: tabular-nums; }
-.rp-result span { color: var(--muted); font-weight: 400; }
 button.rp-n { cursor: pointer; }
 button.rp-n:hover { background: var(--surface-3); }
-button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible, .rp-summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .rp-n.is-zero { color: var(--label); font-weight: 400; }
 /* Each grade's glyph in its text-safe colour, as in the move list. */
 .g-brilliant .rp-glyph { color: var(--brilliant-text); }
@@ -1078,14 +1075,14 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .g-blunder .rp-glyph { color: var(--danger); }
 .g-missed .rp-glyph { color: var(--missed); }
 /* The errors a player came for read in their grade's colour. */
-.rp-counts .g-blunder button.rp-n { color: var(--danger); }
-.rp-counts .g-mistake button.rp-n { color: var(--warn-text); }
+button.rp-n.g-blunder { color: var(--danger); }
+button.rp-n.g-mistake { color: var(--warn-text); }
 
-.rp-sec { display: flex; flex-direction: column; gap: 4px; padding: 0 8px; }
+.rp-sec { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0 8px; }
 .rp-h { margin: 0; color: var(--muted); font-size: var(--fs-s); font-weight: 600; }
 
-/* Key moments: the move, the eval it swung, the win chance it cost; the better
-   move under it as a link. */
+/* Key moments, one line each: the move, its kind, the eval it swung and, at an
+   error, the better move as a link. */
 .rp-km { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
 .km { display: flex; align-items: center; gap: 8px; padding-right: 8px; border-radius: 6px; }
 .km.is-current { background: var(--accent-soft); }
@@ -1093,7 +1090,7 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 8px 72px 116px 120px 52px;
+  grid-template-columns: 8px 64px 104px auto;
   justify-content: start;
   align-items: center;
   gap: 8px;
@@ -1110,15 +1107,10 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .km-go:hover { background: var(--surface-3); }
 .km-move { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-weight: 600; }
 .km-eval { color: var(--muted); font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.km-loss { color: var(--danger); font-size: var(--fs-s); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
-.km.g-inaccuracy .km-loss { color: var(--inaccuracy-text); }
-.km.g-mistake .km-loss { color: var(--warn-text); }
 .km-best { flex: none; color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
-/* A phone has no room for five columns: the eval and the best move wrap under the move. */
 @media (max-width: 760px) {
-  .km { flex-wrap: wrap; row-gap: 0; }
-  .km-go { grid-template-columns: 8px 60px 100px 84px 44px; gap: 6px; }
-  .km-best { flex-basis: 100%; padding: 0 8px 4px 22px; }
+  .km { gap: 4px; padding-right: 4px; }
+  .km-go { grid-template-columns: 8px 56px 88px auto; gap: 6px; padding: 0 4px; }
 }
 .km-kind { color: var(--muted); font-size: var(--fs-s); white-space: nowrap; }
 .km-kind .rp-glyph { margin-right: 4px; }
@@ -1128,27 +1120,14 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
 .km.g-blunder .km-kind { color: var(--danger); }
 .km-best .move-ref { color: var(--good-text); font-weight: 600; }
 
-/* Phases: each side's accuracy in it; the phase's name goes to its first move. */
-.rp-phase {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 6px;
-  min-height: 22px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-s);
-  cursor: pointer;
-}
+/* A phase's head is its jump: the name and the moves it spans. */
+.rp-phase { border: 0; border-radius: 6px; background: none; font: inherit; font-size: var(--fs-xs); cursor: pointer; }
 .rp-phase:hover { background: var(--surface-3); }
+.rp-phase { color: var(--text); }
 .rp-span { color: var(--muted); font-variant-numeric: tabular-nums; }
 
-.rp-opening p { margin: 0; }
-.rp-opening-name { color: var(--text); font-size: var(--fs-s); font-weight: 600; overflow-wrap: anywhere; }
+.rp-opening { display: block; color: var(--muted); font-size: var(--fs-s); overflow-wrap: anywhere; }
+.rp-opening-name { margin-left: 6px; color: var(--text); font-weight: 600; }
 .rp-prep { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; color: var(--muted); font-size: var(--fs-s); }
 .rp-prep .move-ref { color: var(--text); font-weight: 600; }
 .rp-rep { color: var(--muted); }
@@ -1736,8 +1715,9 @@ button.rp-n:focus-visible, .km-go:focus-visible, .rp-phase:focus-visible { outli
   .moves-pane > .moves-grid { max-height: none; font-size: 15px; }
   .moves-grid .mtree-line.is-main > :is(.mtree-move, .mtree-num) { min-height: 36px; display: flex; align-items: center; }
   .moves-grid .mtree-line.is-main > .mtree-num { justify-content: flex-end; }
-  .rp-row { min-height: 36px; }
-  .rp-n, .rp-phase { height: 36px; line-height: 36px; }
+  .rp-tr { min-height: 36px; }
+  .rp-n { height: 36px; line-height: 36px; }
+  .rp-phase { min-height: 44px; justify-content: center; }
   .km-go { min-height: 44px; }
   .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   .analysis-retry-save:not([hidden]),

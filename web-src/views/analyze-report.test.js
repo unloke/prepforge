@@ -193,10 +193,8 @@ describe("the report", () => {
   it("names each side from the PGN, or from the saved review's names", () => {
     const fromPgn = buildGameReport({ moves: MOVES, evalGraph: GRAPH, headers: { White: "me_user", Black: "opp_one", Result: "1-0" } });
     expect(fromPgn.sides.white.name).toBe("me_user");
-    expect(fromPgn.result).toBe("1-0");
-    const recalled = buildGameReport({ moves: MOVES, evalGraph: GRAPH, names: { white: "A", black: "B", result: "*" } });
+    const recalled = buildGameReport({ moves: MOVES, evalGraph: GRAPH, names: { white: "A", black: "B" } });
     expect(recalled.sides.black.name).toBe("B");
-    expect(recalled.result).toBe("");
     expect(buildGameReport({ moves: [] })).toBeNull();
   });
 
@@ -213,12 +211,14 @@ describe("the report", () => {
     expect(html).toMatch(/<button type="button" class="km-go" data-ply="4"[^>]*>[\s\S]*?<span class="move-inline" data-mt="[^"]+\|b8c6" data-p="0">2…Nc6<\/span>/);
     expect(html).toMatch(/class="km-best">Best <span class="move-ref"[^>]*\|d7d6" data-p="0" aria-label="2…d6">d6<\/span>/);
     // A count is a control only when there is something to go to.
-    expect(html).toMatch(/<button type="button" class="rp-n" data-side="black" data-grade="blunder"/);
-    expect(html).toMatch(/<span class="rp-n is-zero">0<\/span>/);
+    expect(html).toMatch(/<button type="button" class="rp-n g-blunder" role="cell" data-side="black" data-grade="blunder"/);
+    expect(html).toMatch(/<span class="rp-n is-zero" role="cell">0<\/span>/);
+    // Every grade is a column, zeros included.
+    expect(html.match(/role="columnheader" title=/g)).toHaveLength(7);
     expect(html).toContain("Ruy Lopez · C60");
-    // The result is written once, labelled; no repeated name header.
-    expect(html.split("Result").length - 1).toBe(1);
-    expect(html).not.toContain("rp-sides");
+    // No result row and no accuracy row: the summary and the board caption say those.
+    expect(html).not.toContain("Result");
+    expect(html).not.toContain("rp-acc-row");
     // No standing explanation in the report.
     expect(html).not.toMatch(/how|means|click|tap/i);
   });
@@ -226,7 +226,7 @@ describe("the report", () => {
   it("shows a graded moment with its eval, and a departure with its side and book but no eval", () => {
     const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["great", "best", "best", "best", "best"]);
     const html = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR)], selfSide: "white" })));
-    expect(html).toMatch(/data-km-ply="1"[\s\S]*?<span class="km-eval">[^<]+<\/span><span class="km-loss"><\/span>/);
+    expect(html).toMatch(/data-km-ply="1"[\s\S]*?<span class="km-eval">[^<]+<\/span><\/button>/);
     expect(html).toMatch(/data-km-ply="5"[\s\S]*?<span class="km-kind">[\s\S]*?You left prep<\/span><span class="km-eval"><\/span>/);
     expect(html).toMatch(/data-km-ply="5"[\s\S]*?<span class="km-best">Italian<\/span>/);
     const opponent = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR, "Black", "black")], selfSide: "black" })));
@@ -266,29 +266,30 @@ describe("the report's summary", () => {
   const headers = { White: "me_user", Black: "opp_one" };
   const fakeHost = () => ({ dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } });
 
-  it("starts as one line that names both sides and their errors, and opens the full report", () => {
+  it("names both sides and their errors over the body, and toggles the fold the wide panel draws", () => {
     const report = buildGameReport({ moves: MOVES, evalGraph: GRAPH, headers });
     const closed = String(reportHtml(report, false));
     expect(closed).toMatch(/<button type="button" class="rp-summary" data-toggle-summary aria-expanded="false">/);
     expect(closed).toContain("me_user");
     expect(closed).toContain("no errors");
-    expect(closed).not.toContain("rp-counts");
-    expect(String(reportHtml(report, true))).toMatch(/aria-expanded="true"[\s\S]*rp-counts/);
+    // The body is always written; CSS folds it only where the report heads the sheet.
+    expect(closed).toMatch(/rp-summary[\s\S]*<div class="rp-body">[\s\S]*rp-counts/);
 
     const host = fakeHost();
     renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, headers });
-    expect(host.innerHTML).not.toContain("rp-counts");
-    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? {} : null) } });
+    const toggle = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+    const click = () => host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? toggle : null) } });
+    click();
     expect(host.dataset.open).toBe("true");
-    expect(host.innerHTML).toContain("rp-counts");
-    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-summary]" ? {} : null) } });
-    expect(host.innerHTML).not.toContain("rp-counts");
+    expect(toggle.attrs["aria-expanded"]).toBe("true");
+    click();
+    expect(host.dataset.open).toBe("false");
   });
 
   it("keeps the open state when the block is written again", () => {
     const host = fakeHost();
     host.dataset.open = "true";
     renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, headers });
-    expect(host.innerHTML).toContain("rp-counts");
+    expect(host.innerHTML).toContain('aria-expanded="true"');
   });
 });

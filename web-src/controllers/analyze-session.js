@@ -68,7 +68,7 @@ export function createAnalyzeSession(deps) {
     }));
   return {
     analysisTreeNav, discardAnalyzeCheckpoint, hideAnalysisHandoff, loadPgnIntoAnalyze,
-    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, playMoveAt, positionCoach,
+    onAnalysisBoardMove, onCreateRepertoireFromGameClick, playHumanPick, positionCoach,
     rebuildAnalysisVariations, resetAnalysisVariations, retryAnalyzeSave, revealAnalysisResults, runAnalysis,
     selectAnalysisNode, selectAnalysisNodePath, selectedNodePath, showAnalysisPly,
     reviewNav: (kind) => ensureAnalyzeView().then((view) => view.reviewStep(kind)),

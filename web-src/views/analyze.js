@@ -50,8 +50,6 @@ export function createAnalyzeView({
   selfSide = () => null,
   // Show a position on the Analyze board while the chart is hovered (board peek()).
   peek = () => {},
-  // Play `uci` from the tree node `nodeId` (a branch, or the existing move).
-  playMoveAt = async () => {},
 }) {
   const { renderMoveTree, scrollIntoViewWithin, bindMoveTreeClicks, updateMoveTreeSelection } =
     createMoveTreeRenderer();
@@ -218,7 +216,7 @@ export function createAnalyzeView({
   }
 
   // The review bar under the coach; Shift+←/→ step it too.
-  const review = createReviewBar({ appState, getReport: () => report, showAnalysisPly, selectAnalysisNode, playMoveAt });
+  const review = createReviewBar({ appState, getReport: () => report, showAnalysisPly, selectAnalysisNode });
 
   // The key moment on the board is marked in the report as the reader steps.
   function markCurrentMoment() {
@@ -427,8 +425,21 @@ export function createAnalyzeView({
       },
     });
     bindMoveTreeClicks(container, (id) => void selectAnalysisNode(id).catch(() => {}));
-    const focus = container.querySelector(".mtree-move.is-current");
-    if (focus) scrollIntoViewWithin(container, focus);
+    followCurrentMove(container);
+  }
+
+  // The sheet keeps the shown move in view, read in the next frame: a geometry
+  // read during the step forced a layout that the board's own writes then threw
+  // away, and a hidden sheet (a phone's tabs) walked every ancestor for nothing.
+  let followFrame = 0;
+  function followCurrentMove(container) {
+    const follow = () => {
+      const focus = container.querySelector(".mtree-move.is-current");
+      if (focus && container.offsetParent) scrollIntoViewWithin(container, focus);
+    };
+    if (typeof requestAnimationFrame !== "function") return follow();
+    cancelAnimationFrame(followFrame);
+    followFrame = requestAnimationFrame(follow);
   }
 
   function renderMovePairs(moves) {
@@ -460,8 +471,7 @@ export function createAnalyzeView({
       renderAnalysisTree();
       return;
     }
-    const focus = container.querySelector(".mtree-move.is-current");
-    if (focus) scrollIntoViewWithin(container, focus);
+    followCurrentMove(container);
   }
 
   function rescaleEvalMarkers() {

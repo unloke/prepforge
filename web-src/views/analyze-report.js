@@ -271,7 +271,6 @@ export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps
         counts: counts[side],
       }]),
     ),
-    result: known(headers.Result || names.result),
     moments: reviewMoments(moves, evalGraph, reps, selfSide),
     phases: phaseBreakdown(evalGraph, moves),
     opening: openingFromHeaders(headers),
@@ -285,30 +284,22 @@ function moveLink(move, label, opts) {
   return move?.fen_before && move.uci ? moveTokenHtml(move.fen_before, [move.uci], 0, label, opts) : label;
 }
 
-// The accuracy row heads the grade table: each side's figure in its own column.
-function accuracyRowHtml(report) {
-  const cell = (side) => {
-    const acc = report.sides[side].accuracy;
-    return html`<span class="rp-n rp-acc-n"><i class="rp-disc" aria-hidden="true"></i>${acc == null ? "–" : `${acc}%`}</span>`;
-  };
-  return html`<div class="rp-row rp-acc-row" role="row">${cell("white")}<span class="rp-grade" role="rowheader">Accuracy</span>${cell("black")}</div>`;
-}
+const SIDE_WORD = { white: "White", black: "Black" };
+const sideHead = (side) => html`<span class="rp-side-h" role="rowheader" title="${SIDE_WORD[side]}"><i class="rp-disc rp-${side}" aria-label="${SIDE_WORD[side]}"></i></span>`;
 
-// The game's result, once, labelled.
-function resultHtml(report) {
-  return report.result ? html`<p class="rp-result"><span>Result</span> ${report.result}</p>` : "";
-}
-
+// Grade counts as a small table: a column per grade, a row per side. Every
+// grade is a column, a zero printed as a zero; a count is a jump to that
+// side's next move of the grade.
 function countsHtml(report) {
-  const rows = REPORT_GRADES.filter((g) => g.key !== "missed" || SIDES.some((s) => report.sides[s].counts.missed));
+  const grades = REPORT_GRADES.filter((g) => g.key !== "missed" || SIDES.some((s) => report.sides[s].counts.missed));
   const cell = (side, g) => {
     const n = report.sides[side].counts[g.key] || 0;
     return n
-      ? html`<button type="button" class="rp-n" data-side="${side}" data-grade="${g.key}" aria-label="${`${side === "white" ? "White" : "Black"} ${g.label}: ${n}, go to the next one`}">${n}</button>`
-      : html`<span class="rp-n is-zero">0</span>`;
+      ? html`<button type="button" class="rp-n g-${g.key}" role="cell" data-side="${side}" data-grade="${g.key}" aria-label="${`${SIDE_WORD[side]} ${g.label}: ${n}, go to the next one`}">${n}</button>`
+      : html`<span class="rp-n is-zero" role="cell">0</span>`;
   };
-  return html`<div class="rp-counts" role="table" aria-label="Move grades">${accuracyRowHtml(report)}${rows.map(
-    (g) => html`<div class="rp-row g-${g.key}" role="row">${cell("white", g)}<span class="rp-grade" role="rowheader"><i class="rp-glyph" aria-hidden="true">${classBadgeSymbol(g.members[0]) || ""}</i>${g.label}</span>${cell("black", g)}</div>`,
+  return html`<div class="rp-counts rp-grid" role="table" aria-label="Move grades"><span role="row" class="rp-tr"><span></span>${grades.map((g) => html`<span class="rp-col g-${g.key}" role="columnheader" title="${g.label}"><i class="rp-glyph" aria-hidden="true">${classBadgeSymbol(g.members[0]) || ""}</i><span class="rp-col-word">${g.label}</span></span>`)}</span>${SIDES.map(
+    (side) => html`<span role="row" class="rp-tr">${sideHead(side)}${grades.map((g) => cell(side, g))}</span>`,
   )}</div>`;
 }
 
@@ -321,29 +312,30 @@ export function momentKind(m) {
   return [m.grade && KIND_WORD[m.grade], m.departure && (LEFT_PREP[m.by] || "Left prep")].filter(Boolean).join(" · ");
 }
 
-// One row per review move: the move (a jump to it) and its kind. A graded move
-// shows the eval it moved and, for a mistake or blunder, the win chance it cost
-// and the better move on a line under it. A departure shows whose move left the
-// book and the repertoire's name, with no eval.
+// One line per review move: the move (a jump to it), its kind, the eval it
+// moved and, for a mistake or blunder, the better move. A departure shows whose
+// move left the book and the repertoire's name, with no eval.
 function momentsHtml(report) {
   if (!report.moments.length) return "";
   return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map((m) => {
     const best = m.loss != null && m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : "";
     const rep = m.departure && m.repName ? html`<span class="km-best">${m.repName}</span>` : "";
-    return html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${momentKind(m)}</span><span class="km-eval">${m.grade ? `${m.before} → ${m.after}` : ""}</span><span class="km-loss">${m.loss == null ? "" : `−${m.loss}%`}</span></button>${best}${rep}</li>`;
+    return html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${momentKind(m)}</span><span class="km-eval">${m.grade ? `${m.before} → ${m.after}` : ""}</span></button>${best}${rep}</li>`;
   })}</ol></section>`;
 }
 
+// Each side's accuracy by phase, the phases as columns; a phase's name goes
+// to its first move.
 function phasesHtml(report) {
   if (!report.phases.length || report.sides.white.accuracy == null) return "";
   const acc = (v) => (v == null ? "–" : v);
-  return html`<section class="rp-sec rp-phases"><h3 class="rp-h">Phases</h3><div class="rp-ph" role="table" aria-label="Accuracy by phase">${report.phases.map(
-    (p) => html`<div class="rp-row" role="row"><span class="rp-n" role="cell">${acc(p.white)}</span><button type="button" class="rp-phase" role="rowheader" data-ply="${p.from}" title="${`Go to move ${p.moves.split("–")[0]}`}">${p.label}<span class="rp-span">${p.moves}</span></button><span class="rp-n" role="cell">${acc(p.black)}</span></div>`,
-  )}</div></section>`;
+  return html`<section class="rp-sec rp-phases"><h3 class="rp-h">Accuracy by phase</h3><div class="rp-ph rp-grid" role="table" aria-label="Accuracy by phase"><span role="row" class="rp-tr"><span></span>${report.phases.map(
+    (p) => html`<button type="button" class="rp-phase rp-col" role="columnheader" data-ply="${p.from}" title="${`Go to move ${p.moves.split("–")[0]}`}">${p.label}<span class="rp-span">${p.moves}</span></button>`,
+  )}</span>${SIDES.map((side) => html`<span role="row" class="rp-tr">${sideHead(side)}${report.phases.map((p) => html`<span class="rp-n" role="cell">${acc(p[side])}</span>`)}</span>`)}</div></section>`;
 }
 
 function openingHtml(report) {
-  return report.opening ? html`<section class="rp-sec rp-opening"><h3 class="rp-h">Opening</h3><p class="rp-opening-name">${report.opening}</p></section>` : "";
+  return report.opening ? html`<p class="rp-sec rp-opening"><span class="rp-h">Opening</span> <span class="rp-opening-name">${report.opening}</span></p>` : "";
 }
 
 // The errors a side made, in words: "2 blunders, 1 mistake" or "no errors".
@@ -352,8 +344,9 @@ const errorsText = (counts) => {
   return [part(counts.blunder || 0, "blunder"), part(counts.mistake || 0, "mistake")].filter(Boolean).join(", ") || "no errors";
 };
 
-// The one line that says how each side played. It is the report's toggle:
-// collapsed by default, it opens the full report beneath it.
+// The one line that says how each side played. Where the report heads the
+// score sheet (the wide panel) it is the toggle that opens the rest, collapsed
+// by default; where the report has a tab of its own the rest always shows.
 function summaryHtml(report, open) {
   const side = (key) => {
     const s = report.sides[key];
@@ -363,32 +356,29 @@ function summaryHtml(report, open) {
   return html`<button type="button" class="rp-summary" data-toggle-summary aria-expanded="${open ? "true" : "false"}">${side("white")}${side("black")}<i class="rp-chev" aria-hidden="true"></i></button>`;
 }
 
-/** The report as markup (no listeners). `open` shows the full report under the summary line. */
+/** The report as markup (no listeners). `open` marks the summary's toggle; the body is always written. */
 export function reportHtml(report, open = true) {
   if (!report) return "";
-  const full = html`${momentsHtml(report)}${report.graded ? html`${countsHtml(report)}${resultHtml(report)}` : ""}${phasesHtml(report)}${openingHtml(report)}`;
-  return report.graded ? html`${summaryHtml(report, open)}${open ? full : ""}` : full;
+  if (!report.graded) return html`${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
+  return html`${summaryHtml(report, open)}<div class="rp-body">${momentsHtml(report)}${countsHtml(report)}${phasesHtml(report)}${openingHtml(report)}</div>`;
 }
 
 // Write the report into `host`. `onJump(ply)` goes to a move of the game;
 // `onGrade(side, grade)` to the next move of that side by that side. The
-// summary toggles the full report; the host's `data-open` keeps that state
-// across re-renders, and the report starts collapsed.
+// summary toggles the full report where CSS folds it; the host's `data-open`
+// keeps that state across re-renders, and the report starts collapsed.
 // Returns the built report (null when nothing was analysed), so the caller can
 // read the same moments the block lists.
 export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
   const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names, selfSide });
   if (!host) return report;
-  const draw = () => {
-    host.innerHTML = reportHtml(report, host.dataset.open === "true");
-  };
-  draw();
+  host.innerHTML = reportHtml(report, host.dataset.open === "true");
   host.onclick = (event) => {
     if (event.target.closest?.(".move-ref")) return;
-    if (event.target.closest?.("[data-toggle-summary]")) {
+    const toggle = event.target.closest?.("[data-toggle-summary]");
+    if (toggle) {
       host.dataset.open = host.dataset.open === "true" ? "false" : "true";
-      draw();
-      host.querySelector?.("[data-toggle-summary]")?.focus();
+      toggle.setAttribute("aria-expanded", host.dataset.open);
       return;
     }
     const grade = event.target.closest?.("[data-grade]");

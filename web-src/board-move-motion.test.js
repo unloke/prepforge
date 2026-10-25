@@ -32,7 +32,6 @@ function pieceElement(name = "piece xy") {
     classList: { add: (c) => classes.push(c) },
     get className() { return classes.join(" "); },
     set className(value) { classes = String(value).split(/\s+/).filter(Boolean); },
-    getAnimations: () => calls.filter((c) => c[0] === "animate").map((c) => c[1]),
     cloneNode() {
       const copy = pieceElement(this.className);
       copy.removed = this.removed;

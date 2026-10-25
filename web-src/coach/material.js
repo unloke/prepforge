@@ -62,18 +62,29 @@ export function advantageSide(balance) {
 // PV declined for tactical reasons). It finishes the trade in front of us, nothing more.
 //
 // `chess` is mutated and restored (move/undo); the caller's position is left intact.
+// The side to move's legal captures that land on `square`, cheapest attacker first
+// (SEE order; equal values keep the board order chess.js generates them in). Only
+// the pieces that attack the square generate moves: chess.js builds every verbose
+// move with a full legal-move generation of its own, so asking the whole board
+// for its moves made each call about 35 of those, and the coach reads exchanges
+// on every step.
+export function capturesOn(chess, square) {
+  const caps = [];
+  for (const from of chess.attackers(square)) {
+    for (const m of chess.moves({ square: from, verbose: true })) if (m.to === square && m.captured) caps.push(m);
+  }
+  return caps.sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
+}
+
 export function squareExchange(chess, square) {
   const standPat = materialBalance(chess); // White-POV, "if I don't capture here"
+  // Only recaptures that land ON the contested square, cheapest attacker first (SEE).
   let caps;
   try {
-    caps = chess.moves({ verbose: true });
+    caps = capturesOn(chess, square);
   } catch (_) {
     return standPat;
   }
-  // Only recaptures that land ON the contested square, cheapest attacker first (SEE).
-  caps = caps
-    .filter((m) => m.to === square && m.captured)
-    .sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
   if (!caps.length) return standPat;
   const white = chess.turn() === "w";
   const m = caps[0];
@@ -106,13 +117,10 @@ export function squareExchangeBoard(chess, square) {
     const standPat = materialBalance(work);
     let caps;
     try {
-      caps = work.moves({ verbose: true });
+      caps = capturesOn(work, square);
     } catch (_) {
       break;
     }
-    caps = caps
-      .filter((m) => m.to === square && m.captured)
-      .sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
     if (!caps.length) break;
     const white = work.turn() === "w";
     let resolved;
@@ -185,13 +193,10 @@ export function seeCapture(chess, targetSq, byColor) {
   const before = materialBalance(work); // White-POV
   let caps;
   try {
-    caps = work.moves({ verbose: true });
+    caps = capturesOn(work, targetSq);
   } catch (_) {
     return null;
   }
-  caps = caps
-    .filter((m) => m.to === targetSq && m.captured)
-    .sort((a, b) => (PIECE_VALUE[a.piece] || 0) - (PIECE_VALUE[b.piece] || 0));
   if (!caps.length) return null;
   let settled;
   try {

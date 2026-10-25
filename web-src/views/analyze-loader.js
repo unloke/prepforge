@@ -41,7 +41,7 @@ export function preloadAnalyzeView() {
 }
 export async function ensureAnalyzeView() {
   // The Analyze module comes with the view, so its handlers call straight through.
-  const [mod, session] = await Promise.all([preloadAnalyzeView(), loadAnalyzeSession()]);
+  const [mod] = await Promise.all([preloadAnalyzeView(), loadAnalyzeSession()]);
   if (!analyzeView) {
     analyzeView = mod.createAnalyzeView({
       appState,
@@ -53,7 +53,6 @@ export async function ensureAnalyzeView() {
       bookReps: getBookReps,
       selfSide: () => analysisSelfSide(),
       peek: (pos) => boards.analysis?.peek(pos),
-      playMoveAt: (nodeId, uci) => session.playMoveAt(nodeId, uci),
       ensureBookLoaded,
     });
   }
