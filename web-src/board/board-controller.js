@@ -168,10 +168,10 @@ class BoardController {
         square.setAttribute("aria-pressed", "false");
         square.tabIndex = -1; // roving: exactly one square is tabbable; see _applyRovingTabindex
         if (rank === bottomRank) {
-          square.insertAdjacentHTML("beforeend", html`<span class="coord coord-file">${files[fileIndex]}</span>`);
+          square.insertAdjacentHTML("beforeend", html`<span class="coord coord-file" data-coord="${files[fileIndex]}"></span>`);
         }
         if (fileIndex === leftFile) {
-          square.insertAdjacentHTML("beforeend", html`<span class="coord coord-rank">${rank}</span>`);
+          square.insertAdjacentHTML("beforeend", html`<span class="coord coord-rank" data-coord="${rank}"></span>`);
         }
         this.board.appendChild(square);
         this.squares.set(squareName, square);

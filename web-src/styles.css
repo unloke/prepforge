@@ -2796,6 +2796,9 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 .chessboard.show-coords .coord {
   display: block;
 }
+/* Drawn, not text: a square's name is "black rook a8", and a rank digit as
+   text inside it fails axe's label-content-name-mismatch. */
+.coord::before { content: attr(data-coord); }
 
 .coord-file {
   right: 3px;
