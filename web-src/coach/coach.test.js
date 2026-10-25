@@ -7,6 +7,7 @@ import {
   onlyMoveGaps,
   markBrilliant,
   markGreat,
+  applySavedGrade,
   materialInvested,
 } from "./features.js";
 import {
@@ -256,6 +257,18 @@ describe("Brilliant detection (Maia vs engine, no SEE)", () => {
     expect(c.prose).toMatch(/^Great move! Kf2/);
     expect(c.prose).not.toMatch(/only move/);
     expect(c.prose).toMatch(/Only about 4% of players/);
+  });
+
+  it("words the saved grade, not its own live read, on an analysed move", () => {
+    const f = { classification: { code: "mistake", label: "Mistake", tone: "warn" } };
+    applySavedGrade(f, "blunder");
+    expect(f.classification).toEqual({ code: "blunder", label: "Blunder", tone: "danger" });
+    applySavedGrade(f, "excellent");
+    expect(f.classification.code).toBe("best");
+    // No live tier for a saved book move: the read stands, but never as Great.
+    const g = { classification: { code: "great", label: "Great move", tone: "good" } };
+    applySavedGrade(g, "book");
+    expect(g.classification.code).toBe("best");
   });
 
   it("measures the material a sacrifice gives up after the reply", () => {

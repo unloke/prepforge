@@ -1671,7 +1671,14 @@ async function submitSmartMove(playedUci, { timedOut = false } = {}) {
   if (appState.smart !== smart) return;
   // Advance the local session: next target inside the card, else next card.
   const card = smart.queue[smart.cardIndex];
-  if (card && smart.targetIndex + 1 < card.targets.length) {
+  const lineDone = !(card && smart.targetIndex + 1 < card.targets.length);
+  // A finished line holds its final position for a beat before the next card swaps the
+  // board, so it can be taken in (Blitz keeps its pace).
+  if (lineDone && !smart.blitz) {
+    await sleep(1000);
+    if (appState.smart !== smart) return;
+  }
+  if (!lineDone) {
     smart.targetIndex += 1;
   } else {
     smart.cardsDone += 1;

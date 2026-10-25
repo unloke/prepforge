@@ -323,13 +323,10 @@ class PositionCoach {
         afterEval: { cp: top.cp ?? null, mate: top.mate ?? null, pvUci: top.pvUci || [], pvSan: top.pvSan || [] },
       });
       features.opponentRead = opponentRead;
-      // The saved grade is authoritative for Great both ways: the board badge and the move
-      // list show it, so the coach neither drops a saved Great nor calls a saved ✓ move Great
-      // off its shallower live read.
+      // The saved grade is authoritative: the board badge, the move list and the review bar
+      // show it, so the coach never words a different verdict off its shallower live read.
       if (saved && saved.classification === "great") c.markGreat(features);
-      else if (saved && features.classification?.code === "great") {
-        features.classification = { code: "best", label: "Best move", tone: "good" };
-      }
+      else if (saved) c.applySavedGrade(features, saved.classification);
       renderCoachProse(c.buildCommentary(features, { selfSide: analysisSelfSide() }));
       if (!opponentRead) offerLiveBetterArrow(features, saved, fen);
       // Read the position's "texture" from Maia's human-move distribution (one obvious

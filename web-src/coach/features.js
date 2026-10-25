@@ -451,6 +451,25 @@ export function markGreat(features, maia) {
   return features;
 }
 
+const GRADES = {
+  forced: { code: "forced", label: "Forced", tone: "info" },
+  best: { code: "best", label: "Best move", tone: "good" },
+  good: { code: "good", label: "Good move", tone: "good" },
+  inaccuracy: { code: "inaccuracy", label: "Inaccuracy", tone: "warn" },
+  mistake: { code: "mistake", label: "Mistake", tone: "warn" },
+  blunder: { code: "blunder", label: "Blunder", tone: "danger" },
+};
+
+// A saved full-game grade is authoritative on its mainline move: the review bar, the move
+// list and the board badge show it, so the coach's verdict follows it rather than its own
+// shallower live read (which called a saved blunder a mistake). A saved grade the live
+// classifier has no tier for (book, brilliant) only stops a live Great.
+export function applySavedGrade(features, code) {
+  const grade = GRADES[code === "excellent" ? "best" : code];
+  if (grade) features.classification = { ...grade };
+  else if (features.classification?.code === "great") features.classification = { ...GRADES.best };
+}
+
 // Grade the move from the win% drop (Lichess/chess.com style). Great is the only
 // in-here upgrade; Brilliant is decided separately via the Maia check (isBrilliantByMaia).
 export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, forced }) {
@@ -458,23 +477,19 @@ export function classifyMoveRich({ winDelta, winAfterMover, isBest, onlyMove, fo
   // praise it as a find nor blame it as an error — we just note that it was forced. This
   // must come first: a forced move is "best" by default (it's the only line the engine has)
   // and would otherwise be mislabelled "Great move / the only move you found".
-  if (forced) {
-    return { code: "forced", label: "Forced", tone: "info" };
-  }
+  if (forced) return { ...GRADES.forced };
   // An only move alone is not Great: like the server, Great needs the Maia read (a hard or
   // critical find, see gradeByMaia) and the shared sanity gates, so an obvious recapture
   // that happens to be the only move stays Best.
-  if (isBest || winDelta <= EXCELLENT_MAX_LOSS) {
-    return { code: "best", label: "Best move", tone: "good" };
-  }
-  if (winDelta <= GOOD_MAX_LOSS) return { code: "good", label: "Good move", tone: "good" };
+  if (isBest || winDelta <= EXCELLENT_MAX_LOSS) return { ...GRADES.best };
+  if (winDelta <= GOOD_MAX_LOSS) return { ...GRADES.good };
   // Error tiers mirror Lichess's judgment cutoffs so the Coach flags real errors as
   // firmly as the tool users compare against, and so this and the server classifier
   // (services/classification.py, on the 0..1 scale) agree on the same move. Lichess
   // judges on winningChances (range -1..1) at {inaccuracy .1, mistake .2, blunder .3};
   // win% = 50 + 50·winningChances, so those are win% losses of 5 / 10 / 15. (Mistake was
   // ≤20 and blunder >20 here — laxer than Lichess, so ~15-pt slips read as mere mistakes.)
-  if (winDelta <= INACCURACY_MAX_LOSS) return { code: "inaccuracy", label: "Inaccuracy", tone: "warn" };
-  if (winDelta <= MISTAKE_MAX_LOSS) return { code: "mistake", label: "Mistake", tone: "warn" };
-  return { code: "blunder", label: "Blunder", tone: "danger" };
+  if (winDelta <= INACCURACY_MAX_LOSS) return { ...GRADES.inaccuracy };
+  if (winDelta <= MISTAKE_MAX_LOSS) return { ...GRADES.mistake };
+  return { ...GRADES.blunder };
 }

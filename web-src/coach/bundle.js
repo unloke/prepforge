@@ -7,6 +7,7 @@ export {
   onlyMoveGaps,
   markBrilliant,
   markGreat,
+  applySavedGrade,
   moverWinChanceAfter,
 } from "./features.js";
 export {

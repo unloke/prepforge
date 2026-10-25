@@ -18,7 +18,7 @@ export function createMoveTreeRenderer() {
     return [`${num} ${node.san}`, side, deco.label].filter(Boolean).join(", ");
   }
 
-  function renderMoveToken(node, opts, forceNumber) {
+  function renderMoveToken(node, opts, forceNumber, inVar) {
     const isWhite = node.side === "white";
     const numHtml =
       isWhite || forceNumber
@@ -37,9 +37,11 @@ export function createMoveTreeRenderer() {
     // A pointer's way to the move menu: a ⋯ that shows while the move is
     // hovered. Keyboards reach the same menu with the context-menu key.
     const more = opts.moveMenu ? html`<span class="mtree-more" aria-hidden="true">⋯</span>` : "";
-    return (
-      html`${numHtml}<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}${isCurrent ? html` aria-current="true"` : ""}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}${more}</button>${deco.after || ""}`
-    );
+    const button = html`<button class="${classes.join(" ")}" data-node-id="${String(node.id)}" aria-label="${label}"${title}${isCurrent ? html` aria-current="true"` : ""}><span class="mtree-san">${node.san}</span>${deco.suffix || ""}${more}</button>`;
+    // In a flowing variation a line could break between "8." and its move; the main
+    // line keeps them apart as its score sheet's grid cells.
+    const token = inVar && numHtml ? html`<span class="mtree-tok">${numHtml}${button}</span>` : html`${numHtml}${button}`;
+    return html`${token}${deco.after || ""}`;
   }
 
   // Walk the line from startNode, emitting each move's alternatives right after
@@ -47,13 +49,13 @@ export function createMoveTreeRenderer() {
   // siblings. A variation (renderMoveVariation) starts on the branch's own
   // first move: its next move continues just that branch, so it is never
   // interleaved with the parent line's other branches.
-  function renderMoveLine(startNode, opts, alts = []) {
+  function renderMoveLine(startNode, opts, alts = [], inVar = false) {
     const markup = [];
     let cur = startNode;
     let pending = alts;
     let forceNumber = true;
     while (cur) {
-      markup.push(renderMoveToken(cur, opts, forceNumber));
+      markup.push(renderMoveToken(cur, opts, forceNumber, inVar));
       forceNumber = false;
       for (const alt of pending) {
         markup.push(renderMoveVariation(alt, opts));
@@ -86,7 +88,7 @@ export function createMoveTreeRenderer() {
       : "";
     const inner = collapsed
       ? html`<span class="mtree-collapsed">…</span>`
-      : renderMoveLine(firstNode, opts);
+      : renderMoveLine(firstNode, opts, [], true);
     return html`<div class="mtree-var${leads ? " is-on-path" : ""}">${toggle}${inner}</div>`;
   }
 

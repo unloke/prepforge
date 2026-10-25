@@ -66,6 +66,7 @@ function harness({ reviewed = true, saved = { classification: "good" } } = {}) {
       isBest: !!(x.beforeEval.lines[0] && x.beforeEval.lines[0].uci === x.uci),
       forced: false,
     }),
+    applySavedGrade: () => {},
     buildCommentary: (f, { selfSide }) =>
       ({ prose: f.opponentRead ? `Read for ${selfSide} on ${f.fenAfter}` : `Engine verdict on ${f.fenAfter}` }),
   };
