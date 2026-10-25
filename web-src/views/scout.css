@@ -542,7 +542,11 @@
   .scout-panel .prof-id,
   .scout-panel .scout-color-rec { display: none; }
   .scout-panel .scout-profile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; }
-  .scout-panel .prof-row { flex: 1 1 100%; }
+  /* The speed chips on one row (they scroll sideways when a player has many
+     speeds), the two actions as equal halves under them: wrapping in one flex
+     row left Deep scan alone on a second line. */
+  .scout-panel .prof-row { display: grid; flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .scout-panel .prof-row > .speed-chips { grid-column: 1 / -1; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
   .scout-panel .prof-row .spacer { display: none; }
   .scout-color-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Two half-width tabs: "With White 249 games" no longer fits on one line, and
@@ -576,7 +580,7 @@
   /* The add-to-prep button is the row's only action: it needs a thumb. */
   .scout-add-icon { width: 44px; height: 44px; font-size: 18px; }
   .scout-side .actions .btn { min-height: 44px; }
-  .prof-row .btn { min-height: 44px; }
+  .prof-row .btn { min-height: 40px; }
   .scout-source-warnings .btn { margin-left: 0; min-height: 44px; width: 100%; }
   /* A first-move row is the drilldown: a thumb needs the whole row, not 27px. */
   .fm { min-height: 44px; }

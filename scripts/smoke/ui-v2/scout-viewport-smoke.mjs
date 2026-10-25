@@ -227,6 +227,9 @@ async function runViewport(vp) {
   await page.locator("#scout-side .scout-action-analyze").waitFor({ state: "visible", timeout: 3000 }).catch(() => {});
   const sideActions = await page.locator("#scout-side .scout-action-analyze").boundingBox().catch(() => null);
   check(!!sideActions && sideActions.height > 10, `line-detail card should show its Analyze action, got ${JSON.stringify(sideActions)} :: ${(await page.locator("#scout-side").innerHTML()).replace(/s+/g, " ").slice(0, 600)}`);
+  // The card spans the column: sized to its content, an inline-size container has no width.
+  const sideWidth = await page.locator("#scout-side").evaluate((el) => el.getBoundingClientRect().width / el.parentElement.getBoundingClientRect().width);
+  check(sideWidth > 0.9 || vp.width > 1020, `line-detail card should span the stacked column, got ${Math.round(sideWidth * 100)}%`);
   if (rows >= 2) {
     const titleBefore = await page.locator("#scout-side .line-title").textContent();
     await page.locator('#scout-results .scout-section[data-scout-color="white"] .line-row').nth(1).evaluate((el) => el.click());

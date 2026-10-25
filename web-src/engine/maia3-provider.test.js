@@ -156,26 +156,6 @@ describe("init", () => {
     expect(f.workers.length).toBe(0); // failed before creating a worker
     expect(provider.isAvailable()).toBe(false);
   });
-
-  it("passes ortWasmPaths (mjs local, wasm on CDN) from the engine base global", async () => {
-    const saved = globalThis.__ENGINE_ASSET_BASE;
-    globalThis.__ENGINE_ASSET_BASE = "https://cdn.test/repo/";
-    try {
-      const { provider, workers } = makeProvider(ackInitElsePend);
-      const p = provider.predictions({ fen: "startpos" });
-      await tick();
-      const initMsg = workers[0].posted.find((m) => m.type === "init");
-      expect(initMsg.ortWasmPaths).toEqual({
-        mjs: "/static/engine/ort/ort-wasm-simd-threaded.asyncify.mjs",
-        wasm: "https://cdn.test/repo/engine/ort/ort-wasm-simd-threaded.asyncify.wasm",
-      });
-      workers[0].reply(workers[0].idsOf("predictions")[0], []);
-      await p;
-    } finally {
-      if (saved === undefined) delete globalThis.__ENGINE_ASSET_BASE;
-      else globalThis.__ENGINE_ASSET_BASE = saved;
-    }
-  });
 });
 
 describe("request correlation", () => {

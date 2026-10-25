@@ -45,8 +45,9 @@ where = ["src"]
 # explicitly or the wheel silently drops it:
 #   static/assets/*       hashed JS/CSS bundles (else index.html ships without its app)
 #   static/engine/*       stockfish.manifest.json
-#   static/engine/*/*     both Stockfish builds in their content-hashed folders, and the
-#                          vendored onnxruntime-web runtime in ort/ (.asyncify.{mjs,wasm})
+#   static/engine/*/*     both Stockfish builds in their content-hashed folders
+#   static/engine/ort/*/* the vendored onnxruntime-web runtime (.asyncify.{mjs,wasm})
+#                          in its content-hashed folder
 #   static/maia3/maia3.manifest.json(.br)  ONLY the manifest (and its brotli twin). Listed by EXACT filename,
 #                          not a `static/maia3/*` glob: the 137 MB ONNX weights are
 #                          CDN-hosted and must NEVER enter the wheel. A glob would
@@ -59,6 +60,7 @@ where = ["src"]
     "static/assets/*",
     "static/engine/*",
     "static/engine/*/*",
+    "static/engine/ort/*/*",
     "static/maia3/maia3.manifest.json",
     "static/maia3/maia3.manifest.json.br",
 ]

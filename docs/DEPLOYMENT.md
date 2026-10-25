@@ -34,7 +34,6 @@ The live deploy runs on Render's **free tier**.
    | `DATABASE_URL` | **Yes** | Postgres **Internal Database URL**. `config.py` rewrites `postgres://` → `postgresql+psycopg://`. |
    | `PREPFORGE_ALLOWED_ORIGINS` | **Yes** | Service's own URL for CORS/CSRF, e.g. `https://prepforge-w0c5.onrender.com`. |
    | `PREPFORGE_MAIA3_ASSET_BASE` | Recommended | Base URL for ~45 MB Maia3 ONNX weights (Hugging Face). Without it, Brilliant detection and human-like Build branches are unavailable; Analyze/Train core still work. |
-   | `PREPFORGE_ENGINE_ASSET_BASE` | Recommended | Base URL for Stockfish/ORT `.wasm` (~31 MB). Injected as `window.__ENGINE_ASSET_BASE`; unset → `/static/engine/` fallback. See `docs/stability-perf-plan.md` #3. |
    | `PREPFORGE_STRIPE_SECRET_KEY` | For billing | Stripe secret key. |
    | `PREPFORGE_STRIPE_WEBHOOK_SECRET` | For billing | Stripe webhook signing secret. |
    | `PREPFORGE_STRIPE_PRICE_PRO` | For billing | Stripe Price ID for Pro plan. |
@@ -87,15 +86,14 @@ them; do not expect old games/repertoires to survive.
 - [ ] Lichess OAuth redirect works (if enabled).
 - [ ] **DB backups** — see [Database backups](#database-backups) below.
 - [ ] **Uptime monitoring** — see [External uptime monitoring](#external-uptime-monitoring) below.
-- [ ] **Engine CDN** — `npm run smoke:prod-engine` passes (`crossOriginIsolated`, ORT wasm from HF).
-- [ ] **HF asset pins** — View Source shows `resolve/<sha>/`, not `resolve/main/` (see below).
+- [ ] **Engines** — `npm run smoke:prod-engine` passes (`crossOriginIsolated`; the engine runtimes are served from the image).
+- [ ] **HF asset pin** — View Source shows `resolve/<sha>/`, not `resolve/main/` (see below).
 
 See `src/prepforge_chess/api/config.py` for the full settings list and defaults.
 
 ### Hugging Face asset pin (required in production)
 
-Both `PREPFORGE_MAIA3_ASSET_BASE` and `PREPFORGE_ENGINE_ASSET_BASE` must use a **commit
-hash URL**, not `/resolve/main/`. Branch refs can drift silently when files are re-uploaded.
+`PREPFORGE_MAIA3_ASSET_BASE` must use a **commit hash URL**, not `/resolve/main/`. Branch refs can drift silently when files are re-uploaded.
 
 Current pinned commit (Andy108/prepforge-maia3 HEAD as of 2026-06-17):
 

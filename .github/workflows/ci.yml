@@ -223,5 +223,5 @@ jobs:
             for f in assets/index-*.js assets/index-*.css; do test -f "$f"; done
             test -f maia3/maia3.manifest.json
             test -n "$(find engine -name stockfish.wasm -size +1k)"
-            test -f engine/ort/ort-wasm-simd-threaded.asyncify.wasm
+            test -n "$(find engine/ort -mindepth 2 -name ort-wasm-simd-threaded.asyncify.wasm -size +1k)"
           '

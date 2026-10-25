@@ -15,7 +15,7 @@ import * as ort from "onnxruntime-web/webgpu";
 import fixture from "./maia3-smoke-fixture.json";
 import { assertManifestContract } from "./maia3-tokenizer.js";
 
-ort.env.wasm.wasmPaths = "/static/engine/ort/";
+ort.env.wasm.wasmPaths = globalThis.__ORT_DIR__;
 ort.env.wasm.numThreads = 1;
 ort.env.logLevel = "error";
 

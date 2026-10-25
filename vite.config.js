@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from "node:url";
 import { readdirSync, rmSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { stockfishIdentity } from "./scripts/sync-stockfish.mjs";
+import { ortDir } from "./scripts/sync-ort.mjs";
 import { precompressPlugin } from "./scripts/precompress.mjs";
 
 // ORT's threaded WASM runtime does import('/engine/ort/ort-wasm-simd-threaded.asyncify.mjs')
@@ -58,7 +59,7 @@ function publicMjsPlugin() {
 //  2. ort runtime wasm: importing onnxruntime-web makes Rollup emit a ~23 MB
 //     `assets/ort-wasm-*.wasm` from the bundle's built-in `new URL(...)` default.
 //     But the runtime fetches the wasm from `ort.env.wasm.wasmPaths`
-//     (/static/engine/ort/, the copy scripts/sync-ort.mjs vendors), so the emitted
+//     (/static/engine/ort/<hash>/, the copy scripts/sync-ort.mjs vendors), so the emitted
 //     asset is a never-fetched duplicate. We drop it from the bundle.
 function trimDeployAssets() {
   return {
@@ -126,6 +127,7 @@ export default defineConfig({
   base: "/static/",
   define: {
     "globalThis.__STOCKFISH__": JSON.stringify(stockfishIdentity()),
+    "globalThis.__ORT_DIR__": JSON.stringify(`/static/engine/ort/${ortDir()}/`),
   },
   plugins: [publicMjsPlugin(), trimDeployAssets(), precompressPlugin(OUT_DIR)],
   build: {
