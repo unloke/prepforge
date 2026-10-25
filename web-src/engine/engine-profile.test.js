@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { createEngineProfileManager, reserveEngineMemory, stepDownProfile, PROFILE_KEY, CRASH_KEY, PROBE_NODES, maxWorkers } from "./engine-profile.js";
+import { createEngineProfileManager, PROFILE_KEY, CRASH_KEY, PROBE_NODES } from "./engine-profile.js";
+import { stepDownProfile, maxWorkers } from "./engine-ladder.js";
 import { EngineAssetError } from "./engine-assets.js";
 import { createComputeBudget } from "./compute-budget.js";
 

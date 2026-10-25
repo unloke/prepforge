@@ -6,6 +6,7 @@
 // Maia strength are user settings; those sync through /api/settings.
 import { loadEngineModule, removeEngineAsset, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
+import { MAX_WORKERS, stepDownProfile, ladderStep, heldBelow, maxWorkers } from "./engine-ladder.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
 export const CRASH_KEY = "prepforge.engine-starting";
 export const PROBE_NODES = 200000;
@@ -14,55 +15,11 @@ export function reserveEngineMemory(net, Memory = WebAssembly.Memory) {
   return new Memory({ initial, maximum, shared: true });
 }
 const FALLBACK = { net: "lite", workers: 1, source: "fallback" };
-const MAX_WORKERS = 3;
 const valid = p => p && ["big", "lite"].includes(p.net) && Number.isInteger(p.workers) && p.workers >= 1 && p.workers <= MAX_WORKERS;
 // What this device can hold, applied to any profile that is loaded or written.
 const fitWorkers = (p, limit) => ({ ...p, workers: Math.min(p.workers, limit) });
 // Workers this device completed on each net in its last Detect ({lite, big}).
 const validProven = p => !!p && ["lite", "big"].every(net => Number.isInteger(p[net]) && p[net] >= 0 && p[net] <= MAX_WORKERS);
-
-// Ladder order: each step adds one heap, so the count only ever grows.
-// The step the device holds below a crashed one; lite x1 is the floor.
-const LADDER = [["lite", 1], ["big", 1], ["big", 2], ["big", 3]];
-export function stepDownProfile(p) {
-  return p.net === "big" && p.workers > 1
-    ? { net: "big", workers: p.workers - 1, source: "fallback" }
-    : { net: "lite", workers: p.net === "big" ? 1 : Math.max(1, p.workers - 1), source: "fallback" };
-}
-const ladderStep = ({ net, workers }) => LADDER.findIndex(([n, w]) => n === net && w === workers);
-// The workers each net held before `step`: every ladder step below it completed.
-export function heldBelow({ net, workers }) {
-  const held = { lite: 0, big: 0 };
-  for (const [n, w] of LADDER) {
-    if (n === net && w === workers) break;
-    held[n] = Math.max(held[n], w);
-  }
-  return held;
-}
-
-// A phone or tablet. Its browser tab is killed outright (the page reloads) when the
-// whole tab's memory crosses the OS limit, and that limit counts every engine, Maia
-// and the page together, which a Stockfish-only probe never sees: an iPhone 16 Pro
-// Max held big x3 in Detect and was killed in Analyze three times running.
-export function isHandheld({ userAgent = "", userAgentData, maxTouchPoints = 0 } = {}) {
-  return !!userAgentData?.mobile || /iPhone|iPad|iPod|Android|Mobile/.test(userAgent) ||
-    (/Macintosh/.test(userAgent) && maxTouchPoints > 1); // iPadOS reports a Mac
-}
-
-// How many engines this device could HOLD. Every worker reserves its net's whole
-// heap (384 MiB for big, 256 MiB for lite), so a memory signal bounds the count.
-// deviceMemory is the only memory signal a browser exposes (Chromium). A handheld
-// runs one engine, as Lichess and Chess.com do on mobile. Elsewhere "no signal" is
-// not "assume small": Detect proves each step by reserving that step's heap,
-// stopping at the first step that fails or stops paying off. Cores bound the count
-// on every device, because a probe cannot use more workers than the CPU can run.
-export function maxWorkers(device = {}) {
-  const { hardwareConcurrency, deviceMemory } = device;
-  if (isHandheld(device)) return 1;
-  const byMemory = deviceMemory > 0 ? (deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : MAX_WORKERS) : MAX_WORKERS;
-  const cores = hardwareConcurrency > 0 ? hardwareConcurrency : 1;
-  return Math.max(1, Math.min(MAX_WORKERS, byMemory, cores));
-}
 
 // An extra worker is kept when it adds at least half of one worker's speed. Below that it
 // mostly costs memory and heat (shared or efficiency cores, throttling).
@@ -91,9 +48,7 @@ export function createEngineProfileManager({
   scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
 } = {}) {
   let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null, proven = null;
-  // The lowest ladder step that killed this tab on this build. Detect stops below it:
-  // re-running Detect after a crash must not climb back to the step that died.
-  let ceiling = null;
+  let ceiling = null; // lowest ladder step that killed this tab; Detect stays below it
   // This device's answer on the 94 MB full net: null until it answers, "yes"
   // after a download, "no" after "keep lite" or a step down. It is a decision,
   // not a measurement, so it outlives a new engine build.
@@ -204,7 +159,7 @@ export function createEngineProfileManager({
         // The steps below the one that died completed; the one that died and
         // everything above it did not. Settings offers only the completed ones.
         proven = heldBelow(crash);
-        const died = ladderStep(crash);
+        const died = ladderStep(crash.net, crash.workers);
         if (died >= 0) ceiling = Math.min(ceiling ?? died, died);
         if (crash.net === "big") {
           // A crash inside the full net's heap: the first step still held big,
@@ -389,8 +344,7 @@ export function createEngineProfileManager({
     const measured = consent === "yes";
     const steps = [["lite", 1]];
     if (measured) for (let n = 1; n <= maxWorkers(device()); n++) steps.push(["big", n]);
-    // Never the step that killed this tab, nor any above it; lite x1 is the floor.
-    while (ceiling !== null && steps.length > 1 && ladderStep({ net: steps.at(-1)[0], workers: steps.at(-1)[1] }) >= ceiling) steps.pop();
+    while (ceiling !== null && steps.length > 1 && ladderStep(...steps.at(-1)) >= ceiling) steps.pop();
     const units = steps.length * 3 + (measured ? 0 : 1);
     let done = 0;
     const progress = (stage, step = 0, workers = null) => {
