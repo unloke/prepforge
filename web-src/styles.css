@@ -4440,6 +4440,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   background: var(--accent-line);
 }
 
+.mtree-tok { white-space: nowrap; }
+
 .mtree-num {
   color: var(--label);
   font-size: 12px;
