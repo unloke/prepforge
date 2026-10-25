@@ -29,6 +29,7 @@ export function stepDownProfile(p) {
     ? { net: "big", workers: p.workers - 1, source: "fallback" }
     : { net: "lite", workers: p.net === "big" ? 1 : Math.max(1, p.workers - 1), source: "fallback" };
 }
+const ladderStep = ({ net, workers }) => LADDER.findIndex(([n, w]) => n === net && w === workers);
 // The workers each net held before `step`: every ladder step below it completed.
 export function heldBelow({ net, workers }) {
   const held = { lite: 0, big: 0 };
@@ -39,14 +40,25 @@ export function heldBelow({ net, workers }) {
   return held;
 }
 
+// A phone or tablet. Its browser tab is killed outright (the page reloads) when the
+// whole tab's memory crosses the OS limit, and that limit counts every engine, Maia
+// and the page together, which a Stockfish-only probe never sees: an iPhone 16 Pro
+// Max held big x3 in Detect and was killed in Analyze three times running.
+export function isHandheld({ userAgent = "", userAgentData, maxTouchPoints = 0 } = {}) {
+  return !!userAgentData?.mobile || /iPhone|iPad|iPod|Android|Mobile/.test(userAgent) ||
+    (/Macintosh/.test(userAgent) && maxTouchPoints > 1); // iPadOS reports a Mac
+}
+
 // How many engines this device could HOLD. Every worker reserves its net's whole
 // heap (384 MiB for big, 256 MiB for lite), so a memory signal bounds the count.
-// deviceMemory is the only memory signal a browser exposes (Chromium); WebKit
-// reports none, and "no signal" is not "assume small": the ceiling stays open and
-// Detect proves each step by reserving that step's heap, stopping at the first
-// step that fails or stops paying off. Cores bound the count on every device,
-// because a probe cannot use more workers than the CPU can run.
-export function maxWorkers({ hardwareConcurrency, deviceMemory } = {}) {
+// deviceMemory is the only memory signal a browser exposes (Chromium). A handheld
+// runs one engine, as Lichess and Chess.com do on mobile. Elsewhere "no signal" is
+// not "assume small": Detect proves each step by reserving that step's heap,
+// stopping at the first step that fails or stops paying off. Cores bound the count
+// on every device, because a probe cannot use more workers than the CPU can run.
+export function maxWorkers(device = {}) {
+  const { hardwareConcurrency, deviceMemory } = device;
+  if (isHandheld(device)) return 1;
   const byMemory = deviceMemory > 0 ? (deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : MAX_WORKERS) : MAX_WORKERS;
   const cores = hardwareConcurrency > 0 ? hardwareConcurrency : 1;
   return Math.max(1, Math.min(MAX_WORKERS, byMemory, cores));
@@ -79,6 +91,9 @@ export function createEngineProfileManager({
   scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
 } = {}) {
   let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null, proven = null;
+  // The lowest ladder step that killed this tab on this build. Detect stops below it:
+  // re-running Detect after a crash must not climb back to the step that died.
+  let ceiling = null;
   // This device's answer on the 94 MB full net: null until it answers, "yes"
   // after a download, "no" after "keep lite" or a step down. It is a decision,
   // not a measurement, so it outlives a new engine build.
@@ -158,7 +173,7 @@ export function createEngineProfileManager({
       return null;
     }
   }
-  const record = () => JSON.stringify({ profile, detected, measurements, proven, consent, bigFits: fitKnown ? bigFits : null, probe: probeId });
+  const record = () => JSON.stringify({ profile, detected, measurements, proven, ceiling, consent, bigFits: fitKnown ? bigFits : null, probe: probeId });
   function persist() {
     access(s => s.setItem(PROFILE_KEY, record()));
   }
@@ -176,6 +191,7 @@ export function createEngineProfileManager({
       if (fresh && valid(saved.detected)) detected = saved.detected;
       if (fresh) measurements = saved.measurements || null;
       if (fresh && validProven(saved.proven)) proven = saved.proven;
+      if (fresh && Number.isInteger(saved.ceiling)) ceiling = saved.ceiling;
       // The answer is this device's own decision and outlives a new engine
       // build; whether the net fits was measured, so a new build measures again.
       if (saved?.consent === "yes" || saved?.consent === "no") consent = saved.consent;
@@ -188,6 +204,8 @@ export function createEngineProfileManager({
         // The steps below the one that died completed; the one that died and
         // everything above it did not. Settings offers only the completed ones.
         proven = heldBelow(crash);
+        const died = ladderStep(crash);
+        if (died >= 0) ceiling = Math.min(ceiling ?? died, died);
         if (crash.net === "big") {
           // A crash inside the full net's heap: the first step still held big,
           // so the net fits; from lite it does not.
@@ -371,6 +389,8 @@ export function createEngineProfileManager({
     const measured = consent === "yes";
     const steps = [["lite", 1]];
     if (measured) for (let n = 1; n <= maxWorkers(device()); n++) steps.push(["big", n]);
+    // Never the step that killed this tab, nor any above it; lite x1 is the floor.
+    while (ceiling !== null && steps.length > 1 && ladderStep({ net: steps.at(-1)[0], workers: steps.at(-1)[1] }) >= ceiling) steps.pop();
     const units = steps.length * 3 + (measured ? 0 : 1);
     let done = 0;
     const progress = (stage, step = 0, workers = null) => {

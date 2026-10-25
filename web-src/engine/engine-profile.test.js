@@ -386,7 +386,9 @@ describe("device engine profile", () => {
 describe("every device gets its own measured setup", () => {
   const DESKTOP = { hardwareConcurrency: 20, deviceMemory: 32 };
   // WebKit exposes cores but no memory signal at all — the shape of an iPhone.
-  const PHONE = { hardwareConcurrency: 6 };
+  // A browser with no memory signal (desktop Safari, Firefox): the ladder proves each step.
+  const NO_SIGNAL = { hardwareConcurrency: 6 };
+  const IPHONE = { hardwareConcurrency: 6, maxTouchPoints: 5, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15" };
   const LADDER = [["lite", 1], ["big", 1], ["big", 2], ["big", 3]];
   // A Memory whose constructor throws at one ladder step.
   const memoryFailingAt = (failAt) => {
@@ -405,13 +407,13 @@ describe("every device gets its own measured setup", () => {
     expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 4 })).toBe(2);
     expect(maxWorkers({ hardwareConcurrency: 1, deviceMemory: 32 })).toBe(1);
     // No signal is not "small": cores bound the ladder, not a made-up memory limit.
-    expect(maxWorkers(PHONE)).toBe(3);
+    expect(maxWorkers(NO_SIGNAL)).toBe(3);
     expect(maxWorkers({ hardwareConcurrency: 2 })).toBe(2);
     expect(maxWorkers({})).toBe(1);
   });
 
   it("measures a phone up the whole ladder when every heap fits", async () => {
-    const phone = fixture({ device: () => PHONE, throughput: (_net, n) => n });
+    const phone = fixture({ device: () => NO_SIGNAL, throughput: (_net, n) => n });
     expect(await phone.detectEngineProfile()).toMatchObject({ net: "big", workers: 3, source: "detected" });
     // lite 1, big 1, big 2, big 3: each step reserved its own heap.
     expect(phone.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big", "big", "big"]);
@@ -420,7 +422,7 @@ describe("every device gets its own measured setup", () => {
 
   it("records the last step that held when a bigger reservation fails", async () => {
     // big x2 cannot be reserved on this phone: Detect keeps big x1 and stops.
-    const phone = fixture({ device: () => PHONE, throughput: (_net, n) => n,
+    const phone = fixture({ device: () => NO_SIGNAL, throughput: (_net, n) => n,
       Memory: memoryFailingAt(LADDER.findIndex(([n, w]) => n === "big" && w === 2)) });
     expect(await phone.detectEngineProfile()).toMatchObject({ net: "big", workers: 1, source: "detected",
       measurements: { error: "no address space" } });
@@ -428,7 +430,7 @@ describe("every device gets its own measured setup", () => {
     expect(phone.engineWorkerChoices()).toEqual({ lite: 1, big: 1 });
     expect(phone.data.has(CRASH_KEY)).toBe(false);
     // The next load starts where this one stopped.
-    const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => PHONE,
+    const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => NO_SIGNAL,
       assetState: () => ({ phase: "ready" }) });
     expect(reloaded.engineProfile()).toMatchObject({ net: "big", workers: 1 });
     expect(reloaded.engineWorkerChoices()).toEqual({ lite: 1, big: 1 });
@@ -436,13 +438,13 @@ describe("every device gets its own measured setup", () => {
 
   it("records the attempted step before trying it, so a killed tab never retries it", async () => {
     let crashed = false;
-    const phone = fixture({ device: () => PHONE, throughput: (_net, n) => n, prepare: (index) => {
+    const phone = fixture({ device: () => NO_SIGNAL, throughput: (_net, n) => n, prepare: (index) => {
       if (crashed || index !== 2) return;
       crashed = true;
       // The tab dies at big x2: the armed step is on disk, and a fresh load
       // starts below it without retrying the step that killed the tab.
       expect(JSON.parse(phone.data.get(CRASH_KEY))).toMatchObject({ net: "big", workers: 2 });
-      const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => PHONE,
+      const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => NO_SIGNAL,
         createEngine: () => { throw new Error("must not retry the killed step"); } });
       expect(reloaded.engineProfile()).toEqual({ net: "big", workers: 1, source: "fallback" });
       expect(reloaded.engineWorkerChoices()).toEqual({ lite: 1, big: 1 });
@@ -451,10 +453,34 @@ describe("every device gets its own measured setup", () => {
     expect(crashed).toBe(true);
   });
 
+  it("runs one engine on a phone or tablet, whatever its cores", async () => {
+    expect(maxWorkers(IPHONE)).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 8, userAgentData: { mobile: true } })).toBe(1);
+    // iPadOS reports a Mac; its touch points give it away.
+    expect(maxWorkers({ hardwareConcurrency: 8, maxTouchPoints: 5, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 8, maxTouchPoints: 0, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toBe(3);
+    const phone = fixture({ device: () => IPHONE, throughput: (_net, n) => n });
+    expect(await phone.detectEngineProfile()).toMatchObject({ net: "big", workers: 1, source: "detected" });
+    expect(phone.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big"]);
+  });
+
+  it("a crash in real use is a ceiling: Detect again stays below the step that died", async () => {
+    const f = fixture({ device: () => NO_SIGNAL, throughput: (_net, n) => n });
+    // The tab was killed in Analyze on big x2.
+    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 2 }));
+    const reloaded = createEngineProfileManager({ storage: () => f.storage, device: () => NO_SIGNAL, probeId: PROBE,
+      createEngine: f.createEngine, reserveMemory: f.reserveMemory, loadModule: f.loadModule, removeAsset: f.removeAsset,
+      assetState: () => ({ phase: "ready" }), probeBudget: async () => () => {} });
+    expect(reloaded.engineProfile()).toMatchObject({ net: "big", workers: 1 });
+    f.createEngine.mockClear();
+    expect(await reloaded.detectEngineProfile()).toMatchObject({ net: "big", workers: 1, source: "detected" });
+    expect(f.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big"]);
+  });
+
   it("arms the probe step even in a hidden tab", () => {
     const page = new EventTarget();
     page.visibilityState = "hidden";
-    const f = fixture({ page, device: () => PHONE });
+    const f = fixture({ page, device: () => NO_SIGNAL });
     f.guardEngineStartup({ net: "big", workers: 2 }, { sticky: true });
     expect(JSON.parse(f.data.get(CRASH_KEY))).toMatchObject({ net: "big", workers: 2 });
     // A foreground engine run keeps the old rule: hidden means nothing to report.
@@ -471,7 +497,7 @@ describe("every device gets its own measured setup", () => {
 
   it("a fresh device sets itself up once, after the first screen", async () => {
     const idle = [];
-    const first = fixture({ device: () => PHONE, scheduleIdle: fn => { idle.push(fn); } });
+    const first = fixture({ device: () => NO_SIGNAL, scheduleIdle: fn => { idle.push(fn); } });
     first.setupOnFirstVisit();
     first.setupOnFirstVisit();
     expect(idle).toHaveLength(1);
@@ -482,12 +508,12 @@ describe("every device gets its own measured setup", () => {
   });
 
   it("does not set up a device that already has a setup, or one on save-data", async () => {
-    const settled = fixture({ device: () => PHONE, scheduleIdle: fn => fn() });
+    const settled = fixture({ device: () => NO_SIGNAL, scheduleIdle: fn => fn() });
     settled.setEngineProfile({ net: "lite", workers: 1 });
     settled.setupOnFirstVisit();
     await Promise.resolve();
     expect(settled.createEngine).not.toHaveBeenCalled();
-    const throttled = fixture({ device: () => ({ ...PHONE, connection: { saveData: true } }), scheduleIdle: fn => fn() });
+    const throttled = fixture({ device: () => ({ ...NO_SIGNAL, connection: { saveData: true } }), scheduleIdle: fn => fn() });
     throttled.setupOnFirstVisit();
     await Promise.resolve();
     expect(throttled.createEngine).not.toHaveBeenCalled();
@@ -496,12 +522,12 @@ describe("every device gets its own measured setup", () => {
   it("a stored record cannot start more heaps than this device measured", () => {
     // A record from a bigger device (or an edited one) is bounded by this device's
     // own ladder: it only ever held big x1.
-    const phone = fixture({ device: () => PHONE });
+    const phone = fixture({ device: () => NO_SIGNAL });
     phone.data.set(PROFILE_KEY, JSON.stringify({
       profile: { net: "big", workers: 3, source: "user" }, detected: { net: "big", workers: 3, source: "detected" },
       measurements: null, proven: { lite: 1, big: 1 }, probe: `4:${globalThis.__STOCKFISH__?.big?.id}`,
     }));
-    const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => PHONE,
+    const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => NO_SIGNAL,
       assetState: () => ({ phase: "ready" }) });
     expect(reloaded.engineProfile()).toMatchObject({ net: "big", workers: 1 });
     expect(reloaded.usableEngineProfile()).toMatchObject({ net: "big", workers: 1 });
@@ -510,7 +536,7 @@ describe("every device gets its own measured setup", () => {
   it("a busy tab that fails before its first step keeps the floor, not a phantom setup", async () => {
     // Detect could not even load lite x1. Nothing was measured, so nothing may be
     // offered beyond the floor and the profile stays the one every device starts at.
-    const busy = fixture({ device: () => PHONE, prepare: () => { throw new Error("tab is busy"); } });
+    const busy = fixture({ device: () => NO_SIGNAL, prepare: () => { throw new Error("tab is busy"); } });
     expect(await busy.detectEngineProfile()).toMatchObject({ net: "lite", workers: 1,
       measurements: { error: "tab is busy" } });
     expect(busy.engineWorkerChoices()).toEqual({ lite: 1, big: 0 });
@@ -519,9 +545,9 @@ describe("every device gets its own measured setup", () => {
 
   it("Settings can only choose steps this device held", async () => {
     // Before its first Detect a device has only the signal bound.
-    const fresh = fixture({ device: () => PHONE });
+    const fresh = fixture({ device: () => NO_SIGNAL });
     expect(fresh.setEngineProfile({ net: "big", workers: 3 })).toMatchObject({ net: "big", workers: 3 });
-    const measured = fixture({ device: () => PHONE, throughput: (_net, n) => n,
+    const measured = fixture({ device: () => NO_SIGNAL, throughput: (_net, n) => n,
       Memory: memoryFailingAt(LADDER.findIndex(([n, w]) => n === "big" && w === 2)) });
     await measured.detectEngineProfile();
     expect(measured.setEngineProfile({ net: "big", workers: 3 })).toMatchObject({ net: "big", workers: 1 });
@@ -541,7 +567,7 @@ describe("every device gets its own measured setup", () => {
       globalThis.fetch = originalFetch;
     }
     // A device that stored nothing of its own starts from the floor.
-    const phone = fixture({ device: () => PHONE, consent: null });
+    const phone = fixture({ device: () => NO_SIGNAL, consent: null });
     expect(phone.engineProfile()).toEqual({ net: "lite", workers: 1, source: "fallback" });
     expect(phone.data.has(PROFILE_KEY)).toBe(false);
   });

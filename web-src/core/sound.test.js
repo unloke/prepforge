@@ -23,10 +23,14 @@ function fakeAudio() {
       made.contexts += 1;
       this.sampleRate = 48000;
       this.currentTime = 0;
-      this.state = "running";
+      // A real context starts suspended until a gesture resumes it (iOS).
+      this.state = "suspended";
       this.destination = node();
+      made.context = this;
     }
     resume() {
+      made.resumes = (made.resumes || 0) + 1;
+      this.state = "running";
       return Promise.resolve();
     }
     createBuffer(_channels, frames) {
@@ -189,7 +193,7 @@ describe("playing a cue", () => {
     expect(made.disconnections).toBe(5);
   });
 
-  it("makes its context on the first gesture, then stops listening", async () => {
+  it("makes its context on the first gesture and wakes it after every interruption", async () => {
     const { sound, made } = await soundWith();
     const listeners = new Map();
     globalThis.window = {
@@ -202,7 +206,25 @@ describe("playing a cue", () => {
     listeners.get("pointerdown")();
     expect(made.contexts).toBe(1);
     expect(made.sources).toBe(1); // the silent sample that clears the lock
-    expect(listeners.size).toBe(0);
+    // Running: a tap leaves it alone.
+    listeners.get("pointerdown")();
+    expect(made.sources).toBe(1);
+    // iOS took the audio away (screen lock, a call, the tab in the background):
+    // the listener is still there, and the next tap brings the sound back.
+    made.context.state = "interrupted";
+    listeners.get("touchstart")();
+    expect(made.context.state).toBe("running");
+    expect(made.sources).toBe(2);
+    expect(listeners.size).toBe(3);
+  });
+
+  it("resumes an interrupted context when a cue plays, not only a suspended one", async () => {
+    const { sound, made } = await soundWith();
+    sound.playSound("move");
+    made.context.state = "interrupted";
+    const before = made.resumes;
+    sound.playSound("capture");
+    expect(made.resumes).toBe(before + 1);
   });
 
   it("makes no context while sounds are off, and stays armed for when they return", async () => {
@@ -219,7 +241,6 @@ describe("playing a cue", () => {
     appState.prefs.sounds = true;
     listeners.get("pointerdown")();
     expect(made.contexts).toBe(1);
-    expect(listeners.size).toBe(0);
   });
 });
 

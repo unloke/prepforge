@@ -333,8 +333,11 @@ function context() {
   return audio;
 }
 
+// iOS stops the context whenever the page loses the audio session (the tab goes
+// to the background, the screen locks, a call comes in) and reports
+// "interrupted", not "suspended": anything but running is asked to resume.
 function resume(ctx) {
-  if (ctx.state === "suspended") Promise.resolve(ctx.resume()).catch(() => {});
+  if (ctx.state !== "running") Promise.resolve(ctx.resume()).catch(() => {});
 }
 
 // Build a cue into any context at `when` seconds, returning its bus. The offline
@@ -381,23 +384,22 @@ export function playSound(cue) {
 
 const GESTURES = ["pointerdown", "keydown", "touchstart"];
 
-// The first gesture creates and resumes the context (and plays one silent
-// sample, which is what actually clears the lock on older iOS), so the first
-// move after a reload already has sound. With sounds off no context is made;
-// the listener stays for the gesture that follows the switch being turned on.
+// A gesture creates the context and, while it is not running, resumes it and
+// plays one silent sample, which is what actually clears the lock on iOS. It stays
+// armed for the whole session: iOS takes the audio away again on every
+// interruption, and a resume that is not inside a gesture is refused, so the next
+// tap after one is what brings the sound back. With sounds off no context is made.
 export function installSoundUnlock() {
   if (typeof window === "undefined") return;
   const onGesture = () => {
     if (!pref("sounds")) return;
     const ctx = context();
-    if (ctx) {
-      resume(ctx);
-      const silent = ctx.createBufferSource();
-      silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
-      silent.connect(ctx.destination);
-      silent.start();
-    }
-    GESTURES.forEach((type) => window.removeEventListener(type, onGesture, true));
+    if (!ctx || ctx.state === "running") return;
+    resume(ctx);
+    const silent = ctx.createBufferSource();
+    silent.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    silent.connect(ctx.destination);
+    silent.start();
   };
   GESTURES.forEach((type) =>
     window.addEventListener(type, onGesture, { capture: true, passive: true }));
