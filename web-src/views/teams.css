@@ -321,8 +321,12 @@ select.team-role-select {
    with a nav bar (back · name · ⋯), full-width tabs, two-line rows and the
    one primary action docked above the tab bar. Every row stays one row. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  #view-teams .teams { gap: 16px; }
-  #view-teams .card-head { min-height: 52px; padding: 4px 16px; }
+  #view-teams .teams { gap: var(--phone-gap); }
+  #view-teams .card-head { min-height: 48px; padding: 4px 16px; }
+  /* An open team is a pushed screen whose own head (back, name, ⋯) is the nav
+     bar: the page title and its + over it were a second header. */
+  #view-teams:has(.team-detail:not([hidden])) > .page-head { display: none; }
+  #view-teams:has(.team-detail:not([hidden])) > .teams { padding-top: max(8px, env(safe-area-inset-top)); }
   #view-teams .card-head h2 { font-size: 17px; }
   /* The page title carries New team (+), the way Library carries New
      repertoire, so the directory needs no head of its own. */
