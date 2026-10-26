@@ -1082,6 +1082,7 @@
   /* Saving state beside the tools that trigger it (the board bar's chip is
      hidden here). */
   #build-inspector .build-sync { flex: none; font-size: var(--fs-s); }
+  #build-inspector .build-sync:not([hidden]) ~ :is(.dock-engine-switch, .inspector-scan) { margin-left: 0; }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }

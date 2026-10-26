@@ -3430,10 +3430,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* The tools' one action is a control-height button, level with the scope
    track and the horizon select beside it (btn.sm stood 4px short). */
 :where(.dock-tools) .btn.sm { height: var(--control-h); min-height: var(--control-h); }
-/* The open tab's action (the Engine switch, Scan) closes the row at its right
-   end, with the save state (phones) just before it. */
+/* The open tab's action (the Engine switch, Scan) closes the row at its right end. */
 .dock-tools > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
-.dock-tools > .build-sync:not([hidden]) ~ :is(.dock-engine-switch, .inspector-scan) { margin-left: 0; }
 /* The link prompt's button keeps its own box: wrapped, it starts a line rather
    than trailing the sentence's last word. */
 #explorer-rows .hint:has(> [data-explorer-link]) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
