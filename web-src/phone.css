@@ -1160,6 +1160,8 @@
      bar stays. A Session pins the board on top, the coach line under it and
      the board bar's action slot (Hint · Skip, or Takeback · Resign) at the
      thumb. */
+  /* One control height for Train on a phone (train-shell.css reads it). */
+  :root { --train-control: 44px; }
   #view-train { --phone-reserve: max(190px, 30dvh); }
   #view-train:is([data-train-screen="home"], [data-train-screen="result"]) :is(.board-stack, .board-bar, .blitz-bar) { display: none; }
   #view-train:is([data-train-screen="home"], [data-train-screen="result"]) .study {
@@ -1193,28 +1195,35 @@
   #view-train .train-coach-title { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
-  #view-train .train-back { min-height: 44px; height: 44px; }
   #view-train .train-row { padding: 14px; border-radius: var(--radius-card); }
-  #view-train .train-row-go { height: 44px; min-height: 44px; }
-  #view-train .train-lucky { height: 40px; min-height: 40px; padding: 0 12px; font-size: 15px; }
-  /* Practice: the opponent and the colour share the first line (the opponent
-     at the start, the colour at the end, as a Chess.com app game setup), and
-     I'm Feeling Lucky is a quiet line under them. The three wrapped onto three
-     ragged lines at 393px. */
-  #view-train [data-row="play"] .train-row-opts { justify-content: flex-start; }
-  #view-train [data-row="play"] .train-row-opts > .train-color { order: 1; margin-left: auto; }
+  /* A row's options fill their line: a chip grows into a select-like field
+     with its chevron at the end, and the colour track takes what is left, so
+     no line ends in a hole (the Rehearse chip stopped 170px short, the colour
+     sat alone at the right of Practice's line). When they do not fit side by
+     side each takes its own full line. */
+  #view-train .train-row-opts > :is(.train-chip, .train-color) { flex: 1 1 auto; }
+  #view-train .train-chip { justify-content: space-between; font-size: 15px; }
+  /* The colour track is a 44px control like its neighbours: no 2px padding
+     (that made 40px buttons in a 44 track, or a 48 track around 44 buttons).
+     Each 44px button draws its plate 2px in, inside a transparent border. */
+  #view-train .train-color { gap: 0; padding: 0; }
+  #view-train .train-color .seg-btn { border: 2px solid transparent; border-radius: calc(var(--radius) + 2px); background-clip: padding-box; font-size: 14px; }
+  /* Practice: Random position is too wide to sit beside Play in a phone row;
+     it is the row's quiet last line, a text action on the text edge. */
+  #view-train .train-row[data-row="play"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts" "lucky lucky"; }
   #view-train [data-row="play"] .train-lucky {
-    order: 2;
-    margin: 0 0 0 -10px;
+    justify-self: start;
+    margin: -4px 0 -6px -10px;
+    padding: 0 10px;
     border: 0;
     background: none;
     color: var(--accent-strong);
+    font-size: 15px;
   }
-  #view-train [data-row="play"] .train-row-opts::after { content: ""; order: 1; flex-basis: 100%; }
-  #view-train .train-chip { min-height: 40px; font-size: 15px; }
-  #view-train .seg-btn { min-height: 40px; height: 40px; font-size: 14px; }
-  #view-train .un-rep { display: block; min-width: 0; }
-  #view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
+  /* The next due cards narrow the queue on a tap: thumb-height rows. */
+  #view-train .train-due-line { align-items: center; min-height: 44px; }
+  #view-train #train-home > .train-recent { padding-inline: 14px; }
+  #view-train .train-line-path { margin-block: -8px -4px; padding-block: 14px; }
   #view-train .train-sidebar .tcard {
     margin: 0;
     padding: 14px;
@@ -1225,7 +1234,7 @@
     font-size: 14px;
   }
   #view-train .train-progress-panel .upnext { min-height: 0; }
-  #view-train .train-summary-actions .btn { height: 46px; min-height: 46px; }
+  #view-train .train-summary-actions .btn.primary { flex: 1 1 auto; }
   .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
   .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
   /* The picker is a bottom sheet at the thumb. train-shell.css arrives later

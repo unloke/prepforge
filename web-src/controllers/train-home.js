@@ -330,7 +330,7 @@ export async function paintTrainHome() {
   const state = d.appState;
   const signedIn = !!state.signedIn;
   const reps = allTrainable();
-  paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(d.currentOwnerId(), 3) : [], "No finished runs yet. Each one you finish is listed here.");
+  paintRecent(document.getElementById("train-recent-home"), signedIn ? recentRuns(d.currentOwnerId(), 3) : [], "No finished runs yet.");
   // Due queue
   setChip("train-due-scope", dueScopeLabel(), !signedIn || !ownActive().length && !reps.length);
   const due = document.getElementById("start-train");
