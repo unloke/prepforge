@@ -476,7 +476,10 @@
      title above it and twice the 18px name it holds. The head keeps a small
      pad, the button keeps its thumb height, and the name reads at the size of
      the open team's name. */
-  #view-teams .card-head { padding-block: 6px; }
+  #view-teams .card-head { min-height: 56px; padding-block: 6px; }
+  /* The open team is a pushed screen: its back button returns to the list, so
+     the list and the shares are not stacked above and below it. */
+  #view-teams .teams:has(> .team-detail:not([hidden])) > :is(.card.dir, .card.incoming) { display: none; }
   #view-teams .card-head h2 { font-size: 17px; }
   /* The open team's header is one row, like a pushed screen's: back on the
      left, the name (cut first) and role, then whatever actions the role has.
@@ -497,17 +500,25 @@
   /* The team's own role is its members' rows (Owner beside your name): the
      header badge gave the name's room away on a phone. */
   #view-teams #team-detail-role { display: none; }
+  /* Beside a manager's three actions the name had ~120px at 360: it takes two
+     lines before it is cut. */
   #view-teams .team-detail .card-head h2 {
+    display: -webkit-box;
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
     font-size: 17px;
   }
   #view-teams .team-detail .card-head .team-role-badge { flex: none; }
   #view-teams .team-detail .card-head .btn { flex: none; }
-  #view-teams .team-detail .card-head #team-detail-invite { padding: 0 14px; }
+  /* The link icon is one of three icon actions in the head: ghost like the
+     other two, not a bordered box that read as a pressed toggle. */
+  #view-teams .team-detail .card-head #team-detail-invite { padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
   #team-detail-close { order: -1; font-size: 0; color: var(--text); }
   #team-detail-close::before {
     content: "";

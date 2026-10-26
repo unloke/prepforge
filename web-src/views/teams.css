@@ -9,10 +9,14 @@
   padding: 0;
   overflow: hidden;
 }
+/* Every card head is one height whether it holds a button or not, so the
+   directory and the open team line up side by side and the shares card does
+   not read as a squashed version of them. Its controls share the small size. */
 .teams .card-head {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 46px;
   margin: 0;
   padding: 10px 12px;
 }
@@ -146,6 +150,9 @@
   gap: 8px;
   padding: 8px 12px;
 }
+/* A role without the pane's action has nothing to put on that line: an empty
+   strip there read as a gap between the tabs and the first row. */
+.sub-head:not(:has(> .btn:not([hidden]))) { display: none; }
 .mem-row {
   display: flex;
   align-items: center;
@@ -191,6 +198,9 @@ select.team-role-select {
   padding: 0 8px;
   color: var(--muted);
 }
+/* "Leave" is a word, not an icon: it takes its own width instead of
+   spilling out of the square icon box onto the badge beside it. */
+.team-remove[data-self="1"] { width: auto; padding: 0 10px; }
 .team-remove:hover {
   background: var(--surface-3);
   color: var(--danger);
@@ -245,6 +255,9 @@ select.team-role-select {
 /* Copy is the primary action; Revoke is a quiet, secondary danger action set
    apart on the left so it isn't the most prominent button. */
 .invite-modal .modal-footer { flex-wrap: wrap; }
+/* With no link yet the body has nothing in it; its padding alone left a blank
+   band between the title and the buttons. */
+.invite-modal .modal-body:not(:has(*)) { display: none; }
 .invite-modal .btn.danger-quiet {
   margin-right: auto;
   background: transparent;
