@@ -34,11 +34,26 @@ it("keeps the page header's action a thumb target in ink", () => {
 // Games, Scout and Teams opened with ~50px of dead ground under the title.
 it("the page title row is the action's height and adds no margin of its own", () => {
   const head = rule(".page-head {");
-  expect(head).toMatch(/min-height:\s*44px/);
-  expect(head).toMatch(/margin:\s*0;/);
+  expect(head).toMatch(/min-height:\s*calc\(44px \+ env\(safe-area-inset-top\)\)/);
+  expect(head).toMatch(/margin:\s*0 calc\(-1 \* var\(--phone-gutter\)\);/);
   expect(head).not.toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
   // A page that stacks blocks in normal flow still gets one gap from the shell.
   expect(rule(".view > .page-head {")).toMatch(/margin-bottom:\s*var\(--phone-gap\)/);
+});
+
+// A phone browser keeps up to 180px for its own bars: the title docks at the
+// top as a nav bar once the page scrolls (the iOS large title), rather than
+// leaving a scrolled page unnamed, and list pages step their blocks 12px apart.
+it("docks the page title as a nav bar on scroll and tightens the list rhythm", () => {
+  const head = rule(".page-head {");
+  expect(head).toMatch(/position:\s*sticky/);
+  expect(head).toMatch(/top:\s*0/);
+  expect(head).toMatch(/background:\s*var\(--bg\)/);
+  expect(body).toMatch(/animation-timeline:\s*scroll\(root\)/);
+  expect(body).toMatch(/@keyframes page-title-dock \{ to \{ transform: scale\(0\.773\); \} \}/);
+  expect(body).toMatch(/:is\(#view-dashboard, #view-replay, #view-teams, #view-settings\) \{ --phone-gap: 12px; \}/);
+  // Settings docks its section strip instead; two docked bars would stack.
+  expect(body).toMatch(/#view-settings \.page-head \{ position: static; \}/);
 });
 
 it("draws the bottom bar as chrome: a tone step, no shadow, ink selection", () => {

@@ -520,14 +520,14 @@
      its message: on Games and Scout the tab has either rows or nothing, and
      both read the same way. Games' ledger already carries the frame. */
   #view-replay .scout-empty.empty-state.big {
-    padding: 24px 16px;
+    padding: 16px;
     border-radius: var(--radius-card);
     background: var(--panel);
   }
   #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
   /* Games' empty ledger is the same note: the 48px hero padding held one line
      in a 120px card. */
-  #view-replay .ledger-empty.empty-state.big { padding: 24px 16px; }
+  #view-replay .ledger-empty.empty-state.big { padding: 16px; }
   #view-replay .ledger-empty.empty-state.big h3 { font-size: 17px; }
   #view-replay .empty-state.big p:empty { display: none; }
   /* The engine offer (Maia's 46 MB download) waits under the report on a phone:

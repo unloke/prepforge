@@ -326,6 +326,7 @@ select.team-role-select {
   /* An open team is a pushed screen whose own head (back, name, ⋯) is the nav
      bar: the page title and its + over it were a second header. */
   #view-teams:has(.team-detail:not([hidden])) > .page-head { display: none; }
+  #view-teams:has(.team-detail:not([hidden])) > .teams { padding-top: max(8px, env(safe-area-inset-top)); }
   #view-teams .card-head h2 { font-size: 17px; }
   /* The page title carries New team (+), the way Library carries New
      repertoire, so the directory needs no head of its own. */

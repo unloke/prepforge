@@ -42,5 +42,7 @@ it("on a phone the docked Start gives way to the toolbar once there is a report"
   // "A report" is the colour sections; an error block alone keeps the docked Start.
   // :has() cannot nest, so the test is written as one level of :has.
   expect(phone).toMatch(/\.scout-panel:has\(#scout-results > \.scout-section\) > \.toolbar > #scout-btn \{\s*position: static;/);
-  expect(phone).toMatch(/\.scout-panel > \.page-head \{ min-height: 0; \}/);
+  // Games and Scout share the pages' 44px title row (it docks as the nav bar).
+  expect(phone).not.toMatch(/\.scout-panel > \.page-head \{ min-height: 0; \}/);
+  expect(phone).toMatch(/#view-replay \.review > section > \.page-head \{ display: flex; \}/);
 });
