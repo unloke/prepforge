@@ -74,6 +74,13 @@
   font-size: 13px;
 }
 
+/* The coach's engine offer sits in the Humans row: its action and dismiss
+   take the panel's one control height (26px, as Last game and Analyze), so
+   the panel no longer mixes 22, 24, 26 and 30px controls. */
+.coach-card .coach-unlock .unlock.is-inline { height: 26px; }
+.coach-card .coach-unlock .unlock.is-inline .btn { height: 26px; min-height: 26px; }
+.coach-card .coach-unlock .unlock.is-inline .unlock-x { width: 26px; height: 26px; }
+
 /* The coach card ---------------------------------------------------- */
 
 /* Coach has four stable rows: controls, verdict, human picks and prep.
@@ -89,7 +96,7 @@
 .coach-card {
   --coach-line: 24px;
   --coach-head: 26px;
-  --coach-foot: 22px;
+  --coach-foot: 26px;
   --coach-gap: 6px;
   --coach-review: 0px;
   flex: none;
@@ -113,7 +120,7 @@
 .coach-card > .coach-bookline { grid-row: 4; }
 .coach-card > .coach-review { grid-row: 5; }
 /* A reviewed game adds the review bar's row to the card. */
-.coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(30px + var(--coach-gap)); }
+.coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(26px + var(--coach-gap)); }
 /* The gap between rows is each row's own margin, not a grid gap: a grid gap is
    also charged after the prep row, and with the note hidden that 6px landed
    between the Humans row and the Evaluation card as dead space. A display:none
@@ -227,7 +234,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 22px;
+  height: 26px;
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
@@ -259,20 +266,22 @@
 }
 /* The review bar: the previous and next key moment around the one in focus,
    and at a mistake the better move or a try at finding it (Chess.com's Best,
-   Retry and Next). One 30px row; the label gives way before the buttons. */
+   Retry and Next). One row at the panel's control height (the .btn.sm 26px
+   every other control in the panel uses); the label gives way before the
+   buttons. */
 .coach-review {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  height: 26px;
   margin-top: var(--coach-gap);
 }
 .cr-step {
   flex: none;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -289,14 +298,14 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  height: 30px;
+  height: 26px;
   padding: 0 4px;
   border: 0;
   background: none;
   color: var(--text);
   font: inherit;
   font-size: var(--fs-s);
-  line-height: 30px;
+  line-height: 26px;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -669,14 +678,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
-  padding: 0 9px 0 8px;
+  height: 26px;
+  padding: 0 10px 0 9px;
   border: 0;
   border-radius: 999px;
   background: var(--panel-soft);
   color: var(--muted);
   font: inherit;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-s);
   font-weight: 700;
   cursor: pointer;
 }
@@ -1189,7 +1198,8 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
+  min-height: 28px; /* the row a pointer hits, not its 15px line */
+  margin-bottom: 2px;
   font-size: var(--fs-s);
   font-weight: 600;
   cursor: pointer;
@@ -1224,9 +1234,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 .history-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
-  padding: 6px 4px;
+  padding: 0 4px;
   border: 0;
   cursor: pointer;
 }
@@ -1237,6 +1247,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   align-items: center;
   gap: 8px;
   min-width: 0;
+  min-height: 28px;
   padding: 0;
   border: 0;
   background: none;
@@ -1250,6 +1261,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
    list stays a list of games and not a list of games with a bin each. */
 .history-item .hi-delete {
   flex: none;
+  align-self: center;
   opacity: 0;
   color: var(--label);
 }
@@ -1623,9 +1635,11 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     height: 44px;
     margin: 0 48px -50px 0;
   }
-  #analysis-explain .cr-step { width: 36px; height: 40px; }
+  /* One 44px row: the steps, the label and the Best/Retry action share the
+     thumb height (the steps were 36x40 beside a 44px label). */
+  #analysis-explain .cr-step { width: 44px; height: 44px; }
   #analysis-explain .cr-count { display: none; }
-  #analysis-explain .coach-review > .btn { height: 40px; min-height: 40px; padding: 0 8px; }
+  #analysis-explain .coach-review > .btn { height: 44px; min-height: 44px; padding: 0 10px; }
   #analysis-explain .cr-label { height: 44px; line-height: 44px; }
   /* The engine-offer row keeps its one line, but its two controls are a thumb's
      size here (they were 22px: a pointer's row). The row's height is the
@@ -1703,8 +1717,10 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   /* The engine's head row is a thumb row: the depth, the line stepper and the
      Live switch all sit on it. */
   #analysis-engine-pane .an-pane-head { min-height: 44px; }
-  #analysis-engine-pane .ev-engine { position: relative; height: 32px; padding: 0 14px 0 12px; font-size: 14px; }
-  #analysis-engine-pane .ev-engine::after { content: ""; position: absolute; inset: -6px 0; }
+  #analysis-engine-pane .ev-engine { height: 44px; padding: 0 16px 0 14px; font-size: 14px; }
+  /* Engine off: Live is the pane's only control, so it starts on the pane's
+     edge instead of floating at the far end of an empty head row. */
+  #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) .ev-engine { grid-area: 1 / 1; }
   /* A line is a row a thumb picks: 44px tall, its text at the row's middle. */
   #analysis-engine-slot .engine-pv,
   #analysis-engine-slot .engine-pv.is-top { height: 44px; min-height: 44px; font-size: 14px; }
@@ -1720,14 +1736,42 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   .rp-tr { min-height: 36px; }
   .rp-n { height: 36px; line-height: 36px; }
   .rp-phase { min-height: 44px; justify-content: center; }
-  .km-go { min-height: 44px; }
+  /* A phase head is read on a phone: 12px, not the 11px chrome size (the seven
+     grade heads keep 11px, where "Brilliant" and "Blunder" still fit). */
+  .rp-phase.rp-col { font-size: 12px; }
+  .km-go { min-height: 44px; grid-template-columns: 8px 64px 88px auto; }
+  /* "4…Nxe5" is one token: it never breaks after the move number. The row
+     keeps its columns whole and, when the better move does not fit beside
+     them (a 360px phone), that link takes its own line at the row's end
+     instead of being drawn over the eval. */
+  .km-move { white-space: nowrap; }
+  .km { flex-wrap: wrap; }
+  .km-go { flex: 1 0 auto; }
+  .km-best { margin-left: auto; }
   .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   .analysis-retry-save:not([hidden]),
   .analysis-import-picker:not([hidden]) { margin: 6px var(--phone-gutter); padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
 
   /* The Games sheet: where games come from. */
   #view-analyze:has(#analysis-results:not([hidden])) #analyze-open:not(.is-open) { display: none; }
-  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { visibility: hidden; }
+  /* No game: the Games sheet fills the screen, so its button leaves the bar
+     and the bar closes up (a hidden 44px track left a hole between Menu and
+     Flip), with the pill centred in the wider middle. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 52px 52px; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar .bb-sheet { display: none; }
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 106px; }
+  /* 360-374px: the 84px middle clipped the pill's padding; the arrows give 4px
+     each and the pill pads 14px, so "Analyze" sits whole. */
+  @media (min-width: 360px) and (max-width: 374px) {
+    #view-analyze .board-bar { grid-template-columns: 44px 44px 44px minmax(0, 1fr) 48px 48px; }
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 44px 44px minmax(0, 1fr) 48px 48px; }
+    #view-analyze .board-bar :is(#analysis-prev, #analysis-next) { width: 48px; }
+    #view-analyze #run-analysis { right: 114px; max-width: calc(100% - var(--pill-left) - 114px); padding: 0 14px; }
+  }
+  @media (max-width: 359px) {
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) .board-bar { grid-template-columns: 40px 40px minmax(0, 1fr) 44px 44px; }
+    #view-analyze:not(:has(#analysis-results:not([hidden]))) #run-analysis { --pill-left: 98px; }
+  }
   :is(#analyze-open) :is(#pgn-drawer, #history-drawer:not([hidden])) {
     margin: 0;
     padding: 10px 14px;
@@ -1741,8 +1785,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #analyze-open > .drawer:not([open]) { display: none; }
   #pgn-input { min-height: 120px; border-radius: 10px; }
   #analyze-open .pgn-file-row { display: none; }
-  #analyze-open .history-item { min-height: 48px; padding: 8px 2px; font-size: 15px; }
-  #analyze-open .history-item .hi-open { font-size: 15px; }
+  /* The open button is the whole row (it was its 18px line beside a 44px bin). */
+  #analyze-open .history-item { min-height: 48px; padding: 2px 2px; font-size: 15px; }
+  #analyze-open .history-item .hi-open { min-height: 44px; font-size: 15px; }
   #analyze-open .history-item .hi-meta { font-size: 13px; }
   /* Touch target, and always visible: a phone has no hover to reveal it. */
   #analyze-open .history-item .hi-delete {
@@ -1750,6 +1795,8 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     min-width: 44px;
     height: 44px;
     min-height: 44px;
+    border-color: transparent;
+    background: none;
     opacity: 1;
   }
 

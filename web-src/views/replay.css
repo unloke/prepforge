@@ -19,6 +19,11 @@
    `--none` grey lands at 3.5:1 on its own tint. */
 #view-replay .kind-badge.t-none { color: var(--muted); }
 #view-replay .sum-chip.t-none { color: var(--muted); }
+/* The outcome filters share the toolbar row with the 30px source chip, select
+   and Check games: one control height across the row (they were 24px). */
+@media (min-width: 761px) {
+  #view-replay .toolbar .sum-chip { height: var(--control-h); }
+}
 
 .triage {
   flex: 1 1 auto;
@@ -234,13 +239,11 @@
     to { opacity: 1; transform: none; }
   }
 } 
-/* Desktop: the departure move is marked as a chip around its own SAN, not a
-   red bar across the whole half of the row, and the note under it starts on
-   the moves' edge instead of at the card's. */
-@media (min-width: 861px) {
-  .ply.dep { justify-self: start; }
-  .dep-note { padding-left: 34px; }
-}
+/* The departure move is marked as a chip around its own SAN, not a red bar
+   across the whole half of the row (on a phone that bar ran 150px for "Nf3"),
+   and the note under it starts on the moves' edge instead of at the card's. */
+.ply.dep { justify-self: start; }
+.dep-note { padding-left: 34px; }
 /* Expected (good) vs played (bad) arrows over the derived position. */
 .replay-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .replay-arrows path {
