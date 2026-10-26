@@ -42,13 +42,20 @@ export function moveCue(prevFen, fen, lastMove) {
 
 // --- the sounds -------------------------------------------------------------
 
-// Each cue is one short MP3 (1.5-6.5 KB, 28 KB for the set), rendered from the
-// earshot sound bank and chosen by listening with earshot: a wooden knock for a
-// move, the same wood lower and doubled for a capture, two knocks for castling,
-// the knock with a short tine for check, a two-note marimba rise for right, one
-// low falling pop for wrong, a mallet run for complete. Every file is levelled to
-// the same loudness (-25 LUFS momentary max, true peak under -3 dBTP), so a cue
-// plays at full gain. The readings are in the branch's FINDINGS.md.
+// Each cue is one short 128 kbps MP3 (3-13 KB, 55 KB for the set) rendered from
+// the earshot sound bank (github.com/Leonxlnx/earshot 0.4.0, MIT; its sounds are
+// made in code, no recording inside), each picked because earshot matched it to
+// its description ahead of the sounds it could be mistaken for:
+//   move       knock/wood
+//   capture    knock/wood at D4, then at E4 50 ms later (0.7)
+//   castle     knock/wood, then knock/wood at E4 130 ms later: king, then rook
+//   check      knock/wood at E4, notify/mid_tine at E5 30 ms in (0.4)
+//   promotion  knock/wood, mallet/flourish 60 ms in (0.7)
+//   right      mallet/marimba C5, then G5 90 ms later
+//   wrong      ui_pop/fall at E4
+//   complete   mallet/up4
+// Every file is levelled to the same loudness (-25 LUFS momentary max, true peak
+// under -3 dBTP), so a cue plays at full gain.
 const FILES = {
   move: new URL("../sounds/move.mp3", import.meta.url).href,
   capture: new URL("../sounds/capture.mp3", import.meta.url).href,

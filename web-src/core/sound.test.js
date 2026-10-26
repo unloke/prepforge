@@ -334,10 +334,10 @@ describe("the sound files", () => {
     let total = 0;
     for (const cue of CUE_NAMES) {
       const bytes = statSync(join(dir, `${cue}.mp3`)).size;
-      expect(bytes).toBeLessThan(8 * 1024);
+      expect(bytes).toBeLessThan(16 * 1024);
       total += bytes;
     }
-    expect(total).toBeLessThan(32 * 1024);
+    expect(total).toBeLessThan(64 * 1024);
     expect(readdirSync(dir).sort()).toEqual(CUE_NAMES.map((cue) => `${cue}.mp3`).sort());
   });
 });
