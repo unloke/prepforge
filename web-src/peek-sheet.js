@@ -36,6 +36,7 @@ export function wirePeekSheets(root = document) {
     };
     let start = null;
     let dragged = false;
+    if (phone.matches) mark(list, view, home);
     // Capture: read which tab was open before the view's own handler switches it.
     list.addEventListener("click", (event) => {
       const tab = event.target.closest("[role=tab]");
@@ -49,7 +50,9 @@ export function wirePeekSheets(root = document) {
       if (tab.getAttribute("aria-selected") === "true") set(!sheetIsUp(view, home));
       else {
         delete view.dataset.sheet;
-        queueMicrotask(() => mark(list, view, home));
+        // After the view's own handler has moved the selection (a microtask
+        // would run between the two listeners of a real tap).
+        setTimeout(() => mark(list, view, home));
       }
     }, true);
     list.addEventListener("pointerdown", (event) => {

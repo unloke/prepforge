@@ -48,7 +48,7 @@ it("is up off the home pane unless the user chose otherwise", () => {
   expect(sheetIsUp({ dataset: { pane: "coach", sheet: "up" } }, "coach")).toBe(true);
 });
 
-it("tapping the open tab toggles the sheet; opening another pane clears the choice", () => {
+it("tapping the open tab toggles the sheet; opening another pane clears the choice", async () => {
   const { view, tabs, select } = setup();
   select(tabs[0]);
   expect(view.dataset.sheet).toBe("up");
@@ -58,6 +58,9 @@ it("tapping the open tab toggles the sheet; opening another pane clears the choi
   select(tabs[2]);
   expect(view.dataset.sheet).toBeUndefined();
   expect(sheetIsUp(view, "coach")).toBe(true);
+  await new Promise((r) => setTimeout(r));
+  expect(tabs[2].attrs["aria-expanded"]).toBe("true");
+  expect(tabs[0].attrs["aria-expanded"]).toBeUndefined();
 });
 
 it("a vertical drag on the switch raises or lowers the sheet and swallows its click", () => {
