@@ -4,11 +4,22 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Chess } from "chess.js";
 
+// A decoded cue as the fake decoder returns it: a few samples of priming
+// silence (an MP3 decoder may leave the encoder's in), then the sound.
+const PRIMING = 96;
+function decodedCue() {
+  const data = new Float32Array(2048);
+  for (let i = PRIMING; i < data.length; i++) data[i] = Math.exp(-(i - PRIMING) / 200) * (i % 2 ? 1 : -1);
+  return { sampleRate: 48000, length: data.length, getChannelData: () => data };
+}
+
 // A stand-in for WebAudio that counts what a cue actually starts, and records
-// the one call the cut makes on a sounding bus (cancelScheduledValues). A
-// buffer keeps its samples, because every voice is now computed into one.
+// the one call the cut makes on a sounding bus (cancelScheduledValues).
 function fakeAudio() {
-  const made = { contexts: 0, sources: 0, cancels: 0, buffers: [], sourceNodes: [], stops: 0, disconnections: 0 };
+  const made = {
+    contexts: 0, sources: 0, cancels: 0, buffers: [], sourceNodes: [], starts: [], stops: 0, disconnections: 0,
+    decodes: 0, fetched: [],
+  };
   const param = () => ({
     value: 1,
     setValueAtTime() {},
@@ -39,8 +50,15 @@ function fakeAudio() {
       made.buffers.push(buffer);
       return buffer;
     }
+    decodeAudioData() {
+      made.decodes += 1;
+      return Promise.resolve(decodedCue());
+    }
     createBufferSource() {
-      const source = node({ start: () => { made.sources += 1; }, stop: () => { made.stops += 1; } });
+      const source = node({
+        start: (when, offset) => { made.sources += 1; made.starts.push({ when, offset }); },
+        stop: () => { made.stops += 1; },
+      });
       made.sourceNodes.push(source);
       return source;
     }
@@ -74,13 +92,36 @@ async function soundWith({ sounds = true } = {}) {
   appState.prefs = { sounds };
   const audio = fakeAudio();
   globalThis.AudioContext = audio.FakeContext;
+  globalThis.fetch = vi.fn(async (url) => {
+    audio.made.fetched.push(String(url));
+    return { arrayBuffer: async () => new ArrayBuffer(8) };
+  });
   const sound = await import("./sound.js");
   return { sound, made: audio.made, appState };
+}
+
+// Lets the fetch and decode promises settle.
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+// A context with the set already decoded, as it is after the first gesture.
+async function soundReady(options) {
+  const loaded = await soundWith(options);
+  const listeners = new Map();
+  globalThis.window = { addEventListener: (type, fn) => listeners.set(type, fn) };
+  loaded.sound.installSoundUnlock();
+  listeners.get("pointerdown")();
+  await settle();
+  loaded.made.sources = 0;
+  loaded.made.sourceNodes.length = 0;
+  loaded.made.starts.length = 0;
+  return loaded;
 }
 
 afterEach(() => {
   delete globalThis.AudioContext;
   delete globalThis.window;
+  delete globalThis.fetch;
+  vi.restoreAllMocks();
 });
 
 describe("which cue a move plays", () => {
@@ -141,23 +182,25 @@ describe("which cue a move plays", () => {
 });
 
 describe("playing a cue", () => {
-  it("starts the cue's voices when sounds are on", async () => {
-    const { sound, made } = await soundWith();
+  it("starts the cue when sounds are on", async () => {
+    const { sound, made } = await soundReady();
     sound.playSound("move");
-    expect(made.sources).toBeGreaterThan(0);
+    expect(made.sources).toBe(1);
   });
 
   it("stays silent when the preference is off, or the cue is unknown", async () => {
     const { sound, made } = await soundWith({ sounds: false });
     sound.playSound("move");
+    await settle();
     expect(made.sources).toBe(0);
-    const again = await soundWith();
+    expect(made.contexts).toBe(0);
+    const again = await soundReady();
     again.sound.playSound("nonsense");
     expect(again.made.sources).toBe(0);
   });
 
   it("drops a repeat inside the throttle and plays it again after", async () => {
-    const { sound, made } = await soundWith();
+    const { sound, made } = await soundReady();
     sound.playSound("move");
     const afterOne = made.sources;
     sound.playSound("move");
@@ -168,29 +211,20 @@ describe("playing a cue", () => {
   });
 
   it("cuts the sounding cue so two never ring together", async () => {
-    const { sound, made } = await soundWith();
-    sound.playSound("move");
-    const afterMove = made.sources;
+    const { sound, made } = await soundReady();
     sound.playSound("capture");
+    sound.playSound("move");
     expect(made.cancels).toBe(1);
-    expect(made.sources).toBeGreaterThan(afterMove);
+    expect(made.stops).toBe(1);
+    expect(made.sources).toBe(2);
   });
 
-  it("stops every scheduled voice of a replaced cue, including later capture taps", async () => {
-    const { sound, made } = await soundWith();
-    sound.playSound("capture");
-    expect(made.sourceNodes).toHaveLength(2);
-    sound.playSound("move");
-    expect(made.stops).toBe(2);
-  });
-
-  it("disconnects the cue only after its last voice ends", async () => {
-    const { sound, made } = await soundWith();
+  it("disconnects the cue when its sound ends", async () => {
+    const { sound, made } = await soundReady();
+    const before = made.disconnections;
     sound.playSound("capture");
     made.sourceNodes[0].onended();
-    expect(made.disconnections).toBe(2);
-    made.sourceNodes[1].onended();
-    expect(made.disconnections).toBe(5);
+    expect(made.disconnections - before).toBe(2);
   });
 
   it("makes its context on the first gesture and wakes it after every interruption", async () => {
@@ -219,7 +253,7 @@ describe("playing a cue", () => {
   });
 
   it("resumes an interrupted context when a cue plays, not only a suspended one", async () => {
-    const { sound, made } = await soundWith();
+    const { sound, made } = await soundReady();
     sound.playSound("move");
     made.context.state = "interrupted";
     const before = made.resumes;
@@ -237,6 +271,7 @@ describe("playing a cue", () => {
     sound.installSoundUnlock();
     listeners.get("pointerdown")();
     expect(made.contexts).toBe(0);
+    expect(made.fetched).toHaveLength(0);
     expect(listeners.size).toBe(3);
     appState.prefs.sounds = true;
     listeners.get("pointerdown")();
@@ -244,57 +279,66 @@ describe("playing a cue", () => {
   });
 });
 
-describe("what a voice is made of", () => {
-  // Every voice is computed into one buffer. Stacked oscillators were the bug
-  // this replaced: WebAudio starts a sine at the phase the clock is in, so the
-  // same cue came out up to 8 dB louder or quieter depending on when it played.
-  it("renders a cue as buffers, with no oscillator that can drift in phase", async () => {
-    const { sound, made } = await soundWith();
+describe("the sound files", () => {
+  it("are fetched and decoded once per context, on the first gesture", async () => {
+    const { sound, made } = await soundReady();
+    expect(made.decodes).toBe(sound.CUE_NAMES.length);
     sound.playSound("move");
-    expect(made.buffers.length).toBeGreaterThan(0);
-    expect(made.sources).toBeGreaterThan(0);
+    sound.playSound("wrong");
+    await settle();
+    expect(made.fetched).toHaveLength(sound.CUE_NAMES.length);
+    expect(made.decodes).toBe(sound.CUE_NAMES.length);
   });
 
-  it("rings in the low mids off a short strike, which is what reads as wood", async () => {
+  it("plays a cue asked for before the decode once it lands, unless it would be late", async () => {
+    const early = await soundWith();
+    early.sound.playSound("move");
+    expect(early.made.sources).toBe(0);
+    await settle();
+    expect(early.made.sources).toBe(1);
+
+    const late = await soundWith();
+    let now = 1000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    late.sound.playSound("move");
+    now += 1000;
+    await settle();
+    expect(late.made.sources).toBe(0);
+  });
+
+  it("tries a failed fetch again on the next cue", async () => {
     const { sound, made } = await soundWith();
+    globalThis.fetch.mockRejectedValueOnce(new Error("offline"));
     sound.playSound("move");
-    const knock = made.buffers.find((b) => b.length > 2000);
-    expect(knock).toBeDefined();
-    const data = knock.getChannelData(0);
-    // Normalised to the same height whatever its modes, so its level is known.
-    const peak = data.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
-    expect(peak).toBeCloseTo(1, 3);
-    // It rises from silence and has died away by its end: no step at either edge.
-    expect(Math.abs(data[0])).toBe(0);
-    expect(Math.abs(data[data.length - 1])).toBeLessThan(1e-3);
-    // It is a strike, not a note: most of its energy is in the first fifth.
-    let early = 0, all = 0;
-    const split = Math.round(data.length * 0.2);
-    data.forEach((v, i) => { all += v * v; if (i < split) early += v * v; });
-    expect(early / all).toBeGreaterThan(0.5);
-    // And it still rings a third of the way in, rather than being one thump at
-    // the start: a knock with no ring in the middle read as a kick drum.
-    const span = Math.round(data.length / 30);
-    let rings = 0;
-    for (let at = Math.round(data.length * 0.15); at < data.length * 0.4 - span; at += span) {
-      let block = 0;
-      for (let i = at; i < at + span; i++) block += data[i] * data[i];
-      if (Math.sqrt(block / span) > 0.01) rings += 1;
+    await settle();
+    expect(made.sources).toBe(0);
+    sound.playSound("move");
+    await settle();
+    expect(made.sources).toBe(1);
+  });
+
+  it("starts a cue at its first sound, past any decoder priming", async () => {
+    const { sound, made } = await soundReady();
+    sound.playSound("move");
+    // The first sample within 40 dB of the peak, less a quarter millisecond.
+    expect(made.starts[0].offset).toBeCloseTo((PRIMING - 12) / 48000, 6);
+    const data = new Float32Array(100);
+    data[0] = 0.5;
+    expect(sound.soundStart(data, 48000)).toBe(0);
+  });
+
+  it("ships one small file per cue", async () => {
+    vi.resetModules();
+    const { CUE_NAMES } = await import("./sound.js");
+    const dir = fileURLToPath(new URL("../sounds/", import.meta.url));
+    let total = 0;
+    for (const cue of CUE_NAMES) {
+      const bytes = statSync(join(dir, `${cue}.mp3`)).size;
+      expect(bytes).toBeLessThan(16 * 1024);
+      total += bytes;
     }
-    expect(rings).toBeGreaterThanOrEqual(4);
-  });
-
-  it("computes a cue the same way in every context, so a play cannot drift", async () => {
-    const first = await soundWith();
-    for (const cue of ["move", "complete"]) first.sound.playSound(cue);
-    const second = await soundWith();
-    for (const cue of ["move", "complete"]) second.sound.playSound(cue);
-    const samples = (made) => made.buffers.map((b) => Array.from(b.getChannelData(0)));
-    // Same samples on a reload: nothing here depends on the clock or on a
-    // randomly phased oscillator.
-    expect(samples(second.made)).toEqual(samples(first.made));
-    // And a computed buffer starts from silence, so it cannot begin on a step.
-    for (const data of samples(first.made)) expect(Math.abs(data[0])).toBe(0);
+    expect(total).toBeLessThan(64 * 1024);
+    expect(readdirSync(dir).sort()).toEqual(CUE_NAMES.map((cue) => `${cue}.mp3`).sort());
   });
 });
 
