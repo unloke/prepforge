@@ -162,7 +162,7 @@ export function createCoverageController({
       } else body = html`${body}${gapRows(c.readOnly)}`;
     } else {
       // The empty state names the action, not the feature: what a scan is for
-      // lives in the ⓘ beside it.
+      // lives in the dock's options.
       body = html`<p class="coverage-live" role="status" data-testid="coverage-empty">Press Scan to check this line.</p>`;
     }
     el.innerHTML = body;

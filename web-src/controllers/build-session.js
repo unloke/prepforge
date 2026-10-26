@@ -140,17 +140,17 @@ async function hydrateBuild(payload, selectedNodeId = null) {
 function buildMenuItems({ hasRep, isActive, isOwner = true }) {
   const owned = [
     ["train", "Start training"],
-    ["build-rename", "Rename..."],
+    ["build-rename", "Rename…"],
     ["build-export-pgn", "Export PGN"],
-    ["share", "Share..."],
+    ["share", "Share…"],
     ["toggle-active", isActive ? "Disable" : "Enable"],
-    ["delete", "Delete..."],
+    ["delete", "Delete…"],
   ];
   return [
     // Generating writes moves, so it is there for anyone who can edit the tree.
     ...(hasRep ? [["build-generate", "Generate moves…"]] : []),
     ...(hasRep ? (isOwner ? owned : [["build-export-pgn", "Export PGN"]]) : []),
-    ["build-new-rep", "New repertoire..."],
+    ["build-new-rep", "New repertoire…"],
   ];
 }
 
@@ -173,10 +173,13 @@ function openBuildMenu(event) {
     ...(node?.san && node.parent_id ? [["build-node-menu", `Options for ${nodeMenuHeading(node)}…`]] : []),
     ...buildMenuItems({ hasRep, isActive, isOwner: buildRole(appState.build) === "owner" }),
   ];
+  // Three groups: this move (its options, Generate), the repertoire, New.
+  const firstRep = items.find(([action]) => action !== "build-node-menu" && action !== "build-generate")?.[0];
+  const sepBefore = (action) => hasRep && (action === "build-new-rep" || (action === firstRep && items[0][0] !== firstRep));
   menu.innerHTML = html`${items
     .map(
       ([action, label]) =>
-        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}"${action === "build-new-rep" && hasRep ? html` class="menu-sep-before"` : ""}>${label}</button>`
+        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}"${sepBefore(action) ? html` class="menu-sep-before"` : ""}>${label}</button>`
     )}`;
   const close = openPopover(menu, { opener: event.currentTarget });
   menuKeys(menu, close);
@@ -269,7 +272,7 @@ async function selectBuildNode(nodeId) {
 let explorerTimer = null;
 let explorerSeq = 0;
 // The opening the Explorer's rows belong to. It is a caption on the data, so
-// it rides the inspector's ⓘ tooltip and its popover: as a line of its own it
+// it rides the dock's options popover: as a line of its own it
 // spent a row of the dock's short height saying what the rows already imply.
 let explorerOpeningName = "";
 

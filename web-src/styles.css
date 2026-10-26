@@ -4074,7 +4074,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
 }
 
-/* Coverage scan rows (Scan, score and the ⓘ popover live in the dock tools). */
+/* Coverage scan rows (Scan lives in the dock head; scope and horizon in its options). */
 .coverage-gaps {
   display: grid;
   min-width: 0;
@@ -4187,8 +4187,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Opening explorer: a Move / Games / W-D-L table. The opening's name is a
    caption on the data, and the rows are readable without it (the panel head
-   names the repertoire and the trail names the line), so it lives in the ⓘ
-   tooltip and its popover instead of taking a line of the dock's height. */
+   names the repertoire and the trail names the line), so it lives in the dock's
+   options popover instead of taking a line of the dock's height. */
 
 .explorer-rows {
   display: grid;

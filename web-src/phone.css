@@ -1162,6 +1162,12 @@
     border-radius: var(--radius-card);
     background: var(--panel);
   }
+  /* A shared repertoire: who shared it, then its two actions as one row that
+     fills the card, the copy (the primary) wider than Train. */
+  #shared-banner .shared-banner-text { flex-basis: 100%; }
+  #shared-banner .shared-banner-actions { flex: 1 1 100%; flex-wrap: nowrap; }
+  #shared-banner .shared-banner-actions > .btn { flex: 1 1 0; min-width: 0; }
+  #shared-banner .shared-banner-actions > .btn.primary { flex-grow: 2; }
   #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
   #view-build .dock-resizer,
   #build-inspector .dock-fold { display: none; }
