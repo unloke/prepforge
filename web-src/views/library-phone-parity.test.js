@@ -57,13 +57,13 @@ it("the phone repertoire row keeps the mastery figure", () => {
   expect(rule("#view-dashboard .lib-row .lib-mastery-word {")).toMatch(/display:\s*(inline|block)/);
 });
 
-it("an untrained repertoire keeps its name whole on a phone", () => {
-  // The note that says a repertoire has no trained moves is as wide as the
-  // name it shared a line with, so the name was cut to three letters. The note
-  // takes the queue's place under the name instead.
-  expect(rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery {")).toMatch(/grid-area:\s*queue/);
-  // Aligned with the name, not with the colour dot.
-  expect(rule("#view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
+it("a repertoire keeps its name whole on a phone", () => {
+  // The mastery figure (or the untrained note) shared the name's line and cut
+  // the name to a few letters. The name owns the first line; the figure closes
+  // the queue's line on the right.
+  expect(css).toMatch(/grid-template-areas:\s*"rep rep" "queue mastery"/);
+  // With no queue chips the note starts at the name's edge, not the dot's.
+  expect(rule("#view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
 });
 
 it("the phone checklist shows no step number", () => {

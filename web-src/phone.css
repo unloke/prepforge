@@ -26,6 +26,11 @@
     /* The gap between blocks on a phone. Items inside one block sit closer
        than this, so a group reads as one unit. */
     --phone-gap: 20px;
+    /* The shared size tokens at a thumb's size: every .btn, .btn.sm, field and
+       menu row reads its height from these (styles.css; .btn.sm follows
+       --control-h). */
+    --control-h: 44px;
+    --menu-row-h: 48px;
   }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* iOS zooms the page into any field set below 16px. */
@@ -45,6 +50,18 @@
   textarea { min-height: 44px; height: 44px; }
   .btn.icon,
   .btn.sm.icon { width: 44px; min-width: 44px; }
+  /* A segment is a target too: a "1 2 3" track drew 33px-wide options. The
+     track is a 44px control like the buttons beside it: no padding of its own
+     (44px segments in a 2px-padded track stood 48px tall); each segment draws
+     its plate 2px in, inside a transparent border, so the curves stay
+     concentric. */
+  .seg { gap: 0; padding: 0; }
+  .seg-btn {
+    min-width: 44px;
+    border: 2px solid transparent;
+    border-radius: calc(var(--radius) + 2px);
+    background-clip: padding-box;
+  }
   textarea { height: auto; }
   /* The switch is the shared 34x20 track at every width; its shared ::after
      gives a thumb the 44px it needs, so no view redraws it here. */
@@ -102,11 +119,15 @@
      keeps the accent and takes a thumb-sized pill. */
   #view-dashboard .today.card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    /* The action closes the card on its own line, as wide as the card's text:
+       beside the streak a "Learn new moves" pill took half the row and
+       out-shouted the queue it acts on, and a longer label had nowhere to go. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "streak train"
-      "queue  queue"
-      "more   more";
+      "streak"
+      "queue"
+      "more"
+      "train";
     align-items: center;
     gap: 2px 12px;
     min-height: 64px;
@@ -160,7 +181,7 @@
     line-height: 1.35;
     text-wrap: pretty;
   }
-  #view-dashboard .today .btn { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
+  #view-dashboard .today .btn { min-height: 44px; height: 44px; margin-top: 12px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
@@ -218,7 +239,7 @@
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: 1 1 auto;
-    min-width: 0;
+    min-width: 44px;
     min-height: 44px;
     height: 44px;
     padding: 0 6px;
@@ -286,13 +307,16 @@
   #view-dashboard .lib-row .lib-opt {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "rep mastery" "queue queue";
-    align-items: start;
+    grid-template-areas: "rep rep" "queue mastery";
+    align-items: center;
     gap: 6px 10px;
     min-width: 0;
   }
+  /* The name owns the first line: beside "0% mastered" it was cut to
+     "Sicilian Najdor…" and its subline wrapped. The figure closes the queue's
+     line instead, on the row's right edge. */
   #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; }
-  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; align-self: start; justify-self: end; display: flex; padding-top: 2px; }
+  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; justify-self: end; display: flex; }
   #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
   #view-dashboard .lib-row .lib-mbar { display: none; }
   #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
@@ -304,10 +328,12 @@
      under the 24px minimum target. It grows to 24px, the most it can take
      inside a row without turning the queue line into a stack of buttons; the
      row itself is the 64px target for opening the repertoire. */
-  #view-dashboard .lib-row button.kchip { min-height: 24px; padding: 0 9px; font-size: 13px; }
-  /* An untrained repertoire has no figure, only a note, and the note belongs
-     where the queue would be: under the name, at the name's left edge. */
-  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { grid-area: queue; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 9px; font-size: 13px; }
+  /* The chip stays a 24px pill; its hit area is the 44px row band around it. */
+  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -10px -2px; }
+  /* With no queue chips the line holds only the mastery note: it starts at
+     the name's left edge instead of hanging off the right. */
+  #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 44px; height: 44px; opacity: 1; }
 
@@ -476,7 +502,10 @@
      title above it and twice the 18px name it holds. The head keeps a small
      pad, the button keeps its thumb height, and the name reads at the size of
      the open team's name. */
-  #view-teams .card-head { padding-block: 6px; }
+  #view-teams .card-head { min-height: 56px; padding-block: 6px; }
+  /* The open team is a pushed screen: its back button returns to the list, so
+     the list and the shares are not stacked above and below it. */
+  #view-teams .teams:has(> .team-detail:not([hidden])) > :is(.card.dir, .card.incoming) { display: none; }
   #view-teams .card-head h2 { font-size: 17px; }
   /* The open team's header is one row, like a pushed screen's: back on the
      left, the name (cut first) and role, then whatever actions the role has.
@@ -497,17 +526,25 @@
   /* The team's own role is its members' rows (Owner beside your name): the
      header badge gave the name's room away on a phone. */
   #view-teams #team-detail-role { display: none; }
+  /* Beside a manager's three actions the name had ~120px at 360: it takes two
+     lines before it is cut. */
   #view-teams .team-detail .card-head h2 {
+    display: -webkit-box;
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
     font-size: 17px;
   }
   #view-teams .team-detail .card-head .team-role-badge { flex: none; }
   #view-teams .team-detail .card-head .btn { flex: none; }
-  #view-teams .team-detail .card-head #team-detail-invite { padding: 0 14px; }
+  /* The link icon is one of three icon actions in the head: ghost like the
+     other two, not a bordered box that read as a pressed toggle. */
+  #view-teams .team-detail .card-head #team-detail-invite { padding: 0; border-color: transparent; background: transparent; color: var(--muted); }
   #team-detail-close { order: -1; font-size: 0; color: var(--text); }
   #team-detail-close::before {
     content: "";
@@ -531,6 +568,9 @@
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
+    /* The strip is a flex row: without it the inline links wrapped "Engine"
+       onto a second 44px line. */
+    display: flex;
     width: auto;
     max-width: none;
     flex-wrap: nowrap;
@@ -615,6 +655,16 @@
     font-size: 16px;
   }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
+  /* A label is never squeezed under its value: "Engine" ran into "Stockfish
+     19.0.0 lite (WASM)" with no gap. The value side wraps instead. */
+  #view-settings .set-row > span:first-child { flex: none; }
+  #view-settings .set-row-value { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; text-align: right; }
+  #view-settings .set-row:has(> .set-row-value) { align-items: baseline; }
+  /* A slider's thumb gets a thumb-sized hit row; the 4px track stays drawn. */
+  #view-settings input[type="range"] { height: 44px; min-height: 44px; }
+  /* The linked username and the danger-zone fold are targets on a phone. */
+  #view-settings .conn-user { min-width: 44px; min-height: 44px; }
+  #view-settings .acct-danger-zone > summary { min-height: 44px; }
   /* Settings row buttons are the shared .btn at the shared phone height; only
      the padding grows for a thumb. */
   #view-settings .set :is(.btn, .btn.sm) { padding: 0 14px; font-size: 15px; }
@@ -1059,12 +1109,12 @@
     display: flex;
     gap: 2px;
     margin: -10px -12px 0;
-    padding: 6px 12px;
+    padding: 4px 12px;
     background: var(--bg);
   }
   #build-panes > button {
     flex: 1 1 0;
-    min-height: 34px;
+    min-height: 44px;
     border: 0;
     border-radius: 8px;
     background: var(--surface-3);
@@ -1082,6 +1132,7 @@
   /* Saving state beside the tools that trigger it (the board bar's chip is
      hidden here). */
   #build-inspector .build-sync { flex: none; font-size: var(--fs-s); }
+  #build-inspector .build-sync:not([hidden]) ~ :is(.dock-engine-switch, .inspector-scan) { margin-left: 0; }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
@@ -1102,14 +1153,23 @@
   #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
   #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
   #build-inspector .inspector-panel { overflow: visible; }
-  #build-inspector .dock-tools { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px 6px; }
+  /* Two rows, the same in both panes: the scope (Masters | Players, Mainline |
+     Branch) as a full-width track, then the options with the pane's one action
+     at the right end (the Engine switch, the horizon and Scan). The switch
+     carried no word and wrapped alone onto a row of its own. */
+  #build-inspector .dock-head { padding: 0; }
+  #build-inspector .dock-tools { flex-wrap: wrap; gap: 8px; padding: 10px 12px 6px; }
+  #build-inspector .dock-tools > .seg { display: flex; flex: 1 1 100%; }
+  #build-inspector .dock-tools > .seg > .seg-btn { flex: 1 1 0; min-width: 0; }
+  #build-inspector .dock-engine-switch { min-height: 44px; }
+  #build-inspector .dock-engine-switch .pf-row-label { font-size: 14px; }
   /* The pane's tools stay compact in type but not in reach: 40px is the
      smallest box a thumb hits without a second try. */
   #build-inspector :is(.seg-btn, .btn, .dock-select) { padding: 0 12px; font-size: 14px; }
   /* A select keeps room for the chevron the shared rule draws inside its right
      padding; the 12px above would put the label under the arrow. */
   #build-inspector .dock-select { padding-right: 30px; }
-  #build-inspector .inspector-info { width: 40px; height: 40px; }
+  #build-inspector .inspector-info { width: 44px; height: 44px; }
   #build-inspector .explorer-row { min-height: 46px; }
   /* "White / Draw / Black" broke onto two lines once Eval took a column. One
      line fits a 390px pane with the eval layout's columns tightened; a narrower
@@ -1121,6 +1181,11 @@
   }
   /* The engine's line steppers are 18px dots: the dots stay, their tap areas
      grow to 40px (the readout between them is not a target). */
+  /* The Explorer's engine card keeps one line: on a 360px phone the button's
+     size note goes before the engine's name is clipped mid-word. */
+  @container unlock (max-width: 330px) {
+    #explorer-engine-slot .unlock-size { display: none; }
+  }
   .engine-step { position: relative; }
   .engine-step::after { content: ""; position: absolute; inset: -11px; }
   #view-build .forkbar { font-size: 13px; }
@@ -1193,28 +1258,31 @@
   #view-train .train-coach-title { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
   #view-train .blitz-bar { order: 0; }
-  #view-train .train-back { min-height: 44px; height: 44px; }
   #view-train .train-row { padding: 14px; border-radius: var(--radius-card); }
-  #view-train .train-row-go { height: 44px; min-height: 44px; }
-  #view-train .train-lucky { height: 40px; min-height: 40px; padding: 0 12px; font-size: 15px; }
-  /* Practice: the opponent and the colour share the first line (the opponent
-     at the start, the colour at the end, as a Chess.com app game setup), and
-     I'm Feeling Lucky is a quiet line under them. The three wrapped onto three
-     ragged lines at 393px. */
-  #view-train [data-row="play"] .train-row-opts { justify-content: flex-start; }
-  #view-train [data-row="play"] .train-row-opts > .train-color { order: 1; margin-left: auto; }
+  /* A row's options fill their line: a chip grows into a select-like field
+     with its chevron at the end, and the colour track takes what is left, so
+     no line ends in a hole (the Rehearse chip stopped 170px short, the colour
+     sat alone at the right of Practice's line). When they do not fit side by
+     side each takes its own full line. */
+  #view-train .train-row-opts > :is(.train-chip, .train-color) { flex: 1 1 auto; }
+  #view-train .train-chip { justify-content: space-between; font-size: 15px; }
+  #view-train .train-color .seg-btn { font-size: 14px; }
+  /* Practice: Random position is too wide to sit beside Play in a phone row;
+     it is the row's quiet last line, a text action on the text edge. */
+  #view-train .train-row[data-row="play"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts" "lucky lucky"; }
   #view-train [data-row="play"] .train-lucky {
-    order: 2;
-    margin: 0 0 0 -10px;
+    justify-self: start;
+    margin: -4px 0 -6px -10px;
+    padding: 0 10px;
     border: 0;
     background: none;
     color: var(--accent-strong);
+    font-size: 15px;
   }
-  #view-train [data-row="play"] .train-row-opts::after { content: ""; order: 1; flex-basis: 100%; }
-  #view-train .train-chip { min-height: 40px; font-size: 15px; }
-  #view-train .seg-btn { min-height: 40px; height: 40px; font-size: 14px; }
-  #view-train .un-rep { display: block; min-width: 0; }
-  #view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
+  /* The next due cards narrow the queue on a tap: thumb-height rows. */
+  #view-train .train-due-line { align-items: center; min-height: 44px; }
+  #view-train #train-home > .train-recent { padding-inline: 14px; }
+  #view-train .train-line-path { margin-block: -8px -4px; padding-block: 14px; }
   #view-train .train-sidebar .tcard {
     margin: 0;
     padding: 14px;
@@ -1225,7 +1293,7 @@
     font-size: 14px;
   }
   #view-train .train-progress-panel .upnext { min-height: 0; }
-  #view-train .train-summary-actions .btn { height: 46px; min-height: 46px; }
+  #view-train .train-summary-actions .btn.primary { flex: 1 1 auto; }
   .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
   .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
   /* The picker is a bottom sheet at the thumb. train-shell.css arrives later
@@ -1263,7 +1331,7 @@
   }
   .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   .context-menu button {
-    min-height: 44px;
+    min-height: var(--menu-row-h);
     padding: 0 18px;
     border-radius: 0;
     font-size: 16px;
@@ -1302,7 +1370,14 @@
   .modal-field > span { font-size: 13px; }
   .modal-field :is(input, select) { padding: 0 14px; }
   .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
-  .modal-footer .btn { flex: 1 1 0; font-size: 16px; }
+  /* A dialog's footer fills the row at the thumb in equal halves, but never
+     narrower than a label: a long one ("Download 99 MB and start") takes the
+     room it needs instead of spilling out of its half, and a row that cannot
+     hold both wraps whole buttons. Both must read as buttons, so a ghost
+     Back / Cancel takes the quiet fill instead of floating as a word in half
+     the sheet. */
+  .modal-footer .btn { flex: 1 1 0; min-width: max-content; font-size: 16px; }
+  .modal-footer .btn.ghost:not(.danger) { background: var(--surface-3); }
   .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
   .auth-modal .auth-google { font-size: 16px; }
   .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
@@ -1349,7 +1424,7 @@
   .notices > .notice:not(:last-child) { display: none; }
   .notice {
     min-height: 44px;
-    padding: 4px 2px 4px 12px;
+    padding: 6px 2px 6px 12px;
     column-gap: 8px;
     border-radius: var(--radius-card);
     font-size: 14px;
@@ -1357,9 +1432,10 @@
   .notice-text { font-size: 12px; }
   .notice-title[hidden] + .notice-text { font-size: 14px; }
   .notice:not([data-tone="error"], .has-actions, :hover, :focus-within) .notice-close { opacity: 1; }
-  .notice-close { width: 40px; height: 40px; }
+  .notice-close { width: 44px; height: 44px; }
   .notice-action,
-  .notice-stop { height: 34px; padding: 0 12px; font-size: 13px; }
+  .notice-stop { padding: 0 14px; font-size: 14px; }
+  .notice:has(.notice-action) { padding-bottom: 10px; }
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
   /* The tab bar is chrome: it is the same white as the cards and sits on the

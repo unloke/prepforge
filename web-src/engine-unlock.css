@@ -25,8 +25,9 @@
 .unlock-x {
   display: inline-grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  /* As tall as the offer's action (a .btn.sm) beside it, at every size. */
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   border: 0;
   border-radius: var(--radius);
   background: transparent;
@@ -112,9 +113,8 @@
   .unlock:not(.is-inline) .unlock-x { grid-column: 2; grid-row: 1; align-self: start; }
   .unlock:not(.is-inline) > .btn { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
 }
-/* A finger-sized dismiss on a phone. */
 @media (max-width: 760px) {
-  .unlock:not(.is-inline) .unlock-x { width: 40px; height: 40px; margin-top: -6px; }
+  .unlock:not(.is-inline) .unlock-x { margin-top: -6px; }
   /* Scout's promo stays one compact row on a phone: the name over its gain,
      the action and the dismiss beside them, rather than a third stacked block
      above the empty card. */

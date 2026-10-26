@@ -28,15 +28,17 @@ it("the board bar's action slot sits at the thumb in the same two cells for dril
   expect(phone).toContain(".study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }");
 });
 
-// Every Train control a thumb reaches is at least 44px tall on a phone; chips
-// and the colour switch are 40px with the row's padding around them.
+// Every Train control a thumb reaches is 44px tall on a phone: the shared
+// tokens (phone.css sets --control-h; .btn.sm follows it) size the back button,
+// Lucky, the Maia offer and the result's actions, and the chips read the same
+// token, so Train sets no height of its own and no control is 40 or 46.
 it("every Train control is a thumb-sized target on a phone", () => {
-  for (const selector of [
-    /#view-train \.train-back \{ min-height: 44px; height: 44px; \}/,
-    /#view-train \.train-row-go \{ height: 44px; min-height: 44px; \}/,
-    /#view-train \.train-summary-actions \.btn \{ height: 46px; min-height: 46px; \}/,
-    /\.train-pick \{ min-height: 48px;/,
-  ]) expect(phone.match(selector), selector.source).not.toBeNull();
+  const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
+  expect(css).toMatch(/--control-h: 44px;/);
+  expect(shell.match(/\.train-chip \{[^}]*min-height: var\(--control-h\)/)).not.toBeNull();
+  expect(shell).not.toMatch(/--train-control/);
+  expect(phone).not.toMatch(/#view-train [^{]*\{[^}]*height: (40|46)px/);
+  expect(phone.match(/\.train-pick \{ min-height: 48px;/)).not.toBeNull();
   // The switch is one shared control: a 34x20 track at every width with a
   // shared tap area that adds 12px above and below, so 44px is reached without
   // Train redrawing it.

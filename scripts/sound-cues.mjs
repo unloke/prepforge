@@ -70,13 +70,20 @@ function runK(x, { b, a }) {
 const K_STAGE1 = K_BIQUAD(RATE, [1.53512485958697, -2.69169618940638, 1.19839281085285],
   [1, -1.69065929318241, 0.73248077421585]);
 const K_STAGE2 = K_BIQUAD(RATE, [1, -2, 1], [1, -1.99004745483398, 0.99007225036621]);
+// The loudest 400 ms window, slid in 10 ms steps. A cue shorter than the window
+// is zero-padded to it, as a meter does. (The mean over the whole cue read a
+// 624 ms chime 2 LU quieter than the window a listener hears at its loudest.)
 function lufs(x) {
   const y = runK(runK(x, K_STAGE1), K_STAGE2);
-  let sum = 0;
-  for (const v of y) sum += v * v;
-  // A cue shorter than 400 ms is zero-padded to the meter's window, as a meter does.
-  const n = Math.max(y.length, Math.round(RATE * 0.4));
-  return +(-0.691 + 10 * Math.log10(sum / n + 1e-24)).toFixed(1);
+  const win = Math.round(RATE * 0.4), hop = Math.round(RATE * 0.01);
+  const sq = new Float64Array(y.length + 1);
+  for (let i = 0; i < y.length; i++) sq[i + 1] = sq[i] + y[i] * y[i];
+  let best = 0;
+  for (let start = 0; start === 0 || start + win <= y.length; start += hop) {
+    const end = Math.min(y.length, start + win);
+    best = Math.max(best, sq[end] - sq[start]);
+  }
+  return +(-0.691 + 10 * Math.log10(best / win + 1e-24)).toFixed(1);
 }
 
 function measure(x) {

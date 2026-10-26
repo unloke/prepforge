@@ -175,7 +175,13 @@
   --radius: 6px;      /* controls, small chips */
   --radius-card: 10px; /* cards, popovers, dialogs */
   --radius-chip: 4px; /* status and kind pills: one step under a control */
-  --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  /* One control-size system. Every button, field and menu row takes its height
+     from these three tokens; a phone (phone.css) and a touch screen (touch.css)
+     change the tokens, never a control's own geometry. Controls that share a
+     row share a token, so a row is one height. */
+  --control-h: 30px;    /* default button, field, select (44px on phones) */
+  --control-h-sm: var(--control-h); /* .btn.sm: the same height, smaller type and padding */
+  --menu-row-h: 30px;   /* one row in a menu or popover (48px on phones) */
   /* -- Spacing scale ----------------------------------------------------
      Two gaps do the work: between cards, and between the groups a page is
      made of. Items inside one card sit closer than --gap-card, so a card
@@ -1176,7 +1182,9 @@ h2 {
   font-size: var(--fs-s);
   font-weight: 550;
   padding: 0 10px;
-  min-height: 26px;
+  /* The track (2px padding) stands at the control height: 30px on a desktop,
+     40px on a touch tablet. The phone redraws the track (phone.css). */
+  min-height: calc(var(--control-h) - 4px);
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
@@ -1476,21 +1484,35 @@ h2 {
 }
 
 .btn.sm {
-  height: 26px;
-  min-height: 26px;
+  height: var(--control-h-sm);
+  min-height: var(--control-h-sm);
   padding: 0 9px;
   font-size: var(--fs-s);
 }
 
 .btn.sm.icon {
-  width: 26px;
-  min-width: 26px;
+  width: var(--control-h-sm);
+  min-width: var(--control-h-sm);
   padding: 0;
 }
 
 .btn.block {
   width: 100%;
 }
+
+/* A row of buttons: one height (each button keeps its size token), each
+   button as wide as its label, wrapping as a whole button rather than
+   squeezing a label onto two lines. `.is-fill` is the one opt-in to equal
+   widths (a phone dialog's Cancel / Confirm); nothing else stretches. */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.btn-row > .btn { flex: none; }
+.btn-row.is-end { justify-content: flex-end; }
+.btn-row.is-fill > .btn { flex: 1 1 0; min-width: 0; }
 
 /* Disabled and engine-unavailable actions read inert without going under the
    contrast floor: the muted fill and ink land after the variants, so a disabled
@@ -1901,7 +1923,6 @@ textarea:focus-visible {
    at the same quiet weight as the rest of the strip. */
 .today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
 .today-error .btn { color: var(--text); }
-.btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Grid: the repertoire table, with "Next steps" as a band under it while the
@@ -2146,6 +2167,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row .kchip.k-weak,
 .lib-row .kchip.k-due,
 .lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
+/* The open row is filled with the chips' own grey: there the chip steps up to
+   the card's white so it still reads as a pill. */
+.lib-row.is-selected .kchip:is(.k-weak, .k-due, .k-new) { background: var(--panel); }
 .lib-row .kchip.k-weak::before { background: var(--k-weak); }
 .lib-row .kchip.k-due::before { background: var(--k-due); }
 .lib-row .kchip.k-new::before { background: var(--k-new); }
@@ -2290,7 +2314,6 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   .lib-cell-mastery,
   .lib-cell-queue { grid-column: 1 / -1; }
   .row-menu-btn { grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
-  .step .btn.sm { height: 34px; }
 }
 
 /* A card is a raised panel on the page: one tone step, no outline. The
@@ -3300,28 +3323,30 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
      reads as a different kind of thing without a rule or a card. */
   background: var(--surface-3);
 }
-/* One row heads the dock: its tabs, the tools of the open tab, the fold. */
+/* The dock's head: its tabs, the tools of the open tab, the fold. On one row
+   only when the panel fits the widest tab's tools (Coverage's scope, horizon
+   and Scan); otherwise the tabs and the fold keep the first row and the tools
+   of either tab take a full row under them, so switching tabs never changes
+   the head's shape and no control is pushed past the panel's edge (at 1000px
+   the Engine switch was clipped; at 1440 Scan sat off-screen). Wrapped tools
+   start on the tab labels' edge. */
+.dock { container: dock / inline-size; }
 .dock-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: 8px;
+  gap: 2px 8px;
   min-width: 0;
-  padding: 0 4px 0 calc(var(--build-pad, 12px) - 10px);
-  container-type: inline-size;
+  padding: 0 4px 0 var(--build-pad, 12px);
 }
-/* A narrow panel (a 1000px window) keeps the row: the switch drops its word
-   (its tooltip and accessible name stay) and the segments tighten. */
-@container (max-width: 460px) {
-  .dock-engine-switch .pf-row-label { display: none; }
-  .dock-tools { gap: 4px; }
-  .dock-tools .seg-btn { padding: 0 7px; }
-  .dock-tabs button { padding-inline: 7px; }
-  .dock-fold { padding-inline: 4px; }
+@container dock (max-width: 630px) {
+  .dock-tools { order: 1; flex-basis: 100%; padding-bottom: 4px; }
 }
 .dock-tabs {
   display: flex;
   flex: none;
   gap: 2px;
+  margin-left: -10px;
 }
 .dock-tabs button {
   display: inline-flex;
@@ -3388,9 +3413,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-fold {
   flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
   margin-left: auto;
-  padding: 6px 8px;
+  padding: 0;
   border: 0;
+  border-radius: var(--radius);
   background: none;
   color: var(--label);
   font: inherit;
@@ -3415,10 +3445,16 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   min-width: 0;
+  min-height: 34px;
 }
-.dock-tools .spacer { flex: 1; }
+/* The open tab's action (the Engine switch, Scan) closes the row at its right end. */
+.dock-tools > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
+/* The link prompt's button keeps its own box: wrapped, it starts a line rather
+   than trailing the sentence's last word. */
+#explorer-rows .hint:has(> [data-explorer-link]) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .inspector-info {
   width: 24px;
   min-width: 0;
@@ -3658,11 +3694,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-line-path {
   display: block;
   width: 100%;
-  padding: 0;
+  padding: 6px 0;
   border: 0;
   background: none;
   color: var(--muted);
-  font: var(--fs-xs) var(--mono);
+  font: var(--fs-s)/16px var(--mono);
   direction: rtl;
   text-align: left;
   white-space: nowrap;
@@ -3748,8 +3784,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* One control height across the row: the source chips, the sample/colour
    select, Add and Check are all 30px, so their baselines line up. */
 @media (min-width: 761px) {
-  .toolbar .src-chip,
-  .toolbar .btn.sm { height: var(--control-h); min-height: var(--control-h); }
+  .toolbar .src-chip { height: var(--control-h); min-height: var(--control-h); }
 }
 .toolbar .spacer { flex: 1; }
 .src { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -4558,6 +4593,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .mtree-collapse:hover {
   color: var(--accent-strong);
 }
+/* The caret is an 11px glyph; its hit area reaches 24px without moving a token. */
+#view-build .mtree-collapse { position: relative; }
+#view-build .mtree-collapse::after { content: ""; position: absolute; inset: -6px -4px -6px -8px; }
 .mtree-collapsed {
   color: var(--muted);
   font-style: italic;
@@ -4596,13 +4634,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 }
 
+/* A group label in a menu: sentence case at the small size, like every other
+   label in the app (a 10px tracked capital was the one shouting label left). */
 .context-section {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   color: var(--label);
-  padding: 8px 10px 4px;
+  padding: 8px 10px 2px;
 }
 
 .context-section:first-child {
@@ -4640,9 +4678,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .context-menu button {
   width: 100%;
-  min-height: 28px;
+  min-height: var(--menu-row-h);
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
   padding: 0 10px;
   background: transparent;
   color: var(--text);
@@ -4810,7 +4848,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
 }
 
-/* Sign-in / create-account modal extras. */
+/* Sign-in / create-account modal extras. Google is the outlined secondary:
+   the dialog's one filled action is its submit, so two accent bars never
+   compete in one 380px card. */
 .auth-modal .auth-google {
   width: 100%;
   justify-content: center;
@@ -4835,7 +4875,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .auth-link {
   justify-self: start;
-  margin: 6px 0 0;
+  min-height: 24px;
+  margin: 2px 0 0;
   padding: 0;
   border: 0;
   background: none;
@@ -4910,8 +4951,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   justify-content: space-between;
 }
 
-/* "New here? Create account" reads as a link, not stray text. */
+/* "New here? Create account" reads as a link, not stray text. It is as tall
+   as the submit beside it, so the footer is one row of one height. */
 .auth-footer .auth-switch {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
   margin: 0;
   font-size: 13px;
   font-weight: 600;
@@ -5203,14 +5248,24 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .notice[data-state="cancelled"] .notice-fill,
 .notice.is-cancelling .notice-fill { background: var(--muted); }
 
+/* Actions sit on their own line under the message, right-aligned: beside it
+   they took half of a 360px card and wrapped a one-line message onto five. A
+   lone Stop on a running job keeps its place beside the text. */
 .notice-actions { grid-column: 3; display: flex; gap: 6px; }
 .notice-actions:empty { display: none; }
+.notice:has(.notice-action) .notice-actions {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-right: 6px;
+}
 .notice-action,
 .notice-stop {
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 10px;
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a quiet button on a white card needs its edge */
-  border-radius: 7px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -6075,8 +6130,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #builder-tree .mtree-line.is-main > .mtree-var { margin: 1px 0 3px 2.4em; line-height: 1.6; }
 #builder-tree .mtree-var { --mtree-indent: 10px; }
 #builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 450; }
+/* The mark rides inline after the move: the touch layouts' hit-area ::after
+   (absolute, inset) would otherwise lift the "?" onto the move's letters. */
 #builder-tree .mtree-move.is-gap::after {
   content: " ?";
+  position: static;
   color: var(--negative);
   font-weight: 700;
 }

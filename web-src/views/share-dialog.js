@@ -63,7 +63,7 @@ export function shareDialogBodyHtml(model) {
         ${target}
         <input class="share-person" type="text" data-share-person data-focus="add-person" value="${draft.person}"${draft.target ? " hidden" : ""} placeholder="Email or Lichess username" aria-label="Email or Lichess username" autocomplete="off" autocapitalize="off" spellcheck="false" />
         <select class="share-role" data-share-add-role data-focus="add-role" aria-label="Role">${roleOptions(GRANT_ROLES, draft.role)}</select>
-        <button class="btn sm" type="submit" data-focus="add-submit">Share</button>
+        <button class="btn" type="submit" data-focus="add-submit">Share</button>
       </form>
       ${model.error ? html`<p class="share-error" role="alert">${model.error}</p>` : ""}
       ${rows.length ? html`<ul class="share-list" aria-label="Who has access">${rows}</ul>` : ""}
@@ -75,7 +75,7 @@ export function shareDialogBodyHtml(model) {
         </div>
         ${link.url ? html`<div class="share-link-url">
           <input type="text" readonly value="${link.url}" data-link-url aria-label="Share link" />
-          <button class="btn sm" type="button" data-action="copy" data-focus="copy">Copy</button>
+          <button class="btn" type="button" data-action="copy" data-focus="copy">Copy</button>
         </div>` : ""}
       </div>
     </div>

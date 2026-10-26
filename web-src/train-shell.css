@@ -1,6 +1,7 @@
 /* Train: one loop, Home → Session → Result (controllers/train-home.js sets
    #view-train[data-train-screen]). Desktop first; the phone screens are in
-   phone.css. */
+   phone.css. Every Train control stands at the shared --control-h (a .btn.sm
+   included): 30px on a desktop, 40px on a touch tablet, 44px on a phone. */
 
 /* ---- header: "Train" on Home; ‹ Train · mode · scope · n / N in a session */
 .train-head {
@@ -83,12 +84,14 @@
 .train-row-error { margin: 0; color: var(--danger); font-size: var(--fs); }
 .train-row-error[hidden] { display: none; }
 .train-blitz-row { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: var(--muted); font-size: var(--fs); font-weight: 600; user-select: none; }
-/* Lucky is Practice's second way in, not a third option: it reads as the text
-   action it is and sits at the far end of the options line. */
-#view-train .train-lucky { margin-left: auto; height: 30px; padding: 0 10px; font-size: var(--fs); font-weight: 600; }
-#view-train .train-lucky + .train-color { margin-left: 0; }
+/* Practice has two ways in, so both sit in the action slot: Random position
+   beside Play, the options line under them holds only the game's setup
+   (opponent at the start, colour at the end). With Lucky on the options line
+   the colour wrapped alone onto a third line in a 370px panel. */
+.train-row[data-row="play"] { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "text lucky go" "opts opts opts"; }
+#view-train .train-lucky { grid-area: lucky; padding: 0 10px; font-size: var(--fs); font-weight: 600; }
 #view-train .train-color { width: auto; margin-left: auto; }
-#view-train .train-color .seg-btn { flex: none; padding: 0 12px; }
+#view-train .train-color .seg-btn { flex: 1 1 0; padding: 0 12px; }
 /* Maia's download row belongs to the Maia opponent only. */
 #view-train:not([data-play-book="maia"]) [data-unlock-place="train-practice"] { display: none; }
 /* In the Practice row the offer is a line of the row, not a card inside a
@@ -112,7 +115,7 @@
   align-items: center;
   gap: 6px;
   max-width: 100%;
-  min-height: 30px;
+  min-height: var(--control-h);
   padding: 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: 999px;
@@ -177,9 +180,11 @@
 
 /* ---- Session ------------------------------------------------------------ */
 .train-session-meta { display: flex; align-items: center; gap: 8px; min-height: 20px; color: var(--muted); font-size: var(--fs); }
+/* With no kind and no stats yet it is a 20px blank band, not a reserve. */
+.train-session-meta:not(:has(> :not([hidden], :empty))) { display: none; }
 .train-stats-line:empty { display: none; }
 .train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
-.train-play-trail[hidden] { display: none; }
+.train-play-trail:is([hidden], :empty) { display: none; }
 
 /* ---- Result: fixed shape, the what-changed line reserved ---------------- */
 .train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 650; }
@@ -189,7 +194,7 @@
 .sum-line b { color: var(--text); font-weight: 650; }
 .sum-sep { margin: 0 6px; }
 /* Back to Train is a text link beside Again, not a second button. */
-#view-train .train-summary-actions .train-link { flex: 0 0 auto; height: 36px; padding: 0 8px; border: 0; background: none; color: var(--accent-text); font-weight: 600; }
+#view-train .train-summary-actions .train-link { flex: 0 0 auto; padding: 0 8px; border: 0; background: none; color: var(--accent-text); font-weight: 600; }
 #view-train .train-summary-actions .train-link:hover { text-decoration: underline; background: none; }
 .delta { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 20px; font-size: var(--fs); }
 .delta[hidden] { display: flex; visibility: hidden; }
@@ -207,7 +212,10 @@
 .train-summary-foot { color: var(--muted); }
 .train-summary-foot:empty { display: none; }
 .train-summary-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.train-summary-actions .btn { flex: 1 1 auto; height: 36px; }
+/* The result's actions are controls like every other: the control height, each
+   at its own width. Stretched, Again was a 344px slab beside a text link. */
+.train-summary-actions .btn { flex: none; }
+.train-summary-actions .btn.primary { min-width: 92px; }
 .train-summary-actions .btn[hidden] { display: none; }
 .train-recent { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: var(--fs); }
 .train-recent[hidden] { display: none; }
@@ -235,7 +243,7 @@
 
 /* A drill panel with nothing in it yet (a rehearsal before its first answer)
    draws no empty box under the banner. */
-#train-progress-panel:not(:has(> :not([hidden]):not(.train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
+#train-progress-panel:not(:has(> :not([hidden], :empty, .train-session-meta), #train-card-kind:not([hidden]), .train-stats-line:not(:empty))) { display: none; }
 
 /* ---- Home's lead: Due queue is the one big block. Its count is the largest
    figure on Home, its Start the one filled action, and the next cards sit
@@ -266,15 +274,23 @@
 .train-due-rep .color-dot { margin-right: 6px; vertical-align: 0; }
 .train-due-pos { flex: none; max-width: 40%; overflow: hidden; font-size: var(--fs); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .train-due-pos:empty { display: none; }
+/* Up next's repertoire is one run of text so its ellipsis can show: as a flex
+   box beside its dot, a long name was cut mid-letter at the panel edge. */
+#view-train .un-rep { display: block; min-width: 0; }
+#view-train .un-rep .color-dot { display: inline-block; margin-right: 6px; vertical-align: -1px; }
 /* A quiet tag: the kind is words in the muted voice, not a filled pill. */
 .un-kind { flex: none; color: var(--muted); font-size: var(--fs); font-weight: 600; }
 .un-row .un-kind { justify-self: start; }
 
-/* ---- Rehearse is one line: its title and count, its repertoire, its action. */
+/* ---- Rehearse is one line: its title and count, its repertoire, its action.
+   It needs about 440px of panel; a narrower panel (a 1000px window gives the
+   same 368px a phone does) puts the repertoire on the line under it, where a
+   one-line row had squeezed the name to "Sic…". */
+.train-home { container: train-home / inline-size; }
 .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; grid-template-areas: "text opts go"; padding: 10px 12px; }
 .train-row[data-row="all_lines"] .train-row-text { flex-flow: row wrap; align-items: baseline; column-gap: 8px; }
 .train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-end; }
-@media (max-width: 640px) {
-  .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts"; }
+@container train-home (max-width: 440px) {
+  .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts"; padding: 12px; }
   .train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-start; }
 }
