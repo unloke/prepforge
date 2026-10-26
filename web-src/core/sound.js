@@ -301,8 +301,10 @@ const CUES = {
   // A session or a line finished: three notes up and the last one held, so the
   // phrase resolves. The first is struck rather than the last, or the peak
   // lands late and it reads as a swell instead of a phrase.
+  // Its held last note made it the loudest cue at its loudest 400 ms (earshot:
+  // -21.1 LUFS against a -23.4 median), so it sits 2.3 dB under the others' level.
   complete: {
-    level: 1.13,
+    level: 0.87,
     play: (ctx, bus, t) => {
       [523, 659, 784].forEach((freq, i) =>
         note(ctx, bus, t + i * 0.11, freq, { gain: i === 0 ? 0.4 : 0.28, decay: 0.7 }));
