@@ -596,3 +596,11 @@
   animation: scout-row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--enter-index, 0), 11) * 35ms);
 }
+
+/* The engine offer's dismiss is as tall as its Download action: 26px beside
+   the .btn.sm on a desktop (the shared dismiss is 28px), 44px beside the 44px
+   button on a phone (the shared phone dismiss is 40px). */
+#view-replay .scout-main > [data-unlock-place] .unlock .unlock-x { width: 26px; height: 26px; }
+@media (max-width: 760px) {
+  #view-replay .scout-main > [data-unlock-place] .unlock .unlock-x { width: 44px; height: 44px; }
+}
