@@ -1880,6 +1880,10 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 .rp-key[hidden] { display: none; }
 .rp-key li { display: flex; align-items: center; gap: 8px; min-height: 24px; }
 
+/* The run's saved line for the shown position: a phone's engine pane shows it
+   while the live engine is off (below). */
+#analysis-saved-line { display: none; }
+
 /* ---- Phone, round 2: composition ------------------------------------------
    Lichess mobile and Chess.com's Game Review: the evaluation over the board,
    the board, one scrolling strip of the game's moves under it, then the open
@@ -2036,10 +2040,14 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   }
   #analysis-explain .coach-unlock .unlock.is-inline { padding: 0; }
 
-  /* The engine pane's head: Live at the start, the grading switch at the end. */
-  #analysis-engine-pane .an-pane-head { display: flex; align-items: center; gap: 8px; }
-  #analysis-engine-pane .ev-engine { grid-area: auto; }
-  #analysis-engine-pane .cc-switch-label { display: block; margin-left: auto; color: var(--muted); font-size: 14px; white-space: nowrap; cursor: pointer; }
+  /* The engine pane: its head row (Live, and the depth and line count while it
+     runs), the lines (or the run's saved line), then the grading switch as a
+     settings row at the pane's end. */
+  #analysis-engine-pane .cc-switch-label,
+  #analysis-engine-pane .pf-switch { order: 10; }
+  #analysis-engine-pane .cc-switch-label { display: block; grid-column: 1 / 5; color: var(--text); font-size: 15px; white-space: nowrap; cursor: pointer; }
+  #analysis-engine-pane .pf-switch { grid-column: 5; justify-self: end; margin-right: -6px; }
+  #analysis-engine-pane > #analysis-saved-line { grid-column: 1 / -1; }
   #analysis-engine-pane .pf-switch {
     position: relative;
     box-sizing: border-box;
@@ -2074,6 +2082,20 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   }
   #analysis-engine-pane .pf-switch.is-on::before { background: var(--accent); box-shadow: none; }
   #analysis-engine-pane .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
+
+  /* Live off: the run's own line, set as a live engine line is. */
+  #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) #analysis-saved-line:not([hidden]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  #analysis-saved-line .sl-eval { flex: none; min-width: 48px; font-variant-numeric: tabular-nums; }
+  #analysis-saved-line .sl-pv { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  #analysis-saved-line .sl-depth { flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
   /* Pane tabs: each tab is the whole 44px track (a thumb on the word's edge
      still lands on it); the selected pill is drawn 3px inside it. */

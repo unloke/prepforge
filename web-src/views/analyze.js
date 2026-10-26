@@ -7,6 +7,7 @@ import "./analyze-chart.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { paintFindGreat, renderReportBlock, reportGradeOf } from "./analyze-report.js";
+import { paintSavedLine } from "./analyze-saved-line.js";
 import { createReviewBar } from "./analyze-review.js";
 import { installAnalyzePanes } from "./analyze-panes.js";
 
@@ -225,6 +226,7 @@ export function createAnalyzeView({
       row.classList.toggle("is-current", Number(row.dataset.kmPly) === ply);
     });
     review.paint();
+    paintSavedLine(appState);
   }
 
   function buildAnalysisTree(moves) {
