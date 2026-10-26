@@ -20,8 +20,10 @@ const ORDER = ["maia", "explorer", "repertoire"];
 export function trainBotsHtml({ usable, selected, reasons }) {
   return ORDER.map((id) => {
     const on = id === selected;
+    // eslint-disable-next-line local/trusted-raw -- ICONS holds this module's own static SVG paths.
+    const icon = raw(ICONS[id]);
     return html`<button type="button" class="train-bot${on ? " is-on" : ""}" data-book="${id}" aria-pressed="${String(on)}" ${usable[id] ? "" : "disabled"}>
-      <svg class="train-bot-icon" viewBox="0 0 24 24" aria-hidden="true">${raw(ICONS[id])}</svg>
+      <svg class="train-bot-icon" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>
       <span class="train-bot-name">${SHORT[id]}</span>
       ${usable[id] ? "" : html`<span class="train-bot-sub">${reasons[id]}</span>`}
     </button>`;
@@ -48,4 +50,18 @@ export function paintTrainPane(pane = trainPane()) {
     btn.classList.toggle("is-active", on);
     btn.setAttribute("aria-pressed", String(on));
   });
+}
+
+// Wires the phone parts of Home: a tap on a card picks the opponent, a tap on
+// a tab switches the pane.
+export function bindTrainPhone(onBook) {
+  document.getElementById("train-bots").addEventListener("click", (e) => {
+    const card = e.target.closest(".train-bot");
+    if (card && !card.disabled) onBook(card.dataset.book);
+  });
+  document.getElementById("train-tabs").addEventListener("click", (e) => {
+    const tab = e.target.closest(".seg-btn");
+    if (tab) setTrainPane(tab.dataset.pane);
+  });
+  paintTrainPane();
 }

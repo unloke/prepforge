@@ -3,7 +3,7 @@ import { countOf } from "../plural.js";
 import { closeTrainPicker, openTrainPicker, trainRepertoireItems } from "../train-picker.js";
 import { recentRuns } from "../train-history.js";
 import { lineTail } from "../views/train.js";
-import { paintTrainPane, setTrainPane, trainBotsHtml } from "./train-bots.js";
+import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
 // rehearsal and practice games. This module owns the loop's chrome: which
 // screen is up (data-train-screen on #view-train), the Home rows and their
@@ -553,17 +553,7 @@ function bind() {
       onChange: ([id]) => { d.appState.playBook = id; void paintTrainHome(); },
     });
   });
-  $("train-bots").addEventListener("click", (e) => {
-    const card = e.target.closest(".train-bot");
-    if (!card || card.disabled) return;
-    d.appState.playBook = card.dataset.book;
-    void paintTrainHome();
-  });
-  $("train-tabs").addEventListener("click", (e) => {
-    const tab = e.target.closest(".seg-btn");
-    if (tab) setTrainPane(tab.dataset.pane);
-  });
-  paintTrainPane();
+  bindTrainPhone((book) => { d.appState.playBook = book; void paintTrainHome(); });
   $("train-play-reps").addEventListener("click", (e) => openTrainPicker(e.currentTarget, {
     label: "Opponent plays from",
     items: trainRepertoireItems(d.appState, { shared: false }),
