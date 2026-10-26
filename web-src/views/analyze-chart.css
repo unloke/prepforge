@@ -1622,19 +1622,6 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #analysis-explain .hp { position: relative; flex-shrink: 0; height: 28px; gap: 4px; padding: 0 7px; }
   #analysis-explain .hp::after { content: ""; position: absolute; inset: -8px 0; }
   #analysis-explain .coach-bookline { max-height: none; }
-  /* The review bar takes the header's row, beside the grading switch, as in
-     Chess.com's app: a row of its own under the verdict left the verdict no
-     room on a 660px phone (the Humans row and the bar took all of it). */
-  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { justify-content: flex-end; height: 44px; }
-  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :is(.phase-chip, .cc-switch-label) { display: none; }
-  #analysis-explain > .coach-review {
-    order: -1;
-    position: relative;
-    z-index: 1;
-    gap: 4px;
-    height: 44px;
-    margin: 0 48px -50px 0;
-  }
   /* One 44px row: the steps, the label and the Best/Retry action share the
      thumb height (the steps were 36x40 beside a 44px label). */
   #analysis-explain .cr-step { width: 44px; height: 44px; }
@@ -1674,12 +1661,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     padding: 3px;
     border-radius: 12px;
   }
-  /* The whole strip is the target: a tab fills its track top to bottom (38px of
-     44) and its name is centred in that height. The 3px the strip pads with is
-     added back as a hit area, so a thumb on the word's edge still hits the tab
-     and the bar keeps the height the board was measured against. */
+  /* The whole strip is the target: a tab fills its track top to bottom and its
+     name is centred in that height (the 44px track is set further down). */
   .an-tab { position: relative; height: auto; align-self: stretch; font-size: 14px; border-radius: 9px; }
-  .an-tab::after { content: ""; position: absolute; inset: -3px 0; }
   .an-tab[data-pane="coach"]:not([hidden]) { display: block; }
   /* A phone steps the game under the board; it has no score sheet tab. */
   .an-tab[data-pane="moves"] { display: none; }
@@ -1739,15 +1723,8 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   /* A phase head is read on a phone: 12px, not the 11px chrome size (the seven
      grade heads keep 11px, where "Brilliant" and "Blunder" still fit). */
   .rp-phase.rp-col { font-size: 12px; }
-  .km-go { min-height: 44px; grid-template-columns: 8px 64px 88px auto; }
-  /* "4…Nxe5" is one token: it never breaks after the move number. The row
-     keeps its columns whole and, when the better move does not fit beside
-     them (a 360px phone), that link takes its own line at the row's end
-     instead of being drawn over the eval. */
+  /* "4…Nxe5" is one token: it never breaks after the move number. */
   .km-move { white-space: nowrap; }
-  .km { flex-wrap: wrap; }
-  .km-go { flex: 1 0 auto; }
-  .km-best { margin-left: auto; }
   .analysis-handoff .btn { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
   .analysis-retry-save:not([hidden]),
   .analysis-import-picker:not([hidden]) { margin: 6px var(--phone-gutter); padding: 8px 12px; border: 0; border-radius: 12px; background: var(--panel); }
@@ -1998,12 +1975,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze[data-pane="coach"] #analysis-explain { gap: 8px; padding: 6px var(--phone-gutter) 8px; }
   #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }
   #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :not(#analyze-actions) { display: none; }
-  #analysis-explain > .coach-review {
-    order: -1;
-    gap: 0;
-    height: 44px;
-    margin: 0;
-  }
+  #analysis-explain > .coach-review { order: -1; gap: 0; height: 44px; }
   #analysis-explain .coach-review > .cr-label { order: 0; flex: 1 1 auto; gap: 8px; padding: 0; font-size: 15px; font-weight: 650; }
   /* Retry is the moment's one action: the accent's tint, the steps' shape. */
   #analysis-explain .coach-review > .btn { order: 1; margin: 0 8px 0 auto; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); padding: 0 14px; font-weight: 650; }
@@ -2101,7 +2073,6 @@ button.rp-n.g-mistake { color: var(--warn-text); }
      still lands on it); the selected pill is drawn 3px inside it. */
   #view-analyze .an-panes > .an-tabs { height: 44px; padding: 0; gap: 0; }
   #view-analyze .an-tab { height: 44px; align-self: auto; background: none; border-radius: 12px; }
-  #view-analyze .an-tab::after { content: none; }
   #view-analyze .an-tab::before {
     content: "";
     position: absolute;

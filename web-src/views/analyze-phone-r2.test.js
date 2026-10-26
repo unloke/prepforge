@@ -108,7 +108,7 @@ describe("Analyze phone, round 2", () => {
   it("gives every pane tab the whole 44px track", () => {
     expect(phoneR2).toMatch(/\.an-panes > \.an-tabs \{ height: 44px; padding: 0;/);
     expect(phoneR2).toMatch(/#view-analyze \.an-tab \{ height: 44px;/);
-    expect(phoneR2).toMatch(/#view-analyze \.an-tab::after \{ content: none; \}/);
+    expect(css).not.toMatch(/\.an-tab::after \{/);
   });
 
   it("never wraps a key moment's better move beside its eval", () => {

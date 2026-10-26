@@ -328,10 +328,11 @@ describe("coach note", () => {
     expect(ALL_STYLES).toMatch(/\.coach-card > \.coach-prose \{ margin: var\(--coach-gap\) 0; \}/);
   });
 
-  it("puts the phone review bar in the header's row, so the verdict keeps its lines", () => {
+  it("puts the phone review bar on the coach's first row, so the verdict keeps its lines", () => {
     // A row of its own under the Humans pills left the verdict 0px on a 660px phone.
-    expect(ALL_STYLES).toMatch(/#analysis-explain > \.coach-review \{[^}]*order: -1;[^}]*margin: 0 48px -50px 0;/);
-    expect(ALL_STYLES).toContain("#analysis-explain:has(> .coach-review:not([hidden])) .cc-head { justify-content: flex-end; height: 44px; }");
+    expect(ALL_STYLES).toMatch(/#analysis-explain > \.coach-review \{ order: -1; gap: 0; height: 44px; \}/);
+    expect(ALL_STYLES).toContain("#analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }");
+    expect(ALL_STYLES).not.toContain("margin: 0 48px -50px 0");
   });
 });
 
@@ -581,7 +582,7 @@ describe("eval chart helpers", () => {
 // The phone pins the board: the evaluation band over it, the open pillar under
 // it, the pillar tabs on the thumb bar. Every band shares the screen's gutter.
 describe("Analyze on a phone", () => {
-  const phone = CHART_STYLES.slice(CHART_STYLES.lastIndexOf("@media (max-width: 760px)"));
+  const phone = CHART_STYLES.slice(CHART_STYLES.indexOf("@media (max-width: 760px) and (orientation: portrait)"));
 
   it("sets the evaluation over the board as one fixed band on the gutter", () => {
     const band = phone.match(/#view-analyze #analysis-eval-card \{[^}]*\}/)[0];
