@@ -139,6 +139,9 @@ export default defineConfig({
     // for a local debugging build with `VITE_SOURCEMAP=1 npm run build`. The dev
     // server (`npm run dev`) always has source maps regardless of this flag.
     sourcemap: process.env.VITE_SOURCEMAP === "1",
+    // The sound cues are fetched and decoded at runtime; inlined as data: URLs
+    // they would be blocked by the CSP's connect-src, so they always ship as files.
+    assetsInlineLimit: (file) => (file.endsWith(".mp3") ? false : undefined),
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL("./web-src/index.html", import.meta.url)),

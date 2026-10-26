@@ -28,7 +28,7 @@ const RATE = 48000;
 const HARNESS = `<!doctype html><meta charset="utf-8">
 <script type="importmap">{"imports":{"chess.js":"/node_modules/chess.js/dist/esm/chess.js"}}</script>
 <script type="module">
-import { CUE_NAMES, renderCue } from "/web-src/core/sound.js";
+import { CUE_NAMES, loadCues, renderCue } from "/web-src/core/sound.js";
 
 const RATE = ${RATE}, SECONDS = ${SECONDS};
 
@@ -115,7 +115,10 @@ function measure(x) {
   while (from > 0 && Math.abs(x[from]) < peak * 0.1) from -= 1;
   let jump = 0;
   for (let i = from + 1; i <= last; i++) jump = Math.max(jump, Math.abs(x[i] - x[i - 1]));
+  let onset = 0;
+  while (onset < x.length && Math.abs(x[onset]) <= peak * 0.01) onset += 1;
   return {
+    onsetMs: +((onset / RATE) * 1000).toFixed(2),
     peakMs: +((peakAt / RATE) * 1000).toFixed(1),
     lengthMs: +((last / RATE) * 1000).toFixed(0),
     peakDb: +(20 * Math.log10(peak || 1e-9)).toFixed(1),
@@ -148,6 +151,7 @@ function pcm16(x) {
 // overlap the way the player does it, to prove the sum stays under full scale.
 window.overlap = async (name, gapMs) => {
   const ctx = new OfflineAudioContext(1, Math.ceil(RATE * SECONDS), RATE);
+  await loadCues(ctx);
   const first = renderCue(ctx, name, ctx.destination, 0);
   const at = gapMs / 1000;
   first.gain.cancelScheduledValues(at);
@@ -166,6 +170,7 @@ window.overlap = async (name, gapMs) => {
 window.CUES = CUE_NAMES;
 window.render = async (name) => {
   const ctx = new OfflineAudioContext(1, Math.ceil(RATE * SECONDS), RATE);
+  await loadCues(ctx);
   renderCue(ctx, name, ctx.destination, 0);
   const { samples, ...metrics } = measure((await ctx.startRendering()).getChannelData(0));
   return { metrics, pcm: pcm16(samples) };
@@ -181,6 +186,7 @@ window.stability = async (name) => {
   for (const block of [0, 1, 2, 3, 5, 13]) {
     const when = (block * 128 + 64) / RATE;
     const ctx = new OfflineAudioContext(1, Math.ceil(RATE * SECONDS), RATE);
+    await loadCues(ctx);
     renderCue(ctx, name, ctx.destination, when);
     const x = (await ctx.startRendering()).getChannelData(0);
     let peak = 0;
@@ -197,6 +203,7 @@ const TYPES = {
   ".js": "text/javascript; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".mp3": "audio/mpeg",
 };
 
 function serve() {
