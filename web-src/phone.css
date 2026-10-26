@@ -385,7 +385,8 @@
     white-space: nowrap;
   }
   #view-dashboard .step .btn {
-    background: currentColor;
+    background: var(--label);
+    color: transparent;
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat;
   }
@@ -759,7 +760,7 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  #view-settings .set .btn.danger { color: var(--danger); }
+  #view-settings .set .btn.danger { color: var(--danger-strong); }
   #view-settings .acct-edit { height: 32px; min-height: 32px; font-size: 15px; }
   #view-settings .acct-edit::after { content: ""; position: absolute; inset: -6px -4px; }
   #view-settings .acct-edit { position: relative; }
@@ -819,7 +820,7 @@
   }
   #view-settings .acct-block > .btn.conn-link { margin: 0; }
   #view-settings .acct-danger-zone { padding: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
-  #view-settings .acct-danger-zone > summary { display: flex; align-items: center; min-height: 52px; color: var(--danger); font-size: 16px; font-weight: 500; }
+  #view-settings .acct-danger-zone > summary { display: flex; align-items: center; min-height: 52px; color: var(--danger-strong); font-size: 16px; font-weight: 500; }
   #view-settings .acct-danger { padding: 0 0 12px; }
   /* Appearance: a picker of four takes the row's full width under its label,
      like the piece sets: "Board colors" broke over two lines beside a 2x2
