@@ -30,10 +30,10 @@ describe("Settings phone touch targets", () => {
     expect(settingsCss).not.toMatch(/\.set \.pf-switch::after/);
   });
 
-  it("gives the info buttons a 40px box", () => {
+  it("gives the info buttons a 44px box", () => {
     const body = phoneRule(settingsCss, ".set .pf-info");
-    expect(body).toMatch(/min-width:\s*40px/);
-    expect(body).toMatch(/min-height:\s*40px/);
+    expect(body).toMatch(/min-width:\s*44px/);
+    expect(body).toMatch(/min-height:\s*44px/);
   });
 
   it("keeps row buttons and segmented choices at 44px on a phone", () => {
