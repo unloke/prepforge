@@ -297,6 +297,4 @@
 
 /* Phone-only parts of Home (phone.css): the Drill / Practice tabs, Practice's
    opponent cards and its section labels. The desktop rows keep their chips. */
-.train-tabs,
-.train-bots,
-.train-sec-label { display: none; }
+#view-train :is(.train-tabs, .train-bots, .train-sec-label) { display: none; }

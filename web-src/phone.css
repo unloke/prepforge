@@ -1293,7 +1293,7 @@
   #view-train .train-home { gap: 12px; }
   /* The panes are navigation, not a setting: underline tabs on one rule, so
      they never read as a second copy of Practice's colour switch. */
-  #view-train .train-tabs { display: flex; width: 100%; height: 45px; padding: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+  #view-train #train-tabs { display: flex; width: 100%; height: 45px; padding: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
   #view-train .train-tabs .seg-btn { height: 44px; min-height: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); font-size: 15px; font-weight: 600; }
   #view-train .train-tabs .seg-btn.is-active { border-bottom-color: var(--accent); color: var(--text); }
   #view-train:not([data-train-pane="play"]) .train-row[data-row="play"],
@@ -1324,10 +1324,10 @@
   }
   #view-train [data-row="play"] :is(.train-row-text, #train-play-book) { display: none; }
   #view-train [data-row="play"] .train-row-opts { display: contents; }
-  #view-train .train-sec-label { display: block; color: var(--muted); font-size: 14px; font-weight: 600; }
+  #view-train [data-row="play"] .train-sec-label { display: block; color: var(--muted); font-size: 14px; font-weight: 600; }
   #view-train .train-sec-label[data-sec="opponent"] { grid-area: oplabel; }
   #view-train .train-sec-label[data-sec="color"] { grid-area: aslabel; margin-top: 8px; }
-  #view-train .train-bots { grid-area: bots; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  #view-train #train-bots { grid-area: bots; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   /* The opponent's repertoires read as a settings row: its name at the
      left, the pick at the right before the chevron. */
   #view-train #train-play-reps { grid-area: reps; gap: 8px; padding: 0 14px; }

@@ -25,7 +25,7 @@ it("Home splits into Drill and Practice panes, one primary action each", () => {
   expect(phone).toMatch(/\.train-row\[data-row="all_lines"\] \{[^}]*grid-template-areas: "text text" "opts go";/);
   // The desktop rows keep their chips; the tabs, cards and labels are phone-only.
   const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
-  expect(shell).toMatch(/\.train-tabs,\s*\.train-bots,\s*\.train-sec-label \{ display: none; \}/);
+  expect(shell).toContain("#view-train :is(.train-tabs, .train-bots, .train-sec-label) { display: none; }");
 });
 
 it("a Session's top bar sits over the board and its bottom bar is four labelled icons", () => {
