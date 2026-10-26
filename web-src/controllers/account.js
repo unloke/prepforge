@@ -745,8 +745,9 @@ export function createAccountController({
   function syncReplayControls() {
     // Source summary lives only in the composer chips (paintGamesSource /
     // paintScoutSource) — no duplicate toolbar display.
+    // A linked account or an added username is something to check.
     const btn = document.getElementById("lichess-compare-btn");
-    if (btn) btn.disabled = !appState.lichessUsername;
+    if (btn) btn.disabled = !appState.lichessUsername && !appState.gamesExternalCount;
   }
 
   // Pull the server's stored Lichess connection state. The watcher remains in

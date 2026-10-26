@@ -57,6 +57,10 @@
     background: var(--line-strong);
   }
 
+  /* ---- Source picker head: title, count, Done at a thumb's size ------------ */
+  .src-head { min-height: 44px; }
+  .src-done { min-width: 44px; min-height: 44px; font-size: 16px; }
+
   /* ---- Chip scroller ------------------------------------------------------- */
   .pk-chips {
     display: flex;

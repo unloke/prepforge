@@ -935,12 +935,28 @@ h2 {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a floating popover is a real overlay */
 }
 
+/* Title, count, then Done at the head's end: the sheet's close is a text
+   action in its head (iOS / Chess.com sheets), not a lone button on a row of
+   its own under the add field. */
 .src-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
+.src-count { margin-right: auto; }
+.src-done {
+  min-height: var(--control-h-sm, 26px);
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.src-done:hover { text-decoration: underline; }
+.src-done:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; border-radius: 4px; }
 
 .src-title {
   font-size: 13px;
@@ -1023,10 +1039,6 @@ h2 {
   min-width: 0;
 }
 
-.src-foot {
-  display: flex;
-  justify-content: flex-end;
-}
 /* Settings */
 
 /* Settings — a section strip over the cards. The strip is here; cards, rows,
@@ -1346,8 +1358,10 @@ h2 {
 
 /* A route change is a View Transition (view-swap.js): the workspace is the one
    named element, so the rail stays put and the page cross-fades with a few px
-   of travel. The group never morphs size. */
-.workspace { view-transition-name: view; }
+   of travel. The group never morphs size. Named only during the swap: a named
+   element is a stacking layer, and a page's fixed sheet must rise over the
+   phone tab bar. */
+:root.view-swap .workspace { view-transition-name: view; }
 ::view-transition-group(view) { animation: none; }
 ::view-transition-old(view) { animation: view-leave var(--dur-fast) var(--ease-out) both; }
 ::view-transition-new(view) { animation: view-enter var(--dur) var(--ease-out) both; }
@@ -1450,7 +1464,7 @@ h2 {
 .btn.danger.ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 
 .btn.danger.ghost:hover:not(:disabled, .is-coming-soon) {
@@ -6005,6 +6019,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .rail-btn .ic { width: 18px; height: 18px; }
 .rail-btn .nav-label { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+/* While the rail widens on hover its labels fade in: they keep one line. */
+.rail :is(.nav-label, .brand-name) { white-space: nowrap; }
 .rail-btn kbd { font-size: 10px; }
 
 /* Page actions inside page headers. */

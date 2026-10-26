@@ -192,6 +192,7 @@ export function selectionChips(selection, linkedAccounts) {
 // modal): Escape and a press outside close it. One source list:
 //
 //   Sources
+// Games sources   2 accounts   Done
 //   Self · 2 linked accounts
 //   ─────────
 //   accountA       Primary
@@ -199,7 +200,6 @@ export function selectionChips(selection, linkedAccounts) {
 //   hikaru         External
 //   ─────────
 //   Add Lichess username…   Add
-//   Done
 //
 // Linked accounts and external usernames are sibling rows of the same list:
 // an added external becomes a first-class source row (checkbox + remove),
@@ -326,11 +326,11 @@ export function openSourceComposer({
         ? html`${linkedRows}${externalRows}`
         : html`<p class="muted">No sources yet — add a username below.</p>`;
     overlay.innerHTML =
-      html`<div class="src-popover" role="dialog" aria-modal="false" aria-label="${title}"><div class="src-head"><span class="src-title">${title}</span><span class="src-count">${pickedCount} account${pickedCount === 1 ? "" : "s"}</span></div><label class="src-row is-self" data-src-self><input type="checkbox" data-testid="src-self-checkbox" data-src-self-checkbox${selfChecked ? " checked" : ""}${state === "mixed" ? html` aria-checked="mixed"` : ""} /><span class="src-name">Self${linkedCount && state !== "none"
+      html`<div class="src-popover" role="dialog" aria-modal="false" aria-label="${title}"><div class="src-head"><span class="src-title">${title}</span><span class="src-count">${pickedCount} account${pickedCount === 1 ? "" : "s"}</span><button type="button" class="src-done" data-testid="src-done" data-src-done>Done</button></div><label class="src-row is-self" data-src-self><input type="checkbox" data-testid="src-self-checkbox" data-src-self-checkbox${selfChecked ? " checked" : ""}${state === "mixed" ? html` aria-checked="mixed"` : ""} /><span class="src-name">Self${linkedCount && state !== "none"
         ? state === "mixed"
           ? html` <span class="src-self-count is-mixed">partial</span>`
           : html` <span class="src-self-count">${linkedCount}</span>`
-        : ""}</span></label><div class="src-divider"></div><div class="src-rows" role="group" aria-label="Sources">${listBody}</div><div class="src-divider"></div><div class="src-add-row"><input type="text" class="src-add-input" data-testid="src-add-input" data-src-add placeholder="${externalPlaceholder}" aria-label="${externalPlaceholder}" value="${draft}"${addError ? html` aria-invalid="true" aria-describedby="src-add-error"` : ""} /><button type="button" class="btn ghost" data-testid="src-add-btn" data-src-add-btn${checking ? " disabled" : ""}>${checking ? "Checking…" : "Add"}</button></div>${addError ? html`<p class="src-add-error" id="src-add-error" role="alert">${addError}</p>` : ""}<div class="src-foot"><button type="button" class="btn primary" data-testid="src-done" data-src-done>Done</button></div></div>`;
+        : ""}</span></label><div class="src-divider"></div><div class="src-rows" role="group" aria-label="Sources">${listBody}</div><div class="src-divider"></div><div class="src-add-row"><input type="text" class="src-add-input" data-testid="src-add-input" data-src-add placeholder="${externalPlaceholder}" aria-label="${externalPlaceholder}" value="${draft}"${addError ? html` aria-invalid="true" aria-describedby="src-add-error"` : ""} /><button type="button" class="btn ghost" data-testid="src-add-btn" data-src-add-btn${checking ? " disabled" : ""}>${checking ? "Checking…" : "Add"}</button></div>${addError ? html`<p class="src-add-error" id="src-add-error" role="alert">${addError}</p>` : ""}</div>`;
     popoverEl = overlay.querySelector(".src-popover");
     const selfBox = overlay.querySelector("[data-src-self-checkbox]");
     if (selfBox && state === "mixed") selfBox.indeterminate = true;

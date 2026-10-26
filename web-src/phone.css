@@ -1028,7 +1028,10 @@
     padding: 6px var(--phone-gutter) calc(20px + env(safe-area-inset-bottom));
     border-radius: var(--radius-card) var(--radius-card) 0 0;
     background: var(--panel);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a bottom sheet is a real overlay */
+    /* The dim is the sheet's own spread shadow: it paints outside the sheet's
+       box, never over its fill (a z -1 ::before inside the sheet's layer
+       painted over the fill). The ::before stays as the tap-to-close catcher. */
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45), 0 -12px 40px rgba(0, 0, 0, 0.45); /* taste-skill-ignore: a bottom sheet is a real overlay */
     overflow-y: auto;
     overscroll-behavior: contain;
     animation: phone-sheet-up var(--dur) var(--ease-out);
@@ -1038,7 +1041,6 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    background: rgba(0, 0, 0, 0.45);
   }
   .phone-sheet.is-open > * { flex: none; }
   @keyframes phone-sheet-up { from { transform: translateY(40%); opacity: 0.4; } }

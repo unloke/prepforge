@@ -1406,6 +1406,8 @@ export function buildScoutSectionReport(
   const coverageLabel = myLookups.length
     ? `your prep follows ${covPct}% of their games to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}`
     : `no ${oppColor === "white" ? "Black" : "White"} repertoire to compare`;
+  // A phone's head has a short line for it; the sentence stays its title.
+  const coverageShort = myLookups.length ? `${covPct}% prepped` : "No repertoire";
   // Nothing to add when the plan has no rows: the button would open an empty prep.
   const prepareAll = prepTargets.length
     ? html`<button type="button" class="btn sm primary scout-prepare-all" data-color="${oppColor}">Add all gaps ▾</button>`
@@ -1456,7 +1458,7 @@ export function buildScoutSectionReport(
       <h3 class="visually-hidden">${heading} · <span class="scout-games-count">${countOf(trie.gameCount, "game")}</span></h3>
       <section class="color-sec card">
         <div class="scout-section-head cs-head">
-          <span class="scout-section-who">${who} with ${oppColor === "white" ? "White" : "Black"}</span>
+          <span class="scout-section-who">${who}<span class="cs-with"> with ${oppColor === "white" ? "White" : "Black"}</span></span>
           <span class="scout-section-wdl wdl-compact" title="${countOf(colorWdl.games, "game")}">${scoutWdlHtml(colorWdl.w, colorWdl.d, colorWdl.l, { compact: true })}</span>
           <span class="scout-section-score faint" title="Wins plus half the draws">scores ${baseline}%</span>
           ${trending}
@@ -1466,6 +1468,7 @@ export function buildScoutSectionReport(
               <div class="scout-coverage-fill ${covTone}" style="width:${covPct}%"></div>
             </div>` : ""}
             <span class="scout-coverage-label" title="${coverage.followed} of ${coverage.games} games: your repertoire has every move of the game up to move ${Math.ceil((scoutModule.PREPARED_PLIES || 8) / 2)}">${coverageLabel}</span>
+            <span class="scout-coverage-short" aria-hidden="true">${coverageShort}</span>
           </div>
           ${prepareAll}
         </div>

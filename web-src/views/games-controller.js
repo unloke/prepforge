@@ -193,6 +193,11 @@ function paintGamesSource() {
     return;
   }
   const selection = gamesSourceSelection();
+  // An added username is a source on its own: Check runs without a linked
+  // account (it stayed disabled with only an external username picked).
+  appState.gamesExternalCount = normalizeSelection(selection).external.length;
+  const compare = document.getElementById("lichess-compare-btn");
+  if (compare) compare.disabled = !appState.lichessUsername && !appState.gamesExternalCount;
   const { chips } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
   const label = n > 0 ? `Self · ${n} linked account${n === 1 ? "" : "s"}` : "Self · all linked";

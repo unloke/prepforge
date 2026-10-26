@@ -183,6 +183,7 @@
 /* "scores 44%" and the coverage fraction are figures in a row of them. */
 .scout-section-score { font-size: var(--fs-s); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .scout-coverage-label { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scout-coverage-short { display: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .cov { display: flex; align-items: center; gap: 8px; min-width: 190px; color: var(--muted); font-size: var(--fs-s); }
 .scout-coverage-bar { flex: 1; min-width: 40px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
 .scout-coverage-fill { height: 100%; border-radius: 3px; transition: width var(--dur-slow) var(--ease-out); }
@@ -569,12 +570,30 @@
   .line-row .lr-flags { display: none; }
   .line-row .lr-score { text-align: right; }
   .scout-lines-head > :nth-child(3) { text-align: right; }
-  /* No spacer on a phone: the score joins the name and W/D/L on one line, so
-     the first line row can reach the first screen. */
-  .cs-head { gap: 6px 10px; }
-  .cs-head .spacer { display: none; }
-  .cs-head .cov { flex: 1 1 100%; min-width: 0; }
-  .cs-head .scout-coverage-label { min-width: 0; white-space: normal; }
+  /* The head is two fixed lines, never a wrap: the name (cut first), W/D/L
+     and the score on one; the prep bar, its sentence (cut) and Add all gaps
+     on the next. The colour is the tab above, so "with White" is dropped. */
+  .cs-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 12px 14px;
+  }
+  .cs-head .spacer, .cs-head .cs-with { display: none; }
+  .cs-head .scout-section-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cs-head .scout-trending { grid-column: 1 / -1; justify-self: start; }
+  .cs-head .cov { grid-column: 1; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 44px; }
+  .cs-head .cov:last-child { grid-column: 1 / -1; }
+  .cs-head .scout-coverage-bar { flex: none; width: 28px; }
+  .cs-head .scout-coverage-label { display: none; }
+  .cs-head .scout-coverage-short { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .cs-head .scout-prepare-all { grid-column: 2 / -1; justify-self: end; white-space: nowrap; }
+  /* The engine's progress line rides in the gap above the colour tabs: kept as
+     a 20px line while idle it left a 68px blank band (two gaps and the line)
+     between the profile and the tabs. Zero height, the line draws in the gap
+     and nothing below moves when it comes and goes. */
+  .scout-engine-progress { height: 0; min-height: 0; margin-block: -12px; overflow: visible; }
   /* The add-to-prep button is the row's only action: it needs a thumb. */
   .scout-add-icon { width: 44px; height: 44px; font-size: 18px; }
   .scout-side .actions .btn { min-height: 44px; }

@@ -113,6 +113,7 @@ export const appState = {
   // The LIVE Lichess token's username (drives latest-game fetch / replay). Null when
   // the token is absent/expired even if still signed in.
   lichessUsername: null,
+  gamesExternalCount: 0,
   // The account's stable Lichess username from auth status — persists across a token
   // drop and is what the user-name button shows. Null only for a true guest.
   accountUsername: null,
