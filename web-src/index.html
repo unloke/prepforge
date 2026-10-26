@@ -590,7 +590,10 @@
       </section>
 
       <section class="view" id="view-teams" data-testid="view-teams">
-        <header class="page-head"><h1>Teams</h1></header>
+        <header class="page-head">
+          <h1>Teams</h1>
+          <button type="button" class="page-head-btn" data-mirror="#teams-new" aria-label="New team" title="New team"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </header>
         <div class="teams">
           <section class="card dir">
             <header class="card-head">
@@ -607,21 +610,39 @@
 
           <section class="card team-detail" id="team-detail-card" data-testid="team-detail-card" hidden>
             <header class="card-head">
-              <h2 id="team-detail-name">Team</h2>
-              <span class="team-role-badge" id="team-detail-role"></span>
+              <div class="team-title">
+                <h2 id="team-detail-name">Team</h2>
+                <span class="team-role-badge" id="team-detail-role"></span>
+              </div>
               <span class="spacer"></span>
               <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite by link: anyone signed in who opens it joins as a member" aria-label="Invite" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M7 9.5a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.8.8M9 6.5a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.8-.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="invite-word">Invite</span></button>
               <button class="btn sm icon" id="team-detail-rename" data-testid="team-detail-rename" title="Rename team" aria-label="Rename team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
               <button class="btn sm icon danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" aria-label="Delete team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <button class="btn sm icon" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
+              <button type="button" class="btn sm icon team-more" id="team-detail-more" data-sheet-open="team-actions" aria-label="Team actions" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
             </header>
+            <!-- A phone keeps one action in the open team's head (⋯); the rest
+                 live in this sheet and click the desktop controls they mirror. -->
+            <div class="phone-sheet" id="team-actions">
+              <div class="sheet-bar">
+                <b>Team</b>
+                <button type="button" class="sheet-done" data-sheet-close>Done</button>
+              </div>
+              <div class="sheet-rows">
+                <button type="button" class="sheet-row" data-mirror="#team-add-member" data-for="add"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 19a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg><span>Add by Lichess username</span></button>
+                <button type="button" class="sheet-row" data-mirror="#team-detail-rename" data-for="rename"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5l4 4L9 19H5v-4z"/></svg><span>Rename team</span></button>
+                <button type="button" class="sheet-row is-danger" data-mirror="#team-members .team-remove[data-self='1']" data-for="leave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg><span>Leave team</span></button>
+                <button type="button" class="sheet-row is-danger" data-mirror="#team-detail-delete" data-for="delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.9 12.5h9.2l.9-12.5"/></svg><span>Delete team</span></button>
+              </div>
+            </div>
             <div class="tabs" role="tablist" aria-label="Team workspace">
               <button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members <span class="count" data-team-count="members" hidden></span></button>
-              <button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires <span class="count" data-team-count="repertoires" hidden></span></button>
+              <button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1"><span class="tab-long">Shared repertoires</span><span class="tab-short">Repertoires</span> <span class="count" data-team-count="repertoires" hidden></span></button>
             </div>
             <section id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members">
               <div class="sub-head">
                 <span class="spacer"></span>
+                <button type="button" class="btn primary team-invite-cta" data-mirror="#team-detail-invite">Invite people</button>
                 <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
               <div id="team-members" data-testid="team-members" data-ui></div>

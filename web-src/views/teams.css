@@ -270,15 +270,243 @@ select.team-role-select {
   color: var(--danger-strong);
 }
 
-/* ---- Responsive --------------------------------------------------------- */
+/* ---- Phone-only parts ---------------------------------------------------- */
 
+/* The open team's ⋯ (its sheet is index.html #team-actions), the bottom Invite
+   and the role in a row's second line belong to the phone layout below; a wide
+   screen shows the same actions in the head and the role as a badge. */
+.team-more,
+.team-invite-cta,
+.team-invite-cta[hidden],
+.sub-role,
+.tab-short,
+.invite-done { display: none; }
+/* Name, then its second fact on the same line ("Mira Chen · mira_c"). */
+.mem-id > .name + .sub::before { content: "· "; }
+
+/* ---- Phone --------------------------------------------------------------- */
+
+/* A phone shows Teams the way the chess apps show clubs (Chess.com clubs,
+   Lichess teams): a list you push into, and an open team as its own screen
+   with a nav bar (back · name · ⋯), full-width tabs, two-line rows and the
+   one primary action docked above the tab bar. Every row stays one row. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  .teams .tabs button { min-height: 44px; }
-  .teams .card-head { flex-wrap: wrap; }
-  /* The spacer breaks the head in two: the name and the role on the first
-     line, the actions together on the second, all packed to the left. */
-  .team-detail .card-head { justify-content: flex-start; }
-  .team-detail .card-head .spacer { flex-basis: 100%; height: 0; }
-  .mem-row { flex-wrap: wrap; }
-  .team-member-tail { margin-left: auto; }
+  #view-teams .teams { gap: 16px; }
+  #view-teams .card-head { min-height: 52px; padding: 4px 16px; }
+  #view-teams .card-head h2 { font-size: 17px; }
+  /* The page title carries New team (+), the way Library carries New
+     repertoire, so the directory needs no head of its own. */
+  #view-teams .card.dir > .card-head { display: none; }
+  #view-teams .dir .search-field { margin: 12px 16px; }
+  #view-teams:has(#teams-new[hidden]) .page-head-btn { display: none; }
+  /* With teams in the directory, a team opens by tapping it: the desktop's
+     "No team selected" pane has nothing to show here. (Signed out or with no
+     team it stays: there it carries the next step.) */
+  #view-teams .teams:has(.team-row:not(.is-skeleton)) .team-empty { display: none; }
+  /* The open team is a pushed screen: back returns to the list, so the list
+     and the shares are not stacked around it. */
+  #view-teams .teams:has(> .team-detail:not([hidden])) > :is(.card.dir, .card.incoming) { display: none; }
+
+  /* Rows: one 16px left edge, name over one grey line, nothing wraps. */
+  #view-teams :is(.team-row, .mem-row) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    min-height: 60px;
+    padding: 8px 4px 8px 16px;
+  }
+  #view-teams .team-row { grid-template-columns: minmax(0, 1fr) auto auto; padding-right: 12px; }
+  /* A team row pushes the team: the chevron says so, as a list row does in iOS. */
+  #view-teams .team-row:not(.is-skeleton)::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border: solid var(--muted);
+    border-width: 2px 2px 0 0;
+    transform: rotate(45deg);
+  }
+  #view-teams .team-row .name { font-size: 16px; font-weight: 650; }
+  #view-teams :is(.team-row, .mem-row) .sub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  #view-teams .mem-id { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 2px; }
+  #view-teams .mem-id > .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    font-size: 15px;
+    font-weight: 650;
+  }
+  #view-teams .mem-id > .name + .sub::before { content: none; }
+  #view-teams .sub-role { display: inline; }
+  /* A role is a word in the row's right column, not a pill: Owner, Admin ⌄
+     and Member ⌄ line up as one column whether they can be changed or not. */
+  #view-teams :is(.team-row, .mem-row) .team-role-badge {
+    padding: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #view-teams .team-row .team-role-badge.r-owner,
+  #view-teams .mem-row .team-role-badge.r-owner { color: var(--warn-text); }
+  #view-teams .team-member-tail { gap: 0; }
+  #view-teams .team-member-row .team-member-tail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: auto 44px;
+    justify-items: end;
+    align-items: center;
+  }
+  #view-teams .team-member-row .team-role-badge { padding-right: 10px; }
+  #view-teams select.team-role-select {
+    width: auto;
+    min-width: 0;
+    height: 44px;
+    padding: 0 22px 0 4px;
+    border-color: transparent;
+    background-color: transparent;
+    background-position: right 6px center;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #view-teams .team-remove { width: 44px; min-width: 44px; height: 44px; padding: 0; justify-content: center; }
+  /* Leave is in the team's ⋯ sheet on a phone. */
+  #view-teams .team-member-row .team-remove[data-self="1"] { display: none; }
+  /* In the shared lists the role moves under the name ("Mira Chen · Can
+     copy"); the row's right side keeps only what can be done. */
+  #view-teams :is(.team-shared-rep-row, .shared-rep-row) .share-role-badge { display: none; }
+  #view-teams .shared-rep-row,
+  #view-teams .team-shared-rep-row { min-height: 60px; }
+  #view-teams #team-shared-repertoires > .team-shared-rep-row { min-height: 60px; }
+  #view-teams .team-copy { min-width: 64px; }
+  #teams-shared[data-ui] > .shared-rep-row + .shared-rep-row { border-top: 1px solid var(--line); }
+
+  /* The open team's head is a nav bar: back, the name with the caller's role
+     under it (a group chat's header in WhatsApp or Telegram), and ⋯. The
+     name never takes a second line; the full name is in Rename. */
+  #view-teams .team-detail > .card-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    column-gap: 4px;
+    min-height: 60px;
+    padding: 4px 6px;
+  }
+  #view-teams .team-detail > .card-head > :is(.spacer, #team-detail-invite, #team-detail-rename, #team-detail-delete) { display: none; }
+  #team-detail-close { grid-column: 1; grid-row: 1; width: 44px; height: 44px; font-size: 0; color: var(--text); }
+  #team-detail-close::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border: solid currentColor;
+    border-width: 0 0 2.2px 2.2px;
+    transform: translateX(2px) rotate(45deg);
+  }
+  #view-teams .team-title { grid-column: 2; display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  #view-teams .team-title h2 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 17px;
+    line-height: 1.25;
+  }
+  #view-teams .team-title .team-role-badge {
+    align-self: flex-start;
+    padding: 0;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  #view-teams .team-more { grid-column: 3; display: inline-flex; width: 44px; height: 44px; padding: 0; justify-content: center; }
+  #view-teams .team-more[hidden] { display: none; }
+  #view-teams .team-more svg { fill: currentColor; }
+  /* Closed, the sheet is not in the page at all (an open one is fixed). */
+  #team-actions:not(.is-open) { display: none; }
+  /* The workspace is its own layer under the tab bar, so the sheet docks on
+     top of the bar instead of sliding under it. */
+  #team-actions.is-open { bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom)); padding-bottom: 16px; }
+  /* The shared sheet's dim (::before, z -1) paints over the sheet's own fill
+     inside its layer; a fill one step later in the layer puts it back. */
+  #team-actions.is-open::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--panel);
+  }
+  #team-actions .sheet-row { box-shadow: none; }
+  #team-actions .sheet-row:not([hidden]) ~ .sheet-row:not([hidden]) { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
+  #team-actions .sheet-row[hidden] { display: none; }
+  #team-actions .sheet-row.is-danger { color: var(--danger); }
+  #team-actions .sheet-row.is-danger svg { stroke: var(--danger); }
+
+  /* Members | Shared repertoires split the strip in halves (a segmented
+     choice, as in the Chess.com club screen), each a 44px thumb target. */
+  #view-teams .teams .tabs { gap: 0; padding: 0 8px; }
+  /* Inside a team "Shared" goes without saying; the short label lets both
+     halves hold their label at 360. */
+  #view-teams .tab-long { display: none; }
+  #view-teams .tab-short { display: inline; }
+  #view-teams .teams .tabs button { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 6px; font-size: 15px; white-space: nowrap; }
+
+  /* The pane's one action docks above the tab bar, where the thumb is
+     (Games' Check and Scout's Start sit there too): Invite people on Members
+     for a manager, Share a repertoire on Shared. Add by username moves to ⋯.
+     The 12px ground ring is a plate, so rows scrolling under it do not peek
+     past its corners. */
+  #view-teams .team-detail .sub-head {
+    position: fixed;
+    z-index: 30;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
+    padding: 0;
+    background: var(--bg);
+    outline: 12px solid var(--bg);
+  }
+  #view-teams .team-detail .sub-head > .spacer,
+  #view-teams #team-add-member { display: none; }
+  #view-teams #team-panel-members .sub-head:not(:has(.team-invite-cta:not([hidden]))) { display: none; }
+  #view-teams .sub-head > .btn:not([hidden]) {
+    display: inline-flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    height: 48px;
+    font-size: 16px;
+  }
+  #view-teams #team-share-rep { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  .workspace:has(> #view-teams.is-active .team-detail:not([hidden]) [data-team-panel]:not([hidden]) .sub-head .btn:not([hidden])) {
+    padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 84px) !important;
+  }
+  #view-teams .team-invite-foot { padding: 12px 16px; font-size: 13px; }
+
+  /* Invite dialog: Done/Close in the title bar (as the app's sheets put
+     Done), and one row of link actions at the thumb. */
+  .invite-modal .modal-title { justify-content: space-between; }
+  .invite-modal .invite-done {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: var(--accent-strong);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 650;
+  }
+  .invite-modal .modal-footer { flex-wrap: nowrap; }
+  .invite-modal .modal-footer [data-action="done"] { display: none; }
+  .invite-modal .modal-footer .btn { min-width: 0; padding: 0 10px; }
+  .invite-modal .modal-footer .btn.danger-quiet { flex: 0 0 auto; margin-right: auto; padding: 0 4px; }
 }

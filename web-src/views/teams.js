@@ -252,7 +252,7 @@ export function createTeamsView({
         const id = item.id;
         const name = item.name;
         const isMine = item.owner_user_id === appState.accountUserId;
-        const owner = isMine ? "you" : item.owner_display_name || "member";
+        const owner = isMine ? "You" : item.owner_display_name || "Member";
         // Your own share: its role is a control, and Stop sharing. Someone
         // else's: the role as a badge (what it allows on hover), and Copy where
         // it is allowed. Only the repertoire's owner changes either (server-enforced).
@@ -264,7 +264,7 @@ export function createTeamsView({
           <span class="color-dot ${item.color}"></span>
           <span class="mem-id">
             <span class="name">${name}</span>
-            <span class="sub">· ${owner}</span>
+            <span class="sub">${owner}${isMine ? "" : html`<span class="sub-role"> · ${roleLabel(item.role)}</span>`}</span>
           </span>
           <span class="team-member-tail">${tail}</span>
         </div>`;

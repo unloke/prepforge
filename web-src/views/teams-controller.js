@@ -87,7 +87,7 @@ function renderTeamInviteFooter(status) {
   }
   const expiresDay = formatDay(status.expires_at);
   const when = expiresDay ? ` · expires ${expiresDay}` : "";
-  foot.innerHTML = html`Invite link active${when} · revoke from Invite`;
+  foot.innerHTML = html`Invite link active${when}`;
   foot.hidden = false;
 }
 
@@ -110,6 +110,9 @@ async function openTeamDetail(teamId) {
     const button = document.getElementById(id);
     if (button) { button.hidden = true; button.onclick = null; }
   }
+  const inviteCta = document.querySelector(".team-invite-cta");
+  if (inviteCta) inviteCta.hidden = true;
+  syncTeamActions();
   const name = document.getElementById("team-detail-name");
   if (name) name.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%;vertical-align:middle"></span>`;
   const role = document.getElementById("team-detail-role");
@@ -150,6 +153,8 @@ async function openTeamDetail(teamId) {
     inviteBtn.hidden = !canManage;
     inviteBtn.onclick = () => teamInvite(teamId);
   }
+  // A phone's bottom action: managers invite from the Members tab.
+  if (inviteCta) inviteCta.hidden = !canManage;
   const shareBtn = document.getElementById("team-share-rep");
   if (shareBtn) {
     // Any member may share one of their OWN repertoires with the team.
@@ -176,7 +181,7 @@ async function openTeamDetail(teamId) {
   membersEl.innerHTML = html`${members
     .map((m) => {
       const name = m.display_name || m.lichess_username || "Member";
-      const sub = m.lichess_username ? html`<span class="sub">· ${m.lichess_username}</span>` : "";
+      const sub = m.lichess_username ? html`<span class="sub">${m.lichess_username}</span>` : "";
       const initial = Array.from(m.display_name || m.lichess_username || "M")[0].toUpperCase();
       const isMe = m.user_id === appState.accountUserId;
       const isOwner = m.role === "owner";
@@ -222,6 +227,21 @@ async function openTeamDetail(teamId) {
     );
   });
   renderTeamSharedRepertoires(teamId, detail.shared_repertoires || []);
+  syncTeamActions();
+}
+
+// The phone's team sheet (index.html #team-actions) offers only the actions
+// this role has: each row mirrors a desktop control, and shows while that
+// control exists and is not hidden. With nothing to offer, ⋯ goes too.
+function syncTeamActions() {
+  let any = false;
+  document.querySelectorAll("#team-actions [data-mirror]").forEach((row) => {
+    const target = document.querySelector(row.dataset.mirror);
+    row.hidden = !target || target.hidden;
+    any ||= !row.hidden;
+  });
+  const more = document.getElementById("team-detail-more");
+  if (more) more.hidden = !any;
 }
 
 // The last repertoires seen shared with each team, so "Share a repertoire"
@@ -571,7 +591,7 @@ async function loadSharedRepertoires() {
             <span class="color-dot ${color}"></span>
             <span class="mem-id">
               <span class="name">${name}</span>
-              ${via ? html`<span class="sub">${via}</span>` : ""}
+              ${via ? html`<span class="sub"><span class="sub-role">${roleLabel(item.role)} · </span>${via}</span>` : ""}
             </span>
             <span class="team-member-tail">
               <span class="team-role-badge share-role-badge" title="${roleAllows(item.role)}">${roleLabel(item.role)}</span>
@@ -621,6 +641,7 @@ async function openSharedRepertoire(repertoireId) {
     renderTeamInviteFooter,
     hideTeamDetail,
     openTeamDetail,
+    syncTeamActions,
     renderTeamSharedRepertoires,
     unshareRepertoireFromTeam,
     changeTeamShareRole,
