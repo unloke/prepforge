@@ -59,6 +59,8 @@
 
   /* ---- Source picker head: title, count, Done at a thumb's size ------------ */
   .src-head { min-height: 44px; }
+  .src-title { font-size: 16px; }
+  .src-count { font-size: 13px; }
   .src-done { min-width: 44px; min-height: 44px; font-size: 16px; }
 
   /* ---- Chip scroller ------------------------------------------------------- */
