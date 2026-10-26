@@ -2178,10 +2178,13 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze .an-pane,
   #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 4; }
 
-  /* In the peek the coach's bubble may run under the bar: it fades out there,
-     so the cut reads as more to come (drag the head up) rather than a clip. */
-  #view-analyze[data-pane="coach"]:not([data-sheet="up"]) #analysis-explain {
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  /* In the peek on a browser-height phone the coach keeps what it says: a
+     reviewed game shows its moment line (the bubble, cut mid-line by the bar,
+     read as a clip), an unreviewed one its bubble; the engine offer waits for
+     the sheet to rise. Up, or on a taller screen, everything is back. (A mask
+     here also masked the Analyze pill, which is positioned out of this box.) */
+  @media (max-height: 700px) {
+    #view-analyze[data-pane="coach"]:not([data-sheet="up"]) #analysis-explain:has(> .coach-review:not([hidden])) .coach-prose,
+    #view-analyze[data-pane="coach"]:not([data-sheet="up"]) #analysis-explain .coach-unlock { display: none; }
   }
 }
