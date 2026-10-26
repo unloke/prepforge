@@ -174,8 +174,10 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(mine).toContain('class="team-role-select team-share-role"');
     expect(mine).toContain('<option value="copy" selected>Can copy</option>');
     expect(mine).toContain('aria-label="Stop sharing KP"');
-    expect(mine).toContain("· you");
+    expect(mine).toContain('<span class="sub">You</span>');
     expect(mine).not.toContain("share-role-badge");
+    // Someone else's role also leads the row's second line, where a phone shows it.
+    expect(theirs).toContain('<span class="sub-role"> · View only</span>');
     expect(theirs).not.toContain("<select");
     expect(theirs).not.toContain("team-unshare");
     expect(theirs).toContain('title="Open and read"');

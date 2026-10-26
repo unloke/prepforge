@@ -110,7 +110,7 @@ async function openTeamDetail(teamId) {
     const button = document.getElementById(id);
     if (button) { button.hidden = true; button.onclick = null; }
   }
-  const inviteCta = document.querySelector(".team-invite-cta");
+  const inviteCta = document.getElementById("team-invite-cta");
   if (inviteCta) inviteCta.hidden = true;
   syncTeamActions();
   const name = document.getElementById("team-detail-name");
