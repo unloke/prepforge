@@ -70,7 +70,7 @@ describe("coach engine-review switch", () => {
   });
 
   it("is a 44px touch target in the phone coach head", () => {
-    const phone = css.slice(css.lastIndexOf("@media (max-width: 760px)"));
+    const phone = css.slice(css.indexOf("@media (max-width: 760px)")) // every phone block (r1 rule, r2 after it);
     const rule = phone.match(/#analysis-explain .cc-head .pf-switch {[^}]*}/)[0];
     expect(rule).toMatch(/width: 44px/);
     expect(rule).toMatch(/height: 44px/);

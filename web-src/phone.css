@@ -1267,7 +1267,18 @@
     box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
-  #build-dock-tools:popover-open { gap: 16px; }
+  #build-dock-tools:popover-open { gap: 16px; padding-top: 8px; }
+  /* The sheet's grab handle, the same one every phone sheet carries (phone-kit). */
+  #build-dock-tools::before {
+    content: "";
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 36px;
+    height: 4px;
+    margin-bottom: -4px;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
   #build-dock-tools::backdrop { background: rgba(0, 0, 0, 0.45); }
   #build-dock-tools .dock-opt { gap: 6px; }
   #build-dock-tools .dock-opt-label { font-size: 13px; }
