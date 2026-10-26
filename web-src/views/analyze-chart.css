@@ -2151,15 +2151,14 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     #view-analyze .rp-summary .rp-side { padding: 10px; }
     #view-analyze .rp-summary .rp-errs { font-size: 12px; }
   }
-}
 
-/* ---- Phone, round 3: the browser's real viewport ---------------------------
-   The evaluation is one 40px band (figure and graph inline), the board, the
-   move strip, then the panes as a peek sheet whose head is the tab switch
-   (peek-sheet.js; phone.css documents the reserve API). In the peek the coach
-   shows its moment line, so the board keeps the screen at 375x553; the engine
-   and the report rise when opened and the board shrinks to give them room. */
-@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* ---- Phone, round 3: the browser's real viewport ---------------------------
+     The evaluation is one 40px band (figure and graph inline), the board, the
+     move strip, then the panes as a peek sheet whose head is the tab switch
+     (peek-sheet.js; phone.css documents the reserve API). In the peek the coach
+     shows its moment line, so the board keeps the screen at 375x553; the engine
+     and the report rise when opened and the board shrinks to give them room. */
+
   #view-analyze {
     --phone-eval-h: 40px;
     --phone-tabs-h: 60px;
@@ -2178,4 +2177,11 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze #analysis-explain,
   #view-analyze .an-pane,
   #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 4; }
+
+  /* In the peek the coach's bubble may run under the bar: it fades out there,
+     so the cut reads as more to come (drag the head up) rather than a clip. */
+  #view-analyze[data-pane="coach"]:not([data-sheet="up"]) #analysis-explain {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  }
 }

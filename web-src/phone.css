@@ -1713,23 +1713,22 @@
     background: var(--accent);
     transform: translateX(-50%);
   }
-}
 
-/* ---- Round 3: the phone browser's real viewport --------------------------
-   Safari and Chrome keep their own bars on screen (390x664, 375x553, 360x640
-   are what a page gets), so a board screen budgets its height exactly rather
-   than reserving a third of the screen. Like the Lichess and Chess.com game
-   screens: no tab bar during a board session (Menu raises it), a slim 44px
-   back header, the board as large as the screen's height allows once the rows
-   that must show are paid for, and the panes as a peek sheet whose head is
-   the pane switch (peek-sheet.js). Shell API, for any board screen:
-   - --phone-reserve: px of rows (besides the thumb bar) that must stay on
-     screen with the board in the peek; the board is the width or what is left.
-   - --phone-reserve-up: the same while the sheet is up (the pane's room).
-   - [data-peek][data-peek-home] on the pane tablist; the view gets
-     data-sheet="up" / "peek" (explicit) and is up by default off its home
-     pane; CSS reads :is([data-sheet="up"], :not([data-sheet]):not([data-pane=home])). */
-@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* ---- Round 3: the phone browser's real viewport --------------------------
+     Safari and Chrome keep their own bars on screen (390x664, 375x553, 360x640
+     are what a page gets), so a board screen budgets its height exactly rather
+     than reserving a third of the screen. Like the Lichess and Chess.com game
+     screens: no tab bar during a board session (Menu raises it), a slim 44px
+     back header, the board as large as the screen's height allows once the rows
+     that must show are paid for, and the panes as a peek sheet whose head is
+     the pane switch (peek-sheet.js). Shell API, for any board screen:
+     - --phone-reserve: px of rows (besides the thumb bar) that must stay on
+       screen with the board in the peek; the board is the width or what is left.
+     - --phone-reserve-up: the same while the sheet is up (the pane's room).
+     - [data-peek][data-peek-home] on the pane tablist; the view gets
+       data-sheet="up" / "peek" (explicit) and is up by default off its home
+       pane; CSS reads :is([data-sheet="up"], :not([data-sheet]):not([data-pane=home])). */
+
   :root { --phone-head-h: 44px; }
   .study .board-stack {
     width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
