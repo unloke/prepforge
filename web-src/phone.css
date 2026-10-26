@@ -343,7 +343,6 @@
   #view-dashboard .steps .setup-bar { margin: 0 14px 4px; }
   #view-dashboard .steps .setup-dismiss { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
   #view-dashboard .step.is-done { display: none; }
-  #view-dashboard .step { min-height: 56px; margin: 0; padding: 8px 14px; gap: 12px; border: 0; }
   /* The phone checklist hides the finished steps, so a step's number points at
      a list the phone never drew: one visible step was left reading "2". The
      title leads instead. */
@@ -366,7 +365,7 @@
      "Link Lichess") and squeezed the title onto two lines beside a 150px pill,
      or dropped under a paragraph as a lone pill. The button stays (its label
      is its accessible name) and its hit area is the whole row. */
-  #view-dashboard .step { position: relative; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; padding: 10px 2px 10px 14px; }
+  #view-dashboard .step { position: relative; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; min-height: 56px; margin: 0; padding: 10px 2px 10px 14px; border: 0; }
   #view-dashboard .step + .step { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
   #view-dashboard .step-text b { display: block; font-size: 16px; font-weight: 600; }
   #view-dashboard .step-text p { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.35; }

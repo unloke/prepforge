@@ -72,6 +72,8 @@ it("the phone checklist shows no step number", () => {
   expect(rule("#view-dashboard .step .step-n {")).toMatch(/display:\s*none/);
   // The row drops the badge's column so the title gets the width.
   expect(rule("#view-dashboard .step[data-setup-step] {")).toMatch(/grid-template-columns/);
-  // A first-run step puts its action under the words instead of beside them.
-  expect(rule("#view-dashboard .step:not([data-setup-step]) {")).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\);/);
+  // Every step is one tappable row with a chevron: the button keeps its
+  // label as its name and its hit area is the whole row.
+  expect(rule("#view-dashboard .step {")).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\) 44px/);
+  expect(rule("#view-dashboard .step .btn::after {")).toMatch(/inset:\s*0/);
 });
