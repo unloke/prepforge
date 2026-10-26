@@ -1,16 +1,38 @@
-// Train on a phone: Home and Result are pages (no board, the tab bar stays), a
-// Session pins the board with the coach line under it and the board bar's
-// action slot at the thumb. One state attribute, #view-train[data-train-screen],
+// Train on a phone: Home is a page (no board, the tab bar stays) split into a
+// Drill and a Practice pane; a Session pins the board under its top bar with
+// the coach line under it and a labelled bottom bar; the Result keeps the board. One state attribute, #view-train[data-train-screen],
 // drives all of it: no positional selectors, no second state machine.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const css = readFileSync(new URL("../phone.css", import.meta.url), "utf8");
-const phone = css.slice(css.indexOf("/* ---- Train: Home and Result are pages"), css.indexOf("/* ---- Menus: action sheets"));
+const phone = css.slice(css.indexOf("/* ---- Train: Home is a page"), css.indexOf("/* ---- Menus: action sheets"));
 
-it("Home and Result are pages: no board, no thumb bar, the tab bar stays", () => {
-  expect(phone).toContain('#view-train:is([data-train-screen="home"], [data-train-screen="result"]) :is(.board-stack, .board-bar, .blitz-bar) { display: none; }');
+it("Home is a page with no board; the Result keeps the final board but no thumb bar; the tab bar stays on both", () => {
+  expect(phone).toContain('#view-train[data-train-screen="home"] :is(.board-stack, .board-bar, .blitz-bar),');
+  expect(phone).toContain('#view-train[data-train-screen="result"] :is(.board-bar, .blitz-bar) { display: none; }');
   expect(phone).toMatch(/body:has\(#view-train\.is-active:is\(\[data-train-screen="home"\], \[data-train-screen="result"\]\)\) \.tabbar \{[^}]*visibility: visible;/);
+});
+
+it("Home splits into Drill and Practice panes, one primary action each", () => {
+  expect(phone).toContain('#view-train:not([data-train-pane="play"]) .train-row[data-row="play"],');
+  expect(phone).toContain('#view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }');
+  // Due queue's Start runs across the card's foot; Practice's Play is the filled one beside Random.
+  expect(phone).toMatch(/\.train-row\[data-row="smart"\] \{[^}]*grid-template-areas: "text" "opts" "next" "go";/);
+  expect(phone).toMatch(/\.train-row\[data-row="play"\] \{[^}]*"lucky go";/);
+  expect(phone).toMatch(/\[data-row="play"\] \.train-row-go \{[^}]*background: var\(--accent\)/);
+  // Rehearse is one line: the field and its Start.
+  expect(phone).toMatch(/\.train-row\[data-row="all_lines"\] \{[^}]*grid-template-areas: "text text" "opts go";/);
+  // The desktop rows keep their chips; the tabs, cards and labels are phone-only.
+  const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
+  expect(shell).toContain("#view-train :is(.train-tabs, .train-bots, .train-sec-label) { display: none; }");
+});
+
+it("a Session's top bar sits over the board and its bottom bar is four labelled icons", () => {
+  expect(phone).toMatch(/#view-train \.train-head \{ order: 0;/);
+  expect(phone).toMatch(/#view-train \.board-bar \{ grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  expect(phone).toContain("#view-train .board-bar .board-label { display: none; }");
+  expect(phone).toMatch(/#view-train \.board-bar \.bl \{ display: block; font-size: 12px;/);
 });
 
 it("is driven by the screen attribute alone", () => {
