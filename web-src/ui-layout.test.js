@@ -224,7 +224,7 @@ describe("workspace chrome layout", () => {
     // The save chip lives beside the inspector tools here, not in the far-off
     // board bar.
     expect(phone).toMatch(/\.study \.board-bar \.build-sync \{ display:\s*none !important; \}/);
-    expect(phone).toMatch(/#build-inspector \.build-sync \{/);
+    expect(phone).toMatch(/#build-rep-header \.build-sync \{/);
     // Desktop is the reverse: the board bar's chip is the only one. Both were
     // visible at 1440 (board bar + inspector tools), printing one state twice.
     expect(css).toMatch(/@media \(min-width: 761px\), \(orientation: landscape\) and \(max-height: 520px\) \{\n  #build-sync-head \{ display: none; \}\n\}/);
@@ -299,25 +299,22 @@ describe("workspace chrome layout", () => {
     expect(success).not.toContain("your Pro plan is active (it can take a moment to show)");
   });
 
-  it("keeps the dock chrome to one tools row above the panel", () => {
-    // The database seg, the ⓘ and Scan share one row; the old multi-line
-    // chrome is gone, and the opening's name is a caption in the ⓘ tooltip.
-    expect(html).toContain('id="build-dock-tools"');
+  it("keeps the dock chrome to one row above the panel", () => {
+    // Tabs, options button and the tab's action on one row; settings + scope line in the popover.
+    expect(html).toMatch(/id="build-dock-tools"[^>]*\spopover/);
+    expect(html).toContain('id="build-dock-opts"');
     expect(html).toContain('id="inspector-dbs"');
-    expect(html).toContain('id="inspector-info"');
-    // The opening's name is a caption on the data, so it lives in the ⓘ
-    // tooltip rather than on a line of its own above the rows.
+    expect(html).toContain('id="inspector-scope"');
+    expect(html).not.toContain('id="inspector-info"');
     expect(html).not.toMatch(/id="explorer-opening"|id="build-inspector-label"/);
     expect(html).not.toContain("explorer-scope");
     expect(html).not.toContain("coverage-head");
     expect(html).not.toContain("coverage-hint");
     expect(html).not.toContain("Master games — strong-player games");
     expect(html).not.toContain("How much of real human play");
-    expect(app).toContain("onInspectorInfo");
-    expect(app).toContain("inspector-info-pop");
-    expect(css).toContain(".inspector-info-pop");
+    expect(app).toContain("openDockOptions");
     // The one sentence that explains the panel reads at the panel's size.
-    expect(ruleBody(".inspector-info-pop")).toMatch(/font-size:\s*var\(--fs-s\)/);
+    expect(ruleBody(".dock-scope")).toMatch(/font-size:\s*var\(--fs-s\)/);
     // The inspector takes the leftover under the tree, so a short repertoire
     // leaves no dead space above it; a dragged height holds (data-dock-pinned).
     expect(ruleBody(".dock")).toMatch(/flex:\s*1 1 auto/);
@@ -352,7 +349,7 @@ describe("workspace chrome layout", () => {
     expect(ruleBody(".explorer-bar span")).toMatch(/font-size:\s*12px/);
     expect(ruleBody(".explorer-inrep")).toMatch(/font-size:\s*11px/);
     expect(ruleBody(".fork-chip .mtree-num")).toMatch(/font-size:\s*inherit/);
-    expect(phoneCss).toMatch(/#build-inspector \.build-sync \{[^}]*font-size:\s*var\(--fs-s\)/);
+    expect(phoneCss).toMatch(/#build-rep-header \.build-sync \{[^}]*font-size:\s*var\(--fs-xs\)/);
     expect(phoneCss).toMatch(/#view-build \.fork-chip small \{[^}]*font-size:\s*var\(--fs-s\)/);
   });
 

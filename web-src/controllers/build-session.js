@@ -2,6 +2,7 @@ import { html } from "../html.js";
 import { enterRows } from "../list-enter.js";
 import { MAX_PLAN_CHANGES } from "../generated/shared-constants.js";
 import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
+import { paintDockOptions, toggleDockOptions } from "../dock-options.js";
 
 import { formatEngineEval } from "../engine-eval.js";
 // Repertoire editor: the tree and board, the Explorer panel, the inspector dock, node
@@ -53,7 +54,7 @@ export function createBuildSession(deps) {
   return {
     buildBranchContext, buildBranchKey, buildGoBack, buildGoForward, buildGoRoot, buildGoToEnd,
     closeNodeContextMenu, createRepertoirePrompt, fitBuildDock, generateFromCurrentNode, hydrateBuild,
-    initBuildDockLayout, onBuildBoardMove, onInspectorInfo, openBuildMenu, openNodeContextMenu,
+    initBuildDockLayout, onBuildBoardMove, openDockOptions, openBuildMenu, openNodeContextMenu,
     paintExplorerEvals, paintInspectorScope, refreshExplorerPanel,
     saveBuildAnnotations, scheduleExplorerRefresh, selectBuildNode, setBuildDockFolded,
     handleNodeContextAction,
@@ -581,7 +582,7 @@ function paintExplorerEvals(snapshot, mainSnapshot = null) {
   });
 }
 
-// Compact scope line for the ⓘ popover: what the panel shows, nothing more.
+// Compact scope line for the options popover: what the panel shows, nothing more.
 function inspectorScopeText() {
   if (buildDockTab === "coverage") {
     return "Share of human play at your rating that reaches a move your prepared mainline does not answer, within the horizon. Pruned or unmodelled lines count as unchecked.";
@@ -599,35 +600,12 @@ function inspectorScopeText() {
 }
 
 function paintInspectorScope() {
-  const info = document.getElementById("inspector-info");
-  if (info) info.title = inspectorScopeText();
+  paintDockOptions({ tab: buildDockTab, db: explorerDb, scopeText: inspectorScopeText() });
 }
 
-function onInspectorInfo() {
-  const text = inspectorScopeText();
-  const info = document.getElementById("inspector-info");
-  if (!info) return;
-  const open = document.getElementById("inspector-info-pop");
-  if (open) {
-    open.hidePopover();
-    return;
-  }
-  // A [popover]: Escape and a press elsewhere close it before its 4s are up.
-  const pop = document.createElement("div");
-  pop.className = "inspector-info-pop";
-  pop.id = "inspector-info-pop";
-  pop.setAttribute("role", "status");
-  pop.textContent = text;
-  const close = openPopover(pop, { opener: info, onClose: () => pop.remove() });
-  // Anchor under the ⓘ itself (not the toolbar's far edge), clamped so the
-  // bubble never spills past the toolbar's right side.
-  const head = document.getElementById("build-dock-tools") || info.parentElement;
-  const headRect = head.getBoundingClientRect();
-  const infoRect = info.getBoundingClientRect();
-  const left = Math.max(headRect.left, Math.min(infoRect.left - 8, headRect.right - pop.offsetWidth));
-  pop.style.left = `${Math.round(left)}px`;
-  pop.style.top = `${Math.round(infoRect.bottom + 4)}px`;
-  window.setTimeout(close, 4000);
+function openDockOptions() {
+  paintInspectorScope();
+  toggleDockOptions();
 }
 
 // Arrow-keying through a line fires selectBuildNode per ply; one trailing fetch
@@ -715,7 +693,7 @@ async function refreshExplorerPanel() {
   }
 }
 
-// Compact scope: folded into the ⓘ popover (inspectorScopeText). The panel
+// Compact scope: folded into the options popover (inspectorScopeText). The panel
 // itself stays rows-only so moves own the height.
 function renderExplorerScope() {
   paintInspectorScope();

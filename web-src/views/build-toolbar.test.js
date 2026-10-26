@@ -14,11 +14,16 @@ it("the candidates sit over the tree, with no position trail", () => {
   expect(html).not.toMatch(/build-tree-meta|class="crumbs"/);
 });
 
-it("the dock's tools share the row with its tabs", () => {
+it("the dock's options and action share the row with its tabs", () => {
   const head = html.slice(html.indexOf('<div class="dock-head">'), html.indexOf('<div class="dock-body">'));
   expect(head).toMatch(/class="dock-tabs"/);
-  expect(head).toMatch(/id="build-dock-tools"/);
+  expect(head).toMatch(/id="build-dock-opts"/);
+  expect(head).toMatch(/id="explorer-engine-switch"/);
+  expect(head).toMatch(/id="coverage-run"/);
+  expect(head).toMatch(/id="build-dock-tools"[^>]*popover/);
   expect(head).toMatch(/id="build-dock-fold"/);
+  // No wrapped second row: the head never gives the tools a full line.
+  expect(css).not.toMatch(/@container dock \(max-width: 630px\)/);
 });
 
 it("a dragged inspector holds its height; the tree takes the rest", () => {

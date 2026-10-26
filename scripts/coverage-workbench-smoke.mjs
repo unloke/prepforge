@@ -89,7 +89,9 @@ try {
   await page.locator('.lib-row[data-repertoire-id="a"]').click();
   await page.locator("#build-rep-name").filter({ hasText: "Review a" }).waitFor();
   await page.locator("#build-tool-coverage").click();
+  await page.locator("#build-dock-opts").click();
   await page.locator("#coverage-depth").selectOption("4");
+  await page.keyboard.press("Escape");
   // Scan's explicit opt-in must leave Analyze's global preference unchanged.
   await page.locator("#coverage-run").click();
   await page.locator(".coverage-gap").first().waitFor();

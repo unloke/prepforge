@@ -314,6 +314,7 @@
               <div class="rep-title">
                 <h1 class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</h1>
                 <span class="build-opening" id="build-opening" hidden></span>
+                <span class="build-sync" id="build-sync-head" aria-live="polite" hidden></span>
               </div>
               <button class="btn ghost icon row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
@@ -354,28 +355,39 @@
                   <button class="is-active" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" role="tab" aria-controls="explorer-drawer" aria-selected="true">Explorer</button>
                   <button id="build-tool-coverage" data-testid="build-tool-coverage" type="button" role="tab" aria-controls="coverage-drawer" aria-selected="false" tabindex="-1">Coverage <span class="count" id="build-coverage-count" hidden></span></button>
                 </div>
-                <div class="dock-tools" id="build-dock-tools">
-                  <div class="seg" id="inspector-dbs" role="group" aria-label="Database">
-                    <button type="button" class="seg-btn explorer-db is-active" data-db="masters" aria-pressed="true">Masters</button>
-                    <button type="button" class="seg-btn explorer-db" data-db="lichess" aria-pressed="false">Players</button>
+                <button type="button" class="btn sm dock-opts" id="build-dock-opts" data-testid="build-dock-opts" aria-haspopup="dialog" aria-expanded="false" aria-controls="build-dock-tools"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span class="dock-opts-label" id="build-dock-opts-label">Masters</span></button>
+                <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
+                  <span class="pf-row-label" id="explorer-engine-label">Engine</span>
+                  <button type="button" class="pf-switch" id="explorer-engine-toggle" data-testid="open-engine-widget-build" role="switch" aria-checked="false" aria-labelledby="explorer-engine-label"><span class="pf-knob"></span></button>
+                </span>
+                <button type="button" class="btn sm inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
+                <!-- The open tab's settings and its one-sentence scope: a popover
+                     under the options button, a sheet on a phone. -->
+                <div class="dock-tools" id="build-dock-tools" role="dialog" aria-label="Panel options" popover>
+                  <div class="dock-opt">
+                    <span class="dock-opt-label" id="inspector-dbs-label">Database</span>
+                    <div class="seg" id="inspector-dbs" role="group" aria-labelledby="inspector-dbs-label">
+                      <button type="button" class="seg-btn explorer-db is-active" data-db="masters" aria-pressed="true">Masters</button>
+                      <button type="button" class="seg-btn explorer-db" data-db="lichess" aria-pressed="false">Players</button>
+                    </div>
                   </div>
-                  <div class="seg" id="coverage-scope" role="group" aria-label="Coverage scope" hidden>
-                    <button type="button" class="seg-btn is-active" data-scope="repertoire" aria-pressed="true">Mainline</button>
-                    <button type="button" class="seg-btn" data-scope="branch" aria-pressed="false">Branch</button>
+                  <div class="dock-opt">
+                    <span class="dock-opt-label" id="coverage-scope-label">Scope</span>
+                    <div class="seg" id="coverage-scope" role="group" aria-labelledby="coverage-scope-label" hidden>
+                      <button type="button" class="seg-btn is-active" data-scope="repertoire" aria-pressed="true">Mainline</button>
+                      <button type="button" class="seg-btn" data-scope="branch" aria-pressed="false">Branch</button>
+                    </div>
                   </div>
-                  <select class="dock-select" id="coverage-depth" aria-label="Horizon" title="Horizon" hidden>
-                    <option value="4">2 moves</option>
-                    <option value="8">4 moves</option>
-                    <option value="16" selected>8 moves</option>
-                    <option value="24">12 moves</option>
-                  </select>
-                  <button type="button" class="btn icon inspector-info" id="inspector-info" aria-label="About this panel"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
-                  <span class="build-sync" id="build-sync-head" aria-live="polite" hidden></span>
-                  <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
-                    <span class="pf-row-label" id="explorer-engine-label">Engine</span>
-                    <button type="button" class="pf-switch" id="explorer-engine-toggle" data-testid="open-engine-widget-build" role="switch" aria-checked="false" aria-labelledby="explorer-engine-label"><span class="pf-knob"></span></button>
-                  </span>
-                  <button type="button" class="btn sm inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
+                  <label class="dock-opt">
+                    <span class="dock-opt-label">Horizon</span>
+                    <select class="dock-select" id="coverage-depth" hidden>
+                      <option value="4">2 moves</option>
+                      <option value="8">4 moves</option>
+                      <option value="16" selected>8 moves</option>
+                      <option value="24">12 moves</option>
+                    </select>
+                  </label>
+                  <p class="dock-scope" id="inspector-scope"></p>
                 </div>
                 <button class="dock-fold" id="build-dock-fold" data-testid="build-dock-fold" type="button" aria-controls="build-inspector" aria-expanded="true" title="Fold the inspector" aria-label="Fold the inspector"><span aria-hidden="true">&#9662;</span></button>
               </div>
