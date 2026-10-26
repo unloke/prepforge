@@ -299,3 +299,10 @@
      would shrink it to the message's width. */
   #view-replay .ledger:has(.ledger-empty) { align-self: stretch; }
 }
+/* Phone, round 2: several sources scroll sideways in their one row (Lichess's
+   chip row) instead of wrapping the toolbar to a second line. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-replay .toolbar > .src > .src-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+  #view-replay .toolbar > .src > .src-chips::-webkit-scrollbar { display: none; }
+  #view-replay .toolbar > .src > .src-chips > .src-chip { flex: none; white-space: nowrap; }
+}

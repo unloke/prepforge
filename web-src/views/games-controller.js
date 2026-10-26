@@ -201,7 +201,7 @@ function paintGamesSource() {
   // named an empty set and Check stayed disabled without saying why.
   if (n === 0 && !selection.external.length && selection.linkedMode === "all") {
     tray.innerHTML =
-      html`<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess to use your games</button>`;
+      html`<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess account</button>`;
     return;
   }
   // Nothing picked: the ledger's empty state names the next step, so the tray

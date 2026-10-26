@@ -287,10 +287,18 @@ function moveLink(move, label, opts) {
 const SIDE_WORD = { white: "White", black: "Black" };
 const sideHead = (side) => html`<span class="rp-side-h" role="rowheader" title="${SIDE_WORD[side]}"><i class="rp-disc rp-${side}" aria-label="${SIDE_WORD[side]}"></i></span>`;
 
+// Each grade's head in the counts table: the board badge's symbol on the
+// grade's colour, so seven columns fit a phone without cutting the words
+// ("Inacc…", "Brilli…"). Best and good share a badge on the board; here they
+// are two columns, so best takes a star.
+const GRADE_MARK = { brilliant: "!!", great: "!", best: "★", good: "✓", inaccuracy: "?!", mistake: "?", blunder: "??", missed: "×" };
+const gradeBadge = (g) => html`<i class="rp-badge g-${g.key}" aria-hidden="true">${GRADE_MARK[g.key]}</i>`;
+
 // Grade counts as a small table: a column per grade, a row per side. Every
 // grade is a column, a zero printed as a zero; a count is a jump to that
-// side's next move of the grade.
-function countsHtml(report) {
+// side's next move of the grade. The heads are symbols, named for a screen
+// reader and in their tooltip; Key opens the same names as a legend.
+function countsHtml(report, keyOpen = false) {
   const grades = REPORT_GRADES.filter((g) => g.key !== "missed" || SIDES.some((s) => report.sides[s].counts.missed));
   const cell = (side, g) => {
     const n = report.sides[side].counts[g.key] || 0;
@@ -298,9 +306,9 @@ function countsHtml(report) {
       ? html`<button type="button" class="rp-n g-${g.key}" role="cell" data-side="${side}" data-grade="${g.key}" aria-label="${`${SIDE_WORD[side]} ${g.label}: ${n}, go to the next one`}">${n}</button>`
       : html`<span class="rp-n is-zero" role="cell">0</span>`;
   };
-  return html`<div class="rp-counts rp-grid" role="table" aria-label="Move grades"><span role="row" class="rp-tr"><span></span>${grades.map((g) => html`<span class="rp-col g-${g.key}" role="columnheader" title="${g.label}"><i class="rp-glyph" aria-hidden="true">${classBadgeSymbol(g.members[0]) || ""}</i><span class="rp-col-word">${g.label}</span></span>`)}</span>${SIDES.map(
+  return html`<section class="rp-sec rp-grades"><div class="rp-sec-head"><h3 class="rp-h">Move grades</h3><button type="button" class="rp-key-btn" data-toggle-key aria-expanded="${keyOpen ? "true" : "false"}" aria-controls="rp-key">Key</button></div><div class="rp-counts rp-grid" role="table" aria-label="Move grades"><span role="row" class="rp-tr"><span></span>${grades.map((g) => html`<span class="rp-col g-${g.key}" role="columnheader" aria-label="${g.label}" title="${g.label}">${gradeBadge(g)}</span>`)}</span>${SIDES.map(
     (side) => html`<span role="row" class="rp-tr">${sideHead(side)}${grades.map((g) => cell(side, g))}</span>`,
-  )}</div>`;
+  )}</div><ul class="rp-key" id="rp-key"${keyOpen ? "" : " hidden"}>${grades.map((g) => html`<li>${gradeBadge(g)}<span>${g.label}</span></li>`)}</ul></section>`;
 }
 
 const KIND_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
@@ -357,10 +365,10 @@ function summaryHtml(report, open) {
 }
 
 /** The report as markup (no listeners). `open` marks the summary's toggle; the body is always written. */
-export function reportHtml(report, open = true) {
+export function reportHtml(report, open = true, keyOpen = false) {
   if (!report) return "";
   if (!report.graded) return html`${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
-  return html`${summaryHtml(report, open)}<div class="rp-body">${momentsHtml(report)}${countsHtml(report)}${phasesHtml(report)}${openingHtml(report)}</div>`;
+  return html`${summaryHtml(report, open)}<div class="rp-body">${momentsHtml(report)}${countsHtml(report, keyOpen)}${phasesHtml(report)}${openingHtml(report)}</div>`;
 }
 
 // Write the report into `host`. `onJump(ply)` goes to a move of the game;
@@ -372,13 +380,20 @@ export function reportHtml(report, open = true) {
 export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
   const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names, selfSide });
   if (!host) return report;
-  host.innerHTML = reportHtml(report, host.dataset.open === "true");
+  host.innerHTML = reportHtml(report, host.dataset.open === "true", host.dataset.key === "true");
   host.onclick = (event) => {
     if (event.target.closest?.(".move-ref")) return;
     const toggle = event.target.closest?.("[data-toggle-summary]");
     if (toggle) {
       host.dataset.open = host.dataset.open === "true" ? "false" : "true";
       toggle.setAttribute("aria-expanded", host.dataset.open);
+      return;
+    }
+    const key = event.target.closest?.("[data-toggle-key]");
+    if (key) {
+      host.dataset.key = host.dataset.key === "true" ? "false" : "true";
+      key.setAttribute("aria-expanded", host.dataset.key);
+      host.querySelector("#rp-key")?.toggleAttribute("hidden", host.dataset.key !== "true");
       return;
     }
     const grade = event.target.closest?.("[data-grade]");
