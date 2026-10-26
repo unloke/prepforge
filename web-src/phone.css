@@ -229,7 +229,7 @@
   #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: 1 1 auto;
-    min-width: 0;
+    min-width: 44px;
     min-height: 44px;
     height: 44px;
     padding: 0 6px;
