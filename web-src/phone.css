@@ -1088,12 +1088,12 @@
     display: flex;
     gap: 2px;
     margin: -10px -12px 0;
-    padding: 6px 12px;
+    padding: 4px 12px;
     background: var(--bg);
   }
   #build-panes > button {
     flex: 1 1 0;
-    min-height: 34px;
+    min-height: 44px;
     border: 0;
     border-radius: 8px;
     background: var(--surface-3);
@@ -1111,6 +1111,7 @@
   /* Saving state beside the tools that trigger it (the board bar's chip is
      hidden here). */
   #build-inspector .build-sync { flex: none; font-size: var(--fs-s); }
+  #build-inspector .build-sync:not([hidden]) ~ :is(.dock-engine-switch, .inspector-scan) { margin-left: 0; }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
@@ -1131,14 +1132,23 @@
   #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
   #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
   #build-inspector .inspector-panel { overflow: visible; }
-  #build-inspector .dock-tools { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px 6px; }
+  /* Two rows, the same in both panes: the scope (Masters | Players, Mainline |
+     Branch) as a full-width track, then the options with the pane's one action
+     at the right end (the Engine switch, the horizon and Scan). The switch
+     carried no word and wrapped alone onto a row of its own. */
+  #build-inspector .dock-head { padding: 0; }
+  #build-inspector .dock-tools { flex-wrap: wrap; gap: 8px; padding: 10px 12px 6px; }
+  #build-inspector .dock-tools > .seg { display: flex; flex: 1 1 100%; }
+  #build-inspector .dock-tools > .seg > .seg-btn { flex: 1 1 0; min-width: 0; }
+  #build-inspector .dock-engine-switch { min-height: 44px; }
+  #build-inspector .dock-engine-switch .pf-row-label { font-size: 14px; }
   /* The pane's tools stay compact in type but not in reach: 40px is the
      smallest box a thumb hits without a second try. */
   #build-inspector :is(.seg-btn, .btn, .dock-select) { padding: 0 12px; font-size: 14px; }
   /* A select keeps room for the chevron the shared rule draws inside its right
      padding; the 12px above would put the label under the arrow. */
   #build-inspector .dock-select { padding-right: 30px; }
-  #build-inspector .inspector-info { width: 40px; height: 40px; }
+  #build-inspector .inspector-info { width: 44px; height: 44px; }
   #build-inspector .explorer-row { min-height: 46px; }
   /* "White / Draw / Black" broke onto two lines once Eval took a column. One
      line fits a 390px pane with the eval layout's columns tightened; a narrower
@@ -1150,6 +1160,11 @@
   }
   /* The engine's line steppers are 18px dots: the dots stay, their tap areas
      grow to 40px (the readout between them is not a target). */
+  /* The Explorer's engine card keeps one line: on a 360px phone the button's
+     size note goes before the engine's name is clipped mid-word. */
+  @container unlock (max-width: 330px) {
+    #explorer-engine-slot .unlock-size { display: none; }
+  }
   .engine-step { position: relative; }
   .engine-step::after { content: ""; position: absolute; inset: -11px; }
   #view-build .forkbar { font-size: 13px; }
