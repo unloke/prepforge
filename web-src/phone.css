@@ -1220,13 +1220,19 @@
   #view-build .build-empty .btn.primary { flex: 1 1 100%; }
   #view-build .build-empty .btn:not(.primary) { flex: 1 1 0; min-width: 0; }
 
-  /* ---- Train: Home and Result are pages, a Session is the board ---------
-     Home and Result are read, not played on: no board, no thumb bar, the tab
-     bar stays. A Session pins the board on top, the coach line under it and
-     the board bar's action slot (Hint · Skip, or Takeback · Resign) at the
-     thumb. */
+  /* ---- Train: Home is a page, a Session and its Result are the board ----
+     Home splits into two panes, Drill and Practice (a segmented control at the
+     top, as the Chess.com app splits its play and lesson screens), so each
+     pane has one primary action, full width at the thumb: Drill's is the Due
+     queue's Start, Practice's is Play under the opponent cards and colour
+     (Chess.com's play-vs-bot setup). A Session reads like a Chessable drill:
+     a top bar (back · mode · scope · n / N) and its progress line above the
+     edge-to-edge board, the coach line under it, and a bottom bar of four
+     labelled icons. The Result keeps the final board above its card. */
   #view-train { --phone-reserve: max(190px, 30dvh); }
-  #view-train:is([data-train-screen="home"], [data-train-screen="result"]) :is(.board-stack, .board-bar, .blitz-bar) { display: none; }
+  #view-train[data-train-screen="home"] :is(.board-stack, .board-bar, .blitz-bar),
+  #view-train[data-train-screen="result"] :is(.board-bar, .blitz-bar) { display: none; }
+  #view-train[data-train-screen="result"] .board-stack { pointer-events: none; }
   #view-train:is([data-train-screen="home"], [data-train-screen="result"]) .study {
     padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom));
   }
@@ -1240,52 +1246,135 @@
     visibility: visible;
     transition: none;
   }
-  #view-train .train-head { order: 0; padding: 8px var(--phone-gutter) 4px; }
-  #view-train[data-train-screen="session"] .train-head { order: 2; padding-top: 6px; }
-  #view-train .train-head-prog { order: 2; margin: 0 var(--phone-gutter); }
+
+  /* Header. Home: the page title. Session and Result: a 48px top bar over the
+     board, the back arrow alone (its word stays for screen readers), the mode
+     and scope as one line of text that ellipsizes, the count at the end. */
+  #view-train .train-head { order: 0; min-height: 52px; padding: 8px var(--phone-gutter) 4px; }
+  #view-train .train-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+  #view-train:not([data-train-screen="home"]) .train-head { min-height: 48px; padding: 2px var(--phone-gutter) 2px 4px; gap: 4px; }
+  #view-train .train-back { flex: none; width: 44px; padding: 0; justify-content: center; }
+  #view-train .train-back > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #view-train .train-back .bi { width: 22px; height: 22px; }
+  #view-train .train-head-main { gap: 0; font-size: 16px; }
+  #view-train .train-head-mode { flex: none; }
+  #view-train .train-scope-chip { padding: 0; background: none; color: var(--muted); font-size: 16px; font-weight: 500; }
+  #view-train .train-scope-chip::before { content: "\00a0·\00a0"; }
+  #view-train .train-count { padding-left: 8px; font-size: 15px; }
+  #view-train .train-head-prog { order: 0; height: 3px; margin: 0 var(--phone-gutter) 8px; }
+  #view-train[data-train-mode="play"] .train-head-prog { display: none; }
+  #view-train .blitz-bar { order: 1; }
   #view-train .train-coach {
     order: 2;
     flex: none;
     height: auto;
-    min-height: 52px;
+    min-height: 56px;
     margin: 0;
-    padding: 6px var(--phone-gutter);
-    gap: 10px;
+    padding: 8px var(--phone-gutter);
+    gap: 12px;
     border: 0;
     background: var(--bg);
   }
   #view-train .train-coach-icon { width: 28px; height: 28px; flex: none; }
   #view-train .train-coach-title { font-size: 18px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-coach-sub { font-size: 14px; }
-  #view-train .blitz-bar { order: 0; }
-  #view-train .train-row { padding: 14px; border-radius: var(--radius-card); }
-  /* A row's options fill their line: a chip grows into a select-like field
-     with its chevron at the end, and the colour track takes what is left, so
-     no line ends in a hole (the Rehearse chip stopped 170px short, the colour
-     sat alone at the right of Practice's line). When they do not fit side by
-     side each takes its own full line. */
-  #view-train .train-row-opts > :is(.train-chip, .train-color) { flex: 1 1 auto; }
-  #view-train .train-chip { justify-content: space-between; font-size: 15px; }
-  #view-train .train-color .seg-btn { font-size: 14px; }
-  /* Practice: Random position is too wide to sit beside Play in a phone row;
-     it is the row's quiet last line, a text action on the text edge. */
-  #view-train .train-row[data-row="play"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts" "lucky lucky"; }
-  #view-train [data-row="play"] .train-lucky {
-    justify-self: start;
-    margin: -4px 0 -6px -10px;
-    padding: 0 10px;
-    border: 0;
-    background: none;
-    color: var(--accent-strong);
-    font-size: 15px;
-  }
-  /* The next due cards narrow the queue on a tap: thumb-height rows. */
+
+  /* Session bottom bar: four labelled icons spread evenly (Menu · Flip ·
+     Hint · Skip, or Menu · Flip · Takeback · Resign). The scope is the top
+     bar's, so the bar carries no text of its own to ellipsize. */
+  #view-train .board-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 4px; padding-inline: 8px; }
+  #view-train .board-bar .board-label { display: none; }
+  #view-train .board-bar .btn.icon { flex-direction: column; gap: 3px; width: 100%; height: 52px; border-radius: var(--radius-card); }
+  #view-train .board-bar .bl { display: block; font-size: 12px; font-weight: 500; line-height: 1.2; }
+  .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
+  .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
+
+  /* Home */
+  #view-train .train-home { gap: 12px; }
+  /* The panes are navigation, not a setting: underline tabs on one rule, so
+     they never read as a second copy of Practice's colour switch. */
+  #view-train .train-tabs { display: flex; width: 100%; height: 45px; padding: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+  #view-train .train-tabs .seg-btn { height: 44px; min-height: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--muted); font-size: 15px; font-weight: 600; }
+  #view-train .train-tabs .seg-btn.is-active { border-bottom-color: var(--accent); color: var(--text); }
+  #view-train:not([data-train-pane="play"]) .train-row[data-row="play"],
+  #view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }
+  #view-train .train-row { gap: 12px; padding: 16px; border-radius: var(--radius-card); }
+  #view-train .train-row-title { font-size: 17px; }
+  #view-train .train-row-meta { font-size: 14px; }
+  #view-train .train-row-opts { flex-wrap: nowrap; }
+  /* An option chip fills its line and reads as a field, the chevron at its end. */
+  #view-train .train-row-opts > .train-chip { flex: 1 1 auto; min-width: 0; padding: 0 14px; }
+  /* Fields share the buttons' corner, so a field and its Start read as one row. */
+  #view-train .train-chip { justify-content: space-between; border-radius: var(--radius); font-size: 15px; }
+  /* Due queue: the lead card. Title and count, scope with Blitz on one line,
+     the next cards, then its Start across the card's foot. */
+  #view-train .train-row[data-row="smart"] { grid-template-columns: minmax(0, 1fr); grid-template-areas: "text" "opts" "next" "go"; }
+  #view-train .train-row[data-row="smart"] .train-row-go { width: 100%; }
   #view-train .train-due-line { align-items: center; min-height: 44px; }
-  #view-train #train-home > .train-recent { padding-inline: 14px; }
+  /* Rehearse: one line under its title, the repertoire field and its Start. */
+  #view-train .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text text" "opts go"; }
+  #view-train .train-row[data-row="all_lines"] .train-row-go { min-width: 96px; }
+  /* Practice: Opponent cards, Play as, then Random position beside Play. The
+     pane's tab names it, so the card drops its title; the desktop chip gives
+     way to the cards. */
+  #view-train .train-row[data-row="play"] {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "oplabel oplabel" "bots bots" "reps reps" "unlock unlock" "aslabel aslabel" "color color" "lucky go";
+    gap: 8px;
+  }
+  #view-train [data-row="play"] :is(.train-row-text, #train-play-book) { display: none; }
+  #view-train [data-row="play"] .train-row-opts { display: contents; }
+  #view-train .train-sec-label { display: block; color: var(--muted); font-size: 14px; font-weight: 600; }
+  #view-train .train-sec-label[data-sec="opponent"] { grid-area: oplabel; }
+  #view-train .train-sec-label[data-sec="color"] { grid-area: aslabel; margin-top: 8px; }
+  #view-train .train-bots { grid-area: bots; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  /* The opponent's repertoires read as a settings row: its name at the
+     left, the pick at the right before the chevron. */
+  #view-train #train-play-reps { grid-area: reps; gap: 8px; padding: 0 14px; }
+  #view-train #train-play-reps::before { content: "Repertoires"; margin-right: auto; color: var(--muted); font-weight: 500; }
+  #view-train [data-row="play"] .train-color { grid-area: color; width: 100%; margin: 0; }
+  #view-train .train-color .seg-btn { font-size: 15px; }
+  #view-train [data-row="play"] [data-unlock-place] { grid-area: unlock; }
+  #view-train .train-lucky-more { display: none; }
+  #view-train [data-row="play"] .train-lucky { grid-area: lucky; margin-top: 8px; padding: 0 16px; font-size: 15px; }
+  #view-train [data-row="play"] .train-row-go { grid-area: go; margin-top: 8px; border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+  #view-train [data-row="play"] .train-row-go:disabled { border-color: var(--surface-3); background: var(--surface-3); color: var(--label); }
+  /* Maia's offer is one line of the card: the engine's name, then its
+     download and the dismiss at the right edge. */
+  #view-train [data-row="play"] [data-unlock-place="train-practice"] .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto auto; justify-content: stretch; gap: 4px; }
+  .train-bot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    min-width: 0;
+    min-height: 88px;
+    padding: 14px 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-card);
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .train-bot:active:not(:disabled) { transform: scale(0.97); }
+  .train-bot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .train-bot.is-on { border-color: var(--accent); outline: 1px solid var(--accent); outline-offset: -2px; color: var(--accent-strong); }
+  .train-bot:disabled { color: var(--label); cursor: default; }
+  .train-bot-icon { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .train-bot-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .train-bot-sub { color: var(--label); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  #view-train #train-home > .train-recent { gap: 8px; padding: 8px 16px 0; border-top: 0; font-size: 14px; }
+
+  /* Session panel and the Result card */
   #view-train .train-line-path { margin-block: -8px -4px; padding-block: 14px; }
   #view-train .train-sidebar .tcard {
     margin: 0;
-    padding: 14px;
+    padding: 16px;
     border: 0;
     border-radius: var(--radius-card);
     background: var(--panel);
@@ -1293,9 +1382,15 @@
     font-size: 14px;
   }
   #view-train .train-progress-panel .upnext { min-height: 0; }
-  #view-train .train-summary-actions .btn.primary { flex: 1 1 auto; }
-  .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
-  .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
+  #view-train .train-summary { gap: 12px; }
+  #view-train .train-summary > .train-summary-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  #view-train .sum-line { font-size: 15px; }
+  /* The top bar's back arrow is the way home; the actions are one row of
+     equal halves, the primary at the thumb's side. */
+  #view-train .train-summary-actions { flex-wrap: nowrap; }
+  #view-train .train-summary-actions .btn { flex: 1 1 0; min-width: 0; }
+  #view-train .train-summary-actions #play-analyze { order: -1; }
+  #view-train .train-summary-actions .train-link { display: none; }
   /* The picker is a bottom sheet at the thumb. train-shell.css arrives later
      with Train's chunk, so these rules carry :root to win over its popover. */
   :root .train-picker {
