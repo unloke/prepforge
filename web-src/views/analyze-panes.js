@@ -96,12 +96,27 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
     after.after(card);
     onEvalMoved();
   }
+  // The grading switch: in the coach's head row beside a pointer's panel; on a
+  // phone that row is the review bar's, so the switch joins the engine pane's
+  // head, beside Live (both are Stockfish settings).
+  const gradeLabel = document.getElementById("explain-engine-label");
+  const gradeSwitch = document.getElementById("explain-engine-toggle");
+  const engineHead = document.querySelector("#analysis-engine-pane .an-pane-head");
+  function placeGrade() {
+    if (!gradeLabel || !gradeSwitch || !engineHead || !coach) return;
+    const phone = media.phone.matches;
+    if (phone === engineHead.contains(gradeSwitch)) return;
+    if (phone) engineHead.append(gradeLabel, gradeSwitch);
+    else coach.querySelector("#analyze-actions")?.before(gradeLabel, gradeSwitch);
+  }
   const relayout = () => {
     placeEval();
+    placeGrade();
     select(view.dataset.pane || readStored(), { store: false });
   };
   Object.values(media).forEach((m) => m.addEventListener?.("change", relayout));
   placeEval();
+  placeGrade();
   select(readStored(), { store: false });
   return { select };
 }

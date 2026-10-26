@@ -1821,3 +1821,363 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze:not(:has(#analysis-results:not([hidden]))) #analysis-explain .cc-head > :not(#analyze-actions) { display: none; }
 }
 
+
+/* ---- Report: symbol heads and their key (every width) ---------------------
+   Seven grade columns cut their words on a phone ("Inacc…", "Brilli…"). Each
+   head is the board badge instead (the grade's symbol on its colour), named in
+   aria-label and the tooltip; Key opens the names as a legend on demand. */
+.rp-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rp-key-btn {
+  flex: none;
+  height: var(--control-h-sm);
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  cursor: pointer;
+}
+.rp-key-btn:hover, .rp-key-btn[aria-expanded="true"] { background: var(--surface-3); color: var(--text); }
+.rp-key-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.rp-badge {
+  --badge: var(--label);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--badge);
+  color: var(--accent-ink);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+.rp-badge.g-brilliant { --badge: var(--brilliant); }
+.rp-badge.g-great { --badge: var(--great); }
+.rp-badge:is(.g-best, .g-good) { --badge: var(--good); }
+/* White on the amber is 2.9:1: this one badge takes dark ink. */
+.rp-badge.g-inaccuracy { --badge: var(--inaccuracy); color: #1b1c1e; }
+.rp-badge.g-mistake { --badge: var(--warn); }
+.rp-badge.g-blunder { --badge: var(--danger); }
+.rp-badge.g-missed { --badge: var(--missed); }
+.rp-col { justify-content: center; }
+.rp-key {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+  padding: 4px 0 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: var(--fs-s);
+}
+.rp-key[hidden] { display: none; }
+.rp-key li { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+
+/* The run's saved line for the shown position: a phone's engine pane shows it
+   while the live engine is off (below). */
+#analysis-saved-line { display: none; }
+
+/* ---- Phone, round 2: composition ------------------------------------------
+   Lichess mobile and Chess.com's Game Review: the evaluation over the board,
+   the board, one scrolling strip of the game's moves under it, then the open
+   pane (the coach's bubble, the engine's lines or the report), the pane tabs
+   and the thumb bar. Each row is one line at every phone width. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-analyze {
+    --phone-strip-h: 44px;
+    --phone-tabs-h: 50px;
+    --phone-reserve: calc(var(--phone-eval-h) + var(--phone-strip-h) + var(--phone-tabs-h) + 150px);
+  }
+  /* The panes take their own places in the screen's column. */
+  #view-analyze:has(#analysis-results:not([hidden])) .an-panes { display: contents; }
+  #view-analyze .board-bar { order: 6; }
+  #view-analyze #analysis-explain,
+  #view-analyze .an-pane,
+  #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 3; }
+  #view-analyze .an-panes > .an-tabs { order: 4; }
+
+  /* The move strip: the game as one line that scrolls sideways, the shown move
+     filled and kept in the middle (movetree.js centres it). A graded move
+     carries its symbol in the grade's colour, as on the board. */
+  #view-analyze #analysis-results.moves-pane:not([hidden]) {
+    order: 2;
+    display: block;
+    flex: none;
+    height: var(--phone-strip-h);
+    padding: 0;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  #view-analyze #analysis-moves {
+    height: var(--phone-strip-h);
+    max-height: none;
+    border-radius: 0;
+    font-size: 15px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  #view-analyze #analysis-moves::-webkit-scrollbar { display: none; }
+  #analysis-moves .mtree { display: flex; width: max-content; height: 100%; }
+  #view-analyze #analysis-moves .mtree-line.is-main {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0;
+    height: 100%;
+    padding: 0 var(--phone-gutter);
+  }
+  #analysis-moves .mtree-line.is-main > .mtree-num,
+  #analysis-moves .mtree-var .mtree-num {
+    flex: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0 2px 0 10px;
+    background: none;
+    color: var(--label);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  #analysis-moves .mtree-line.is-main > .mtree-num:first-child { padding-left: 0; }
+  /* A move is a 44px target; its pill is the middle 32px. */
+  #view-analyze #analysis-moves .mtree-move {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 0;
+    margin: 0;
+    padding: 0 8px;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    font-weight: 600;
+  }
+  #view-analyze #analysis-moves .mtree-move::before {
+    content: "";
+    position: absolute;
+    inset: 6px 0;
+    z-index: -1;
+    border-radius: 8px;
+    background: transparent;
+  }
+  #view-analyze #analysis-moves .mtree-move:active::before { background: var(--surface-3); }
+  #view-analyze #analysis-moves .mtree-move.is-current { color: var(--accent-ink); }
+  #view-analyze #analysis-moves .mtree-move.is-current::before { background: var(--accent); }
+  #view-analyze #analysis-moves .mtree-move.on-path { background: none; color: var(--text); }
+  #analysis-moves .mtree-glyph { font-size: 13px; }
+  /* Only the variation being read shows, inline after its move. */
+  #analysis-moves .mtree-var { display: none; }
+  #analysis-moves .mtree-var.is-on-path {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 100%;
+    margin: 0 4px;
+    padding: 0 0 0 8px;
+  }
+  #analysis-moves .mtree-var.is-on-path::before { top: 12px; bottom: 12px; background: var(--accent); }
+  #analysis-moves .mtree-var .mtree-tok { display: flex; align-items: center; }
+
+  /* The coach's bubble (Chess.com): the moment and its key-moment steps on one
+     44px line, the verdict in a bubble under it, then the human picks. The
+     grading switch lives in the engine pane here (analyze-panes.js). */
+  #view-analyze[data-pane="coach"] #analysis-explain { gap: 8px; padding: 6px var(--phone-gutter) 8px; }
+  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head { display: contents; }
+  #analysis-explain:has(> .coach-review:not([hidden])) .cc-head > :not(#analyze-actions) { display: none; }
+  #analysis-explain > .coach-review {
+    order: -1;
+    gap: 0;
+    height: 44px;
+    margin: 0;
+  }
+  #analysis-explain .coach-review > .cr-label { order: 0; flex: 1 1 auto; gap: 8px; padding: 0; font-size: 15px; font-weight: 650; }
+  /* Retry is the moment's one action: the accent's tint, the steps' shape. */
+  #analysis-explain .coach-review > .btn { order: 1; margin: 0 8px 0 auto; border: 0; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); padding: 0 14px; font-weight: 650; }
+  #analysis-explain .coach-review > .cr-step { order: 2; width: 48px; border-radius: 12px 4px 4px 12px; }
+  #analysis-explain .coach-review > .cr-step ~ .cr-step { order: 3; margin-left: 2px; border-radius: 4px 12px 12px 4px; }
+  #analysis-explain .coach-review > .cr-label + .cr-step { margin-left: auto; }
+  #analysis-explain .coach-review > .btn + .cr-step,
+  #analysis-explain .coach-review > .cr-step:has(~ .btn) { margin-left: 0; }
+  /* The moment's grade is the board's badge, not a loose glyph. */
+  #analysis-explain .cr-label .rp-glyph {
+    display: inline-grid;
+    place-items: center;
+    align-self: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--label);
+    color: var(--accent-ink);
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: -0.06em;
+  }
+  #analysis-explain .cr-label .rp-glyph:empty { display: none; }
+  #analysis-explain .cr-label.g-brilliant .rp-glyph { background: var(--brilliant); }
+  #analysis-explain .cr-label.g-great .rp-glyph { background: var(--great); }
+  #analysis-explain .cr-label.g-mistake .rp-glyph { background: var(--warn); }
+  #analysis-explain .cr-label.g-blunder .rp-glyph { background: var(--danger); }
+  #analysis-explain .coach-prose {
+    flex: 0 1 auto;
+    padding: 10px 14px 10px 12px;
+    border-left-width: 3px;
+    border-radius: 3px 14px 14px 3px;
+    background: var(--panel);
+  }
+  #analysis-explain .coach-unlock .unlock.is-inline { padding: 0; }
+
+  /* The engine pane: its head row (Live, and the depth and line count while it
+     runs), the lines (or the run's saved line), then the grading switch as a
+     settings row at the pane's end. */
+  #analysis-engine-pane .cc-switch-label,
+  #analysis-engine-pane .pf-switch { order: 10; }
+  #analysis-engine-pane .cc-switch-label { display: block; grid-column: 1 / 5; color: var(--text); font-size: 15px; white-space: nowrap; cursor: pointer; }
+  #analysis-engine-pane .pf-switch { grid-column: 5; justify-self: end; margin-right: -6px; }
+  #analysis-engine-pane > #analysis-saved-line { grid-column: 1 / -1; }
+  #analysis-engine-pane .pf-switch {
+    position: relative;
+    box-sizing: border-box;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: none;
+  }
+  #analysis-engine-pane .pf-switch .pf-knob { display: none; }
+  #analysis-engine-pane .pf-switch::before {
+    content: "";
+    position: absolute;
+    top: 13px;
+    left: 3px;
+    width: 34px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--line-strong); /* taste-skill-ignore: a switch track's edge */
+  }
+  #analysis-engine-pane .pf-switch::after {
+    content: "";
+    position: absolute;
+    top: 16px;
+    left: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text);
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  #analysis-engine-pane .pf-switch.is-on::before { background: var(--accent); box-shadow: none; }
+  #analysis-engine-pane .pf-switch.is-on::after { background: #ffffff; transform: translateX(16px); }
+
+  /* Live off: the run's own line, set as a live engine line is. */
+  #analysis-engine-pane:not(:has(.engine-window:not([hidden]))) #analysis-saved-line:not([hidden]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  #analysis-saved-line .sl-eval { flex: none; min-width: 48px; font-variant-numeric: tabular-nums; }
+  #analysis-saved-line .sl-pv { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+  #analysis-saved-line .sl-depth { flex: none; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  /* Pane tabs: each tab is the whole 44px track (a thumb on the word's edge
+     still lands on it); the selected pill is drawn 3px inside it. */
+  #view-analyze .an-panes > .an-tabs { height: 44px; padding: 0; gap: 0; }
+  #view-analyze .an-tab { height: 44px; align-self: auto; background: none; border-radius: 12px; }
+  #view-analyze .an-tab::after { content: none; }
+  #view-analyze .an-tab::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    z-index: -1;
+    border-radius: 9px;
+    background: transparent;
+    transition: background-color var(--dur-fast) var(--ease-out);
+  }
+  #view-analyze .an-tab { z-index: 0; }
+  #view-analyze .an-tab[aria-selected="true"] { background: none; }
+  #view-analyze .an-tab[aria-selected="true"]::before { background: var(--panel); }
+
+  /* Report: Chess.com's review head (each player's accuracy, large, side by
+     side), then the key moments as two-line rows, the grade table and the
+     phases. */
+  #view-analyze .report-pane { gap: 16px; padding-top: 12px; }
+  #view-analyze .report, #view-analyze .rp-body { gap: 16px; }
+  #view-analyze .rp-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0;
+  }
+  #view-analyze .rp-summary .rp-side {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 2px 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--panel);
+  }
+  #view-analyze .rp-summary .rp-disc { display: block; }
+  #view-analyze .rp-summary .rp-name { grid-column: 2; font-size: 13px; }
+  #view-analyze .rp-summary .rp-acc { grid-column: 1 / -1; text-align: left; font-size: 24px; font-weight: 700; }
+  #view-analyze .rp-summary .rp-errs { grid-column: 1 / -1; font-size: 13px; }
+  #view-analyze .rp-summary .rp-chev { display: none; }
+  #view-analyze .rp-sec { padding: 0; }
+  /* Key moments: the move, its kind and the eval on one line; the better move
+     on a second, under the move, never wrapped beside the eval. */
+  #view-analyze .km {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+  }
+  #view-analyze .km-go { grid-template-columns: 8px 64px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; }
+  #view-analyze .km-kind { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #view-analyze .km-best { margin: -8px 0 0; padding: 0 8px 8px 32px; font-size: 13px; }
+  #view-analyze .km-eval { justify-self: end; }
+  /* The grade table: a symbol per head, 44px rows. */
+  #view-analyze .rp-tr > :first-child { flex-basis: 20px; }
+  #view-analyze .rp-side-h { padding-left: 4px; }
+  #view-analyze .rp-counts .rp-col { min-height: 32px; padding: 0; }
+  #view-analyze .rp-counts .rp-n { height: 44px; line-height: 44px; }
+  #view-analyze .rp-badge { width: 24px; height: 24px; font-size: 12px; }
+  #view-analyze .rp-key-btn { height: 44px; padding: 0 12px; }
+  #view-analyze .rp-key { grid-template-columns: 1fr 1fr; }
+  #view-analyze .rp-key li { min-height: 28px; }
+  /* The report's last actions are full-width rows, never a lone button. */
+  #view-analyze #analysis-find-great:not([hidden]) { width: 100%; min-height: 48px; border-radius: 12px; font-size: 16px; }
+
+  /* The Games sheet's past analyses: the players on the first line, the result
+     and day under them, the bin at the row's end. */
+  #analyze-open .history-item { min-height: 56px; }
+  #analyze-open .history-item .hi-open { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 56px; }
+  #analyze-open .history-item .hi-players { max-width: 100%; }
+  #analyze-open .history-item .hi-delete { align-self: stretch; height: auto; min-height: 56px; }
+  /* 360-374px: the review line keeps "15.Be3 Blunder" whole beside Retry and
+     the steps; the players' error counts keep their words. */
+  @media (max-width: 374px) {
+    #analysis-explain .coach-review > .cr-step { width: 44px; }
+    #analysis-explain .coach-review > .btn { margin-right: 6px; padding: 0 10px; }
+    #analysis-explain .coach-review > .cr-label { gap: 6px; font-size: 14px; }
+    #view-analyze .rp-summary .rp-side { padding: 10px; }
+    #view-analyze .rp-summary .rp-errs { font-size: 12px; }
+  }
+}
