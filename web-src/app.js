@@ -266,7 +266,7 @@ const buildGoToEnd = viaBuildSession("buildGoToEnd");
 const createRepertoirePrompt = viaBuildSession("createRepertoirePrompt");
 const hydrateBuild = viaBuildSession("hydrateBuild");
 const onBuildBoardMove = viaBuildSession("onBuildBoardMove");
-const onInspectorInfo = viaBuildSession("onInspectorInfo");
+const openDockOptions = viaBuildSession("openDockOptions");
 const openBuildMenu = viaBuildSession("openBuildMenu");
 const openNodeContextMenu = viaBuildSession("openNodeContextMenu");
 const paintExplorerEvals = viaBuildSession("paintExplorerEvals");
@@ -1467,13 +1467,14 @@ function bindEvents() {
         b.setAttribute("aria-pressed", String(b === btn));
       });
       invalidateCoverage();
+      paintInspectorScope();
     });
   });
-  document.getElementById("coverage-depth")?.addEventListener("change", invalidateCoverage);
+  document.getElementById("coverage-depth")?.addEventListener("change", () => { invalidateCoverage(); paintInspectorScope(); });
 
-  // Explorer and Coverage share one compact header row: title + segmented
-  // control + info popover + scan action. Selecting another tool replaces the
-  // panel in place; selecting the active tool collapses the inspector.
+  // Explorer and Coverage share one compact header row: the tabs, the options
+  // button (its popover holds the database, scope and horizon) and the tab's
+  // action (the Engine switch, Scan).
   const inspectorDbs = document.getElementById("inspector-dbs");
   if (inspectorDbs) {
     inspectorDbs.querySelectorAll(".explorer-db").forEach((btn) => {
@@ -1486,11 +1487,12 @@ function bindEvents() {
           b.classList.toggle("is-active", b === btn);
           b.setAttribute("aria-pressed", String(b === btn));
         });
+        paintInspectorScope();
         refreshExplorerPanel();
       });
     });
   }
-  document.getElementById("inspector-info")?.addEventListener("click", onInspectorInfo);
+  document.getElementById("build-dock-opts")?.addEventListener("click", openDockOptions);
   // Phones show one of the line tree, Explorer or Coverage under the board.
   const panes = document.getElementById("build-panes");
   panes?.addEventListener("click", (event) => {

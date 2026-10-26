@@ -945,8 +945,9 @@
     white-space: nowrap;
   }
   .study .board-bar .board-label { color: var(--muted); font-size: 13px; }
-  /* Build has no label to spare. */
-  #view-build .board-bar .board-label { display: none; }
+  /* Build names the shown move in the bar's free middle, between Flip and the
+     arrows (Lichess's bottom bar): on the Explorer and Coverage panes the tree
+     is hidden, and this is what says which position the rows are for. */
   /* Analyze's middle track holds the Analyze pill, which is the one thing a
      phone puts there (see #run-analysis below). The bar's slot names the game
      on a wide screen; a phone has no room for it beside the pill without
@@ -1057,9 +1058,9 @@
      the pill fell back to inherited ink (measured at 390: rgb(27,28,30) on
      rgb(239,239,236), which read as a live button at 55% opacity). */
   #run-analysis:disabled { background: var(--surface-3); color: var(--label); }
-  /* The save chip is the inspector head's (see #build-sync-head below): the
-     board bar's copy would sit at the screen's bottom, far from the tree the
-     edit happened in. */
+  /* The save chip is the header's (see #build-sync-head below): the board
+     bar's copy would sit at the screen's bottom, far from the tree the edit
+     happened in. */
   .study .board-bar .build-sync { display: none !important; }
   /* The tab bar waits under the thumb bar; Menu raises it. */
   body:has(.view.is-active:is(#view-analyze, #view-build, #view-train)) .tabbar {
@@ -1222,6 +1223,19 @@
     text-overflow: ellipsis;
   }
   #build-rep-header .rep-color-sub { display: none; }
+  /* The save state is the title's subline, on every pane (it sat in the
+     Explorer's tools row, so the Moves pane, where edits happen, never showed it). */
+  #build-rep-header .build-sync {
+    align-self: flex-start;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    line-height: 16px;
+  }
+  #build-rep-header .build-sync:is(.is-saved, .is-dirty) { color: var(--label); }
   #build-rep-header .phone-back { color: var(--text); }
   #build-rep-header .phone-back svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   #build-rep-header #build-menu { grid-column: 3; }
@@ -1229,37 +1243,42 @@
 
   /* Under the board one pane at a time (the line tree, Explorer or Coverage)
      so stepping through the tree scrolls the tree and nothing else. */
+  /* The pane switch is one segmented track (the app's .seg: a surface-3 track,
+     the chosen pane on a panel plate), not three grey buttons side by side. */
   #build-panes {
     position: sticky;
     top: -10px;
     z-index: 2;
     display: flex;
-    gap: 2px;
     margin: -10px -12px 0;
-    padding: 4px 12px;
+    padding: 6px 12px 4px;
     background: var(--bg);
+  }
+  #build-panes::before {
+    content: "";
+    position: absolute;
+    inset: 6px 12px 4px;
+    z-index: -1;
+    border-radius: calc(var(--radius) + 2px);
+    background: var(--surface-3);
   }
   #build-panes > button {
     flex: 1 1 0;
     min-height: 44px;
-    border: 0;
-    border-radius: 8px;
-    background: var(--surface-3);
+    border: 2px solid transparent;
+    border-radius: calc(var(--radius) + 2px);
+    background: none;
+    background-clip: padding-box;
     color: var(--muted);
     font: inherit;
     font-size: 14px;
     font-weight: 600;
   }
-  #build-panes > button[aria-selected="true"] { background: var(--line-strong); color: var(--text); }
+  #build-panes > button[aria-selected="true"] { background: var(--panel); background-clip: padding-box; color: var(--text); }
   #view-build #build-sidebar.is-empty #build-panes,
   #view-build:not([data-pane="explorer"], [data-pane="coverage"]) #build-inspector,
   #view-build:is([data-pane="explorer"], [data-pane="coverage"]) :is(#build-branchbar, #builder-tree),
   #build-inspector .dock-tabs { display: none !important; }
-  #build-inspector .dock-tools { padding-top: 12px; }
-  /* Saving state beside the tools that trigger it (the board bar's chip is
-     hidden here). */
-  #build-inspector .build-sync { flex: none; font-size: var(--fs-s); }
-  #build-inspector .build-sync:not([hidden]) ~ :is(.dock-engine-switch, .inspector-scan) { margin-left: 0; }
 
   #build-sidebar > .panel-body > * { order: 3; }
   #build-sidebar > .panel-body > :is(#build-panes, .shared-banner) { order: 0; }
@@ -1270,6 +1289,12 @@
     border-radius: var(--radius-card);
     background: var(--panel);
   }
+  /* A shared repertoire: who shared it, then its two actions as one row that
+     fills the card, the copy (the primary) wider than Train. */
+  #shared-banner .shared-banner-text { flex-basis: 100%; }
+  #shared-banner .shared-banner-actions { flex: 1 1 100%; flex-wrap: nowrap; }
+  #shared-banner .shared-banner-actions > .btn { flex: 1 1 0; min-width: 0; }
+  #shared-banner .shared-banner-actions > .btn.primary { flex-grow: 2; }
   #view-build .tree-wrap { max-height: none; padding: 10px var(--build-pad, 12px); overflow: visible; line-height: 1.6; }
   #view-build .dock-resizer,
   #build-inspector .dock-fold { display: none; }
@@ -1280,24 +1305,41 @@
   #build-inspector .dock-tabs > [role="tab"]::after { content: none; }
   #build-inspector .dock-body { display: flex !important; flex-direction: column; overflow: visible; }
   #build-inspector .inspector-panel { overflow: visible; }
-  /* Two rows, the same in both panes: the scope (Masters | Players, Mainline |
-     Branch) as a full-width track, then the options with the pane's one action
-     at the right end (the Engine switch, the horizon and Scan). The switch
-     carried no word and wrapped alone onto a row of its own. */
-  #build-inspector .dock-head { padding: 0; }
-  #build-inspector .dock-tools { flex-wrap: wrap; gap: 8px; padding: 10px 12px 6px; }
-  #build-inspector .dock-tools > .seg { display: flex; flex: 1 1 100%; }
-  #build-inspector .dock-tools > .seg > .seg-btn { flex: 1 1 0; min-width: 0; }
-  #build-inspector .dock-engine-switch { min-height: 44px; }
+  /* One row, the same in both panes, like Lichess's explorer: the options
+     button names the pane's setting ("Masters", "Mainline · 8 moves") and opens
+     a sheet with the database, scope and horizon; the pane's one action (the
+     Engine switch, Scan) closes the row at the right. Round 1 drew two rows: a
+     full-width track, then the ⓘ, the save chip and the action. */
+  #build-inspector .dock-head { gap: 8px; padding: 8px 12px 0; }
+  #build-inspector .dock-opts { width: auto; max-width: none; padding: 0 14px 0 12px; font-size: 14px; justify-content: flex-start; }
+  #build-inspector .dock-opts-label { display: inline; }
+  #build-inspector .dock-opts .bi { width: 18px; height: 18px; }
+  #build-inspector .dock-engine-switch { min-height: 44px; padding-right: 4px; }
   #build-inspector .dock-engine-switch .pf-row-label { font-size: 14px; }
-  /* The pane's tools stay compact in type but not in reach: 40px is the
-     smallest box a thumb hits without a second try. */
-  #build-inspector :is(.seg-btn, .btn, .dock-select) { padding: 0 12px; font-size: 14px; }
-  /* A select keeps room for the chevron the shared rule draws inside its right
-     padding; the 12px above would put the label under the arrow. */
-  #build-inspector .dock-select { padding-right: 30px; }
-  #build-inspector .inspector-info { width: 44px; height: 44px; }
+  #build-inspector .inspector-scan { padding: 0 18px; font-size: 14px; }
+  /* The options are a sheet at the thumb, the menus' sheet. */
+  #build-dock-tools {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    width: auto;
+    max-width: none;
+    padding: 16px;
+    box-shadow: none;
+    animation: phone-sheet-up var(--dur-fast) var(--ease-out);
+  }
+  #build-dock-tools:popover-open { gap: 16px; }
+  #build-dock-tools::backdrop { background: rgba(0, 0, 0, 0.45); }
+  #build-dock-tools .dock-opt { gap: 6px; }
+  #build-dock-tools .dock-opt-label { font-size: 13px; }
+  #build-dock-tools .seg-btn { font-size: 15px; }
+  #build-dock-tools select { padding: 0 34px 0 12px; font-size: 15px; }
+  #build-dock-tools .dock-scope { font-size: 14px; }
   #build-inspector .explorer-row { min-height: 46px; }
+  /* The row is the action; its Move button (the focusable handle) is as tall
+     as the row, so the target a screen reader and a thumb find is the row's. */
+  #build-inspector .explorer-pick { align-self: stretch; display: flex; align-items: center; min-height: 44px; text-align: left; }
   /* "White / Draw / Black" broke onto two lines once Eval took a column. One
      line fits a 390px pane with the eval layout's columns tightened; a narrower
      one clips the label instead of widening the drawer. */
