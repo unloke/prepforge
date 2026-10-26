@@ -75,11 +75,11 @@
 }
 
 /* The coach's engine offer sits in the Humans row: its action and dismiss
-   take the panel's one control height (26px, as Last game and Analyze), so
+   take the panel's one control height (the .btn.sm height, as Last game and Analyze), so
    the panel no longer mixes 22, 24, 26 and 30px controls. */
-.coach-card .coach-unlock .unlock.is-inline { height: 26px; }
-.coach-card .coach-unlock .unlock.is-inline .btn { height: 26px; min-height: 26px; }
-.coach-card .coach-unlock .unlock.is-inline .unlock-x { width: 26px; height: 26px; }
+.coach-card .coach-unlock .unlock.is-inline { height: var(--control-h-sm); }
+.coach-card .coach-unlock .unlock.is-inline .btn { height: var(--control-h-sm); min-height: var(--control-h-sm); }
+.coach-card .coach-unlock .unlock.is-inline .unlock-x { width: var(--control-h-sm); height: var(--control-h-sm); }
 
 /* The coach card ---------------------------------------------------- */
 
@@ -95,8 +95,8 @@
    the card moves when the note lands. */
 .coach-card {
   --coach-line: 24px;
-  --coach-head: 26px;
-  --coach-foot: 26px;
+  --coach-head: var(--control-h-sm);
+  --coach-foot: var(--control-h-sm);
   --coach-gap: 6px;
   --coach-review: 0px;
   flex: none;
@@ -120,7 +120,7 @@
 .coach-card > .coach-bookline { grid-row: 4; }
 .coach-card > .coach-review { grid-row: 5; }
 /* A reviewed game adds the review bar's row to the card. */
-.coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(26px + var(--coach-gap)); }
+.coach-card:has(> .coach-review:not([hidden])) { --coach-review: calc(var(--control-h-sm) + var(--coach-gap)); }
 /* The gap between rows is each row's own margin, not a grid gap: a grid gap is
    also charged after the prep row, and with the note hidden that 6px landed
    between the Humans row and the Evaluation card as dead space. A display:none
@@ -234,7 +234,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 8px;
   border: 0;
   border-radius: 999px;
@@ -266,22 +266,22 @@
 }
 /* The review bar: the previous and next key moment around the one in focus,
    and at a mistake the better move or a try at finding it (Chess.com's Best,
-   Retry and Next). One row at the panel's control height (the .btn.sm 26px
+   Retry and Next). One row at the panel's control height (the .btn.sm height
    every other control in the panel uses); the label gives way before the
    buttons. */
 .coach-review {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: var(--control-h-sm);
   margin-top: var(--coach-gap);
 }
 .cr-step {
   flex: none;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   padding: 0;
   border: 0;
   border-radius: 6px;
@@ -298,14 +298,14 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 4px;
   border: 0;
   background: none;
   color: var(--text);
   font: inherit;
   font-size: var(--fs-s);
-  line-height: 26px;
+  line-height: var(--control-h-sm);
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -678,7 +678,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: var(--control-h-sm);
   padding: 0 10px 0 9px;
   border: 0;
   border-radius: 999px;

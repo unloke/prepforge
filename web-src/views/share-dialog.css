@@ -12,9 +12,6 @@
 }
 
 .share-add { display: flex; gap: 6px; }
-/* A button in a row of fields stands at the fields' height (btn.sm stood 4px
-   short of the input and the role select beside it). */
-:is(.share-add, .share-link-url) > .btn { height: var(--control-h); min-height: var(--control-h); }
 .share-add .share-person { flex: 1 1 0; }
 .share-add .share-target { flex: 0 1 auto; max-width: 30%; }
 .share-add .share-person[hidden] { display: none; }
@@ -60,5 +57,4 @@
   .share-add .share-person { flex-basis: 100%; order: -1; }
   .share-add .share-target,
   .share-add .share-role { flex: 1 1 0; max-width: none; }
-  :is(.share-add, .share-link-url) > .btn { height: 44px; min-height: 44px; }
 }

@@ -10,6 +10,7 @@
 @media (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
   :root {
     --control-h: 40px;
+    --menu-row-h: 40px;
     --land-rail: calc(68px + env(safe-area-inset-left));
   }
   body { padding-left: var(--land-rail); padding-right: env(safe-area-inset-right); }
@@ -82,8 +83,7 @@
   .board-bar .btn.icon { width: 40px; min-width: 40px; height: 40px; }
   .mtree-move { position: relative; }
   .mtree-move::after { content: ""; position: absolute; inset: -6px -1px; }
-  .dock-tabs button,
-  .context-menu button { min-height: 40px; }
+  .dock-tabs button { min-height: 40px; }
 }
 
 /* ---- A tablet held upright (761-1100 wide, narrower than 5:6) ---------------
@@ -92,7 +92,7 @@
    is pinned at the top and only the panel under it scrolls, and every control
    is sized for a finger. The rail stays: it fits the height. */
 @media (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6) {
-  :root { --control-h: 40px; }
+  :root { --control-h: 40px; --menu-row-h: 44px; }
   .rail .tab,
   .rail .rail-btn { height: 44px; }
   .rail .account-btn { height: 44px; }
@@ -128,8 +128,7 @@
     overscroll-behavior: contain;
   }
   #view-build .tree-wrap { max-height: none; }
-  .dock-tabs button,
-  .context-menu button { min-height: 44px; }
+  .dock-tabs button { min-height: 44px; }
   .board-bar { min-height: 44px; }
   .board-bar .btn.icon { width: 44px; min-width: 44px; height: 44px; }
 }

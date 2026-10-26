@@ -556,9 +556,7 @@
   .scout-color-tab small { flex-basis: 100%; }
   /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
      are the only way to switch sample size or start the prep. */
-  .speed,
-  .scout-panel .btn.sm { min-height: 40px; }
-  .speed { padding: 0 11px; border-radius: 20px; }
+  .speed { min-height: 44px; padding: 0 12px; border-radius: 22px; }
   .scout-intel-charts { grid-template-columns: 1fr; }
   .first-moves { grid-template-columns: 1fr; }
   .line-row { grid-template-columns: 1fr auto; min-height: 44px; }
@@ -595,12 +593,4 @@
 .scout-weakness-row.is-enter {
   animation: scout-row-enter var(--dur) var(--ease-out) both;
   animation-delay: calc(min(var(--enter-index, 0), 11) * 35ms);
-}
-
-/* The engine offer's dismiss is as tall as its Download action: 26px beside
-   the .btn.sm on a desktop (the shared dismiss is 28px), 44px beside the 44px
-   button on a phone (the shared phone dismiss is 40px). */
-#view-replay .scout-main > [data-unlock-place] .unlock .unlock-x { width: 26px; height: 26px; }
-@media (max-width: 760px) {
-  #view-replay .scout-main > [data-unlock-place] .unlock .unlock-x { width: 44px; height: 44px; }
 }

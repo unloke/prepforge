@@ -180,7 +180,7 @@
      change the tokens, never a control's own geometry. Controls that share a
      row share a token, so a row is one height. */
   --control-h: 30px;    /* default button, field, select (44px on phones) */
-  --control-h-sm: 26px; /* .btn.sm: dense rows, card heads, toasts (44px on phones) */
+  --control-h-sm: var(--control-h); /* .btn.sm: the same height, smaller type and padding */
   --menu-row-h: 30px;   /* one row in a menu or popover (48px on phones) */
   /* -- Spacing scale ----------------------------------------------------
      Two gaps do the work: between cards, and between the groups a page is
@@ -1182,7 +1182,9 @@ h2 {
   font-size: var(--fs-s);
   font-weight: 550;
   padding: 0 10px;
-  min-height: 26px;
+  /* The track (2px padding) stands at the control height: 30px on a desktop,
+     40px on a touch tablet. The phone redraws the track (phone.css). */
+  min-height: calc(var(--control-h) - 4px);
   cursor: pointer;
   white-space: nowrap;
   transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
@@ -1921,7 +1923,6 @@ textarea:focus-visible {
    at the same quiet weight as the rest of the strip. */
 .today-error { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--danger); font-size: var(--fs-s); font-weight: 600; }
 .today-error .btn { color: var(--text); }
-.btn.sm { height: 26px; padding: 0 9px; font-size: var(--fs-s); }
 a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 /* Grid: the repertoire table, with "Next steps" as a band under it while the
@@ -2313,7 +2314,6 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   .lib-cell-mastery,
   .lib-cell-queue { grid-column: 1 / -1; }
   .row-menu-btn { grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
-  .step .btn.sm { height: 34px; }
 }
 
 /* A card is a raised panel on the page: one tone step, no outline. The
@@ -3450,9 +3450,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   min-width: 0;
   min-height: 34px;
 }
-/* The tools' one action is a control-height button, level with the scope
-   track and the horizon select beside it (btn.sm stood 4px short). */
-:where(.dock-tools) .btn.sm { height: var(--control-h); min-height: var(--control-h); }
 /* The open tab's action (the Engine switch, Scan) closes the row at its right end. */
 .dock-tools > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
 /* The link prompt's button keeps its own box: wrapped, it starts a line rather
@@ -3787,8 +3784,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 /* One control height across the row: the source chips, the sample/colour
    select, Add and Check are all 30px, so their baselines line up. */
 @media (min-width: 761px) {
-  .toolbar .src-chip,
-  .toolbar .btn.sm { height: var(--control-h); min-height: var(--control-h); }
+  .toolbar .src-chip { height: var(--control-h); min-height: var(--control-h); }
 }
 .toolbar .spacer { flex: 1; }
 .src { display: flex; align-items: center; gap: 6px; min-width: 0; }

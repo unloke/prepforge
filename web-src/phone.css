@@ -27,9 +27,9 @@
        than this, so a group reads as one unit. */
     --phone-gap: 20px;
     /* The shared size tokens at a thumb's size: every .btn, .btn.sm, field and
-       menu row reads its height from these (styles.css). */
+       menu row reads its height from these (styles.css; .btn.sm follows
+       --control-h). */
     --control-h: 44px;
-    --control-h-sm: 44px;
     --menu-row-h: 48px;
   }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -50,8 +50,18 @@
   textarea { min-height: 44px; height: 44px; }
   .btn.icon,
   .btn.sm.icon { width: 44px; min-width: 44px; }
-  /* A segment is a target too: a "1 2 3" track drew 33px-wide options. */
-  .seg-btn { min-width: 44px; }
+  /* A segment is a target too: a "1 2 3" track drew 33px-wide options. The
+     track is a 44px control like the buttons beside it: no padding of its own
+     (44px segments in a 2px-padded track stood 48px tall); each segment draws
+     its plate 2px in, inside a transparent border, so the curves stay
+     concentric. */
+  .seg { gap: 0; padding: 0; }
+  .seg-btn {
+    min-width: 44px;
+    border: 2px solid transparent;
+    border-radius: calc(var(--radius) + 2px);
+    background-clip: padding-box;
+  }
   textarea { height: auto; }
   /* The switch is the shared 34x20 track at every width; its shared ::after
      gives a thumb the 44px it needs, so no view redraws it here. */
@@ -1215,8 +1225,6 @@
      bar stays. A Session pins the board on top, the coach line under it and
      the board bar's action slot (Hint · Skip, or Takeback · Resign) at the
      thumb. */
-  /* One control height for Train on a phone (train-shell.css reads it). */
-  :root { --train-control: 44px; }
   #view-train { --phone-reserve: max(190px, 30dvh); }
   #view-train:is([data-train-screen="home"], [data-train-screen="result"]) :is(.board-stack, .board-bar, .blitz-bar) { display: none; }
   #view-train:is([data-train-screen="home"], [data-train-screen="result"]) .study {
@@ -1258,11 +1266,7 @@
      side each takes its own full line. */
   #view-train .train-row-opts > :is(.train-chip, .train-color) { flex: 1 1 auto; }
   #view-train .train-chip { justify-content: space-between; font-size: 15px; }
-  /* The colour track is a 44px control like its neighbours: no 2px padding
-     (that made 40px buttons in a 44 track, or a 48 track around 44 buttons).
-     Each 44px button draws its plate 2px in, inside a transparent border. */
-  #view-train .train-color { gap: 0; padding: 0; }
-  #view-train .train-color .seg-btn { border: 2px solid transparent; border-radius: calc(var(--radius) + 2px); background-clip: padding-box; font-size: 14px; }
+  #view-train .train-color .seg-btn { font-size: 14px; }
   /* Practice: Random position is too wide to sit beside Play in a phone row;
      it is the row's quiet last line, a text action on the text edge. */
   #view-train .train-row[data-row="play"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts" "lucky lucky"; }

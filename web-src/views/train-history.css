@@ -23,8 +23,6 @@
   gap: 12px;
   padding: 16px 16px 12px;
 }
-/* Close stands at the control height beside the title, not the 26px small step. */
-.th-head .btn { height: var(--train-control, var(--control-h)); min-height: var(--train-control, var(--control-h)); }
 .th-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .th-head .modal-title { padding: 0; font-size: 15px; }
 .th-scope { color: var(--label); font-size: var(--th-meta); }
