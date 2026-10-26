@@ -3300,28 +3300,30 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
      reads as a different kind of thing without a rule or a card. */
   background: var(--surface-3);
 }
-/* One row heads the dock: its tabs, the tools of the open tab, the fold. */
+/* The dock's head: its tabs, the tools of the open tab, the fold. On one row
+   only when the panel fits the widest tab's tools (Coverage's scope, horizon
+   and Scan); otherwise the tabs and the fold keep the first row and the tools
+   of either tab take a full row under them, so switching tabs never changes
+   the head's shape and no control is pushed past the panel's edge (at 1000px
+   the Engine switch was clipped; at 1440 Scan sat off-screen). Wrapped tools
+   start on the tab labels' edge. */
+.dock { container: dock / inline-size; }
 .dock-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  column-gap: 8px;
+  gap: 2px 8px;
   min-width: 0;
-  padding: 0 4px 0 calc(var(--build-pad, 12px) - 10px);
-  container-type: inline-size;
+  padding: 0 4px 0 var(--build-pad, 12px);
 }
-/* A narrow panel (a 1000px window) keeps the row: the switch drops its word
-   (its tooltip and accessible name stay) and the segments tighten. */
-@container (max-width: 460px) {
-  .dock-engine-switch .pf-row-label { display: none; }
-  .dock-tools { gap: 4px; }
-  .dock-tools .seg-btn { padding: 0 7px; }
-  .dock-tabs button { padding-inline: 7px; }
-  .dock-fold { padding-inline: 4px; }
+@container dock (max-width: 630px) {
+  .dock-tools { order: 1; flex-basis: 100%; padding-bottom: 4px; }
 }
 .dock-tabs {
   display: flex;
   flex: none;
   gap: 2px;
+  margin-left: -10px;
 }
 .dock-tabs button {
   display: inline-flex;
@@ -3388,9 +3390,14 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock-fold {
   flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
   margin-left: auto;
-  padding: 6px 8px;
+  padding: 0;
   border: 0;
+  border-radius: var(--radius);
   background: none;
   color: var(--label);
   font: inherit;
@@ -3415,10 +3422,21 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: flex;
   flex: 1 1 auto;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   min-width: 0;
+  min-height: 34px;
 }
-.dock-tools .spacer { flex: 1; }
+/* The tools' one action is a control-height button, level with the scope
+   track and the horizon select beside it (btn.sm stood 4px short). */
+:where(.dock-tools) .btn.sm { height: var(--control-h); min-height: var(--control-h); }
+/* The open tab's action (the Engine switch, Scan) closes the row at its right
+   end, with the save state (phones) just before it. */
+.dock-tools > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
+.dock-tools > .build-sync:not([hidden]) ~ :is(.dock-engine-switch, .inspector-scan) { margin-left: 0; }
+/* The link prompt's button keeps its own box: wrapped, it starts a line rather
+   than trailing the sentence's last word. */
+#explorer-rows .hint:has(> [data-explorer-link]) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .inspector-info {
   width: 24px;
   min-width: 0;
@@ -4558,6 +4576,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .mtree-collapse:hover {
   color: var(--accent-strong);
 }
+/* The caret is an 11px glyph; its hit area reaches 24px without moving a token. */
+#view-build .mtree-collapse { position: relative; }
+#view-build .mtree-collapse::after { content: ""; position: absolute; inset: -6px -4px -6px -8px; }
 .mtree-collapsed {
   color: var(--muted);
   font-style: italic;
@@ -6075,8 +6096,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 #builder-tree .mtree-line.is-main > .mtree-var { margin: 1px 0 3px 2.4em; line-height: 1.6; }
 #builder-tree .mtree-var { --mtree-indent: 10px; }
 #builder-tree .mtree-var .mtree-move { padding: 1px 4px; font-weight: 450; }
+/* The mark rides inline after the move: the touch layouts' hit-area ::after
+   (absolute, inset) would otherwise lift the "?" onto the move's letters. */
 #builder-tree .mtree-move.is-gap::after {
   content: " ?";
+  position: static;
   color: var(--negative);
   font-weight: 700;
 }
