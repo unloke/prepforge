@@ -3697,11 +3697,11 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .train-line-path {
   display: block;
   width: 100%;
-  padding: 0;
+  padding: 6px 0;
   border: 0;
   background: none;
   color: var(--muted);
-  font: var(--fs-xs) var(--mono);
+  font: var(--fs-s)/16px var(--mono);
   direction: rtl;
   text-align: left;
   white-space: nowrap;
