@@ -94,7 +94,7 @@ export function openWelcome({ hasLichess = () => false, setLichessUsername = () 
     const rows = offered.length
       ? offered.map(({ id, state }) => html`<label class="welcome-engine" data-testid="welcome-engine-${id}"><input type="checkbox" value="${id}"${answers.picks.has(id) ? " checked" : ""} /><span class="welcome-engine-text"><b>${ENGINE_NAMES[id]}</b><span>${GAINS[id]}</span></span><span class="welcome-size">${formatMB(state.bytes)}</span></label>`)
       : html`<p class="welcome-found">Both are already in this browser.</p>`;
-    const action = total ? html`Download ${formatMB(total)} and start` : "Start";
+    const action = total ? "Download and start" : "Start";
     return html`${head("Local engines")}<div class="modal-body"><div class="welcome-engines">${rows}</div><p class="welcome-wifi" data-testid="welcome-wifi"${total ? "" : " hidden"}>Best on Wi-Fi. Kept in this browser; remove them any time in Settings.</p></div><footer class="modal-footer"><button type="button" class="btn ghost" data-welcome="back">Back</button><button type="button" class="btn primary" data-welcome="finish" data-testid="welcome-finish">${action}</button></footer>`;
   }
 

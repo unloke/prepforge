@@ -352,8 +352,6 @@
   /* A first-run step (signed out, or nothing built yet) is a short paragraph
      and its action: the action goes under the words, so the title is not
      squeezed into a 120px column beside a 150px pill. */
-  #view-dashboard .step:not([data-setup-step]) { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 14px 14px; }
-  #view-dashboard .step:not([data-setup-step]) .btn { justify-self: start; }
   /* The empty card carries Import PGN itself; the header's copy above it was a
      lone pill floating over the page. */
   #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .lib-actions { display: none; }
@@ -363,7 +361,40 @@
      over the error. Import needs the same server that just failed. */
   #view-dashboard .lib-list.is-error .lib-actions { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
-  #view-dashboard .step .btn { min-height: 44px; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--surface-3); color: var(--accent-strong); font-size: 15px; }
+  /* A step is one tappable row with a chevron, as the Chess.com home's
+     cards are: its button repeated the title ("Link your Lichess account" ·
+     "Link Lichess") and squeezed the title onto two lines beside a 150px pill,
+     or dropped under a paragraph as a lone pill. The button stays (its label
+     is its accessible name) and its hit area is the whole row. */
+  #view-dashboard .step { position: relative; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 4px; padding: 10px 2px 10px 14px; }
+  #view-dashboard .step + .step { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-dashboard .step-text b { display: block; font-size: 16px; font-weight: 600; }
+  #view-dashboard .step-text p { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
+  #view-dashboard .step .btn {
+    position: static;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: none;
+    color: var(--label);
+    text-indent: 200%;
+    white-space: nowrap;
+  }
+  #view-dashboard .step .btn {
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E") center / 20px no-repeat;
+  }
+  #view-dashboard .step .btn::after { content: ""; position: absolute; inset: 0; }
+  #view-dashboard .step:has(.btn:active) { background: var(--surface-3); }
+  /* Signed out: one row of two equal actions, Sign in the filled one. */
+  #view-dashboard .empty-state.big .row { display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; }
+  #view-dashboard .empty-state.big .row .btn { flex: 1 1 0; min-width: 0; }
 
   /* Games and Scout: the same grouped card — where the games come from, one
      choice row, then the action across the card. */
@@ -607,9 +638,10 @@
      buttons competing with the cards' own buttons. */
   #view-settings .settings-nav-link {
     position: relative;
-    flex: none;
+    flex: 1 0 auto;
+    justify-content: center;
     min-height: 44px;
-    padding: 0 12px;
+    padding: 0 8px;
     border-radius: 0;
     background: none;
     color: var(--muted);
@@ -620,9 +652,9 @@
   #view-settings .settings-nav-link::after {
     content: "";
     position: absolute;
-    right: 12px;
+    right: 8px;
     bottom: 0;
-    left: 12px;
+    left: 8px;
     height: 2px;
     border-radius: 1px;
     background: var(--accent);
@@ -675,9 +707,6 @@
   /* Sign out takes its own line under the identity, on the name's own edge
      (avatar 48px + the block's 12px gap): beside the name it cut the name to
      "onlyformu…", and 8px short of that edge it read as a stray button. */
-  #view-settings .acct-id { gap: 4px 12px; padding: 12px 0; flex-wrap: wrap; }
-  #view-settings .acct-id-text { flex: 1 1 calc(100% - 60px); }
-  #view-settings .acct-signout { align-self: flex-start; margin: 2px 0 0 60px; }
   /* The linked account's ⋯ is a thumb target, and its menu is an action sheet
      at the thumb like every other phone menu, not a 132px popover over the
      row under it. */
@@ -711,6 +740,104 @@
   #view-settings .set-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
   #view-settings #piece-style-picker { flex-wrap: nowrap; gap: 8px; padding: 0; border: 0; background: none; }
   #view-settings #piece-style-picker .piece-style-option { flex: 1 1 0; flex-direction: column; justify-content: center; min-height: 44px; height: auto; padding: 6px 8px 6px 6px; border-radius: var(--radius); background: var(--surface-3); }
+
+  /* ---- Settings, round 2: grouped lists with trailing text actions --------
+     Every row is a label on the left and one quiet action or value on the
+     right (iOS Settings, the Chess.com settings screens): boxed buttons of
+     five widths down a card read as a form, and two blue Download blocks
+     out-shouted the page. Groups are split by a band of the page ground, so
+     one card reads as several inset lists without boxes inside boxes. */
+  #view-settings .set :is(.set-row, .acct-row, .dl-head) .btn:not(.primary, .pf-switch),
+  #view-settings .set .dl-head .btn.primary,
+  #view-settings .acct-edit {
+    min-width: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--accent-strong);
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  #view-settings .set .btn.danger { color: var(--danger); }
+  #view-settings .acct-edit { height: 32px; min-height: 32px; font-size: 15px; }
+  #view-settings .acct-edit::after { content: ""; position: absolute; inset: -6px -4px; }
+  #view-settings .acct-edit { position: relative; }
+  /* A segmented control inside a white card: the chosen plate is the card's
+     own white, so it needs an edge to read as chosen, and the other options
+     step back to the muted ink. */
+  #view-settings .set .seg:not(#piece-style-picker) .seg-btn { color: var(--muted); font-weight: 500; }
+  #view-settings .set .seg:not(#piece-style-picker) .seg-btn.is-active { color: var(--text); font-weight: 650; outline: 1px solid var(--line-strong); outline-offset: -3px; }
+  /* Account: the identity heads the card, the rows follow, Sign out closes
+     the list as its own row (it hung under the email as an orphan button). */
+  #view-settings #settings-account-body { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; }
+  #view-settings #settings-account-body > :not(.acct-id) { grid-column: 1 / -1; }
+  #view-settings .acct-id { display: contents; }
+  #view-settings .acct-avatar { align-self: center; }
+  #view-settings .acct-id-text { padding: 14px 0; }
+  #view-settings .acct-id-name { gap: 4px; }
+  #view-settings .set .btn.acct-signout {
+    grid-column: 1 / -1;
+    margin: 0;
+    order: 9;
+    justify-content: flex-start;
+    width: 100%;
+    height: 52px;
+    min-height: 52px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
+    color: var(--accent-strong);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  #view-settings :is(#settings-account-body, #settings-account-data) > .acct-row { min-height: 52px; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-settings .acct-row-text { min-width: 0; }
+  #view-settings #set-account .acct-block {
+    margin: 0 -16px;
+    padding: 0 16px;
+    border-top: 8px solid var(--bg); /* taste-skill-ignore: a band of the page ground splits two groups, not a line */
+  }
+  #view-settings .acct-block-head { display: flex; align-items: center; gap: 2px; min-height: 40px; padding: 8px 0 0; }
+  #view-settings #set-connections .hint { margin: 0 0 6px; color: var(--muted); font-size: 14px; line-height: 1.4; }
+  #view-settings .set .btn.conn-link {
+    justify-content: flex-start;
+    width: 100%;
+    height: 52px;
+    min-height: 52px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
+    color: var(--accent-strong);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  #view-settings .acct-block > .btn.conn-link { margin: 0; }
+  #view-settings .acct-danger-zone { padding: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-settings .acct-danger-zone > summary { display: flex; align-items: center; min-height: 52px; color: var(--danger); font-size: 16px; font-weight: 500; }
+  #view-settings .acct-danger { padding: 0 0 12px; }
+  /* Appearance: a picker of four takes the row's full width under its label,
+     like the piece sets: "Board colors" broke over two lines beside a 2x2
+     grid of names. Each board is a tile, the chosen one tinted. */
+  #view-settings .pf-row:has(#settings-board-colors) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
+  #view-settings #settings-board-colors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  #view-settings .board-color-swatch { flex-direction: column; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; border-radius: var(--radius); background: var(--surface-3); color: var(--text); font-size: 13px; }
+  #view-settings .board-color-swatch[aria-pressed="true"] { background: var(--accent-soft); font-weight: 650; }
+  #view-settings .board-color-swatch[aria-pressed="true"]::after { content: none; }
+  /* Engine: a long value takes its own line under a small label, its action
+     at the right ("Stockfish 19.0.0 lite (WASM)" wrapped beside "Engine" and
+     left Refresh alone under it). */
+  #view-settings .set-row:has(> .set-row-value) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; padding: 8px 0; }
+  #view-settings .set-row:has(> .set-row-value) > span:first-child { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+  #view-settings .set-row-value { display: contents; }
+  #view-settings .set-row-value > b { min-width: 0; font-size: 15px; font-weight: 600; text-align: left; text-wrap: balance; }
+  #view-settings .pf-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
 
   /* Teams: with teams in the directory, the detail is opened by tapping one;
      an empty "No team selected" card under the list is a desktop pane with
@@ -1369,15 +1496,17 @@
   .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
   .modal-field > span { font-size: 13px; }
   .modal-field :is(input, select) { padding: 0 14px; }
-  .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
-  /* A dialog's footer fills the row at the thumb in equal halves, but never
-     narrower than a label: a long one ("Download 99 MB and start") takes the
-     room it needs instead of spilling out of its half, and a row that cannot
-     hold both wraps whole buttons. Both must read as buttons, so a ghost
-     Back / Cancel takes the quiet fill instead of floating as a word in half
-     the sheet. */
-  .modal-footer .btn { flex: 1 1 0; min-width: max-content; font-size: 16px; }
+  .modal-footer { flex-wrap: nowrap; gap: 8px; padding: 8px var(--phone-gutter) 16px; }
+  /* A dialog's footer is one row at the thumb, never two: the actions share it
+     in equal parts and a label that cannot fit is shortened at its source,
+     not wrapped (a wrapped footer left "Back" alone on a line over a
+     full-width "Download 99 MB and start"). Both must read as buttons, so a
+     ghost Back / Cancel takes the quiet fill instead of floating as a word. */
+  .modal-footer .btn { flex: 1 1 0; min-width: 0; overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
   .modal-footer .btn.ghost:not(.danger) { background: var(--surface-3); }
+  /* One primary: the quiet action keeps its label's width, the primary takes
+     the rest of the row (the Chess.com dialog footer). */
+  .modal-footer:has(.btn.primary) .btn:not(.primary) { flex: 0 0 auto; min-width: 104px; padding: 0 16px; }
   .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
   .auth-modal .auth-google { font-size: 16px; }
   .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
@@ -1411,15 +1540,37 @@
   .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
   .sheet-item .ic { width: 22px; height: 22px; color: var(--accent-strong); }
   .sheet-item:active { background: var(--surface-3); }
+  /* Three groups, the way the Chess.com More screen reads: who you are, where
+     else to go, then the utilities. A band of the recessed tone splits them,
+     so a group's first row carries no rule of its own. */
+  .sheet .sheet-sep { height: 8px; margin: 4px 0; background: var(--surface-3); }
+  .sheet .sheet-sep + .sheet-item:not([hidden]),
+  .sheet .sheet-sep + [hidden] + .sheet-item { box-shadow: none; }
+  /* The account is the sheet's head: a taller row, the name in ink, a chevron
+     because it opens the account menu (or Sign in). */
+  #sheet-account { min-height: 60px; font-weight: 600; text-align: left; }
+  #sheet-account .avatar { width: 32px; height: 32px; }
+  #sheet-account-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #sheet-account .sheet-chev { display: block; flex: none; width: 18px; height: 18px; color: var(--label); }
+  body.is-guest #sheet-account-label { color: var(--accent-strong); }
+  /* The command palette is a keyboard tool: a touch screen has no use for it. */
+  @media (hover: none) {
+    #sheet-palette { display: none; }
+  }
 
   /* ---- Notifications: one compact card, bottom-right ------------------- */
   /* Above the tab bar (pages) or the thumb bar (study screens), clear of the
      board and Analyze's chart. Only the newest card shows; the next surfaces
      when it leaves. Swipe it away or tap ×. */
+  /* A snackbar, as the Chess.com and Lichess apps show one: the width of the
+     screen less its gutters, the message on the left and its one action as a
+     tinted word on the same line, never a filled button parked alone on a
+     second line under the message. */
   .notices {
-    right: 10px;
-    bottom: calc(var(--phone-bar-h) + 10px + env(safe-area-inset-bottom));
-    width: min(320px, calc(100vw - 20px));
+    right: 8px;
+    left: 8px;
+    bottom: calc(var(--phone-bar-h) + 8px + env(safe-area-inset-bottom));
+    width: auto;
   }
   .notices > .notice:not(:last-child) { display: none; }
   .notice {
@@ -1434,8 +1585,12 @@
   .notice:not([data-tone="error"], .has-actions, :hover, :focus-within) .notice-close { opacity: 1; }
   .notice-close { width: 44px; height: 44px; }
   .notice-action,
-  .notice-stop { padding: 0 14px; font-size: 14px; }
-  .notice:has(.notice-action) { padding-bottom: 10px; }
+  .notice-stop { height: 44px; padding: 0 10px; border: 0; background: none; font-size: 15px; }
+  .notice-action,
+  .notice-action.is-primary { color: var(--accent-strong); font-weight: 650; }
+  .notice-action.is-primary { border: 0; background: none; }
+  .notice-action.is-primary:hover { border: 0; background: var(--surface-3); }
+  .notice:has(.notice-action) .notice-actions { grid-column: 3; grid-row: 1; gap: 0; margin: 0; padding: 0; }
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
   /* The tab bar is chrome: it is the same white as the cards and sits on the

@@ -1,0 +1,114 @@
+/* Phone kit: the shared pieces a phone screen is composed from, modeled on the
+   Chess.com and Lichess apps. Views use these instead of drawing their own.
+
+   .menu-title / .menu-sep   The ⋯ menu (core/overflow-menu.js): a popover on a
+                             desktop, an action sheet headed by the object's
+                             name on a phone, groups split by a rule.
+   .pk-chips                 A row of filters or tabs that scrolls sideways
+                             inside itself (Chess.com's game filters). The page
+                             never scrolls; the last chip is cut by the edge on
+                             purpose so the row reads as "more this way".
+   .pk-actionbar             The screen's one primary action docked above the
+                             tab bar where the thumb rests (Chessable's drill
+                             bar): a full-width primary, optional icon buttons
+                             before it.
+   .pk-row / .pk-row-action  A grouped-list row: label (and an optional
+                             subline) on the left, one trailing text action or
+                             value on the right, 52px tall (iOS Settings,
+                             Chess.com More).
+   Every phone dialog and action sheet carries a grab handle and rises from the
+   bottom edge (phone.css "Dialogs"); a dialog footer is one row that never
+   wraps. */
+
+.menu-title { display: none; }
+.sheet-sep { grid-column: 1 / -1; height: 0; }
+.sheet-chev { display: none; }
+.menu-sep { height: 1px; margin: 4px 0; background: var(--line); }
+.context-menu button.is-danger { color: var(--danger); }
+.context-menu button.is-danger:hover { background: var(--danger-soft); color: var(--danger-strong); }
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* ---- Action sheet head and groups --------------------------------------- */
+  .context-menu .menu-title {
+    display: block;
+    overflow: hidden;
+    padding: 4px 18px 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .context-menu .menu-sep { height: 8px; margin: 0; background: var(--surface-3); }
+  .context-menu .menu-title + button,
+  .context-menu .menu-title + .menu-sep { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the head of an action sheet */ }
+
+  /* ---- Grab handle: every sheet that rises from the bottom edge ------------ */
+  :root dialog.modal:not(.sheet)::before,
+  .context-menu:not(.account-menu)::before {
+    content: "";
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 4px;
+    margin: 8px auto 2px;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
+
+  /* ---- Chip scroller ------------------------------------------------------- */
+  .pk-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-inline: calc(-1 * var(--phone-gutter));
+    padding-inline: var(--phone-gutter);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--phone-gutter);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .pk-chips::-webkit-scrollbar { display: none; }
+  .pk-chips > * { flex: none; scroll-snap-align: start; white-space: nowrap; }
+
+  /* ---- Sticky bottom action bar -------------------------------------------- */
+  .pk-actionbar {
+    position: sticky;
+    bottom: calc(57px + env(safe-area-inset-bottom));
+    z-index: 2;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    margin-inline: calc(-1 * var(--phone-gutter));
+    padding: 8px var(--phone-gutter);
+    background: var(--bg);
+  }
+  .pk-actionbar > .btn { flex: none; }
+  .pk-actionbar > .btn.primary { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---- Grouped-list row ---------------------------------------------------- */
+  .pk-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 12px;
+    min-height: 52px;
+  }
+  .pk-row > :first-child { flex: 1 1 auto; min-width: 0; }
+  .pk-row-action,
+  .pk-row .btn.pk-row-action {
+    flex: none;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--accent-strong);
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}

@@ -5,6 +5,7 @@ import { createSyncController } from "./controllers/sync.js";
 import "./styles.css";
 import "./phone.css";
 import "./touch.css";
+import "./phone-kit.css";
 import { resetViewScroll } from "./view-scroll.js";
 import { swapView } from "./view-swap.js";
 import { prefetchViews } from "./view-prefetch.js";
@@ -58,7 +59,8 @@ import { applyPref, effectiveMaiaRating, effectiveStockfishDepth, loadPrefs, mai
 import { applyTheme } from "./theme.js";
 import { settleEntrances } from "./list-enter.js";
 import { showConfirmModal, showInputModal } from "./core/modals.js";
-import { isPopoverOpen, menuKeys, openPopover } from "./core/dialog.js";
+import { isPopoverOpen } from "./core/dialog.js";
+import { openOverflowMenu } from "./core/overflow-menu.js";
 import { hooks } from "./core/hooks.js";
 import { PIECE_SETS, PIECE_STYLE_KEY, boardAfterMove, boardInfo, isPromotionMove, legalMoveFor,
   legalTargetsFrom, optimisticBoardMove, parseFenBoard, pieceLabel, pieceSvg,
@@ -761,38 +763,21 @@ function closeRepertoireContextMenu() {
 }
 
 function openRepertoireContextMenu(event, repertoireId, isActive) {
-  event.preventDefault();
-  const menu = document.getElementById("repertoire-context-menu");
-  // From the ⋯ button: drop down under it, right edges aligned, so the menu stays
-  // over the row instead of running past the card. A right-click opens at the cursor.
-  const opener = event.type === "contextmenu" ? null : event.currentTarget;
-  const items = [
-    ["train", "Train this repertoire"],
-    ["edit", "Open in Repertoire"],
-    ["rename", "Rename..."],
-    ["share", "Share..."],
-    ["toggle-active", isActive ? "Disable" : "Enable"],
-    ["delete", "Delete..."],
-  ];
-  menu.innerHTML = html`${items
-    .map(
-      ([action, label]) =>
-        html`<button type="button" role="menuitem" tabindex="-1" data-action="${action}" data-repertoire-id="${repertoireId}">${label}</button>`
-    )}`;
-  const close = openPopover(menu, { opener: opener || event.currentTarget });
-  const rect = menu.getBoundingClientRect();
-  const anchor = opener?.getBoundingClientRect?.();
-  const wantLeft = anchor ? anchor.right - rect.width : event.clientX;
-  const wantTop = anchor ? anchor.bottom + 4 : event.clientY;
-  menu.style.left = `${Math.max(8, Math.min(wantLeft, window.innerWidth - rect.width - 8))}px`;
-  menu.style.top = `${Math.max(8, Math.min(wantTop, window.innerHeight - rect.height - 8))}px`;
-  menu.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () =>
-      handleRepertoireContextAction(button.dataset.action, button.dataset.repertoireId, isActive)
-    );
+  const row = event.currentTarget?.closest?.("[data-repertoire-id], .lib-row");
+  openOverflowMenu(document.getElementById("repertoire-context-menu"), {
+    event,
+    title: row?.querySelector?.(".name")?.textContent?.trim() || "",
+    data: { "repertoire-id": repertoireId },
+    items: [
+      { action: "train", label: "Train this repertoire" },
+      { action: "edit", label: "Open in Repertoire" },
+      { action: "rename", label: "Rename...", group: 1 },
+      { action: "share", label: "Share...", group: 1 },
+      { action: "toggle-active", label: isActive ? "Disable" : "Enable", group: 1 },
+      { action: "delete", label: "Delete...", danger: true, group: 2 },
+    ],
+    onPick: (action) => handleRepertoireContextAction(action, repertoireId, isActive),
   });
-  menuKeys(menu, close);
-  menu.querySelector("button")?.focus();
 }
 
 async function fetchRepertoireMeta(repertoireId) {

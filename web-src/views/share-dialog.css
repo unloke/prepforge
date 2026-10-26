@@ -53,8 +53,26 @@
 .modal-footer .share-reset { margin-right: auto; }
 
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
-  .share-add { flex-wrap: wrap; }
-  .share-add .share-person { flex-basis: 100%; order: -1; }
-  .share-add .share-target,
-  .share-add .share-role { flex: 1 1 0; max-width: none; }
+  /* Two rows that each read whole, as a share sheet does: who, with Share at
+     the end of the field (a joined input and action); then what kind and
+     which role, in equal halves. Three controls of three widths under the
+     field left Share as a narrow afterthought. */
+  .share-add {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-areas: "person person submit" "target role role";
+    gap: 8px;
+  }
+  .share-add .share-person { grid-area: person; }
+  .share-add .share-target { grid-area: target; max-width: none; }
+  .share-add .share-role { grid-area: role; }
+  .share-add > .btn { grid-area: submit; padding: 0 18px; }
+  /* A team picked in place of a person: the team takes the field's row. */
+  .share-add .share-target:has(+ .share-person[hidden]) { grid-area: person; }
+  .share-add:is(:not(.has-target), :has(.share-person[hidden])) { grid-template-areas: "person person submit" "role role role"; }
+  /* The link row reads like a settings row: its label first, the switch at
+     the trailing edge, the role between. */
+  .share-link-head { gap: 8px; min-height: 52px; }
+  .share-link-head .pf-switch { order: 3; }
+  .share-link-head .share-role { order: 2; flex: none; width: auto; }
 }
