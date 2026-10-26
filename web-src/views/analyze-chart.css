@@ -2163,7 +2163,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     --phone-eval-h: 40px;
     --phone-tabs-h: 60px;
     --phone-reserve: calc(var(--phone-eval-h) + var(--phone-strip-h) + var(--phone-tabs-h) + 52px);
-    --phone-reserve-up: calc(var(--phone-eval-h) + var(--phone-strip-h) + var(--phone-tabs-h) + max(176px, 32svh));
+    --phone-reserve-up: calc(var(--phone-eval-h) + var(--phone-strip-h) + var(--phone-tabs-h) + max(176px, 28svh));
   }
   #view-analyze:is([data-sheet="up"], :not([data-sheet]):not([data-pane="coach"])) { --phone-reserve: var(--phone-reserve-up); }
   #view-analyze .board-stack { transition: width var(--dur) var(--ease-out); }

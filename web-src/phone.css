@@ -1760,7 +1760,7 @@
      takes about half the screen. */
   #view-build {
     --phone-reserve: calc(var(--phone-head-h) + 60px + 76px);
-    --phone-reserve-up: calc(var(--phone-head-h) + 60px + max(176px, 32dvh));
+    --phone-reserve-up: calc(var(--phone-head-h) + 60px + max(176px, 28dvh));
   }
   #view-build:is([data-sheet="up"], :not([data-sheet]):is([data-pane="explorer"], [data-pane="coverage"])) { --phone-reserve: var(--phone-reserve-up); }
   #view-build .study:has(> .sidebar.is-empty) { --phone-reserve: max(304px, 40dvh); }
