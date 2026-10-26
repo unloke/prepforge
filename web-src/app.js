@@ -763,14 +763,12 @@ function closeRepertoireContextMenu() {
 }
 
 function openRepertoireContextMenu(event, repertoireId, isActive) {
-  const row = event.currentTarget?.closest?.("[data-repertoire-id], .lib-row");
   openOverflowMenu(document.getElementById("repertoire-context-menu"), {
     event,
-    title: row?.querySelector?.(".name")?.textContent?.trim() || "",
+    title: event.currentTarget?.closest?.("[data-repertoire-id], .lib-row")?.querySelector?.(".name")?.textContent?.trim() || "",
     data: { "repertoire-id": repertoireId },
     items: [
-      { action: "train", label: "Train this repertoire" },
-      { action: "edit", label: "Open in Repertoire" },
+      { action: "train", label: "Train this repertoire" }, { action: "edit", label: "Open in Repertoire" },
       { action: "rename", label: "Rename...", group: 1 },
       { action: "share", label: "Share...", group: 1 },
       { action: "toggle-active", label: isActive ? "Disable" : "Enable", group: 1 },
