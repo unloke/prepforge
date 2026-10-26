@@ -1714,3 +1714,68 @@
     transform: translateX(-50%);
   }
 }
+
+/* ---- Round 3: the phone browser's real viewport --------------------------
+   Safari and Chrome keep their own bars on screen (390x664, 375x553, 360x640
+   are what a page gets), so a board screen budgets its height exactly rather
+   than reserving a third of the screen. Like the Lichess and Chess.com game
+   screens: no tab bar during a board session (Menu raises it), a slim 44px
+   back header, the board as large as the screen's height allows once the rows
+   that must show are paid for, and the panes as a peek sheet whose head is
+   the pane switch (peek-sheet.js). Shell API, for any board screen:
+   - --phone-reserve: px of rows (besides the thumb bar) that must stay on
+     screen with the board in the peek; the board is the width or what is left.
+   - --phone-reserve-up: the same while the sheet is up (the pane's room).
+   - [data-peek][data-peek-home] on the pane tablist; the view gets
+     data-sheet="up" / "peek" (explicit) and is up by default off its home
+     pane; CSS reads :is([data-sheet="up"], :not([data-sheet]):not([data-pane=home])). */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  :root { --phone-head-h: 44px; }
+  .study .board-stack {
+    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
+    transition: width var(--dur) var(--ease-out);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .study .board-stack { transition: none; }
+  }
+  /* The tab bar's top rule is a shadow, not a border, so the bar is the
+     56px the items fill (57 with the border). */
+  .tabbar { height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom)); border-top: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the bar's top rule */ }
+
+  /* The sheet's head: the pane switch carries a grab bar and takes a drag. */
+  [data-peek] { position: relative; touch-action: none; }
+  [data-peek]::after {
+    content: "";
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line-strong);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  /* Repertoire: header 44, the pane switch 54, two tree rows. Up, the pane
+     takes about half the screen. */
+  #view-build {
+    --phone-reserve: calc(var(--phone-head-h) + 60px + 76px);
+    --phone-reserve-up: calc(var(--phone-head-h) + 60px + max(176px, 32dvh));
+  }
+  #view-build:is([data-sheet="up"], :not([data-sheet]):is([data-pane="explorer"], [data-pane="coverage"])) { --phone-reserve: var(--phone-reserve-up); }
+  #view-build .study:has(> .sidebar.is-empty) { --phone-reserve: max(304px, 40dvh); }
+  #build-rep-header { min-height: var(--phone-head-h); }
+  #build-rep-header .rep-name { height: 22px; font-size: 17px; }
+  #view-build #build-panes { padding-top: 12px; }
+  #view-build #build-panes::before { inset: 12px 12px 4px; }
+  #view-build #build-panes::after { top: 4px; }
+
+  /* Train session: the 44px top bar and its progress line, the coach line,
+     the bar. The result keeps room for its card. */
+  #view-train:not([data-train-screen="home"], [data-train-screen="result"]) { --phone-reserve: calc(var(--phone-head-h) + 11px + 56px); }
+  #view-train:not([data-train-screen="home"]) .train-head { min-height: var(--phone-head-h); padding-block: 0; }
+  /* The session's scroller holds nothing on the first screen: its 26px of
+     padding pushed the bar off a 553px screen. */
+  #view-train:not([data-train-screen="home"], [data-train-screen="result"]) .train-sidebar > .panel-scroll { padding-block: 0; }
+}
