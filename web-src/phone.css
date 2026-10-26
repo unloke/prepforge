@@ -75,25 +75,47 @@
     flex: none;
     min-height: 100dvh;
     max-width: none;
-    padding: calc(8px + env(safe-area-inset-top)) var(--phone-gutter) calc(80px + env(safe-area-inset-bottom));
+    padding: 0 var(--phone-gutter) calc(80px + env(safe-area-inset-bottom));
   }
+  /* A phone browser keeps 100-180px of the screen for its own bars, so a page
+     spends its height on rows, not on ground: blocks sit 12px apart (a card's
+     own 12px padding then makes the 24px step between two groups). */
+  :is(#view-dashboard, #view-replay, #view-teams, #view-settings) { --phone-gap: 12px; }
   /* The header is a title row, not a hero: the page's own content is what the
      screen is about, so the name sits at the app-title size (22px) instead of
      a 32px display size that out-shouts the list under it. Its height is the
-     action button's, not a 56px band around a 30px line. */
+     action button's, not a 56px band around a 30px line.
+     It is the iOS large title: it stays at the top while the page scrolls and
+     settles into a nav bar, the title shrinking to 17px over the first 32px of
+     scroll and a hairline drawing under it, so a scrolled page still names
+     itself and keeps its + in reach. It owns the top safe area (the notch on
+     an installed app), which the workspace no longer pads. */
   .page-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    min-height: 44px;
-    margin: 0;
+    min-height: calc(44px + env(safe-area-inset-top));
+    margin: 0 calc(-1 * var(--phone-gutter));
+    padding: env(safe-area-inset-top) var(--phone-gutter) 0;
+    background: var(--bg);
+  }
+  @supports (animation-timeline: scroll()) {
+    .page-head,
+    .page-head h1 { animation-timing-function: linear; animation-fill-mode: both; animation-timeline: scroll(root); animation-range: 0 32px; }
+    .page-head { animation-name: page-head-dock; }
+    .page-head h1 { animation-name: page-title-dock; transform-origin: left center; }
   }
   /* The header carries no margin of its own: a container that already gaps its
      children (the Library column, the Games panel) would then space it twice,
      which is what put ~50px of dead ground under the title. Only a page that
      stacks its blocks in normal flow gets the gap from here. */
   .view > .page-head { margin-bottom: var(--phone-gap); }
+  @keyframes page-head-dock { to { box-shadow: inset 0 -1px 0 var(--line); /* taste-skill-ignore: the nav bar's edge over scrolled rows */ } }
+  @keyframes page-title-dock { to { transform: scale(0.773); } }
   .page-head h1 { margin: 0; font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
   .page-head-btn {
     display: flex;
@@ -131,7 +153,7 @@
     align-items: center;
     gap: 2px 12px;
     min-height: 64px;
-    padding: 12px 14px 14px;
+    padding: 12px 14px;
     background: var(--panel);
   }
   #view-dashboard .today-streak {
@@ -181,7 +203,7 @@
     line-height: 1.35;
     text-wrap: pretty;
   }
-  #view-dashboard .today .btn { min-height: 44px; height: 44px; margin-top: 12px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
+  #view-dashboard .today .btn { min-height: 44px; height: 44px; margin-top: 10px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
@@ -399,6 +421,10 @@
   /* Games and Scout: the same grouped card — where the games come from, one
      choice row, then the action across the card. */
   #view-replay :is(.games-panel, .scout-panel):not([hidden]) { display: flex; flex-direction: column; gap: var(--phone-gap); height: auto; }
+  /* The ≤860px rule sets this title as a block; on a phone it is the pages'
+     title row, its title centred in the 44px bar. */
+  #view-replay .review > section > .page-head { display: flex; }
+  #view-replay .review > section > .page-head h1 { margin: 0; }
   #view-replay :is(.games-panel, .scout-panel) > .toolbar {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -467,9 +493,6 @@
      so neither floats on its own line under the Start control. */
   #view-replay .toolbar > #scout-reset-btn:not([hidden]) { grid-column: 1; justify-self: start; min-height: 44px; margin: 0; border: 0; color: var(--text); }
   #view-replay .toolbar > .counter { grid-column: 2; justify-self: end; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
-  /* The title is 44px tall as a bar; on the phone it is the title alone, so the
-     toolbar follows it at the panel's own gap instead of after a 34px band. */
-  #view-replay .scout-panel > .page-head { min-height: 0; }
   /* Once there is a report, Start leaves the docked bar and joins the toolbar's
      last row: Reset, the count, Start. Before that the docked Start is the page's one action. */
   #view-replay .scout-panel:has(#scout-results > .scout-section) > .toolbar { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; }
@@ -497,16 +520,25 @@
      its message: on Games and Scout the tab has either rows or nothing, and
      both read the same way. Games' ledger already carries the frame. */
   #view-replay .scout-empty.empty-state.big {
-    padding: 40px 24px;
+    padding: 24px 16px;
     border-radius: var(--radius-card);
     background: var(--panel);
   }
   #view-replay .scout-empty.empty-state.big h3 { font-size: 17px; }
+  /* Games' empty ledger is the same note: the 48px hero padding held one line
+     in a 120px card. */
+  #view-replay .ledger-empty.empty-state.big { padding: 24px 16px; }
+  #view-replay .ledger-empty.empty-state.big h3 { font-size: 17px; }
+  #view-replay .empty-state.big p:empty { display: none; }
   /* The engine offer (Maia's 46 MB download) waits under the report on a phone:
      the first screen is the opponent's lines, and the offer's card follows them.
      Only once there is a report: while games stream the page is short, and the
      card would sit 500px below the stream with nothing between. */
   #view-replay .scout-panel:has(#scout-results:not(:empty)) .scout-main > [data-unlock-place="scout"] { order: 2; }
+  /* The report's blocks keep the page's 12px step: the grid's 24px and the
+     offer's own 12px margin put 36px between the offer and the empty card. */
+  #view-replay .scout-grid { row-gap: var(--phone-gap); }
+  #view-replay .scout-main > [data-unlock-place="scout"] { margin-bottom: 0; }
 
   /* The page's one action docks above the tab bar, where the thumb rests:
      Check on Games, Start on Scout. Up in the source card it sat in the top
@@ -605,7 +637,10 @@
   #view-settings .settings-nav-link.is-active::after { opacity: 1; }
   /* The desktop label column draws its line on the left edge; the strip has none. */
   #view-settings .settings-nav-link::before { display: none; }
-  #view-settings .settings-content { display: flex; flex-direction: column; gap: 22px; }
+  #view-settings .settings-content { display: flex; flex-direction: column; gap: var(--phone-gap); }
+  /* The section strip is the page's docked bar; the title scrolls away under
+     it rather than docking above it as a second bar. */
+  #view-settings .page-head { position: static; }
   #view-settings .set { padding: 0 16px; }
   /* A long section title plus its info and action buttons (Maia3: "Download",
      "Reset cache") overflowed 320px; the buttons wrap under the title instead. */
@@ -1369,7 +1404,6 @@
      board, the back arrow alone (its word stays for screen readers), the mode
      and scope as one line of text that ellipsizes, the count at the end. */
   #view-train .train-head { order: 0; min-height: 52px; padding: 8px var(--phone-gutter) 4px; }
-  #view-train .train-title { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
   #view-train:not([data-train-screen="home"]) .train-head { min-height: 48px; padding: 2px var(--phone-gutter) 2px 4px; gap: 4px; }
   #view-train .train-back { flex: none; width: 44px; padding: 0; justify-content: center; }
   #view-train .train-back > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -1408,6 +1442,10 @@
   .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
 
   /* Home */
+  /* Home's head is the pages' title row: 44px, the 22px title (a 52px band
+     with a 24px title sat 8px lower than every other page's). */
+  #view-train[data-train-screen="home"] .train-head { min-height: 44px; padding: 0 var(--phone-gutter); }
+  #view-train .train-title { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
   #view-train .train-home { gap: 12px; }
   /* The panes are navigation, not a setting: underline tabs on one rule, so
      they never read as a second copy of Practice's colour switch. */
@@ -1416,7 +1454,7 @@
   #view-train .train-tabs .seg-btn.is-active { border-bottom-color: var(--accent); color: var(--text); }
   #view-train:not([data-train-pane="play"]) .train-row[data-row="play"],
   #view-train[data-train-pane="play"] .train-row:not([data-row="play"]) { display: none; }
-  #view-train .train-row { gap: 12px; padding: 16px; border-radius: var(--radius-card); }
+  #view-train .train-row { gap: 12px; padding: 12px 14px; border-radius: var(--radius-card); }
   #view-train .train-row-title { font-size: 17px; }
   #view-train .train-row-meta { font-size: 14px; }
   #view-train .train-row-opts { flex-wrap: nowrap; }
