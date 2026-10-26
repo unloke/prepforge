@@ -297,7 +297,7 @@ export function createAccountController({
       const signing = currentMode === "login" || currentMode === "register";
       const googleBlock =
         providers.google && signing
-          ? html`<button class="btn primary auth-google" data-action="google" type="button">Continue with Google</button>
+          ? html`<button class="btn auth-google" data-action="google" type="button">Continue with Google</button>
          <div class="auth-divider"><span>or use email</span></div>`
           : "";
       let fields = "";

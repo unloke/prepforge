@@ -26,6 +26,11 @@
     /* The gap between blocks on a phone. Items inside one block sit closer
        than this, so a group reads as one unit. */
     --phone-gap: 20px;
+    /* The shared size tokens at a thumb's size: every .btn, .btn.sm, field and
+       menu row reads its height from these (styles.css). */
+    --control-h: 44px;
+    --control-h-sm: 44px;
+    --menu-row-h: 48px;
   }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* iOS zooms the page into any field set below 16px. */
@@ -45,6 +50,8 @@
   textarea { min-height: 44px; height: 44px; }
   .btn.icon,
   .btn.sm.icon { width: 44px; min-width: 44px; }
+  /* A segment is a target too: a "1 2 3" track drew 33px-wide options. */
+  .seg-btn { min-width: 44px; }
   textarea { height: auto; }
   /* The switch is the shared 34x20 track at every width; its shared ::after
      gives a thumb the 44px it needs, so no view redraws it here. */
@@ -102,11 +109,15 @@
      keeps the accent and takes a thumb-sized pill. */
   #view-dashboard .today.card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    /* The action closes the card on its own line, as wide as the card's text:
+       beside the streak a "Learn new moves" pill took half the row and
+       out-shouted the queue it acts on, and a longer label had nowhere to go. */
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "streak train"
-      "queue  queue"
-      "more   more";
+      "streak"
+      "queue"
+      "more"
+      "train";
     align-items: center;
     gap: 2px 12px;
     min-height: 64px;
@@ -160,7 +171,7 @@
     line-height: 1.35;
     text-wrap: pretty;
   }
-  #view-dashboard .today .btn { min-height: 44px; height: 44px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
+  #view-dashboard .today .btn { min-height: 44px; height: 44px; margin-top: 12px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, so the head is
@@ -286,13 +297,16 @@
   #view-dashboard .lib-row .lib-opt {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "rep mastery" "queue queue";
-    align-items: start;
+    grid-template-areas: "rep rep" "queue mastery";
+    align-items: center;
     gap: 6px 10px;
     min-width: 0;
   }
+  /* The name owns the first line: beside "0% mastered" it was cut to
+     "Sicilian Najdor…" and its subline wrapped. The figure closes the queue's
+     line instead, on the row's right edge. */
   #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; }
-  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; align-self: start; justify-self: end; display: flex; padding-top: 2px; }
+  #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; justify-self: end; display: flex; }
   #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
   #view-dashboard .lib-row .lib-mbar { display: none; }
   #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
@@ -304,10 +318,12 @@
      under the 24px minimum target. It grows to 24px, the most it can take
      inside a row without turning the queue line into a stack of buttons; the
      row itself is the 64px target for opening the repertoire. */
-  #view-dashboard .lib-row button.kchip { min-height: 24px; padding: 0 9px; font-size: 13px; }
-  /* An untrained repertoire has no figure, only a note, and the note belongs
-     where the queue would be: under the name, at the name's left edge. */
-  #view-dashboard .lib-row:has(.lib-mastery-none) .lib-cell-mastery { grid-area: queue; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 9px; font-size: 13px; }
+  /* The chip stays a 24px pill; its hit area is the 44px row band around it. */
+  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -10px -2px; }
+  /* With no queue chips the line holds only the mastery note: it starts at
+     the name's left edge instead of hanging off the right. */
+  #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
   #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 44px; height: 44px; opacity: 1; }
 
@@ -531,6 +547,9 @@
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
+    /* The strip is a flex row: without it the inline links wrapped "Engine"
+       onto a second 44px line. */
+    display: flex;
     width: auto;
     max-width: none;
     flex-wrap: nowrap;
@@ -615,6 +634,16 @@
     font-size: 16px;
   }
   #view-settings .pf-row-label { font-size: 16px; font-weight: 400; }
+  /* A label is never squeezed under its value: "Engine" ran into "Stockfish
+     19.0.0 lite (WASM)" with no gap. The value side wraps instead. */
+  #view-settings .set-row > span:first-child { flex: none; }
+  #view-settings .set-row-value { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; text-align: right; }
+  #view-settings .set-row:has(> .set-row-value) { align-items: baseline; }
+  /* A slider's thumb gets a thumb-sized hit row; the 4px track stays drawn. */
+  #view-settings input[type="range"] { height: 44px; min-height: 44px; }
+  /* The linked username and the danger-zone fold are targets on a phone. */
+  #view-settings .conn-user { min-width: 44px; min-height: 44px; }
+  #view-settings .acct-danger-zone > summary { min-height: 44px; }
   /* Settings row buttons are the shared .btn at the shared phone height; only
      the padding grows for a thumb. */
   #view-settings .set :is(.btn, .btn.sm) { padding: 0 14px; font-size: 15px; }
@@ -1263,7 +1292,7 @@
   }
   .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   .context-menu button {
-    min-height: 44px;
+    min-height: var(--menu-row-h);
     padding: 0 18px;
     border-radius: 0;
     font-size: 16px;
@@ -1302,7 +1331,14 @@
   .modal-field > span { font-size: 13px; }
   .modal-field :is(input, select) { padding: 0 14px; }
   .modal-footer { flex-wrap: wrap; gap: 10px; padding: 8px var(--phone-gutter) 16px; }
-  .modal-footer .btn { flex: 1 1 0; font-size: 16px; }
+  /* A dialog's footer fills the row at the thumb in equal halves, but never
+     narrower than a label: a long one ("Download 99 MB and start") takes the
+     room it needs instead of spilling out of its half, and a row that cannot
+     hold both wraps whole buttons. Both must read as buttons, so a ghost
+     Back / Cancel takes the quiet fill instead of floating as a word in half
+     the sheet. */
+  .modal-footer .btn { flex: 1 1 0; min-width: max-content; font-size: 16px; }
+  .modal-footer .btn.ghost:not(.danger) { background: var(--surface-3); }
   .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
   .auth-modal .auth-google { font-size: 16px; }
   .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
@@ -1349,7 +1385,7 @@
   .notices > .notice:not(:last-child) { display: none; }
   .notice {
     min-height: 44px;
-    padding: 4px 2px 4px 12px;
+    padding: 6px 2px 6px 12px;
     column-gap: 8px;
     border-radius: var(--radius-card);
     font-size: 14px;
@@ -1357,9 +1393,10 @@
   .notice-text { font-size: 12px; }
   .notice-title[hidden] + .notice-text { font-size: 14px; }
   .notice:not([data-tone="error"], .has-actions, :hover, :focus-within) .notice-close { opacity: 1; }
-  .notice-close { width: 40px; height: 40px; }
+  .notice-close { width: 44px; height: 44px; }
   .notice-action,
-  .notice-stop { height: 34px; padding: 0 12px; font-size: 13px; }
+  .notice-stop { padding: 0 14px; font-size: 14px; }
+  .notice:has(.notice-action) { padding-bottom: 10px; }
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
   /* The tab bar is chrome: it is the same white as the cards and sits on the

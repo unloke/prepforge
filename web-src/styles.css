@@ -175,7 +175,13 @@
   --radius: 6px;      /* controls, small chips */
   --radius-card: 10px; /* cards, popovers, dialogs */
   --radius-chip: 4px; /* status and kind pills: one step under a control */
-  --control-h: 30px;  /* button / select height (44px on phones, phone.css) */
+  /* One control-size system. Every button, field and menu row takes its height
+     from these three tokens; a phone (phone.css) and a touch screen (touch.css)
+     change the tokens, never a control's own geometry. Controls that share a
+     row share a token, so a row is one height. */
+  --control-h: 30px;    /* default button, field, select (44px on phones) */
+  --control-h-sm: 26px; /* .btn.sm: dense rows, card heads, toasts (44px on phones) */
+  --menu-row-h: 30px;   /* one row in a menu or popover (48px on phones) */
   /* -- Spacing scale ----------------------------------------------------
      Two gaps do the work: between cards, and between the groups a page is
      made of. Items inside one card sit closer than --gap-card, so a card
@@ -1476,21 +1482,35 @@ h2 {
 }
 
 .btn.sm {
-  height: 26px;
-  min-height: 26px;
+  height: var(--control-h-sm);
+  min-height: var(--control-h-sm);
   padding: 0 9px;
   font-size: var(--fs-s);
 }
 
 .btn.sm.icon {
-  width: 26px;
-  min-width: 26px;
+  width: var(--control-h-sm);
+  min-width: var(--control-h-sm);
   padding: 0;
 }
 
 .btn.block {
   width: 100%;
 }
+
+/* A row of buttons: one height (each button keeps its size token), each
+   button as wide as its label, wrapping as a whole button rather than
+   squeezing a label onto two lines. `.is-fill` is the one opt-in to equal
+   widths (a phone dialog's Cancel / Confirm); nothing else stretches. */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.btn-row > .btn { flex: none; }
+.btn-row.is-end { justify-content: flex-end; }
+.btn-row.is-fill > .btn { flex: 1 1 0; min-width: 0; }
 
 /* Disabled and engine-unavailable actions read inert without going under the
    contrast floor: the muted fill and ink land after the variants, so a disabled
@@ -2146,6 +2166,9 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
 .lib-row .kchip.k-weak,
 .lib-row .kchip.k-due,
 .lib-row .kchip.k-new { background: var(--surface-3); color: var(--text); }
+/* The open row is filled with the chips' own grey: there the chip steps up to
+   the card's white so it still reads as a pill. */
+.lib-row.is-selected .kchip:is(.k-weak, .k-due, .k-new) { background: var(--panel); }
 .lib-row .kchip.k-weak::before { background: var(--k-weak); }
 .lib-row .kchip.k-due::before { background: var(--k-due); }
 .lib-row .kchip.k-new::before { background: var(--k-new); }
@@ -4596,13 +4619,13 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 }
 
+/* A group label in a menu: sentence case at the small size, like every other
+   label in the app (a 10px tracked capital was the one shouting label left). */
 .context-section {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: var(--fs-xs);
+  font-weight: 600;
   color: var(--label);
-  padding: 8px 10px 4px;
+  padding: 8px 10px 2px;
 }
 
 .context-section:first-child {
@@ -4640,9 +4663,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .context-menu button {
   width: 100%;
-  min-height: 28px;
+  min-height: var(--menu-row-h);
   border: 0;
-  border-radius: 3px;
+  border-radius: var(--radius-chip);
   padding: 0 10px;
   background: transparent;
   color: var(--text);
@@ -4810,7 +4833,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   color: var(--muted);
 }
 
-/* Sign-in / create-account modal extras. */
+/* Sign-in / create-account modal extras. Google is the outlined secondary:
+   the dialog's one filled action is its submit, so two accent bars never
+   compete in one 380px card. */
 .auth-modal .auth-google {
   width: 100%;
   justify-content: center;
@@ -4835,7 +4860,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 .auth-link {
   justify-self: start;
-  margin: 6px 0 0;
+  min-height: 24px;
+  margin: 2px 0 0;
   padding: 0;
   border: 0;
   background: none;
@@ -4910,8 +4936,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   justify-content: space-between;
 }
 
-/* "New here? Create account" reads as a link, not stray text. */
+/* "New here? Create account" reads as a link, not stray text. It is as tall
+   as the submit beside it, so the footer is one row of one height. */
 .auth-footer .auth-switch {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
   margin: 0;
   font-size: 13px;
   font-weight: 600;
@@ -5203,14 +5233,24 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .notice[data-state="cancelled"] .notice-fill,
 .notice.is-cancelling .notice-fill { background: var(--muted); }
 
+/* Actions sit on their own line under the message, right-aligned: beside it
+   they took half of a 360px card and wrapped a one-line message onto five. A
+   lone Stop on a running job keeps its place beside the text. */
 .notice-actions { grid-column: 3; display: flex; gap: 6px; }
 .notice-actions:empty { display: none; }
+.notice:has(.notice-action) .notice-actions {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-right: 6px;
+}
 .notice-action,
 .notice-stop {
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 10px;
   border: 1px solid var(--line-strong); /* taste-skill-ignore: a quiet button on a white card needs its edge */
-  border-radius: 7px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   font: inherit;

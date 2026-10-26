@@ -76,6 +76,21 @@
 .set {
   padding: 12px 14px;
 }
+/* Desktop: every card shares one frame. A titled card puts its title in a
+   200px column and its rows 32px after it; an untitled card (Account,
+   Appearance, Board) puts its row labels in that same 200px column, so the
+   cards' labels start on one edge and their controls on the next, instead of
+   238 / 244 and 452 / 476 / 690. */
+@media (min-width: 761px) {
+  .settings-content > .set { padding: 16px 20px; }
+}
+@media (min-width: 1200px) {
+  .settings-content > .set:not(:has(> h2)) :is(.set-row, .pf-row, .dl-head) {
+    grid-template-columns: 200px minmax(0, 1fr);
+    column-gap: 32px;
+  }
+  .settings-content > .set:not(:has(> h2)) :is(.set-row > span:first-child, .pf-row-text) { max-width: 200px; }
+}
 /* A section with a title is a row: the title in a label column, its rows in
    the panel beside it (app-screens 8.2). The title and the panel share the top
    edge. A card with no title of its own (the view's h1 names it) stays full
@@ -285,10 +300,10 @@
   .slider input { width: 130px; }
   /* The nav links are anchors, not .btn: they keep their own thumb height. */
   .settings-nav-link { min-height: 44px; }
-  /* The ⓘ is a 24px glyph with a 40px box on a phone. The switch already
+  /* The ⓘ is a 24px glyph with a 44px box on a phone. The switch already
      carries its thumb-sized tap area in the shared rule, so it is not redrawn
      here. */
-  .set .pf-info { min-width: 40px; min-height: 40px; }
+  .set .pf-info { min-width: 44px; min-height: 44px; }
   .set-row { flex-wrap: wrap; }
 }
 
@@ -374,7 +389,7 @@
   color: var(--text);
   text-decoration: none;
 }
-@media (max-width: 760px) { .conn-user { min-height: 40px; } }
+
 .conn-user:hover { text-decoration: underline; }
 .acct-danger-zone { margin-top: 14px; }
 .acct-danger-zone > summary {
