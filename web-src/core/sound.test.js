@@ -210,6 +210,14 @@ describe("playing a cue", () => {
     expect(sound.cueAllowed("capture", "move", 0)).toBe(true);
   });
 
+  it("plays at the Settings volume, heard on a log scale", async () => {
+    const { sound } = await soundWith();
+    expect(sound.volumeGain(100)).toBe(1);
+    expect(sound.volumeGain(50)).toBe(0.25);
+    expect(sound.volumeGain(0)).toBe(0);
+    expect(sound.volumeGain(140)).toBe(1);
+  });
+
   it("cuts the sounding cue so two never ring together", async () => {
     const { sound, made } = await soundReady();
     sound.playSound("capture");

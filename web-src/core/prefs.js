@@ -12,6 +12,7 @@ const DEFAULT_PREFS = {
   flipAnim: true,
   moveAnim: true,
   sounds: true,
+  soundVolume: 80,
   bestArrow: true,
   // Live engine on/off, remembered per view: Build shows it inside the
   // Explorer (an eval per candidate), Analyze inside the Evaluation card.

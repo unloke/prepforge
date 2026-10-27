@@ -30,6 +30,7 @@ Freesound audio was taken from the site's high-quality preview of the sound.
 | promotion.mp3 | FS-555190 strike at 104.053 s + VSCO2CE `glock_medium_C6.wav` 40 ms in, x0.3, damped |
 | right.mp3 | VSCO2CE `Percussion/Marimba/Marimba_hit_Outrigger_C4_loud_01.wav` (sounds C5), then `..._G4_loud_01.wav` (sounds G5) 85 ms later, damped |
 | wrong.mp3 | VSCO2CE `Marimba_hit_Outrigger_G2_loud_01.wav` (sounds G3) raised 1 semitone, then unshifted 90 ms later, damped |
+| illegal.mp3 | FS-555190 strike at 104.053 s (move.mp3) lowered 5 semitones, low-passed at 2 kHz, 20 ms fade |
 | complete.mp3 | VSCO2CE marimba C5, C5 raised 4 semitones (E5), G5, `..._C6_loud_01.wav` (sounds C7) lowered 12 semitones (C6), 70 ms apart, with `glock_medium_C6.wav` x0.25 on the top note |
 
 The VSCO2CE file names are an octave below the pitch they sound; the pitches

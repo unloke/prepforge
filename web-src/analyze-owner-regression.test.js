@@ -9,12 +9,30 @@ it("the live chart enters Maia loading while warmup is still pending", async () 
   const live = { phase: vi.fn() };
   const start = source.indexOf('    engineLifecycleMark("analyze-stockfish-done"');
   const end = source.indexOf("    // Browser Maia pass", start);
-  const run = new Function("live", "maiaReady", "wantsMaia", "engineLifecycleMark", "tAnalyze",
+  const run = new Function("live", "maiaReady", "wantsMaia", "overlapMaia", "engineLifecycleMark", "tAnalyze",
     `return (async () => { ${source.slice(start, end)} })();`);
-  const pending = run(live, maiaReady, true, vi.fn(), 0);
+  const pending = run(live, maiaReady, true, true, vi.fn(), 0);
   expect(live.phase).toHaveBeenCalledWith("maia-load");
   resolve();
   await pending;
+});
+
+// A phone runs Maia's init only once the Stockfish pass has closed its workers:
+// both at once is what the OS killed the tab for after a Detect.
+it("a phone starts Maia only after the Stockfish pass", async () => {
+  expect(source).toMatch(/const overlapMaia = wantsMaia && !isHandheld\(/);
+  expect(source).toMatch(/let maiaReady = overlapMaia \? getSharedMaia3Provider\(\)\.warmup\(\) : null;/);
+  expect(source).toMatch(/let assessorReady = overlapMaia \? startAssessor\(\) : null;/);
+  const start = source.indexOf('    engineLifecycleMark("analyze-stockfish-done"');
+  const end = source.indexOf("    // Browser Maia pass", start);
+  const warmup = vi.fn(() => Promise.resolve());
+  const startAssessor = vi.fn(() => Promise.resolve(null));
+  const run = new Function("live", "maiaReady", "assessorReady", "wantsMaia", "overlapMaia", "engineLifecycleMark", "tAnalyze",
+    "getSharedMaia3Provider", "startAssessor",
+    `return (async () => { ${source.slice(start, end)} })();`);
+  await run({ phase: vi.fn() }, null, null, true, false, vi.fn(), 0, () => ({ warmup }), startAssessor);
+  expect(warmup).toHaveBeenCalledTimes(1);
+  expect(startAssessor).toHaveBeenCalledTimes(1);
 });
 function attachFinish(deps) {
   const start = source.indexOf("async function finishAnalyzeCheckpoint(");

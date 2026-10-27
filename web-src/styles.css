@@ -896,9 +896,8 @@ h2 {
   outline-offset: 1px;
 }
 
-/* Phone: the 20px chip × sat between the toolbar's 44px controls and was the
-   only way to drop a source. The × keeps its 20px look inside a 44px target,
-   and the chip itself is a 44px row like every other phone control. */
+/* Phone: the × keeps its 20px look inside a 44px target, and the chip is
+   drawn at the 36px control height like every other phone control. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .src-chip-x {
     width: 44px;
@@ -906,7 +905,7 @@ h2 {
     margin: -12px -6px -12px -2px;
     font-size: 17px;
   }
-  .src-chip { height: auto; min-height: 44px; padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
+  .src-chip { height: auto; min-height: var(--control-h); padding-left: 11px; font-size: var(--fs-s); white-space: normal; overflow-wrap: anywhere; }
 }
 
 /* The [popover] root is only a top-layer host; .src-popover is the box. */
@@ -4395,6 +4394,9 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: flex;
   min-width: 0;
   height: 22px;
+  /* The white share is the panel's own colour: a frame, as on Lichess, keeps
+     it a segment of the bar. */
+  border: 1px solid var(--line-strong);
   border-radius: 3px;
   overflow: hidden;
   background: var(--explorer-track);

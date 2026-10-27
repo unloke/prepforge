@@ -20,7 +20,11 @@ const rowKey = (row) => row.dataset?.key ?? row.textContent ?? "";
 // True while the node cannot show an entrance of its own: its view is still
 // cross-fading in, or it is not rendered at all.
 export function entranceCovered(node) {
-  if (typeof node?.getClientRects === "function" && !node.getClientRects().length) return true;
+  // checkVisibility needs only style; getClientRects forced a full layout in
+  // the middle of every step that painted a list (the Explorer, the fork bar).
+  if (typeof node?.checkVisibility === "function") {
+    if (!node.checkVisibility()) return true;
+  } else if (typeof node?.getClientRects === "function" && !node.getClientRects().length) return true;
   // view-swap.js marks the incoming view for the length of the route fade.
   return Boolean(node?.closest?.(".view")?.classList?.contains("is-arriving"));
 }
@@ -55,9 +59,12 @@ export function enterOnce(el) {
     el.classList.remove(ENTER);
     return;
   }
-  // Restart even when the marker is still on from a previous arrival.
-  el.classList.remove(ENTER);
-  void el.offsetWidth;
+  // Restart even when the marker is still on from a previous arrival; only
+  // then does the restart need the reflow between the two class changes.
+  if (el.classList.contains(ENTER)) {
+    el.classList.remove(ENTER);
+    void el.offsetWidth;
+  }
   el.classList.add(ENTER);
 }
 

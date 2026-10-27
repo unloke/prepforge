@@ -2218,7 +2218,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze .analyze-main > :is(.analysis-retry-save, .analysis-import-picker) { order: 4; }
   #view-analyze[data-pane="coach"] #analysis-explain,
   #view-analyze .an-panes > .an-pane:not(.moves-pane) { flex: 1 1 0; min-height: 72px; overflow-y: auto; }
-  #view-analyze[data-pane="coach"] #analysis-explain { gap: 6px; padding: 4px var(--phone-gutter) 8px; }
+  #view-analyze[data-pane="coach"] #analysis-explain { gap: 6px; padding: 4px var(--phone-gutter); }
 
   /* Coach: the moment on a 36px line, the verdict as plain text (no card), the
      human picks as 26px chips. */

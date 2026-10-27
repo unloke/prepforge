@@ -4,6 +4,7 @@ import { pref, setPref, PREF_LABELS } from "../core/prefs.js";
 import { buildArrowHeadPath, buildArrowPath, endsUnder } from "../board-arrows.js";
 import { localBoardAfterMove, localBoardInfo } from "../chess-local.js";
 import { openPopover } from "../core/dialog.js";
+import { playSound } from "../core/sound.js";
 
 // Piece artwork sets. Each value is the inner SVG markup for a 0 0 45 45
 // viewBox; fill/stroke come from CSS (.piece). "berlin" is a cleaner,
@@ -109,8 +110,12 @@ export function renderPrefsToggles() {
     .map((key) => {
       const on = pref(key) ? " is-on" : "";
       const label = PREF_LABELS[key] || key;
+      // The volume rides under the sound switch, as Lichess sets its sound.
+      const volume = key === "sounds"
+        ? html`<div class="pf-row pf-volume"${pref("sounds") ? "" : " hidden"}><span class="pf-row-text"><span class="pf-row-label" id="pf-volume-label">Volume</span></span><input type="range" id="pf-volume" min="0" max="100" step="5" value="${String(pref("soundVolume"))}" aria-labelledby="pf-volume-label" /></div>`
+        : "";
       return (
-        html`<div class="pf-row"><span class="pf-row-text"><span class="pf-row-label">${label}</span></span><button type="button" class="pf-switch${on}" data-pref="${key}" role="switch" aria-checked="${pref(key)}" aria-label="${label}"><span class="pf-knob"></span></button></div>`
+        html`<div class="pf-row"><span class="pf-row-text"><span class="pf-row-label">${label}</span></span><button type="button" class="pf-switch${on}" data-pref="${key}" role="switch" aria-checked="${pref(key)}" aria-label="${label}"><span class="pf-knob"></span></button></div>${volume}`
       );
     })}`;
   host.querySelectorAll(".pf-switch").forEach((btn) => {
@@ -119,8 +124,16 @@ export function renderPrefsToggles() {
       setPref(key, !pref(key));
       btn.classList.toggle("is-on", pref(key));
       btn.setAttribute("aria-checked", String(pref(key)));
+      if (key === "sounds") host.querySelector(".pf-volume").hidden = !pref(key);
     });
   });
+  // Dragging previews the level with a move click; the value is stored on release.
+  const slider = host.querySelector("#pf-volume");
+  slider?.addEventListener("input", () => {
+    appState.prefs.soundVolume = Number(slider.value);
+    playSound("move");
+  });
+  slider?.addEventListener("change", () => setPref("soundVolume", Number(slider.value)));
 }
 
 export function legalTargetsFrom(square, moves) {

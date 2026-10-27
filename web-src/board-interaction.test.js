@@ -180,6 +180,16 @@ describe("a move made on the board", () => {
     expect(slides()).toEqual([]);
   });
 
+  it("answers a drop on a square the piece cannot reach with the illegal cue", () => {
+    const played = [];
+    mount({ onMove: (uci) => played.push(uci) });
+    captureWindowListeners();
+    press("e2");
+    release("e5");
+    expect(played).toEqual([]);
+    expect(sounds).toEqual(["illegal"]);
+  });
+
   it("keeps the slide for a click move, where the piece really travels", () => {
     mount({ onMove: (uci) => landOnBoard(AFTER_E4, uci) });
     captureWindowListeners();

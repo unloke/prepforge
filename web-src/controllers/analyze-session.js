@@ -17,6 +17,7 @@ import { buildGameSummary, hasClassifiedMoves } from "../coach/game-summary.js";
 import { getSharedMaia3Provider } from "../engine/maia3-provider.js";
 import { isBrowserEngineAvailable, ENGINE_ID, engineIdentity } from "../engine/stockfish-provider.js";
 import { createEngineAnalysisRun, readyIfCached } from "../engine/engine-profile.js";
+import { isHandheld } from "../engine/engine-ladder.js";
 import { describeMove } from "../explain.js";
 import { moveTextHtml, moveTokenHtml } from "../move-text.js";
 import { clearPeek } from "../line-preview.js";
@@ -987,10 +988,14 @@ async function runAnalysis(options = {}) {
       prep.brilliant.enabled &&
       Array.isArray(prep.moves) &&
       prep.moves.length > 0;
+    // A phone holds the Stockfish heap or Maia's init, not both: the OS kills the
+    // tab past its limit, and Detect only ever measured Stockfish. There Maia starts
+    // once the pass has closed its workers.
+    const overlapMaia = wantsMaia && !isHandheld(globalThis.navigator ?? {});
     // Null-safe: warmup() only rejects on init failure, which the Maia phase
     // below retries through predictions(), exactly as before.
-    const maiaReady = wantsMaia ? getSharedMaia3Provider().warmup() : null;
-    if (wantsMaia) engineLifecycleMark("analyze-maia-init-start", tAnalyze);
+    let maiaReady = overlapMaia ? getSharedMaia3Provider().warmup() : null;
+    if (overlapMaia) engineLifecycleMark("analyze-maia-init-start", tAnalyze);
     engineLifecycleMark("analyze-stockfish-start", tAnalyze);
     // Dedicated full-speed workers; positions the store already answers at this depth
     // are reused, and each result is published for the Engine panel and the Coach.
@@ -1003,33 +1008,32 @@ async function runAnalysis(options = {}) {
     };
     // The Maia pass streams alongside Stockfish: every finished eval goes to the assessor,
     // which assesses a move as soon as both of its positions are known, so most of the Maia
-    // work is done by the time the last Stockfish search lands.
+    // work is done by the time the last Stockfish search lands (off a phone).
     const shouldCancel = () => cancelled || analysisOwnerId !== currentOwnerId();
     let assessor = null;
     const pendingEvals = [];
-    const assessorReady = wantsMaia
-      ? (_coachReady || preloadCoach())
-          .then((c) => {
-            assessor = c.createBrilliantAssessor({
-              moves: prep.moves,
-              depth: prep.depth,
-              rating: effectiveMaiaRating(),
-              provider: getSharedMaia3Provider(),
-              analyzeFn: (o) => store.analyzeGame({ ...o, engineRun }),
-              shouldCancel,
-              onPhase: ({ phase: sub, detail }) => {
-                timings[`maia_${sub}`] = detail || 1;
-              },
-              onProgress: (done, total) =>
-                job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
-              onTrapProgress: (done, total) =>
-                job({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
-            });
-            for (const [fen, ev] of pendingEvals.splice(0)) assessor.push(fen, ev);
-            return assessor;
-          })
-          .catch(() => null)
-      : null;
+    const startAssessor = () => (_coachReady || preloadCoach())
+      .then((c) => {
+        assessor = c.createBrilliantAssessor({
+          moves: prep.moves,
+          depth: prep.depth,
+          rating: effectiveMaiaRating(),
+          provider: getSharedMaia3Provider(),
+          analyzeFn: (o) => store.analyzeGame({ ...o, engineRun }),
+          shouldCancel,
+          onPhase: ({ phase: sub, detail }) => {
+            timings[`maia_${sub}`] = detail || 1;
+          },
+          onProgress: (done, total) =>
+            job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
+          onTrapProgress: (done, total) =>
+            job({ current: done, total, phase: "maia-traps", message: `Maia traps ${done}/${total}` }),
+        });
+        for (const [fen, ev] of pendingEvals.splice(0)) assessor.push(fen, ev);
+        return assessor;
+      })
+      .catch(() => null);
+    let assessorReady = overlapMaia ? startAssessor() : null;
     const evals = await timed("stockfish", () => store.analyzeGame({
       engineRun,
       positions,
@@ -1044,6 +1048,11 @@ async function runAnalysis(options = {}) {
       shouldCancel,
     }));
     engineLifecycleMark("analyze-stockfish-done", tAnalyze);
+    if (wantsMaia && !overlapMaia) {
+      maiaReady = getSharedMaia3Provider().warmup();
+      engineLifecycleMark("analyze-maia-init-start", tAnalyze);
+      assessorReady = startAssessor();
+    }
     if (wantsMaia && maiaReady && typeof maiaReady.then === "function") {
       live.phase?.("maia-load");
       try {
