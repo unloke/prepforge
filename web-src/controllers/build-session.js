@@ -484,7 +484,15 @@ function initBuildDockLayout() {
     const observer = new ResizeObserver(() => {
       fitBuildDock();
       const height = treeBox?.clientHeight || 0;
-      if (height < treeHeight) requestAnimationFrame(() => tree.querySelector(".mtree-move.is-current")?.scrollIntoView({ block: "nearest" }));
+      if (height < treeHeight) requestAnimationFrame(() => {
+        // Scroll the tree box only: scrollIntoView would also nudge the
+        // phone study sideways and slide the full-width board off its edge.
+        const cur = tree.querySelector(".mtree-move.is-current");
+        if (!cur || !treeBox) return;
+        const box = treeBox.getBoundingClientRect(), r = cur.getBoundingClientRect();
+        if (r.top < box.top) treeBox.scrollTop -= box.top - r.top;
+        else if (r.bottom > box.bottom) treeBox.scrollTop += r.bottom - box.bottom;
+      });
       treeHeight = height;
     });
     for (const drawer of dock.querySelector(".dock-body")?.children || []) observer.observe(drawer);

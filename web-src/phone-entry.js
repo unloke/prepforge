@@ -63,6 +63,13 @@ export function scheduleMaiaIdleTeardown() {
 // Sheet entries mirror the canonical nav buttons so every view keeps its real
 // activation path (URL sync, loaders, transient-overlay cleanup).
 export function wireMobileNav() {
+  // Board screens only scroll down. overflow-x: hidden still lets a
+  // scrollIntoView nudge the study sideways by a subpixel, which slid the
+  // full-width board 1px off the left edge; snap any sideways scroll back.
+  document.addEventListener("scroll", (event) => {
+    const el = event.target;
+    if (el instanceof Element && el.classList.contains("study") && el.scrollLeft !== 0) el.scrollLeft = 0;
+  }, { capture: true, passive: true });
   const sheet = document.getElementById("more-sheet");
   const moreBtn = document.getElementById("more-nav-btn");
   if (!sheet || !moreBtn) return;
