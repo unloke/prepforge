@@ -1,130 +1,126 @@
 # PrepForge Chess
 
-PrepForge Chess is a **FastAPI + Postgres SaaS** for chess preparation. The server
-stores accounts, repertoires, analyses, and training progress — it **never computes
-chess**. Stockfish and Maia3 run **in the browser** (WASM / ONNX); the API classifies,
-persists, and enforces per-user ownership.
+Build your opening repertoire. Rehearse it. Check what happened over the board.
 
-The product covers:
+[Open PrepForge](https://prepforge-w0c5.onrender.com) · [Getting started](docs/getting-started.md) · [Documentation](docs/README.md) · [繁體中文](docs/README.zh-TW.md)
 
-- **Analyze** — PGN/Lichess import, move classification, eval graph, critical moments.
-- **Build** — repertoire trees with objective (Stockfish) and human-like (Maia3) branches.
-- **Train** — FSRS spaced repetition, mistake queues, Lichess practical-game matching.
-- **Scout** — opponent opening reach (Module A) plus production **Scout v2** route
-  selection (Module B). Experimental `?scoutV12=1` / `?scoutV13=1` paths are not
-  production. Current selector and runtime boundaries: `docs/scout-production-ranking.md`.
+[![CI](https://github.com/unloke/prepforge/actions/workflows/ci.yml/badge.svg)](https://github.com/unloke/prepforge/actions/workflows/ci.yml)
+[![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
 
-Shared core models (`src/prepforge_chess/core/`, `services/`, `storage/`) back both the
-web SPA and the optional CLI demos. Start with `docs/README.md` for the current
-documentation. History — superseded plans, audits and checkpoints — lives on the
-`history` branch.
+![Repertoire workspace with a Caro-Kann position, opening branches and Explorer statistics](docs/assets/repertoire-desktop.png)
 
-## Local development
+PrepForge is a chess preparation app that connects opening study, spaced repetition
+and game review. Keep your lines in a repertoire, practice the moves you need to
+remember, then compare your Lichess games with what you prepared.
 
-**Python 3.11** is the project standard (CI and production both use 3.11). Windows
-often defaults `python` to 3.8 — use `py -3.11` or the `.venv` below.
+Stockfish evaluates positions on your device. Maia3 estimates human move choices
+at a selected playing strength. Both run in the browser.
 
-### Backend (recommended: uv + lock file)
+## Prepare, play, review
 
-```powershell
-# Install uv once (https://docs.astral.sh/uv/) or: pip install uv
-uv sync --extra server --extra dev    # installs from uv.lock into .venv
-uv run pytest -q
-uv run ruff check src tests
-$env:DATABASE_URL="sqlite:///dev.sqlite3"
-uv run alembic upgrade head
-uvicorn prepforge_chess.api.main:app --reload
-```
+### Build a repertoire
 
-### Backend (pip + venv)
+Create lines on the board or import a PGN. Edit branches, choose a mainline and
+add comments and board annotations. Compare Masters and Players data in Explorer,
+or consult the engine. Generate continuations from a position and use Coverage
+to find missing replies, preview them and add the ones you want to prepare.
 
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[server,dev]"
-.\.venv\Scripts\python.exe -m pytest -q
-```
+### Remember your moves
 
-### Frontend
+Train with an FSRS spaced repetition schedule. The Due queue brings together
+moves to review; Rehearse follows your repertoire's lines; Practice lets you play
+against Maia, Lichess Explorer or your own repertoire. Use hints, retry mistakes
+or turn on timed Blitz training.
 
-```powershell
+### Check your games
+
+Games compares Lichess play with your repertoire and separates forgotten
+preparation, opponent novelties and positions you have not covered. Jump to the
+deviation, review the expected move or open the game in Analyze.
+
+### Analyze a position in context
+
+Load a PGN, a recent Lichess game or a practice game. Review move classifications,
+the evaluation graph and turning points. Explore engine and human candidate
+lines, then return to the game.
+
+### Prepare for an opponent
+
+Scout reads a player's Lichess games, filters by colour and time control, and
+surfaces opening lines to investigate. Inspect a line, analyze it or add it to a
+repertoire. Deep scan checks games for engine-detected mistakes and refutations.
+
+### Share your preparation
+
+Share a repertoire with people or teams using View only, Can copy or Can edit
+roles. Public links allow viewing or copying, depending on the owner's setting.
+Personal training progress belongs to the player.
+
+<details>
+<summary>Training and mobile screenshots</summary>
+
+![Training home with the review queue, rehearsal and practice modes](docs/assets/train-desktop.png)
+
+<img src="docs/assets/repertoire-mobile.png" alt="Repertoire workspace on a narrow mobile viewport" width="300">
+
+</details>
+
+Screenshots use demonstration data in the current app. See [capture details](docs/assets/README.md).
+
+## Run locally
+
+Use Python 3.11, Node.js 22 and [uv](https://docs.astral.sh/uv/).
+From a checkout of this repository:
+
+```sh
+uv sync --python 3.11 --extra server --extra dev
 npm ci
-npm test -- --run
-npm run build    # builds the SPA into src/prepforge_chess/web/static/ (git-ignored)
-```
-
-The served SPA is build output, not source: the tree under
-`src/prepforge_chess/web/static/` is ignored by git and every reader of it — the
-local server, the browser smokes, `tests/test_api_static.py` — needs `npm run build`
-once (and again after any `web-src/` change). The Docker image builds it in a Node
-stage; CI builds it before the jobs that serve it.
-
-Open http://127.0.0.1:8000 after starting uvicorn (API docs at `/docs` in dev).
-
-## Database
-
-Production uses **compact storage** (SQLAlchemy Core; Postgres in production, SQLite
-for local dev/tests). Alembic is the live schema authority (`alembic upgrade head`).
-
-Authoritative on disk:
-
-- **Game** — `initial_fen` + UCI sequence (`uci_blob`) + sparse per-ply annotations.
-- **Positions** — catalog of full 6-field FENs (never a short hash).
-- **Engine evaluations** — deduplicated by `(position, engine, depth, nodes, time_ms)`.
-  Unset search limits persist as `UNSET_SEARCH_LIMIT` (`-1`) so UNIQUE is NULL-safe
-  on both SQLite and Postgres.
-- **SAN / FEN / PGN** — reconstructed on read; not stored as the source of truth.
-- **Opening tree** — compact nodes (parent + arriving UCI) under a repertoire `root_fen`.
-
-### Breaking schema
-
-The old database schema is **not supported**. There is no legacy-data migration.
-
-This project currently has no production users. Deploying this version should
-**create / initialize the current schema** (`alembic upgrade head`). The compact
-rebase drops and rebuilds domain chess tables; identity/auth tables are separate.
-
-## Scout
-
-Production Module B is **Scout v2** (`web-src/scout-selector.js`). The reach
-pipeline in `web-src/scout.js` is Module A. Research and experimental Scout
-paths are not part of the production contract.
-
-## Web app
-
-The multi-tenant FastAPI app (`prepforge_chess.api`) serves the built SPA with
-email/password accounts, CSRF protection, Lichess account linking, and Free/Pro
-billing hooks. Production runs on Render against managed Postgres — see
-`docs/DEPLOYMENT.md`, `render.yaml`, and `Dockerfile`.
-
-```powershell
-uv sync --extra server --extra dev   # or pip install -e ".[server,dev]"
-npm ci; npm run build
+npm run build
 uv run alembic upgrade head
-uvicorn prepforge_chess.api.main:app --reload
+uv run uvicorn prepforge_chess.api.main:app --reload
 ```
 
-## Operations
+Open [localhost:8000](http://127.0.0.1:8000). Development API documentation is at
+[/docs](http://127.0.0.1:8000/docs). SQLite is the local default; migrations create
+the schema. Rebuild after changing `web-src/`.
 
-The CLI has been retired; Stockfish and Maia3 run in the browser and the server only
-classifies and persists. The one remaining operational command is the data lifecycle
-report (dry run by default, see `docs/DEPLOYMENT.md`):
+Maia3 needs separately hosted model weights. Configure `PREPFORGE_MAIA3_ASSET_BASE`
+using [.env.example](.env.example) and the [engine setup guide](docs/DEPLOYMENT.md#hugging-face-asset-pin-required-in-production).
+The first engine use downloads browser assets; available memory and browser
+support affect which engine profile can run. Engine pages need cross-origin
+isolation, which the app's server supplies.
 
-```powershell
-uv run python -m prepforge_chess.services.data_lifecycle
-```
+## Inside the app
 
-## Deployment
+| Component | Runs on | Role |
+| --- | --- | --- |
+| JavaScript SPA, built with Vite | Browser | Board, repertoire editor and workspaces |
+| Stockfish (WASM) | Browser | Position evaluation and candidate lines |
+| Maia3 (ONNX) | Browser | Human move predictions and practice opponent |
+| FastAPI | Server | Accounts, validation, classification, sharing and sync |
+| PostgreSQL / SQLite | Server | Repertoires, games, analyses and training progress |
 
-The full app needs a Python server (FastAPI + Postgres in production). GitHub Pages
-cannot host `/api/*` — use Render (current production), Docker, or another container host.
+Engine search and model inference run on the client. Accounts and saved work use
+the API and database. Lichess provides game and Explorer data, and model weights
+are fetched separately.
 
-- `Dockerfile` — SPA + API image; `alembic upgrade head` runs before uvicorn.
-- `render.yaml` — Render Blueprint reference (free-tier notes inside).
-- `docs/DEPLOYMENT.md` — env vars, Postgres setup, and local Docker check.
+## Documentation and development
 
-```powershell
-docker build -t prepforge-chess .
-docker run --rm -p 8000:8000 prepforge-chess
-```
+- [Getting started](docs/getting-started.md): your first repertoire, review session and game check.
+- [Development](docs/development.md): setup, validation commands, source map and storage design.
+- [Deployment](docs/DEPLOYMENT.md): Docker, production configuration, model hosting and operations.
+- [Technical documentation](docs/README.md#implementation): engines, Scout ranking, persistence and ownership.
 
-Deployment and operations: `docs/DEPLOYMENT.md`.
+For bug reports and feature requests, [open an issue](https://github.com/unloke/prepforge/issues).
+Include the workspace, steps to reproduce, expected result and browser; remove
+private games or account details from attachments. For code changes, run the
+[checks for the area you changed](docs/development.md#validation).
+
+## License and credits
+
+PrepForge Chess is licensed under [AGPL-3.0-or-later](LICENSE).
+It uses [Stockfish](https://github.com/official-stockfish/Stockfish),
+[Maia](https://www.maiachess.com/), [Lichess](https://lichess.org/),
+[chess.js](https://github.com/jhlywa/chess.js),
+[python-chess](https://github.com/niklasf/python-chess) and
+[FSRS](https://github.com/open-spaced-repetition/py-fsrs).
