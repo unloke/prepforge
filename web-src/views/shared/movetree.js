@@ -118,7 +118,23 @@ export function createMoveTreeRenderer() {
     if (container.scrollWidth > container.clientWidth + 1) {
       const cRect = container.getBoundingClientRect();
       const eRect = el.getBoundingClientRect();
-      container.scrollLeft += eRect.left + eRect.width / 2 - (cRect.left + cRect.width / 2);
+      // Centre the move, then snap back to the start of the token that would
+      // sit cut at the left edge, so a strip never opens on half a move
+      // ("6??" sliced by the screen edge).
+      const toContent = container.scrollLeft - cRect.left;
+      let target = eRect.left + eRect.width / 2 - (cRect.left + cRect.width / 2) + container.scrollLeft;
+      // Near the end the browser would clamp the centring scroll and leave
+      // whatever it lands on cut; clamp first so the snap below sees it.
+      target = Math.min(target, container.scrollWidth - container.clientWidth);
+      for (const tok of container.querySelectorAll(".mtree-num, .mtree-move")) {
+        const r = tok.getBoundingClientRect();
+        if (!r.width) continue;
+        if (r.right + toContent > target + 0.5) {
+          if (r.left + toContent < target) target = r.left + toContent;
+          break;
+        }
+      }
+      container.scrollLeft = Math.max(0, target);
       return;
     }
     const scrolls = (b) =>

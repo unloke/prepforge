@@ -30,8 +30,8 @@ it("opens each list in place instead of lowering the sheet", () => {
   expect(chart).toMatch(/#analyze-open > \.drawer:not\(\[open\]\) \{ display: none; \}/);
 });
 
-it("keeps the sheet's rows a thumb target", () => {
+it("keeps the sheet's rows an iOS list row (44px, the thumb's hit height)", () => {
   const row = css.match(/\.sheet-row \{[^}]*\}/);
   expect(row).not.toBeNull();
-  expect(row[0]).toMatch(/min-height: 48px/);
+  expect(row[0]).toMatch(/min-height: 44px/);
 });

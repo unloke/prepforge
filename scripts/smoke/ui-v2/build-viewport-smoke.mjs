@@ -12,6 +12,7 @@
 // Tracked UI-v2 smoke: run the whole eight-view suite with
 // `npm run smoke:ui-v2` (scripts/smoke/ui-v2/run-all.mjs).
 import { createServer } from "node:http";
+import { checkPhoneBoard } from "./phone-board.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
@@ -196,6 +197,17 @@ async function runViewport(vp) {
   // Rep header shows the real repertoire from /api/build/load.
   const repName = await page.locator("#build-rep-name").textContent().catch(() => "");
   check(repName.includes("Caro-Kann"), `rep header should show Caro-Kann, got "${repName}"`);
+  // Round 5: one full-width board under every pane tab; plain 36px tabs.
+  if (vp.width <= 760) {
+    for (const pane of ["moves", "explorer", "coverage", "moves"]) {
+      const tab = page.locator(`#build-panes [data-pane="${pane}"]`);
+      if (!(await tab.isVisible())) continue;
+      await tab.click();
+      await page.waitForTimeout(150);
+      const held = await checkPhoneBoard(page, { view: "view-build", board: "build-board", tabs: "#build-panes [role=tab]", label: `Build ${pane}` });
+      for (const f of held.fails) check(false, f);
+    }
+  }
 
   // Writable state: the shared host stays in the DOM but hidden — the writable
   // panel must not carry a leftover read-only banner from a previous state.

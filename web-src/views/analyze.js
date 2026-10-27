@@ -807,6 +807,19 @@ export function createAnalyzeView({
     chart.addEventListener("pointerup", endScrub);
     chart.addEventListener("pointercancel", endScrub);
 
+    // On a phone the graph is drawn 32px tall inside a 44px band (its wrap's
+    // ::before, analyze-chart.css): a finger on the band above or below the
+    // drawn field scrubs the same way. Only the band itself is handled here;
+    // a touch on the SVG is handled above and merely bubbles through.
+    const band = typeof chart.closest === "function" ? chart.closest(".eval-chart-wrap") : null;
+    if (band && band !== chart) {
+      const onBand = (event) => event.target === band && event.pointerType === "touch";
+      band.addEventListener("pointerdown", (event) => { if (onBand(event)) scrub(event); });
+      band.addEventListener("pointermove", (event) => { if (onBand(event)) scrub(event); });
+      band.addEventListener("pointerup", (event) => { if (event.target === band) endScrub(event); });
+      band.addEventListener("pointercancel", (event) => { if (event.target === band) endScrub(event); });
+    }
+
     // Pointer focus would pin the tooltip after the mouse leaves; keyboard
     // users step moves with the arrow keys (global) and read the move list.
     chart.addEventListener("mousedown", (event) => event.preventDefault());

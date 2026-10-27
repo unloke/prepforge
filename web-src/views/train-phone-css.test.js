@@ -56,7 +56,7 @@ it("the board bar's action slot sits at the thumb in the same two cells for dril
 // token, so Train sets no height of its own and no control is 40 or 46.
 it("every Train control is a thumb-sized target on a phone", () => {
   const shell = readFileSync(new URL("../train-shell.css", import.meta.url), "utf8");
-  expect(css).toMatch(/--control-h: 44px;/);
+  expect(css).toMatch(/--control-h: 36px;/); // round 5: the competitors' control size
   expect(shell.match(/\.train-chip \{[^}]*min-height: var\(--control-h\)/)).not.toBeNull();
   expect(shell).not.toMatch(/--train-control/);
   expect(phone).not.toMatch(/#view-train [^{]*\{[^}]*height: (40|46)px/);

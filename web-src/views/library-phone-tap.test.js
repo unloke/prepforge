@@ -18,28 +18,29 @@ function rule(selector) {
   return css.slice(open, css.indexOf("}", open));
 }
 
-it("Library phone controls meet the 44px tap-target floor", () => {
-  // One shared rule gives every button, tab and chip the thumb height; a
-  // Library control that is one of those gets it there, not from a copy.
-  expect(css).toMatch(/\.btn,\n  \.btn\.sm,[\s\S]*?\{ min-height: 44px; height: 44px; \}/);
+it("Library phone controls take the shared control height", () => {
+  // One shared rule gives every button, tab and chip the control height (36px
+  // since round 5, the competitors' size); a Library control that is one of
+  // those gets it there, not from a copy.
+  expect(css).toMatch(/\.btn,\n  \.btn\.sm,[\s\S]*?\{ min-height: var\(--control-h\); height: var\(--control-h\); \}/);
   // No Library button is given a height of its own: the shared rule owns it.
   expect(css).not.toMatch(/#view-dashboard :is\(\.today, \.step\)[^{]*\{[^}]*height:\s*\d+px/);
   const dismiss = rule("#view-dashboard .steps .setup-dismiss");
-  expect(dismiss).toMatch(/min-width:\s*44px/);
-  expect(dismiss).toMatch(/height:\s*44px/);
+  expect(dismiss).toMatch(/min-width:\s*36px/);
+  expect(dismiss).toMatch(/height:\s*36px/);
   const menu = rule("#view-dashboard .lib-row .row-menu-btn");
-  expect(menu).toMatch(/width:\s*44px/);
-  expect(menu).toMatch(/height:\s*44px/);
+  expect(menu).toMatch(/width:\s*36px/);
+  expect(menu).toMatch(/height:\s*36px/);
 });
 
 // The two buttons a dead-end Library screen offers — "Clear filter" on a search
 // that matches nothing, "Try again" when the list could not load — are
 // `.btn.sm`, which the phone block had overridden to 36px. Both are the only way
 // out of their state, so both take the floor, from the shared rule.
-it("the dead-end buttons on the Library are thumb targets", () => {
+it("the dead-end buttons on the Library take the shared control height", () => {
   const sm = rule(".btn,\n  .btn.sm,");
-  expect(sm).toMatch(/min-height:\s*44px/);
-  expect(sm).toMatch(/height:\s*44px/);
+  expect(sm).toMatch(/min-height:\s*var\(--control-h\)/);
+  expect(sm).toMatch(/height:\s*var\(--control-h\)/);
   // Neither is given a smaller box of its own.
   expect(css).not.toMatch(/data-lib-action="clear-filter"[^}]*height:\s*3\dpx/);
 });

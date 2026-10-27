@@ -112,15 +112,17 @@
   --k-new: #8b6fd6;
   --k-polish: #8a9099;
 
-  /* -- Board ------------------------------------------------------------ */
-  --square-light: #e4e8eb;
-  --square-dark: #97a8b6;
+  /* -- Board ------------------------------------------------------------
+     Lichess's blue board and last-move tint (measured), the same in both
+     themes: the squares are the board's colours, not the page's. */
+  --square-light: #dee3e6;
+  --square-dark: #8ca2ad;
   --board-frame: #6f8394;
   --dot-white: #ffffff; /* the white side's dot/face */
 
   /* Board marks (styles.css "Board marks"): last move, selection, legal
      targets, arrows and the per-grade square tints. */
-  --last-move: rgba(64, 190, 172, 0.36);
+  --last-move: rgba(155, 199, 0, 0.41);
   --highlight: rgba(47, 91, 211, 0.38);
   --mark-select: rgba(47, 91, 211, 0.3);
   --mark-legal: rgba(22, 36, 58, 0.22);
@@ -136,15 +138,17 @@
      engine's best-move arrow keeps the calm "good" green (colour means
      chess). */
   --arrow-user: rgba(47, 91, 211, 0.78);
-  --arrow-engine: rgba(29, 138, 79, 0.8);
+  --arrow-engine: rgba(21, 120, 27, 0.8); /* Lichess's green brush */
   --arrow-better: rgba(176, 62, 196, 0.8);
   /* Repertoire line options: neutral slate, drawn as a dashed outline. */
   --arrow-line: rgba(52, 64, 78, 0.9);
   --arrow-rim: rgba(255, 255, 255, 0.9);
 
   /* Board coordinate labels. */
-  --coord-on-light: #354655;
-  --coord-on-dark: #172a38;
+  /* Lichess sets a square's name in the other square's hue; here that hue,
+     deepened to 4.5:1 so a 10px label stays readable. */
+  --coord-on-light: #4a6170;
+  --coord-on-dark: #16232b;
 
   /* -- Explorer result bar ---------------------------------------------- */
   --explorer-white: #f2f2ef;
@@ -298,11 +302,8 @@
   /* Board */
   --dot-white: #f8f8f6;
   --board-frame: #5a6c7b;
-  --square-light: #b9c3cb;
-  --square-dark: #6f8292;
 
   /* Board marks */
-  --last-move: rgba(90, 214, 192, 0.36);
   --highlight: rgba(109, 143, 240, 0.42);
   --mark-select: rgba(109, 143, 240, 0.38);
   --mark-legal: rgba(10, 18, 30, 0.3);
@@ -314,12 +315,9 @@
   --mark-blunder: rgba(232, 90, 72, 0.5);
   --mark-missed: rgba(160, 135, 230, 0.48);
   --arrow-user: rgba(120, 152, 245, 0.82);
-  --arrow-engine: rgba(80, 196, 132, 0.82);
   --arrow-better: rgba(222, 132, 240, 0.85);
   --arrow-line: rgba(206, 214, 224, 0.9);
   --arrow-rim: rgba(14, 17, 22, 0.85);
-  --coord-on-light: #354655;
-  --coord-on-dark: #07121a;
 
   /* Elevation */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -1118,7 +1116,8 @@ h2 {
 .pf-switch::after {
   content: "";
   position: absolute;
-  inset: -12px -5px;
+  /* -13px from the padding box: 18px inside the 1px border + 26px = 44px. */
+  inset: -13px -5px;
 }
 
 .pf-switch:hover {
@@ -2512,10 +2511,9 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 
 /* Board marks share one language: a mark is the colour of what it means (accent =
    yours, good-green = the engine's choice, the grade colours = move quality), drawn
-   translucent so the square and piece under it stay readable, with one soft shadow. */
+   translucent so the square and piece under it stay readable, flat as Lichess draws them. */
 .annot-arrow {
   stroke: none;
-  filter: drop-shadow(0 0.3px 0.6px rgba(0, 0, 0, 0.22));
   transition: opacity var(--dur-fast) var(--ease-out);
 }
 
@@ -2760,8 +2758,8 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
 /* Board coordinates (toggle: .show-coords on the board) */
 .coord {
   position: absolute;
-  font-size: 9.5px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
   pointer-events: none;

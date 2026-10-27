@@ -553,14 +553,14 @@
   /* Two half-width tabs: "With White 249 games" no longer fits on one line, and
      letting each flex item wrap on its own split it into four ragged lines. The
      dot and label stay together; the count takes the second line. */
-  .scout-color-tab { min-height: 44px; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 0; text-align: center; }
+  .scout-color-tab { min-height: 36px; min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 0; text-align: center; }
   .scout-color-tab small { flex-basis: 100%; }
   /* Speed filter and the game-plan verbs were 26-36px targets; on a phone they
      are the only way to switch sample size or start the prep. */
-  .speed { min-height: 44px; padding: 0 12px; border-radius: 22px; }
+  .speed { min-height: 36px; padding: 0 12px; border-radius: 22px; }
   .scout-intel-charts { grid-template-columns: 1fr; }
   .first-moves { grid-template-columns: 1fr; }
-  .line-row { grid-template-columns: 1fr auto; min-height: 44px; }
+  .line-row { grid-template-columns: 1fr auto; min-height: 36px; }
   .scout-lines-head { grid-template-columns: 1fr auto; }
   .scout-lines-head span:nth-child(2),
   .scout-lines-head span:nth-child(4),
@@ -583,7 +583,7 @@
   .cs-head .spacer, .cs-head .cs-with { display: none; }
   .cs-head .scout-section-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cs-head .scout-trending { grid-column: 1 / -1; justify-self: start; }
-  .cs-head .cov { grid-column: 1; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 44px; }
+  .cs-head .cov { grid-column: 1; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 36px; }
   .cs-head .cov:last-child { grid-column: 1 / -1; }
   .cs-head .scout-coverage-bar { flex: none; width: 28px; }
   .cs-head .scout-coverage-label { display: none; }
@@ -595,12 +595,12 @@
      and nothing below moves when it comes and goes. */
   .scout-engine-progress { height: 0; min-height: 0; margin-block: -12px; overflow: visible; }
   /* The add-to-prep button is the row's only action: it needs a thumb. */
-  .scout-add-icon { width: 44px; height: 44px; font-size: 18px; }
-  .scout-side .actions .btn { min-height: 44px; }
+  .scout-add-icon { width: 36px; height: 36px; font-size: 16px; }
+  .scout-side .actions .btn { min-height: 36px; }
   .prof-row .btn { min-height: 40px; }
-  .scout-source-warnings .btn { margin-left: 0; min-height: 44px; width: 100%; }
+  .scout-source-warnings .btn { margin-left: 0; min-height: 36px; width: 100%; }
   /* A first-move row is the drilldown: a thumb needs the whole row, not 27px. */
-  .fm { min-height: 44px; }
+  .fm { min-height: 36px; }
 }
 .cov[hidden] { display: none; }
 

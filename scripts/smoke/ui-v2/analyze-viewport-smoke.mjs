@@ -7,6 +7,8 @@
 //   - coach card, win-chance chart, move grid, class bars render
 //   - board-side eval bar shows the real white share and tracks the ply
 import { createServer } from "node:http";
+import { hitAreaSource } from "./hit-area.mjs";
+import { checkPhoneBoard } from "./phone-board.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
@@ -152,6 +154,10 @@ async function runViewport(vp) {
   const checkPanelHead = async (state) => {
     if (vp.width <= 760) {
       // Phones: Analyze is the pill in the thumb bar; Last game is a row in the Games sheet.
+      // Measure the settled layout: a caption moving into the strip or a
+      // board transition still running reads a few px off on a slow runner.
+      await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"), null, { timeout: 3000 }).catch(() => {});
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const phone = await page.evaluate(() => {
         const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
         const pill = document.getElementById("run-analysis").getBoundingClientRect();
@@ -181,18 +187,28 @@ async function runViewport(vp) {
         const caption = document.getElementById("analysis-board-caption");
         const captionVisible = !!caption && caption.getBoundingClientRect().width > 0 &&
           getComputedStyle(caption).display !== "none";
+        // Round 5: before a game has a graph, the game's name takes the 44px
+        // strip over the board that the eval and graph hold afterwards. It is
+        // one ellipsised line in that strip, never a second caption.
+        const evalCard = document.getElementById("analysis-eval-card");
+        const evalShown = !!evalCard && !evalCard.hidden && evalCard.getBoundingClientRect().height > 0;
+        const boardTop = document.getElementById("analysis-board").getBoundingClientRect().top;
+        const capRect = caption?.getBoundingClientRect();
+        const captionInStrip = captionVisible && !evalShown && capRect.height <= 44.5 &&
+          capRect.bottom <= boardTop + 1 && capRect.top >= 0 &&
+          getComputedStyle(caption).whiteSpace === "nowrap" && caption.scrollHeight <= caption.clientHeight + 1;
         const moveRow = document.getElementById("analysis-ev-move");
         const moveShown = !!moveRow && moveRow.getBoundingClientRect().width > 0 &&
           getComputedStyle(moveRow).display !== "none";
         const rows = [...document.querySelectorAll("#analyze-open .sheet-row")].map((el) => el.textContent.trim());
         return { inBar: pill.width > 0 && pill.top >= bar.top - 1 && pill.bottom <= bar.bottom + 1 && pill.left >= bar.left && pill.right <= bar.right,
-          rows, covered, overText, captionVisible, moveShown,
+          rows, covered, overText, captionVisible, captionInStrip, evalShown, moveShown,
           moveText: (moveRow?.textContent || "").trim(), pill: pill.toJSON() };
       });
       const wantsRows = ["Last game", "Past analyses"];
       check(phone.inBar && wantsRows.every((label) => phone.rows.includes(label)) &&
-        phone.covered.length === 0 && phone.overText.length === 0 && !phone.captionVisible,
-        `${state}: Analyze must sit in the thumb bar with no overlap, the desktop caption hidden, and one sheet carrying Last game and Past analyses: ${JSON.stringify(phone)}`);
+        phone.covered.length === 0 && phone.overText.length === 0 && (!phone.captionVisible || phone.captionInStrip),
+        `${state}: Analyze must sit in the thumb bar with no overlap, the caption hidden or one line in the strip over the board when there is no graph, and one sheet carrying Last game and Past analyses: ${JSON.stringify(phone)}`);
       return phone.pill;
     }
     const layout = await page.evaluate(() => {
@@ -625,6 +641,9 @@ async function runViewport(vp) {
         tabs: box("#analyze-tabs"),
         barTop: Math.round(bar.top),
         coachFits: coach.scrollHeight <= coach.clientHeight + 1,
+        coachScroll: [coach.scrollHeight, coach.clientHeight],
+        coachKids: [...coach.querySelectorAll(":scope > *, :scope > * > *")].filter((el) => el.getBoundingClientRect().height > 0)
+          .map((el) => `${el.id || el.className}:${Math.round(el.getBoundingClientRect().top)}-${Math.round(el.getBoundingClientRect().bottom)}`),
         pageScrolls: document.getElementById("view-analyze").scrollHeight >
           document.getElementById("view-analyze").clientHeight + 1,
       };
@@ -637,9 +656,21 @@ async function runViewport(vp) {
       stack.coach.bottom <= stack.barTop + 1;
     check(inOrder, `phone stack must be eval band, board, move strip, tabs, coach, thumb bar: ${JSON.stringify(stack)}`);
     // The graph is the scrubber: it keeps a finger-sized band on short screens.
-    check(Math.round(stack.chart?.height ?? 0) >= 44, `the phone graph must keep its minimum target, got ${stack.chart?.height}px`);
+    // Round 5 draws it 32px (Lichess-density); its target is the 44px strip
+    // round it (the wrap's ::before band), measured where a finger lands.
+    const graphHit = await page.locator("#analysis-eval-graph").evaluate((el, src) => eval(src)(el), hitAreaSource);
+    check(graphHit.h >= 44 && graphHit.drawnH <= 36, `the phone graph must keep a 44px scrub target round a compact field, got ${JSON.stringify(graphHit)}`);
     check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
+    // Round 5: the board is one size in every tab; it never shrinks for a pane.
+    for (const tab of ["coach", "engine", "report", "coach"]) {
+      const el = page.locator(`#an-tab-${tab}`);
+      if (!(await el.isVisible())) continue;
+      await el.click();
+      await page.waitForFunction((t) => document.getElementById("view-analyze").dataset.pane === t, tab, { timeout: 5000 }).catch(() => {});
+      const held = await checkPhoneBoard(page, { view: "view-analyze", board: "analysis-board", tabs: "#analyze-tabs [role=tab]", label: `Analyze ${tab}` });
+      for (const f of held.fails) check(false, f);
+    }
   }
   await page.evaluate(() => document.getElementById("analysis-start").click());
   await page.waitForTimeout(200);

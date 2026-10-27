@@ -51,13 +51,15 @@ export async function checkGamesAnalyze(page, games, check, shot) {
   // first); give it the same window before measuring.
   await page.waitForFunction(() => {
     const graph = document.getElementById('analysis-eval-graph');
-    return graph && !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= (window.innerWidth <= 760 ? 44 : 64);
+    return graph && !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= (window.innerWidth <= 760 ? 32 : 64);
   }, null, { timeout: 5000 }).catch(() => {});
   const loaded = await page.evaluate(() => {
     const graph = document.getElementById('analysis-eval-graph');
-    // The chart is 64px tall, 44px in the phone's evaluation band; a 1px
-    // sub-pixel layout (63.99998) is still the chart, so round before comparing.
-    const minHeight = window.innerWidth <= 760 ? 44 : 64;
+    // The chart is 64px tall; on a phone (round 5) a 32px field in the 44px
+    // evaluation strip, the strip being its scrub target (analyze smoke
+    // measures that band). A 1px sub-pixel layout (63.99998) is still the
+    // chart, so round before comparing.
+    const minHeight = window.innerWidth <= 760 ? 32 : 64;
     return { visible: !graph.hidden && Math.round(graph.getBoundingClientRect().height) >= minHeight,
       areas: document.querySelectorAll('#eval-chart .eval-area').length,
       grades: document.querySelectorAll('#analysis-moves .mtree-move[class*="cls-"]:not(.cls-unknown)').length,

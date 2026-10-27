@@ -8,7 +8,8 @@
 // the moves behind tabs; a phone adds the coach to the tabs, under a pinned
 // board. The layout is CSS (analyze-chart.css); this module owns the two things
 // CSS cannot do: which tab is open, and moving the evaluation card next to the
-// board or into the panel (one element, so its listeners and observers stay).
+// board or into the panel (one element, so its listeners and observers stay),
+// and the game's name between the thumb bar and the phone's top strip.
 
 export const PANES = ["coach", "engine", "report", "moves"];
 const KEY = "prepforge.analyze.pane";
@@ -109,14 +110,28 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
     if (phone) engineHead.append(gradeLabel, gradeSwitch);
     else coach.querySelector("#analyze-actions")?.before(gradeLabel, gradeSwitch);
   }
+  // The game's name: the bar's text slot beside a pointer's panel; on a phone
+  // it is the top strip over the board when there is no evaluation band to
+  // hold that place, so the board starts at the same height in every state.
+  const caption = document.getElementById("analysis-board-caption");
+  const barNav = boardArea?.querySelector(".board-bar .bb-nav");
+  function placeCaption() {
+    if (!caption || !boardArea || !barNav) return;
+    const phone = media.phone.matches;
+    if (phone === (caption.parentElement === boardArea)) return;
+    if (phone) boardArea.prepend(caption);
+    else barNav.after(caption);
+  }
   const relayout = () => {
     placeEval();
     placeGrade();
+    placeCaption();
     select(view.dataset.pane || readStored(), { store: false });
   };
   Object.values(media).forEach((m) => m.addEventListener?.("change", relayout));
   placeEval();
   placeGrade();
+  placeCaption();
   select(readStored(), { store: false });
   return { select };
 }
