@@ -211,12 +211,26 @@ async function runViewport(vp) {
   });
   check(countsInAside, "the lifetime counts must sit in the Today aside");
 
-  // Phone: the page head's + is New repertoire, so Import PGN needs its own
-  // route. It used to live only in the hidden header actions: a phone could
-  // not import a PGN at all.
+  // Phone: the card head's actions are hidden and the page head carries them.
+  // Its + opens a sheet with New repertoire and Import PGN (a phone once had no
+  // route to import at all); its magnifier opens the search field, so the list
+  // starts under one row of filters.
   if (vp.width <= 760) {
-    check(await page.locator("#dashboard-import-pgn").isVisible(), "Import PGN must be reachable on a phone");
-    check(!(await page.locator("#dashboard-new-rep").isVisible()), "New repertoire keeps the page head + on a phone");
+    check(!(await page.locator("#dashboard-import-pgn").isVisible()), "the card head's Import PGN is folded into the + sheet on a phone");
+    check(!(await page.locator("#lib-filter-search").isVisible()), "search waits behind the page head's magnifier on a phone");
+    await page.locator("#library-add").click();
+    await page.waitForTimeout(250);
+    const sheet = await page.locator("#library-add-menu [role=menuitem]").allTextContents();
+    check(sheet.join("|") === "New repertoire|Import PGN", `the + sheet should offer New repertoire and Import PGN, got ${JSON.stringify(sheet)}`);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(250);
+    await page.locator("#library-search-toggle").click();
+    await page.waitForTimeout(250);
+    check(await page.locator("#lib-filter-search").isVisible(), "the magnifier opens the search field");
+    check(await page.evaluate(() => document.activeElement?.id === "lib-filter-search"), "the opened search field takes focus");
+    await page.locator("#lib-search-cancel").click();
+    await page.waitForTimeout(250);
+    check(!(await page.locator("#lib-filter-search").isVisible()), "Cancel folds the search field away");
     // The mastery figure is the row's trailing value on a phone: the desktop
     // has a Mastery column header, a phone has none, so the number is named.
     const phoneMastery = page.locator('#dashboard-repertoires .lib-row[data-repertoire-id="rep-1"] .lib-cell-mastery');

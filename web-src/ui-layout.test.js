@@ -157,7 +157,7 @@ describe("workspace chrome layout", () => {
     expect(lib).toContain('id="dashboard-import-pgn"');
     expect(lib).toContain('id="dashboard-new-rep"');
     expect(lib).not.toContain('id="lib-preview"');
-    expect(html).toContain('data-mirror="#dashboard-new-rep"');
+    expect(html).toMatch(/id="library-add"[\s\S]*id="library-add-menu"/);
     expect(html).toContain('data-lib-mirror="dashboard-import-pgn"');
     // Rail buttons drop pointer focus so a later arrow key cannot expand the rail.
     expect(app).toContain('getElementById("app-rail")?.addEventListener("click"');
@@ -900,8 +900,7 @@ describe("workspace chrome layout", () => {
     const mobile = css.slice(css.indexOf("/* Mobile: no rail"));
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
     expect(mobile).toMatch(/\.account-btn,\s*\.rail-btn\s*\{[^}]*min-height:\s*44px/s);
-    expect(mobile).toMatch(/\.btn\s*\{[^}]*min-height:\s*44px/s);
-    expect(mobile).toMatch(/\.btn\.icon\s*\{[^}]*min-height:\s*44px/s);
+    expect(phoneCss).toMatch(/\.btn,[^{]*\{ min-height: 44px; height: 44px; \}/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).toMatch(/#view-train \.board-bar \.btn\.icon\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);

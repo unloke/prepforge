@@ -56,10 +56,10 @@ it("docks the page title as a nav bar on scroll and tightens the list rhythm", (
   expect(body).toMatch(/#view-settings \.page-head \{ position: static; \}/);
 });
 
-it("draws the bottom bar as chrome: a tone step, no shadow, ink selection", () => {
+it("draws the bottom bar as chrome: a tone step and a hairline, no shadow, ink selection", () => {
   const bar = rule(".tabbar {");
-  expect(bar).toMatch(/border-top:\s*1px solid var\(--line\)/);
-  expect(bar).toMatch(/box-shadow:\s*none/);
+  expect(bar).toMatch(/border-top:\s*0/);
+  expect(bar).toMatch(/box-shadow:\s*inset 0 1px 0 var\(--line\)/);
   const item = rule(".tabbar .tabbar-item.is-active");
   expect(item).toMatch(/color:\s*var\(--text\)/);
   expect(item).not.toMatch(/--accent/);
@@ -70,12 +70,13 @@ it("keeps every bottom bar destination at a 44px hit height", () => {
   expect(item).toMatch(/height:\s*56px/);
 });
 
-// box-sizing is border-box, so the bar's own 1px top rule is drawn inside its
-// height: at 56 the 56px rows pushed their last pixel past the bottom of the
-// screen (measured: item bottom 845 at a 844 viewport).
+// The top rule is an inset shadow, not a border: a border is drawn inside the
+// border-box height, so a 56px bar pushed its 56px rows' last pixel past the
+// bottom of the screen (measured: item bottom 845 at a 844 viewport).
 it("the bottom bar holds its 56px rows inside the screen", () => {
   const bar = rule(".tabbar {");
-  expect(bar).toMatch(/height:\s*calc\(57px \+ env\(safe-area-inset-bottom\)\)/);
+  expect(bar).toMatch(/height:\s*calc\(var\(--phone-bar-h\) \+ env\(safe-area-inset-bottom\)\)/);
+  expect(phone).toMatch(/--phone-bar-h:\s*56px/);
 });
 
 // Every custom property a phone rule reads must be one the app defines. The

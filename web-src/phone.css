@@ -13,7 +13,6 @@
 .board-bar .bb-sheet,
 .page-head,
 .phone-panes,
-.ev-report,
 .phone-back,
 .phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
 .phone-sheet { display: contents; }
@@ -206,43 +205,44 @@
   #view-dashboard .today .btn { min-height: 44px; height: 44px; margin-top: 10px; padding: 0 18px; border-radius: 22px; font-size: 15px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
-  /* The phone has no card head: the page title names the page, so the head is
-     the controls only — the filters on one row, then search and import. */
+  /* The phone has no card head: the page title names the page, and its
+     magnifier and + carry search and the two ways to add (New repertoire,
+     Import PGN, in the + sheet; library-phone.js), as the Lichess study list
+     does. So the list starts under one row: the filters. The magnifier opens
+     the search field above them, with Cancel beside it. */
+  #view-dashboard .page-head { gap: 8px; }
+  #view-dashboard .page-head h1 { flex: 1 1 auto; }
   #view-dashboard .lib-list .card-head {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "filters filters"
-      "search  import";
+    grid-template-areas: "filters filters";
     align-items: center;
-    gap: 10px;
+    gap: 10px 4px;
     min-height: 0;
     margin: 0 0 10px;
     padding: 0;
     border: 0;
   }
+  #view-dashboard .lib[data-search-open] .lib-list .card-head { grid-template-areas: "search cancel" "filters filters"; }
   #view-dashboard .lib-list .card-head h2,
-  #view-dashboard .lib-cols { display: none; }
-  /* Import PGN needs its own place on a phone: the page head's + is New
-     repertoire, so with the header actions hidden a phone could not add a PGN
-     at all. It takes the pill of the search field beside it, so the two read
-     as one row of controls; New repertoire keeps the +. */
+  #view-dashboard .lib-cols,
+  #view-dashboard .lib-actions,
+  #view-dashboard .lib:not([data-search-open]) .lib-list :is(.search-field, .lib-search-cancel) { display: none; }
+  /* Nothing to filter yet (the empty card carries its own actions): no row. */
+  #view-dashboard .lib:not([data-search-open]) .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .card-head { display: none; }
   #view-dashboard .lib-list .seg { grid-area: filters; }
   #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
-  #view-dashboard .lib-actions { grid-area: import; display: flex; gap: 8px; }
-  #view-dashboard .lib-actions #dashboard-new-rep { display: none; }
-  #view-dashboard .lib-actions #dashboard-import-pgn {
-    flex: none;
+  #view-dashboard .lib-search-cancel {
+    display: block;
+    grid-area: cancel;
     height: 44px;
-    padding: 0 14px;
+    padding: 0 4px 0 8px;
     border: 0;
-    border-radius: 12px;
-    background: var(--surface-3);
-    color: var(--text);
-    font-size: 14px;
-    font-weight: 550;
+    background: none;
+    color: var(--accent-strong);
+    font-size: 16px;
+    font-weight: 600;
   }
-  #view-dashboard .lib-actions #dashboard-import-pgn:active { background: var(--line-strong); }
   /* Five filters must all be visible at 390px: a row that scrolls sideways
      reads as a cut-off row. They were five 44px pills at 13px, which filled
      the width and read as the screen's buttons rather than its filters. They
@@ -314,7 +314,6 @@
   #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 6px; }
   #view-dashboard .lib-row.is-skeleton .lib-cell-mastery { display: none; }
   #view-dashboard .lib-row.is-skeleton .lib-cell-queue { gap: 6px; padding-left: 38px; }
-  #view-dashboard .lib-row .lib-opt { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
   #view-dashboard .lib-row .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
   #view-dashboard .lib-row .color-dot { flex: none; width: 26px; height: 26px; }
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
@@ -328,6 +327,7 @@
      beside the ⋯. */
   #view-dashboard .lib-row .lib-opt {
     display: grid;
+    flex: 1 1 auto;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "rep rep" "queue mastery";
     align-items: center;
@@ -373,14 +373,9 @@
   /* A first-run step (signed out, or nothing built yet) is a short paragraph
      and its action: the action goes under the words, so the title is not
      squeezed into a 120px column beside a 150px pill. */
-  /* The empty card carries Import PGN itself; the header's copy above it was a
-     lone pill floating over the page. */
-  #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .lib-actions { display: none; }
-  #view-dashboard .lib-list.is-empty:has([data-lib-action="import"]) .card-head { display: none; }
-  /* A failed load has nothing to filter or search, and its card carries the one
-     action that can help (Try again); the Import pill was left floating alone
-     over the error. Import needs the same server that just failed. */
-  #view-dashboard .lib-list.is-error .lib-actions { display: none; }
+  /* An empty or failed list has nothing to search; its card carries its own
+     actions (Import PGN, Try again). */
+  #view-dashboard .lib:has(.lib-list:is(.is-empty, .is-error):not(:has(.lib-no-match))) #library-search-toggle { display: none; }
   #view-dashboard .step-text { font-size: 15px; }
   /* A step is one tappable row with a chevron, as the Chess.com home's
      cards are: its button repeated the title ("Link your Lichess account" ·
@@ -401,8 +396,6 @@
     padding: 0;
     overflow: hidden;
     border: 0;
-    background: none;
-    color: var(--label);
     text-indent: 200%;
     white-space: nowrap;
   }
@@ -557,6 +550,31 @@
     outline: 12px solid var(--bg);
   }
   .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
+  /* With no source there is nothing to check, so Check leaves the dock rather
+     than sitting in it disabled. The real next step takes the dock: Link
+     Lichess account (or Sign in for a guest), as the page's one filled action.
+     With sources linked but none picked, Add in the card is the step and the
+     dock stays empty. The card's row is then just "Games from" and Add. */
+  #view-replay .games-panel > .toolbar:has(#games-source-chips:empty, .src-chip-signin) > #lichess-compare-btn { display: none; }
+  #view-replay .toolbar > .src:has(.src-chip-signin) > .src-label { grid-column: auto; }
+  #view-replay .toolbar > .src:has(.src-chip-signin) > .src-chips { display: contents; }
+  #view-replay.is-active .games-panel:not([hidden]) .src-chip.src-chip-signin {
+    position: fixed;
+    z-index: 30;
+    left: var(--phone-gutter);
+    right: var(--phone-gutter);
+    bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
+    justify-content: center;
+    height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 16px;
+    font-weight: 600;
+    outline: 12px solid var(--bg);
+  }
 
 
 
@@ -667,12 +685,10 @@
      19.0.0 lite (WASM)" with no gap. The value side wraps instead. */
   #view-settings .set-row > span:first-child { flex: none; }
   #view-settings .set-row-value { flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; text-align: right; }
-  #view-settings .set-row:has(> .set-row-value) { align-items: baseline; }
   /* A slider's thumb gets a thumb-sized hit row; the 4px track stays drawn. */
   #view-settings input[type="range"] { height: 44px; min-height: 44px; }
-  /* The linked username and the danger-zone fold are targets on a phone. */
+  /* The linked username is a target on a phone. */
   #view-settings .conn-user { min-width: 44px; min-height: 44px; }
-  #view-settings .acct-danger-zone > summary { min-height: 44px; }
   /* Settings row buttons are the shared .btn at the shared phone height; only
      the padding grows for a thumb. */
   #view-settings .set :is(.btn, .btn.sm) { padding: 0 14px; font-size: 15px; }
@@ -700,15 +716,13 @@
     box-shadow: none;
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
-  .context-menu:not(.account-menu)::backdrop { background: rgba(0, 0, 0, 0.45); }
   #view-settings .conn-menu-item { min-height: 48px; padding: 0 18px; border-radius: 0; font-size: 16px; }
   #view-settings .conn-menu-item + .conn-menu-item { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
   #view-settings .acct-block { margin-top: 0; }
-  #view-settings .acct-block-head { min-height: 44px; padding: 10px 0 0; color: var(--muted); font-size: 13px; font-weight: 650; }
+  #view-settings .acct-block-head { color: var(--muted); font-size: 13px; font-weight: 650; }
   #view-settings .acct-block > .btn { margin: 4px 0; }
   #view-settings #settings-account-data { padding-top: 0; }
-  #view-settings .acct-danger-zone { margin: 0; padding: 12px 0; }
-  #view-settings .acct-danger-zone > summary { font-size: 15px; }
+  #view-settings .acct-danger-zone { margin: 0; }
   /* Sliders: the label on its own line, the control under it full width. */
   #view-settings .set-row:has(.slider) { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 0; }
   #view-settings .slider { gap: 12px; }
@@ -840,7 +854,6 @@
   .study .board-stack {
     order: 1;
     flex: none;
-    width: min(100vw, calc(100dvh - env(safe-area-inset-top) - var(--phone-bar-h) - env(safe-area-inset-bottom) - var(--phone-reserve)));
     max-width: none;
     margin: 0 auto;
     border-width: 0;
@@ -1158,9 +1171,8 @@
      screen leaves 250px for the header, the pane switch and a few tree rows
      (430x740 does); a shorter screen trims the board, not the tree. With
      nothing open the panel is the empty card, which needs 304px whole (its
-     second action row is otherwise under the thumb bar at 390x660). */
-  #view-build { --phone-reserve: max(250px, 34dvh); }
-  #view-build .study:has(> .sidebar.is-empty) { --phone-reserve: max(304px, 40dvh); }
+     second action row is otherwise under the thumb bar at 390x660). The
+     reserves are set in Round 3 below. */
   /* Header (back, name, ⋯) over the board: the board's top neighbour here (the
      board bar is the thumb bar below). Flow layout, one line, vertically
      centred; the tree's totals close the panel underneath the dock. */
@@ -1170,7 +1182,7 @@
     display: flex;
     align-items: center;
     column-gap: 8px;
-    min-height: 48px;
+    min-height: var(--phone-head-h);
     margin: 0;
     /* The back and ⋯ buttons are 44px targets: a -8px margin pulled the icons
        to the board's edge but left the ⋯ hit area 8px past the screen. The
@@ -1186,9 +1198,9 @@
     flex: none;
     width: 100%;
     min-width: 0;
-    height: 24px;
+    height: 22px;
     color: var(--text);
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 650;
     letter-spacing: -0.01em;
     white-space: nowrap;
@@ -1404,7 +1416,7 @@
      board, the back arrow alone (its word stays for screen readers), the mode
      and scope as one line of text that ellipsizes, the count at the end. */
   #view-train .train-head { order: 0; min-height: 52px; padding: 8px var(--phone-gutter) 4px; }
-  #view-train:not([data-train-screen="home"]) .train-head { min-height: 48px; padding: 2px var(--phone-gutter) 2px 4px; gap: 4px; }
+  #view-train:not([data-train-screen="home"]) .train-head { min-height: var(--phone-head-h); padding: 0 var(--phone-gutter) 0 4px; gap: 4px; }
   #view-train .train-back { flex: none; width: 44px; padding: 0; justify-content: center; }
   #view-train .train-back > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   #view-train .train-back .bi { width: 22px; height: 22px; }
@@ -1718,11 +1730,9 @@
   .job-dock > .notice { min-height: 0; padding: 8px 6px 8px 10px; font-size: var(--fs); }
 
   /* The tab bar is chrome: it is the same white as the cards and sits on the
-     page ground, told apart by a tone step rather than a shadow. The box is
-     57px because box-sizing is border-box and the 1px top rule is drawn inside
-     it: at 56 the row's own 56px height pushed its last pixel past the bottom
-     edge of the screen. */
-  .tabbar { height: calc(57px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); box-shadow: none; }
+     page ground, told apart by a tone step rather than a shadow. Its top rule
+     is an inset shadow, not a border, so the bar is the 56px its items fill. */
+  .tabbar { height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom)); border-top: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the bar's top rule */ }
   .tabbar .tabbar-item {
     min-height: 0;
     height: 56px;
@@ -1775,9 +1785,6 @@
   @media (prefers-reduced-motion: reduce) {
     .study .board-stack { transition: none; }
   }
-  /* The tab bar's top rule is a shadow, not a border, so the bar is the
-     56px the items fill (57 with the border). */
-  .tabbar { height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom)); border-top: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the bar's top rule */ }
 
   /* The sheet's head: the pane switch carries a grab bar and takes a drag. */
   [data-peek] { position: relative; touch-action: none; }
@@ -1802,8 +1809,6 @@
   }
   #view-build:is([data-sheet="up"], :not([data-sheet]):is([data-pane="explorer"], [data-pane="coverage"])) { --phone-reserve: var(--phone-reserve-up); }
   #view-build .study:has(> .sidebar.is-empty) { --phone-reserve: max(304px, 40dvh); }
-  #build-rep-header { min-height: var(--phone-head-h); }
-  #build-rep-header .rep-name { height: 22px; font-size: 17px; }
   #view-build #build-panes { padding-top: 12px; }
   #view-build #build-panes::before { inset: 12px 12px 4px; }
   #view-build #build-panes::after { top: 4px; }
@@ -1811,7 +1816,6 @@
   /* Train session: the 44px top bar and its progress line, the coach line,
      the bar. The result keeps room for its card. */
   #view-train:not([data-train-screen="home"], [data-train-screen="result"]) { --phone-reserve: calc(var(--phone-head-h) + 11px + 56px); }
-  #view-train:not([data-train-screen="home"]) .train-head { min-height: var(--phone-head-h); padding-block: 0; }
   /* The session's scroller holds nothing on the first screen: its 26px of
      padding pushed the bar off a 553px screen. */
   #view-train:not([data-train-screen="home"], [data-train-screen="result"]) .train-sidebar > .panel-scroll { padding-block: 0; }

@@ -1967,6 +1967,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   color: var(--label);
 }
+/* The phone's Cancel for the search it opens from the page head (phone.css). */
+.lib-search-cancel { display: none; }
 .search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */ }
 .search-field input {
   width: 100%;
@@ -5111,19 +5113,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     right: 0;
     bottom: 0;
     z-index: 40;
-    height: calc(58px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--panel);
-    box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
   }
 
   .tab {
     min-height: 44px;
-  }
-
-  .workspace {
-    padding: 12px;
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
   /* Repertoire ⋯ menu: 44×44px touch target. */
@@ -5139,15 +5134,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 
   #view-train .board-bar .btn.icon {
-    width: 44px;
     min-width: 44px;
-    height: 44px;
     min-height: 44px;
     padding: 0;
   }
 
   /* Primary nav + generic buttons: 44px touch targets on narrow viewports.
-     Desktop keeps its denser 28-32px sizing (base rules unchanged). */
+     Desktop keeps its denser 28-32px sizing (base rules unchanged); the
+     buttons' own 44px sizes are phone.css's. */
   .tab {
     height: 44px;
     display: inline-flex;
@@ -5160,13 +5154,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
   .rail-btn kbd {
     display: none;
-  }
-  .btn {
-    min-height: 44px;
-  }
-  .btn.icon {
-    min-height: 44px;
-    min-width: 44px;
   }
 }
 

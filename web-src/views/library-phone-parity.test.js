@@ -1,10 +1,9 @@
 // Library phone parity: what the desktop Library shows must be reachable on a
 // phone too.
 //
-// The phone layout hides the Library's header actions, so "Import PGN" had no
-// route on a phone at all: the page head's + is New repertoire, and the import
-// button lived only in the hidden header. These rules pin the phone layout so a
-// later density pass cannot hide the import action again.
+// The phone layout hides the Library's card-head actions, so "Import PGN" needs
+// its own route on a phone: the page head's + sheet. These rules pin the phone
+// layout so a later density pass cannot drop the import action again.
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -22,27 +21,24 @@ function rule(selector) {
 }
 
 it("Import PGN stays reachable on a phone", () => {
-  // The actions row is shown, not hidden.
-  const actions = rule("#view-dashboard .lib-actions {");
-  expect(actions).not.toMatch(/display:\s*none/);
-  expect(actions).toMatch(/display:\s*flex/);
-
-  // New repertoire keeps the page head's +; import is the action in this row.
-  const newRep = rule("#view-dashboard .lib-actions #dashboard-new-rep");
-  expect(newRep).toMatch(/display:\s*none/);
-
-  // A 44px target, like the rest of the phone controls.
-  const importBtn = rule("#view-dashboard .lib-actions #dashboard-import-pgn");
-  expect(importBtn).toMatch(/height:\s*44px/);
+  // The card head's buttons are hidden on a phone; the page head's + opens an
+  // action sheet that clicks them, so both ways to add stay one tap away.
+  expect(rule("#view-dashboard .lib-actions,")).toMatch(/display:\s*none/);
+  const head = readFileSync(join(root, "..", "library-phone.js"), "utf8");
+  expect(head).toContain('action: "dashboard-new-rep"');
+  expect(head).toContain('action: "dashboard-import-pgn"');
+  const html = readFileSync(join(root, "..", "index.html"), "utf8");
+  expect(html).toMatch(/class="page-head-btn" id="library-add"/);
 });
 
-it("the phone Library header is a grid: chips on top, search and import below", () => {
+it("the phone Library list starts under one row of filters; search opens from the head", () => {
   const head = rule("#view-dashboard .lib-list .card-head {");
   expect(head).toMatch(/display:\s*grid/);
-  expect(head).toMatch(/"filters filters"\s*"search\s+import"/);
+  expect(head).toMatch(/grid-template-areas:\s*"filters filters";/);
+  expect(rule("#view-dashboard .lib[data-search-open] .lib-list .card-head {")).toMatch(/"search cancel"\s*"filters filters"/);
+  expect(css).toMatch(/\.lib:not\(\[data-search-open\]\) \.lib-list :is\(\.search-field, \.lib-search-cancel\) \{ display: none; \}/);
   expect(rule("#view-dashboard .lib-list .seg {")).toMatch(/grid-area:\s*filters/);
   expect(rule("#view-dashboard .lib-list .search-field {")).toMatch(/grid-area:\s*search/);
-  expect(rule("#view-dashboard .lib-actions {")).toMatch(/grid-area:\s*import/);
 });
 
 it("the phone repertoire row keeps the mastery figure", () => {

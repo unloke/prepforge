@@ -88,7 +88,8 @@
         <div class="lib">
           <header class="page-head">
             <h1>Library</h1>
-            <button type="button" class="page-head-btn" data-mirror="#dashboard-new-rep" aria-label="New repertoire" title="New repertoire"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button type="button" class="page-head-btn" id="library-search-toggle" aria-controls="lib-filter-search" aria-expanded="false" aria-label="Search repertoires" title="Search repertoires"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg></button>
+            <button type="button" class="page-head-btn" id="library-add" aria-haspopup="menu" aria-label="Add to library" title="Add to library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           </header>
           <section class="today card" id="dashboard-today" data-testid="dashboard-today" aria-label="Today" hidden></section>
           <div class="lib-grid">
@@ -106,6 +107,7 @@
                   <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
                   <input type="search" id="lib-filter-search" class="lib-filter-search" aria-label="Filter repertoires" placeholder="Filter repertoires" autocomplete="off" />
                 </label>
+                <button type="button" class="lib-search-cancel" id="lib-search-cancel">Cancel</button>
                 <span class="lib-actions" id="library-actions">
                   <button class="btn" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
                   <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
@@ -902,6 +904,7 @@
 
     <div class="context-menu" id="node-context-menu" popover></div>
     <div class="context-menu" id="repertoire-context-menu" role="menu" aria-label="Repertoire actions" popover></div>
+    <div class="context-menu" id="library-add-menu" role="menu" aria-label="Add to library" popover></div>
     <div class="context-menu account-menu" id="account-menu" role="menu" popover></div>
 
     <div class="engine-window" id="engine-window" data-testid="engine-window" hidden>

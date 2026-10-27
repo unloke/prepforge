@@ -4,18 +4,6 @@
    .menu-title / .menu-sep   The ⋯ menu (core/overflow-menu.js): a popover on a
                              desktop, an action sheet headed by the object's
                              name on a phone, groups split by a rule.
-   .pk-chips                 A row of filters or tabs that scrolls sideways
-                             inside itself (Chess.com's game filters). The page
-                             never scrolls; the last chip is cut by the edge on
-                             purpose so the row reads as "more this way".
-   .pk-actionbar             The screen's one primary action docked above the
-                             tab bar where the thumb rests (Chessable's drill
-                             bar): a full-width primary, optional icon buttons
-                             before it.
-   .pk-row / .pk-row-action  A grouped-list row: label (and an optional
-                             subline) on the left, one trailing text action or
-                             value on the right, 52px tall (iOS Settings,
-                             Chess.com More).
    Every phone dialog and action sheet carries a grab handle and rises from the
    bottom edge (phone.css "Dialogs"); a dialog footer is one row that never
    wraps. */
@@ -62,59 +50,4 @@
   .src-title { font-size: 16px; }
   .src-count { font-size: 13px; }
   .src-done { min-width: 44px; min-height: 44px; font-size: 16px; }
-
-  /* ---- Chip scroller ------------------------------------------------------- */
-  .pk-chips {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 8px;
-    margin-inline: calc(-1 * var(--phone-gutter));
-    padding-inline: var(--phone-gutter);
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-padding-inline: var(--phone-gutter);
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-  .pk-chips::-webkit-scrollbar { display: none; }
-  .pk-chips > * { flex: none; scroll-snap-align: start; white-space: nowrap; }
-
-  /* ---- Sticky bottom action bar -------------------------------------------- */
-  .pk-actionbar {
-    position: sticky;
-    bottom: calc(57px + env(safe-area-inset-bottom));
-    z-index: 2;
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 8px;
-    margin-inline: calc(-1 * var(--phone-gutter));
-    padding: 8px var(--phone-gutter);
-    background: var(--bg);
-  }
-  .pk-actionbar > .btn { flex: none; }
-  .pk-actionbar > .btn.primary { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* ---- Grouped-list row ---------------------------------------------------- */
-  .pk-row {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 12px;
-    min-height: 52px;
-  }
-  .pk-row > :first-child { flex: 1 1 auto; min-width: 0; }
-  .pk-row-action,
-  .pk-row .btn.pk-row-action {
-    flex: none;
-    min-width: 44px;
-    height: 44px;
-    padding: 0 4px;
-    border: 0;
-    background: none;
-    color: var(--accent-strong);
-    font-size: 16px;
-    font-weight: 600;
-    white-space: nowrap;
-  }
 }

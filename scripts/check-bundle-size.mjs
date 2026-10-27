@@ -88,7 +88,14 @@ const LIMITS = [
   // sheet + token palette) adds ~3.8 KiB and the ui-v2 page internals add
   // ~4.8 KiB measured (157,912 → 162,742 B vs origin/main b521bff), so the
   // narrow ceiling moves to 163 KB.
-  { prefix: "index-", suffix: ".css", maxBytes: 163_000, label: "main stylesheet" },
+  // 2026-10-26 phone redesign rounds 2/3 (browser-height phones: docking page
+  // titles, board-screen peek sheets with a slim header and no tab bar, grouped
+  // Settings lists, the Analyze peek, Library's head search and + sheet, the
+  // Games dock's next step) grow the sheet 160,670 → 175,865 B against
+  // origin/main f1a78ed4, after pruning ~2.1 KB of rules later phone blocks
+  // overrode and the unused phone-kit chip/action-bar/row primitives. The
+  // ceiling moves by exactly that 15,195 B delta; gzip ~33 KB.
+  { prefix: "index-", suffix: ".css", maxBytes: 178_195, label: "main stylesheet" },
 ];
 
 let files;
