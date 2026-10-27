@@ -117,7 +117,15 @@ async function openGamesSheet(page) {
   if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true") await button.click();
   const reveal = page.locator('#analyze-open [data-reveal="#history-drawer"]');
   if (await reveal.isVisible() && (await reveal.getAttribute("aria-expanded")) !== "true") await reveal.click();
-  await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
+  // Opening the drawer reloads the list (its toggle event), replacing every row:
+  // a row focused before that reload lands is gone, and Enter recalls nothing.
+  // So wait for the toggle, then for the reloaded rows.
+  await page.locator("#history-drawer").evaluate((d) => (d.open ? null : new Promise((resolve) => {
+    d.addEventListener("toggle", () => resolve(), { once: true });
+    d.open = true;
+  })));
+  await page.waitForFunction(() => document.querySelector("#analysis-history .history-item") &&
+    !document.querySelector("#analysis-history > .hint"), null, { timeout: 10000 });
 }
 
 // A short or narrow panel, and a phone, show one pillar at a time behind tabs.
