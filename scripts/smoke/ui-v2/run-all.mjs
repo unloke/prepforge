@@ -17,7 +17,10 @@ import { join } from "node:path";
 
 const DIR = fileURLToPath(new URL(".", import.meta.url));
 // A smoke stuck waiting on the page fails instead of holding the CI job open.
-const SMOKE_TIMEOUT_MS = 5 * 60_000;
+// SIGTERM alone is not enough: Playwright's handler only closes the browser,
+// and the smoke's fixture server keeps the process alive, so SIGKILL follows.
+const SMOKE_TIMEOUT_MS = Number(process.env.UI_V2_SMOKE_TIMEOUT_MS || 4 * 60_000);
+const KILL_GRACE_MS = 10_000;
 
 // The view order follows the app's page order. "build" is the Repertoire
 // workspace (the Build view).
@@ -63,13 +66,23 @@ function runOne([label, file]) {
     const child = spawn(process.execPath, [join(DIR, file)], { env: process.env });
     child.stdout.on("data", (chunk) => { log += chunk; });
     child.stderr.on("data", (chunk) => { log += chunk; });
+    let killer;
     const timer = setTimeout(() => {
       log += `[ui-v2-smoke] ${label} timed out after ${SMOKE_TIMEOUT_MS / 60_000} min\n`;
-      child.kill();
+      // Print what it got through now: a stuck smoke is the one whose log matters.
+      process.stdout.write(`\n[ui-v2-smoke] ${label} (${file}) — timed out, log so far:\n${log}`);
+      child.kill("SIGTERM");
+      killer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
     }, SMOKE_TIMEOUT_MS);
+    let settled = false;
     const done = (ok) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      resolve({ label, file, ok, ms: Date.now() - started, log });
+      clearTimeout(killer);
+      const ms = Date.now() - started;
+      console.log(`[ui-v2-smoke] ${ok ? "ok  " : "FAIL"}  ${label} (${(ms / 1000).toFixed(1)}s)`);
+      resolve({ label, file, ok, ms, log });
     };
     child.on("exit", (code) => done(code === 0));
     child.on("error", () => done(false));

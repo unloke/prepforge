@@ -128,6 +128,12 @@ const VIEWPORTS = [
 ];
 
 const failures = [];
+// A request the smoke holds open must arrive; if it never does, fail by name
+// instead of waiting forever (closing the browser would not end this process).
+const arrives = (promise, label, ms = 20000) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms / 1000}s waiting for ${label}`)), ms).unref()),
+]);
 
 async function runViewport(vp) {
   const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
@@ -310,7 +316,7 @@ async function runViewport(vp) {
   });
   // Return to the visible Library before exercising its keyboard path.
   await page.evaluate(() => document.querySelector('[data-testid="nav-dashboard"]').click());
-  await refreshStarted;
+  await arrives(refreshStarted, "the Library refresh (/api/repertoires)");
   const loadsBeforeKeyboard = loadRequests.length;
   // Watch the row the refresh paints over: the same repertoire arriving again
   // must not replace it (a replaced node is what replayed the row entrance and

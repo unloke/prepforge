@@ -102,6 +102,12 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
+// A request the smoke holds open must arrive; if it never does, fail by name
+// instead of waiting forever (closing the browser would not end this process).
+const arrives = (promise, label, ms = 20000) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms / 1000}s waiting for ${label}`)), ms).unref()),
+]);
 
 // Recent analyses starts collapsed on a phone, so recalling a saved game from
 // it means opening it first. Phones raise the sources as a sheet, where one row
@@ -673,7 +679,7 @@ async function runViewport(vp) {
   await openGamesSheet(page);
   await page.locator('.history-item[data-game-id="g1"] .hi-open').focus();
   await page.keyboard.press("Enter");
-  await recallRequested;
+  await arrives(recallRequested, "the history recall request (/api/analyses/g1)");
   await openGamesSheet(page);
   await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
   await page.locator("#pgn-input").fill("1. d4 d5");
@@ -753,7 +759,7 @@ async function runViewport(vp) {
     await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
     await page.locator("#pgn-input").fill(DEMO_PGN_MOVETEXT);
     await page.locator("#run-analysis").click();
-    await saveRequested;
+    await arrives(saveRequested, "the review save request", 60000);
     await openGamesSheet(page);
     await page.locator('.history-item[data-game-id="g2"] .hi-open').focus();
     await page.keyboard.press("Enter");
