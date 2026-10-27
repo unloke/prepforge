@@ -189,11 +189,15 @@ async function runViewport(vp) {
   check(await page.locator("#team-detail-invite:not([hidden])").count() === 1, "owner should see Invite");
   check(await page.locator("#team-add-member:not([hidden])").count() === 1, "owner should see Add member");
   if (vp.width <= 760) {
-    // The header's name is the one thing a phone must not cut: Invite is an icon there.
+    // The header is a nav bar (back, the name, ⋯): the name is the one thing a
+    // phone must not cut, so Invite leaves the head and is the Members pane's
+    // primary, "Invite people", a full 44px target on screen.
     const nameFits = await page.locator("#view-teams .team-detail .card-head h2").evaluate((h) => h.scrollWidth <= h.clientWidth + 1);
     check(nameFits, "the open team's name must not be cut on a phone");
-    const inviteBox = await page.locator("#team-detail-invite").boundingBox();
-    check(inviteBox && inviteBox.width >= 44 && inviteBox.height >= 44, `Invite needs a 44px target on a phone, got ${JSON.stringify(inviteBox)}`);
+    check(await page.locator("#team-detail-invite").isHidden(), "a phone's team head leaves Invite to the pane's primary");
+    const inviteBox = await page.locator("#team-invite-cta").boundingBox();
+    check(inviteBox && inviteBox.width >= 44 && inviteBox.height >= 44 && inviteBox.y + inviteBox.height <= vp.height,
+      `Invite people needs an on-screen 44px target on a phone, got ${JSON.stringify(inviteBox)}`);
   }
 
   // Two tabs over ONE panel: Members visible, Shared hidden.
@@ -214,7 +218,9 @@ async function runViewport(vp) {
 
   // Invite footer from the real payload (owner sees it).
   const foot = await page.locator("#team-invite-foot:not([hidden])").textContent().catch(() => "");
-  check(/Invite link active/.test(foot || "") && /revoke from Invite/.test(foot || ""), `invite footer should render, got "${foot}"`);
+  // A status line, not a how-to: the footer names the live link (and its
+  // expiry), never which control revokes it (a phone's opener is "Invite people").
+  check(/^Invite link active( · expires .+)?$/.test((foot || "").trim()), `invite footer should render its status alone, got "${foot}"`);
 
   // Switch to Shared repertoires: members panel hides, real shared rep appears.
   await page.locator("#team-tab-repertoires").click();
@@ -247,7 +253,8 @@ async function runViewport(vp) {
 
   // Exercise real DOM redraws: its accessible name must survive confirmation,
   // generation, copying and revocation. Opening/reopening must only read status.
-  await page.locator("#team-detail-invite").click();
+  const inviteOpener = vp.width <= 760 ? "#team-invite-cta" : "#team-detail-invite";
+  await page.locator(inviteOpener).click();
   const invite = page.getByRole("dialog", { name: "Team invite link", exact: true });
   await invite.waitFor();
   check(generated === 0, "opening Invite must not rotate the link");
@@ -262,7 +269,7 @@ async function runViewport(vp) {
   check(await invite.count() === 1, "Copy redraw must preserve the dialog's accessible name");
   await invite.getByRole("button", { name: "Done", exact: true }).click();
   await invite.waitFor({ state: "detached" });
-  await page.locator("#team-detail-invite").click();
+  await page.locator(inviteOpener).click();
   await invite.getByLabel("Invite link", { exact: true }).waitFor();
   check(generated === 1, "reopening the session link must not rotate it");
   await invite.getByRole("button", { name: "Revoke link", exact: true }).click();

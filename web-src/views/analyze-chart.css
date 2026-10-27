@@ -2153,14 +2153,15 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   }
 
   /* ---- Phone, round 3: the browser's real viewport ---------------------------
-     The evaluation is one 40px band (figure and graph inline), the board, the
+     The evaluation is one 44px band (figure and graph inline; the graph is the
+     scrubber, so it keeps the full 44px finger height), the board, the
      move strip, then the panes as a peek sheet whose head is the tab switch
      (peek-sheet.js; phone.css documents the reserve API). In the peek the coach
      shows its moment line, so the board keeps the screen at 375x553; the engine
      and the report rise when opened and the board shrinks to give them room. */
 
   #view-analyze {
-    --phone-eval-h: 40px;
+    --phone-eval-h: 44px;
     --phone-tabs-h: 60px;
     --phone-reserve: calc(var(--phone-eval-h) + var(--phone-strip-h) + var(--phone-tabs-h) + 52px);
     --phone-reserve-up: calc(var(--phone-eval-h) + var(--phone-strip-h) + var(--phone-tabs-h) + max(176px, 28svh));
@@ -2170,7 +2171,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   @media (prefers-reduced-motion: reduce) {
     #view-analyze .board-stack { transition: none; }
   }
-  #view-analyze #analysis-eval-card { grid-template-columns: 64px minmax(0, 1fr); padding: 4px var(--phone-gutter); }
+  #view-analyze #analysis-eval-card { grid-template-columns: 64px minmax(0, 1fr); padding: 0 var(--phone-gutter); }
   #analysis-eval-card .eval-now { font-size: 18px; }
   /* The sheet's head sits over its pane. */
   #view-analyze .an-panes > .an-tabs { order: 3; margin: 12px var(--phone-gutter) 4px; }

@@ -226,7 +226,15 @@ for (const vp of VIEWPORTS) {
   const repMenu = "#dashboard-repertoires [data-row-menu]";
   if (vp.mobile) {
     await overlay(vp, page, "more-sheet", { opener: "#more-nav-btn", open: () => page.keyboard.press("Enter") });
-    await overlay(vp, page, "palette", { open: () => viaMore(page, "#sheet-palette") });
+    // The command palette is a keyboard tool: on a touch screen More leaves it
+    // out, and a keyboard (Ctrl+K) still opens it as a phone dialog.
+    await page.click("#more-nav-btn");
+    await page.waitForTimeout(400);
+    check(`${vp.name} more-sheet`, await page.locator("#more-sheet [data-nav-mirror='settings']").isVisible(), "More lists its destinations");
+    check(`${vp.name} more-sheet`, await page.locator("#sheet-palette").isHidden(), "a touch screen's More offers no command palette");
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(450);
+    await overlay(vp, page, "palette", { open: () => page.keyboard.press("Control+k") });
   } else {
     await overlay(vp, page, "palette", { opener: "#open-palette", open: () => page.keyboard.press("Enter") });
   }

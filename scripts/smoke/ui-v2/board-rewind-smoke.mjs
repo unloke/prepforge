@@ -737,8 +737,16 @@ async function trainTakeback(page) {
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.locator("#dashboard-repertoires .lib-row").first().waitFor({ state: "visible", timeout: 20000 });
   await openView(page, "train");
-  await page.locator("#train-play-book").click();
-  await page.locator('.train-picker .train-pick[data-id="explorer"]').click();
+  if (await page.evaluate(() => innerWidth <= 760)) {
+    // A phone's Practice is its own pane; the opponent is a card there.
+    await page.locator('[data-testid="train-tab-play"]').click();
+    await page.locator('#train-bots .train-bot[data-book="explorer"]').click();
+    check(await page.locator('#train-bots .train-bot[data-book="explorer"]').getAttribute("aria-pressed") === "true",
+      "train takeback: the Lichess card is picked");
+  } else {
+    await page.locator("#train-play-book").click();
+    await page.locator('.train-picker .train-pick[data-id="explorer"]').click();
+  }
   await page.locator("#start-play").click();
   // The session is up once the board carries a position and the takeback is
   // still disabled (there is nothing to take back yet).

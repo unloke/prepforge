@@ -479,9 +479,9 @@ async function runViewport(vp) {
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
-    // Phones dissolve the sidebar box (display: contents) and put the eval band
-    // over the board; the pillars start the panel under it.
-    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#analyze-panes");
+    // Phones dissolve the sidebar and the pane box (display: contents) and put
+    // the eval band over the board; the pane switch heads the panel under it.
+    const panel = ["#analyze-sidebar", "#analyze-panes", "#analyze-tabs"].map(box).find((r) => r.height);
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
@@ -586,8 +586,11 @@ async function runViewport(vp) {
   }
   if (vp.width <= 760) {
     // The phone's screen is one column: the eval band (figure and graph), the
-    // board, the open pillar (here the coach), its tabs, then the thumb bar.
-    await showPane(page, "coach", "#explain-engine-toggle");
+    // board, the move strip, the pane switch heading its sheet, the open pane
+    // (here the coach) under it, then the thumb bar. The grading switch lives in
+    // the engine pane on a phone, so the Coach tab itself says which pane is open.
+    if (await page.locator("#an-tab-coach").getAttribute("aria-selected") !== "true") await page.locator("#an-tab-coach").click();
+    await page.waitForFunction(() => document.getElementById("view-analyze").dataset.pane === "coach", null, { timeout: 5000 });
     const stack = await page.evaluate(() => {
       const box = (sel) => {
         const el = document.querySelector(sel);
@@ -602,6 +605,7 @@ async function runViewport(vp) {
       return {
         chart: box("#analysis-eval-graph:not([hidden])"),
         board: box("#analysis-board"),
+        strip: box("#analysis-moves"),
         coach: box("#analysis-explain"),
         proseBottom: Math.round(prose.getBoundingClientRect().bottom),
         tabs: box("#analyze-tabs"),
@@ -611,13 +615,15 @@ async function runViewport(vp) {
           document.getElementById("view-analyze").clientHeight + 1,
       };
     });
-    const inOrder = stack.chart.bottom <= stack.board.top + 1 &&
-      stack.board.bottom <= stack.coach.top + 1 &&
-      stack.coach.bottom <= stack.tabs.top + 1 &&
-      stack.tabs.bottom <= stack.barTop + 1;
-    check(inOrder, `phone stack must be eval band, board, coach, tabs, thumb bar: ${JSON.stringify(stack)}`);
+    const inOrder = !!(stack.chart && stack.board && stack.strip && stack.tabs && stack.coach) &&
+      stack.chart.bottom <= stack.board.top + 1 &&
+      stack.board.bottom <= stack.strip.top + 1 &&
+      stack.strip.bottom <= stack.tabs.top + 1 &&
+      stack.tabs.bottom <= stack.coach.top + 1 &&
+      stack.coach.bottom <= stack.barTop + 1;
+    check(inOrder, `phone stack must be eval band, board, move strip, tabs, coach, thumb bar: ${JSON.stringify(stack)}`);
     // The graph is the scrubber: it keeps a finger-sized band on short screens.
-    check(Math.round(stack.chart.height) >= 44, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
+    check(Math.round(stack.chart?.height ?? 0) >= 44, `the phone graph must keep its minimum target, got ${stack.chart?.height}px`);
     check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
