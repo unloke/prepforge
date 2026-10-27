@@ -54,12 +54,23 @@ describe("the full engine asks first", () => {
 
   it("steps down to lite by itself when the full net's heap kills the tab", () => {
     const f = fixture({ consent: null, bigPhase: { value: "ready" } });
-    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 1 }));
+    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 1, probe: true }));
     const next = reload(f, { removeAsset: f.removeAsset });
     expect(next.engineProfile()).toMatchObject({ net: "lite", source: "fallback" });
     expect(f.removeAsset).toHaveBeenCalledWith("big");
     // The heap that killed the tab is not offered back: this device keeps lite.
     expect(next.fullEngineChoice()).toBeNull();
+  });
+
+  it("a crash in real use steps down but keeps the full net and lets Detect measure it again", async () => {
+    const f = fixture({ bigPhase: { value: "ready" } });
+    // The tab was killed in Analyze on big x1, with Maia and the page in memory too.
+    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 1, probe: false }));
+    const next = reload(f, { probeId: PROBE, removeAsset: f.removeAsset, createEngine: f.createEngine, reserveMemory: f.reserveMemory,
+      assetState: () => ({ phase: "ready" }), probeBudget: async () => () => {} });
+    expect(next.engineProfile()).toMatchObject({ net: "lite", workers: 1 });
+    expect(f.removeAsset).not.toHaveBeenCalled();
+    expect(await next.detectEngineProfile()).toMatchObject({ net: "big", source: "detected" });
   });
 
   it("a step down deletes the bytes, and Settings fetches them again after a yes", async () => {

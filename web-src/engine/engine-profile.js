@@ -27,7 +27,7 @@ export const MIN_GAIN = 0.5;
 // One position for every round: speed differs by position, so a new one per round would skew the gain.
 const FEN = "r1bq1rk1/ppp2ppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 4 6";
 // A detected profile is measured on one build; a new engine build or probe is measured again.
-const PROBE_ID = `4:${globalThis.__STOCKFISH__?.big?.id}`;
+const PROBE_ID = `5:${globalThis.__STOCKFISH__?.big?.id}`;
 
 // Inject only browser boundaries for deterministic tests; production owns one manager.
 export function createEngineProfileManager({
@@ -111,7 +111,7 @@ export function createEngineProfileManager({
     access(s => {
       // A probe step is a deliberate heap reservation: it stays armed in a hidden
       // tab too, so an OOM kill there still tells the next load which step died.
-      if (entry && (entry.sticky || (!pageHidden && page?.visibilityState !== "hidden"))) s.setItem(CRASH_KEY, JSON.stringify(entry.attempt));
+      if (entry && (entry.sticky || (!pageHidden && page?.visibilityState !== "hidden"))) s.setItem(CRASH_KEY, JSON.stringify({ ...entry.attempt, probe: entry.sticky }));
       else s.removeItem(CRASH_KEY);
     });
   }
@@ -152,26 +152,31 @@ export function createEngineProfileManager({
       if (saved?.consent === "yes" || saved?.consent === "no") consent = saved.consent;
       if (fresh && typeof saved.bigFits === "boolean") [bigFits, fitKnown] = [saved.bigFits, true];
       const crash = JSON.parse(s.getItem(CRASH_KEY) || "null");
-      const hadBig = saved?.profile?.net === "big" || crash?.net === "big";
+      let dropBig = saved?.profile?.net === "big";
       if (valid(crash)) {
         profile = stepDownProfile(crash);
         detected = profile;
         // The steps below the one that died completed; the one that died and
         // everything above it did not. Settings offers only the completed ones.
         proven = heldBelow(crash);
-        const died = ladderStep(crash.net, crash.workers);
-        if (died >= 0) ceiling = Math.min(ceiling ?? died, died);
-        if (crash.net === "big") {
-          // A crash inside the full net's heap: the first step still held big,
-          // so the net fits; from lite it does not.
-          [bigFits, fitKnown] = [crash.workers > 1, true];
-          if (profile.net !== "big") consent = "no";
-        }
+        if (crash.probe) {
+          // Only a probe step measures the engines alone. A run that died also held
+          // Maia and the page, so it steps down without ruling the net out.
+          const died = ladderStep(crash.net, crash.workers);
+          if (died >= 0) ceiling = Math.min(ceiling ?? died, died);
+          if (crash.net === "big") {
+            // A crash inside the full net's heap: the first step still held big,
+            // so the net fits; from lite it does not.
+            [bigFits, fitKnown] = [crash.workers > 1, true];
+            if (profile.net !== "big") consent = "no";
+            dropBig = true;
+          }
+        } else dropBig = false;
         s.setItem(PROFILE_KEY, record());
         s.removeItem(CRASH_KEY);
       }
-      // A device that steps down to lite does not keep the full net's 94 MB.
-      if (hadBig && profile.net !== "big") void removeAsset("big");
+      // A device that the probe stepped down to lite does not keep the full net's 94 MB.
+      if (dropBig && profile.net !== "big") void removeAsset("big");
     });
   }
   // The most engines this device has shown it can hold on each net; 0 means the
