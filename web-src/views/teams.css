@@ -322,12 +322,12 @@ select.team-role-select {
    one primary action docked above the tab bar. Every row stays one row. */
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   #view-teams .teams { gap: var(--phone-gap); }
-  #view-teams .card-head { min-height: 48px; padding: 4px 16px; }
+  #view-teams .card-head { min-height: 44px; padding: 4px 16px; }
   /* An open team is a pushed screen whose own head (back, name, ⋯) is the nav
      bar: the page title and its + over it were a second header. */
   #view-teams:has(.team-detail:not([hidden])) > .page-head { display: none; }
   #view-teams:has(.team-detail:not([hidden])) > .teams { padding-top: max(8px, env(safe-area-inset-top)); }
-  #view-teams .card-head h2 { font-size: 17px; }
+  #view-teams .card-head h2 { font-size: 15px; }
   /* The page title carries New team (+), the way Library carries New
      repertoire, so the directory needs no head of its own. */
   #view-teams .card.dir > .card-head { display: none; }
@@ -360,7 +360,7 @@ select.team-role-select {
     border-width: 2px 2px 0 0;
     transform: rotate(45deg);
   }
-  #view-teams .team-row .name { font-size: 16px; font-weight: 650; }
+  #view-teams .team-row .name { font-size: 15px; font-weight: 650; }
   #view-teams :is(.team-row, .mem-row) .sub {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -374,7 +374,7 @@ select.team-role-select {
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow-wrap: normal;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 650;
   }
   #view-teams .mem-id > .name + .sub::before { content: none; }
@@ -402,7 +402,7 @@ select.team-role-select {
   #view-teams select.team-role-select {
     width: auto;
     min-width: 0;
-    height: 44px;
+    height: 36px;
     padding: 0 22px 0 4px;
     border-color: transparent;
     background-color: transparent;
@@ -411,7 +411,7 @@ select.team-role-select {
     font-size: 14px;
     font-weight: 500;
   }
-  #view-teams .team-remove { width: 44px; min-width: 44px; height: 44px; padding: 0; justify-content: center; }
+  #view-teams .team-remove { width: 36px; min-width: 36px; height: 36px; padding: 0; justify-content: center; }
   /* Leave is in the team's ⋯ sheet on a phone. */
   #view-teams .team-member-row .team-remove[data-self="1"] { display: none; }
   /* In the shared lists the role moves under the name ("Mira Chen · Can
@@ -435,7 +435,7 @@ select.team-role-select {
     padding: 4px 6px;
   }
   #view-teams .team-detail > .card-head > :is(.spacer, #team-detail-invite, #team-detail-rename, #team-detail-delete) { display: none; }
-  #team-detail-close { grid-column: 1; grid-row: 1; width: 44px; height: 44px; font-size: 0; color: var(--text); }
+  #team-detail-close { grid-column: 1; grid-row: 1; width: 36px; height: 36px; font-size: 0; color: var(--text); }
   #team-detail-close::before {
     content: "";
     width: 10px;
@@ -449,7 +449,7 @@ select.team-role-select {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 17px;
+    font-size: 15px;
     line-height: 1.25;
   }
   #view-teams .team-title .team-role-badge {
@@ -460,7 +460,7 @@ select.team-role-select {
     font-size: 13px;
     font-weight: 500;
   }
-  #view-teams .team-more { grid-column: 3; display: inline-flex; width: 44px; height: 44px; padding: 0; justify-content: center; }
+  #view-teams .team-more { grid-column: 3; display: inline-flex; width: 36px; height: 36px; padding: 0; justify-content: center; }
   #view-teams .team-more[hidden] { display: none; }
   #view-teams .team-more svg { fill: currentColor; }
   /* Closed, the sheet is not in the page at all (an open one is fixed). */
@@ -478,7 +478,7 @@ select.team-role-select {
      halves hold their label at 360. */
   #view-teams .tab-long { display: none; }
   #view-teams .tab-short { display: inline; }
-  #view-teams .teams .tabs button { flex: 1 1 0; justify-content: center; min-height: 44px; padding: 0 6px; font-size: 15px; white-space: nowrap; }
+  #view-teams .teams .tabs button { flex: 1 1 0; justify-content: center; min-height: 36px; padding: 0 6px; font-size: 14px; white-space: nowrap; }
 
   /* The pane's one action docks above the tab bar, where the thumb is
      (Games' Check and Scout's Start sit there too): Invite people on Members
@@ -503,14 +503,14 @@ select.team-role-select {
     flex: 1 1 auto;
     justify-content: center;
     height: 48px;
-    font-size: 16px;
+    font-size: 15px;
   }
   #view-teams #team-share-rep { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
   .workspace:has(> #view-teams.is-active .team-detail:not([hidden]) [data-team-panel]:not([hidden]) .sub-head .btn:not([hidden])) {
     padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 84px) !important;
   }
   #view-teams .team-invite-foot { padding: 12px 16px; font-size: 13px; }
-  .invite-modal .invite-done { min-height: 44px; font-size: 16px; }
+  .invite-modal .invite-done { min-height: 36px; font-size: 15px; }
   .invite-modal .modal-footer .btn { min-width: 0; padding: 0 10px; }
   .invite-modal .modal-footer .btn.danger-quiet { padding: 0 4px; }
 

@@ -287,13 +287,13 @@
     grid-template-columns: 1fr auto;
     grid-template-areas: "players res" "badge dep";
     gap: 4px 10px;
-    min-height: 44px;
+    min-height: 36px;
   }
   .ledger-table .lr:not(.head) { contain-intrinsic-size: auto 52px; }
   .lr > :nth-child(1) { grid-area: badge; }
   .lr > :nth-child(2) { grid-area: players; }
   .lr > :nth-child(3) { grid-area: res; justify-self: end; }
-  .lr .pl { font-size: 15px; }
+  .lr .pl { font-size: 14px; }
   .lr > :nth-child(5) { grid-area: dep; }
   /* The triage is a flex column here, so the empty card's start alignment
      would shrink it to the message's width. */

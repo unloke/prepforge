@@ -1,7 +1,6 @@
 import { appState } from "./core/state.js";
 import { openModal } from "./core/dialog.js";
 import { closeSheetOffPhone } from "./phone-layout.js";
-import { wirePeekSheets } from "./peek-sheet.js";
 import { wireLibraryPhoneHead } from "./library-phone.js";
 import { disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/maia3-provider.js";
 
@@ -128,7 +127,6 @@ export function wireMobileNav() {
   }
   wirePhoneStudyNav();
   wirePhoneSheets();
-  wirePeekSheets();
   wireHoldRepeat();
 }
 

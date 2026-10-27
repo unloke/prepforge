@@ -299,11 +299,11 @@
 @media (max-width: 760px) {
   .slider input { width: 130px; }
   /* The nav links are anchors, not .btn: they keep their own thumb height. */
-  .settings-nav-link { min-height: 44px; }
+  .settings-nav-link { min-height: 36px; }
   /* The ⓘ is a 24px glyph with a 44px box on a phone. The switch already
      carries its thumb-sized tap area in the shared rule, so it is not redrawn
      here. */
-  .set .pf-info { min-width: 44px; min-height: 44px; }
+  .set .pf-info { min-width: 36px; min-height: 36px; }
   .set-row { flex-wrap: wrap; }
 }
 
