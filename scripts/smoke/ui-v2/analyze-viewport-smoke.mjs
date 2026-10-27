@@ -154,6 +154,10 @@ async function runViewport(vp) {
   const checkPanelHead = async (state) => {
     if (vp.width <= 760) {
       // Phones: Analyze is the pill in the thumb bar; Last game is a row in the Games sheet.
+      // Measure the settled layout: a caption moving into the strip or a
+      // board transition still running reads a few px off on a slow runner.
+      await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"), null, { timeout: 3000 }).catch(() => {});
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const phone = await page.evaluate(() => {
         const bar = document.querySelector("#view-analyze .board-bar").getBoundingClientRect();
         const pill = document.getElementById("run-analysis").getBoundingClientRect();
