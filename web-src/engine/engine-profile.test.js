@@ -454,21 +454,21 @@ describe("every device gets its own measured setup", () => {
     expect(crashed).toBe(true);
   });
 
-  it("runs one engine on a phone or tablet, whatever its cores", async () => {
-    expect(maxWorkers(IPHONE)).toBe(1);
-    expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 8, userAgentData: { mobile: true } })).toBe(1);
+  it("runs at most two engines on a phone or tablet, whatever its cores", async () => {
+    expect(maxWorkers(IPHONE)).toBe(2);
+    expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 8, userAgentData: { mobile: true } })).toBe(2);
+    expect(maxWorkers({ hardwareConcurrency: 8, deviceMemory: 2, userAgentData: { mobile: true } })).toBe(1);
     // iPadOS reports a Mac; its touch points give it away.
-    expect(maxWorkers({ hardwareConcurrency: 8, maxTouchPoints: 5, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toBe(1);
+    expect(maxWorkers({ hardwareConcurrency: 8, maxTouchPoints: 5, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toBe(2);
     expect(maxWorkers({ hardwareConcurrency: 8, maxTouchPoints: 0, userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" })).toBe(3);
     const phone = fixture({ device: () => IPHONE, throughput: (_net, n) => n });
-    expect(await phone.detectEngineProfile()).toMatchObject({ net: "big", workers: 1, source: "detected" });
-    expect(phone.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big"]);
+    expect(await phone.detectEngineProfile()).toMatchObject({ net: "big", workers: 2, source: "detected" });
+    expect(phone.createEngine.mock.calls.map(([o]) => o.net)).toEqual(["lite", "big", "big"]);
   });
 
-  it("a crash in real use is a ceiling: Detect again stays below the step that died", async () => {
+  it("a probe step that killed the tab is a ceiling: Detect again stays below it", async () => {
     const f = fixture({ device: () => NO_SIGNAL, throughput: (_net, n) => n });
-    // The tab was killed in Analyze on big x2.
-    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 2 }));
+    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 2, probe: true }));
     const reloaded = createEngineProfileManager({ storage: () => f.storage, device: () => NO_SIGNAL, probeId: PROBE,
       createEngine: f.createEngine, reserveMemory: f.reserveMemory, loadModule: f.loadModule, removeAsset: f.removeAsset,
       assetState: () => ({ phase: "ready" }), probeBudget: async () => () => {} });
@@ -526,7 +526,7 @@ describe("every device gets its own measured setup", () => {
     const phone = fixture({ device: () => NO_SIGNAL });
     phone.data.set(PROFILE_KEY, JSON.stringify({
       profile: { net: "big", workers: 3, source: "user" }, detected: { net: "big", workers: 3, source: "detected" },
-      measurements: null, proven: { lite: 1, big: 1 }, probe: `4:${globalThis.__STOCKFISH__?.big?.id}`,
+      measurements: null, proven: { lite: 1, big: 1 }, probe: PROBE,
     }));
     const reloaded = createEngineProfileManager({ storage: () => phone.storage, device: () => NO_SIGNAL,
       assetState: () => ({ phase: "ready" }) });

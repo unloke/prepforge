@@ -28,13 +28,14 @@ export function isHandheld({ userAgent = "", userAgentData, maxTouchPoints = 0 }
 
 // How many engines this device could HOLD. Every worker reserves its net's whole
 // heap (384 MiB for big, 256 MiB for lite), so a memory signal bounds the count.
-// deviceMemory is the only memory signal (Chromium). A handheld runs one engine, as
-// Lichess does on mobile; elsewhere Detect proves each step by reserving its heap.
+// deviceMemory is the only memory signal (Chromium). A handheld climbs to two: an
+// iPhone tab holds about 1.85 GB, so two full heaps leave room for the page and
+// Maia. Detect proves each step by reserving its heap.
 // Cores bound the count: a probe cannot use more workers than the CPU can run.
+export const HANDHELD_WORKERS = 2;
 export function maxWorkers(device = {}) {
   const { hardwareConcurrency, deviceMemory } = device;
-  if (isHandheld(device)) return 1;
   const byMemory = deviceMemory > 0 ? (deviceMemory <= 2 ? 1 : deviceMemory <= 4 ? 2 : MAX_WORKERS) : MAX_WORKERS;
   const cores = hardwareConcurrency > 0 ? hardwareConcurrency : 1;
-  return Math.max(1, Math.min(MAX_WORKERS, byMemory, cores));
+  return Math.max(1, Math.min(isHandheld(device) ? HANDHELD_WORKERS : MAX_WORKERS, byMemory, cores));
 }
