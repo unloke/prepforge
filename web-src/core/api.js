@@ -5,6 +5,7 @@ import { withRequestDeadline } from "../sync-queue.js";
 import { apiErrorMessage } from "../api-errors.js";
 import { AUTH_REQUIRED_MESSAGE, isAuthRequiredMessage, isSessionAuthFailure } from "../auth-gate.js";
 import { BUILD_MUTATIONS, announceBuildWrite } from "../build-live.js";
+import { ENGINE_PHASE_KEY } from "../engine/engine-ladder.js";
 
 // Shown when a browser-only compute action (whole-game Analyze, Build → Generate)
 // can't run because the browser engine is unavailable (page not cross-origin
@@ -23,6 +24,7 @@ export function engineLifecycleMark(name, origin = performance.now()) {
   engineLifecycleMarks.get(name).push(at);
   try {
     console.debug("[engine-lifecycle]", name, `${at}ms`);
+    globalThis.localStorage?.setItem(ENGINE_PHASE_KEY, name);
   } catch (_) { /* logging only */ }
   return origin;
 }

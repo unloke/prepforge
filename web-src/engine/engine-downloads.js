@@ -168,6 +168,8 @@ export function createEngineDownloads({
         await getMaia().warmup();
         f.cached = true;
         checkKept(id);
+        // A device already measured without Maia measures again with it: Analyze holds both.
+        if (fits() !== null) void detect().catch(() => {});
       }
     } catch (error) {
       f.error = errorText(id, error);

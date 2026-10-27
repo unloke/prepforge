@@ -1025,6 +1025,7 @@ async function runAnalysis(options = {}) {
           shouldCancel,
           onPhase: ({ phase: sub, detail }) => {
             timings[`maia_${sub}`] = detail || 1;
+            engineLifecycleMark(`analyze-${sub}`, tAnalyze);
           },
           onProgress: (done, total) =>
             job({ current: done, total, phase: "maia-inference", message: `Maia ${done}/${total} moves` }),
