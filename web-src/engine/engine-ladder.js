@@ -1,5 +1,8 @@
 // The worker ladder Detect climbs, and how far this device may climb it.
 export const MAX_WORKERS = 3;
+// The engine phase the page entered last, kept on disk: a tab the OS kills
+// leaves it behind, and the next load names the phase that died.
+export const ENGINE_PHASE_KEY = "prepforge.engine-phase";
 
 // Ladder order: each step adds one heap, so the count only ever grows.
 // The step the device holds below a crashed one; lite x1 is the floor.

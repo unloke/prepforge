@@ -6,7 +6,8 @@
 // Maia strength are user settings; those sync through /api/settings.
 import { loadEngineModule, removeEngineAsset, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
-import { MAX_WORKERS, stepDownProfile, ladderStep, heldBelow, maxWorkers } from "./engine-ladder.js";
+import { maiaWorkload, FEN } from "./detect-maia.js";
+import { MAX_WORKERS, ENGINE_PHASE_KEY, stepDownProfile, ladderStep, heldBelow, maxWorkers } from "./engine-ladder.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
 export const CRASH_KEY = "prepforge.engine-starting";
 export const PROBE_NODES = 200000;
@@ -24,8 +25,6 @@ const validProven = p => !!p && ["lite", "big"].every(net => Number.isInteger(p[
 // An extra worker is kept when it adds at least half of one worker's speed. Below that it
 // mostly costs memory and heat (shared or efficiency cores, throttling).
 export const MIN_GAIN = 0.5;
-// One position for every round: speed differs by position, so a new one per round would skew the gain.
-const FEN = "r1bq1rk1/ppp2ppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 4 6";
 // A detected profile is measured on one build; a new engine build or probe is measured again.
 const PROBE_ID = `5:${globalThis.__STOCKFISH__?.big?.id}`;
 
@@ -46,9 +45,11 @@ export function createEngineProfileManager({
   lifecycle = globalThis.window,
   createEngine = async opts => (await import("./stockfish-provider.js")).createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }),
   scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
+  maiaLoad = maiaWorkload,
 } = {}) {
   let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null, proven = null;
   let ceiling = null; // lowest ladder step that killed this tab; Detect stays below it
+  let lastCrash = null; // the run that killed this tab, and the phase it was in, until a run completes
   // This device's answer on the 94 MB full net: null until it answers, "yes"
   // after a download, "no" after "keep lite" or a step down. It is a decision,
   // not a measurement, so it outlives a new engine build.
@@ -128,7 +129,7 @@ export function createEngineProfileManager({
       return null;
     }
   }
-  const record = () => JSON.stringify({ profile, detected, measurements, proven, ceiling, consent, bigFits: fitKnown ? bigFits : null, probe: probeId });
+  const record = () => JSON.stringify({ profile, detected, measurements, proven, ceiling, lastCrash, consent, bigFits: fitKnown ? bigFits : null, probe: probeId });
   function persist() {
     access(s => s.setItem(PROFILE_KEY, record()));
   }
@@ -147,6 +148,7 @@ export function createEngineProfileManager({
       if (fresh) measurements = saved.measurements || null;
       if (fresh && validProven(saved.proven)) proven = saved.proven;
       if (fresh && Number.isInteger(saved.ceiling)) ceiling = saved.ceiling;
+      if (fresh && saved.lastCrash) lastCrash = saved.lastCrash;
       // The answer is this device's own decision and outlives a new engine
       // build; whether the net fits was measured, so a new build measures again.
       if (saved?.consent === "yes" || saved?.consent === "no") consent = saved.consent;
@@ -156,12 +158,13 @@ export function createEngineProfileManager({
       if (valid(crash)) {
         profile = stepDownProfile(crash);
         detected = profile;
-        // The steps below the one that died completed; the one that died and
-        // everything above it did not. Settings offers only the completed ones.
-        proven = heldBelow(crash);
         if (crash.probe) {
           // Only a probe step measures the engines alone. A run that died also held
-          // Maia and the page, so it steps down without ruling the net out.
+          // Maia and the page, so it steps down without ruling a step out: Settings
+          // still offers what Detect measured.
+          // The steps below the one that died completed; the one that died and
+          // everything above it did not. Settings offers only the completed ones.
+          proven = heldBelow(crash);
           const died = ladderStep(crash.net, crash.workers);
           if (died >= 0) ceiling = Math.min(ceiling ?? died, died);
           if (crash.net === "big") {
@@ -171,7 +174,10 @@ export function createEngineProfileManager({
             if (profile.net !== "big") consent = "no";
             dropBig = true;
           }
-        } else dropBig = false;
+        } else {
+          dropBig = false;
+          lastCrash = { net: crash.net, workers: crash.workers, phase: s.getItem(ENGINE_PHASE_KEY) || null };
+        }
         s.setItem(PROFILE_KEY, record());
         s.removeItem(CRASH_KEY);
       }
@@ -305,6 +311,7 @@ export function createEngineProfileManager({
         if (ended) return;
         ended = true;
         activeRuns--;
+        if (lastCrash && !error) { lastCrash = null; persist(); }
         if (!activeRuns) { heldUsable = null; const publish = publishPending; publishPending = null; publish?.(); emitUsable(); }
         endSession();
       },
@@ -392,6 +399,8 @@ export function createEngineProfileManager({
       setupState({ phase: "waiting", fraction: 0, label: "Waiting for the engine…" });
       resume = await probeBudget({ signal, onDemand });
       abort();
+      const maiaRound = await maiaLoad().catch(() => null);
+      measurements.maia = !!maiaRound;
       let step = 0;
       let net = null;
       if (!measured) {
@@ -447,6 +456,9 @@ export function createEngineProfileManager({
         abort();
         progress(stage, step + 2, n);
         const second = await round();
+        // Analyze's peak: a Maia batch while this step's engines still hold their heaps.
+        // A tab that cannot hold both dies here, under this step's mark.
+        if (maiaRound) await maiaRound().catch(() => {});
         step += 3;
         const r = first.nodes / first.ms > second.nodes / second.ms ? first : second;
         abort();
@@ -559,6 +571,7 @@ export function createEngineProfileManager({
       }).catch(() => {});
     },
     engineMeasurements() { load(); return measurements ? { ...measurements } : null; },
+    lastEngineCrash() { load(); return lastCrash ? { ...lastCrash } : null; },
     // The workers each net can use on this device; Settings disables the rest.
     engineWorkerChoices: choices,
     // "ask" | "download" | null: whether this device still has to answer for the
@@ -579,7 +592,7 @@ export function createEngineProfileManager({
 }
 
 const manager = createEngineProfileManager();
-export const { engineProfile, engineMeasurements, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
+export const { engineProfile, engineMeasurements, lastEngineCrash, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
   readyIfCached, fullEngineChoice, fullEngineFits, chooseFullEngine,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;

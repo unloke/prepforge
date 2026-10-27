@@ -1,5 +1,5 @@
 import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
-  engineSetupState, subscribeEngineSetup, engineWorkerChoices } from "../engine/engine-profile.js";
+  engineSetupState, subscribeEngineSetup, engineWorkerChoices, lastEngineCrash } from "../engine/engine-profile.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
 import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
@@ -165,10 +165,12 @@ export function createSettingsView({
     const status = document.getElementById("settings-profile-status");
     if (status) {
       const m = engineMeasurements();
+      const crash = lastEngineCrash();
       const speed = m?.nodesPerSecond ? ` · ${Math.round(m.nodesPerSecond / 1000)}k nodes/s` : "";
       const bytes = setup.phase === "download" && setup.total
         ? ` ${Math.round(setup.loaded / 1048576)} / ${Math.round(setup.total / 1048576)} MB` : "";
       status.textContent = busy || setup.phase === "error" ? `${setup.label}${bytes}`
+        : crash ? `Last run stopped at ${crash.phase || "start"} · ${crash.net === "big" ? "Full" : "Lite"} ×${crash.workers}`
         : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
         : profile.source === "user" ? "Set by you"
         : profile.source === "detected" ? (speed ? `Speed${speed}` : "Detected for this device")

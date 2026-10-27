@@ -20,7 +20,10 @@ it("the live chart enters Maia loading while warmup is still pending", async () 
 // A phone runs Maia's init only once the Stockfish pass has closed its workers:
 // both at once is what the OS killed the tab for after a Detect.
 it("a phone starts Maia only after the Stockfish pass", async () => {
-  expect(source).toMatch(/const overlapMaia = wantsMaia && !isHandheld\(/);
+  expect(source).toMatch(/const handheld = wantsMaia && isHandheld\(/);
+  expect(source).toMatch(/const overlapMaia = wantsMaia && !handheld;/);
+  // Its trap and gap searches run beside Maia, on one heap.
+  expect(source).toMatch(/analyzeFn: \(o\) => store\.analyzeGame\(\{ \.\.\.o, engineRun, \.\.\.\(handheld \? \{ concurrency: 1 \} : \{\}\) \}\)/);
   expect(source).toMatch(/let maiaReady = overlapMaia \? getSharedMaia3Provider\(\)\.warmup\(\) : null;/);
   expect(source).toMatch(/let assessorReady = overlapMaia \? startAssessor\(\) : null;/);
   const start = source.indexOf('    engineLifecycleMark("analyze-stockfish-done"');
