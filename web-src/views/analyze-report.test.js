@@ -214,7 +214,7 @@ describe("the report", () => {
     expect(html).toMatch(/<button type="button" class="rp-n g-blunder" role="cell" data-side="black" data-grade="blunder"/);
     expect(html).toMatch(/<span class="rp-n is-zero" role="cell">0<\/span>/);
     // Every grade is a column, zeros included.
-    expect(html.match(/role="columnheader" title=/g)).toHaveLength(7);
+    expect(html.match(/role="columnheader" aria-label="[^"]+" title=/g)).toHaveLength(7);
     expect(html).toContain("Ruy Lopez · C60");
     // No result row and no accuracy row: the summary and the board caption say those.
     expect(html).not.toContain("Result");
@@ -249,10 +249,30 @@ describe("the report", () => {
     const calls = [];
     const host = { dataset: {}, set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
     renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH, onJump: (ply) => calls.push(["jump", ply]), onGrade: (side, grade) => calls.push(["grade", side, grade]) });
-    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" || sel === "[data-toggle-summary]" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
+    const target = (attrs) => ({ closest: (sel) => (sel === ".move-ref" || sel === "[data-toggle-summary]" || sel === "[data-toggle-key]" ? null : sel === "[data-grade]" ? (attrs.grade ? { dataset: attrs } : null) : attrs.ply ? { dataset: attrs } : null) });
     host.onclick({ target: target({ ply: "4" }) });
     host.onclick({ target: target({ side: "black", grade: "blunder" }) });
     expect(calls).toEqual([["jump", 4], ["grade", "black", "blunder"]]);
+  });
+
+  it("heads each grade column with its symbol, named, and opens the names as a key", () => {
+    const html = String(reportHtml(buildGameReport({ moves: MOVES, evalGraph: GRAPH })));
+    // No cut words in the heads: a badge with the grade's name for assistive tech.
+    expect(html).not.toContain("rp-col-word");
+    expect(html).toMatch(/role="columnheader" aria-label="Inaccuracy" title="Inaccuracy"><i class="rp-badge g-inaccuracy" aria-hidden="true">\?!<\/i>/);
+    expect(html).toMatch(/role="columnheader" aria-label="Best"[^>]*><i class="rp-badge g-best" aria-hidden="true">★<\/i>/);
+    expect(html).toMatch(/<ul class="rp-key" id="rp-key" hidden>[\s\S]*<span>Blunder<\/span>/);
+    const key = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+    const list = { hidden: true, toggleAttribute(_, on) { this.hidden = on; } };
+    const host = { dataset: {}, querySelector: (sel) => (sel === "#rp-key" ? list : null), set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; } };
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH });
+    host.onclick({ target: { closest: (sel) => (sel === "[data-toggle-key]" ? key : null) } });
+    expect(host.dataset.key).toBe("true");
+    expect(key.attrs["aria-expanded"]).toBe("true");
+    expect(list.hidden).toBe(false);
+    // A re-render keeps the key open.
+    renderReportBlock(host, { moves: MOVES, evalGraph: GRAPH });
+    expect(host.innerHTML).toContain('<ul class="rp-key" id="rp-key">');
   });
 
   it("clears the block when there is nothing analysed", () => {

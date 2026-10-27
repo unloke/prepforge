@@ -1,6 +1,8 @@
 // Route-level view swap. Where View Transitions exist the outgoing page
 // cross-fades into the incoming one (styles.css names .workspace and styles the
-// pair; the rail and the board get no name of their own). The page stays as it
+// pair; the rail and the board get no name of their own). The name is set only
+// while a swap runs (`:root.view-swap`): a named element is its own stacking
+// layer, which would keep a page's fixed sheet under the phone tab bar. The page stays as it
 // is until the browser has captured it, so `.is-active` moves inside the
 // transition's update; route state (appState.currentView, activeViewName) is
 // current at once. The incoming view is `.is-arriving` until the fade ends,
@@ -27,6 +29,8 @@ export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) 
     apply();
     return null;
   }
+  const root = doc.documentElement;
+  root?.classList.add("view-swap");
   const transition = doc.startViewTransition(() => {
     // A newer switch replaced this one before the capture: it applies itself.
     if (token !== seq) return;
@@ -37,7 +41,9 @@ export function swapView(views, id, { animate = true, onSwap = () => {} } = {}) 
   // unhandled rejection unless someone listens.
   transition.ready.catch(() => {});
   transition.finished.finally(() => {
-    if (token === seq) next.classList.remove("is-arriving");
+    if (token !== seq) return;
+    next.classList.remove("is-arriving");
+    root?.classList.remove("view-swap");
   });
   return transition;
 }

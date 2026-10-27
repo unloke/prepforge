@@ -197,7 +197,7 @@ describe("Repertoire ⋯ menu matches the Library menu (P2-14)", () => {
 
   it("retires the 'builder' name in the Library menu", () => {
     expect(app).not.toContain("Edit in builder");
-    expect(app).toContain('["edit", "Open in Repertoire"]');
+    expect(app).toContain('{ action: "edit", label: "Open in Repertoire" }');
   });
 });
 

@@ -88,7 +88,8 @@
         <div class="lib">
           <header class="page-head">
             <h1>Library</h1>
-            <button type="button" class="page-head-btn" data-mirror="#dashboard-new-rep" aria-label="New repertoire" title="New repertoire"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button type="button" class="page-head-btn" id="library-search-toggle" aria-controls="lib-filter-search" aria-expanded="false" aria-label="Search repertoires" title="Search repertoires"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg></button>
+            <button type="button" class="page-head-btn" id="library-add" aria-haspopup="menu" aria-label="Add to library" title="Add to library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
           </header>
           <section class="today card" id="dashboard-today" data-testid="dashboard-today" aria-label="Today" hidden></section>
           <div class="lib-grid">
@@ -106,6 +107,7 @@
                   <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg>
                   <input type="search" id="lib-filter-search" class="lib-filter-search" aria-label="Filter repertoires" placeholder="Filter repertoires" autocomplete="off" />
                 </label>
+                <button type="button" class="lib-search-cancel" id="lib-search-cancel">Cancel</button>
                 <span class="lib-actions" id="library-actions">
                   <button class="btn" id="dashboard-import-pgn" data-testid="dashboard-import-pgn">Import PGN</button>
                   <button class="btn primary" id="dashboard-new-rep" data-testid="dashboard-new-rep">New repertoire</button>
@@ -209,7 +211,7 @@
                      a phone have no room for that column, and show one pane at a
                      time behind the tabs. -->
                 <div class="an-panes" id="analyze-panes">
-                  <div class="an-tabs" id="analyze-tabs" role="tablist" aria-label="Analysis">
+                  <div class="an-tabs" id="analyze-tabs" role="tablist" aria-label="Analysis" data-peek data-peek-home="coach">
                     <button type="button" role="tab" class="an-tab" id="an-tab-coach" data-pane="coach" aria-controls="analysis-explain" aria-selected="false" tabindex="-1">Coach</button>
                     <button type="button" role="tab" class="an-tab" id="an-tab-engine" data-pane="engine" aria-controls="analysis-engine-pane" aria-selected="false" tabindex="-1">Engine</button>
                     <button type="button" role="tab" class="an-tab" id="an-tab-report" data-pane="report" aria-controls="analysis-report" aria-selected="true">Report</button>
@@ -220,6 +222,7 @@
                       <b>Engine</b>
                       <button class="ev-engine" id="open-engine-widget" data-testid="open-engine-widget" type="button" aria-pressed="false" title="Live Stockfish lines for this position">Live</button>
                     </header>
+                    <div class="saved-line" id="analysis-saved-line" data-testid="analysis-saved-line" hidden></div>
                     <div class="engine-slot" id="analysis-engine-slot"></div>
                   </section>
                   <div class="res-stack an-pane moves-pane" id="analysis-results" role="tabpanel" aria-labelledby="an-tab-moves" hidden>
@@ -314,11 +317,12 @@
               <div class="rep-title">
                 <h1 class="rep-name" id="build-rep-name" data-testid="build-rep-name">No repertoire open</h1>
                 <span class="build-opening" id="build-opening" hidden></span>
+                <span class="build-sync" id="build-sync-head" aria-live="polite" hidden></span>
               </div>
               <button class="btn ghost icon row-menu-btn rep-menu-btn" id="build-menu" data-testid="build-menu" title="More actions" aria-label="More actions" aria-haspopup="menu" aria-expanded="false"><span class="bm-dots" aria-hidden="true">⋯</span><span class="bl">More</span></button>
             </div>
             <div class="panel-body">
-            <div class="phone-panes" id="build-panes" role="tablist" aria-label="Panel">
+            <div class="phone-panes" id="build-panes" role="tablist" aria-label="Panel" data-peek data-peek-home="moves">
               <button type="button" role="tab" data-pane="moves" aria-selected="true">Moves</button>
               <button type="button" role="tab" data-pane="explorer" aria-selected="false">Explorer</button>
               <button type="button" role="tab" data-pane="coverage" aria-selected="false">Coverage</button>
@@ -354,28 +358,39 @@
                   <button class="is-active" id="build-tool-explorer" data-testid="build-tool-explorer" type="button" role="tab" aria-controls="explorer-drawer" aria-selected="true">Explorer</button>
                   <button id="build-tool-coverage" data-testid="build-tool-coverage" type="button" role="tab" aria-controls="coverage-drawer" aria-selected="false" tabindex="-1">Coverage <span class="count" id="build-coverage-count" hidden></span></button>
                 </div>
-                <div class="dock-tools" id="build-dock-tools">
-                  <div class="seg" id="inspector-dbs" role="group" aria-label="Database">
-                    <button type="button" class="seg-btn explorer-db is-active" data-db="masters" aria-pressed="true">Masters</button>
-                    <button type="button" class="seg-btn explorer-db" data-db="lichess" aria-pressed="false">Players</button>
+                <button type="button" class="btn sm dock-opts" id="build-dock-opts" data-testid="build-dock-opts" aria-haspopup="dialog" aria-expanded="false" aria-controls="build-dock-tools"><svg class="bi" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg><span class="dock-opts-label" id="build-dock-opts-label">Masters</span></button>
+                <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
+                  <span class="pf-row-label" id="explorer-engine-label">Engine</span>
+                  <button type="button" class="pf-switch" id="explorer-engine-toggle" data-testid="open-engine-widget-build" role="switch" aria-checked="false" aria-labelledby="explorer-engine-label"><span class="pf-knob"></span></button>
+                </span>
+                <button type="button" class="btn sm inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
+                <!-- The open tab's settings and its one-sentence scope: a popover
+                     under the options button, a sheet on a phone. -->
+                <div class="dock-tools" id="build-dock-tools" role="dialog" aria-label="Panel options" popover>
+                  <div class="dock-opt">
+                    <span class="dock-opt-label" id="inspector-dbs-label">Database</span>
+                    <div class="seg" id="inspector-dbs" role="group" aria-labelledby="inspector-dbs-label">
+                      <button type="button" class="seg-btn explorer-db is-active" data-db="masters" aria-pressed="true">Masters</button>
+                      <button type="button" class="seg-btn explorer-db" data-db="lichess" aria-pressed="false">Players</button>
+                    </div>
                   </div>
-                  <div class="seg" id="coverage-scope" role="group" aria-label="Coverage scope" hidden>
-                    <button type="button" class="seg-btn is-active" data-scope="repertoire" aria-pressed="true">Mainline</button>
-                    <button type="button" class="seg-btn" data-scope="branch" aria-pressed="false">Branch</button>
+                  <div class="dock-opt">
+                    <span class="dock-opt-label" id="coverage-scope-label">Scope</span>
+                    <div class="seg" id="coverage-scope" role="group" aria-labelledby="coverage-scope-label" hidden>
+                      <button type="button" class="seg-btn is-active" data-scope="repertoire" aria-pressed="true">Mainline</button>
+                      <button type="button" class="seg-btn" data-scope="branch" aria-pressed="false">Branch</button>
+                    </div>
                   </div>
-                  <select class="dock-select" id="coverage-depth" aria-label="Horizon" title="Horizon" hidden>
-                    <option value="4">2 moves</option>
-                    <option value="8">4 moves</option>
-                    <option value="16" selected>8 moves</option>
-                    <option value="24">12 moves</option>
-                  </select>
-                  <button type="button" class="btn icon inspector-info" id="inspector-info" aria-label="About this panel"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
-                  <span class="build-sync" id="build-sync-head" aria-live="polite" hidden></span>
-                  <span class="dock-engine-switch" id="explorer-engine-switch" title="Stockfish's eval beside every move">
-                    <span class="pf-row-label" id="explorer-engine-label">Engine</span>
-                    <button type="button" class="pf-switch" id="explorer-engine-toggle" data-testid="open-engine-widget-build" role="switch" aria-checked="false" aria-labelledby="explorer-engine-label"><span class="pf-knob"></span></button>
-                  </span>
-                  <button type="button" class="btn sm inspector-scan" id="coverage-run" data-testid="coverage-run" hidden>Scan</button>
+                  <label class="dock-opt">
+                    <span class="dock-opt-label">Horizon</span>
+                    <select class="dock-select" id="coverage-depth" hidden>
+                      <option value="4">2 moves</option>
+                      <option value="8">4 moves</option>
+                      <option value="16" selected>8 moves</option>
+                      <option value="24">12 moves</option>
+                    </select>
+                  </label>
+                  <p class="dock-scope" id="inspector-scope"></p>
                 </div>
                 <button class="dock-fold" id="build-dock-fold" data-testid="build-dock-fold" type="button" aria-controls="build-inspector" aria-expanded="true" title="Fold the inspector" aria-label="Fold the inspector"><span aria-hidden="true">&#9662;</span></button>
               </div>
@@ -444,6 +459,10 @@
             </section>
             <div class="panel-scroll">
               <section class="train-home" id="train-home" data-testid="train-home">
+                <div class="seg train-tabs" id="train-tabs" role="group" aria-label="Train">
+                  <button type="button" class="seg-btn is-active" data-pane="drill" aria-pressed="true" data-testid="train-tab-drill">Drill</button>
+                  <button type="button" class="seg-btn" data-pane="play" aria-pressed="false" data-testid="train-tab-play">Practice</button>
+                </div>
                 <section class="train-row" data-row="smart">
                   <div class="train-row-text">
                     <h3 class="train-row-title" data-vt-title="smart">Due queue</h3>
@@ -478,7 +497,10 @@
                     <span class="train-row-meta" id="train-play-meta"></span>
                   </div>
                   <button class="btn train-row-go" id="start-play" data-testid="start-play" type="button">Play</button>
-                  <button class="btn sm train-lucky" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Practise from a key position in a titled player's game">Random position</button>
+                  <span class="train-sec-label" data-sec="opponent">Opponent</span>
+                  <div class="train-bots" id="train-bots" role="group" aria-label="Opponent" data-testid="train-bots"></div>
+                  <span class="train-sec-label" data-sec="color">Play as</span>
+                  <button class="btn sm train-lucky" id="feeling-lucky" data-testid="feeling-lucky" type="button" title="Practise from a key position in a titled player's game">Random<span class="train-lucky-more"> position</span></button>
                   <div class="train-row-opts">
                     <button type="button" class="train-chip" id="train-play-book" data-testid="train-play-book" aria-haspopup="listbox"><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
                     <button type="button" class="train-chip" id="train-play-reps" data-testid="train-play-reps" aria-haspopup="listbox" hidden><span></span><svg class="train-chip-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>
@@ -590,7 +612,10 @@
       </section>
 
       <section class="view" id="view-teams" data-testid="view-teams">
-        <header class="page-head"><h1>Teams</h1></header>
+        <header class="page-head">
+          <h1>Teams</h1>
+          <button type="button" class="page-head-btn" data-mirror="#teams-new" aria-label="New team" title="New team"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </header>
         <div class="teams">
           <section class="card dir">
             <header class="card-head">
@@ -607,21 +632,39 @@
 
           <section class="card team-detail" id="team-detail-card" data-testid="team-detail-card" hidden>
             <header class="card-head">
-              <h2 id="team-detail-name">Team</h2>
-              <span class="team-role-badge" id="team-detail-role"></span>
+              <div class="team-title">
+                <h2 id="team-detail-name">Team</h2>
+                <span class="team-role-badge" id="team-detail-role"></span>
+              </div>
               <span class="spacer"></span>
               <button class="btn sm" id="team-detail-invite" data-testid="team-detail-invite" title="Invite by link: anyone signed in who opens it joins as a member" aria-label="Invite" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M7 9.5a2.8 2.8 0 0 0 4 0l2-2a2.8 2.8 0 0 0-4-4l-.8.8M9 6.5a2.8 2.8 0 0 0-4 0l-2 2a2.8 2.8 0 0 0 4 4l.8-.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="invite-word">Invite</span></button>
               <button class="btn sm icon" id="team-detail-rename" data-testid="team-detail-rename" title="Rename team" aria-label="Rename team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
               <button class="btn sm icon danger" id="team-detail-delete" data-testid="team-detail-delete" title="Delete team" aria-label="Delete team" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <button class="btn sm icon" id="team-detail-close" title="Close" aria-label="Close team details">×</button>
+              <button type="button" class="btn sm icon team-more" id="team-detail-more" data-sheet-open="team-actions" aria-label="Team actions" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
             </header>
+            <!-- A phone keeps one action in the open team's head (⋯); the rest
+                 live in this sheet and click the desktop controls they mirror. -->
+            <div class="phone-sheet" id="team-actions">
+              <div class="sheet-bar">
+                <b>Team</b>
+                <button type="button" class="sheet-done" data-sheet-close>Done</button>
+              </div>
+              <div class="sheet-rows">
+                <button type="button" class="sheet-row" data-mirror="#team-add-member" data-for="add"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 19a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg><span>Add by Lichess username</span></button>
+                <button type="button" class="sheet-row" data-mirror="#team-detail-rename" data-for="rename"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5l4 4L9 19H5v-4z"/></svg><span>Rename team</span></button>
+                <button type="button" class="sheet-row is-danger" data-mirror="#team-members .team-remove[data-self='1']" data-for="leave"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/></svg><span>Leave team</span></button>
+                <button type="button" class="sheet-row is-danger" data-mirror="#team-detail-delete" data-for="delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.9 12.5h9.2l.9-12.5"/></svg><span>Delete team</span></button>
+              </div>
+            </div>
             <div class="tabs" role="tablist" aria-label="Team workspace">
               <button type="button" id="team-tab-members" class="is-active" data-team-pane="members" role="tab" aria-controls="team-panel-members" aria-selected="true">Members <span class="count" data-team-count="members" hidden></span></button>
-              <button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1">Shared repertoires <span class="count" data-team-count="repertoires" hidden></span></button>
+              <button type="button" id="team-tab-repertoires" data-team-pane="repertoires" role="tab" aria-controls="team-panel-repertoires" aria-selected="false" tabindex="-1"><span class="tab-long">Shared repertoires</span><span class="tab-short">Repertoires</span> <span class="count" data-team-count="repertoires" hidden></span></button>
             </div>
             <section id="team-panel-members" data-team-panel="members" role="tabpanel" aria-labelledby="team-tab-members">
               <div class="sub-head">
                 <span class="spacer"></span>
+                <button type="button" class="btn primary team-invite-cta" id="team-invite-cta" data-mirror="#team-detail-invite">Invite people</button>
                 <button class="btn sm" id="team-add-member" data-testid="team-add-member" title="Add someone who already has a PrepForge account, by their linked Lichess username" hidden>Add member</button>
               </div>
               <div id="team-members" data-testid="team-members" data-ui></div>
@@ -825,6 +868,12 @@
 
     <dialog class="modal sheet" id="more-sheet" aria-label="More">
       <div class="sheet-grab" aria-hidden="true"></div>
+      <button class="sheet-item" type="button" id="sheet-account" data-testid="sheet-account">
+        <span class="avatar sm" id="sheet-account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
+        <span id="sheet-account-label">Sign in</span>
+        <svg class="ic sheet-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <div class="sheet-sep" aria-hidden="true"></div>
       <button class="sheet-item" type="button" id="sheet-lib-import" data-lib-mirror="dashboard-import-pgn" hidden>
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>
         <span>Import PGN</span>
@@ -841,10 +890,7 @@
         <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
         <span>Settings</span>
       </button>
-      <button class="sheet-item" type="button" id="sheet-account" data-testid="sheet-account">
-        <span class="avatar sm" id="sheet-account-avatar" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19.5c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></span>
-        <span id="sheet-account-label">Sign in</span>
-      </button>
+      <div class="sheet-sep" aria-hidden="true"></div>
       <button class="sheet-item" type="button" id="sheet-theme" data-testid="sheet-theme">
         <svg class="ic theme-ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>
         <svg class="ic theme-ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
@@ -858,6 +904,7 @@
 
     <div class="context-menu" id="node-context-menu" popover></div>
     <div class="context-menu" id="repertoire-context-menu" role="menu" aria-label="Repertoire actions" popover></div>
+    <div class="context-menu" id="library-add-menu" role="menu" aria-label="Add to library" popover></div>
     <div class="context-menu account-menu" id="account-menu" role="menu" popover></div>
 
     <div class="engine-window" id="engine-window" data-testid="engine-window" hidden>

@@ -1,6 +1,8 @@
 import { appState } from "./core/state.js";
 import { openModal } from "./core/dialog.js";
 import { closeSheetOffPhone } from "./phone-layout.js";
+import { wirePeekSheets } from "./peek-sheet.js";
+import { wireLibraryPhoneHead } from "./library-phone.js";
 import { disposeSharedMaia3Provider, peekSharedMaia3Provider } from "./engine/maia3-provider.js";
 
 // Phone chrome and the Maia idle teardown: the More sheet, the thumb bar that
@@ -14,6 +16,7 @@ let onAccountChipClick, toggleTheme;
 export function bindPhoneChrome(deps) {
   ({ onAccountChipClick, toggleTheme } = deps);
   wireMobileNav();
+  wireLibraryPhoneHead();
 }
 
 // Maia idle teardown. The browser Maia engine (onnxruntime-web session + WASM heap) is by
@@ -125,6 +128,7 @@ export function wireMobileNav() {
   }
   wirePhoneStudyNav();
   wirePhoneSheets();
+  wirePeekSheets();
   wireHoldRepeat();
 }
 

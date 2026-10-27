@@ -9,7 +9,8 @@ import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "replay.css"), "utf8");
-const phone = css.slice(css.lastIndexOf("@media (max-width: 760px)"));
+// Both phone blocks: round 1 (row geometry) and the r2 composition after it.
+const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
 const shared = readFileSync(join(here, "..", "phone.css"), "utf8");
 
 it("the Games outcome chips are a real touch target on a phone", () => {

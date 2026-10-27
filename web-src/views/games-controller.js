@@ -193,6 +193,11 @@ function paintGamesSource() {
     return;
   }
   const selection = gamesSourceSelection();
+  // An added username is a source on its own: Check runs without a linked
+  // account (it stayed disabled with only an external username picked).
+  appState.gamesExternalCount = normalizeSelection(selection).external.length;
+  const compare = document.getElementById("lichess-compare-btn");
+  if (compare) compare.disabled = !appState.lichessUsername && !appState.gamesExternalCount;
   const { chips } = selectionChips(selection, lichessAccounts());
   const n = lichessAccounts().length;
   const label = n > 0 ? `Self · ${n} linked account${n === 1 ? "" : "s"}` : "Self · all linked";
@@ -201,7 +206,7 @@ function paintGamesSource() {
   // named an empty set and Check stayed disabled without saying why.
   if (n === 0 && !selection.external.length && selection.linkedMode === "all") {
     tray.innerHTML =
-      html`<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess to use your games</button>`;
+      html`<button type="button" class="src-chip src-chip-signin" data-games-link>Link Lichess account</button>`;
     return;
   }
   // Nothing picked: the ledger's empty state names the next step, so the tray

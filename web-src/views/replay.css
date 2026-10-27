@@ -299,3 +299,23 @@
      would shrink it to the message's width. */
   #view-replay .ledger:has(.ledger-empty) { align-self: stretch; }
 }
+/* Phone, round 2: several sources scroll sideways in their one row (Lichess's
+   chip row) instead of wrapping the toolbar to a second line. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-replay .toolbar > .src > .src-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+  #view-replay .toolbar > .src > .src-chips::-webkit-scrollbar { display: none; }
+  #view-replay .toolbar > .src > .src-chips > .src-chip { flex: none; white-space: nowrap; }
+  /* The outcome strip bleeds to the card's edges (phone.css pulls it out by the
+     card's 14px); a 100% width on top of that stopped it 14px short of the
+     right edge and cut "6 opponent left prep" mid-word inside the card. */
+  #view-replay .toolbar > .sum-chips:not([hidden]) { width: auto; }
+  /* The ledger's head is one line: the title, then the count, which yields. */
+  #view-replay .ledger .card-head { flex-wrap: nowrap; min-width: 0; }
+  #view-replay .ledger .card-head h2 { flex: none; white-space: nowrap; }
+  #view-replay .ledger .card-head .faint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* The detail's actions are one row: the primary and Analyze share the width,
+     the Lichess link closes it. */
+  #view-replay .focus .actions { flex-wrap: nowrap; gap: 8px; }
+  #view-replay .focus .actions > button.btn { flex: 1 1 0; min-width: 0; }
+  #view-replay .focus .actions > a.btn.ghost { flex: none; }
+}

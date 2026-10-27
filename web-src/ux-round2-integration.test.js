@@ -1,6 +1,6 @@
 import { html } from "./html.js";
 import { describe, expect, it, vi } from "vitest";
-import { selectionChips } from "./views/shared/source-composer.js";
+import { normalizeSelection, selectionChips } from "./views/shared/source-composer.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
@@ -112,7 +112,7 @@ describe("Games link chip respects explicit Self selection", () => {
   ])("%s with %j and no linked accounts", (linkedMode, accountIds, expected) => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     const paint = compile("function paintGamesSource(", {
-      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
+      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, normalizeSelection, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode, accountIds, external: [] }),
       gamesIdleHint: () => "",
     });
     paint();
@@ -125,7 +125,7 @@ describe("Games link chip respects explicit Self selection", () => {
   it("external usernames stay usable without linking", () => {
     const tray = { get innerHTML() { return this._html ?? ""; }, set innerHTML(value) { this._html = String(value); } };
     compile("function paintGamesSource(", {
-      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
+      appState: { signedIn: true, authKnown: true }, document: { getElementById: () => tray }, selectionChips, normalizeSelection, lichessAccounts: () => [], gamesSourceSelection: () => ({ linkedMode: "all", external: ["Foe"] }),
       gamesIdleHint: () => "",
     })();
     expect(String(tray.innerHTML)).toContain("Foe");

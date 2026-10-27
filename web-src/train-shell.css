@@ -294,3 +294,7 @@
   .train-row[data-row="all_lines"] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "text go" "opts opts"; padding: 12px; }
   .train-row[data-row="all_lines"] .train-row-opts { justify-content: flex-start; }
 }
+
+/* Phone-only parts of Home (phone.css): the Drill / Practice tabs, Practice's
+   opponent cards and its section labels. The desktop rows keep their chips. */
+#view-train :is(.train-tabs, .train-bots, .train-sec-label) { display: none; }

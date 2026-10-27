@@ -62,7 +62,7 @@ export function inviteDialogModel({ status, url, teamId = null }) {
       url,
       actions: [
         { id: "revoke", label: "Revoke link", kind: "danger-quiet" },
-        { id: "generate", label: "Generate new link", kind: "ghost" },
+        { id: "generate", label: "New link", kind: "ghost" },
         { id: "done", label: "Done", kind: "ghost" },
         { id: "copy", label: "Copy link", kind: "primary" },
       ],
@@ -77,7 +77,7 @@ export function inviteDialogModel({ status, url, teamId = null }) {
       actions: [
         { id: "revoke", label: "Revoke link", kind: "danger-quiet" },
         { id: "done", label: "Close", kind: "ghost" },
-        { id: "generate", label: "Generate new link", kind: "primary" },
+        { id: "generate", label: "New link", kind: "primary" },
       ],
     };
   }
@@ -101,8 +101,11 @@ export function inviteDialogBodyHtml(model) {
     : "";
   const buttons = model.actions
     .map((a) => html`<button class="btn ${a.kind}" data-action="${a.id}" type="button">${a.label}</button>`);
+  // A phone sheet closes from its title bar (the footer's Done/Close is
+  // hidden there), so the footer keeps one row of link actions.
+  const done = model.actions.find((a) => a.id === "done");
   return html`
-        <div class="modal-title">Team invite link</div>
+        <div class="modal-title">Team invite link${done ? html`<button class="invite-done" data-action="done" type="button">${done.label}</button>` : ""}</div>
         <div class="modal-body">
           ${model.state === "known" && model.note ? html`<p class="modal-note muted" data-invite-note>${model.note}</p>` : ""}
           ${field}

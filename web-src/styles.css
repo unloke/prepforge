@@ -935,12 +935,28 @@ h2 {
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22); /* taste-skill-ignore: a floating popover is a real overlay */
 }
 
+/* Title, count, then Done at the head's end: the sheet's close is a text
+   action in its head (iOS / Chess.com sheets), not a lone button on a row of
+   its own under the add field. */
 .src-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
+.src-count { margin-right: auto; }
+.src-done {
+  min-height: var(--control-h-sm, 26px);
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.src-done:hover { text-decoration: underline; }
+.src-done:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; border-radius: 4px; }
 
 .src-title {
   font-size: 13px;
@@ -1023,10 +1039,6 @@ h2 {
   min-width: 0;
 }
 
-.src-foot {
-  display: flex;
-  justify-content: flex-end;
-}
 /* Settings */
 
 /* Settings — a section strip over the cards. The strip is here; cards, rows,
@@ -1346,8 +1358,10 @@ h2 {
 
 /* A route change is a View Transition (view-swap.js): the workspace is the one
    named element, so the rail stays put and the page cross-fades with a few px
-   of travel. The group never morphs size. */
-.workspace { view-transition-name: view; }
+   of travel. The group never morphs size. Named only during the swap: a named
+   element is a stacking layer, and a page's fixed sheet must rise over the
+   phone tab bar. */
+:root.view-swap .workspace { view-transition-name: view; }
 ::view-transition-group(view) { animation: none; }
 ::view-transition-old(view) { animation: view-leave var(--dur-fast) var(--ease-out) both; }
 ::view-transition-new(view) { animation: view-enter var(--dur) var(--ease-out) both; }
@@ -1450,7 +1464,7 @@ h2 {
 .btn.danger.ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--danger);
+  color: var(--danger-strong);
 }
 
 .btn.danger.ghost:hover:not(:disabled, .is-coming-soon) {
@@ -1953,6 +1967,8 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
   background: var(--panel);
   color: var(--label);
 }
+/* The phone's Cancel for the search it opens from the page head (phone.css). */
+.lib-search-cancel { display: none; }
 .search-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); /* taste-skill-ignore: a focus ring is not elevation */ }
 .search-field input {
   width: 100%;
@@ -3323,24 +3339,18 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
      reads as a different kind of thing without a rule or a card. */
   background: var(--surface-3);
 }
-/* The dock's head: its tabs, the tools of the open tab, the fold. On one row
-   only when the panel fits the widest tab's tools (Coverage's scope, horizon
-   and Scan); otherwise the tabs and the fold keep the first row and the tools
-   of either tab take a full row under them, so switching tabs never changes
-   the head's shape and no control is pushed past the panel's edge (at 1000px
-   the Engine switch was clipped; at 1440 Scan sat off-screen). Wrapped tools
-   start on the tab labels' edge. */
+/* The dock's head is one row at every width, like Lichess's opening explorer:
+   the tabs, an options button naming what the open tab shows ("Masters",
+   "Mainline · 8 moves") whose popover holds the settings, then the tab's one
+   action (the Engine switch, Scan) and the fold at the right end. The two-row
+   head (tabs over a wrapped tools row) is gone. */
 .dock { container: dock / inline-size; }
 .dock-head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 2px 8px;
+  gap: 8px;
   min-width: 0;
   padding: 0 4px 0 var(--build-pad, 12px);
-}
-@container dock (max-width: 630px) {
-  .dock-tools { order: 1; flex-basis: 100%; padding-bottom: 4px; }
 }
 .dock-tabs {
   display: flex;
@@ -3417,7 +3427,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   place-items: center;
   width: var(--control-h);
   height: var(--control-h);
-  margin-left: auto;
   padding: 0;
   border: 0;
   border-radius: var(--radius);
@@ -3439,47 +3448,58 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .dock.is-folded .dock-tabs { border-bottom: 0; }
 .dock.is-folded .dock-tabs button.is-active { border-bottom-color: transparent; }
 .dock.is-folded .dock-fold span { transform: rotate(180deg); }
-.dock.is-folded .dock-tools { visibility: hidden; }
+.dock.is-folded :is(.dock-opts, .dock-engine-switch, .inspector-scan) { visibility: hidden; }
+.dock-opts {
+  flex: 0 1 auto;
+  gap: 6px;
+  min-width: 0;
+  max-width: 220px;
+  padding: 0 10px 0 8px;
+  color: var(--text);
+}
+.dock-opts .bi { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.dock-opts-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A narrow dock (the 1000px window) keeps the row by showing the button as its
+   icon; its name stays in the tooltip and the accessible name. */
+@container dock (max-width: 470px) {
+  .dock-opts { width: var(--control-h); padding: 0; justify-content: center; }
+  .dock-opts-label { display: none; }
+}
+/* The open tab's action closes the row at its right end. */
+.dock-head > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
+.dock-head > .dock-fold { flex: none; }
+/* The options popover: each setting on its own line, label over control, and
+   the scope sentence under them. */
 .dock-tools {
-  position: relative;
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  min-width: 0;
-  min-height: 34px;
-}
-/* The open tab's action (the Engine switch, Scan) closes the row at its right end. */
-.dock-tools > :is(.dock-engine-switch, .inspector-scan) { margin-left: auto; }
-/* The link prompt's button keeps its own box: wrapped, it starts a line rather
-   than trailing the sentence's last word. */
-#explorer-rows .hint:has(> [data-explorer-link]) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.inspector-info {
-  width: 24px;
-  min-width: 0;
-  height: 24px;
-  padding: 0;
-  border-color: transparent;
-  background: none;
-  color: var(--label);
-  font-size: 13px;
-}
-.inspector-info-pop {
   inset: auto;
   margin: 0;
   border: 0;
-  max-width: 240px;
-  padding: 8px 10px;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
   border-radius: var(--radius-card);
   background: var(--float);
   color: var(--text);
-  /* The panel's own reading size: at 12px the one sentence that explains the
-     numbers was the smallest thing in the view it explains. */
-  font-size: var(--fs-s);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.16); /* taste-skill-ignore: a floating popover is a real overlay */
 }
+.dock-tools:popover-open { display: grid; gap: 12px; }
+.dock-opt { display: grid; gap: 4px; }
+.dock-opt:has(> :is(.seg, select)[hidden]) { display: none; }
+.dock-opt-label { font-size: var(--fs-xs); font-weight: 600; color: var(--label); }
+.dock-opt > .seg { display: flex; }
+.dock-opt > .seg > .seg-btn { flex: 1 1 0; }
+.dock-opt > select { width: 100%; }
+.dock-scope { margin: 0; font-size: var(--fs-s); color: var(--muted); line-height: 1.45; }
+.dock-scope:empty { display: none; }
+/* The link prompt's button keeps its own box: wrapped, it starts a line rather
+   than trailing the sentence's last word. */
+#explorer-rows .hint:has(> [data-explorer-link]) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .inspector-panel { min-width: 0; }
+/* Coverage's Maia offer is one line at every width (the name, Download, the
+   dismiss): stacked, it was a card of three rows inside the panel. */
+#coverage-drawer [data-unlock-place] .unlock:not(.is-inline) { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; min-height: 0; padding: 6px 4px 6px 12px; }
+#coverage-drawer [data-unlock-place] .unlock:not(.is-inline) > .btn { grid-column: auto; grid-row: auto; justify-self: end; }
+#coverage-drawer [data-unlock-place] .unlock:not(.is-inline) .unlock-x { grid-column: auto; grid-row: auto; align-self: center; margin-top: 0; }
 
 /* Stacked (≤860): the page is the scroll owner. The move tree keeps a cap but
    hands the wheel back to the page at its ends instead of trapping it. */
@@ -4070,7 +4090,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   gap: 8px;
 }
 
-/* Coverage scan rows (Scan, score and the ⓘ popover live in the dock tools). */
+/* Coverage scan rows (Scan lives in the dock head; scope and horizon in its options). */
 .coverage-gaps {
   display: grid;
   min-width: 0;
@@ -4157,6 +4177,10 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   .coverage-gap { min-height: 56px; }
   .coverage-gap-select { min-width: 44px; }
+  /* The label is the checkbox's target: a thumb gets the whole 44px line. */
+  .coverage-selall { min-height: 44px; padding-left: 12px; font-size: var(--fs-s); }
+  .coverage-complete-bar { padding: 0 0 8px; }
+  .coverage-complete-bar .btn { padding: 0 16px; font-size: 14px; }
 }
 
 .coverage-gap-body:hover .coverage-gap-move {
@@ -4179,8 +4203,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 
 /* Opening explorer: a Move / Games / W-D-L table. The opening's name is a
    caption on the data, and the rows are readable without it (the panel head
-   names the repertoire and the trail names the line), so it lives in the ⓘ
-   tooltip and its popover instead of taking a line of the dock's height. */
+   names the repertoire and the trail names the line), so it lives in the dock's
+   options popover instead of taking a line of the dock's height. */
 
 .explorer-rows {
   display: grid;
@@ -4611,7 +4635,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   border: 0;
   min-width: 220px;
   max-width: min(280px, calc(100vw - 16px));
-  max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   overflow-y: auto;
   padding: 6px;
   border-radius: var(--radius-card);
@@ -5089,19 +5113,12 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
     right: 0;
     bottom: 0;
     z-index: 40;
-    height: calc(58px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--panel);
-    box-shadow: var(--shadow-bar); /* taste-skill-ignore: a bar that floats over scrolling content is a real overlay */
   }
 
   .tab {
     min-height: 44px;
-  }
-
-  .workspace {
-    padding: 12px;
-    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 
   /* Repertoire ⋯ menu: 44×44px touch target. */
@@ -5117,15 +5134,14 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
 
   #view-train .board-bar .btn.icon {
-    width: 44px;
     min-width: 44px;
-    height: 44px;
     min-height: 44px;
     padding: 0;
   }
 
   /* Primary nav + generic buttons: 44px touch targets on narrow viewports.
-     Desktop keeps its denser 28-32px sizing (base rules unchanged). */
+     Desktop keeps its denser 28-32px sizing (base rules unchanged); the
+     buttons' own 44px sizes are phone.css's. */
   .tab {
     height: 44px;
     display: inline-flex;
@@ -5138,13 +5154,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   }
   .rail-btn kbd {
     display: none;
-  }
-  .btn {
-    min-height: 44px;
-  }
-  .btn.icon {
-    min-height: 44px;
-    min-width: 44px;
   }
 }
 
@@ -5997,6 +6006,8 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 }
 .rail-btn .ic { width: 18px; height: 18px; }
 .rail-btn .nav-label { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+/* While the rail widens on hover its labels fade in: they keep one line. */
+.rail :is(.nav-label, .brand-name) { white-space: nowrap; }
 .rail-btn kbd { font-size: 10px; }
 
 /* Page actions inside page headers. */

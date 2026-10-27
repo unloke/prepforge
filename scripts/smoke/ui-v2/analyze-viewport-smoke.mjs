@@ -102,6 +102,12 @@ if (!browser) { console.error("[analyze-smoke] no browser"); server.close(); pro
 
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
+// A request the smoke holds open must arrive; if it never does, fail by name
+// instead of waiting forever (closing the browser would not end this process).
+const arrives = (promise, label, ms = 20000) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms / 1000}s waiting for ${label}`)), ms).unref()),
+]);
 
 // Recent analyses starts collapsed on a phone, so recalling a saved game from
 // it means opening it first. Phones raise the sources as a sheet, where one row
@@ -111,7 +117,15 @@ async function openGamesSheet(page) {
   if (await button.isVisible() && (await button.getAttribute("aria-expanded")) !== "true") await button.click();
   const reveal = page.locator('#analyze-open [data-reveal="#history-drawer"]');
   if (await reveal.isVisible() && (await reveal.getAttribute("aria-expanded")) !== "true") await reveal.click();
-  await page.locator("#history-drawer").evaluate((d) => { d.open = true; });
+  // Opening the drawer reloads the list (its toggle event), replacing every row:
+  // a row focused before that reload lands is gone, and Enter recalls nothing.
+  // So wait for the toggle, then for the reloaded rows.
+  await page.locator("#history-drawer").evaluate((d) => (d.open ? null : new Promise((resolve) => {
+    d.addEventListener("toggle", () => resolve(), { once: true });
+    d.open = true;
+  })));
+  await page.waitForFunction(() => document.querySelector("#analysis-history .history-item") &&
+    !document.querySelector("#analysis-history > .hint"), null, { timeout: 10000 });
 }
 
 // A short or narrow panel, and a phone, show one pillar at a time behind tabs.
@@ -479,9 +493,9 @@ async function runViewport(vp) {
     const white = box("#analysis-moves .mtree-move.is-white");
     const black = box("#analysis-moves .mtree-move.is-black");
     const num = box("#analysis-moves .mtree-num");
-    // Phones dissolve the sidebar box (display: contents) and put the eval band
-    // over the board; the pillars start the panel under it.
-    const panel = box("#analyze-sidebar").height ? box("#analyze-sidebar") : box("#analyze-panes");
+    // Phones dissolve the sidebar and the pane box (display: contents) and put
+    // the eval band over the board; the pane switch heads the panel under it.
+    const panel = ["#analyze-sidebar", "#analyze-panes", "#analyze-tabs"].map(box).find((r) => r.height);
     const boardBox = box("#analysis-board");
     return {
       sameRow: Math.abs(white.top - black.top) < 2,
@@ -586,8 +600,11 @@ async function runViewport(vp) {
   }
   if (vp.width <= 760) {
     // The phone's screen is one column: the eval band (figure and graph), the
-    // board, the open pillar (here the coach), its tabs, then the thumb bar.
-    await showPane(page, "coach", "#explain-engine-toggle");
+    // board, the move strip, the pane switch heading its sheet, the open pane
+    // (here the coach) under it, then the thumb bar. The grading switch lives in
+    // the engine pane on a phone, so the Coach tab itself says which pane is open.
+    if (await page.locator("#an-tab-coach").getAttribute("aria-selected") !== "true") await page.locator("#an-tab-coach").click();
+    await page.waitForFunction(() => document.getElementById("view-analyze").dataset.pane === "coach", null, { timeout: 5000 });
     const stack = await page.evaluate(() => {
       const box = (sel) => {
         const el = document.querySelector(sel);
@@ -602,6 +619,7 @@ async function runViewport(vp) {
       return {
         chart: box("#analysis-eval-graph:not([hidden])"),
         board: box("#analysis-board"),
+        strip: box("#analysis-moves"),
         coach: box("#analysis-explain"),
         proseBottom: Math.round(prose.getBoundingClientRect().bottom),
         tabs: box("#analyze-tabs"),
@@ -611,13 +629,15 @@ async function runViewport(vp) {
           document.getElementById("view-analyze").clientHeight + 1,
       };
     });
-    const inOrder = stack.chart.bottom <= stack.board.top + 1 &&
-      stack.board.bottom <= stack.coach.top + 1 &&
-      stack.coach.bottom <= stack.tabs.top + 1 &&
-      stack.tabs.bottom <= stack.barTop + 1;
-    check(inOrder, `phone stack must be eval band, board, coach, tabs, thumb bar: ${JSON.stringify(stack)}`);
+    const inOrder = !!(stack.chart && stack.board && stack.strip && stack.tabs && stack.coach) &&
+      stack.chart.bottom <= stack.board.top + 1 &&
+      stack.board.bottom <= stack.strip.top + 1 &&
+      stack.strip.bottom <= stack.tabs.top + 1 &&
+      stack.tabs.bottom <= stack.coach.top + 1 &&
+      stack.coach.bottom <= stack.barTop + 1;
+    check(inOrder, `phone stack must be eval band, board, move strip, tabs, coach, thumb bar: ${JSON.stringify(stack)}`);
     // The graph is the scrubber: it keeps a finger-sized band on short screens.
-    check(Math.round(stack.chart.height) >= 44, `the phone graph must keep its minimum target, got ${stack.chart.height}px`);
+    check(Math.round(stack.chart?.height ?? 0) >= 44, `the phone graph must keep its minimum target, got ${stack.chart?.height}px`);
     check(stack.coachFits, `the reserved Coach rows and controls must fit inside their band: ${JSON.stringify(stack)}`);
     check(!stack.pageScrolls, "the phone Analyze screen must not scroll as a page");
   }
@@ -667,7 +687,7 @@ async function runViewport(vp) {
   await openGamesSheet(page);
   await page.locator('.history-item[data-game-id="g1"] .hi-open').focus();
   await page.keyboard.press("Enter");
-  await recallRequested;
+  await arrives(recallRequested, "the history recall request (/api/analyses/g1)");
   await openGamesSheet(page);
   await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
   await page.locator("#pgn-input").fill("1. d4 d5");
@@ -747,7 +767,7 @@ async function runViewport(vp) {
     await page.locator("#pgn-drawer").evaluate((d) => { d.open = true; });
     await page.locator("#pgn-input").fill(DEMO_PGN_MOVETEXT);
     await page.locator("#run-analysis").click();
-    await saveRequested;
+    await arrives(saveRequested, "the review save request", 60000);
     await openGamesSheet(page);
     await page.locator('.history-item[data-game-id="g2"] .hi-open').focus();
     await page.keyboard.press("Enter");

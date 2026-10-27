@@ -180,22 +180,64 @@ async function runViewport(vp) {
   check(home.rehearseScope === "Caro-Kann: Advance", `Rehearse names its repertoire, got ${JSON.stringify(home.rehearseScope)}`);
   check(!home.hint, "Hint exists only in a drill");
   check(!home.back, "Home has no Back");
+  // A phone splits Home into two panes, Drill (Due queue, Rehearse) and
+  // Practice, so each shows one primary; Practice's Play is checked on its pane.
+  const phone = vp.width <= 760;
+  const startOnScreen = (start, bar, vh) => {
+    const limit = bar && phone ? Math.min(bar.top, vh) : vh;
+    check(!!start.box && start.box.bottom <= limit + 1, `${start.id} must be on screen: ${JSON.stringify({ box: start.box, bar, vh })}`);
+    check(!!start.box && start.box.height >= (phone ? 40 : 28), `${start.id} must be a real target, got ${start.box?.height}`);
+  };
   for (const start of home.starts) {
-    const limit = home.bar && vp.width <= 760 ? Math.min(home.bar.top, home.vh) : home.vh;
-    check(!!start.box && start.box.bottom <= limit + 1, `${start.id} must be on screen: ${JSON.stringify({ box: start.box, bar: home.bar, vh: home.vh })}`);
-    check(!!start.box && start.box.height >= (vp.width <= 760 ? 40 : 28), `${start.id} must be a real target, got ${start.box?.height}`);
+    if (phone && start.id === "start-play") check(!start.box, "the Drill pane must not show Practice's Play");
+    else startOnScreen(start, home.bar, home.vh);
   }
   check(home.overflow <= 0, `no horizontal overflow on Home, got ${home.overflow}px`);
   await shot("home");
 
-  // Practice: the opponent picker opens from its chip.
-  await page.locator("#train-play-book").click();
-  await page.waitForTimeout(250);
-  const picker = await page.locator('[role="listbox"]:visible, .train-picker:visible').count();
-  check(picker >= 1, "the opponent chip opens a picker");
-  await shot("play-picker");
-  await page.keyboard.press("Escape");
-  await page.waitForTimeout(200);
+  if (phone) {
+    // Practice: its tab opens the pane; the opponent is a row of cards, one
+    // ringed, and a tap on another card picks it.
+    await page.locator('[data-testid="train-tab-play"]').click();
+    await page.waitForTimeout(250);
+    const practice = await page.evaluate(() => {
+      const box = (el) => (el && el.getClientRects().length ? el.getBoundingClientRect().toJSON() : null);
+      return {
+        pane: document.getElementById("view-train").dataset.trainPane,
+        play: { id: "start-play", box: box(document.getElementById("start-play")) },
+        drill: !!box(document.getElementById("start-train")),
+        cards: [...document.querySelectorAll("#train-bots .train-bot")].map((b) => ({
+          book: b.dataset.book, pressed: b.getAttribute("aria-pressed") === "true", disabled: b.disabled, box: box(b),
+        })),
+        bar: box(document.querySelector("#view-train .board-bar")), vh: innerHeight,
+      };
+    });
+    check(practice.pane === "play" && !practice.drill, `the Practice tab shows only its pane, got ${JSON.stringify({ pane: practice.pane, drill: practice.drill })}`);
+    startOnScreen(practice.play, practice.bar, practice.vh);
+    check(practice.cards.length === 3 && practice.cards.filter((c) => c.pressed).length === 1,
+      `Practice shows the opponents as cards with one picked: ${JSON.stringify(practice.cards)}`);
+    check(practice.cards.every((c) => c.box && c.box.height >= 44), `each opponent card is a real target: ${JSON.stringify(practice.cards)}`);
+    const other = practice.cards.find((c) => !c.pressed && !c.disabled);
+    check(!!other, `another opponent can be picked: ${JSON.stringify(practice.cards)}`);
+    if (other) {
+      await page.locator(`#train-bots .train-bot[data-book="${other.book}"]`).click();
+      await page.waitForTimeout(250);
+      const picked = await page.locator('#train-bots .train-bot[aria-pressed="true"]').evaluateAll((els) => els.map((e) => e.dataset.book));
+      check(picked.length === 1 && picked[0] === other.book, `a tap on a card picks that opponent, got ${JSON.stringify(picked)}`);
+    }
+    await shot("practice");
+    await page.locator('[data-testid="train-tab-drill"]').click();
+    await page.waitForTimeout(250);
+  } else {
+    // Practice: the opponent picker opens from its chip.
+    await page.locator("#train-play-book").click();
+    await page.waitForTimeout(250);
+    const picker = await page.locator('[role="listbox"]:visible, .train-picker:visible').count();
+    check(picker >= 1, "the opponent chip opens a picker");
+    await shot("play-picker");
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(200);
+  }
 
   // Session: the Due queue from the fixture, started from Home.
   const startBodies = [];

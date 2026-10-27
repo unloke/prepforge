@@ -83,7 +83,7 @@ export function openTrainingHistory(ownerId) {
   overlay.innerHTML = html`<header class="th-head"><div class="th-titles">
         <h2 class="modal-title" id="training-history-title">Training history</h2>
         </div>
-      <button class="btn sm" type="button" data-close>Close</button></header>
+      <button class="btn sm th-done" type="button" data-close>Done</button></header>
     <div class="th-body">${content}</div>${foot}`;
   const close = openModal(overlay, { initialFocus: overlay.querySelector('[data-close]') });
   overlay.querySelector('[data-close]').addEventListener('click', () => close());

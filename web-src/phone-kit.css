@@ -1,0 +1,53 @@
+/* Phone kit: the shared pieces a phone screen is composed from, modeled on the
+   Chess.com and Lichess apps. Views use these instead of drawing their own.
+
+   .menu-title / .menu-sep   The ⋯ menu (core/overflow-menu.js): a popover on a
+                             desktop, an action sheet headed by the object's
+                             name on a phone, groups split by a rule.
+   Every phone dialog and action sheet carries a grab handle and rises from the
+   bottom edge (phone.css "Dialogs"); a dialog footer is one row that never
+   wraps. */
+
+.menu-title { display: none; }
+.sheet-sep { grid-column: 1 / -1; height: 0; }
+.sheet-chev { display: none; }
+.menu-sep { height: 1px; margin: 4px 0; background: var(--line); }
+.context-menu button.is-danger { color: var(--danger); }
+.context-menu button.is-danger:hover { background: var(--danger-soft); color: var(--danger-strong); }
+
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  /* ---- Action sheet head and groups --------------------------------------- */
+  .context-menu .menu-title {
+    display: block;
+    overflow: hidden;
+    padding: 4px 18px 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .context-menu .menu-sep { height: 8px; margin: 0; background: var(--surface-3); }
+  .context-menu .menu-title + button,
+  .context-menu .menu-title + .menu-sep { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the head of an action sheet */ }
+
+  /* ---- Grab handle: every sheet that rises from the bottom edge ------------ */
+  :root dialog.modal:not(.sheet)::before,
+  .context-menu:not(.account-menu)::before {
+    content: "";
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 4px;
+    margin: 8px auto 2px;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
+
+  /* ---- Source picker head: title, count, Done at a thumb's size ------------ */
+  .src-head { min-height: 44px; }
+  .src-title { font-size: 16px; }
+  .src-count { font-size: 13px; }
+  .src-done { min-width: 44px; min-height: 44px; font-size: 16px; }
+}

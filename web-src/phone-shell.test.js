@@ -34,17 +34,32 @@ it("keeps the page header's action a thumb target in ink", () => {
 // Games, Scout and Teams opened with ~50px of dead ground under the title.
 it("the page title row is the action's height and adds no margin of its own", () => {
   const head = rule(".page-head {");
-  expect(head).toMatch(/min-height:\s*44px/);
-  expect(head).toMatch(/margin:\s*0;/);
+  expect(head).toMatch(/min-height:\s*calc\(44px \+ env\(safe-area-inset-top\)\)/);
+  expect(head).toMatch(/margin:\s*0 calc\(-1 \* var\(--phone-gutter\)\);/);
   expect(head).not.toMatch(/margin:\s*0 0 var\(--phone-gap\)/);
   // A page that stacks blocks in normal flow still gets one gap from the shell.
   expect(rule(".view > .page-head {")).toMatch(/margin-bottom:\s*var\(--phone-gap\)/);
 });
 
-it("draws the bottom bar as chrome: a tone step, no shadow, ink selection", () => {
+// A phone browser keeps up to 180px for its own bars: the title docks at the
+// top as a nav bar once the page scrolls (the iOS large title), rather than
+// leaving a scrolled page unnamed, and list pages step their blocks 12px apart.
+it("docks the page title as a nav bar on scroll and tightens the list rhythm", () => {
+  const head = rule(".page-head {");
+  expect(head).toMatch(/position:\s*sticky/);
+  expect(head).toMatch(/top:\s*0/);
+  expect(head).toMatch(/background:\s*var\(--bg\)/);
+  expect(body).toMatch(/animation-timeline:\s*scroll\(root\)/);
+  expect(body).toMatch(/@keyframes page-title-dock \{ to \{ transform: scale\(0\.773\); \} \}/);
+  expect(body).toMatch(/:is\(#view-dashboard, #view-replay, #view-teams, #view-settings\) \{ --phone-gap: 12px; \}/);
+  // Settings docks its section strip instead; two docked bars would stack.
+  expect(body).toMatch(/#view-settings \.page-head \{ position: static; \}/);
+});
+
+it("draws the bottom bar as chrome: a tone step and a hairline, no shadow, ink selection", () => {
   const bar = rule(".tabbar {");
-  expect(bar).toMatch(/border-top:\s*1px solid var\(--line\)/);
-  expect(bar).toMatch(/box-shadow:\s*none/);
+  expect(bar).toMatch(/border-top:\s*0/);
+  expect(bar).toMatch(/box-shadow:\s*inset 0 1px 0 var\(--line\)/);
   const item = rule(".tabbar .tabbar-item.is-active");
   expect(item).toMatch(/color:\s*var\(--text\)/);
   expect(item).not.toMatch(/--accent/);
@@ -55,12 +70,13 @@ it("keeps every bottom bar destination at a 44px hit height", () => {
   expect(item).toMatch(/height:\s*56px/);
 });
 
-// box-sizing is border-box, so the bar's own 1px top rule is drawn inside its
-// height: at 56 the 56px rows pushed their last pixel past the bottom of the
-// screen (measured: item bottom 845 at a 844 viewport).
+// The top rule is an inset shadow, not a border: a border is drawn inside the
+// border-box height, so a 56px bar pushed its 56px rows' last pixel past the
+// bottom of the screen (measured: item bottom 845 at a 844 viewport).
 it("the bottom bar holds its 56px rows inside the screen", () => {
   const bar = rule(".tabbar {");
-  expect(bar).toMatch(/height:\s*calc\(57px \+ env\(safe-area-inset-bottom\)\)/);
+  expect(bar).toMatch(/height:\s*calc\(var\(--phone-bar-h\) \+ env\(safe-area-inset-bottom\)\)/);
+  expect(phone).toMatch(/--phone-bar-h:\s*56px/);
 });
 
 // Every custom property a phone rule reads must be one the app defines. The

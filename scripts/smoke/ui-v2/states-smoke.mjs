@@ -67,6 +67,12 @@ if (!browser) { console.error("[states-smoke] no chromium-based browser availabl
 const base = `http://127.0.0.1:${PORT}`;
 const failures = [];
 const check = (scenario, ok, label) => { if (!ok) failures.push(`${scenario}: ${label}`); };
+// A request the smoke holds open must arrive; if it never does, fail by name
+// instead of waiting forever (closing the browser would not end this process).
+const arrives = (promise, label, ms = 20000) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${ms / 1000}s waiting for ${label}`)), ms).unref()),
+]);
 
 // Endpoints a guest session may call. Anything else while signed out is an
 // owner-scoped call that would 401 on the real backend.
@@ -461,7 +467,7 @@ for (const width of [1440, 390]) {
     return {};
   } });
   await page.goto(base, { waitUntil: "domcontentloaded" });
-  await authRequested;
+  await arrives(authRequested, `${S}: the boot auth request (/api/auth/me)`);
   await page.locator('.tab[data-view="train"]:visible').first().click();
   releaseAuth();
   const home = await page.locator("#train-home:visible").waitFor({ timeout: 5000 }).then(() => true, () => false);

@@ -132,6 +132,8 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: UI v2 smoke
+        # Each smoke is killed at 4 min (run-all.mjs); this bounds the step itself.
+        timeout-minutes: 20
         run: npm run smoke:ui-v2
 
   stockfish:

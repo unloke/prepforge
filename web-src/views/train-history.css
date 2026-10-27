@@ -111,7 +111,20 @@
 @media (max-width: 600px) {
   /* A subline is never under 12px on a phone. */
   .modal.training-history { --th-meta: 12px; max-height: 82svh; }
-  .th-head { padding: 14px 14px 10px; }
+  .th-head { padding: 6px 8px 6px 14px; }
+  /* A phone sheet closes with a text "Done" at the head's end (the Teams and
+     More sheets), not a boxed button. */
+  .th-head .th-done {
+    min-width: 44px;
+    height: 44px;
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--accent-strong);
+    font-size: 16px;
+    font-weight: 600;
+  }
   .th-body { padding: 0 14px 4px; }
   .th-foot { padding: 10px 14px 12px; }
   /* Four figures do not fit a phone row: the lead takes its own line and the
