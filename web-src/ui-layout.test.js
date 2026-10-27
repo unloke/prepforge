@@ -231,8 +231,7 @@ describe("workspace chrome layout", () => {
   });
 
   it("gives the phone Repertoire's next-move chips a real thumb target", () => {
-    // Measured at 390: chips 27px, the collapse toggle 13px. The chip is drawn
-    // at the 36px control height with a 44px ::after band for the thumb.
+    // Chips at the 36px control height with a 44px ::after band for the thumb.
     expect(phoneCss).toMatch(/#view-build \.fork-chip \{[^}]*height: var\(--control-h\);/);
     expect(phoneCss).toMatch(/#view-build \.fork-chip::after \{ content: ""; position: absolute; inset: -4px 0; \}/);
     expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
