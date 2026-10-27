@@ -244,8 +244,6 @@ export function createStockfishWasmProvider({
         return;
       }
       state.running = false;
-      startupGuard?.done();
-      startupGuard = null;
       notifySearchWaiters();
       onChange?.();
       return;

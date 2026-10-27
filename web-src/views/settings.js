@@ -170,7 +170,7 @@ export function createSettingsView({
       const bytes = setup.phase === "download" && setup.total
         ? ` ${Math.round(setup.loaded / 1048576)} / ${Math.round(setup.total / 1048576)} MB` : "";
       status.textContent = busy || setup.phase === "error" ? `${setup.label}${bytes}`
-        : crash ? `Last run stopped at ${crash.phase || "start"} · ${crash.net === "big" ? "Full" : "Lite"} ×${crash.workers}`
+        : crash ? `Last stop: ${crash.phase || "engines loaded"} · ${crash.net === "big" ? "Full" : "Lite"} ×${crash.workers}`
         : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
         : profile.source === "user" ? "Set by you"
         : profile.source === "detected" ? (speed ? `Speed${speed}` : "Detected for this device")

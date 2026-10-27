@@ -201,18 +201,19 @@ describe("provider compute allocation lifecycle", () => {
     await provider.close();
   });
 
-  it("reports a live worker failure even after its startup search completed, then rebuilds", async () => {
+  it("keeps the crash mark while the worker holds its heap, reports a live failure, then rebuilds", async () => {
     const workers = [];
     vi.stubGlobal("Worker", class extends FakeWorker { constructor() { super(); workers.push(this); } });
-    reportEngineFailure.mockClear();
+    guardEngineStartup.mockClear();
     const provider = createStockfishWasmProvider({ computeBudget: null });
     try {
       await provider.open({ fen: FEN_A });
       workers[0].emit("info depth 18 score cp 20 pv e2e4");
+      // Past its first search the worker still holds its heap: its crash mark stays armed.
+      const [done, fail] = ["done", "fail"].map(k => vi.spyOn(guardEngineStartup.mock.results[0].value, k));
       workers[0].emit("bestmove e2e4");
       workers[0].emit("Aborted(OOM)");
-      expect(reportEngineFailure).toHaveBeenCalledTimes(1);
-      expect(workers[0].terminated).toBe(true);
+      expect([done.mock.calls.length, fail.mock.calls.length, workers[0].terminated]).toEqual([0, 1, true]);
       await provider.open({ fen: FEN_B });
       expect(workers).toHaveLength(2);
       expect(provider.snapshot()).toMatchObject({ fen: FEN_B, error: null });
