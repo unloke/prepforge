@@ -42,20 +42,22 @@ export function moveCue(prevFen, fen, lastMove) {
 
 // --- the sounds -------------------------------------------------------------
 
-// Each cue is one short 128 kbps MP3 (3-13 KB, 55 KB for the set) rendered from
-// the earshot sound bank (github.com/Leonxlnx/earshot 0.4.0, MIT; its sounds are
-// made in code, no recording inside), each picked because earshot matched it to
-// its description ahead of the sounds it could be mistaken for:
-//   move       knock/wood
-//   capture    knock/wood at D4, then at E4 50 ms later (0.7)
-//   castle     knock/wood, then knock/wood at E4 130 ms later: king, then rook
-//   check      knock/wood at E4, notify/mid_tine at E5 30 ms in (0.4)
-//   promotion  knock/wood, mallet/flourish 60 ms in (0.7)
-//   right      mallet/marimba C5, then G5 90 ms later
-//   wrong      ui_pop/fall at E4
-//   complete   mallet/up4
-// Every file is levelled to the same loudness (-25 LUFS momentary max, true peak
-// under -3 dBTP), so a cue plays at full gain.
+// Each cue is one short 128 kbps MP3 (1.6-11 KB, 39 KB for the set) cut from
+// real recordings, all CC0 (sources and trims in ../sounds/CREDITS.md): the
+// wood cues are real pieces set down on a real board, as on Lichess and
+// Chess.com, 40-140 ms with a ~30 ms decay; the feedback cues are real marimba
+// and glockenspiel notes.
+//   move       one piece set down (taure, Freesound 555190)
+//   capture    a brighter, harder set-down from the same take
+//   castle     king, then rook 65 ms later (the move and capture strikes)
+//   check      the move strike with a quiet glockenspiel C7 20 ms in
+//   promotion  the move strike with a glockenspiel C7 40 ms in
+//   right      marimba C5, then G5 85 ms later (VSCO 2 CE)
+//   wrong      two damped low marimba notes falling a semitone (G#3, G3)
+//   complete   marimba C5 E5 G5 C6 70 ms apart with a soft glockenspiel top
+// Levels are set against the move click (true peak -1.8 dBTP before encoding):
+// capture +2 LU, check +1.5, castle and promotion +1, and the feedback cues +5,
+// the way Chess.com and Lichess sit their feedback sounds over the move click.
 const FILES = {
   move: new URL("../sounds/move.mp3", import.meta.url).href,
   capture: new URL("../sounds/capture.mp3", import.meta.url).href,

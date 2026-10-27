@@ -338,7 +338,16 @@ describe("the sound files", () => {
       total += bytes;
     }
     expect(total).toBeLessThan(64 * 1024);
-    expect(readdirSync(dir).sort()).toEqual(CUE_NAMES.map((cue) => `${cue}.mp3`).sort());
+    const audio = readdirSync(dir).filter((name) => name !== "CREDITS.md");
+    expect(audio.sort()).toEqual(CUE_NAMES.map((cue) => `${cue}.mp3`).sort());
+  });
+
+  it("credits every shipped file to a CC0 source", async () => {
+    vi.resetModules();
+    const { CUE_NAMES } = await import("./sound.js");
+    const credits = readFileSync(fileURLToPath(new URL("../sounds/CREDITS.md", import.meta.url)), "utf8");
+    expect(credits).toMatch(/CC0 1\.0/);
+    for (const cue of CUE_NAMES) expect(credits).toContain(`| ${cue}.mp3 |`);
   });
 });
 
