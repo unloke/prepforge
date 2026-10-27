@@ -55,6 +55,8 @@ export function moveCue(prevFen, fen, lastMove) {
 //   right      marimba C5, then G5 85 ms later (VSCO 2 CE)
 //   wrong      two damped low marimba notes falling a semitone (G#3, G3)
 //   complete   marimba C5 E5 G5 C6 70 ms apart with a soft glockenspiel top
+//   illegal    the move strike a fourth lower and muffled: a piece dropped where
+//              it cannot go, as Chess.com answers an illegal drop
 // Levels are set against the move click (true peak -1.8 dBTP before encoding):
 // capture +2 LU, check +1.5, castle and promotion +1, and the feedback cues +5,
 // the way Chess.com and Lichess sit their feedback sounds over the move click.
@@ -67,6 +69,7 @@ const FILES = {
   right: new URL("../sounds/right.mp3", import.meta.url).href,
   wrong: new URL("../sounds/wrong.mp3", import.meta.url).href,
   complete: new URL("../sounds/complete.mp3", import.meta.url).href,
+  illegal: new URL("../sounds/illegal.mp3", import.meta.url).href,
 };
 
 export const CUE_NAMES = Object.keys(FILES);
@@ -115,6 +118,7 @@ export function loadCues(ctx) {
 // --- playing ----------------------------------------------------------------
 
 let audio = null;
+let master = null; // the volume: every cue plays into this gain
 let active = null; // the sounding cue bus; a replacement stops its source
 let lastCue = null;
 let lastAt = -1e9; // the audio clock, in seconds
@@ -131,6 +135,22 @@ function context() {
     return null;
   }
   return audio;
+}
+
+// The Settings volume (0-100) as a gain. Loudness is heard on a log scale, so
+// the slider is squared: its midpoint is a quarter of full gain (-12 dB).
+export function volumeGain(volume) {
+  const v = Math.min(100, Math.max(0, Number(volume) || 0)) / 100;
+  return v * v;
+}
+
+function output(ctx) {
+  if (!master) {
+    master = ctx.createGain();
+    master.connect(ctx.destination);
+  }
+  master.gain.value = volumeGain(pref("soundVolume"));
+  return master;
 }
 
 // iOS stops the context whenever the page loses the audio session (the tab goes
@@ -188,7 +208,7 @@ export function playSound(cue) {
     active.gain.exponentialRampToValueAtTime(0.0001, now + CUT_MS / 1000);
     try { sources.get(active).stop(now + CUT_MS / 1000); } catch { /* already ended */ }
   }
-  active = renderCue(ctx, cue, ctx.destination, now + LEAD_S);
+  active = renderCue(ctx, cue, output(ctx), now + LEAD_S);
 }
 
 const GESTURES = ["pointerdown", "keydown", "touchstart"];

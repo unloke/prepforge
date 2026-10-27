@@ -20,7 +20,7 @@
 @media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
   :root {
     --phone-bar-h: 48px;
-    --phone-gutter: 16px;
+    --phone-gutter: 12px;
     /* The gap between blocks on a phone. Items inside one block sit closer
        than this, so a group reads as one unit. */
     --phone-gap: 20px;
@@ -73,6 +73,9 @@
     background-clip: padding-box;
   }
   textarea { height: auto; }
+  /* A card on a phone pads 12px, the gutter's width: 16 + 14 left content 30px
+     in from the screen edge, a fifth of every row spent on margins. */
+  .card { padding: 12px; }
   /* The switch is the shared 34x20 track at every width; its shared ::after
      gives a thumb the 44px it needs, so no view redraws it here. */
 
@@ -364,6 +367,10 @@
      inside a row without turning the queue line into a stack of buttons; the
      row itself is the target for opening the repertoire. */
   #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 9px; font-size: 13px; }
+  /* Drawn as text with its dot, as Lichess prints a study's counts: three
+     boxed pills wrapped the queue to a second line. The target stays. */
+  #view-dashboard .lib-row button.kchip { padding: 0 4px; border-color: transparent; background: none; }
+  #view-dashboard .lib-row .lib-cell-queue { flex-wrap: nowrap; gap: 2px; padding-left: 34px; }
   /* The chip stays a 24px pill; its hit area grows into the queue line's own
      band (the 6px gap above, the row's 8px padding below) and stops there. At
      -10px it reached up over the name's subline, so a tap at the row's middle,
@@ -1376,11 +1383,30 @@
   }
   .engine-step { position: relative; }
   .engine-step::after { content: ""; position: absolute; inset: -11px; }
-  #view-build .forkbar { font-size: 13px; }
-  /* The next move is what the thumb reaches for: it gets a real target. The move tokens
-     stay dense like a score sheet, but their rows get a gap so neighbours do
-     not fuse. */
-  #view-build .fork-chip { min-height: 44px; padding: 0 14px; }
+  /* The fork is one row, as Lichess lays out its next-move choices: the label,
+     then the chips in a line that scrolls sideways. Chips are drawn 36px with
+     centred text and a 44px target round each. */
+  #view-build .forkbar { font-size: 13px; flex-wrap: nowrap; gap: 10px; padding: 4px var(--build-pad, 12px); }
+  #view-build .forkbar .fork-chips:not(.is-all) {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 4px 0;
+  }
+  #view-build .forkbar:has(.fork-chips.is-all) { flex-wrap: wrap; }
+  /* The chips are the count: the row keeps its width for them. */
+  #view-build .fork-head .count { display: none; }
+  #view-build .fork-chip {
+    position: relative;
+    flex: none;
+    align-items: center;
+    height: var(--control-h);
+    min-height: 0;
+    padding: 0 12px;
+  }
+  #view-build .fork-chip::after { content: ""; position: absolute; inset: -4px 0; }
   #view-build .fork-chip small { font-size: var(--fs-s); }
   /* A move is a thumb target, not a mouse target: the main line runs on a
      36px pitch (side lines 32px) and each move's hit area fills its line, while
@@ -1564,14 +1590,17 @@
   #view-train .train-line-path { margin-block: -8px -4px; padding-block: 14px; }
   #view-train .train-sidebar .tcard {
     margin: 0;
-    padding: 16px;
+    padding: 12px;
     border: 0;
     border-radius: var(--radius-card);
     background: var(--panel);
     box-shadow: none;
     font-size: 14px;
   }
-  #view-train .train-progress-panel .upnext { min-height: 0; }
+  /* Up next is rows of the card, not a box inside it; and the banner's line
+     under "Your move" already names the card's kind, so its chip goes. */
+  #view-train .train-progress-panel .upnext { min-height: 0; padding: 0; background: none; }
+  #view-train #train-card-kind { display: none; }
   #view-train .train-summary { gap: 12px; }
   #view-train .train-summary > .train-summary-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
   #view-train .sum-line { font-size: 15px; }

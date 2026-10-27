@@ -231,9 +231,10 @@ describe("workspace chrome layout", () => {
   });
 
   it("gives the phone Repertoire's next-move chips a real thumb target", () => {
-    // Measured at 390: chips 27px, the collapse toggle 13px. The chip is the
-    // action the thumb reaches for on this screen.
-    expect(phoneCss).toMatch(/#view-build \.fork-chip \{ min-height: 44px;/);
+    // Measured at 390: chips 27px, the collapse toggle 13px. The chip is drawn
+    // at the 36px control height with a 44px ::after band for the thumb.
+    expect(phoneCss).toMatch(/#view-build \.fork-chip \{[^}]*height: var\(--control-h\);/);
+    expect(phoneCss).toMatch(/#view-build \.fork-chip::after \{ content: ""; position: absolute; inset: -4px 0; \}/);
     expect(phoneCss).toMatch(/#view-build \.mtree-collapse \{[^}]*min-width: 44px;[^}]*min-height: 44px;/);
     // One line naming the action, not a paragraph about coverage: that was
     // standing explanation (AGENTS.md) and the ⓘ already carries the detail.

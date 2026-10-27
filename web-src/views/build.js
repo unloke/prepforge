@@ -332,8 +332,21 @@ export function createBuildView({
     // The fork bar and the dock fit change the tree's height: scroll after them.
     renderBuildBranchBar();
     onTreeRendered();
-    const focusBtn = container.querySelector(".mtree .mtree-move.is-current");
-    if (focusBtn) moveTreeRenderer.scrollIntoViewWithin(container, focusBtn);
+    followCurrentMove(container, moveTreeRenderer);
+  }
+
+  // The tree keeps the current move in view, read in the next frame, as Analyze
+  // does: read during the step, the geometry forced a full layout that the fork
+  // bar and the Explorer then dirtied again (two layouts per tap on a phone).
+  let followFrame = 0;
+  function followCurrentMove(container, renderer) {
+    const follow = () => {
+      const current = container.querySelector(".mtree .mtree-move.is-current");
+      if (current) renderer.scrollIntoViewWithin(container, current);
+    };
+    if (typeof requestAnimationFrame !== "function") return follow();
+    cancelAnimationFrame(followFrame);
+    followFrame = requestAnimationFrame(follow);
   }
 
   // Stepping through the tree changes which move is current and nothing else
@@ -363,8 +376,7 @@ export function createBuildView({
     renderBuildOpening();
     renderBuildBranchBar();
     onTreeRendered();
-    const current = container.querySelector(".mtree .mtree-move.is-current");
-    if (current) renderer.scrollIntoViewWithin(container, current);
+    followCurrentMove(container, renderer);
   }
 
   return {

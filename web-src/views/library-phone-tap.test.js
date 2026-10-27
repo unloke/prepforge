@@ -45,10 +45,10 @@ it("the dead-end buttons on the Library take the shared control height", () => {
   expect(css).not.toMatch(/data-lib-action="clear-filter"[^}]*height:\s*3\dpx/);
 });
 
-// Source chips (Games and Scout share them) were a 40px row with a 40px ×,
-// between toolbars whose other controls are 44. A chip is a tap target twice
-// over — it names the source and its × drops it.
-it("source chips and their × are 44px rows on a phone", () => {
+// Source chips (Games and Scout share them) are drawn at the phone's 36px
+// control height like the toolbar's other controls; the × that drops a source
+// keeps a 44px target.
+it("source chips take the control height and their × a 44px target on a phone", () => {
   const styles = readFileSync(join(root, "..", "styles.css"), "utf8");
   // The chip's phone block starts at the media query whose first rule is the ×.
   const from = styles.indexOf("@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {\n  .src-chip-x {");
@@ -56,7 +56,7 @@ it("source chips and their × are 44px rows on a phone", () => {
   const phoneBlock = styles.slice(from, styles.indexOf("\n}", from));
   const chip = phoneBlock.match(/\.src-chip \{[^}]*\}/);
   expect(chip, "the phone chip rule").not.toBeNull();
-  expect(chip[0]).toMatch(/min-height:\s*44px/);
+  expect(chip[0]).toMatch(/min-height:\s*var\(--control-h\)/);
   const x = phoneBlock.match(/\.src-chip-x \{[^}]*\}/);
   expect(x, "the phone chip × rule").not.toBeNull();
   expect(x[0]).toMatch(/width:\s*44px/);

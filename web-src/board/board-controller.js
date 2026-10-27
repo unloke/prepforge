@@ -429,6 +429,9 @@ class BoardController {
       this._draggedMove = move;
       this._setSelected(null);
       this.play(move);
+    } else {
+      // The piece goes back to its square; the sound says why.
+      playSound("illegal");
     }
   }
 
