@@ -26,7 +26,7 @@ const validProven = p => !!p && ["lite", "big"].every(net => Number.isInteger(p[
 // mostly costs memory and heat (shared or efficiency cores, throttling).
 export const MIN_GAIN = 0.5;
 // A detected profile is measured on one build; a new engine build or probe is measured again.
-const PROBE_ID = `5:${globalThis.__STOCKFISH__?.big?.id}`;
+const PROBE_ID = `6:${globalThis.__STOCKFISH__?.big?.id}`;
 
 // Inject only browser boundaries for deterministic tests; production owns one manager.
 export function createEngineProfileManager({

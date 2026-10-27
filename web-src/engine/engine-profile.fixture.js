@@ -2,7 +2,7 @@ import { vi } from "vitest";
 import { createEngineProfileManager, reserveEngineMemory, PROFILE_KEY } from "./engine-profile.js";
 
 export const STEPS = [["lite", 1], ["big", 1], ["big", 2], ["big", 3]];
-export const PROBE = `5:${globalThis.__STOCKFISH__?.big?.id}`;
+export const PROBE = `6:${globalThis.__STOCKFISH__?.big?.id}`;
 // A device manager over an in-memory store, with a fake engine whose speed is
 // `throughput(net, workers)`. `consent` is this device's answer on the full net:
 // the full ladder only runs after a yes, so a yes is the default; the tests about
