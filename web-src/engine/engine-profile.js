@@ -156,12 +156,13 @@ export function createEngineProfileManager({
       if (valid(crash)) {
         profile = stepDownProfile(crash);
         detected = profile;
-        // The steps below the one that died completed; the one that died and
-        // everything above it did not. Settings offers only the completed ones.
-        proven = heldBelow(crash);
         if (crash.probe) {
           // Only a probe step measures the engines alone. A run that died also held
-          // Maia and the page, so it steps down without ruling the net out.
+          // Maia and the page, so it steps down without ruling a step out: Settings
+          // still offers what Detect measured.
+          // The steps below the one that died completed; the one that died and
+          // everything above it did not. Settings offers only the completed ones.
+          proven = heldBelow(crash);
           const died = ladderStep(crash.net, crash.workers);
           if (died >= 0) ceiling = Math.min(ceiling ?? died, died);
           if (crash.net === "big") {

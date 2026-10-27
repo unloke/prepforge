@@ -991,7 +991,8 @@ async function runAnalysis(options = {}) {
     // A phone holds the Stockfish heap or Maia's init, not both: the OS kills the
     // tab past its limit, and Detect only ever measured Stockfish. There Maia starts
     // once the pass has closed its workers.
-    const overlapMaia = wantsMaia && !isHandheld(globalThis.navigator ?? {});
+    const handheld = wantsMaia && isHandheld(globalThis.navigator ?? {});
+    const overlapMaia = wantsMaia && !handheld;
     // Null-safe: warmup() only rejects on init failure, which the Maia phase
     // below retries through predictions(), exactly as before.
     let maiaReady = overlapMaia ? getSharedMaia3Provider().warmup() : null;
@@ -1019,7 +1020,8 @@ async function runAnalysis(options = {}) {
           depth: prep.depth,
           rating: effectiveMaiaRating(),
           provider: getSharedMaia3Provider(),
-          analyzeFn: (o) => store.analyzeGame({ ...o, engineRun }),
+          // Its searches run beside the resident Maia session: a phone keeps them to one heap.
+          analyzeFn: (o) => store.analyzeGame({ ...o, engineRun, ...(handheld ? { concurrency: 1 } : {}) }),
           shouldCancel,
           onPhase: ({ phase: sub, detail }) => {
             timings[`maia_${sub}`] = detail || 1;

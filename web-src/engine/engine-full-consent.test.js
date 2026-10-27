@@ -73,6 +73,14 @@ describe("the full engine asks first", () => {
     expect(await next.detectEngineProfile()).toMatchObject({ net: "big", source: "detected" });
   });
 
+  it("a crash in real use steps the profile down but keeps the workers Detect measured", async () => {
+    const f = fixture({ throughput: (_net, n) => n });
+    await f.detectEngineProfile();
+    f.data.set(CRASH_KEY, JSON.stringify({ net: "big", workers: 3, probe: false }));
+    const reloaded = createEngineProfileManager({ storage: () => f.storage, device, assetState: () => ({ phase: "ready" }) });
+    expect([reloaded.engineProfile().workers, reloaded.engineWorkerChoices().big]).toEqual([2, 3]);
+  });
+
   it("a step down deletes the bytes, and Settings fetches them again after a yes", async () => {
     const f = fixture({ bigPhase: { value: "ready" } });
     await f.detectEngineProfile();
