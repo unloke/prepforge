@@ -21,6 +21,6 @@ it("the source's next step docks as the page's filled action", () => {
   const chip = rule("#view-replay.is-active .games-panel:not([hidden]) .src-chip.src-chip-signin {");
   expect(chip).toMatch(/position:\s*fixed/);
   expect(chip).toMatch(/bottom:\s*calc\(var\(--phone-bar-h\) \+ env\(safe-area-inset-bottom\) \+ 12px\)/);
-  expect(chip).toMatch(/height:\s*44px/);
+  expect(chip).toMatch(/height:\s*36px/); // round 5: the shared control height
   expect(chip).toMatch(/background:\s*var\(--accent\)/);
 });

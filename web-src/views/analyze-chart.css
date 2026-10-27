@@ -804,7 +804,10 @@
 :root[data-theme="dark"] .eval-chart {
   /* The same step the other way: the field comes up out of the dark card. */
   --eval-field: color-mix(in srgb, var(--panel) 84%, var(--eval-side-white));
-  --eval-area-white: var(--eval-side-white);
+  /* Lichess's dark chart fills White's side a soft grey, not paper white: at
+     full white the wedge was the brightest thing on the screen after the
+     board. Still clearly lighter than the field and the black wedge. */
+  --eval-area-white: color-mix(in srgb, var(--eval-side-white) 58%, var(--panel));
 }
 .eval-chart .eval-axis { stroke: var(--line-strong); }
 .eval-chart .eval-area-white { fill: var(--eval-area-white); stroke: none; }
@@ -2157,6 +2160,12 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze #analysis-eval-card { grid-template-columns: 56px minmax(0, 1fr); gap: 0 8px; padding: 6px var(--phone-gutter); }
   #analysis-eval-card .eval-now { font-size: 15px; font-weight: 700; }
   #analysis-eval-card .eval-chart { border-radius: 4px; }
+  /* The scrubber's target is the whole 44px strip: the 32px field plus the
+     card's 6px padding above and below it (analyze.js scrubs on the band). */
+  #view-analyze #analysis-eval-graph { touch-action: pan-y; }
+  #view-analyze #analysis-eval-graph::before { content: ""; position: absolute; inset: -6px 0; }
+  /* The field paints (and takes the mouse) over the band. */
+  #view-analyze #analysis-eval-graph > .eval-chart { position: relative; }
   #view-analyze .board-area > .board-caption {
     order: 0;
     flex: none;
@@ -2173,6 +2182,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
 
   /* The move strip. */
   #view-analyze #analysis-moves { font-size: 14px; }
+  /* Room after the last move, so snapping the strip to a whole first token
+     (movetree.js) never pushes the current last move off the right edge. */
+  #analysis-moves .mtree { padding-right: 96px; }
   #analysis-moves .mtree-line.is-main > .mtree-num,
   #analysis-moves .mtree-var .mtree-num { padding: 0 2px 0 8px; font-size: 12px; }
   #view-analyze #analysis-moves .mtree-move { min-width: 0; height: var(--phone-strip-h); padding: 0 6px; font-weight: 500; }
@@ -2193,7 +2205,11 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   }
   #view-analyze .an-tab { height: var(--phone-tabs-h); border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
   #view-analyze .an-tab::before { content: none; }
-  #view-analyze .an-tab::after { content: ""; position: absolute; inset: -4px 0; }
+  /* From the 34px padding box (the 2px underline is border): 2px up, 8px
+     down into the pane's top padding, the row above both: a 44px target
+     round a 36px tab. */
+  #view-analyze .an-panes > .an-tabs { position: relative; z-index: 2; }
+  #view-analyze .an-tab::after { content: ""; position: absolute; inset: -2px 0 -8px; }
   #view-analyze .an-tab[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); }
 
   /* The open pane takes what is left and scrolls inside it. */
@@ -2218,7 +2234,7 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #analysis-explain .coach-prose { flex: none; padding: 0 0 0 10px; border-left-width: 2px; border-radius: 0; background: none; font-size: 14px; line-height: 20px; overflow: visible; }
   #analysis-explain .coach-maia { height: 28px; }
   #analysis-explain .hp { height: 26px; padding: 0 6px; border-radius: var(--radius-chip); font-size: 13px; }
-  #analysis-explain .coach-unlock .unlock.is-inline { height: 36px; }
+  #analysis-explain .coach-unlock .unlock.is-inline { height: 32px; }
   #analysis-explain .coach-unlock .unlock.is-inline .btn { height: 28px; min-height: 0; padding: 0 10px; font-size: 13px; }
   #analysis-explain .coach-unlock .unlock.is-inline .unlock-x { width: 28px; height: 28px; }
 

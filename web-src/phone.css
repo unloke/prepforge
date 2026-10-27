@@ -48,6 +48,18 @@
   textarea { min-height: var(--control-h); height: var(--control-h); }
   .btn.icon,
   .btn.sm.icon { width: var(--control-h); min-width: var(--control-h); }
+  /* The paint is 36px; the thumb's 44px is a transparent band round it.
+     :where() keeps both rules at zero specificity, so a control that is
+     positioned on purpose (absolute, sticky) or draws its own ::before keeps
+     it. Icon buttons grow sideways too; wide ones only need the height. */
+  :where(.btn, .seg-btn, .sum-chip) { position: relative; }
+  /* -5px from the padding box: a 1px-bordered 36px control reaches 44px. */
+  :where(.btn, .seg-btn, .sum-chip)::before { content: ""; position: absolute; inset: -5px 0; }
+  :where(.btn.icon, .pf-info)::before { inset: -5px; }
+  /* A segment's 2px transparent border is outside its padding box. */
+  :where(.seg-btn)::before { inset: -6px 0; }
+  :where(.pf-info) { position: relative; }
+  :where(.pf-info)::before { content: ""; position: absolute; }
   /* A segment is a target too: a "1 2 3" track drew 33px-wide options. The
      track is a 44px control like the buttons beside it: no padding of its own
      (44px segments in a 2px-padded track stood 48px tall); each segment draws
@@ -116,6 +128,7 @@
   @keyframes page-title-dock { to { transform: scale(0.773); } }
   .page-head h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.01em; }
   .page-head-btn {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,8 +140,9 @@
     background: var(--surface-3);
     color: var(--text);
   }
+  .page-head-btn::after { content: ""; position: absolute; inset: -4px; } /* a 44px hit area round the 36px disc */
   .page-head-btn:active { background: var(--line-strong); }
-  .page-head-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+  .page-head-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 
   /* Library: Today as one row, filter chips, the repertoire list, setup
      steps left. */
@@ -348,10 +362,13 @@
   /* The queue chip is the row's own action under a thumb, and at 18px it was
      under the 24px minimum target. It grows to 24px, the most it can take
      inside a row without turning the queue line into a stack of buttons; the
-     row itself is the 64px target for opening the repertoire. */
+     row itself is the target for opening the repertoire. */
   #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 9px; font-size: 13px; }
-  /* The chip stays a 24px pill; its hit area is the 44px row band around it. */
-  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -10px -2px; }
+  /* The chip stays a 24px pill; its hit area grows into the queue line's own
+     band (the 6px gap above, the row's 8px padding below) and stops there. At
+     -10px it reached up over the name's subline, so a tap at the row's middle,
+     meant to open the repertoire, opened Train instead. */
+  #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
   /* With no queue chips the line holds only the mastery note: it starts at
      the name's left edge instead of hanging off the right. */
   #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
@@ -503,7 +520,10 @@
   #view-replay .toolbar > .sum-chips:not([hidden]) {
     flex-wrap: nowrap;
     margin: 0 -14px;
-    padding: 0 14px 12px;
+    /* 5px above and below the 36px chips keep their 44px band inside the
+       strip, which clips it as a sideways scroller. */
+    margin-top: -5px;
+    padding: 5px 14px 12px;
     overflow-x: auto;
     scrollbar-width: none;
   }
@@ -548,6 +568,9 @@
     margin: 0;
     outline: 12px solid var(--bg);
   }
+  /* The docked pill floats over rows that scroll under its plate: its hit
+     band would take taps meant for the row just above it (Scout's Black tab). */
+  #view-replay.is-active :is(.games-panel, .scout-panel):not([hidden]) > .toolbar > :is(#lichess-compare-btn, #scout-btn)::before { content: none; }
   .workspace:has(> #view-replay.is-active) { padding-bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 90px) !important; }
   /* With no source there is nothing to check, so Check leaves the dock rather
      than sitting in it disabled. The real next step takes the dock: Link
@@ -772,18 +795,18 @@
     order: 9;
     justify-content: flex-start;
     width: 100%;
-    height: 52px;
-    min-height: 52px;
+    height: 36px;
+    min-height: 36px;
     padding: 0;
     border: 0;
     border-radius: 0;
     background: none;
     box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
     color: var(--accent-strong);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
   }
-  #view-settings :is(#settings-account-body, #settings-account-data) > .acct-row { min-height: 52px; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
+  #view-settings :is(#settings-account-body, #settings-account-data) > .acct-row { min-height: 36px; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
   #view-settings .acct-row-text { min-width: 0; }
   #view-settings #set-account .acct-block {
     margin: 0 -16px;
@@ -795,8 +818,8 @@
   #view-settings .set .btn.conn-link {
     justify-content: flex-start;
     width: 100%;
-    height: 52px;
-    min-height: 52px;
+    height: 36px;
+    min-height: 36px;
     margin: 0;
     padding: 0;
     border: 0;
@@ -804,12 +827,12 @@
     background: none;
     box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */
     color: var(--accent-strong);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
   }
   #view-settings .acct-block > .btn.conn-link { margin: 0; }
   #view-settings .acct-danger-zone { padding: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a rule between two rows of one grouped list */ }
-  #view-settings .acct-danger-zone > summary { display: flex; align-items: center; min-height: 52px; color: var(--danger-strong); font-size: 16px; font-weight: 500; }
+  #view-settings .acct-danger-zone > summary { display: flex; align-items: center; min-height: 44px; color: var(--danger-strong); font-size: 15px; font-weight: 500; }
   #view-settings .acct-danger { padding: 0 0 12px; }
   /* Appearance: a picker of four takes the row's full width under its label,
      like the piece sets: "Board colors" broke over two lines beside a 2x2
@@ -825,7 +848,7 @@
   #view-settings .set-row:has(> .set-row-value) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px; padding: 8px 0; }
   #view-settings .set-row:has(> .set-row-value) > span:first-child { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
   #view-settings .set-row-value { display: contents; }
-  #view-settings .set-row-value > b { min-width: 0; font-size: 15px; font-weight: 600; text-align: left; text-wrap: balance; }
+  #view-settings .set-row-value > b { min-width: 0; font-size: 14px; font-weight: 600; text-align: left; text-wrap: balance; }
   #view-settings .pf-row:has(#piece-style-picker) { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 0; }
 
 
@@ -1099,11 +1122,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 48px;
+    min-height: 44px;
     margin: 0 calc(-1 * var(--phone-gutter));
     padding: 4px var(--phone-gutter) 0;
     background: var(--panel);
-    font-size: 18px;
+    font-size: 16px;
   }
   .phone-sheet.is-open > .sheet-bar::before {
     content: "";
@@ -1117,13 +1140,13 @@
     transform: translateX(-50%);
   }
   .sheet-done {
-    min-height: 44px;
+    min-height: 36px;
     padding: 0 4px;
     border: 0;
     background: none;
     color: var(--accent-strong);
     font: inherit;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 650;
   }
   .phone-sheet > .sheet-rows {
@@ -1137,13 +1160,13 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 48px;
+    min-height: 44px;
     padding: 0 14px;
     border: 0;
     background: none;
     color: var(--text);
     font: inherit;
-    font-size: 16px;
+    font-size: 15px;
     text-align: left;
   }
   .sheet-row + .sheet-row { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
@@ -1448,7 +1471,7 @@
   #view-train .board-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 4px; padding-inline: 8px; }
   #view-train .board-bar .board-label { display: none; }
   #view-train .board-bar .btn.icon { flex-direction: column; gap: 2px; width: 100%; height: 44px; border-radius: var(--radius); }
-  #view-train .board-bar .bl { display: block; font-size: 11px; font-weight: 500; line-height: 13px; }
+  #view-train .board-bar .bl { display: block; font-size: 12px; font-weight: 500; line-height: 14px; }
   .study .board-bar #play-takeback { order: 5; grid-column: -3 / -2; }
   .study .board-bar #play-resign { order: 6; grid-column: -2 / -1; }
 
@@ -1596,10 +1619,10 @@
     min-height: var(--menu-row-h);
     padding: 0 18px;
     border-radius: 0;
-    font-size: 16px;
+    font-size: 15px;
   }
   /* Groups split by a rule instead of a caption, so Delete stays in view. */
-  .context-menu .context-target { padding: 8px 18px 10px; font-size: 15px; text-align: center; }
+  .context-menu .context-target { padding: 8px 18px 10px; font-size: 14px; text-align: center; }
   .context-menu .context-section { display: none; }
   /* Only between groups: a rule at the top of the menu splits nothing. */
   .context-menu button ~ .context-section + button { border-top: 1px solid var(--line); /* taste-skill-ignore: a divider inside a menu */ }
@@ -1627,7 +1650,7 @@
   @starting-style {
     .modal:is([open], :popover-open) { transform: translateY(24%); }
   }
-  .modal-title { display: flex; align-items: center; min-height: 56px; padding: 6px 8px 6px var(--phone-gutter); font-size: 18px; }
+  .modal-title { display: flex; align-items: center; min-height: 44px; padding: 6px 8px 6px var(--phone-gutter); font-size: 16px; }
   .modal-body { gap: 14px; padding: 0 var(--phone-gutter) 16px; }
   .modal-field > span { font-size: 13px; }
   .modal-field :is(input, select) { padding: 0 14px; }
@@ -1637,17 +1660,17 @@
      not wrapped (a wrapped footer left "Back" alone on a line over a
      full-width "Download 99 MB and start"). Both must read as buttons, so a
      ghost Back / Cancel takes the quiet fill instead of floating as a word. */
-  .modal-footer .btn { flex: 1 1 0; min-width: 0; overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .modal-footer .btn { flex: 1 1 0; min-width: 0; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
   .modal-footer .btn.ghost:not(.danger) { background: var(--surface-3); }
   /* One primary: the quiet action keeps its label's width, the primary takes
      the rest of the row (the Chess.com dialog footer). */
   .modal-footer:has(.btn.primary) .btn:not(.primary) { flex: 0 0 auto; min-width: 104px; padding: 0 16px; }
-  .auth-close { width: 44px; height: 44px; margin-left: auto; font-size: 24px; }
-  .auth-modal .auth-google { font-size: 16px; }
-  .auth-link { min-height: 44px; padding: 0 2px; font-size: 15px; }
+  .auth-close { width: 36px; height: 36px; margin-left: auto; font-size: 24px; }
+  .auth-modal .auth-google { font-size: 15px; }
+  .auth-link { min-height: 36px; padding: 0 2px; font-size: 14px; }
   .auth-footer { flex-direction: column-reverse; align-items: stretch; }
   .auth-footer .btn { flex: none; width: 100%; }
-  .auth-footer .auth-switch { align-self: center; font-size: 15px; }
+  .auth-footer .auth-switch { align-self: center; font-size: 14px; }
 
   /* ---- More sheet: one grouped list ---------------------------------------- */
   .sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
@@ -1664,12 +1687,12 @@
   }
   .sheet-grab { margin: 2px auto 6px; }
   .sheet-item {
-    min-height: 52px;
+    min-height: 44px;
     padding: 0 16px;
     border: 0;
     border-radius: 0;
     background: none;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 500;
   }
   .sheet-item:not([hidden]) ~ .sheet-item { box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: a divider inside a sheet */ }
@@ -1730,17 +1753,17 @@
 
   /* The tab bar is chrome: it is the same white as the cards and sits on the
      page ground, told apart by a tone step rather than a shadow. Its top rule
-     is an inset shadow, not a border, so the bar is the 56px its items fill. */
+     is an inset shadow, not a border, so the bar is the height its items fill. */
   .tabbar { height: calc(var(--phone-bar-h) + env(safe-area-inset-bottom)); border-top: 0; box-shadow: inset 0 1px 0 var(--line); /* taste-skill-ignore: the bar's top rule */ }
   .tabbar .tabbar-item {
     min-height: 0;
-    height: 56px;
-    gap: 3px;
+    height: var(--phone-bar-h);
+    gap: 2px;
     color: var(--label);
     font-size: 12px;
     font-weight: 500;
   }
-  .tabbar .tabbar-item svg { width: 22px; height: 22px; }
+  .tabbar .tabbar-item svg { width: 20px; height: 20px; }
   /* A touch screen keeps :hover on the last tab tapped, so the shared .tab
      hover fill sat on it as a grey block after every switch. The press is the
      tab's scale; the open destination is its ink. */
@@ -1773,7 +1796,11 @@
      reach it through padding or an ::after. */
   :root { --phone-head-h: 44px; --phone-tab-h: 36px; }
   .study .board-stack { width: 100vw; }
-  :is(#view-analyze, #view-build, #view-train) .study { overflow-y: auto; overscroll-behavior: contain; }
+  /* No scrollbar gutter and no sideways scroll: the study only scrolls down.
+     With overflow-x left auto, a nearest-scrollIntoView nudged it sideways
+     and the 100vw board sat 1px off the left edge. */
+  :is(#view-analyze, #view-build, #view-train) .study { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  :is(#view-analyze, #view-build, #view-train) .study::-webkit-scrollbar { display: none; }
   .study .board-bar { position: sticky; bottom: 0; z-index: 5; }
   :is(#build-sidebar > .panel-body, #view-train .train-sidebar > .panel-scroll) { flex: 1 0 140px; padding: 0 var(--phone-gutter) 12px; }
 
@@ -1799,7 +1826,11 @@
     font-size: 13px;
   }
   #build-panes > button[aria-selected="true"] { border-bottom-color: var(--accent); background: none; }
-  #build-panes > button::after { content: ""; position: absolute; inset: -4px 0; }
+  /* The band grows 10px down from the 34px padding box into the pane's top
+     (the board above keeps its last rank): a 44px target round a 36px tab.
+     The row sits over the pane so the band is what a finger meets there. */
+  #build-panes { z-index: 2; }
+  #build-panes > button::after { content: ""; position: absolute; inset: 0 0 -10px; }
   #view-build #build-sidebar > .panel-body > :is(.tree-wrap, #build-inspector, .build-empty) { border-radius: 0; background: none; }
   #view-build .tree-wrap { padding: 4px 0; font-size: 14px; line-height: 28px; }
 

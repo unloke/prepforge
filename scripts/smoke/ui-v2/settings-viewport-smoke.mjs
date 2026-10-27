@@ -11,6 +11,7 @@
 // Tracked UI-v2 smoke: run the whole eight-view suite with
 // `npm run smoke:ui-v2` (scripts/smoke/ui-v2/run-all.mjs).
 import { createServer } from "node:http";
+import { hitAreaSource } from "./hit-area.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
@@ -187,19 +188,24 @@ async function runViewport(vp) {
   // Phone: every Settings control is a thumb target. Switches were 38x26 and
   // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.
   if (vp.width <= 760) {
-    const small = await page.evaluate(() => [...document.querySelectorAll('#view-settings .pf-switch, #view-settings .pf-info, #view-settings .set .seg-btn, #view-settings .set .btn')]
-      .map((el) => {
-        const r = el.getBoundingClientRect();
-        // A switch keeps its drawn track and grows its tap area with ::after insets.
-        const after = getComputedStyle(el, "::after");
-        const grow = after.content === "none" ? 0 : Math.max(0, -parseFloat(after.top) || 0) + Math.max(0, -parseFloat(after.bottom) || 0);
-        return { w: r.width, h: r.height + grow, what: el.id || el.className };
-      })
-      // A control may be narrow (a 38px switch track, a "1" worker chip): the
-      // touch target is its height, which must reach 40px.
-      .filter((r) => r.w > 0 && r.h > 0 && r.h < 40)
-      .map((r) => `${r.what} ${Math.round(r.w)}x${Math.round(r.h)}`));
-    check(small.length === 0, `Settings controls need a 40px touch target, got ${small.join(", ")}`);
+    // Round 5 draws the controls at 36px (Lichess-measured) and gives each a
+    // transparent band to a 44px target; measure the target the thumb meets,
+    // probing elementFromPoint outwards, not the drawn box.
+    const small = await page.evaluate((src) => {
+      const hitArea = eval(src);
+      const out = [];
+      for (const el of document.querySelectorAll('#view-settings .pf-switch, #view-settings .pf-info, #view-settings .set .seg-btn, #view-settings .set .btn')) {
+        if (!el.getClientRects().length) continue;
+        el.scrollIntoView({ block: "center" });
+        const hit = hitArea(el);
+        // A control may be narrow (a 38px switch track, a "1" worker chip): the
+        // touch target is its height, which must reach 44px.
+        if (hit.h < 44) out.push(`${el.id || el.className} ${Math.round(hit.w)}x${Math.round(hit.h)}${hit.covered ? " (covered)" : ""}`);
+      }
+      window.scrollTo(0, 0);
+      return out;
+    }, hitAreaSource);
+    check(small.length === 0, `Settings controls need a 44px touch target, got ${small.join(", ")}`);
   }
 
   // Engine Refresh re-checks the browser engine beside it, not only /api/settings.

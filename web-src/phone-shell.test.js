@@ -18,15 +18,16 @@ function rule(selector) {
 
 it("sets the phone page title at the app-title size, not a display size", () => {
   const title = rule(".page-head h1");
-  expect(title).toMatch(/font-size:\s*22px/);
+  expect(title).toMatch(/font-size:\s*20px/);
   expect(title).toMatch(/font-weight:\s*650/);
 });
 
-it("keeps the page header's action a thumb target in ink", () => {
+it("draws the page header's action at 36px with a 44px hit area, in ink", () => {
   const button = rule(".page-head-btn {");
-  expect(button).toMatch(/width:\s*44px/);
-  expect(button).toMatch(/height:\s*44px/);
+  expect(button).toMatch(/width:\s*36px/);
+  expect(button).toMatch(/height:\s*36px/);
   expect(button).toMatch(/color:\s*var\(--text\)/);
+  expect(rule(".page-head-btn::after")).toMatch(/inset:\s*-4px/);
 });
 
 // The title row is the top of the page, not a band: at 56px tall with a 20px
@@ -65,18 +66,18 @@ it("draws the bottom bar as chrome: a tone step and a hairline, no shadow, ink s
   expect(item).not.toMatch(/--accent/);
 });
 
-it("keeps every bottom bar destination at a 44px hit height", () => {
+it("keeps every bottom bar destination the bar's full height (48px, iOS's 49pt)", () => {
   const item = rule(".tabbar .tabbar-item {");
-  expect(item).toMatch(/height:\s*56px/);
+  expect(item).toMatch(/height:\s*var\(--phone-bar-h\)/);
 });
 
 // The top rule is an inset shadow, not a border: a border is drawn inside the
 // border-box height, so a 56px bar pushed its 56px rows' last pixel past the
 // bottom of the screen (measured: item bottom 845 at a 844 viewport).
-it("the bottom bar holds its 56px rows inside the screen", () => {
+it("the bottom bar holds its rows inside the screen", () => {
   const bar = rule(".tabbar {");
   expect(bar).toMatch(/height:\s*calc\(var\(--phone-bar-h\) \+ env\(safe-area-inset-bottom\)\)/);
-  expect(phone).toMatch(/--phone-bar-h:\s*56px/);
+  expect(phone).toMatch(/--phone-bar-h:\s*48px/);
 });
 
 // Every custom property a phone rule reads must be one the app defines. The

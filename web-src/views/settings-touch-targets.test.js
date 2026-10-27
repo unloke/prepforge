@@ -30,15 +30,15 @@ describe("Settings phone touch targets", () => {
     expect(settingsCss).not.toMatch(/\.set \.pf-switch::after/);
   });
 
-  it("gives the info buttons a 44px box", () => {
+  it("gives the info buttons the 36px control box", () => {
     const body = phoneRule(settingsCss, ".set .pf-info");
-    expect(body).toMatch(/min-width:\s*44px/);
-    expect(body).toMatch(/min-height:\s*44px/);
+    expect(body).toMatch(/min-width:\s*36px/);
+    expect(body).toMatch(/min-height:\s*36px/);
   });
 
-  it("keeps row buttons and segmented choices at 44px on a phone", () => {
+  it("keeps row buttons and segmented choices at the shared control height on a phone", () => {
     // They come from the shared phone rule now; Settings sets only padding.
-    expect(phoneCss).toMatch(/\.btn,\n  \.btn\.sm,\n  \.seg-btn,\n  \.sum-chip,[\s\S]*?\{ min-height: 44px; height: 44px; \}/);
+    expect(phoneCss).toMatch(/\.btn,\n  \.btn\.sm,\n  \.seg-btn,\n  \.sum-chip,[\s\S]*?\{ min-height: var\(--control-h\); height: var\(--control-h\); \}/);
     const row = phoneCss.match(/#view-settings \.set :is\(\.btn, \.btn\.sm\) \{[^}]*\}/)[0];
     expect(row).not.toMatch(/height:/);
   });

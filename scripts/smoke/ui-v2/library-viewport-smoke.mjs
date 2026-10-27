@@ -209,7 +209,12 @@ async function runViewport(vp) {
     if (!q || !more) return null;
     return { q: parseFloat(getComputedStyle(q).fontSize), more: parseFloat(getComputedStyle(more).fontSize) };
   });
-  check(queueSize && queueSize.q >= 16 && queueSize.more < queueSize.q,
+  // Round 5: the phone type scale is Lichess-measured (14px body, 15px lead),
+  // so on a phone the lead is 15px and must not grow back past 16px; wider
+  // viewports keep the 16px lead. Either way it outranks the line under it.
+  const phone = vp.width <= 760;
+  const leadOk = queueSize && (phone ? queueSize.q >= 15 && queueSize.q <= 16 : queueSize.q >= 16);
+  check(leadOk && queueSize.more < queueSize.q,
     `the queue must be the strip's loudest line, got ${JSON.stringify(queueSize)}`);
   const countsInAside = await page.evaluate(() => {
     const aside = document.querySelector("#dashboard-today .today-aside");

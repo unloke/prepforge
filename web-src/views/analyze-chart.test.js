@@ -395,7 +395,9 @@ describe("eval chart theme colours", () => {
     expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-white\s*\{[^}]*fill: var\(--eval-area-white\)/);
     expect(ALL_STYLES).toMatch(/\.eval-chart \.eval-area-black\s*\{[^}]*fill: var\(--eval-side-black\)/);
     expect(ALL_STYLES).toMatch(/\.eval-chart \{[^}]*--eval-area-white: var\(--panel\)/);
-    expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-area-white: var\(--eval-side-white\)/);
+    // Round 5: a soft mix toward the card (Lichess's dark chart), still read
+    // from the theme's own white-side token.
+    expect(ALL_STYLES).toMatch(/:root\[data-theme="dark"\] \.eval-chart \{[^}]*--eval-area-white: color-mix\(in srgb, var\(--eval-side-white\) \d+%, var\(--panel\)\)/);
     expect(ALL_STYLES).not.toMatch(/\.eval-area-(white|black)\s*\{[^}]*fill: #/);
   });
 

@@ -895,12 +895,15 @@ describe("workspace chrome layout", () => {
     expect(css).toContain(".context-menu button:disabled");
   });
 
-  it("gives primary mobile controls 44px touch targets without enlarging the board", () => {
+  it("draws phone controls at the competitors' measured size without enlarging the board", () => {
     // Slice from the mobile chrome block (bottom tab bar / touch targets).
     const mobile = css.slice(css.indexOf("/* Mobile: no rail"));
     expect(mobile).toMatch(/\.tab\s*\{[^}]*height:\s*44px/s);
     expect(mobile).toMatch(/\.account-btn,\s*\.rail-btn\s*\{[^}]*min-height:\s*44px/s);
-    expect(phoneCss).toMatch(/\.btn,[^{]*\{ min-height: 44px; height: 44px; \}/s);
+    // Round 5: one control height (Lichess draws 34-41px buttons); 44px is the
+    // hit area, not the paint.
+    expect(phoneCss).toMatch(/--control-h: 36px;/);
+    expect(phoneCss).toMatch(/\.btn,[^{]*\{ min-height: var\(--control-h\); height: var\(--control-h\); \}/s);
     expect(mobile).toMatch(/\.rep-menu-btn\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).toMatch(/#view-train \.board-bar \.btn\.icon\s*\{[^}]*min-width:\s*44px/s);
     expect(mobile).not.toMatch(/\.square\s*\{[^}]*min-(?:width|height):\s*44px/s);

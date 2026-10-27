@@ -347,8 +347,8 @@ select.team-role-select {
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     column-gap: 10px;
-    min-height: 60px;
-    padding: 8px 4px 8px 16px;
+    min-height: 48px;
+    padding: 6px 4px 6px 16px;
   }
   #view-teams .team-row { grid-template-columns: minmax(0, 1fr) auto auto; padding-right: 12px; }
   /* A team row pushes the team: the chevron says so, as a list row does in iOS. */

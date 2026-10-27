@@ -8,6 +8,7 @@
 //     user-error game; arrows react to the selected game without a standing legend
 //   - outcome filter chip narrows the ledger
 import { createServer } from "node:http";
+import { hitAreaSource } from "./hit-area.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
@@ -166,8 +167,12 @@ async function runViewport(vp) {
 
   // Phone: the outcome chips are the only way to narrow the ledger.
   if (vp.width <= 760) {
-    const chipBox = await page.locator("#replay-summary .sum-chip").first().boundingBox();
-    check(!!chipBox && chipBox.height >= 40, `outcome chips need a 40px touch target on a phone, got ${chipBox?.height}`);
+    // Round 5: drawn at the 36px control height, with a 44px target round it.
+    const chipHit = await page.locator("#replay-summary .sum-chip").first().evaluate((el, src) => {
+      el.scrollIntoView({ block: "center" });
+      return eval(src)(el);
+    }, hitAreaSource);
+    check(chipHit.h >= 44 && chipHit.drawnH <= 40, `outcome chips need a 44px touch target and a compact 36px chip on a phone, got ${JSON.stringify(chipHit)}`);
   }
 
   // Ledger: 3 rows; focused row (first, user-error) is open.

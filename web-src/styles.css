@@ -145,8 +145,10 @@
   --arrow-rim: rgba(255, 255, 255, 0.9);
 
   /* Board coordinate labels. */
-  --coord-on-light: var(--square-dark); /* Lichess: a square's name in the other square's colour */
-  --coord-on-dark: var(--square-light);
+  /* Lichess sets a square's name in the other square's hue; here that hue,
+     deepened to 4.5:1 so a 10px label stays readable. */
+  --coord-on-light: #4a6170;
+  --coord-on-dark: #16232b;
 
   /* -- Explorer result bar ---------------------------------------------- */
   --explorer-white: #f2f2ef;
@@ -1114,7 +1116,8 @@ h2 {
 .pf-switch::after {
   content: "";
   position: absolute;
-  inset: -12px -5px;
+  /* -13px from the padding box: 18px inside the 1px border + 26px = 44px. */
+  inset: -13px -5px;
 }
 
 .pf-switch:hover {

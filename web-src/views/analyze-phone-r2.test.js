@@ -105,10 +105,12 @@ describe("Analyze phone, round 2", () => {
     expect(phoneR2).toMatch(/#analysis-moves \.mtree-move \{[^}]*min-width: 44px;[^}]*height: 44px;/);
   });
 
-  it("gives every pane tab the whole 44px track", () => {
-    expect(phoneR2).toMatch(/\.an-panes > \.an-tabs \{ height: 44px; padding: 0;/);
-    expect(phoneR2).toMatch(/#view-analyze \.an-tab \{ height: 44px;/);
-    expect(css).not.toMatch(/\.an-tab::after \{/);
+  it("draws the pane tabs as 36px underline tabs with a 44px hit area (round 5)", () => {
+    expect(phoneR2).toMatch(/--phone-tabs-h: 36px;/);
+    expect(phoneR2).toMatch(/#view-analyze \.an-tab \{ height: var\(--phone-tabs-h\); border-bottom: 2px solid transparent;/);
+    // From the 34px padding box: 2px up, 8px down, the tab row above the pane.
+    expect(phoneR2).toMatch(/#view-analyze \.an-tab::after \{ content: ""; position: absolute; inset: -2px 0 -8px; \}/);
+    expect(phoneR2).toMatch(/#view-analyze \.an-panes > \.an-tabs \{ position: relative; z-index: 2; \}/);
   });
 
   it("never wraps a key moment's better move beside its eval", () => {

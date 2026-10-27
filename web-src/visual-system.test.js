@@ -377,8 +377,16 @@ describe("semantic text colors meet WCAG AA", () => {
       }
     });
     it(`${themeName} board coordinates meet small-text contrast`, () => {
+      // The board is the same in both themes (round 5), so the dark block may
+      // not redeclare the square/coord tokens. Resolve them the way the
+      // cascade does: a dark override wins, otherwise :root's value applies.
+      const resolved = themeName === "dark" ? { ...light, ...tokens } : tokens;
       for (const square of ["light", "dark"]) {
-        expect(contrast(tokens[`--coord-on-${square}`], tokens[`--square-${square}`])).toBeGreaterThanOrEqual(4.5);
+        const fg = resolved[`--coord-on-${square}`];
+        const bg = resolved[`--square-${square}`];
+        expect(fg, `${themeName} --coord-on-${square} must resolve to a hex token`).toBeTruthy();
+        expect(bg, `${themeName} --square-${square} must resolve to a hex token`).toBeTruthy();
+        expect(contrast(fg, bg), `${themeName} coords on ${square} squares`).toBeGreaterThanOrEqual(4.5);
       }
     });
     it(`${themeName} theme: text tokens clear 4.5:1 on panel-family surfaces`, () => {

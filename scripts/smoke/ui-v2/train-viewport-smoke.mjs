@@ -9,6 +9,8 @@
 //   - no horizontal overflow, no page scroll on Home, no console errors
 import { checkTrainingHistory } from './training-history.mjs';
 import { createServer } from "node:http";
+import { checkPhoneBoard } from "./phone-board.mjs";
+import { hitAreaSource } from "./hit-area.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, extname } from "node:path";
@@ -157,15 +159,16 @@ async function runViewport(vp) {
       await page.screenshot({ path: join(process.env.UI_V2_SHOTS, `train-${state}-${process.env.UI_V2_TAG || "after"}-${vp.name}.png`) });
     }
   };
-  const home = await page.evaluate(() => {
+  const home = await page.evaluate((src) => {
     const box = (el) => (el && el.getClientRects().length ? el.getBoundingClientRect().toJSON() : null);
+    const hit = (el) => (el && el.getClientRects().length ? eval(src)(el) : null);
     const bar = box(document.querySelector("#view-train .board-bar"));
     return {
       screen: document.getElementById("view-train").dataset.trainScreen,
       homeHidden: document.getElementById("train-home").hidden,
       cells: [...document.querySelectorAll("#train-outlook .train-outlook-lead, #train-outlook .train-outlook-rest")].map((c) => c.textContent.trim()),
       meta: document.getElementById("train-due-meta").textContent.trim(),
-      starts: ["start-train", "start-rehearse", "start-play"].map((id) => ({ id, text: document.getElementById(id).textContent.trim(), box: box(document.getElementById(id)) })),
+      starts: ["start-train", "start-rehearse", "start-play"].map((id) => ({ id, text: document.getElementById(id).textContent.trim(), box: box(document.getElementById(id)), hit: hit(document.getElementById(id)) })),
       rehearseScope: document.querySelector("#train-rehearse-scope span").textContent.trim(),
       hint: !!box(document.getElementById("train-hint")),
       back: !!box(document.getElementById("train-back")),
@@ -173,7 +176,7 @@ async function runViewport(vp) {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       pageScroll: document.documentElement.scrollHeight - innerHeight,
     };
-  });
+  }, hitAreaSource);
   check(home.screen === "home" && !home.homeHidden, `Train opens on Home, got ${home.screen}`);
   check(home.cells.length === 2 && home.cells[0] === "2 due now", `the outlook leads with what is due now, got ${JSON.stringify(home.cells)}`);
   check(home.meta === "4 cards", `the row's line is the session's size, got ${JSON.stringify(home.meta)}`);
@@ -186,7 +189,10 @@ async function runViewport(vp) {
   const startOnScreen = (start, bar, vh) => {
     const limit = bar && phone ? Math.min(bar.top, vh) : vh;
     check(!!start.box && start.box.bottom <= limit + 1, `${start.id} must be on screen: ${JSON.stringify({ box: start.box, bar, vh })}`);
-    check(!!start.box && start.box.height >= (phone ? 40 : 28), `${start.id} must be a real target, got ${start.box?.height}`);
+    // Round 5: a phone draws Start at the 36px control height; its target is
+    // the 44px band round it (measured by elementFromPoint in start.hit).
+    check(!!start.box && (phone ? start.hit && start.hit.h >= 44 && start.box.height <= 40 : start.box.height >= 28),
+      `${start.id} must be a real target, got ${JSON.stringify({ drawn: start.box?.height, hit: start.hit })}`);
   };
   for (const start of home.starts) {
     if (phone && start.id === "start-play") check(!start.box, "the Drill pane must not show Practice's Play");
@@ -200,18 +206,19 @@ async function runViewport(vp) {
     // ringed, and a tap on another card picks it.
     await page.locator('[data-testid="train-tab-play"]').click();
     await page.waitForTimeout(250);
-    const practice = await page.evaluate(() => {
+    const practice = await page.evaluate((src) => {
       const box = (el) => (el && el.getClientRects().length ? el.getBoundingClientRect().toJSON() : null);
+      const hit = (el) => (el && el.getClientRects().length ? eval(src)(el) : null);
       return {
         pane: document.getElementById("view-train").dataset.trainPane,
-        play: { id: "start-play", box: box(document.getElementById("start-play")) },
+        play: { id: "start-play", box: box(document.getElementById("start-play")), hit: hit(document.getElementById("start-play")) },
         drill: !!box(document.getElementById("start-train")),
         cards: [...document.querySelectorAll("#train-bots .train-bot")].map((b) => ({
           book: b.dataset.book, pressed: b.getAttribute("aria-pressed") === "true", disabled: b.disabled, box: box(b),
         })),
         bar: box(document.querySelector("#view-train .board-bar")), vh: innerHeight,
       };
-    });
+    }, hitAreaSource);
     check(practice.pane === "play" && !practice.drill, `the Practice tab shows only its pane, got ${JSON.stringify({ pane: practice.pane, drill: practice.drill })}`);
     startOnScreen(practice.play, practice.bar, practice.vh);
     check(practice.cards.length === 3 && practice.cards.filter((c) => c.pressed).length === 1,
@@ -276,6 +283,10 @@ async function runViewport(vp) {
   check(session.upnext === 3 && /London System/.test(session.upnextText), `up next shows the real queue, got ${session.upnext}`);
   check(session.back, "a Session offers Back");
   await shot("session");
+  if (phone) {
+    const live = await checkPhoneBoard(page, { view: "view-train", board: "train-board", label: "Train session" });
+    for (const f of live.fails) check(false, f);
+  }
   const startToasts = await page.locator(".notices .notice").allTextContents();
   check(!startToasts.some((t) => /Queue ready|Resumed queue/.test(t)), `starting a queue should not toast its size, got ${JSON.stringify(startToasts)}`);
 
@@ -290,6 +301,10 @@ async function runViewport(vp) {
   check(await screenOf(page) === "result", "finishing the last card shows the Result");
   check(await page.locator("#train-recent").evaluate((el) => el.hidden), "Recent never lists the run on the card (a first run has none before it)");
   await shot("result");
+  if (phone) {
+    const done = await checkPhoneBoard(page, { view: "view-train", board: "train-board", label: "Train result" });
+    for (const f of done.fails) check(false, f);
+  }
   await checkTrainingHistory(page, check, shot);
   await page.locator("#train-summary-new").click();
   await page.waitForTimeout(600);
@@ -322,7 +337,7 @@ try {
     // the setup panel 146px and put Start under the bar. It needs its own run.
     { name: "phone-430x740", width: 430, height: 740 },
     { name: "phone-390x660", width: 390, height: 660 },
-  ]) await runViewport(vp);
+  ].filter((vp) => !process.env.UI_V2_VIEWPORTS || process.env.UI_V2_VIEWPORTS.split(",").includes(vp.name))) await runViewport(vp);
 } finally {
   await browser.close();
   server.close();

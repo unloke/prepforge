@@ -300,7 +300,8 @@
   .slider input { width: 130px; }
   /* The nav links are anchors, not .btn: they keep their own thumb height. */
   .settings-nav-link { min-height: 36px; }
-  /* The ⓘ is a 24px glyph with a 44px box on a phone. The switch already
+  /* The ⓘ is a 24px glyph in a 36px box on a phone, its 44px hit band from
+     phone.css. The switch already
      carries its thumb-sized tap area in the shared rule, so it is not redrawn
      here. */
   .set .pf-info { min-width: 36px; min-height: 36px; }

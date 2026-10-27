@@ -683,7 +683,7 @@ async function refreshExplorerPanel() {
       // Retrying cannot help until an account is linked: offer the link.
       delete rows.dataset.shownFen;
       rows.innerHTML =
-        html`<div class="muted hint">The ${label} explorer reads Lichess with your linked account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
+        html`<div class="muted hint">${label} needs your Lichess account. <button type="button" class="btn sm" data-explorer-link>Link Lichess</button></div>`;
       rows.querySelector("[data-explorer-link]")?.addEventListener("click", () => {
         openSettingsSection("set-connections").catch(() => {});
       });

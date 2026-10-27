@@ -150,9 +150,9 @@ describe("scout error state", () => {
 describe("scout phone controls", () => {
   const css = readFileSync(resolve(here, "./scout.css"), "utf8");
 
-  it("gives a first-move row a thumb-sized target and every control press feedback", () => {
+  it("gives a first-move row a 36px row (round 5 density) and every control press feedback", () => {
     const phone = css.slice(css.indexOf("@media (max-width: 760px)"));
-    expect(phone).toMatch(/\.fm \{ min-height: 44px; \}/);
+    expect(phone).toMatch(/\.fm \{ min-height: 36px; \}/);
     expect(css).toMatch(/\.fm\[data-first-uci\]:active \{ transform: scale/);
     expect(css).toMatch(/\.scout-add-icon:active \{ transform: scale/);
     expect(css).toMatch(/\.scout-color-tab:active \{ transform: scale/);
