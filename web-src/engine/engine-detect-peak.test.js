@@ -3,7 +3,7 @@ import { CRASH_KEY, createEngineProfileManager } from "./engine-profile.js";
 import { ENGINE_PHASE_KEY } from "./engine-ladder.js";
 import { fixture } from "./engine-profile.fixture.js";
 
-// Analyze holds Maia beside the engines, so each step Detect keeps must hold both.
+// A step Detect keeps must hold the page's normal peak: its engines, Maia and a margin.
 it("runs a Maia batch at every step while that step's engines hold their heaps", async () => {
   const seen = [];
   let f;
@@ -38,4 +38,19 @@ it("names the phase a run died in until a run completes", () => {
   run.start();
   run.done();
   expect(reloaded.lastEngineCrash()).toBeNull();
+});
+
+it("holds the page's margin at every step, under that step's mark", async () => {
+  let f;
+  const held = [];
+  f = fixture({ headroom: () => { held.push(JSON.parse(f.data.get(CRASH_KEY)).workers); return 0; } });
+  await f.detectEngineProfile();
+  expect(held).toEqual([1, 1, 2, 3]);
+});
+
+it("a margin the device refuses ends the ladder at the step before", async () => {
+  let calls = 0;
+  const f = fixture({ headroom: () => { if (++calls === 3) throw new RangeError("out of memory"); return 0; } });
+  // lite x1 and big x1 held their margin; big x2 could not.
+  expect(await f.detectEngineProfile()).toMatchObject({ net: "big", workers: 1 });
 });

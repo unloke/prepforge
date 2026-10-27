@@ -6,7 +6,7 @@
 // Maia strength are user settings; those sync through /api/settings.
 import { loadEngineModule, removeEngineAsset, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
-import { maiaWorkload, FEN } from "./detect-maia.js";
+import { maiaWorkload, holdHeadroom, FEN } from "./detect-peak.js";
 import { MAX_WORKERS, ENGINE_PHASE_KEY, stepDownProfile, ladderStep, heldBelow, maxWorkers } from "./engine-ladder.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
 export const CRASH_KEY = "prepforge.engine-starting";
@@ -46,6 +46,7 @@ export function createEngineProfileManager({
   createEngine = async opts => (await import("./stockfish-provider.js")).createStockfishWasmProvider({ ...opts, computeBudget: null, profileManaged: false }),
   scheduleIdle = fn => globalThis.requestIdleCallback ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1000),
   maiaLoad = maiaWorkload,
+  headroom = holdHeadroom,
 } = {}) {
   let loaded = false, broken = false, profile = FALLBACK, detected = null, measurements = null, proven = null;
   let ceiling = null; // lowest ladder step that killed this tab; Detect stays below it
@@ -174,10 +175,7 @@ export function createEngineProfileManager({
             if (profile.net !== "big") consent = "no";
             dropBig = true;
           }
-        } else {
-          dropBig = false;
-          lastCrash = { net: crash.net, workers: crash.workers, phase: s.getItem(ENGINE_PHASE_KEY) || null };
-        }
+        } else [dropBig, lastCrash] = [false, { net: crash.net, workers: crash.workers, phase: s.getItem(ENGINE_PHASE_KEY) || null }];
         s.setItem(PROFILE_KEY, record());
         s.removeItem(CRASH_KEY);
       }
@@ -312,6 +310,8 @@ export function createEngineProfileManager({
         ended = true;
         activeRuns--;
         if (lastCrash && !error) { lastCrash = null; persist(); }
+        // The phase belongs to this run: a later kill outside a run must not name it.
+        access(s => s.removeItem(ENGINE_PHASE_KEY));
         if (!activeRuns) { heldUsable = null; const publish = publishPending; publishPending = null; publish?.(); emitUsable(); }
         endSession();
       },
@@ -456,9 +456,12 @@ export function createEngineProfileManager({
         abort();
         progress(stage, step + 2, n);
         const second = await round();
-        // Analyze's peak: a Maia batch while this step's engines still hold their heaps.
-        // A tab that cannot hold both dies here, under this step's mark.
+        // The page's normal peak while this step's engines still hold their heaps: a Maia
+        // batch, then a margin for the page itself. A tab that cannot hold it all dies here,
+        // under this step's mark, and the next load starts below it; a refused block ends
+        // the ladder at the step before.
         if (maiaRound) await maiaRound().catch(() => {});
+        headroom();
         step += 3;
         const r = first.nodes / first.ms > second.nodes / second.ms ? first : second;
         abort();

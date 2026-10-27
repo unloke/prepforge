@@ -36,6 +36,6 @@ export function fixture({ throughput = (_net, n) => n, Memory = class { construc
   let t = 0;
   const manager = createEngineProfileManager({ storage: () => storage, createEngine, reserveMemory, loadModule, removeAsset,
     assetState: () => ({ phase: bigPhase.value }), subscribeAsset: () => () => {}, beginSession: () => () => {},
-    probeBudget: async () => () => {}, maiaLoad: async () => null, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }), now: () => (t += 1000), ...options });
+    probeBudget: async () => () => {}, maiaLoad: async () => null, headroom: () => 0, device: () => ({ hardwareConcurrency: 4, deviceMemory: 8 }), now: () => (t += 1000), ...options });
   return { ...manager, data, storage, engines, createEngine, reserveMemory, removeAsset, loadModule, modules };
 }
