@@ -1,7 +1,7 @@
 """Repertoires persistence."""
 from __future__ import annotations
 
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Optional
@@ -44,6 +44,36 @@ OPS_TRIM_EVERY = 100
 
 
 class RepertoireRepository(EvaluationRepository, TrainingRepository):
+    _edit_connection: Optional[Connection] = None
+    _edit_repertoire_row: Optional[Mapping[str, Any]] = None
+
+    @contextmanager
+    def repertoire_edit(self, repertoire_id: str):
+        """Lock before reading; commit the tree, op and receipt together."""
+        with self.engine.begin() as conn:
+            if conn.dialect.name == "sqlite":
+                # Claim SQLite's writer lock and read metadata in one statement.
+                stmt = update(t.repertoires).where(t.repertoires.c.id == repertoire_id).values(
+                    revision=t.repertoires.c.revision,
+                ).returning(*t.repertoires.c)
+            else:
+                stmt = select(t.repertoires).where(
+                    t.repertoires.c.id == repertoire_id,
+                ).with_for_update()
+            row = conn.execute(stmt).mappings().first()
+            self.expect_repertoire_revision(repertoire_id, row["revision"] if row else None)
+            self._edit_connection = conn
+            self._edit_repertoire_row = row
+            try:
+                yield
+            finally:
+                self._edit_connection = None
+                self._edit_repertoire_row = None
+
+    def _edit_write(self):
+        return (nullcontext(self._edit_connection) if self._edit_connection is not None
+                else self.engine.begin())
+
     def expect_repertoire_revision(self, repertoire_id: str, revision: int) -> None:
         """Fence a request's writes at commit, not just at its earlier HTTP read."""
         self._expected_revisions[repertoire_id] = revision
@@ -163,7 +193,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         """Update only the supplied fields on existing nodes in one transaction."""
         if not changes:
             return
-        with self.engine.begin() as conn:
+        with self._edit_write() as conn:
             groups: Dict[str, Dict[str, Any]] = {}
             for change in changes:
                 values = {key: value for key, value in change.items() if key != "id"}
@@ -180,7 +210,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             self._bump_revision(conn, repertoire_id, nodes=[change["id"] for change in changes])
 
     def set_node_annotations(self, repertoire_id: str, node_id: str, arrows: List[str], circles: List[str]) -> None:
-        with self.engine.begin() as conn:
+        with self._edit_write() as conn:
             changed = conn.execute(update(t.opening_nodes).where(
                 t.opening_nodes.c.id == node_id,
                 t.opening_nodes.c.repertoire_id == repertoire_id,
@@ -196,9 +226,10 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         """Persist changed or new nodes without walking the rest of the tree."""
         if not nodes:
             if receipt is not None:
-                self.set_user_setting(*receipt)
+                with self._edit_write() as conn:
+                    self.write_user_setting(conn, *receipt)
             return
-        with self.engine.begin() as conn:
+        with self._edit_write() as conn:
             pos_cache: Dict[str, int] = {}
             rows = []
             for node in nodes:
@@ -220,7 +251,7 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
             return
         if fields.keys() - {"name", "is_active"}:
             raise ValueError("unsupported repertoire fields")
-        with self.engine.begin() as conn:
+        with self._edit_write() as conn:
             conn.execute(
                 update(t.repertoires)
                 .where(t.repertoires.c.id == repertoire_id)
@@ -290,10 +321,13 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
         self, repertoire_id: str, owner_user_id: Optional[str] = None,
         *, conn: Optional[Connection] = None,
     ) -> Optional[Repertoire]:
+        conn = conn if conn is not None else self._edit_connection
         with nullcontext(conn) if conn is not None else self.engine.connect() as conn:
-            rep_row = conn.execute(
-                select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
-            ).mappings().first()
+            rep_row = self._edit_repertoire_row
+            if rep_row is None or rep_row["id"] != repertoire_id or conn is not self._edit_connection:
+                rep_row = conn.execute(
+                    select(t.repertoires).where(t.repertoires.c.id == repertoire_id)
+                ).mappings().first()
             if rep_row is None:
                 return None
             # Ownership gate: a repertoire owned by someone else is not-found to this owner.
@@ -737,9 +771,12 @@ class RepertoireRepository(EvaluationRepository, TrainingRepository):
 
     def delete_opening_nodes(self, repertoire_id: str, node_ids: List[str], *, receipt: Optional[tuple] = None) -> None:
         if not node_ids:
+            if receipt is not None:
+                with self._edit_write() as conn:
+                    self.write_user_setting(conn, *receipt)
             return
         week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-        with self.engine.begin() as conn:
+        with self._edit_write() as conn:
             # Progress rows cascade away with their nodes; keep the review
             # timestamps of this week so the dashboard's review count stays put.
             tp = t.training_progress

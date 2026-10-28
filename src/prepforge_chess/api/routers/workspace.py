@@ -40,7 +40,7 @@ from prepforge_chess.services.repertoire_export import RepertoireExportService
 from prepforge_chess.services.workspace_view import build_workspace_payload
 from prepforge_chess.storage import sa_tables as t
 from prepforge_chess.storage.repositories.settings import PLAYED_SESSIONS_KEY, REVIEW_ARCHIVE_KEY, prune_review_archive
-from prepforge_chess.storage.repositories.repertoires import NodeGone, RevisionConflict
+from prepforge_chess.storage.repositories.repertoires import NodeGone
 from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
 router = APIRouter(prefix="/api", tags=["workspace"])
@@ -95,24 +95,10 @@ def _editable_repertoire(
     return meta
 
 
-_REBASE_ATTEMPTS = 3
-
-
 def _rebased(repo: WorkspaceRepository, meta: dict[str, Any], apply: Callable[[], T]) -> T:
-    """Server-side rebase: an edit runs against the repertoire as it is now, not
-    the revision the client last saw, so concurrent edits that do not touch the
-    same node all land. The edit's own preconditions decide (a deleted node is
-    ``NodeGone`` → 409). A write committing between this request's read and its
-    commit trips the revision fence; the edit then re-runs on the newer tree."""
-    revision = meta["revision"]
-    for attempt in range(_REBASE_ATTEMPTS):
-        repo.expect_repertoire_revision(meta["id"], revision)
-        try:
-            return apply()
-        except RevisionConflict as conflict:
-            if attempt == _REBASE_ATTEMPTS - 1:
-                raise
-            revision = conflict.current_revision
+    """Apply against the current tree while holding its database write lock."""
+    with repo.repertoire_edit(meta["id"]):
+        return apply()
 
 
 def _strip_readonly_build_payload(payload: dict[str, Any]) -> None:

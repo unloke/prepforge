@@ -35,3 +35,11 @@ and duplicate sync, lost responses, unversioned requests, rollback/retry, expiry
 and concurrent training/sync. Each case runs on isolated SQLite and, when
 `TEST_POSTGRES_URL` is set, in an isolated PostgreSQL schema. The PostgreSQL CI job
 includes this suite. Production data is never used by these regressions.
+
+Repertoire edits acquire the database write lock before reading the tree.
+PostgreSQL locks the repertoire row; SQLite claims its writer lock with a
+no-op revision update that returns the current metadata. Node
+changes, the revision operation and its receipt commit through that same
+connection, so competing editors read the committed predecessor without
+exhausting optimistic retries. `tests/test_coedit_sync.py` covers concurrent
+writers and rollback when receipt persistence fails.

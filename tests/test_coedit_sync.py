@@ -207,34 +207,97 @@ def test_disable_and_enable_are_explicit_so_a_repeat_is_idempotent(client):
     assert next(n for n in _load(client, rep)["nodes"] if n["id"] == e4)["is_enabled"] is True
 
 
-def test_a_write_landing_mid_request_is_rebased_not_lost(client, monkeypatch):
-    """Another write commits between this request's tree read and its commit:
-    the fence rolls this attempt back and the edit re-runs on the newer tree."""
+def test_failed_receipt_rolls_back_tree_revision_and_op(client, monkeypatch):
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+
+    rep, root, _e4 = _setup(client)
+    base = _load(client, rep)["revision"]
+    original = WorkspaceRepository.write_user_setting
+
+    def fail(self, conn, user_id, key, value):
+        original(self, conn, user_id, key, value)
+        raise RuntimeError("receipt failure")
+
+    body = {"repertoire_id": rep, "moves": [
+        {"tempId": "tmp-a-2", "parentRef": root, "uci": "d2d4"}]}
+    with monkeypatch.context() as patch:
+        patch.setattr(WorkspaceRepository, "write_user_setting", fail)
+        import pytest
+        with pytest.raises(RuntimeError, match="receipt failure"):
+            _post(client, "/api/build/add-moves", body)
+    tree = _load(client, rep)
+    assert tree["revision"] == base
+    assert _children(tree, root) == ["e2e4"]
+    assert _changes(client, rep, base) == {"revision": base, "role": "owner"}
+    # The receipt must also roll back, so the identical retry really writes.
+    reply = _post(client, "/api/build/add-moves", body)
+    assert reply.status_code == 200, reply.text
+    assert _load(client, rep)["revision"] == base + 1
+    assert _children(_load(client, rep), root) == ["d2d4", "e2e4"]
+    assert len(_changes(client, rep, base)["ops"]) == 1
+
+
+def test_waiting_writer_reads_tree_after_competitor_commit(client, monkeypatch):
+    """Hold the first writer after its read; start the second lock acquisition."""
+    from sqlalchemy import event
+    from prepforge_chess.api import db, main
     from prepforge_chess.services.opening_builder import OpeningBuilderService
 
     rep, root, e4 = _setup(client)
     base = _load(client, rep)["revision"]
+    first_read = threading.Event()
+    second_lock = threading.Event()
     original = OpeningBuilderService.add_moves_batch
-    raced = []
+    replies, errors, observed = [], [], []
 
-    def racing(self, repertoire_id, moves, **kwargs):
-        if not raced:
-            raced.append(True)
-            competitor = OpeningBuilderService(type(self.repository)(self.repository.engine))
-            competitor.delete_nodes_batch(repertoire_id, [e4])  # lands first
+    def before_sql(conn, cursor, statement, parameters, context, executemany):
+        if "SET revision=repertoires.revision WHERE" in statement and first_read.is_set():
+            second_lock.set()
+
+    def apply(self, repertoire_id, moves, **kwargs):
+        if self.repository.op_client == A:
+            # The read must use the locked transaction's connection.
+            self.repository.load_repertoire(repertoire_id)
+            first_read.set()
+            assert second_lock.wait(5), "second writer did not attempt its lock"
+        else:
+            tree = self.repository.load_repertoire(repertoire_id)
+            observed.append(sorted(n.move.uci for n in tree.root_node.children))
         return original(self, repertoire_id, moves, **kwargs)
 
-    monkeypatch.setattr(OpeningBuilderService, "add_moves_batch", racing)
-    reply = _post(client, "/api/build/add-moves", {"repertoire_id": rep, "moves": [
-        {"tempId": "tmp-b-1", "parentRef": e4, "uci": "e7e5"},
-        {"tempId": "tmp-b-2", "parentRef": root, "uci": "d2d4"}]}, device=B)
-    assert reply.status_code == 200, reply.text
-    assert reply.json()["dropped"] == ["tmp-b-1"]  # re-run saw e4 gone
+    def writer(device, parent, uci):
+        try:
+            with TestClient(main.app, cookies=dict(client.cookies)) as own:
+                replies.append(_post(own, "/api/build/add-moves", {
+                    "repertoire_id": rep, "moves": [
+                        {"tempId": f"tmp-{device}", "parentRef": parent, "uci": uci}]}, device))
+        except Exception as exc:
+            errors.append(exc)
+
+    monkeypatch.setattr(OpeningBuilderService, "add_moves_batch", apply)
+    engine = db.get_engine()
+    event.listen(engine, "before_cursor_execute", before_sql)
+    threads = [threading.Thread(target=writer, args=(A, root, "d2d4")),
+               threading.Thread(target=writer, args=(B, e4, "e7e5"))]
+    try:
+        threads[0].start()
+        assert first_read.wait(5), "first writer did not read"
+        threads[1].start()
+        for thread in threads:
+            thread.join(10)
+        assert all(not thread.is_alive() for thread in threads)
+    finally:
+        event.remove(engine, "before_cursor_execute", before_sql)
+    assert errors == []
+    assert len(replies) == 2
+    assert all(r.status_code == 200 for r in replies), [r.text for r in replies]
+    assert observed == [["d2d4", "e2e4"]]
     tree = _load(client, rep)
     assert tree["revision"] == base + 2
-    assert _children(tree, root) == ["d2d4"]
-    revisions = [op["revision"] for op in _changes(client, rep, base)["ops"]]
-    assert revisions == [base + 1, base + 2]
+    assert _children(tree, e4) == ["e7e5"]
+    feed = _changes(client, rep, base)
+    assert [op["revision"] for op in feed["ops"]] == [base + 1, base + 2]
+    assert len(feed["nodes"]) == 2
 
 
 def test_parallel_writers_keep_one_contiguous_op_per_revision(client):
