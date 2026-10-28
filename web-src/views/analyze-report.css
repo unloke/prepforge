@@ -1,29 +1,29 @@
-/* The open report compares players at reading size. Two equal columns share
-   the available width after a 12px gutter; only the closed state is a row. */
+/* A shared score strip: two equal player columns and a fixed toggle slot. */
 #analysis-summary > .rp-summary {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 8px;
+  gap: 16px;
   align-items: center;
   min-height: 0;
-  padding: 0;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--line);
 }
 #analysis-summary > .rp-summary .rp-side {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
+  grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   min-width: 0;
-  padding: 16px;
-  border-radius: 8px;
-  background: var(--surface-3);
+  padding: 4px 0;
+  background: none;
 }
-#analysis-summary > .rp-summary .rp-disc { display: block; }
-#analysis-summary > .rp-summary .rp-name { display: block; grid-column: 2; font-size: 14px; font-weight: 500; }
-#analysis-summary > .rp-summary .rp-acc { grid-column: 1 / -1; font-size: 36px; font-weight: 650; letter-spacing: -0.04em; text-align: left; }
-#analysis-summary > .rp-summary .rp-errs { display: flex; grid-column: 1 / -1; gap: 6px; overflow: visible; font-size: 13px; }
-#analysis-summary > .rp-summary .rp-chev { position: absolute; right: 8px; top: 8px; margin: 0; }
+#analysis-summary > .rp-summary .rp-side + .rp-side { border-left: 1px solid var(--line); padding-left: 16px; }
+#analysis-summary > .rp-summary .rp-disc { display: block; grid-column: 1; grid-row: 1; }
+#analysis-summary > .rp-summary .rp-name { display: block; grid-column: 2; grid-row: 1; font-size: 13px; font-weight: 600; }
+#analysis-summary > .rp-summary .rp-acc { grid-column: 3; grid-row: 1 / 3; align-self: center; font-size: 24px; font-weight: 600; letter-spacing: -0.03em; text-align: right; }
+#analysis-summary > .rp-summary .rp-errs { display: flex; grid-column: 2; grid-row: 2; gap: 6px; overflow: hidden; font-size: 12px; }
+#analysis-summary > .rp-summary .rp-chev { position: static; grid-column: 3; grid-row: 1; margin: 0; }
 #analysis-summary > .rp-body { gap: 24px; padding-top: 8px; }
 #analysis-summary .rp-sec { gap: 12px; }
 #analysis-summary .rp-h { color: var(--text); font-size: 14px; }
@@ -80,7 +80,7 @@
   #view-analyze .report-pane:has(#analysis-summary[data-open="true"]) { max-height: min(66vh, 620px); }
   #analysis-summary > .rp-summary:hover { background: none; }
   #analysis-summary:not([data-open="true"]) > .rp-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8px; gap: 8px; min-height: 44px; padding: 0 8px; }
-  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-side { display: flex; gap: 6px; padding: 0; background: none; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-side { display: flex; gap: 6px; padding: 0; border: 0; background: none; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-name { flex: 1; font-size: 12px; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-acc { flex: none; font-size: 13px; letter-spacing: normal; text-align: right; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-errs { flex: none; font-size: 12px; }
@@ -90,7 +90,10 @@
 }
 @media (max-width: 600px) {
   #analysis-summary > .rp-summary { gap: 12px; }
-  #analysis-summary > .rp-summary .rp-side { padding: 14px; background: var(--panel); }
-  #analysis-summary > .rp-summary .rp-acc { font-size: 34px; }
+  #analysis-summary > .rp-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 0; }
+  #analysis-summary > .rp-summary .rp-side { grid-template-columns: 8px minmax(0, 1fr); gap: 4px 6px; padding: 4px 0; }
+  #analysis-summary > .rp-summary .rp-side + .rp-side { padding-left: 12px; }
+  #analysis-summary > .rp-summary .rp-acc { grid-column: 2; grid-row: 2; text-align: left; font-size: 24px; }
+  #analysis-summary > .rp-summary .rp-errs { grid-row: 3; }
   .rp-detail > summary, .rp-prep-jump { min-height: 44px; }
 }
