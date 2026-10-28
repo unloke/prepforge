@@ -24,7 +24,7 @@ export function errorChartHtml(report) {
     </div><output class="rp-error-readout" hidden></output></div></section>`;
 }
 
-export function bindErrorChart(host, report, onJump) {
+export function bindErrorChart(host, report, onJump, onPeek = () => {}) {
   const chart = host.querySelector?.(".rp-error-chart");
   if (!chart) return;
   const readout = chart.querySelector("output");
@@ -32,8 +32,13 @@ export function bindErrorChart(host, report, onJump) {
   const plot = chart.querySelector(".rp-error-plot");
   const markers = [...chart.querySelectorAll(".rp-error")];
   let activePly = null;
+  let previewPly = null;
   const rowOf = (target) => report.errors.find((r) => r.ply === Number(target?.closest?.(".rp-error")?.dataset.ply));
-  const show = (row) => {
+  const show = (row, preview = true) => {
+    if (preview && previewPly !== row.ply) {
+      previewPly = row.ply;
+      onPeek(row.ply);
+    }
     if (activePly === row.ply) return;
     activePly = row.ply;
     readout.innerHTML = html`<i class="rp-disc rp-${row.side}" aria-hidden="true"></i><b>${row.label}</b><span class="g-${row.grade}">${WORD[row.grade]}</span><span>${row.loss == null ? "–" : `−${Math.round(row.loss)}%`}</span>`;
@@ -51,9 +56,15 @@ export function bindErrorChart(host, report, onJump) {
     markers.forEach((el) => el.classList.toggle("is-hovered", Number(el.dataset.ply) === row.ply));
   };
   const hide = () => {
+    endPeek();
     activePly = null;
     readout.hidden = cursor.hidden = true;
     markers.forEach((el) => el.classList.remove("is-hovered"));
+  };
+  const endPeek = () => {
+    if (previewPly == null) return;
+    previewPly = null;
+    onPeek(null);
   };
   // The whole plot scrubs the timeline, including the space between stones.
   // Use the shared move axis so vertical movement cannot flip between players.
@@ -68,27 +79,30 @@ export function bindErrorChart(host, report, onJump) {
     return best;
   };
   chart.onpointermove = (event) => {
+    if (event.pointerType === "touch") return;
     const row = nearest(event);
     if (row) show(row); else hide();
   };
   chart.onpointerleave = () => {
     const row = rowOf(chart.querySelector(":focus-visible"));
-    if (row) show(row); else hide();
+    if (row) show(row, previewPly != null); else hide();
   };
   chart.onclick = (event) => {
     const row = event.detail === 0 ? rowOf(event.target) : nearest(event);
     if (row) {
       if (event.detail !== 0) markers.find((el) => Number(el.dataset.ply) === row.ply).focus({ preventScroll: true });
-      show(row);
+      endPeek();
+      show(row, false);
       onJump(row.ply);
     }
     event.stopPropagation();
   };
-  chart.addEventListener("focusin", (event) => { const row = rowOf(event.target); if (row) show(row); });
+  chart.addEventListener("focusin", (event) => { const row = rowOf(event.target); if (row) show(row, event.target.matches?.(":focus-visible")); });
   chart.addEventListener("focusout", (event) => { if (!rowOf(event.relatedTarget)) hide(); });
   // Navigation belongs to the page's current board position, not marker focus
   // (which can stay behind after Home/End). Buttons keep native Enter/Space.
   chart.onkeydown = (event) => {
     if (event.key === "Escape") hide();
   };
+  return hide;
 }

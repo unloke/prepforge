@@ -197,10 +197,7 @@ export function createAnalyzeView({
     if (match) jumpToPly(Number(match.ply));
   }
 
-  // The report pane: accuracy, grade counts, key moments, phases, the opening.
-  // Where the game came from is the PGN box's own tag block (or, for a recalled
-  // review, the names the history row carried); the book is the repertoire cache
-  // the coach already walks.
+  // Report and board peeks share the saved game's moves and repertoire cache.
   function renderReport(moves) {
     const analysis = appState.analysis || {};
     report = renderReportBlock(document.getElementById("analysis-summary"), {
@@ -213,6 +210,7 @@ export function createAnalyzeView({
       selfSide: selfSide(),
       onJump: jumpToPly,
       onGrade: jumpToGrade,
+      onPeek: peek,
     });
     panes.syncReport?.();
     markCurrentMoment();
