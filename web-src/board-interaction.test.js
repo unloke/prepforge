@@ -8,7 +8,7 @@
 //
 // These drive the real BoardController over a small fake DOM, because the rule
 // lives in setPosition's drag/click decision, not in the slide itself.
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { createBoardController } from "./board/board-controller.js";
 import { caughtPiece } from "./board/move-motion.js";
@@ -158,6 +158,28 @@ const release = (name) => {
   document_.elementFromPoint = () => square(name);
   (window_.__up || []).forEach((fn) => fn({ clientX: 0, clientY: 0, button: 0 }));
 };
+
+describe("preview move colours", () => {
+  it("uses each preview's grade or default tint, restoring the real grade on exit", () => {
+    mount({ onMove: () => {} });
+    board.setMoveBadge("e4", "blunder", "??");
+    board.peek({ fen: AFTER_E4, lastMove: "e2e4", classification: "great" });
+    expect(boardEl.dataset.moveClass).toBe("great");
+    board.peek({ fen: AFTER_E4, lastMove: "e2e4" });
+    expect(boardEl.dataset.moveClass).toBeUndefined();
+    board.peek(null);
+    expect(boardEl.dataset.moveClass).toBe("blunder");
+    expect(board.fen).toBe(START);
+  });
+  it("keeps a live selected grade from recolouring the preview", () => {
+    mount({ onMove: () => {} });
+    board.peek({ fen: AFTER_E4, lastMove: "e2e4", classification: "mistake" });
+    board.setMoveBadge("e4", "great", "!");
+    expect(boardEl.dataset.moveClass).toBe("mistake");
+    board.peek(null);
+    expect(boardEl.dataset.moveClass).toBe("great");
+  });
+});
 
 // window listeners registered by _beginDrag
 function captureWindowListeners() {
@@ -468,10 +490,6 @@ describe("stepping back on any board", () => {
     [...board.squares.values()]
       .flatMap((sq) => [sq, ...sq.children])
       .flatMap((el) => el.animations.filter((a) => a.frames?.[0]?.opacity !== undefined));
-  const slidesOnBoard = () =>
-    [...board.squares.values()]
-      .flatMap((sq) => [sq, ...sq.children])
-      .filter((el) => el.animations.some((a) => a.frames?.[0]?.transform));
   const pieceAnimations = () =>
     [...board.squares.values()]
       .flatMap((sq) => [sq, ...sq.children])

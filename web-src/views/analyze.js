@@ -734,7 +734,7 @@ export function createAnalyzeView({
     tooltip.style.maxWidth = `${spot.maxWidth}px`;
     tooltip.style.left = `${spot.left}px`;
     tooltip.style.top = `${spot.top}px`;
-    if (peekOnHover) peek(move?.fen_after ? { fen: move.fen_after, lastMove: move.uci } : null);
+    if (peekOnHover) peek(move?.fen_after ? { fen: move.fen_after, lastMove: move.uci, classification: move.classification } : null);
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));

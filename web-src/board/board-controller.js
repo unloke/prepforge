@@ -28,6 +28,7 @@ class BoardController {
     this.dragFrom = null;
     this.ghost = null;          // the piece following the pointer during a drag
     this._peekReal = null;      // the real position while a peek shows another (peek)
+    this._peekClass = null;
     this._draggedMove = null;   // the move a drag released, so it lands without a slide
     this._soundedKey = null;    // the move whose sound was already played
     this.engineArrow = null;
@@ -129,9 +130,11 @@ class BoardController {
       this._peekReal ||= { fen: this.fen, lastMove: this.lastMove };
       this.fen = pos.fen;
       this.lastMove = pos.lastMove || null;
+      this._peekClass = pos.classification || null;
     } else if (this._peekReal) {
       ({ fen: this.fen, lastMove: this.lastMove } = this._peekReal);
       this._peekReal = null;
+      this._peekClass = null;
     } else {
       return;
     }
@@ -659,6 +662,11 @@ class BoardController {
   }
 
   _syncMoveBadge() {
+    // A preview owns its last-move tint, even while the real move is regraded.
+    const classification = this._peekReal ? this._peekClass : this.moveBadge?.classification;
+    if (classification) this.board.dataset.moveClass = classification.replace(/[^a-z0-9_-]/g, "");
+    else delete this.board.dataset.moveClass;
+    if (this._peekReal) return;
     // Selecting a piece re-syncs classes: an unchanged badge stays put rather than being
     // re-inserted, which would replay its entrance animation.
     const key = this.moveBadge ? `${this.moveBadge.square}|${this.moveBadge.classification}|${this.moveBadge.label}` : "";
@@ -676,13 +684,11 @@ class BoardController {
     }
     // The last-move squares take the grade's colour (styles.css), so the tint and the
     // badge read as one mark.
-    if (this.board) delete this.board.dataset.moveClass;
     if (!this.moveBadge) return;
     const square = this.squares.get(this.moveBadge.square);
     if (!square) return;
     this._badgeEl = square;
     const cls = this.moveBadge.classification.replace(/[^a-z0-9_-]/g, "");
-    if (this.board) this.board.dataset.moveClass = cls;
     const label = this.moveBadge.label;
     square.insertAdjacentHTML(
       "beforeend",
