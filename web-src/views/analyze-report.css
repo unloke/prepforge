@@ -1,0 +1,72 @@
+/* One 44px summary, two equal player columns and the disclosure: the columns
+   divide the available width after two 8px gaps and an 8px chevron. */
+#analysis-summary > .rp-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8px;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+}
+#analysis-summary > .rp-summary .rp-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0;
+  background: none;
+}
+#analysis-summary > .rp-summary .rp-disc { display: block; }
+#analysis-summary > .rp-summary .rp-name { display: block; flex: 1; font-size: 12px; font-weight: 500; }
+#analysis-summary > .rp-summary .rp-acc { flex: none; font-size: 13px; font-weight: 600; text-align: right; }
+#analysis-summary > .rp-summary .rp-errs { display: flex; flex: none; gap: 6px; overflow: visible; font-size: 12px; }
+#analysis-summary > .rp-summary .rp-chev { display: block; grid-column: 3; grid-row: 1; margin: 0; }
+.rp-error-count { display: inline-flex; gap: 2px; font-variant-numeric: tabular-nums; }
+.rp-error-count .rp-glyph { min-width: 0; }
+.rp-clean { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rp-detail > summary { min-height: 36px; display: flex; align-items: center; color: var(--muted); font-size: var(--fs-s); cursor: pointer; }
+.rp-detail > summary::after { content: "+"; margin-left: auto; }
+.rp-detail[open] > summary::after { content: "−"; }
+.rp-detail .rp-h { display: none; }
+.rp-detail .rp-sec-head { justify-content: flex-end; }
+.rp-prep-jump { border: 0; padding: 4px; background: none; color: var(--text); font: inherit; cursor: pointer; }
+.rp-error-chart { position: relative; padding-left: 16px; }
+.rp-error-chart svg { display: block; width: 100%; height: 124px; overflow: visible; cursor: pointer; touch-action: pan-y; }
+.rp-error-grid { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.rp-error-chart > .rp-disc { position: absolute; left: 0; }
+.rp-lane-white { top: 24px; }
+.rp-lane-black { top: 80px; }
+.rp-error-hit { fill: transparent; }
+.rp-error-bar, .rp-error-point { fill: currentColor; }
+.rp-error { color: var(--inaccuracy-text); outline: none; }
+.rp-error.g-mistake { color: var(--warn-text); }
+.rp-error.g-blunder { color: var(--danger); }
+.rp-error.g-missed { color: var(--missed); }
+.rp-error-point { stroke: var(--panel); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.rp-error-white .rp-error-point { fill: var(--eval-side-white); stroke: currentColor; stroke-width: 2; }
+.rp-error:is(:focus-visible, .is-current, .is-hovered) .rp-error-point { stroke: var(--text); stroke-width: 2; }
+.rp-error-readout { position: absolute; top: 0; right: 0; max-width: calc(100% - 40px); padding: 4px 6px; background: var(--panel); color: var(--text); font-size: 12px; border: 1px solid var(--line); border-radius: 4px; pointer-events: none; }
+.rp-error-readout[hidden] { display: none; }
+.rp-no-errors { color: var(--muted); font-size: var(--fs-s); }
+.hi-meta { display: inline-flex; align-items: center; gap: 8px; }
+.hi-result { font-size: 16px; font-weight: 600; }
+.hi-result:empty { display: none; }
+.hi-result.win { color: var(--good-text); }
+.hi-result.loss { color: var(--danger); }
+/* Desktop review: the two arrows form a fixed trailing pair. Retry occupies
+   its own slot; long moment names only change the text lane. */
+@media (min-width: 761px), (max-width: 960px) and (max-height: 520px) and (orientation: landscape) {
+  #analysis-explain > .coach-review { display: grid; grid-template-columns: minmax(0, 1fr) 56px 28px 28px; gap: 6px; }
+  #analysis-explain .coach-review > .cr-label { grid-column: 1; grid-row: 1; width: 100%; }
+  #analysis-explain .coach-review > .btn { grid-column: 2; grid-row: 1; margin: 0; padding: 0 8px; }
+  #analysis-explain .coach-review > .cr-step { grid-column: 3; grid-row: 1; width: 28px; margin: 0; background: none; border-radius: 4px 0 0 4px; }
+  #analysis-explain .coach-review > .cr-step ~ .cr-step { grid-column: 4; border-radius: 0 4px 4px 0; }
+  #analysis-explain .coach-review > .cr-step:hover:not(:disabled) { background: var(--surface-3); }
+  #analysis-explain .cr-text { flex: 1; }
+}
+@media (max-width: 600px) {
+  #analysis-summary > .rp-summary { padding: 0; gap: 6px; }
+  #analysis-summary > .rp-summary .rp-side { gap: 4px; }
+  #analysis-summary > .rp-summary .rp-errs { gap: 4px; }
+  .rp-detail > summary, .rp-prep-jump { min-height: 44px; }
+}

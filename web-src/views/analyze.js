@@ -4,6 +4,7 @@ import { html } from "../html.js";
 
 import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import "./analyze-chart.css";
+import "./analyze-report.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { paintFindGreat, renderReportBlock, reportGradeOf } from "./analyze-report.js";

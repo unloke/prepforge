@@ -70,7 +70,7 @@ export function createReviewBar({ appState, getReport, showAnalysisPly, selectAn
       : "";
     bar.hidden = false;
     bar.dataset.ply = String(m.ply);
-    bar.innerHTML = html`${step("prev")}<button type="button" class="cr-label g-${m.grade || "none"}${tried === "right" ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="Go to this move">${tried ? "" : html`<i class="rp-glyph" aria-hidden="true">${glyph}</i>`}<span class="cr-text">${words}</span><span class="cr-count">${state.index + 1}/${state.count}</span></button>${step("next")}${actions}`;
+    bar.innerHTML = html`${step("prev")}<button type="button" class="cr-label g-${m.grade || "none"}${tried === "right" ? " is-right" : tried === "wrong" ? " is-wrong" : ""}" data-review="go" title="${words}">${tried ? "" : html`<i class="rp-glyph" aria-hidden="true">${glyph}</i>`}<span class="cr-text">${words}</span><span class="cr-count">${state.index + 1}/${state.count}</span></button>${step("next")}${actions}`;
     if (!bar.dataset.bound) {
       bar.dataset.bound = "1";
       bar.addEventListener("click", (event) => {

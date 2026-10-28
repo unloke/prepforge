@@ -204,12 +204,12 @@ describe("the report", () => {
       evalGraph: GRAPH,
       headers: { White: "me_user", Black: "opp_one", Result: "0-1", Opening: "Ruy Lopez", ECO: "C60" },
     })));
-    const order = ["rp-moments", "rp-counts", "rp-phases", "rp-opening"].map((c) => html.indexOf(c));
+    const order = ["rp-phases", "rp-errors", "rp-opening", "rp-counts"].map((c) => html.indexOf(c));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    // The moment's own move sits inside the row's jump; its better move is a link.
-    expect(html).toMatch(/<button type="button" class="km-go" data-ply="4"[^>]*>[\s\S]*?<span class="move-inline" data-mt="[^"]+\|b8c6" data-p="0">2…Nc6<\/span>/);
-    expect(html).toMatch(/class="km-best">Best <span class="move-ref"[^>]*\|d7d6" data-p="0" aria-label="2…d6">d6<\/span>/);
+    expect(html).toMatch(/role="button" tabindex="0" data-ply="4" data-km-ply="4" aria-label="Black 2…Nc6 · Blunder/);
+    expect(html).not.toContain("km-best");
+    expect(html).toContain('<details class="rp-detail"><summary>Move grades</summary>');
     // A count is a control only when there is something to go to.
     expect(html).toMatch(/<button type="button" class="rp-n g-blunder" role="cell" data-side="black" data-grade="blunder"/);
     expect(html).toMatch(/<span class="rp-n is-zero" role="cell">0<\/span>/);
@@ -223,20 +223,20 @@ describe("the report", () => {
     expect(html).not.toMatch(/how|means|click|tap/i);
   });
 
-  it("shows a graded moment with its eval, and a departure with its side and book but no eval", () => {
+  it("leaves positive move details to the coach and keeps the preparation departure as one jump", () => {
     const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"], ["great", "best", "best", "best", "best"]);
     const html = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR)], selfSide: "white" })));
-    expect(html).toMatch(/data-km-ply="1"[\s\S]*?<span class="km-eval">[^<]+<\/span><\/button>/);
-    expect(html).toMatch(/data-km-ply="5"[\s\S]*?<span class="km-kind">[\s\S]*?You left prep<\/span><span class="km-eval"><\/span>/);
-    expect(html).toMatch(/data-km-ply="5"[\s\S]*?<span class="km-best">Italian<\/span>/);
+    expect(html).not.toContain('data-km-ply="1"');
+    expect(html).toMatch(/You left prep<\/span><button[^>]+data-ply="5">3.Bb5<\/button>/);
+    expect(html).toContain('<span class="rp-rep">Italian</span>');
     const opponent = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR, "Black", "black")], selfSide: "black" })));
-    expect(opponent).toMatch(/data-km-ply="5"[\s\S]*?Opponent left prep/);
+    expect(opponent).toContain("Opponent left prep");
   });
 
   it("keeps a game whose only moment is the departure in the report", () => {
     const moves = movesOf(["e4", "e5", "Nf3", "Nc6", "Bb5"]);
     const html = String(reportHtml(buildGameReport({ moves, evalGraph: GRAPH, reps: [repertoire(FOUR)], selfSide: "white" })));
-    expect(html).toContain("rp-moments");
+    expect(html).toContain("rp-prep-jump");
     expect(html).toContain("You left prep");
   });
 
@@ -291,7 +291,7 @@ describe("the report's summary", () => {
     const closed = String(reportHtml(report, false));
     expect(closed).toMatch(/<button type="button" class="rp-summary" data-toggle-summary aria-expanded="false">/);
     expect(closed).toContain("me_user");
-    expect(closed).toContain("no errors");
+    expect(closed).toContain('aria-label="No errors"');
     // The body is always written; CSS folds it only where the report heads the sheet.
     expect(closed).toMatch(/rp-summary[\s\S]*<div class="rp-body">[\s\S]*rp-counts/);
 

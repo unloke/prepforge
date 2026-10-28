@@ -4,15 +4,13 @@
 // Everything is derived on the client from the payload the run already saved
 // (moves with their grades and best moves, the eval graph) and the PGN's own
 // headers. Accuracy is the same Lichess win-chance model the coach grades single
-// moves with (explain.js), so the report and the coach never disagree about what
-// a move cost. buildGameReport is pure; renderReportBlock writes it into the
-// view's host and turns every move it names into a move link.
+// moves with (explain.js), aggregated by volatility and harmonic mean.
+// buildGameReport is pure; the rendered report links its error chart to the board.
 import { Chess } from "chess.js";
 import { html } from "../html.js";
-import { classBadgeSymbol } from "../move-grades.js";
 import { evaluationToWin } from "../explain.js";
 import { averageAccuracy } from "./analyze-accuracy.js";
-import { moveTokenHtml } from "../move-text.js";
+import { bindErrorChart, errorChartHtml } from "./analyze-error-chart.js";
 import { gamePhase } from "../coach/material.js";
 import { setPref } from "../core/prefs.js";
 
@@ -261,6 +259,9 @@ export function buildGameReport({ moves = [], evalGraph = [], positionEvals = {}
   const accuracy = sideAccuracy(evalGraph, moves, positionEvals);
   const counts = gradeCounts(moves);
   return {
+    from: Number(moves[0].ply),
+    to: Number(moves.at(-1).ply),
+    errors: plies(evalGraph, moves, positionEvals).filter((r) => ERRORS.has(reportGradeOf(r.move?.classification))).map((r) => ({ ply: r.ply, side: r.side, grade: reportGradeOf(r.move.classification), label: moveRef(r.move, r.ply), loss: r.loss })),
     sides: Object.fromEntries(
       SIDES.map((side) => [side, {
         name: known(side === "white" ? headers.White || names.white : headers.Black || names.black),
@@ -275,12 +276,6 @@ export function buildGameReport({ moves = [], evalGraph = [], positionEvals = {}
   };
 }
 
-// A move the report names, as a move link: a control of its own, or (inside the
-// row's own button) a hover peek.
-function moveLink(move, label, opts) {
-  return move?.fen_before && move.uci ? moveTokenHtml(move.fen_before, [move.uci], 0, label, opts) : label;
-}
-
 const SIDE_WORD = { white: "White", black: "Black" };
 const sideHead = (side) => html`<span class="rp-side-h" role="rowheader" title="${SIDE_WORD[side]}"><i class="rp-disc rp-${side}" aria-label="${SIDE_WORD[side]}"></i></span>`;
 
@@ -288,7 +283,7 @@ const sideHead = (side) => html`<span class="rp-side-h" role="rowheader" title="
 // grade's colour, so seven columns fit a phone without cutting the words
 // ("Inacc…", "Brilli…"). Best and good share a badge on the board; here they
 // are two columns, so best takes a star.
-const GRADE_MARK = { brilliant: "!!", great: "!", best: "★", good: "✓", inaccuracy: "?!", mistake: "?", blunder: "??", missed: "×" };
+const GRADE_MARK = { brilliant: "!!", great: "!", best: "★", good: "✓", inaccuracy: "?!", mistake: "?", blunder: "??", missed: "×" }; // taste-skill-ignore: chess move annotation symbols, named in accessible column headers
 const gradeBadge = (g) => html`<i class="rp-badge g-${g.key}" aria-hidden="true">${GRADE_MARK[g.key]}</i>`;
 
 // Grade counts as a small table: a column per grade, a row per side. Every
@@ -308,25 +303,11 @@ function countsHtml(report, keyOpen = false) {
   )}</div><ul class="rp-key" id="rp-key"${keyOpen ? "" : " hidden"}>${grades.map((g) => html`<li>${gradeBadge(g)}<span>${g.label}</span></li>`)}</ul></section>`;
 }
 
-const KIND_WORD = { brilliant: "Brilliant", great: "Great", mistake: "Mistake", blunder: "Blunder" };
 const LEFT_PREP = { you: "You left prep", opponent: "Opponent left prep" };
 
-// A key moment's kind in words: its grade, and whose move left the book.
-export function momentKind(m) {
-  if (!m) return "";
-  return [m.grade && KIND_WORD[m.grade], m.departure && (LEFT_PREP[m.by] || "Left prep")].filter(Boolean).join(" · ");
-}
-
-// One line per review move: the move (a jump to it), its kind, the eval it
-// moved and, for a mistake or blunder, the better move. A departure shows whose
-// move left the book and the repertoire's name, with no eval.
-function momentsHtml(report) {
-  if (!report.moments.length) return "";
-  return html`<section class="rp-sec rp-moments"><h3 class="rp-h">Key moments</h3><ol class="rp-km">${report.moments.map((m) => {
-    const best = m.loss != null && m.best ? html`<span class="km-best">Best ${moveTokenHtml(m.move.fen_before, [m.best.uci], 0, m.best.san, { label: `${m.label.replace(/[^.…]+$/, "")}${m.best.san}` })}</span>` : "";
-    const rep = m.departure && m.repName ? html`<span class="km-best">${m.repName}</span>` : "";
-    return html`<li class="km g-${m.grade || "none"}" data-km-ply="${m.ply}"><button type="button" class="km-go" data-ply="${m.ply}" title="Go to this move"><i class="km-disc km-${m.side}" aria-hidden="true"></i><span class="km-move">${moveLink(m.move, m.label, { focusable: false })}</span><span class="km-kind"><i class="rp-glyph" aria-hidden="true">${m.grade ? classBadgeSymbol(m.move?.classification) : ""}</i>${momentKind(m)}</span><span class="km-eval">${m.grade ? `${m.before} → ${m.after}` : ""}</span></button>${best}${rep}</li>`;
-  })}</ol></section>`;
+function prepHtml(report) {
+  const departure = report.moments.find((m) => m.departure);
+  return departure ? html`<p class="rp-sec rp-prep"><span>${LEFT_PREP[departure.by] || "Left prep"}</span><button type="button" class="rp-prep-jump" data-ply="${departure.ply}">${departure.label}</button><span class="rp-rep">${departure.repName}</span></p>` : "";
 }
 
 // Each side's accuracy by phase, the phases as columns; a phase's name goes
@@ -343,11 +324,14 @@ function openingHtml(report) {
   return report.opening ? html`<p class="rp-sec rp-opening"><span class="rp-h">Opening</span> <span class="rp-opening-name">${report.opening}</span></p>` : "";
 }
 
-// The errors a side made, in words: "2 blunders, 1 mistake" or "no errors".
-const errorsText = (counts) => {
-  const part = (n, word) => (n ? `${n} ${word}${n > 1 ? "s" : ""}` : "");
-  return [part(counts.blunder || 0, "blunder"), part(counts.mistake || 0, "mistake")].filter(Boolean).join(", ") || "no errors";
-};
+function compactErrors(counts) {
+  const errors = REPORT_GRADES.filter((g) => ERRORS.has(g.key) && counts[g.key]);
+  if (!errors.length) return html`<span class="rp-clean" title="No errors" aria-label="No errors">0</span>`;
+  const total = errors.reduce((sum, g) => sum + counts[g.key], 0);
+  const worst = ["blunder", "mistake", "missed", "inaccuracy"].find((key) => counts[key]);
+  const detail = errors.map((g) => `${counts[g.key]} ${g.label}`).join(", ");
+  return html`<span class="rp-error-count g-${worst}" title="${detail}" aria-label="${`${total} errors: ${detail}`}"><i class="rp-glyph" aria-hidden="true">${GRADE_MARK[worst]}</i>${total}</span>`;
+}
 
 // The one line that says how each side played. Where the report heads the
 // score sheet (the wide panel) it is the toggle that opens the rest, collapsed
@@ -356,7 +340,7 @@ function summaryHtml(report, open) {
   const side = (key) => {
     const s = report.sides[key];
     const name = s.name || (key === "white" ? "White" : "Black");
-    return html`<span class="rp-side rp-${key}"><i class="rp-disc" aria-hidden="true"></i><span class="rp-name">${name}</span><b class="rp-acc">${s.accuracy == null ? "–" : `${s.accuracy}%`}</b><span class="rp-errs">${errorsText(s.counts)}</span></span>`;
+    return html`<span class="rp-side rp-${key}"><i class="rp-disc" aria-hidden="true"></i><span class="rp-name" title="${name}">${name}</span><b class="rp-acc" title="${`${SIDE_WORD[key]} accuracy`}">${s.accuracy == null ? "–" : `${s.accuracy}%`}</b><span class="rp-errs">${compactErrors(s.counts)}</span></span>`;
   };
   return html`<button type="button" class="rp-summary" data-toggle-summary aria-expanded="${open ? "true" : "false"}">${side("white")}${side("black")}<i class="rp-chev" aria-hidden="true"></i></button>`;
 }
@@ -364,8 +348,8 @@ function summaryHtml(report, open) {
 /** The report as markup (no listeners). `open` marks the summary's toggle; the body is always written. */
 export function reportHtml(report, open = true, keyOpen = false) {
   if (!report) return "";
-  if (!report.graded) return html`${momentsHtml(report)}${phasesHtml(report)}${openingHtml(report)}`;
-  return html`${summaryHtml(report, open)}<div class="rp-body">${momentsHtml(report)}${countsHtml(report, keyOpen)}${phasesHtml(report)}${openingHtml(report)}</div>`;
+  if (!report.graded) return html`${prepHtml(report)}${openingHtml(report)}`;
+  return html`${summaryHtml(report, open)}<div class="rp-body">${phasesHtml(report)}${errorChartHtml(report)}${openingHtml(report)}${prepHtml(report)}<details class="rp-detail"><summary>Move grades</summary>${countsHtml(report, keyOpen)}</details></div>`;
 }
 
 // Write the report into `host`. `onJump(ply)` goes to a move of the game;
@@ -378,6 +362,7 @@ export function renderReportBlock(host, { moves, evalGraph = [], positionEvals =
   const report = buildGameReport({ moves: moves || [], evalGraph, positionEvals, headers, reps, names, selfSide });
   if (!host) return report;
   host.innerHTML = reportHtml(report, host.dataset.open === "true", host.dataset.key === "true");
+  if (report?.graded) bindErrorChart(host, report, onJump);
   host.onclick = (event) => {
     if (event.target.closest?.(".move-ref")) return;
     const toggle = event.target.closest?.("[data-toggle-summary]");

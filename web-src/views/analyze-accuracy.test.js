@@ -32,3 +32,7 @@ it("does not count missing engine scores as perfect moves", () => {
   const graph = [{ ply: 1, score_cp: null, bounded_score_cp: 0 }, { ply: 2, score_cp: 20 }];
   expect(sideAccuracy(graph, [{ ply: 1, fen_before: new Chess().fen() }])).toBeNull();
 });
+
+it("uses Lichess's harmonic floor when one move loses all winning chances", () => {
+  expect(averageAccuracy([{ side: "white", winBefore: 100, winAfter: 0 }]).white).toBe(1);
+});

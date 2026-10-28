@@ -22,7 +22,7 @@ export function averageAccuracy(rows) {
     if (!own.length) return null;
     const weight = own.reduce((s, r) => s + r.weight, 0);
     const weighted = own.reduce((s, r) => s + r.accuracy * r.weight, 0) / weight;
-    const harmonic = own.some((r) => r.accuracy === 0) ? 0 : own.length / own.reduce((s, r) => s + 1 / r.accuracy, 0);
+    const harmonic = own.length / own.reduce((s, r) => s + 1 / Math.max(1, r.accuracy), 0);
     return Math.round((weighted + harmonic) / 2);
   };
   return { white: side("white"), black: side("black") };

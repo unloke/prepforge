@@ -1,11 +1,12 @@
 import { html } from "./html.js";
+import { analysisHistoryResult } from "./analyze-orient.js";
 import { expect, it, vi } from 'vitest';
 import { createSettingsActions } from './settings-actions.js';
 import { BUILD_MUTATIONS } from './build-live.js';
 import { memberRowsSkeleton, sharedRepRowsSkeleton } from './views/team-skeleton.js';
 const source = appSource();
 function compile(marker, deps, prelude = '') {
-  deps = { html, ...deps };
+  deps = { html, analysisHistoryResult, ...deps };
   const start = source.indexOf(marker), end = source.indexOf('\n}\n', start) + 2;
   return new Function(...Object.keys(deps), `${prelude}; return (${source.slice(start, end)});`)(...Object.values(deps));
 }
