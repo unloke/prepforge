@@ -1773,8 +1773,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
      PGN), so a drawer's own summary would name the same action twice. */
   #analyze-open > .drawer > summary { display: none; }
   #analyze-open > .drawer:not([open]) { display: none; }
-  #pgn-input { min-height: 120px; border-radius: 10px; }
-  #analyze-open .pgn-file-row { display: none; }
+  #pgn-input { min-height: 120px; }
+  #analyze-open .pgn-editor { border-radius: 10px; }
+  #analyze-open .pgn-action { font-size: 14px; }
   /* The open button is the whole row (it was its 18px line beside a 44px bin). */
   #analyze-open .history-item { min-height: 48px; padding: 2px 2px; font-size: 15px; }
   #analyze-open .history-item .hi-open { min-height: 44px; font-size: 15px; }

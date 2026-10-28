@@ -1628,10 +1628,11 @@ async function rebuildAnalysisVariations(gamePgn) {
 // (mainline + variations) from it. Returns false (and, unless quiet, sets a status
 // hint) when the movetext has an illegal/unparseable move — leaving the existing
 // tree untouched so mid-typing never flickers the list to empty.
-async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, sourceSeq = invalidateAnalysisSource() } = {}) {
+async function loadPgnIntoAnalyze(pgnText, { goToEnd = true, quiet = false, onInvalid = null, sourceSeq = invalidateAnalysisSource() } = {}) {
   const parsed = parsePgn(pgnText);
   if (!parsed.ok) {
-    if (!quiet) setStatus(`PGN: ${parsed.error}`, { severity: "error" });
+    if (onInvalid) onInvalid(parsed.error);
+    else if (!quiet) setStatus(`PGN: ${parsed.error}`, { severity: "error" });
     return false;
   }
   const view = await ensureAnalyzeView();

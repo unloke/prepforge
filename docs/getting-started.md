@@ -51,7 +51,8 @@ History 記錄此帳號在目前瀏覽器完成的 Due queue／Blitz 訓練；
 | Opponent novelty | 檢查對手新招，決定是否補進棋譜 |
 | Not covered | 回到棋譜，準備這個尚未覆蓋的局面 |
 
-要看整局，選 Analyze。也可以直接在 Analyze 貼上或匯入 PGN，執行分析後
+要看整局，選 Analyze。也可以在 Analyze 貼上 PGN，從輸入框右下角選 Open PGN；
+同處的 File 可開啟 PGN 檔案。再按 Analyze 執行整局分析後，
 查看走法分類、評估曲線與轉折點。候選變化會加入走法表；點選原局走法即可
 回到原局，使用棋盤下的箭頭或鍵盤 ←／→ 逐手瀏覽。
 

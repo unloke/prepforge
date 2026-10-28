@@ -40,7 +40,8 @@ deviation, review the expected move or open the game in Analyze.
 
 ### Analyze a position in context
 
-Load a PGN, a recent Lichess game or a practice game. Review move classifications,
+Paste a PGN and use Open PGN inside the field, or load a recent Lichess or practice
+game. Run Analyze to review move classifications,
 the evaluation graph and turning points. Explore engine and human candidate
 lines, then return to the game.
 
