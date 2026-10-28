@@ -87,18 +87,21 @@ export function playBookName(book) {
   return book === "repertoire" ? "My repertoire" : book === "maia" ? "Maia" : "Lichess explorer";
 }
 
-export function playSessionPgn(play) {
+export function playSessionPgn(play, playerName) {
   const session = play || {};
   const startFen = session.startFen || START_FEN;
   const trail = formatPlayTrail(session.history, startFen);
   const youWhite = session.userColor !== "black";
   const book = playBookName(session.book);
   const opponent = session.rating ? `${book} ${session.rating}` : book;
+  const escapeName = (name) => String(name).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
+  const player = escapeName(String(playerName || "").trim() || "?");
+  const opponentName = escapeName(opponent);
   const result = session.result || "*";
   const headers = [
     `[Event "Practice game"]`,
-    `[White "${youWhite ? "You" : opponent}"]`,
-    `[Black "${youWhite ? opponent : "You"}"]`,
+    `[White "${youWhite ? player : opponentName}"]`,
+    `[Black "${youWhite ? opponentName : player}"]`,
     `[Result "${result}"]`,
   ];
   const placement = String(startFen).trim().split(/\s+/)[0];

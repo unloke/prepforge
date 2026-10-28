@@ -129,13 +129,13 @@ describe("takebackToUserMove", () => {
 });
 
 describe("playSessionPgn", () => {
-  it("tags You / Opponent from the user's color", () => {
+  it("names the white player from the supplied account", () => {
     const pgn = playSessionPgn({
       userColor: "white",
       startFen: START_FEN,
       history: [{ san: "e4", by: "user" }],
-    });
-    expect(pgn).toContain('[White "You"]');
+    }, "WhiteAccount");
+    expect(pgn).toContain('[White "WhiteAccount"]');
     expect(pgn).toContain('[Black "Lichess explorer"]');
     expect(pgn).toContain("1. e4");
   });
@@ -148,10 +148,32 @@ describe("playSessionPgn", () => {
       result: "1-0",
       startFen: START_FEN,
       history: [{ san: "e4", by: "opp" }],
-    });
+    }, "BlackAccount");
     expect(pgn).toContain('[White "Maia 1500"]');
+    expect(pgn).toContain('[Black "BlackAccount"]');
     expect(pgn).toContain('[Result "1-0"]');
     expect(pgn.trim().endsWith("1. e4 1-0")).toBe(true);
+  });
+
+  it.each(["white", "black"])("uses a neutral placeholder without an account as %s", (userColor) => {
+    for (const playerName of [undefined, null, "", "   "]) {
+      const pgn = playSessionPgn({ userColor, book: "repertoire" }, playerName);
+      expect(pgn).toContain(`[${userColor === "white" ? "White" : "Black"} "?"]`);
+      expect(pgn).toContain(`[${userColor === "white" ? "Black" : "White"} "My repertoire"]`);
+      expect(pgn).not.toContain('"You"');
+    }
+  });
+
+  it("escapes quotes and backslashes and keeps names on one header line", () => {
+    const pgn = playSessionPgn({ userColor: "black" }, 'Player\\name"\r\n[White "Injected"]');
+    expect(pgn.split("\n")).toEqual([
+      '[Event "Practice game"]',
+      '[White "Lichess explorer"]',
+      '[Black "Player\\\\name\\" [White \\"Injected\\"]"]',
+      '[Result "*"]',
+      "",
+      "*",
+    ]);
   });
 });
 
