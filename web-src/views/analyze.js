@@ -205,6 +205,7 @@ export function createAnalyzeView({
     report = renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
       evalGraph: analysis.eval_graph || [],
+      positionEvals: analysis.position_evals || {},
       headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
       names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),

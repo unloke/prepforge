@@ -10,12 +10,14 @@
 import { Chess } from "chess.js";
 import { html } from "../html.js";
 import { classBadgeSymbol } from "../move-grades.js";
-import { evaluationToWin, moveAccuracy } from "../explain.js";
+import { evaluationToWin } from "../explain.js";
+import { averageAccuracy } from "./analyze-accuracy.js";
 import { moveTokenHtml } from "../move-text.js";
 import { gamePhase } from "../coach/material.js";
 import { setPref } from "../core/prefs.js";
 
 const SIDES = ["white", "black"];
+const START_FEN = new Chess().fen();
 
 // The grades the report counts, in the order a player reads them. Book and
 // forced moves count with the best ones: neither cost anything.
@@ -40,11 +42,10 @@ const PHASES = [
 ];
 
 // The evaluation of a point in the graph is White's, so the mover's is its
-// complement when Black played. A missing point is a level position: the first
-// ply has no predecessor in the graph.
+// complement when Black played. Missing engine scores stay unknown.
 function whiteWin(point) {
-  if (!point) return 50;
-  return evaluationToWin({ cp: point.score_cp ?? point.bounded_score_cp ?? 0, mate: point.mate_in ?? null });
+  if (!point || (point.score_cp == null && point.mate_in == null)) return null;
+  return evaluationToWin({ cp: point.score_cp, mate: point.mate_in });
 }
 
 function sideOfMove(move, ply) {
@@ -81,7 +82,7 @@ function sanOf(fen, uci) {
 
 // One row per graded ply: who moved, the win chance before and after (mover's
 // point of view), what the move cost and the points either side of it.
-function plies(evalGraph, moves = []) {
+function plies(evalGraph, moves = [], positionEvals = {}) {
   const points = (evalGraph || [])
     .filter((point) => point && Number(point.ply) >= 1)
     .sort((a, b) => Number(a.ply) - Number(b.ply));
@@ -92,28 +93,25 @@ function plies(evalGraph, moves = []) {
     const ply = Number(point.ply);
     const move = movesByPly.get(ply);
     const side = sideOfMove(move, ply);
-    const prev = pointsByPly.get(ply - 1) || null;
-    const flip = (w) => (side === "black" ? 100 - w : w);
+    const initial = move?.fen_before === START_FEN ? { score_cp: 0 } : null;
+    const prev = positionEvals[move?.fen_before] || pointsByPly.get(ply - 1) || initial;
+    const flip = (w) => (w == null ? null : side === "black" ? 100 - w : w);
     const winBefore = flip(whiteWin(prev));
     const winAfter = flip(whiteWin(point));
-    return { san: move?.san || point.san, ply, move, side, prev, point, winBefore, winAfter, loss: Math.max(0, winBefore - winAfter) };
+    return { san: move?.san || point.san, ply, move, side, prev, point, winBefore, winAfter, loss: winBefore == null || winAfter == null ? null : Math.max(0, winBefore - winAfter), whiteBefore: whiteWin(prev), whiteAfter: whiteWin(point) };
   });
-}
-
-function average(rows) {
-  if (!rows.length) return null;
-  return Math.round(rows.reduce((sum, row) => sum + moveAccuracy(row.winBefore, row.winAfter), 0) / rows.length);
 }
 
 // A percentage per side, or null when the run graded too few plies for an
 // average to mean anything (a typed PGN has no evals at all).
-export function sideAccuracy(evalGraph, moves = []) {
-  const rows = plies(evalGraph, moves);
+export function sideAccuracy(evalGraph, moves = [], positionEvals = {}) {
+  const rows = plies(evalGraph, moves, positionEvals);
   if (rows.length < 2) return null;
-  const white = average(rows.filter((r) => r.side === "white"));
-  const black = average(rows.filter((r) => r.side === "black"));
+  const { white, black } = accuracyOf(rows);
   return white == null || black == null ? null : { white, black };
 }
+
+const accuracyOf = (rows) => averageAccuracy(rows.map((r) => ({ ...r, winAfter: r.whiteAfter, winBefore: r.whiteBefore }))) || {};
 
 // The grades a review lists, and the move that left the player's preparation.
 const REVIEW_GRADES = new Set(["brilliant", "great", "mistake", "blunder"]);
@@ -170,8 +168,8 @@ export function gradeCounts(moves = []) {
 
 // The game split by phase (the coach's material rule, never going back: a game
 // that reached the endgame stays there), with each side's accuracy in it.
-export function phaseBreakdown(evalGraph, moves = []) {
-  const rows = plies(evalGraph, moves);
+export function phaseBreakdown(evalGraph, moves = [], positionEvals = {}) {
+  const rows = plies(evalGraph, moves, positionEvals);
   if (!rows.length) return [];
   let at = 0;
   const byPhase = PHASES.map((p) => ({ ...p, rows: [] }));
@@ -188,8 +186,7 @@ export function phaseBreakdown(evalGraph, moves = []) {
       from: inPhase[0].ply,
       to: inPhase[inPhase.length - 1].ply,
       moves: `${Math.ceil(inPhase[0].ply / 2)}–${Math.ceil(inPhase[inPhase.length - 1].ply / 2)}`,
-      white: average(inPhase.filter((r) => r.side === "white")),
-      black: average(inPhase.filter((r) => r.side === "black")),
+      ...accuracyOf(inPhase),
       errors: Object.fromEntries(SIDES.map((side) => [side, inPhase.filter((r) => r.side === side && ERRORS.has(reportGradeOf(r.move?.classification))).length])),
     }));
 }
@@ -259,9 +256,9 @@ export function reviewState(moments = [], ply = 0) {
  * moments, phases, the opening and the prep departure. Null when nothing was
  * analysed.
  */
-export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null } = {}) {
+export function buildGameReport({ moves = [], evalGraph = [], positionEvals = {}, headers = {}, reps = [], names = {}, selfSide = null } = {}) {
   if (!moves.length) return null;
-  const accuracy = sideAccuracy(evalGraph, moves);
+  const accuracy = sideAccuracy(evalGraph, moves, positionEvals);
   const counts = gradeCounts(moves);
   return {
     sides: Object.fromEntries(
@@ -272,7 +269,7 @@ export function buildGameReport({ moves = [], evalGraph = [], headers = {}, reps
       }]),
     ),
     moments: reviewMoments(moves, evalGraph, reps, selfSide),
-    phases: phaseBreakdown(evalGraph, moves),
+    phases: phaseBreakdown(evalGraph, moves, positionEvals),
     opening: openingFromHeaders(headers),
     graded: moves.some((m) => reportGradeOf(m.classification)),
   };
@@ -377,8 +374,8 @@ export function reportHtml(report, open = true, keyOpen = false) {
 // keeps that state across re-renders, and the report starts collapsed.
 // Returns the built report (null when nothing was analysed), so the caller can
 // read the same moments the block lists.
-export function renderReportBlock(host, { moves, evalGraph = [], headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
-  const report = buildGameReport({ moves: moves || [], evalGraph, headers, reps, names, selfSide });
+export function renderReportBlock(host, { moves, evalGraph = [], positionEvals = {}, headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
+  const report = buildGameReport({ moves: moves || [], evalGraph, positionEvals, headers, reps, names, selfSide });
   if (!host) return report;
   host.innerHTML = reportHtml(report, host.dataset.open === "true", host.dataset.key === "true");
   host.onclick = (event) => {

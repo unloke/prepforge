@@ -73,8 +73,9 @@ export function evaluationToWin({ cp, mate } = {}) {
 // Lichess's single-move accuracy: how faithful a move was to the best, from the
 // drop in win % it caused (both already from the mover's POV). 100 = perfect.
 export function moveAccuracy(winBeforeMover, winAfterMover) {
+  if (winAfterMover >= winBeforeMover) return 100;
   const loss = Math.max(0, winBeforeMover - winAfterMover);
-  const acc = 103.1668 * Math.exp(-0.04354 * loss) - 3.1669;
+  const acc = 103.1668100711649 * Math.exp(-0.04354415386753951 * loss) - 3.166924740191411 + 1;
   return Math.max(0, Math.min(100, acc));
 }
 
