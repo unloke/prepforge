@@ -184,6 +184,16 @@ async function runViewport(vp) {
   check(/Stockfish .+ (lite|full) \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
+  // One status line names the setup (net · workers [· speed]); the manual net and
+  // worker choice wait under Advanced, closed.
+  const setupLine = (await page.locator("#settings-engine-line").textContent().catch(() => "")) || "";
+  check(/^(Full|Lite) · \d workers?( · [\d.]+ [kM]n\/s)?$|^(Measuring|Loading|Checking|Waiting|Downloading|Compiling)/.test(setupLine.trim()),
+    `the engine card should lead with its setup line, got "${setupLine}"`);
+  check(await page.locator("#settings-detect").isVisible(), "Detect should sit beside the setup line");
+  check(!(await page.locator("#settings-net-seg").isVisible()), "the manual net choice should start folded under Advanced");
+  await page.locator("#settings-engine-manual > summary").click();
+  await page.waitForTimeout(200);
+  check(await page.locator("#settings-workers-seg").isVisible(), "Advanced should open the manual worker choice");
 
   // Phone: every Settings control is a thumb target. Switches were 38x26 and
   // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.
@@ -236,6 +246,30 @@ async function runViewport(vp) {
   check(before !== after, `switch click should flip aria-checked (${before} → ${after})`);
   const isOn = await maiaSwitch.evaluate((el) => el.classList.contains("is-on"));
   check((after === "true") === isOn, "aria-checked and the is-on class must agree");
+
+  // Phones: the sticky section strip paints above the cards that scroll under
+  // it (a segmented control's positioned buttons drew over it, round 6).
+  if (vp.width <= 760) {
+    await page.locator(".settings-nav .settings-nav-link", { hasText: "Engine" }).click();
+    await page.waitForTimeout(300);
+    const covered = await page.evaluate(() => {
+      const nav = document.querySelector("#view-settings .settings-nav");
+      const out = [];
+      for (const y of [80, 160, 240, 320, 400, 480]) {
+        window.scrollTo(0, y);
+        for (const s of document.querySelectorAll("*")) if (s.scrollHeight > s.clientHeight + 40 && /auto|scroll/.test(getComputedStyle(s).overflowY)) s.scrollTop = y;
+        const r = nav.getBoundingClientRect();
+        for (const x of [0.15, 0.5, 0.85]) {
+          const hit = document.elementFromPoint(r.left + r.width * x, r.top + r.height / 2);
+          if (hit && !nav.contains(hit)) out.push({ y, x, hit: hit.className || hit.tagName });
+        }
+      }
+      window.scrollTo(0, 0);
+      for (const s of document.querySelectorAll("*")) s.scrollTop = 0;
+      return out;
+    });
+    check(covered.length === 0, `nothing may paint over the phone Settings strip while the cards scroll: ${JSON.stringify(covered.slice(0, 4))}`);
+  }
 
   // Phones hide the section nav and stack the cards as one grouped list.
   if (vp.width > 760) {

@@ -671,6 +671,49 @@ async function runViewport(vp) {
       const held = await checkPhoneBoard(page, { view: "view-analyze", board: "analysis-board", tabs: "#analyze-tabs [role=tab]", label: `Analyze ${tab}` });
       for (const f of held.fails) check(false, f);
     }
+    // Round 6: the move strip's ends are the game's ends (Lichess's |‹ … ›|):
+    // one button at each edge of the strip row, the moves scrolling between.
+    const ends = await page.evaluate(() => {
+      const strip = document.getElementById("analysis-moves").getBoundingClientRect();
+      return [...document.querySelectorAll("#view-analyze .strip-end")].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { left: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height), rowTop: Math.abs(r.top - strip.top) < 2 };
+      });
+    });
+    const vw = await page.evaluate(() => document.documentElement.clientWidth);
+    check(ends.length === 2 && ends[0].left === 0 && ends[1].right === vw && ends.every((e) => e.rowTop && e.w >= 32 && e.h >= 28),
+      `the strip's start/end buttons must sit at the two edges of the move strip row: ${JSON.stringify(ends)}`);
+    // From the start position, the end button follows the main line to its end.
+    const current = () => page.evaluate(() => {
+      const moves = [...document.querySelectorAll("#analysis-moves .mtree-move:not(.is-variation)")];
+      return { at: moves.findIndex((m) => m.classList.contains("is-current")), last: moves.length - 1, any: !!document.querySelector("#analysis-moves .is-current") };
+    });
+    await page.locator('#view-analyze .strip-end[data-mirror="#analysis-start"]').click();
+    await page.waitForTimeout(150);
+    const atStart = await current();
+    check(!atStart.any, `the strip's start button must go to the start position: ${JSON.stringify(atStart)}`);
+    await page.locator('#view-analyze .strip-end[data-mirror="#analysis-end"]').click();
+    await page.waitForTimeout(150);
+    const atEnd = await current();
+    check(atEnd.at === atEnd.last && atEnd.last > 0, `the strip's end button must go to the main line's last move: ${JSON.stringify(atEnd)}`);
+    // Round 6: the Games sheet copies the game and the shown position (Lichess's
+    // Share & export), and lowers itself.
+    await page.evaluate(() => {
+      window.__copied = [];
+      Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (t) => { window.__copied.push(t); } } });
+    });
+    for (const kind of ["pgn", "fen"]) {
+      await page.locator('#view-analyze [data-sheet-open="analyze-open"]').click();
+      const row = page.locator(`#analyze-open .sheet-copy [data-copy="${kind}"]`);
+      const box = await row.boundingBox();
+      check(box && box.height >= 44, `the Games sheet must offer Copy ${kind.toUpperCase()} as a full row, got ${JSON.stringify(box)}`);
+      await row.click();
+      await page.waitForTimeout(100);
+      check(!(await page.locator("#analyze-open").evaluate((el) => el.classList.contains("is-open"))), `Copy ${kind.toUpperCase()} must lower the sheet`);
+    }
+    const copied = await page.evaluate(() => window.__copied);
+    check(copied.length === 2 && /1\. e4/.test(copied[0] || "") && /^[rnbqkpRNBQKP1-8/]+ [wb] /.test(copied[1] || ""),
+      `Copy PGN / Copy FEN must put the game's PGN and the shown FEN on the clipboard: ${JSON.stringify(copied)}`);
   }
   await page.evaluate(() => document.getElementById("analysis-start").click());
   await page.waitForTimeout(200);

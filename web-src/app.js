@@ -1622,28 +1622,27 @@ function bindEvents() {
       void reviewNav(event.key === "ArrowLeft" ? "prev" : "next").catch(() => {});
       return;
     }
+    if (event.key === "?") return void import("./shortcuts-help.js").then((m) => m.toggleShortcutsHelp(view));
     const inBuild = view === "build";
     const stepsBoard = inBuild || view === "analyze";
     const arrows = event.key === "ArrowLeft" || event.key === "ArrowRight";
     // A control the mouse focused (Engine, the review switch) would otherwise take
     // the focus ring on the first arrow press, though the arrows drive the board.
     if (stepsBoard && arrows && focusFromPointer && active && active !== document.body) active.blur();
-    if (stepsBoard && event.key === "ArrowLeft") {
+    if (stepsBoard && arrows) {
       event.preventDefault();
-      if (inBuild) buildGoBack();
-      else void analysisTreeNav("prev").catch(() => {});
+      const back = event.key === "ArrowLeft";
+      if (inBuild) back ? buildGoBack() : buildGoForward();
+      else void analysisTreeNav(back ? "prev" : "next").catch(() => {});
     }
-    if (stepsBoard && event.key === "ArrowRight") {
+    // Home/End: the ends of the line. A held key repeats keydown, so one hold
+    // steps the whole game instead of one move per press. In Analyze ↑/↓ are
+    // the same ends, as on Lichess (Build keeps them for the fork pick below).
+    const end = { Home: "start", End: "end", ...(inBuild ? {} : { ArrowUp: "start", ArrowDown: "end" }) }[event.key];
+    if (stepsBoard && end) {
       event.preventDefault();
-      if (inBuild) buildGoForward();
-      else void analysisTreeNav("next").catch(() => {});
-    }
-    if (stepsBoard && (event.key === "Home" || event.key === "End")) {
-      // Home/End: the ends of the line. A held key repeats keydown, so one
-      // hold steps the whole game instead of one move per press.
-      event.preventDefault();
-      if (inBuild) event.key === "Home" ? buildGoRoot() : buildGoToEnd();
-      else void analysisTreeNav(event.key === "Home" ? "start" : "end").catch(() => {});
+      if (inBuild) end === "start" ? buildGoRoot() : buildGoToEnd();
+      else void analysisTreeNav(end).catch(() => {});
     }
     // Up/Down (and j/k) move the fork pick — which prepared continuation → will
     // play next. The on-screen fork bar and the board arrows mirror the pick.

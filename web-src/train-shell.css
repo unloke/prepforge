@@ -185,6 +185,7 @@
 .train-stats-line:empty { display: none; }
 .train-play-trail { min-height: 30px; padding: 6px 8px; border-radius: 6px; background: var(--panel-soft); font-size: var(--fs); }
 .train-play-trail:is([hidden], :empty) { display: none; }
+.train-play-trail .pt-n { color: var(--muted); }
 
 /* ---- Result: fixed shape, the what-changed line reserved ---------------- */
 .train-summary-title { margin: 0; padding: 0; border: 0; font-size: 16px; font-weight: 650; }

@@ -7,6 +7,7 @@
 import { loadEngineModule, removeEngineAsset, EngineAssetError, engineAssetState, subscribeEngineAsset } from "./engine-assets.js";
 import { stockfishBudget } from "./compute-budget.js";
 import { maiaWorkload, holdHeadroom, FEN } from "./detect-peak.js";
+import { createCrashMark } from "./crash-mark.js";
 import { MAX_WORKERS, ENGINE_PHASE_KEY, stepDownProfile, ladderStep, heldBelow, maxWorkers } from "./engine-ladder.js";
 export const PROFILE_KEY = "prepforge.engine-profile";
 export const CRASH_KEY = "prepforge.engine-starting";
@@ -59,7 +60,7 @@ export function createEngineProfileManager({
   // without loading a byte): the device that is offered the choice at all.
   // fitKnown: whether bigFits was measured on this build (before Detect it is unknown, not false).
   let bigFits = false, fitKnown = false;
-  let probing = null, revision = 0, autoSetupDone = false;
+  let probing = null, cancelProbe = null, revision = 0, autoSetupDone = false;
   const listeners = new Set();
   const usableListeners = new Set(), setupListeners = new Set();
   let activeRuns = 0, heldUsable = null, publishPending = null, started = false, watching = false;
@@ -106,19 +107,8 @@ export function createEngineProfileManager({
     if (activeRuns) publishPending = publish;
     else publish();
   }
-  const pending = new Map();
-  let pageHidden = false;
-  function syncCrashMark() {
-    const entry = [...pending.values()].at(-1);
-    access(s => {
-      // A probe step is a deliberate heap reservation: it stays armed in a hidden
-      // tab too, so an OOM kill there still tells the next load which step died.
-      if (entry && (entry.sticky || (!pageHidden && page?.visibilityState !== "hidden"))) s.setItem(CRASH_KEY, JSON.stringify({ ...entry.attempt, probe: entry.sticky }));
-      else s.removeItem(CRASH_KEY);
-    });
-  }
-  const visibility = () => { pageHidden = page?.visibilityState === "hidden"; syncCrashMark(); };
-  const hide = () => { pageHidden = true; syncCrashMark(); };
+  const armCrashMark = createCrashMark({ page, lifecycle, write: entry => access(s => entry
+    ? s.setItem(CRASH_KEY, JSON.stringify({ ...entry.attempt, probe: entry.sticky })) : s.removeItem(CRASH_KEY)) });
   function access(fn) {
     try { return fn(storage()); } catch {
       const changed = profile.net !== FALLBACK.net || profile.workers !== FALLBACK.workers;
@@ -250,30 +240,9 @@ export function createEngineProfileManager({
     detected = next;
     return change(detected);
   }
-  // A foreground run leaves evidence only while it owns engines. Background
-  // eviction on iOS is not a crash; re-arm when a still-active run returns.
-  // A probe step is different: it reserves a heap on purpose, so `sticky` keeps
-  // its mark even while the page is hidden.
+  // Arms the crash mark for `attempt` (see crash-mark.js); `sticky` for a probe step.
   function guard(attempt = current(), { sticky = false } = {}) {
-    const token = {};
-    if (!pending.size) {
-      pageHidden = page?.visibilityState === "hidden";
-      page?.addEventListener("visibilitychange", visibility);
-      lifecycle?.addEventListener("pagehide", hide);
-      lifecycle?.addEventListener("pageshow", visibility);
-    }
-    pending.set(token, { attempt, sticky });
-    syncCrashMark();
-    function done() {
-      if (!pending.has(token)) return;
-      pending.delete(token);
-      if (!pending.size) {
-        page?.removeEventListener("visibilitychange", visibility);
-        lifecycle?.removeEventListener("pagehide", hide);
-        lifecycle?.removeEventListener("pageshow", visibility);
-      }
-      syncCrashMark();
-    }
+    const done = armCrashMark(attempt, sticky);
     return { done, fail() { done(); return failure(attempt); } };
   }
   function createAnalysisRun() {
@@ -323,27 +292,38 @@ export function createEngineProfileManager({
     if (probing) return probing;
     if (broken) return { ...current(), measurements };
     const epoch = revision;
+    // One stop for the probe, whoever started it: the caller's signal or Settings' Cancel.
+    const stop = new AbortController();
+    const forward = () => stop.abort();
+    signal?.addEventListener("abort", forward, { once: true });
+    if (signal?.aborted) stop.abort();
+    cancelProbe = forward;
+    const stopped = stop.signal;
     probing = Promise.resolve().then(async () => {
       try {
-        if (signal?.aborted) throw new DOMException("Detection stopped", "AbortError");
+        if (stopped.aborted) throw new DOMException("Detection stopped", "AbortError");
         for (;;) {
           const controller = new AbortController();
           const abort = () => controller.abort();
-          signal?.addEventListener("abort", abort, { once: true });
-          if (signal?.aborted) controller.abort();
+          stopped.addEventListener("abort", abort, { once: true });
+          if (stopped.aborted) controller.abort();
           let yielded = false;
           try {
             return await probeOnce(controller.signal, () => { yielded = true; controller.abort(); },
               loadModule, epoch);
           } catch (error) {
-            if (!yielded || signal?.aborted) throw error;
+            if (!yielded || stopped.aborted) throw error;
             setupState({ phase: "waiting", label: "Waiting for engine…" });
-          } finally { signal?.removeEventListener("abort", abort); }
+          } finally { stopped.removeEventListener("abort", abort); }
         }
       } catch (error) {
         setupState({ phase: error.name === "AbortError" ? "idle" : "error", label: error.name === "AbortError" ? "" : error.message });
         throw error;
-      } finally { probing = null; }
+      } finally {
+        probing = null; cancelProbe = null;
+        signal?.removeEventListener("abort", forward);
+        setupState({}); // listeners see that no Detect is running any more
+      }
     });
     return probing;
   }
@@ -359,12 +339,14 @@ export function createEngineProfileManager({
     while (ceiling !== null && steps.length > 1 && ladderStep(...steps.at(-1)) >= ceiling) steps.pop();
     const units = steps.length * 3 + (measured ? 0 : 1);
     let done = 0;
-    const progress = (stage, step = 0, workers = null) => {
+    // The label names the step being measured: the net and how many workers.
+    const progress = (stage, step = 0, workers = null, net = null) => {
       done = stage === "complete" || stage === "fallback" ? units : Math.max(done, step);
+      const name = net === "big" ? "Full" : "Lite";
       setupState({ phase: stage === "complete" || stage === "fallback" ? "ready" : "probe",
         stage, done, probeTotal: units, fraction: done / units,
-        label: stage === "workers" ? `Trying ${workers} workers…` : stage === "loading" ? "Loading engine…"
-          : stage === "speed" ? "Measuring speed…" : "Engine ready" });
+        label: stage === "memory" ? "Checking memory for Full…" : stage === "loading" ? `Loading ${name}…`
+          : stage === "workers" ? `Measuring ${name} ×${workers}…` : stage === "speed" ? `Measuring ${name}…` : "Engine ready" });
     };
     const engines = [];
     let resume;
@@ -377,6 +359,7 @@ export function createEngineProfileManager({
       return modules.get(net);
     };
     const hardware = device();
+    const previous = measurements; // what a cancelled run leaves in place
     measurements = { scaling: { lite: [], big: [] }, hardwareConcurrency: hardware.hardwareConcurrency ?? null,
       deviceMemory: hardware.deviceMemory ?? null };
     const held = { lite: 0, big: 0 };
@@ -408,7 +391,7 @@ export function createEngineProfileManager({
         // device learns whether it could hold the net, and the answer waits for
         // the user. A held reservation is address space, not resident memory.
         // The mark makes a tab killed by the reservation step down next load.
-        progress("speed", 0);
+        progress("memory", 0);
         mark = guard({ net: "big", workers: 1 }, { sticky: true });
         try { reserveMemory("big"); bigFits = true; } catch { bigFits = false; }
         fitKnown = true;
@@ -428,7 +411,7 @@ export function createEngineProfileManager({
         // Armed before the heap is reserved: if this step kills the tab, the next
         // load starts below it instead of retrying what died.
         mark = guard(attempt, { sticky: true });
-        const stage = net === "lite" ? "loading" : n === 1 ? "speed" : "workers";
+        const stage = n === 1 ? "speed" : "workers";
         const loadingAt = now();
         // Reserve the heap BEFORE the net's bytes. A device that cannot hold this net
         // must not download and cache it — 94 MB for the full net — on the way to
@@ -436,11 +419,11 @@ export function createEngineProfileManager({
         // reservation is address space, not resident memory.
         // Keep the existing workers alive while reserving the next heap, then
         // inject it: dropping a reservation would depend on GC before allocation.
-        progress("loading", step, n);
+        progress("loading", step, n, net);
         let wasmMemory = reserveMemory(net);
         const wasmModule = await moduleFor(net);
         abort();
-        progress(stage, step, n);
+        progress(stage, step, n, net);
         const engine = await createEngine({ net, wasmModule, wasmMemory, maxDepth: 60, maxNodes: PROBE_NODES });
         wasmMemory = null;
         engines.push(engine);
@@ -451,10 +434,10 @@ export function createEngineProfileManager({
         // Faster of two rounds: a fresh module's first search runs on baseline code while
         // the optimizing tier compiles (big 1 read 289k nodes/s, then 370-418k), and one
         // round alone swung big 3 between 817k and 1103k.
-        progress(stage, step + 1, n);
+        progress(stage, step + 1, n, net);
         const first = await round();
         abort();
-        progress(stage, step + 2, n);
+        progress(stage, step + 2, n, net);
         const second = await round();
         // The page's normal peak while this step's engines still hold their heaps: a Maia
         // batch, then a margin for the page itself. A tab that cannot hold it all dies here,
@@ -485,7 +468,10 @@ export function createEngineProfileManager({
       return { ...current(), measurements: { ...measurements } };
     } catch (error) {
       mark?.done();
-      if (signal?.aborted || error.name === "AbortError") throw new DOMException("Detection stopped", "AbortError");
+      if (signal?.aborted || error.name === "AbortError") {
+        measurements = previous;
+        throw new DOMException("Detection stopped", "AbortError");
+      }
       if (error instanceof EngineAssetError) throw error;
       measurements = { ...measurements, error: error.message };
       // The steps that completed before this failure are what this device holds.
@@ -575,6 +561,12 @@ export function createEngineProfileManager({
     },
     engineMeasurements() { load(); return measurements ? { ...measurements } : null; },
     lastEngineCrash() { load(); return lastCrash ? { ...lastCrash } : null; },
+    // What Settings needs to say why Detect chose this: the measured pick, the
+    // step that killed this tab (a ladder index), this device's worker cap, and
+    // whether a Detect is running now.
+    engineDetection() { load(); return { detected: detected ? { ...detected } : null, ceiling, cap: maxWorkers(device()), consent, running: !!probing }; },
+    // Stops a running Detect, whoever started it; the last result stays.
+    cancelEngineDetect() { cancelProbe?.(); },
     // The workers each net can use on this device; Settings disables the rest.
     engineWorkerChoices: choices,
     // "ask" | "download" | null: whether this device still has to answer for the
@@ -595,7 +587,7 @@ export function createEngineProfileManager({
 }
 
 const manager = createEngineProfileManager();
-export const { engineProfile, engineMeasurements, lastEngineCrash, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
+export const { engineProfile, engineMeasurements, lastEngineCrash, engineDetection, cancelEngineDetect, engineWorkerChoices, setupOnFirstVisit, setEngineProfile, resetEngineProfile, detectEngineProfile,
   usableEngineProfile, subscribeUsableEngineProfile, engineSetupState, subscribeEngineSetup, prepareFullEngine, engineStarted,
   readyIfCached, fullEngineChoice, fullEngineFits, chooseFullEngine,
   subscribeEngineProfile, guardEngineStartup, reportEngineFailure, createEngineAnalysisRun } = manager;

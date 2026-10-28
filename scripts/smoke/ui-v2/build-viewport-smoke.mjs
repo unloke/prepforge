@@ -207,6 +207,16 @@ async function runViewport(vp) {
       const held = await checkPhoneBoard(page, { view: "view-build", board: "build-board", tabs: "#build-panes [role=tab]", label: `Build ${pane}` });
       for (const f of held.fails) check(false, f);
     }
+    // Round 6: Repertoire's bar carries all four arrows, |‹ ‹ › ›| in one row
+    // at the thumb (Lichess's nav row), and the shown move's name keeps room.
+    const nav = await page.evaluate(() => {
+      const box = (el) => { const r = el?.getBoundingClientRect(); return r && r.width ? { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) } : null; };
+      return { arrows: ["build-root", "build-parent", "build-next", "build-end"].map((id) => box(document.getElementById(id))), label: box(document.querySelector("#view-build .board-bar .board-label")), cut: (() => { const l = document.querySelector("#view-build .board-bar .board-label"); return !!l && l.scrollWidth > l.clientWidth + 1; })() };
+    });
+    const [root, parent, next, end] = nav.arrows;
+    check(nav.arrows.every(Boolean) && nav.arrows.every((a) => a.t === root.t && a.h >= 32) && root.r <= parent.l && parent.r <= next.l && next.r <= end.l,
+      `Repertoire's phone bar must show first/prev/next/last in one row: ${JSON.stringify(nav)}`);
+    check(nav.label && !nav.cut && nav.label.r <= root.l, `the bar's move name must show whole, left of the arrows: ${JSON.stringify(nav)}`);
   }
 
   // Writable state: the shared host stays in the DOM but hidden — the writable

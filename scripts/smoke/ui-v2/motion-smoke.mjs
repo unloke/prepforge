@@ -282,6 +282,10 @@ async function run({ name, width, height, mobile }) {
   await rp.goto(`${base}/#/settings`, { waitUntil: "domcontentloaded" });
   await rp.locator(".settings-nav .settings-nav-link").first().waitFor({ timeout: 15000 });
   await rp.waitForTimeout(800);
+  // A new page's pointer starts at (0, 0), on the rail, which opens it as its
+  // hover overlay over the Settings strip; a user reaching for the strip has
+  // the pointer over the page, so put it there first.
+  await rp.mouse.move(width / 2, height / 2);
   await rp.locator(".settings-nav .settings-nav-link", { hasText: "Board" }).click();
   await rp.waitForTimeout(150);
   const still = await rp.evaluate(() => document.querySelector("#set-board")?.offsetParent !== null);

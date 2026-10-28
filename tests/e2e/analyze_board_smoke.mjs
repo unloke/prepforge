@@ -5,7 +5,7 @@
 //
 // Assertions:
 //   1. clicking a square never leaves a focused square (no focus ring), and the arrow
-//      keys then step the game instead of moving a square cursor;
+//      keys then step the game (↑/↓ to its ends) instead of moving a square cursor;
 //   2. the board stays one Tab stop; a typed square name moves keyboard focus there;
 //   3. clicking a move in an engine line plays the line up to it into the move list
 //      as a variation and selects that move, while the engine slot keeps its height;
@@ -105,7 +105,15 @@ async function main() {
     await page.click('#analysis-board .square[data-square="d4"]');
     const focused = await e2e(() => document.activeElement?.dataset?.square || null);
     check(focused === null, `clicking a square does not focus it (focused: ${focused})`);
+    // ↑/↓ are the game's ends (Lichess), never a square cursor.
     await page.keyboard.press("ArrowUp");
+    await waitPly(0, "ArrowUp after a board click did not go to the start");
+    check(
+      (await e2e(() => document.querySelectorAll("#analysis-board .square:focus").length)) === 0,
+      "ArrowUp after a board click must not move a square cursor",
+    );
+    await page.keyboard.press("ArrowDown");
+    await waitPly(6, "ArrowDown after a board click did not go to the end");
     await page.keyboard.press("ArrowLeft");
     await waitPly(5, "ArrowLeft after a board click did not step back one move");
     check(

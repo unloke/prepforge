@@ -46,6 +46,24 @@ export function formatPlayTrail(history, startFen = START_FEN) {
   return out.join(" ");
 }
 
+// The same moves as score-sheet rows, [number, white, black], for the
+// Practice side panel's numbered two-column list (Lichess's bot games).
+export function playTrailRows(history, startFen = START_FEN) {
+  const parts = String(startFen || START_FEN).trim().split(/\s+/);
+  let full = Number(parts[5]) || 1;
+  let side = parts[1] === "b" ? "b" : "w";
+  const rows = [];
+  for (const ply of Array.isArray(history) ? history : []) {
+    if (!ply?.san) continue;
+    if (side === "w") rows.push([full, ply.san, ""]);
+    else if (rows.length) rows[rows.length - 1][2] = ply.san;
+    else rows.push([full, "", ply.san]);
+    if (side === "b") full += 1;
+    side = side === "w" ? "b" : "w";
+  }
+  return rows;
+}
+
 // Undo back to the user's previous decision: drop a trailing opponent ply,
 // then drop the user ply that led there. Empty history means the session start.
 export function takebackToUserMove(history) {

@@ -365,9 +365,9 @@
 }
 /* ---- The evaluation pillar ---------------------------------------------
    The current figure and the win meter on one line, the game graph under
-   them. On a wide screen, a stacked tablet and a phone it sits under (on a
-   phone, over) the board, where the graph reads as the game's time axis; on a
-   short side-by-side panel it is the panel's second fixed block
+   them. On a stacked tablet and a phone it sits under (on a phone, over) the
+   board; beside the board it is the panel's second fixed block, so the board
+   keeps Build's size
    (analyze-panes.js moves the one element). It keeps one height either way, so
    stepping a game never moves the board or the panes. */
 .eval-card {
@@ -2291,4 +2291,46 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #analyze-open .history-item,
   #analyze-open .history-item .hi-open { min-height: 48px; font-size: 14px; }
   #analyze-open .history-item .hi-delete { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+}
+
+/* ---- Phone, round 6 -----------------------------------------------------
+   The row under the board is the navigation row (Lichess: |‹ ‹ › ›|): the
+   move strip scrolls between the game's two ends; ‹ and › stay at the thumb
+   in the bar. A position with no evaluation shows a dash, not a clipped word. */
+@media (max-width: 760px) and (orientation: portrait), (max-width: 760px) and (min-height: 521px) {
+  #view-analyze #analysis-results.moves-pane:not([hidden]) { display: flex; flex-direction: row; align-items: stretch; gap: 0; }
+  #view-analyze #analysis-moves { flex: 1 1 auto; min-width: 0; }
+  #view-analyze .strip-end {
+    position: relative;
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: var(--phone-strip-h);
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--panel);
+    color: var(--muted);
+  }
+  #view-analyze .strip-end::before { inset: -6px 0; }
+  #view-analyze .strip-end .bi { width: 18px; height: 18px; }
+  #view-analyze .strip-end:hover { filter: none; background: var(--panel); }
+  #view-analyze .strip-end:active { background: var(--surface-3); }
+  #view-analyze .strip-end:first-child { box-shadow: inset -1px 0 0 var(--line); /* taste-skill-ignore: the strip's end divider */ }
+  #view-analyze .strip-end:last-child { box-shadow: inset 1px 0 0 var(--line); /* taste-skill-ignore: the strip's end divider */ }
+
+  /* Missing value: a grey dash where the figure goes, never a cut-off label. */
+  #analysis-eval-card .ev-head:not(.has-eval) .ev-title { overflow: visible; font-size: 0; }
+  #analysis-eval-card .ev-head:not(.has-eval) .ev-title::before { content: "–"; color: var(--label); font-size: 15px; font-weight: 700; }
+
+  /* The book line's action is a text link: no inline padding, so a link that
+     wraps to its own line starts on the prose's edge. Its target grows round it. */
+  #analysis-explain .coach-bookaction { position: relative; margin-left: 0; padding: 2px 0; }
+  #analysis-explain .coach-bookaction::after { content: ""; position: absolute; inset: -10px -6px; }
+
+  /* Copy rows show with a game on the board. */
+  #view-analyze:not(:has(#analysis-results:not([hidden]))) #analyze-open .sheet-copy { display: none; }
 }

@@ -13,7 +13,7 @@ const desktop = shared.slice(shared.indexOf("@media (min-width: 1021px) {\n  .te
 
 describe("Teams is a work surface", () => {
   it("gives the grid the height of the view", () => {
-    expect(desktop).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
+    expect(desktop).toMatch(/\.teams \{ grid-template-columns: var\(--teams-dir, 300px\) minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
     expect(desktop).toMatch(/\.teams:has\(> \.team-detail:not\(\[hidden\]\)\) \{ grid-template-rows: auto minmax\(0, 1fr\); \}/);
   });
 
