@@ -764,33 +764,42 @@
                 <button type="button" class="pf-info" id="engine-info" aria-label="About Engine settings" title="About Engine settings" aria-expanded="false"><svg class="info-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>
               </h2>
               <div class="pf-info-pop" id="engine-info-pop" hidden>
-                Stockfish runs in this browser. If isolation headers are missing, Analyze and Build show a banner.
+                Stockfish runs in this browser. Detect measures this device: it adds a worker while that pays and keeps the fastest setup that fits in memory.
               </div>
-              <div class="set-row"><span>Mode</span><b>Browser only</b></div>
-              <div class="set-row"><span>Engine</span><span class="set-row-value"><b id="settings-stockfish-version">checking…</b><button type="button" class="btn sm" id="settings-refresh">Refresh</button></span></div>
-              <div class="dl-row" id="settings-dl-stockfish" data-testid="settings-dl-stockfish"></div>
-              <div class="pf-row">
-                <span class="pf-row-text"><span class="pf-row-label" id="settings-net-label">Net</span></span>
-                <div class="seg" role="group" aria-labelledby="settings-net-label" id="settings-net-seg">
-                  <button type="button" class="seg-btn" data-net="big" title="Stronger. 99 MB download, about 450 MB of memory per worker">Full</button>
-                  <button type="button" class="seg-btn" data-net="lite" title="2 MB download, little memory">Lite</button>
-                </div>
-              </div>
-              <div class="pf-row">
-                <span class="pf-row-text"><span class="pf-row-label" id="settings-workers-label">Workers</span></span>
-                <div class="seg" role="group" aria-labelledby="settings-workers-label" id="settings-workers-seg" title="Engines searching in parallel. More is faster and uses more memory">
-                  <button type="button" class="seg-btn" data-workers="1">1</button>
-                  <button type="button" class="seg-btn" data-workers="2">2</button>
-                  <button type="button" class="seg-btn" data-workers="3">3</button>
-                </div>
-              </div>
-              <div class="set-row">
-                <span class="faint small" id="settings-profile-status" data-testid="settings-profile-status"></span>
-                <button type="button" class="btn sm" id="settings-detect" data-testid="settings-detect" title="Measure this device and pick the net and workers">Detect</button>
+              <div class="set-row engine-summary" data-testid="engine-summary">
+                <span class="engine-summary-label">Setup</span>
+                <span class="engine-summary-value">
+                  <span class="engine-summary-text" aria-live="polite">
+                    <b id="settings-engine-line">Lite · 1 worker</b>
+                    <span class="faint small" id="settings-profile-status" data-testid="settings-profile-status"></span>
+                  </span>
+                  <button type="button" class="btn sm" id="settings-detect" data-testid="settings-detect" title="Measure this device and pick the net and workers">Detect</button>
+                </span>
               </div>
               <div class="profile-progress" id="settings-profile-progress" hidden><div class="profile-progress-fill"></div></div>
-              <div class="set-row"><span>Browser Stockfish</span><span class="status-pill" id="settings-browser-engine-status">checking…</span></div>
+              <div class="dl-row" id="settings-dl-stockfish" data-testid="settings-dl-stockfish"></div>
               <p class="note warn" id="settings-stockfish-status"></p>
+              <details class="engine-manual" id="settings-engine-manual" data-testid="settings-engine-manual">
+                <summary class="set-row"><span>Advanced</span><svg class="engine-manual-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></summary>
+                <div class="pf-row">
+                  <span class="pf-row-text"><span class="pf-row-label" id="settings-net-label">Net</span></span>
+                  <div class="seg" role="group" aria-labelledby="settings-net-label" id="settings-net-seg">
+                    <button type="button" class="seg-btn" data-net="big">Full</button>
+                    <button type="button" class="seg-btn" data-net="lite">Lite</button>
+                  </div>
+                </div>
+                <div class="pf-row">
+                  <span class="pf-row-text"><span class="pf-row-label" id="settings-workers-label">Workers</span></span>
+                  <div class="seg" role="group" aria-labelledby="settings-workers-label" id="settings-workers-seg">
+                    <button type="button" class="seg-btn" data-workers="1">1</button>
+                    <button type="button" class="seg-btn" data-workers="2">2</button>
+                    <button type="button" class="seg-btn" data-workers="3">3</button>
+                  </div>
+                </div>
+                <div class="set-row" id="settings-engine-reset-row" hidden><span>Detected setup</span><button type="button" class="btn sm" id="settings-engine-reset" data-testid="settings-engine-reset">Use it</button></div>
+                <div class="set-row"><span>Version</span><span class="set-row-value"><b id="settings-stockfish-version">checking…</b><button type="button" class="btn sm" id="settings-refresh">Refresh</button></span></div>
+                <div class="set-row"><span>Browser engine</span><span class="status-pill" id="settings-browser-engine-status">checking…</span></div>
+              </details>
             </section>
             <section class="card set" id="set-maia" data-area="engine" hidden>
               <h2>

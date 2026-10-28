@@ -441,6 +441,69 @@
   .acct-danger { flex-direction: column; align-items: flex-start; }
 }
 
+/* ---- Engine: one status row, the Full download, then Advanced ---------- */
+/* The setup reads as one line (net · workers · speed) with the reason under it;
+   Detect sits beside it and turns into Cancel while it runs. */
+#set-engine .engine-summary-value {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+#set-engine .engine-summary-text { display: grid; flex: 0 1 auto; min-width: 0; gap: 2px; }
+#set-engine .engine-summary-text b {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#set-engine #settings-profile-status { margin: 0; font-size: 13px; }
+#set-engine #settings-profile-status:empty { display: none; }
+#set-engine #settings-detect { flex: none; min-width: 72px; }
+#set-engine .note.warn:empty { display: none; }
+/* Advanced: the manual net and worker choice, the version and the browser
+   check, closed by default. */
+#set-engine .engine-manual > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+}
+#set-engine .engine-manual > summary::-webkit-details-marker { display: none; }
+#set-engine .engine-manual > summary:hover { color: var(--text); }
+#set-engine .engine-manual > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+#set-engine .engine-manual-chev {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+#set-engine .engine-manual[open] .engine-manual-chev { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  #set-engine .engine-manual-chev { transition: none; }
+}
+/* Detect keeps its place while the line changes between the phase and the result. */
+@media (min-width: 761px) {
+  #set-engine .engine-summary-text { min-width: 224px; }
+}
+/* The bar sits under the value column, where the phase it measures is written. */
+@media (min-width: 1200px) {
+  #set-engine .profile-progress { margin-left: 214px; }
+}
+/* A phone has no label column: the setup line takes the row and Detect trails it. */
+@media (max-width: 760px) {
+  #set-engine .engine-summary-label { display: none; }
+  #set-engine .engine-summary > .engine-summary-value { flex: 1 1 auto; justify-content: space-between; }
+  #set-engine .engine-summary-text b { font-size: 15px; }
+  #set-engine #settings-detect { min-width: 0; }
+}
+
 /* Device probe: a track under the Detect row; the fill eases between steps. */
 .profile-progress {
   position: relative;

@@ -1,5 +1,7 @@
-import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile,
-  engineSetupState, subscribeEngineSetup, engineWorkerChoices, lastEngineCrash } from "../engine/engine-profile.js";
+import { detectEngineProfile, engineMeasurements, engineProfile, setEngineProfile, subscribeEngineProfile, resetEngineProfile,
+  engineSetupState, subscribeEngineSetup, engineWorkerChoices, lastEngineCrash, engineDetection, cancelEngineDetect,
+  fullEngineChoice } from "../engine/engine-profile.js";
+import { BUSY, engineSummary, disabledReason } from "./settings-engine-summary.js";
 import { isBrowserEngineAvailable } from "../engine/stockfish-provider.js";
 import { html } from "../html.js";
 import { isPopoverOpen, menuKeys, openPopover } from "../core/dialog.js";
@@ -139,10 +141,12 @@ export function createSettingsView({
     downloads.render();
   }
 
+  const NET_TITLE = { big: "Stronger. 99 MB download, about 450 MB of memory per worker", lite: "2 MB download, little memory" };
   function renderEngineProfile() {
     const profile = engineProfile();
     const setup = engineSetupState();
-    const busy = ["download", "compile", "waiting", "probe"].includes(setup.phase);
+    const busy = BUSY.includes(setup.phase);
+    const detection = engineDetection();
     const paint = (id, key, value) => document.getElementById(id)?.querySelectorAll(".seg-btn").forEach((btn) => {
       const active = btn.dataset[key] === String(value);
       btn.classList.toggle("is-active", active);
@@ -152,31 +156,37 @@ export function createSettingsView({
     paint("settings-workers-seg", "workers", profile.workers);
     // Only the steps this device measured are offered: asking for a count it never
     // ran, or for the net the ladder stopped at, would start heaps Detect could not
-    // hold.
+    // hold. A greyed segment says which step Detect held.
     const choices = engineWorkerChoices();
+    const why = { choices, net: profile.net, fullChoice: fullEngineChoice() };
     document.getElementById("settings-net-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
       btn.disabled = choices[btn.dataset.net] < 1;
+      btn.title = btn.disabled ? disabledReason("net", btn.dataset.net, why) : NET_TITLE[btn.dataset.net];
     });
     document.getElementById("settings-workers-seg")?.querySelectorAll(".seg-btn").forEach((btn) => {
+      // A count past what this device could ever hold (a phone's two) is not shown at all.
+      btn.hidden = Number(btn.dataset.workers) > detection.cap;
       btn.disabled = Number(btn.dataset.workers) > choices[profile.net];
+      btn.title = btn.disabled ? disabledReason("workers", btn.dataset.workers, why) : "";
     });
+    // While Detect runs, its button stops it.
     const detectBtn = document.getElementById("settings-detect");
-    if (detectBtn) detectBtn.disabled = busy;
+    if (detectBtn) {
+      const probing = detection.running;
+      detectBtn.textContent = probing ? "Cancel" : "Detect";
+      detectBtn.dataset.action = probing ? "cancel" : "detect";
+      detectBtn.disabled = busy && !probing;
+      detectBtn.title = probing ? "Stop measuring; the last setup stays" : "Measure this device and pick the net and workers";
+    }
+    const resetRow = document.getElementById("settings-engine-reset-row");
+    if (resetRow) resetRow.hidden = !(profile.source === "user" && detection.detected && detection.detected.source !== "fallback");
+    const line = document.getElementById("settings-engine-line");
     const status = document.getElementById("settings-profile-status");
-    if (status) {
-      const m = engineMeasurements();
-      const crash = lastEngineCrash();
-      const speed = m?.nodesPerSecond ? ` · ${Math.round(m.nodesPerSecond / 1000)}k nodes/s` : "";
-      const bytes = setup.phase === "download" && setup.total
-        ? ` ${Math.round(setup.loaded / 1048576)} / ${Math.round(setup.total / 1048576)} MB` : "";
-      status.textContent = busy || setup.phase === "error" ? `${setup.label}${bytes}`
-        : crash ? `Last stop: ${crash.phase || "engines loaded"} · ${crash.net === "big" ? "Full" : "Lite"} ×${crash.workers}`
-        : m?.error && profile.source === "fallback" ? `Detection failed: ${m.error}`
-        : profile.source === "user" ? "Set by you"
-        : profile.source === "detected" ? (speed ? `Speed${speed}` : "Detected for this device")
-        : "Not detected yet";
-      // A detected profile that stopped on an error is the memory limit, not a failure.
-      status.title = m?.error && profile.source === "detected" ? `Stopped at: ${m.error}` : "";
+    if (line || status) {
+      const summary = engineSummary({ profile, setup, measurements: engineMeasurements(), crash: lastEngineCrash(), detection,
+        available: isBrowserEngineAvailable() });
+      if (line) line.textContent = summary.line;
+      if (status) [status.textContent, status.title] = [summary.detail, summary.title];
     }
     const bar = document.getElementById("settings-profile-progress");
     if (bar) {
@@ -412,9 +422,12 @@ export function createSettingsView({
     });
     unsubscribers.push(downloads.bind(), subscribeDownloads(renderMaiaAnalysis));
 
-    document.getElementById("settings-detect")?.addEventListener("click", () => {
-      void detectEngineProfile().catch(() => {});
+    const detectBtn = document.getElementById("settings-detect");
+    detectBtn?.addEventListener("click", () => {
+      if (detectBtn.dataset.action === "cancel") cancelEngineDetect();
+      else void detectEngineProfile().catch(() => {});
     });
+    document.getElementById("settings-engine-reset")?.addEventListener("click", () => resetEngineProfile());
     unsubscribers.push(subscribeEngineProfile(() => { renderEngineProfile(); void renderStockfishVersion(); }),
       subscribeEngineSetup(renderEngineProfile));
 
