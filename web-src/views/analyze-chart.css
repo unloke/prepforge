@@ -2136,31 +2136,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze .an-tab[aria-selected="true"] { background: none; }
   #view-analyze .an-tab[aria-selected="true"]::before { background: var(--panel); }
 
-  /* Report: Chess.com's review head (each player's accuracy, large, side by
-     side), then the key moments as two-line rows, the grade table and the
-     phases. */
+  /* Report spacing; player summary styling lives in analyze-report.css. */
   #view-analyze .report-pane { gap: 16px; padding-top: 12px; }
   #view-analyze .report, #view-analyze .rp-body { gap: 16px; }
-  #view-analyze .rp-summary {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    min-height: 44px;
-    padding: 0;
-  }
-  #view-analyze .rp-summary .rp-side {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: 2px 6px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: var(--panel);
-  }
-  #view-analyze .rp-summary .rp-disc { display: block; }
-  #view-analyze .rp-summary .rp-name { grid-column: 2; font-size: 13px; }
-  #view-analyze .rp-summary .rp-acc { grid-column: 1 / -1; text-align: left; font-size: 24px; font-weight: 700; }
-  #view-analyze .rp-summary .rp-errs { grid-column: 1 / -1; font-size: 13px; }
-  #view-analyze .rp-summary .rp-chev { display: none; }
   #view-analyze .rp-sec { padding: 0; }
   /* Key moments: the move, its kind and the eval on one line; the better move
      on a second, under the move, never wrapped beside the eval. */
@@ -2198,8 +2176,6 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     #analysis-explain .coach-review > .cr-step { width: 44px; }
     #analysis-explain .coach-review > .btn { margin-right: 6px; padding: 0 10px; }
     #analysis-explain .coach-review > .cr-label { gap: 6px; font-size: 14px; }
-    #view-analyze .rp-summary .rp-side { padding: 10px; }
-    #view-analyze .rp-summary .rp-errs { font-size: 12px; }
   }
 
   /* ---- Phone, round 5: one board, Lichess's density --------------------------
@@ -2312,15 +2288,9 @@ button.rp-n.g-mistake { color: var(--warn-text); }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) > .btn { height: 28px; min-height: 0; padding: 0 10px; font-size: 13px; }
   #view-analyze .engine-window-unlock .unlock:not(.is-inline) .unlock-x { width: 28px; height: 28px; }
 
-  /* Report: the two players' accuracy side by side on flat 6px plates, key
-     moments as 36px rows, 28px grade rows. */
+  /* Report: 36px moment rows and 28px grade rows. */
   #view-analyze .report-pane { gap: 12px; padding-top: 8px; }
   #view-analyze .report, #view-analyze .rp-body { gap: 12px; }
-  #view-analyze .rp-summary { min-height: 0; }
-  #view-analyze .rp-summary .rp-side { padding: 6px 10px; border-radius: var(--radius); }
-  #view-analyze .rp-summary .rp-name { font-size: 12px; }
-  #view-analyze .rp-summary .rp-acc { font-size: 20px; }
-  #view-analyze .rp-summary .rp-errs { font-size: 12px; }
   #view-analyze .km-go { min-height: 36px; }
   #view-analyze .km-best { margin-top: -6px; padding-bottom: 6px; font-size: 12px; }
   #view-analyze .rp-counts .rp-n { height: 28px; line-height: 28px; }
