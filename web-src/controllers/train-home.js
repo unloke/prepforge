@@ -4,6 +4,7 @@ import { closeTrainPicker, openTrainPicker, trainRepertoireItems } from "../trai
 import { recentRuns } from "../train-history.js";
 import { lineTail } from "../views/train.js";
 import { bindTrainPhone, trainBotsHtml } from "./train-bots.js";
+import { createTrainPreview, paintTrainPreviewLoading } from "./train-preview.js";
 // Train is one loop, Home → Session → Result, shared by the Due queue, line
 // rehearsal and practice games. This module owns the loop's chrome: which
 // screen is up (data-train-screen on #view-train), the Home rows and their
@@ -16,8 +17,7 @@ let d; // deps bound once by createTrainHome
 const MODE_NAMES = { smart: "Due queue", all_lines: "Rehearse", play: "Practice" };
 const BOOK_NAMES = { explorer: "Lichess explorer", maia: "Maia", repertoire: "my repertoires" };
 const KIND_NAMES = { weak: "Weak spot", due: "Due review", new: "New move", polish: "Polish" };
-const PREVIEW_TTL = 30000;
-const preview = { key: "", at: 0, data: null, loading: null, error: false };
+let preview;
 const ROW_ERROR_IDS = { smart: "train-due-error", all_lines: "train-rehearse-error", play: "train-play-error" };
 const rowErrors = {};
 
@@ -30,7 +30,7 @@ export function trainRowError(mode, text) {
 function paintRowErrors() {
   for (const [mode, id] of Object.entries(ROW_ERROR_IDS)) {
     const el = document.getElementById(id);
-    const text = rowErrors[mode] || (mode === "smart" && preview.error && d.appState.signedIn ? "Couldn't load the queue. Start still works." : "");
+    const text = rowErrors[mode] || (mode === "smart" && d.appState.signedIn && preview?.failed(previewUrl()) ? "Couldn't load the queue. Start still works." : "");
     el.hidden = !text;
     el.textContent = text;
   }
@@ -38,6 +38,7 @@ function paintRowErrors() {
 
 export function createTrainHome(deps) {
   d = deps;
+  preview = createTrainPreview(deps.api);
   bind();
   return { openTrain, paintTrainHome, syncTrainScreen, showTrainResult, leaveToHome };
 }
@@ -230,32 +231,13 @@ function setDueScope(repertoireId) {
 }
 
 export function invalidateTrainPreview() {
-  preview.at = 0;
-  preview.data = null;
+  preview?.invalidate();
 }
 
 function previewUrl() {
   const id = d.appState.trainScope?.repertoireId;
   const scope = id ? `repertoire_id=${encodeURIComponent(id)}` : "mixed=true";
   return `/api/train/smart/summary?${scope}&preview=true&local_date=${encodeURIComponent(d.localDateString())}&utc_offset=${-new Date().getTimezoneOffset()}`;
-}
-
-async function loadPreview() {
-  const url = previewUrl();
-  if (preview.key === url && Date.now() - preview.at < PREVIEW_TTL) return preview.data;
-  if (preview.loading && preview.key === url) return preview.loading;
-  preview.key = url;
-  preview.loading = d.api(url).then((data) => {
-    preview.data = data;
-    preview.error = false;
-    preview.at = Date.now();
-    return data;
-  }).catch(() => {
-    preview.data = null;
-    preview.error = true;
-    return null;
-  }).finally(() => { preview.loading = null; });
-  return preview.loading;
 }
 
 // What a Start of the Due row would serve, or why it cannot. The button says
@@ -342,7 +324,9 @@ export async function paintTrainHome() {
     document.getElementById("train-due-meta").textContent = signedIn ? dueMeta(next) : "";
     paintRowErrors();
   };
-  paintDue(preview.data?.next_session);
+  const url = previewUrl();
+  const currentPreview = preview.dataFor(url);
+  paintDue(currentPreview?.next_session);
   // Rehearse
   const rehearse = state.trainingRepertoireId && reps.some((r) => String(r.id) === String(state.trainingRepertoireId))
     ? state.trainingRepertoireId : reps.find((r) => !(r.health && Number(r.health.trainable) === 0))?.id || null;
@@ -370,15 +354,19 @@ export async function paintTrainHome() {
   // Outlook + Due counts (network): repaint when they land.
   const outlook = document.getElementById("train-outlook");
   if (!signedIn || !reps.length) {
+    paintTrainPreviewLoading(false);
     outlook.hidden = true;
     paintDueNext(null);
     return;
   }
-  const data = await loadPreview();
-  if (trainScreenOf(state) !== "home") return;
-  paintDue(data?.next_session);
-  paintDueNext(data?.next_session?.upcoming);
-  outlook.innerHTML = outlookHtml(data?.outlook);
+  paintTrainPreviewLoading(!currentPreview);
+  await preview.load(url);
+  if (trainScreenOf(state) !== "home" || previewUrl() !== url || !preview.current(url)) return;
+  paintTrainPreviewLoading(false);
+  const resolved = preview.dataFor(url);
+  paintDue(resolved?.next_session);
+  paintDueNext(resolved?.next_session?.upcoming);
+  outlook.innerHTML = outlookHtml(resolved?.outlook);
   outlook.hidden = !outlook.innerHTML;
 }
 

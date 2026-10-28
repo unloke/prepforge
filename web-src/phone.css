@@ -246,7 +246,7 @@
   #view-dashboard .lib-actions,
   #view-dashboard .lib:not([data-search-open]) .lib-list :is(.search-field, .lib-search-cancel) { display: none; }
   /* Nothing to filter yet (the empty card carries its own actions): no row. */
-  #view-dashboard .lib:not([data-search-open]) .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .card-head { display: none; }
+  #view-dashboard .lib:not([data-search-open]) .lib-list.is-empty:not(:has(.lib-no-match)) .card-head { display: none; }
   #view-dashboard .lib-list .seg { grid-area: filters; }
   #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
   #view-dashboard .lib-search-cancel {
@@ -275,7 +275,7 @@
     border-radius: 12px;
     background: var(--surface-3);
   }
-  #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
+  #view-dashboard .lib-list.is-empty:not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: 1 1 auto;
     min-width: 36px;
@@ -324,13 +324,20 @@
   #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
   #view-dashboard .lib-row.is-selected::before { content: none; }
   /* The skeleton row is the phone row's flex shape without the ⋯ button. */
-  #view-dashboard .lib-row.is-skeleton .lib-opt,
-  #view-dashboard .lib-row.is-skeleton { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+  #view-dashboard .lib-row.is-skeleton { display: flex; flex: 1 1 auto; align-items: center; gap: 6px 10px; min-width: 0; padding-right: 40px; }
+  #view-dashboard .lib-row.is-skeleton .lib-opt { display: grid; flex: 1 1 auto; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "rep rep" "queue mastery"; align-items: center; gap: 6px 10px; min-width: 0; }
   #view-dashboard .lib-row.is-skeleton .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-mastery { min-width: 78px; }
   #view-dashboard .lib-row.is-skeleton .skeleton-dot { flex: none; width: 26px; height: 26px; margin-top: 0; }
-  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 6px; }
-  #view-dashboard .lib-row.is-skeleton .lib-cell-mastery { display: none; }
+  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 7px; }
   #view-dashboard .lib-row.is-skeleton .lib-cell-queue { gap: 6px; padding-left: 38px; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-rep .skeleton-bar:not(.skeleton-thin) { height: 18px; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-rep .skeleton-bar.skeleton-thin { height: 14px; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-queue .skeleton-chip { height: 24px; }
+  #view-dashboard .lib-row.is-skeleton .lib-cell-mastery .skeleton-bar { width: 78px; }
+  #view-dashboard .lib-row.is-skeleton:not(:has(.skeleton-chip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-row.is-skeleton:not(:has(.skeleton-chip)) .lib-cell-queue { display: none; }
+  #view-dashboard .lib-list.is-loading .card-head .seg { visibility: visible; }
   #view-dashboard .lib-row .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
   #view-dashboard .lib-row .color-dot { flex: none; width: 26px; height: 26px; }
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
@@ -379,8 +386,8 @@
   #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
   /* With no queue chips the line holds only the mastery note: it starts at
      the name's left edge instead of hanging off the right. */
-  #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
-  #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
+  #view-dashboard .lib-row:not(.is-skeleton):not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-row:not(.is-skeleton) .lib-cell-queue:not(:has(.kchip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 36px; height: 36px; opacity: 1; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }
