@@ -135,6 +135,20 @@ $1 2. Nf3 $15 Nc6`;
     expect(mainlineSans(root)).toEqual(["e4", "e5", "Nf3", "Nc6"]);
   });
 
+  it.each([
+    "1. e4{king pawn}e5 2. Nf3 Nc6 *",
+    "1. e4{}{}e5 2. Nf3 Nc6 *",
+    "1. e4;king pawn\ne5 2. Nf3 Nc6 *",
+    "1. e4{clock 0:05; eval +0.2}e5 2. Nf3 Nc6 *",
+  ])("keeps comment boundaries between adjacent moves: %s", (pgn) => {
+    const { ok, root } = parsePgn(pgn);
+    expect(ok).toBe(true);
+    expect(mainlineSans(root)).toEqual(["e4", "e5", "Nf3", "Nc6"]);
+    expect(mainlineChain(root).at(-1).fenAfter).toBe(
+      mainlineChain(parsePgn("1. e4 e5 2. Nf3 Nc6 *").root).at(-1).fenAfter,
+    );
+  });
+
   it("preserves semicolons inside brace comments", () => {
     const pgn = "1. e4 { clock 0:05; eval +0.2 } e5";
     const { ok, root } = parsePgn(pgn);
