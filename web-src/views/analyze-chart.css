@@ -365,9 +365,9 @@
 }
 /* ---- The evaluation pillar ---------------------------------------------
    The current figure and the win meter on one line, the game graph under
-   them. On a wide screen, a stacked tablet and a phone it sits under (on a
-   phone, over) the board, where the graph reads as the game's time axis; on a
-   short side-by-side panel it is the panel's second fixed block
+   them. On a stacked tablet and a phone it sits under (on a phone, over) the
+   board; beside the board it is the panel's second fixed block, so the board
+   keeps Build's size
    (analyze-panes.js moves the one element). It keeps one height either way, so
    stepping a game never moves the board or the panes. */
 .eval-card {

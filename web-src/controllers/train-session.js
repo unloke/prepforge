@@ -12,7 +12,7 @@ import { countOf } from "../plural.js";
 import { coachTipMayReplace, promptCueSan, teachWhy, trainTeachLine, wrongMoveBanner, wrongMoveTip } from "../train-hint.js";
 import { createTrainRecovery } from "../train-recovery.js";
 import { pickOpponentReply, playPositionAfterReply, replyReasonNote, unavailableExplorer } from "../train-opponent.js";
-import { formatPlayTrail, playBookName, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
+import { playBookName, playTrailRows, playSessionPgn, resolvePlayColor, takebackToUserMove } from "../train-play.js";
 import { isNothingToTrainError } from "../train-start.js";
 import { createTrainHome, invalidateTrainPreview, loadTrainRepertoireOptions, playBook, playPickerColor, playRepertoireMeta, selectedTrainRepertoireIds, setPlayPickerColor, syncTrainScreen, trainRowError, trainScopeLabel } from "./train-home.js";
 import { drillResult, playResult, smartResult } from "../train-result.js";
@@ -255,11 +255,12 @@ function renderPlayTrail() {
   const el = document.getElementById("train-play-trail");
   if (!el) return;
   const play = appState.play;
-  const text = play && play.history && play.history.length
-    ? formatPlayTrail(play.history, play.startFen)
-    : "";
+  const rows = play ? playTrailRows(play.history, play.startFen) : [];
   el.hidden = !play;
-  el.innerHTML = text ? html`<span class="play-trail-sans">${text}</span>` : "";
+  // A score sheet: the number, White's move, Black's move. Inline on a phone,
+  // a numbered two-column list beside the board (train-shell.css).
+  el.innerHTML = rows.map(([n, w, b]) => html`<span class="pt-n">${n}${w ? "." : "…"}</span> <span class="pt-m">${w}</span> <span class="pt-m">${b}</span> `).join("");
+  [...el.querySelectorAll(".pt-m:not(:empty)")].pop()?.classList.add("is-last");
   // A Feeling Lucky game names where its position came from in the scope chip.
   if (play && play.luckyReason) document.getElementById("train-scope-chip").textContent = trainScopeLabel();
   syncTrainSessionControls();

@@ -15,13 +15,11 @@ export const PANES = ["coach", "engine", "report", "moves"];
 const KEY = "prepforge.analyze.pane";
 
 // The same bands analyze-chart.css lays out. The evaluation sits under the board
-// on a wide screen, a stacked tablet and a phone; beside the board on a short
-// or narrow side-by-side panel it joins the panel's fixed column instead.
+// on a stacked tablet and a phone; beside the board it joins the panel's column.
 export const LAYOUT_QUERIES = {
   phone: "(max-width: 760px)",
   stacked:
     "(min-width: 761px) and (max-width: 860px) and (orientation: portrait), (min-width: 761px) and (max-width: 860px) and (min-height: 521px), (min-width: 761px) and (max-width: 1100px) and (aspect-ratio < 5/6)",
-  wide: "(min-width: 1101px) and (min-height: 700px)",
 };
 
 /** The open pane for a stored value: the phone may open the coach; every other
@@ -89,7 +87,7 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
   const coach = document.getElementById("analysis-explain");
   function placeEval() {
     if (!card || !boardArea || !coach) return;
-    const underBoard = media.phone.matches || media.stacked.matches || media.wide.matches;
+    const underBoard = media.phone.matches || media.stacked.matches;
     const home = underBoard ? boardArea : coach.parentElement;
     const after = underBoard ? boardArea.querySelector(".board-bar") : coach;
     if (!after) return;

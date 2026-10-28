@@ -154,3 +154,15 @@ describe("playSessionPgn", () => {
     expect(pgn.trim().endsWith("1. e4 1-0")).toBe(true);
   });
 });
+
+describe("playTrailRows", () => {
+  it("pairs the moves into numbered score-sheet rows", async () => {
+    const { playTrailRows } = await import("./train-play.js");
+    expect(playTrailRows([{ san: "e4" }, { san: "e5" }, { san: "Nf3" }])).toEqual([[1, "e4", "e5"], [2, "Nf3", ""]]);
+  });
+
+  it("starts a Black-to-move position with an empty White cell", async () => {
+    const { playTrailRows } = await import("./train-play.js");
+    expect(playTrailRows([{ san: "e5" }, { san: "Nf3" }], "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")).toEqual([[1, "", "e5"], [2, "Nf3", ""]]);
+  });
+});

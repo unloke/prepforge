@@ -22,10 +22,9 @@ describe("arrow keys and the board on screen", () => {
     const block = stepsBoardBlock();
     expect(block).toMatch(/const stepsBoard = inBuild \|\| view === "analyze";/);
     // Every stepping branch asks that guard; none runs unguarded.
-    expect(block).toMatch(/if \(stepsBoard && event\.key === "ArrowLeft"\)/);
-    expect(block).toMatch(/if \(stepsBoard && event\.key === "ArrowRight"\)/);
-    expect(block).toMatch(/if \(stepsBoard && \(event\.key === "Home" \|\| event\.key === "End"\)\)/);
-    expect(block.match(/analysisTreeNav\(/g) || []).toHaveLength(3);
+    expect(block).toMatch(/if \(stepsBoard && arrows\)/);
+    expect(block).toMatch(/if \(stepsBoard && end\)/);
+    expect(block.match(/analysisTreeNav\(/g) || []).toHaveLength(2);
     for (const call of block.split("analysisTreeNav(").slice(1)) {
       expect(block.slice(0, block.indexOf(call))).toMatch(/stepsBoard/);
     }
