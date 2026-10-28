@@ -40,7 +40,11 @@ export function drillResult(training, stats) {
   return {
     mode: "all_lines",
     title: "Rehearsal complete",
-    cells: [[lines, nounOf(lines, "line")], [pct(stats.correct || 0, missed), "first try"], [missed, "missed"]],
+    cells: [
+      [lines, nounOf(lines, "line")],
+      ...((stats.correct || 0) + missed ? [[pct(stats.correct || 0, missed), "first try"], [missed, "missed"]] : []),
+      ...(stats.skipped ? [[stats.skipped, "skipped"]] : []),
+    ],
     delta: null,
     foot: training?.repertoire_name || "",
   };

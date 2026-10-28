@@ -235,6 +235,8 @@ function harness() {
   ].join("\n");
   const params = {
     ...deps, resetAnalysisVariations, showAnalysisPly,
+    selectedNodePath: () => appState.analysisNodePath || "root", ANALYSIS_ROOT_PATH: "root",
+    selectAnalysisNodePath: vi.fn(async () => true),
     markCheckpointSaved: vi.fn(async () => {}), clearCheckpoint: vi.fn(async () => true),
     refreshAnalyzeRecovery: vi.fn(async () => {}),
   };
@@ -252,6 +254,31 @@ function harness() {
 }
 
 describe("a multi-game paste analyzes one game at a time", () => {
+  it("keeps study branches and their selection when a running review finishes", async () => {
+    const h = harness();
+    h.input.value = G1;
+    const post = h.deps.postJson.getMockImplementation();
+    let release, reached;
+    const pending = new Promise(resolve => { release = resolve; });
+    const saving = new Promise(resolve => { reached = resolve; });
+    h.deps.postJson.mockImplementation(async (path, payload) => {
+      if (path === "/api/analyze/classify-save") { reached(); await pending; }
+      return post(path, payload);
+    });
+    const running = h.runAnalysis();
+    await saving;
+    const study = treeOf(G1.replace("3. Bc4", "3. Bc4 (3. Bb5)"));
+    h.appState.analysisVarNodes = study.varNodes;
+    h.appState.analysisVarCounter = study.varNodes.size;
+    const path = "e2e4-e7e5-d1h5-b8c6-f1b5";
+    h.appState.analysisNodePath = path;
+    release(); await running;
+    expect(h.appState.analysisVarNodes).toBe(study.varNodes);
+    expect(h.appState.analysisVarNodes.size).toBe(1);
+    expect(h.deps.selectAnalysisNodePath).toHaveBeenCalledWith(path);
+    expect(h.deps.notices.failJob).not.toHaveBeenCalled();
+  });
+
   it("after game 1 the box holds game 1 only, and the picker switches with the paste", async () => {
     const h = harness();
     h.input.value = PASTE;

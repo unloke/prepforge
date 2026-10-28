@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Report｜修改前後</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 24px 64px; background: #f3f3f1; color: #1b1c1e; font: 15px/1.6 system-ui, sans-serif; }
+  main { max-width: 1440px; margin: auto; }
+  h1 { margin: 0 0 32px; font-size: 28px; }
+  h2 { margin: 40px 0 4px; font-size: 20px; }
+  p { margin: 0 0 16px; color: #55585e; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+  figure { margin: 0; min-width: 0; }
+  figcaption { margin-bottom: 8px; font-weight: 600; }
+  img { display: block; width: 100%; height: auto; }
+  figure a { display: block; cursor: zoom-in; }
+  .phone-report { position: relative; aspect-ratio: 390 / 430; overflow: hidden; }
+  .phone-report img { position: absolute; top: -109.302%; }
+  .desktop-report { position: relative; aspect-ratio: 516 / 532; overflow: hidden; }
+  .desktop-report img { position: absolute; max-width: none; width: 279.07%; left: -176.36%; top: -65.79%; }
+  .compact-report { position: relative; aspect-ratio: 516 / 150; overflow: hidden; }
+  .compact-report img { position: absolute; max-width: none; width: 279.07%; left: -176.36%; top: -233.333%; }
+  .phone { max-width: 820px; }
+  .single { max-width: 720px; }
+  footer { margin-top: 40px; font-size: 13px; color: #55585e; }
+  a { color: #2447a8; }
+  @media(max-width:600px) { body { padding: 20px 12px 40px; } .pair { gap: 10px; } h1 { font-size: 24px; } }
+</style>
+<main>
+  <h1>Game Report｜修改前後</h1>
+  <h2>手機展開</h2>
+  <p>雙方準確率放大，恢復清楚的雙欄層次；完整分類仍可按需展開。</p>
+  <div class="pair phone">
+    <figure><figcaption>修改前</figcaption><a class="phone-report" href="screenshots/report-open-after-390.png"><img src="screenshots/report-open-after-390.png" alt="修改前：展開後仍是細小的單行摘要"></a></figure>
+    <figure><figcaption>修改後</figcaption><a class="phone-report" href="screenshots/report-expanded-final-390.png"><img src="screenshots/report-expanded-final-390.png" alt="修改後：大字準確率與雙欄棋手資訊"></a></figure>
+  </div>
+  <h2>桌面展開</h2>
+  <p>展開後使用更大的數字、圖表與閱讀空間；先看表現，再選失誤。</p>
+  <div class="pair">
+    <figure><figcaption>修改前</figcaption><a class="desktop-report" href="screenshots/report-open-after-1440.png"><img src="screenshots/report-open-after-1440.png" alt="修改前桌面報告"></a></figure>
+    <figure><figcaption>修改後</figcaption><a class="desktop-report" href="screenshots/report-expanded-final-1440.png"><img src="screenshots/report-expanded-final-1440.png" alt="修改後桌面報告"></a></figure>
+  </div>
+  <h2>失誤圖</h2>
+  <p>圖表放大，不加常駐標籤；點選標記即可查看該步。</p>
+  <div class="pair phone">
+    <figure><figcaption>修改前</figcaption><a class="phone-report" href="screenshots/report-open-after-390.png"><img src="screenshots/report-open-after-390.png" alt="修改前的失誤圖"></a></figure>
+    <figure><figcaption>修改後・捲至圖表</figcaption><a class="phone-report" href="screenshots/report-errors-final-390.png"><img src="screenshots/report-errors-final-390.png" alt="放大後的失誤圖，可點選跳至棋盤"></a></figure>
+  </div>
+  <h2>收合維持單行</h2>
+  <p>只有展開時放大；收合仍為 44px，保留雙方準確率與失誤數。</p>
+  <figure class="single"><a class="compact-report" href="screenshots/report-compact-final-1440.png"><img src="screenshots/report-compact-final-1440.png" alt="桌面收合報告維持精簡單行"></a></figure>
+  <footer>參考 <a href="https://support.chess.com/en/articles/8584089-how-does-game-review-work">Chess.com Game Review</a> 與舊版手機 Report。已驗證 1440／768／390／360px、圖表點選與鍵盤操作。</footer>
+</main>
+</html>

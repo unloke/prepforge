@@ -40,7 +40,7 @@ describe("Analyze's desktop panel", () => {
   });
 
   it("keeps the game's sources as the panel's last two folds", () => {
-    expect(sources).toMatch(/id="pgn-drawer">\s*<summary>Analyze source · PGN<\/summary>/);
+    expect(sources).toMatch(/id="pgn-drawer">\s*<summary>PGN<\/summary>/);
     expect(sources).toMatch(/id="history-drawer"[^>]*>\s*<summary>Recent analyses<\/summary>/);
     // They sit outside the panes, after the report.
     expect(view.indexOf('id="analyze-open"')).toBeGreaterThan(view.indexOf('id="analyze-panes"'));

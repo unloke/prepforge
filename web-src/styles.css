@@ -6061,10 +6061,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   font-weight: 650;
 }
 
-.pgn-file-row {
-  margin-top: 6px;
-}
-
 /* Build's tree: the main line reads as the line, side lines step back and
    sit under their fork, and a position with no answer on our side carries
    one mark. Scoped here (not in the shared move-tree rules that Analyze

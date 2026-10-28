@@ -64,13 +64,25 @@ async function skipTrainingLine() {
     await skipSmartCard();
     return;
   }
+  if (appState.trainBusy) return;
   const prompt = currentTrainingPrompt();
   if (!prompt) {
     setStatus("No active training line");
     return;
   }
+  const training = appState.training;
+  const owner = currentOwnerId();
+  const mode = appState.trainMode;
+  const stillCurrent = () => appState.training === training && !appState.smart
+    && currentOwnerId() === owner && appState.trainMode === mode;
+  appState.trainBusy = true;
+  syncTrainSessionControls();
   try {
     const result = await postJson("/api/train/skip", { session_id: prompt.session_id });
+    if (!stillCurrent()) return;
+    appState.trainStats.skipped += 1;
+    appState.trainAttempt = 1;
+    appState.trainBusy = false;
     if (result.prompt) {
       appState.training.prompt = result.prompt;
       await renderTraining(result.prompt);
@@ -78,7 +90,12 @@ async function skipTrainingLine() {
       finishTrainingSession();
     }
   } catch (error) {
-    setStatusError(error.message);
+    if (stillCurrent()) setStatusError(error.message);
+  } finally {
+    if (stillCurrent()) {
+      appState.trainBusy = false;
+      syncTrainSessionControls();
+    }
   }
 }
 

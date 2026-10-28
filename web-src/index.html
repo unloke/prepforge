@@ -272,18 +272,23 @@
                     <button type="button" class="sheet-row" data-copy="fen"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v11H9zM5 15V4h10"/></svg><span>Copy FEN</span></button>
                   </div>
                   <details class="drawer" id="pgn-drawer">
-                    <summary>Analyze source · PGN</summary>
+                    <summary>PGN</summary>
+                    <div class="pgn-editor">
                     <textarea
                       id="pgn-input"
                       aria-label="PGN"
+                      aria-describedby="pgn-error"
                       data-testid="pgn-input"
                       rows="5"
                       spellcheck="false"
                       placeholder="[Event &quot;Training Game&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 *"
                     ></textarea>
-                    <div class="row gap pgn-file-row">
-                      <button type="button" class="btn sm ghost" id="pgn-file-btn" data-testid="pgn-file-btn">Open .pgn file</button>
+                    <p id="pgn-error" class="pgn-error" role="alert" hidden></p>
+                    <div class="pgn-actions">
+                      <button type="button" class="pgn-action" id="pgn-file-btn" data-testid="pgn-file-btn" aria-label="Open .pgn file" title="Open .pgn file"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7V4h7l2 3h9v13H3zM3 9h18"/></svg><span>File</span></button>
+                      <button type="button" class="pgn-action pgn-open" id="open-pgn">Open PGN<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg></button>
                       <input type="file" id="pgn-file-input" accept=".pgn,application/x-chess-pgn,text/plain" hidden />
+                    </div>
                     </div>
                   </details>
                   <details class="drawer" id="history-drawer" data-testid="history-drawer" hidden>

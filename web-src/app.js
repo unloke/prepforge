@@ -1,4 +1,5 @@
 import { html } from "./html.js";
+import { bindPgnInput } from "./analyze-pgn-open.js";
 import { confirmAbandonGame } from "./train-play.js";
 import "./core/client-log.js";
 import { createSyncController } from "./controllers/sync.js";
@@ -1570,6 +1571,7 @@ function bindEvents() {
     void handleWorkspacePopstate();
   });
   // Analyze takes a PGN file as well as a paste (Library imports from a file too).
+  bindPgnInput({ invalidateAnalysisSource, currentOwnerId, sourceIsCurrent: (seq) => seq === analysisRecallSeq, loadPgnIntoAnalyze, orientAnalysisFromPgn, setStatusError });
   const pgnFileBtn = document.getElementById("pgn-file-btn");
   const pgnFileInput = document.getElementById("pgn-file-input");
   if (pgnFileBtn && pgnFileInput) {

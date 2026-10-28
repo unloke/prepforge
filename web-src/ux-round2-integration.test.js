@@ -1,11 +1,12 @@
 import { html } from "./html.js";
+import { analysisHistoryResult } from "./analyze-orient.js";
 import { describe, expect, it, vi } from "vitest";
 import { normalizeSelection, selectionChips } from "./views/shared/source-composer.js";
 import { appSource } from "./test-app-source.js";
 
 const source = appSource();
 function compile(marker, deps, prelude = "") {
-  deps = { html, ...deps };
+  deps = { html, analysisHistoryResult, ...deps };
   const start = source.indexOf(marker);
   const end = source.indexOf("\n}\n", start) + 2;
   return new Function(...Object.keys(deps), `${prelude}\nreturn (${source.slice(start, end)});`)(...Object.values(deps));

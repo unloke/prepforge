@@ -4,6 +4,7 @@ import { html } from "../html.js";
 
 import { CLASS_GROUPS, CLASS_GROUP_OF, classBadgeSymbol } from "../move-grades.js";
 import "./analyze-chart.css";
+import "./analyze-report.css";
 import { createMoveTreeRenderer } from "./shared/movetree.js";
 import { pgnHeaderTags, treeToMovetext } from "../analyze-pgn.js";
 import { paintFindGreat, renderReportBlock, reportGradeOf } from "./analyze-report.js";
@@ -205,6 +206,7 @@ export function createAnalyzeView({
     report = renderReportBlock(document.getElementById("analysis-summary"), {
       moves,
       evalGraph: analysis.eval_graph || [],
+      positionEvals: analysis.position_evals || {},
       headers: pgnHeaderTags(document.getElementById("pgn-input")?.value || ""),
       names: { white: analysis.white, black: analysis.black, result: analysis.result },
       reps: bookReps(),
@@ -734,7 +736,7 @@ export function createAnalyzeView({
     tooltip.style.maxWidth = `${spot.maxWidth}px`;
     tooltip.style.left = `${spot.left}px`;
     tooltip.style.top = `${spot.top}px`;
-    if (peekOnHover) peek(move?.fen_after ? { fen: move.fen_after, lastMove: move.uci } : null);
+    if (peekOnHover) peek(move?.fen_after ? { fen: move.fen_after, lastMove: move.uci, classification: move.classification } : null);
     const hover = document.getElementById("eval-chart-hover");
     if (hover) {
       hover.setAttribute("x1", String(x));

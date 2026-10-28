@@ -123,8 +123,8 @@ describe("Train save chip names training progress (P2-7)", () => {
     expect(syncChipVariant("syncing", "training").cls).toBe("is-syncing");
   });
 
-  it("keeps the Repertoire wording and every error state", () => {
-    expect(syncChipVariant("dirty").text).toBe("Unsaved changes");
+  it("names automatic repertoire saving and preserves error states", () => {
+    expect(syncChipVariant("dirty").text).toBe("Saving…");
     expect(syncChipVariant("error", "training").text).toBe("Offline — will retry");
     expect(syncChipVariant("unknown", "training").cls).toBe("is-saved");
   });

@@ -16,6 +16,17 @@ export function selfSide(white, black, names = []) {
   return null;
 }
 
+// Saved games speak from the linked player's viewpoint. Unidentified games
+// retain their PGN result, since a win/loss sign would invent an identity.
+export function analysisHistoryResult(game, names = []) {
+  if (!game.result || game.result === "*") return { mark: "", label: "", tone: "" };
+  const side = selfSide(game.white, game.black, names);
+  if (!side || !["1-0", "0-1", "1/2-1/2"].includes(game.result)) return { mark: game.result, label: game.result, tone: "" };
+  if (game.result === "1/2-1/2") return { mark: "=", label: "Draw", tone: "draw" };
+  const won = (game.result === "1-0") === (side === "white");
+  return { mark: won ? "+" : "−", label: won ? "Win" : "Loss", tone: won ? "win" : "loss" };
+}
+
 // "Engine review": on a game the user played (selfSide known), the coach grades only
 // the user's own moves on the mainline — the opponent's slips are not the user's to fix.
 // Free exploration (no mainline ply) and games with no recognisable Self review every move.
