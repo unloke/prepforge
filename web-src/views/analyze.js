@@ -214,6 +214,7 @@ export function createAnalyzeView({
       onJump: jumpToPly,
       onGrade: jumpToGrade,
     });
+    panes.syncReport?.();
     markCurrentMoment();
     paintFindGreat(analysis);
   }

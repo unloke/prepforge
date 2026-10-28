@@ -34,13 +34,13 @@ it("keeps missing loss distinct from a measured zero", () => {
 });
 
 function bind() {
-  const readout = { hidden: true, setAttribute: vi.fn() };
+  const readout = { hidden: true, style: {}, setAttribute: vi.fn(), getBoundingClientRect: () => ({ width: 190, height: 28 }) };
   const cursor = { hidden: true, style: {} };
   const listeners = {};
   let focused = null;
   // The first two targets overlap: pointer selection must use the stone's
   // position, not whichever transparent 44px button paints last.
-  const centers = [[100, 80], [120, 60], [240, 100]];
+  const centers = [[100, 80], [140, 60], [200, 100]];
   const markers = report.errors.map((row, i) => {
     const el = { dataset: { ply: String(row.ply) }, classList: { toggle: vi.fn(), remove: vi.fn() },
       getBoundingClientRect: () => ({ left: centers[i][0] - 22, top: centers[i][1] - 22, width: 44, height: 44 }) };
@@ -48,21 +48,28 @@ function bind() {
     el.focus = vi.fn(() => { focused = el; listeners.focusin({ target: el }); });
     return el;
   });
-  const chart = { querySelector: (s) => ({ output: readout, ".rp-error-cursor": cursor, ":focus": focused })[s], querySelectorAll: () => markers, addEventListener: (event, handler) => { listeners[event] = handler; } };
+  const plot = { getBoundingClientRect: () => ({ left: 60, width: 160 }) };
+  const chart = { getBoundingClientRect: () => ({ left: 40, top: 0, width: 220, height: 160 }), querySelector: (s) => ({ output: readout, ".rp-error-cursor": cursor, ".rp-error-plot": plot, ":focus-visible": focused })[s], querySelectorAll: () => markers, addEventListener: (event, handler) => { listeners[event] = handler; } };
   const jump = vi.fn();
   bindErrorChart({ querySelector: () => chart }, report, jump);
   return { chart, jump, readout, cursor, markers };
 }
 
-it("resolves overlapping touch targets by distance and ignores empty chart space", () => {
+it("scrubs the move axis across the plot and focuses the resolved touch target", () => {
   const { chart, jump, readout, markers } = bind();
   chart.onclick({ detail: 1, clientX: 100, clientY: 80, target: markers[1], stopPropagation() {} });
   expect(jump).toHaveBeenLastCalledWith(3);
-  chart.onclick({ detail: 1, clientX: 240, clientY: 100, stopPropagation() {} });
+  expect(markers[0].focus).toHaveBeenCalledWith({ preventScroll: true });
+  chart.onclick({ detail: 1, clientX: 200, clientY: 100, stopPropagation() {} });
   expect(jump).toHaveBeenLastCalledWith(8);
   expect(String(readout.innerHTML)).toContain('4…a6');
   chart.onclick({ detail: 1, clientX: 400, clientY: 0, stopPropagation() {} });
-  expect(jump).toHaveBeenCalledTimes(2);
+  expect(jump).toHaveBeenLastCalledWith(8);
+  expect(jump).toHaveBeenCalledTimes(3);
+  chart.onpointermove({ clientX: 140, clientY: 150 });
+  expect(String(readout.innerHTML)).toContain('3.Bb5');
+  chart.onpointermove({ clientX: 140, clientY: 0 });
+  expect(String(readout.innerHTML)).toContain('3.Bb5');
 });
 
 it("keeps focused details visible after the pointer leaves and supports native button activation", () => {

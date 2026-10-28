@@ -45,9 +45,22 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
   if (!view || !tabs || typeof window.matchMedia !== "function") return { select: () => {} };
   const media = Object.fromEntries(Object.entries(LAYOUT_QUERIES).map(([k, q]) => [k, window.matchMedia(q)]));
 
+  // A dedicated Report tab is already its disclosure control. Only the wide
+  // layout folds the score strip to make room for the move list below it.
+  function syncReport() {
+    const report = document.getElementById("analysis-summary");
+    const summary = report?.querySelector("[data-toggle-summary]");
+    if (!summary) return;
+    const tabbed = tabs.offsetParent !== null;
+    summary.disabled = tabbed;
+    if (tabbed) report.dataset.open = "true";
+    summary.setAttribute("aria-expanded", String(report.dataset.open === "true"));
+  }
+
   function select(pane, { store = true, focus = false } = {}) {
     const open = paneFor(pane, { phone: media.phone.matches });
     view.dataset.pane = open;
+    syncReport();
     tabs.querySelectorAll("[role=tab]").forEach((tab) => {
       const on = tab.dataset.pane === open;
       tab.setAttribute("aria-selected", String(on));
@@ -131,5 +144,5 @@ export function installAnalyzePanes({ onEvalMoved = () => {} } = {}) {
   placeGrade();
   placeCaption();
   select(readStored(), { store: false });
-  return { select };
+  return { select, syncReport };
 }
