@@ -69,15 +69,9 @@ export function bindErrorChart(host, report, onJump) {
   };
   chart.addEventListener("focusin", (event) => { const row = rowOf(event.target); if (row) show(row); });
   chart.addEventListener("focusout", (event) => { if (!rowOf(event.relatedTarget)) hide(); });
+  // Navigation belongs to the page's current board position, not marker focus
+  // (which can stay behind after Home/End). Buttons keep native Enter/Space.
   chart.onkeydown = (event) => {
     if (event.key === "Escape") hide();
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    const index = markers.indexOf(event.target);
-    if (index < 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const next = markers[(index + (event.key === "ArrowLeft" ? markers.length - 1 : 1)) % markers.length];
-    next.focus();
-    onJump(Number(next.dataset.ply));
   };
 }

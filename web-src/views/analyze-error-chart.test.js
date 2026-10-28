@@ -73,11 +73,26 @@ it("keeps focused details visible after the pointer leaves and supports native b
   expect(cursor.hidden).toBe(false);
   chart.onclick({ detail: 0, target: markers[0], stopPropagation() {} });
   expect(jump).toHaveBeenLastCalledWith(3);
-  const event = { key: "ArrowLeft", target: markers[0], preventDefault: vi.fn(), stopPropagation: vi.fn() };
-  chart.onkeydown(event);
-  expect(markers[2].focus).toHaveBeenCalledOnce();
-  expect(jump).toHaveBeenLastCalledWith(8);
-  expect(event.stopPropagation).toHaveBeenCalledOnce();
   chart.onkeydown({ key: "Escape" });
   expect(readout.hidden).toBe(true);
 });
+
+it.each([{}, { shiftKey: true }, { ctrlKey: true }, { metaKey: true }, { altKey: true }])(
+  "leaves game navigation to the page with modifiers %j, even after End leaves a stale marker focus",
+  (modifiers) => {
+    const { chart, jump, markers } = bind();
+    markers[1].focus();
+    // Home/End can move the board without moving chart focus. Every navigation
+    // key must keep bubbling so the next arrow uses the board's current move.
+    for (const key of ["End", "ArrowRight", "ArrowLeft", "Home", "ArrowRight", "ArrowUp", "ArrowDown"]) {
+      const event = { ...modifiers, key, target: markers[1], preventDefault: vi.fn(), stopPropagation: vi.fn() };
+      chart.onkeydown(event);
+      expect(event.preventDefault).not.toHaveBeenCalled();
+      expect(event.stopPropagation).not.toHaveBeenCalled();
+    }
+    expect(jump).not.toHaveBeenCalled();
+    expect(markers[1].focus).toHaveBeenCalledOnce();
+    expect(markers[0].focus).not.toHaveBeenCalled();
+    expect(markers[2].focus).not.toHaveBeenCalled();
+  },
+);
