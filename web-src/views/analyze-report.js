@@ -326,11 +326,11 @@ function openingHtml(report) {
 
 function compactErrors(counts) {
   const errors = REPORT_GRADES.filter((g) => ERRORS.has(g.key) && counts[g.key]);
-  if (!errors.length) return html`<span class="rp-clean" title="No errors" aria-label="No errors">0</span>`;
+  if (!errors.length) return html`<span class="rp-clean" title="No errors" aria-label="No errors"><span class="rp-error-total">0</span><span class="rp-error-word">No errors</span></span>`;
   const total = errors.reduce((sum, g) => sum + counts[g.key], 0);
   const worst = ["blunder", "mistake", "missed", "inaccuracy"].find((key) => counts[key]);
   const detail = errors.map((g) => `${counts[g.key]} ${g.label}`).join(", ");
-  return html`<span class="rp-error-count g-${worst}" title="${detail}" aria-label="${`${total} errors: ${detail}`}"><i class="rp-glyph" aria-hidden="true">${GRADE_MARK[worst]}</i>${total}</span>`;
+  return html`<span class="rp-error-count g-${worst}" title="${detail}" aria-label="${`${total} errors: ${detail}`}"><i class="rp-glyph" aria-hidden="true">${GRADE_MARK[worst]}</i>${total}<span class="rp-error-word">${total === 1 ? "error" : "errors"}</span></span>`;
 }
 
 // The one line that says how each side played. Where the report heads the

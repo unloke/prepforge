@@ -1,28 +1,40 @@
-/* One 44px summary, two equal player columns and the disclosure: the columns
-   divide the available width after two 8px gaps and an 8px chevron. */
+/* The open report compares players at reading size. Two equal columns share
+   the available width after a 12px gutter; only the closed state is a row. */
 #analysis-summary > .rp-summary {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8px;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   align-items: center;
-  min-height: 44px;
-  padding: 0 8px;
+  min-height: 0;
+  padding: 0;
 }
 #analysis-summary > .rp-summary .rp-side {
-  display: flex;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  padding: 0;
-  background: none;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface-3);
 }
 #analysis-summary > .rp-summary .rp-disc { display: block; }
-#analysis-summary > .rp-summary .rp-name { display: block; flex: 1; font-size: 12px; font-weight: 500; }
-#analysis-summary > .rp-summary .rp-acc { flex: none; font-size: 13px; font-weight: 600; text-align: right; }
-#analysis-summary > .rp-summary .rp-errs { display: flex; flex: none; gap: 6px; overflow: visible; font-size: 12px; }
-#analysis-summary > .rp-summary .rp-chev { display: block; grid-column: 3; grid-row: 1; margin: 0; }
+#analysis-summary > .rp-summary .rp-name { display: block; grid-column: 2; font-size: 14px; font-weight: 500; }
+#analysis-summary > .rp-summary .rp-acc { grid-column: 1 / -1; font-size: 36px; font-weight: 650; letter-spacing: -0.04em; text-align: left; }
+#analysis-summary > .rp-summary .rp-errs { display: flex; grid-column: 1 / -1; gap: 6px; overflow: visible; font-size: 13px; }
+#analysis-summary > .rp-summary .rp-chev { position: absolute; right: 8px; top: 8px; margin: 0; }
+#analysis-summary > .rp-body { gap: 24px; padding-top: 8px; }
+#analysis-summary .rp-sec { gap: 12px; }
+#analysis-summary .rp-h { color: var(--text); font-size: 14px; }
+#analysis-summary .rp-phases .rp-tr { min-height: 40px; }
+#analysis-summary .rp-phases .rp-n { height: 40px; line-height: 40px; font-size: 17px; font-weight: 500; }
+#analysis-summary .rp-phase { gap: 4px; min-height: 44px; font-size: 13px; }
+#analysis-summary .rp-span { font-size: 12px; color: var(--muted); }
 .rp-error-count { display: inline-flex; gap: 2px; font-variant-numeric: tabular-nums; }
 .rp-error-count .rp-glyph { min-width: 0; }
+.rp-error-word { margin-left: 2px; }
+.rp-clean > .rp-error-total { display: none; }
 .rp-clean { color: var(--muted); font-variant-numeric: tabular-nums; }
 .rp-detail > summary { min-height: 36px; display: flex; align-items: center; color: var(--muted); font-size: var(--fs-s); cursor: pointer; }
 .rp-detail > summary::after { content: "+"; margin-left: auto; }
@@ -31,11 +43,11 @@
 .rp-detail .rp-sec-head { justify-content: flex-end; }
 .rp-prep-jump { border: 0; padding: 4px; background: none; color: var(--text); font: inherit; cursor: pointer; }
 .rp-error-chart { position: relative; padding-left: 16px; }
-.rp-error-chart svg { display: block; width: 100%; height: 124px; overflow: visible; cursor: pointer; touch-action: pan-y; }
+.rp-error-chart svg { display: block; width: 100%; height: 176px; overflow: visible; cursor: pointer; touch-action: pan-y; }
 .rp-error-grid { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .rp-error-chart > .rp-disc { position: absolute; left: 0; }
-.rp-lane-white { top: 24px; }
-.rp-lane-black { top: 80px; }
+.rp-lane-white { top: 22%; }
+.rp-lane-black { top: 66%; }
 .rp-error-hit { fill: transparent; }
 .rp-error-bar, .rp-error-point { fill: currentColor; }
 .rp-error { color: var(--inaccuracy-text); outline: none; }
@@ -64,9 +76,21 @@
   #analysis-explain .coach-review > .cr-step:hover:not(:disabled) { background: var(--surface-3); }
   #analysis-explain .cr-text { flex: 1; }
 }
+@media (min-width: 1101px), (min-width: 861px) and (aspect-ratio >= 5/6) {
+  #view-analyze .report-pane:has(#analysis-summary[data-open="true"]) { max-height: min(66vh, 620px); }
+  #analysis-summary > .rp-summary:hover { background: none; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 8px; gap: 8px; min-height: 44px; padding: 0 8px; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-side { display: flex; gap: 6px; padding: 0; background: none; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-name { flex: 1; font-size: 12px; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-acc { flex: none; font-size: 13px; letter-spacing: normal; text-align: right; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-errs { flex: none; font-size: 12px; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-error-word { display: none; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-error-total { display: inline; }
+  #analysis-summary:not([data-open="true"]) > .rp-summary .rp-chev { position: static; display: block; grid-column: 3; grid-row: 1; }
+}
 @media (max-width: 600px) {
-  #analysis-summary > .rp-summary { padding: 0; gap: 6px; }
-  #analysis-summary > .rp-summary .rp-side { gap: 4px; }
-  #analysis-summary > .rp-summary .rp-errs { gap: 4px; }
+  #analysis-summary > .rp-summary { gap: 12px; }
+  #analysis-summary > .rp-summary .rp-side { padding: 14px; background: var(--panel); }
+  #analysis-summary > .rp-summary .rp-acc { font-size: 34px; }
   .rp-detail > summary, .rp-prep-jump { min-height: 44px; }
 }
