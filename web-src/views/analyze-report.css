@@ -8,6 +8,7 @@
   min-height: 0;
   padding: 8px 0 12px;
   border-bottom: 1px solid var(--line);
+  border-radius: 0;
 }
 #analysis-summary > .rp-summary .rp-side {
   display: grid;
@@ -16,6 +17,7 @@
   gap: 4px 8px;
   min-width: 0;
   padding: 4px 0;
+  border-radius: 0;
   background: none;
 }
 #analysis-summary > .rp-summary .rp-side + .rp-side { border-left: 1px solid var(--line); padding-left: 16px; }
@@ -42,23 +44,44 @@
 .rp-detail .rp-h { display: none; }
 .rp-detail .rp-sec-head { justify-content: flex-end; }
 .rp-prep-jump { border: 0; padding: 4px; background: none; color: var(--text); font: inherit; cursor: pointer; }
-.rp-error-chart { position: relative; padding-left: 16px; }
-.rp-error-chart svg { display: block; width: 100%; height: 176px; overflow: visible; cursor: pointer; touch-action: pan-y; }
-.rp-error-grid { fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.rp-error-chart > .rp-disc { position: absolute; left: 0; }
-.rp-lane-white { top: 22%; }
-.rp-lane-black { top: 66%; }
-.rp-error-hit { fill: transparent; }
-.rp-error-bar, .rp-error-point { fill: currentColor; }
-.rp-error { color: var(--inaccuracy-text); outline: none; }
+.rp-error-key { display: grid; place-items: center; width: 28px; height: 28px; padding: 6px; border: 0; border-radius: 4px; background: none; color: var(--muted); cursor: pointer; }
+.rp-error-key svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.rp-error-key-content { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-size: 13px; }
+.rp-error-key-content:popover-open { display: grid; gap: 12px; }
+.rp-error-key-content > span { display: flex; align-items: center; gap: 8px; }
+.rp-error-key-content .rp-disc:nth-of-type(2) { margin-left: 12px; }
+.rp-error-key-grades { display: grid !important; grid-template-columns: 20px auto; }
+.rp-error-chart { position: relative; height: 160px; touch-action: pan-y; }
+.rp-error-plot { position: absolute; inset: 28px 16px 12px 28px; }
+.rp-error-grid { display: block; width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.rp-error-grid path { vector-effect: non-scaling-stroke; }
+.rp-error-grid > path:first-child { opacity: 0.45; }
+.rp-error-axis-line { stroke: var(--muted); stroke-opacity: 0.55; }
+.rp-error-plot > .rp-disc { position: absolute; left: -24px; width: 10px; height: 10px; border: 1px solid var(--muted); }
+.rp-error-side-white { top: calc(25% - 5px); }
+.rp-error-side-black { top: calc(75% - 5px); }
+.rp-error-fin { position: absolute; top: 50%; width: 12px; color: var(--inaccuracy-text); background: currentColor; opacity: 0.7; transform: translateX(-50%); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.rp-error-fin.g-mistake { color: var(--warn-text); width: 16px; }
+.rp-error-fin.g-blunder { color: var(--danger); width: 20px; }
+.rp-error-fin.g-missed { color: var(--missed); width: 20px; }
+.rp-error-fin.rp-error-white { transform: translate(-50%, -100%); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.rp-error-cursor { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--muted); opacity: 0.5; pointer-events: none; }
+.rp-error { position: absolute; display: grid; place-items: center; width: 44px; height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: none; transform: translate(-50%, -50%); color: var(--inaccuracy-text); cursor: pointer; outline: none; }
 .rp-error.g-mistake { color: var(--warn-text); }
 .rp-error.g-blunder { color: var(--danger); }
 .rp-error.g-missed { color: var(--missed); }
-.rp-error-point { stroke: var(--panel); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.rp-error-white .rp-error-point { fill: var(--eval-side-white); stroke: currentColor; stroke-width: 2; }
-.rp-error:is(:focus-visible, .is-current, .is-hovered) .rp-error-point { stroke: var(--text); stroke-width: 2; }
-.rp-error-readout { position: absolute; top: 0; right: 0; max-width: calc(100% - 40px); padding: 4px 6px; background: var(--panel); color: var(--text); font-size: 12px; border: 1px solid var(--line); border-radius: 4px; pointer-events: none; }
-.rp-error-readout[hidden] { display: none; }
+.rp-error-stone { display: block; width: 12px; height: 12px; box-sizing: border-box; border: 1px solid var(--muted); border-radius: 50%; background: var(--eval-side-white); }
+.rp-error-black .rp-error-stone { background: #080a0c; border-color: #92969c; }
+.rp-error.g-mistake .rp-error-stone { width: 16px; height: 16px; }
+.rp-error:is(.g-blunder, .g-missed) .rp-error-stone { width: 20px; height: 20px; }
+.rp-error.is-unknown .rp-error-stone { border-style: dashed; }
+.rp-error.is-hovered .rp-error-stone { outline: 1px solid var(--muted); outline-offset: 3px; }
+.rp-error.is-current .rp-error-stone { outline: 2px solid var(--text); outline-offset: 3px; }
+.rp-error:focus-visible .rp-error-stone { outline: 2px dashed var(--text); outline-offset: 5px; }
+.rp-error:hover { background: none; }
+.rp-error-readout { position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: 8px; max-width: 100%; box-sizing: border-box; padding: 4px 8px; background: var(--panel); color: var(--text); font-size: 12px; border: 1px solid var(--line); border-radius: 4px; pointer-events: none; font-variant-numeric: tabular-nums; }
+.rp-error-readout b { font-weight: 600; }
+.rp-error-readout[hidden], .rp-error-cursor[hidden] { display: none; }
 .rp-no-errors { color: var(--muted); font-size: var(--fs-s); }
 .hi-meta { display: inline-flex; align-items: center; gap: 8px; }
 .hi-result { font-size: 16px; font-weight: 600; }
@@ -88,12 +111,16 @@
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-error-total { display: inline; }
   #analysis-summary:not([data-open="true"]) > .rp-summary .rp-chev { position: static; display: block; grid-column: 3; grid-row: 1; }
 }
-@media (max-width: 600px) {
-  #analysis-summary > .rp-summary { gap: 12px; }
-  #analysis-summary > .rp-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 0; }
-  #analysis-summary > .rp-summary .rp-side { grid-template-columns: 8px minmax(0, 1fr); gap: 4px 6px; padding: 4px 0; }
+@media (max-width: 860px) {
+  #analysis-summary > .rp-summary { gap: 12px; padding-top: 0; }
+  #analysis-summary > .rp-summary .rp-side { grid-template-columns: 8px minmax(0, 1fr) auto; gap: 4px 6px; padding: 4px 0; }
   #analysis-summary > .rp-summary .rp-side + .rp-side { padding-left: 12px; }
+  #analysis-summary > .rp-summary .rp-name { grid-column: 2 / -1; }
   #analysis-summary > .rp-summary .rp-acc { grid-column: 2; grid-row: 2; text-align: left; font-size: 24px; }
-  #analysis-summary > .rp-summary .rp-errs { grid-row: 3; }
+  #analysis-summary > .rp-summary .rp-errs { grid-column: 3; grid-row: 2; align-self: center; }
+}
+@media (max-width: 600px) {
+  #analysis-summary > .rp-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rp-detail > summary, .rp-prep-jump { min-height: 44px; }
+  .rp-error-key { width: 44px; height: 44px; margin: -8px 0; }
 }

@@ -207,7 +207,7 @@ describe("the report", () => {
     const order = ["rp-phases", "rp-errors", "rp-opening", "rp-counts"].map((c) => html.indexOf(c));
     expect(order.every((i) => i > -1)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
-    expect(html).toMatch(/role="button" tabindex="0" data-ply="4" data-km-ply="4" aria-label="Black 2…Nc6 · Blunder/);
+    expect(html).toMatch(/data-ply="4" data-km-ply="4" aria-label="Black 2…Nc6 · Blunder/);
     expect(html).not.toContain("km-best");
     expect(html).toContain('<details class="rp-detail"><summary>Move grades</summary>');
     // A count is a control only when there is something to go to.
