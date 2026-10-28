@@ -14,6 +14,7 @@
 .page-head,
 .phone-panes,
 .phone-back,
+.strip-end,
 .phone-sheet > :is(.sheet-bar, .sheet-rows) { display: none; }
 .phone-sheet { display: contents; }
 
@@ -218,7 +219,7 @@
     line-height: 1.35;
     text-wrap: pretty;
   }
-  #view-dashboard .today .btn { min-height: 36px; height: 36px; margin-top: 10px; padding: 0 18px; border-radius: 18px; font-size: 14px; }
+  #view-dashboard .today .btn { min-height: 36px; height: 36px; margin-top: 10px; padding: 0 18px; border-radius: var(--radius); font-size: 14px; }
 
   #view-dashboard .lib-list.card { padding: 0; background: none; }
   /* The phone has no card head: the page title names the page, and its
@@ -573,6 +574,7 @@
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
     width: auto;
     margin: 0;
+    font-size: 14px;
     outline: 12px solid var(--bg);
   }
   /* The docked pill floats over rows that scroll under its plate: its hit
@@ -594,14 +596,17 @@
     right: var(--phone-gutter);
     bottom: calc(var(--phone-bar-h) + env(safe-area-inset-bottom) + 12px);
     justify-content: center;
+    /* The same box and type as Scout's docked Start and every phone primary. */
     height: 36px;
+    min-height: 0;
     padding: 0 16px;
-    border: 0;
+    border: 1px solid var(--accent);
     border-radius: var(--radius);
     background: var(--accent);
     color: var(--accent-ink);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
+    line-height: normal;
     outline: 12px solid var(--bg);
   }
 
@@ -619,6 +624,9 @@
   #view-settings .settings-nav {
     position: sticky;
     top: 0;
+    /* Above the cards' positioned controls (segmented buttons carry a hit
+       area), which otherwise paint over the strip as they scroll under it. */
+    z-index: 1;
     /* The strip is a flex row: without it the inline links wrapped "Engine"
        onto a second 44px line. */
     display: flex;
@@ -970,7 +978,7 @@
      arrows must be placed: auto-placement would fill that track first. */
   .study .board-bar :is(#analysis-prev, #build-parent, #train-hint) { order: 5; grid-column: -3 / -2; }
   .study .board-bar :is(#analysis-next, #build-next, #train-skip) { order: 6; grid-column: -2 / -1; }
-  :is(#analysis-start, #analysis-end, #build-root, #build-end) { display: none !important; }
+  :is(#analysis-start, #analysis-end) { display: none !important; }
 
   /* Icon buttons: the label stays in title / aria-label. */
   .study .board-bar .btn.icon,
@@ -1045,11 +1053,33 @@
   /* Repertoire has its own way out (the header's back button), so its bar
      drops Views: Flip and the move arrows. */
   #view-build .board-bar .bb-views { display: none; }
-  #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 48px 48px; }
+  /* Repertoire's bar has room for all four arrows, as Lichess's nav row:
+     |‹ ‹ › ›|, the ends a step narrower than the steps; the shown move's name
+     keeps the middle. */
+  #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 40px 48px 48px 40px; }
+  #view-build .board-bar .board-label { grid-area: 1 / 2 / 2 / 3; }
+  #view-build .board-bar :is(#build-root, #build-parent, #build-next, #build-end) { grid-row: 1; }
+  #view-build .board-bar #build-root { grid-column: 3; }
+  #view-build .board-bar #build-parent { grid-column: 4; }
+  #view-build .board-bar #build-next { grid-column: 5; }
+  #view-build .board-bar #build-end { grid-column: 6; }
+  #view-build .board-bar :is(#build-root, #build-end) {
+    width: 40px;
+    height: 36px;
+    background: var(--surface-3);
+    color: var(--text);
+  }
+  #view-build .board-bar #build-root { border-radius: var(--radius) 2px 2px var(--radius); }
+  #view-build .board-bar #build-parent,
+  #view-build .board-bar #build-next { border-radius: 2px; }
+  #view-build .board-bar #build-end { border-radius: 2px var(--radius) var(--radius) 2px; }
+  #view-build .board-bar :is(#build-root, #build-end):hover { background: var(--surface-3); }
+  #view-build .board-bar :is(#build-root, #build-end):active { background: var(--line-strong); }
   /* Under 360px the icons and arrows leave the pill too little room for its
      name (Analyze kept 44px): tighten the bar so the action stays readable. */
   @media (max-width: 359px) {
-    #view-build .board-bar { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
+    #view-build .board-bar { grid-template-columns: 40px minmax(0, 1fr) 36px 44px 44px 36px; }
+    #view-build .board-bar :is(#build-root, #build-end) { width: 36px; }
     #view-analyze .board-bar { grid-template-columns: 40px 40px 40px minmax(0, 1fr) 44px 44px; }
     #view-analyze .board-bar .btn.icon { width: 40px; }
     .study .board-bar :is(#analysis-prev, #analysis-next, #build-parent, #build-next) { width: 44px; }
@@ -1134,17 +1164,6 @@
     padding: 4px var(--phone-gutter) 0;
     background: var(--panel);
     font-size: 16px;
-  }
-  .phone-sheet.is-open > .sheet-bar::before {
-    content: "";
-    position: absolute;
-    top: 2px;
-    left: 50%;
-    width: 38px;
-    height: 5px;
-    border-radius: 3px;
-    background: var(--line-strong);
-    transform: translateX(-50%);
   }
   .sheet-done {
     min-height: 36px;
@@ -1345,17 +1364,6 @@
     animation: phone-sheet-up var(--dur-fast) var(--ease-out);
   }
   #build-dock-tools:popover-open { gap: 16px; padding-top: 8px; }
-  /* The sheet's grab handle, the same one every phone sheet carries (phone-kit). */
-  #build-dock-tools::before {
-    content: "";
-    grid-column: 1 / -1;
-    justify-self: center;
-    width: 36px;
-    height: 4px;
-    margin-bottom: -4px;
-    border-radius: 2px;
-    background: var(--line-strong);
-  }
   #build-dock-tools::backdrop { background: rgba(0, 0, 0, 0.45); }
   #build-dock-tools .dock-opt { gap: 6px; }
   #build-dock-tools .dock-opt-label { font-size: 13px; }
@@ -1714,7 +1722,6 @@
     padding: 6px 0;
     border-radius: var(--radius-card);
   }
-  .sheet-grab { margin: 2px auto 6px; }
   .sheet-item {
     min-height: 44px;
     padding: 0 16px;

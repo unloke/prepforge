@@ -726,15 +726,6 @@ h2 {
 }
 .sheet::backdrop { background: rgba(15, 17, 22, 0.32); backdrop-filter: none; }
 
-.sheet-grab {
-  grid-column: 1 / -1;
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line-strong);
-  margin: 2px auto 6px;
-}
-
 .sheet-item {
   display: flex;
   align-items: center;
