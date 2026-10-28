@@ -1220,15 +1220,17 @@ async function runAnalysis(options = {}) {
       complete();
       return;
     }
+    // The loaded tree also holds lines explored while the engine was working.
+    // Replace its mainline grades, keeping those branches and the current move.
+    const nodePath = selectedNodePath() || ANALYSIS_ROOT_PATH;
     appState.analysis = payload;
-    resetAnalysisVariations();
-    await rebuildAnalysisVariations(gamePgn);
-    await showAnalysisPly(0);
+    appState.analysisTree = null;
     await timed("render", () => renderAnalysis(payload, { sourceSeq: seq }));
     if (seq !== analysisRecallSeq || analysisOwnerId !== currentOwnerId()) {
       complete();
       return;
     }
+    await selectAnalysisNodePath(nodePath);
     notices.updateJob({
       current: positions.length,
       total: positions.length,
