@@ -1478,6 +1478,23 @@ button.rp-n.g-mistake { color: var(--warn-text); }
     cursor: pointer;
   }
   #analyze-open .sheet-done:hover { background: var(--accent-soft); }
+  #analyze-open.is-open > .sheet-copy { display: flex; gap: 8px; }
+  #analyze-open .sheet-copy .sheet-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: var(--control-h-sm);
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--fs-s);
+    cursor: pointer;
+  }
+  #analyze-open .sheet-copy .sheet-row:hover { background: var(--accent-soft); }
+  #analyze-open .sheet-copy svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 }
 
 /* ---- Phone ------------------------------------------------------------
