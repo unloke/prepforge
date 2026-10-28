@@ -894,7 +894,7 @@ function endPlayGame(title, failure = "") {
 async function openPlayInAnalyze() {
   const play = appState.play;
   if (!play) return;
-  const pgn = playSessionPgn(play);
+  const pgn = playSessionPgn(play, appState.lichessUsername);
   const input = document.getElementById("pgn-input");
   if (input) input.value = pgn;
   const drawer = document.getElementById("pgn-drawer");

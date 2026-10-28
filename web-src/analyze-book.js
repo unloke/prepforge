@@ -2,7 +2,7 @@ import { html } from "./html.js";
 import { moveTokenHtml, plyOfFen } from "./move-text.js";
 // Analyze's repertoire cache and departure actions load with the view.
 export function createBookActions({
-  bookState, appState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
+  bookState, appState, currentOwnerId, api, loadCoach, rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
 }) {
 async function ensureBookLoaded() {
   if (bookState.loaded) return;
@@ -54,9 +54,9 @@ async function ensureBookLoaded() {
 
 // Deepest full-prefix match of `ucis` across the loaded repertoires.
 // Returns { rep, node, matched } for the best rep, or null when none loaded.
-function bookMatch(ucis) {
+function bookMatch(ucis, reps) {
   let best = null;
-  for (const rep of bookState.reps) {
+  for (const rep of reps) {
     let cur = rep.rootId;
     let node = null;
     let matched = 0;
@@ -116,19 +116,21 @@ async function updateBookline() {
   await ensureBookLoaded();
   // Re-read after the await — the user may have navigated while the trees loaded.
   if ((appState.analysisCurrentNodeId || "root") !== nodeId) return;
-  if (!bookState.reps.length) return hideBookline();
+  const side = analysisSelfSide();
+  const reps = side ? bookState.reps.filter((rep) => rep.color === side) : bookState.reps;
+  if (!reps.length) return hideBookline();
   const tree = appState.analysisTree;
   const node = tree && tree.byId.get(nodeId);
   if (!node || !node.parent) return hideBookline(); // root: nothing played yet
   const path = analysisNodePath(node);
-  const cur = bookMatch(path);
+  const cur = bookMatch(path, reps);
   // Still in book: the coach has nothing to flag, so it says nothing.
   if (cur && cur.matched === path.length) return hideBookline();
   // Out of book. Only speak at the departure ply: the PARENT was fully in book.
   // When the parent position sits in SEVERAL books, prefer the repertoire where
   // the mover is the player — forgetting your own prep outranks a novelty note.
   const prefix = path.slice(0, -1);
-  const fullPrev = bookState.reps
+  const fullPrev = reps
     .map((rep) => {
       let walk = rep.rootId;
       for (const uci of prefix) {

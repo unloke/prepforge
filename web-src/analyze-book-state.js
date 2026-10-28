@@ -10,10 +10,10 @@ import { preloadCoach, _coachReady } from "./coach/coach-loader.js";
 //   - the player leaves their own book → "Add to training" records one recall miss
 //     (POST /api/train/record-miss) so the move leads the next smart session
 
-let editRepertoire;
+let editRepertoire, analysisSelfSide;
 
 export function createBook(deps) {
-  ({ editRepertoire } = deps);
+  ({ editRepertoire, analysisSelfSide } = deps);
   return { invalidateBook, ensureBookLoaded, updateBookline };
 }
 
@@ -48,7 +48,7 @@ let bookActionsPromise = null;
 function loadBookActions() {
   bookActionsPromise ||= import("./analyze-book.js").then(({ createBookActions }) => createBookActions({
     bookState, appState, currentOwnerId, api, loadCoach: () => (_coachReady || preloadCoach()),
-    rememberHandoff, postJson, setStatus, setStatusError, editRepertoire,
+    rememberHandoff, postJson, setStatus, setStatusError, editRepertoire, analysisSelfSide,
   })).catch((error) => { bookActionsPromise = null; throw error; });
   return bookActionsPromise;
 }

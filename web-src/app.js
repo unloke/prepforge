@@ -1701,7 +1701,7 @@ async function init() {
   });
   accountEntry.bindAnalyzeEntry(analyzeEntry);
   createTrainEntry({ setTrainBanner, updateTrainTurnBadge });
-  createBook({ editRepertoire });
+  createBook({ editRepertoire, analysisSelfSide });
   analyzeLoader = createAnalyzeView({
     loadSession: loadAnalyzeSession, showPly: showAnalysisPly,
     selectNode: selectAnalysisNode, reveal: revealAnalysisResults, selfSide: analysisSelfSide,
