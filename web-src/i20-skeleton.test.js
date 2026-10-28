@@ -33,9 +33,9 @@ describe("Teams loading skeleton", () => {
   it("uses the real rows' own classes, so the shape matches what replaces it", () => {
     expect(String(teamRowsSkeleton(1))).toContain('class="team-row is-skeleton"');
     // Members and shared repertoires are the same mem-row in both panes.
-    for (const markup of [memberRowsSkeleton(1), sharedRepRowsSkeleton(1)]) {
-      expect(String(markup)).toContain('class="mem-row is-skeleton"');
-    }
+    expect(String(memberRowsSkeleton(1))).toMatch(/class="mem-row is-skeleton[^\"]*member-skeleton/);
+    expect(String(sharedRepRowsSkeleton(1))).toMatch(/class="mem-row is-skeleton[^\"]*shared-skeleton/);
+    expect(String(memberRowsSkeleton(1))).not.toMatch(/class="skeleton-dot" style=/);
   });
 
   it("varies the placeholder widths so a list of them reads as rows", () => {

@@ -82,6 +82,8 @@ export function createTeamsView({
     const list = document.getElementById("teams-list");
     const shared = document.getElementById("teams-shared");
     if (!list) return;
+    const emptyCard = document.querySelector?.("#view-teams .team-empty");
+    if (emptyCard) emptyCard.hidden = true;
     // Before /api/auth/me lands, the session is UNKNOWN, not signed out. Painting
     // guest state here is what flashed "Sign in to create or join a team" for a
     // signed-in user on reload, so hold a neutral loading state until auth is
@@ -107,6 +109,12 @@ export function createTeamsView({
       hideTeamDetail();
       return;
     }
+    const search = document.getElementById("teams-search");
+    const searchField = search?.closest?.(".search-field");
+    if (searchField) searchField.hidden = false;
+    if (search) search.disabled = true;
+    const newTeam = document.getElementById("teams-new");
+    if (newTeam) newTeam.hidden = false;
     if (!list.querySelector?.(".team-row:not(.is-skeleton)")) list.innerHTML = teamRowsSkeleton(3);
     try {
       const teams = await loadTeamDirectory(appState, api, { refresh: true });
@@ -130,7 +138,10 @@ export function createTeamsView({
       list.innerHTML = html`<div role="alert" class="empty-state">${error.message} <button class="btn sm" type="button">Retry</button></div>`;
       list.querySelector("button")?.addEventListener("click", loadTeams);
     }
-    if (isCurrent()) loadSharedRepertoires();
+    if (isCurrent()) {
+      if (search) search.disabled = false;
+      loadSharedRepertoires();
+    }
   }
 
   // The placeholder card beside the directory says what to do next for the
@@ -153,6 +164,8 @@ export function createTeamsView({
   };
   function renderTeamEmptyCard(kind) {
     const copy = EMPTY_CARD_COPY[kind] || EMPTY_CARD_COPY.choose;
+    const emptyCard = document.querySelector?.("#view-teams .team-empty");
+    if (emptyCard) emptyCard.hidden = false;
     const title = document.getElementById("team-empty-title");
     const body = document.getElementById("team-empty-body");
     if (title) title.textContent = copy.title;

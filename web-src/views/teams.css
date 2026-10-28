@@ -63,10 +63,28 @@
 .team-row:active { background: var(--surface-3); }
 /* Loading: the row's own geometry, bars where the values go. */
 .team-row.is-skeleton:hover { background: none; }
-.team-row.is-skeleton { cursor: default; }
+.team-row.is-skeleton { min-height: 53px; cursor: default; }
+.team-row.is-skeleton .tr-text { flex: 1; }
+.team-row.is-skeleton .skeleton-name { height: 12px; margin-block: 2.5px; }
+.team-row.is-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
 .team-badge-skeleton { flex: none; width: 46px; height: 15px; border-radius: 10px; }
 .team-btn-skeleton { width: 52px; height: 24px; border-radius: var(--radius); }
 .mem-row.is-skeleton { cursor: default; }
+.mem-row.is-skeleton:hover { background: none; }
+.mem-row.is-skeleton .mem-id { flex: 1; min-width: 0; }
+.mem-row.is-skeleton .skeleton-subline { height: 10px; }
+.member-skeleton .skeleton-dot { width: 24px; height: 24px; margin-top: 0; }
+.member-skeleton .mem-id { flex-wrap: nowrap; align-items: center; gap: 6px; }
+.member-skeleton .member-role-skeleton { flex: none; width: 54px; height: 18px; border-radius: 10px; }
+.member-skeleton .member-action-skeleton { flex: none; width: 24px; height: 24px; border-radius: var(--radius); }
+.shared-skeleton .mem-id { flex-direction: column; flex-wrap: nowrap; align-items: flex-start; gap: 1px; }
+.shared-skeleton .skeleton-dot { width: 11px; height: 11px; margin-top: 0; }
+.shared-skeleton .team-badge-skeleton { height: 18px; }
+.shared-skeleton .team-copy-skeleton { flex: none; width: 52px; height: 24px; }
+#team-shared-repertoires > .shared-skeleton { min-height: 47px; }
+#teams-shared > .shared-skeleton { min-height: 51px; }
+#teams-shared .shared-skeleton .team-badge-skeleton,
+#teams-shared .shared-skeleton .team-copy-skeleton { display: none; }
 .team-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .team-row.is-selected {
   position: relative;
@@ -377,6 +395,8 @@ select.team-role-select {
     font-size: 14px;
     font-weight: 650;
   }
+  #view-teams .member-skeleton .skeleton-name { height: 12px; margin-block: 3.5px; }
+  #view-teams .member-skeleton .skeleton-subline { height: 10px; margin-block: 3.5px; }
   #view-teams .mem-id > .name + .sub::before { content: none; }
   #view-teams .sub-role { display: inline; }
   /* A role is a word in the row's right column, not a pill: Owner, Admin ⌄
@@ -398,6 +418,8 @@ select.team-role-select {
     justify-items: end;
     align-items: center;
   }
+  #view-teams .member-skeleton .team-member-tail { gap: 0; }
+  #view-teams .member-skeleton .member-role-skeleton { margin-right: 10px; }
   #view-teams .team-member-row .team-role-badge { padding-right: 10px; }
   #view-teams select.team-role-select {
     width: auto;
@@ -417,6 +439,8 @@ select.team-role-select {
   /* In the shared lists the role moves under the name ("Mira Chen · Can
      copy"); the row's right side keeps only what can be done. */
   #view-teams :is(.team-shared-rep-row, .shared-rep-row) .share-role-badge { display: none; }
+  #view-teams .shared-skeleton .team-badge-skeleton { display: none; }
+  #view-teams .shared-skeleton .team-copy-skeleton { width: 64px; }
   #view-teams .shared-rep-row,
   #view-teams .team-shared-rep-row { min-height: 60px; }
   #view-teams #team-shared-repertoires > .team-shared-rep-row { min-height: 60px; }
