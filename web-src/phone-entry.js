@@ -1,4 +1,6 @@
-import { appState } from "./core/state.js";
+import { appState, boards } from "./core/state.js";
+import { setStatus, setStatusError } from "./core/api.js";
+import { analyzeView } from "./views/analyze-loader.js";
 import { openModal } from "./core/dialog.js";
 import { closeSheetOffPhone } from "./phone-layout.js";
 import { wireLibraryPhoneHead } from "./library-phone.js";
@@ -220,6 +222,12 @@ export function wirePhoneSheets() {
       }
       return;
     }
+    const copy = event.target.closest?.("[data-copy]");
+    if (copy) {
+      close();
+      void copyAnalysisText(copy.dataset.copy);
+      return;
+    }
     const mirror = event.target.closest?.("[data-mirror]");
     if (mirror) {
       close();
@@ -244,3 +252,19 @@ export function wirePhoneSheets() {
   });
 }
 
+// The Games sheet's Copy rows (Lichess's Share & export): the game with its
+// variations, as the PGN box holds it, or the position on the board.
+export async function copyAnalysisText(kind) {
+  const box = document.getElementById("pgn-input");
+  const text = kind === "fen"
+    ? boards.analysis?.fen
+    : analyzeView?.serializeAnalysisPgn(box?.value || "") || box?.value;
+  const name = kind === "fen" ? "FEN" : "PGN";
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    setStatus(`${name} copied`);
+  } catch {
+    setStatusError(`Could not copy the ${name}`);
+  }
+}
