@@ -20,7 +20,7 @@ beforeAll(() => {
 // A token as move-text.js writes it: its line in data-mt, its index in data-p.
 // `coach` puts it in the coach card, `engine` in an engine line: the places a token peeks.
 const PEEK = "#coach-prose [data-mt][data-p], #analysis-engine-slot [data-mt] [data-p], #build-branchbar [data-mt][data-p]";
-const SCOPE = "#coach-prose, #analysis-engine-slot .engine-pv, #build-branchbar";
+const SCOPE = "#coach-prose, #analysis-engine-slot #engine-window-pvs, #build-branchbar";
 function token(mt, p, { cls = "move-ref", coach = false, engine = false, focusable = true, scope = null } = {}) {
   const el = {
     dataset: { mt, p: String(p) },
@@ -174,5 +174,14 @@ describe("the peek", () => {
     hover(token(LINE, 1, { coach: true }));
     mod.clearPeek();
     expect(peeks.at(-1)).toBe(null);
+  });
+
+  it("a Coach repaint does not interrupt the Engine preview", () => {
+    const engine = token(LINE, 1, { cls: "pv-move", engine: true });
+    hover(engine);
+    mod.clearPeek({ contains: () => false });
+    expect(peeks).toEqual(["e7e5"]);
+    mod.clearPeek({ contains: (t) => t === engine });
+    expect(peeks).toEqual(["e7e5", null]);
   });
 });

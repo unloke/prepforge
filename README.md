@@ -42,9 +42,10 @@ deviation, review the expected move or open the game in Analyze.
 
 Paste a PGN and use Open PGN inside the field, or load a recent Lichess or practice
 game. Run Review to review move classifications,
-the evaluation graph and turning points. Expand Game Report for large player
-accuracy figures and phase statistics; select an error on its chart to inspect
-that move. Explore engine and human candidate lines, then return to the game.
+the evaluation graph and turning points. Expand Game Report for player accuracy
+and phase statistics. Hover over its error chart to preview a position; click
+to select it, or tap on a phone. Move between Coach references or Engine moves
+to preview consecutive positions without returning to the game between them.
 
 ### Prepare for an opponent
 
