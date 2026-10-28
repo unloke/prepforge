@@ -1080,13 +1080,6 @@ h2 {
   color: var(--text);
 }
 
-.pf-row-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-}
-
 .pf-switch {
   position: relative;
   width: var(--switch-w);
@@ -1502,20 +1495,6 @@ h2 {
 .btn.block {
   width: 100%;
 }
-
-/* A row of buttons: one height (each button keeps its size token), each
-   button as wide as its label, wrapping as a whole button rather than
-   squeezing a label onto two lines. `.is-fill` is the one opt-in to equal
-   widths (a phone dialog's Cancel / Confirm); nothing else stretches. */
-.btn-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.btn-row > .btn { flex: none; }
-.btn-row.is-end { justify-content: flex-end; }
-.btn-row.is-fill > .btn { flex: 1 1 0; min-width: 0; }
 
 /* Disabled and engine-unavailable actions read inert without going under the
    contrast floor: the muted fill and ink land after the variants, so a disabled
@@ -2868,17 +2847,6 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   animation: boardFlip var(--dur-slow) var(--ease-emphasis);
 }
 
-/* Coach header review switch: compact shared primitive, not a native checkbox. */
-.explain-review {
-  gap: 8px;
-  margin-left: auto;
-}
-
-.explain-review .pf-row-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
 
 /* Confetti */
 .confetti-layer {
@@ -3742,8 +3710,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 .un-what { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .un-rep { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .un-line { color: var(--label); font: var(--fs) var(--mono); white-space: nowrap; }
-/* A card with no line of its own says so in words, not in the move face. */
-.un-line.is-plain { font-family: inherit; }
 /* The queue's kind chips are read at a glance mid-session, so they sit at the
    panel's body size rather than the app's smallest step. Only the type moves;
    the pill's height, padding and radius are the shared ones. */
