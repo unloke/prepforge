@@ -81,7 +81,7 @@ describe("Library cold-start skeleton", () => {
   it("gives the skeleton the same bar and pulse as the tree skeleton", () => {
     const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
     // One definition of the bar and the keyframes, shared by every skeleton.
-    expect(css.match(/\.skeleton-bar \{/g)).toHaveLength(1);
+    expect(css.match(/^\.skeleton-bar \{/gm)).toHaveLength(1);
     expect(css.match(/@keyframes skeleton-pulse/g)).toHaveLength(1);
     expect(css).not.toContain("tree-skeleton");
     expect(css).not.toContain(".lib-loading");

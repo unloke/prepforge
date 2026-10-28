@@ -44,7 +44,7 @@ class El {
   }
   get previousElementSibling() { const s = this.parentElement?.children; return s ? s[s.indexOf(this) - 1] || null : null; }
   all() { return this.children.flatMap((c) => [c, ...c.all()]); }
-  matches(sel) { return sel.startsWith("#") ? this.id === sel.slice(1) : sel.startsWith(".") ? this.classList.has(sel.slice(1)) : sel === "[role=tab]" && this.attrs.role === "tab"; }
+  matches(sel) { return sel.startsWith("#") ? this.id === sel.slice(1) : sel.startsWith(".") ? this.classList.has(sel.slice(1)) : sel === "[data-toggle-summary]" ? this.attrs["data-toggle-summary"] !== undefined : sel === "[role=tab]" && this.attrs.role === "tab"; }
   querySelector(sel) { const last = sel.split(" ").pop(); return this.all().find((e) => e.matches(last)) || null; }
   querySelectorAll(sel) { return this.all().filter((e) => e.matches(sel)); }
   contains(node) { return node === this || this.all().includes(node); }
@@ -84,6 +84,30 @@ afterEach(() => {
 });
 
 describe("Analyze phone, round 2", () => {
+  it("uses the Report tab as disclosure and enables folding only in the wide layout", async () => {
+    const { installAnalyzePanes } = await import("./analyze-panes.js");
+    const { dom } = install({ value: true });
+    const tabs = dom.view.querySelector("#analyze-tabs");
+    tabs.offsetParent = dom.view;
+    const summary = new El();
+    summary.attrs["data-toggle-summary"] = "";
+    const report = new El("analysis-summary").add(summary);
+    dom.view.add(report);
+    const panes = installAnalyzePanes();
+    panes.select("report");
+    expect(report.dataset.open).toBe("true");
+    expect(summary.disabled).toBe(true);
+    expect(summary.attrs["aria-expanded"]).toBe("true");
+    tabs.offsetParent = null;
+    panes.syncReport();
+    expect(summary.disabled).toBe(false);
+    // A freshly rendered summary must regain the tab's disclosure state too.
+    report.dataset.open = "false";
+    tabs.offsetParent = dom.view;
+    panes.syncReport();
+    expect(report.dataset.open).toBe("true");
+  });
+
   it("moves the grading switch to the engine pane's head on a phone and back on a wider screen", async () => {
     const { installAnalyzePanes } = await import("./analyze-panes.js");
     const phone = { value: true };

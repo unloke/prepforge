@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDocument, setup } from "./train-home.fixture.js";
 import {
-  createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainScopeLabel, trainScreenOf,
+  createTrainHome, dueIn, dueMeta, dueStartState, outlookHtml, playBook, showTrainResult, trainRowError, trainScopeLabel, trainScreenOf,
 } from "./train-home.js";
 import { saveRun } from "../train-history.js";
 
@@ -113,6 +113,67 @@ describe("‹ Train", () => {
 });
 
 describe("the Due row", () => {
+  it("holds its loaded shape while the first preview is pending", async () => {
+    trainRowError("smart", "");
+    const { deps } = setup();
+    deps.localDateString = () => "2099-01-01";
+    let resolve;
+    deps.api.mockImplementation(() => new Promise((done) => { resolve = done; }));
+    const pending = createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("start-train").textContent).toBe("Start");
+    expect(doc.getElementById("start-train").dataset.action).toBe("start");
+    expect(doc.getElementById("start-train").disabled).toBe(false);
+    expect(doc.getElementById("train-outlook").hidden).toBe(false);
+    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-bar");
+    expect(String(doc.getElementById("train-due-meta").innerHTML)).toContain("skeleton-bar");
+    expect(String(doc.getElementById("train-due-next").innerHTML).match(/train-skeleton-line/g)).toHaveLength(3);
+    expect(doc.getElementById("train-due-next").getAttribute("aria-busy")).toBe("true");
+    resolve({ next_session: { cards: 3, new: 3, upcoming: [] }, outlook: { now: 1, today: 2, week: 5 } });
+    await pending;
+    expect(doc.getElementById("train-due-meta").textContent).toBe("3 cards");
+    expect(doc.getElementById("train-outlook").hidden).toBe(false);
+    expect(doc.getElementById("train-due-next").hidden).toBe(true);
+    expect(String(doc.getElementById("train-outlook").innerHTML)).not.toContain("skeleton-bar");
+  });
+
+  it("ignores a late preview after the Due scope changes", async () => {
+    const { appState, deps } = setup({ trainScope: { repertoireId: "r1", label: "Italian" } });
+    deps.localDateString = () => "2099-01-04";
+    const pending = new Map();
+    deps.api.mockImplementation((url) => new Promise((resolve) => pending.set(url, resolve)));
+    const home = createTrainHome(deps);
+    const first = home.paintTrainHome();
+    appState.trainScope = { repertoireId: "r2", label: "Sicilian" };
+    const second = home.paintTrainHome();
+    const [firstUrl, secondUrl] = [...pending.keys()];
+    pending.get(firstUrl)({ next_session: { cards: 1 }, outlook: { now: 1, today: 1, week: 1 } });
+    await first;
+    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("skeleton-bar");
+    pending.get(secondUrl)({ next_session: { cards: 2 }, outlook: { now: 2, today: 2, week: 2 } });
+    await second;
+    expect(doc.getElementById("train-due-meta").textContent).toBe("2 cards");
+    expect(String(doc.getElementById("train-outlook").innerHTML)).toContain("<b>2</b>");
+  });
+
+  it("uses the row error on failure and renders zero without placeholder rows", async () => {
+    trainRowError("smart", "");
+    const { deps } = setup();
+    deps.localDateString = () => "2099-01-02";
+    deps.api.mockRejectedValueOnce(new Error("offline"));
+    await createTrainHome(deps).paintTrainHome();
+    expect(doc.getElementById("train-due-error").textContent).toContain("Couldn't load the queue");
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    trainRowError("smart", "");
+    const zero = setup();
+    zero.deps.localDateString = () => "2099-01-03";
+    zero.deps.api.mockResolvedValueOnce({ next_session: { cards: 0 }, outlook: { now: 0, today: 0, week: 0, next: null } });
+    await createTrainHome(zero.deps).paintTrainHome();
+    expect(doc.getElementById("start-train").dataset.action).toBe("build");
+    expect(doc.getElementById("train-due-meta").textContent).toBe("Nothing due");
+    expect(doc.getElementById("train-outlook").hidden).toBe(true);
+    expect(doc.getElementById("train-due-next").hidden).toBe(true);
+  });
+
   it("names the action that fits the account", () => {
     expect(dueStartState(null, { signedIn: false, hasRepertoire: false })).toEqual({ label: "Sign in to train", action: "signin" });
     expect(dueStartState(null, { signedIn: true, hasRepertoire: false })).toEqual({ label: "Open Library", action: "library" });

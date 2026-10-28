@@ -246,7 +246,7 @@
   #view-dashboard .lib-actions,
   #view-dashboard .lib:not([data-search-open]) .lib-list :is(.search-field, .lib-search-cancel) { display: none; }
   /* Nothing to filter yet (the empty card carries its own actions): no row. */
-  #view-dashboard .lib:not([data-search-open]) .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .card-head { display: none; }
+  #view-dashboard .lib:not([data-search-open]) .lib-list.is-empty:not(:has(.lib-no-match)) .card-head { display: none; }
   #view-dashboard .lib-list .seg { grid-area: filters; }
   #view-dashboard .lib-list .search-field { grid-area: search; width: 100%; margin: 0; }
   #view-dashboard .lib-search-cancel {
@@ -275,7 +275,7 @@
     border-radius: 12px;
     background: var(--surface-3);
   }
-  #view-dashboard .lib-list:is(.is-empty, .is-loading):not(:has(.lib-no-match)) .seg { display: none; }
+  #view-dashboard .lib-list.is-empty:not(:has(.lib-no-match)) .seg { display: none; }
   #view-dashboard .lib-list .seg-btn {
     flex: 1 1 auto;
     min-width: 36px;
@@ -324,15 +324,17 @@
   #view-dashboard .lib-row.is-selected:hover { background: var(--surface-3); }
   #view-dashboard .lib-row.is-selected::before { content: none; }
   /* The skeleton row is the phone row's flex shape without the ⋯ button. */
-  #view-dashboard .lib-row.is-skeleton .lib-opt,
-  #view-dashboard .lib-row.is-skeleton { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
-  #view-dashboard .lib-row.is-skeleton .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
-  #view-dashboard .lib-row.is-skeleton .skeleton-dot { flex: none; width: 26px; height: 26px; margin-top: 0; }
-  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 6px; }
-  #view-dashboard .lib-row.is-skeleton .lib-cell-mastery { display: none; }
+  #view-dashboard .lib-row.is-skeleton { padding-right: 40px; }
+  #view-dashboard .lib-row .skeleton-dot { margin-top: 0; }
+  #view-dashboard .lib-row.is-skeleton .skeleton-stack { gap: 7px; }
   #view-dashboard .lib-row.is-skeleton .lib-cell-queue { gap: 6px; padding-left: 38px; }
-  #view-dashboard .lib-row .lib-cell-rep { display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
-  #view-dashboard .lib-row .color-dot { flex: none; width: 26px; height: 26px; }
+  #view-dashboard .lib-cell-rep .skeleton-bar { height: 18px; }
+  #view-dashboard .lib-cell-rep .skeleton-thin { height: 14px; }
+  #view-dashboard .lib-row .skeleton-chip { height: 24px; }
+  #view-dashboard .lib-cell-mastery .skeleton-bar { width: 78px; min-width: 78px; }
+  #view-dashboard .lib-list.is-loading .card-head .seg { visibility: visible; }
+  #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; display: flex; flex: 1 1 100%; align-items: center; gap: 12px; min-width: 0; }
+  #view-dashboard .lib-row :is(.color-dot, .skeleton-dot) { flex: none; width: 26px; height: 26px; }
   #view-dashboard .lib-row .lib-name { min-width: 0; gap: 2px; }
   #view-dashboard .lib-row .name { font-size: 15px; font-weight: 600; }
   #view-dashboard .lib-row .rep-sub { font-size: 13px; }
@@ -354,9 +356,8 @@
   /* The name owns the first line: beside "0% mastered" it was cut to
      "Sicilian Najdor…" and its subline wrapped. The figure closes the queue's
      line instead, on the row's right edge. */
-  #view-dashboard .lib-row .lib-cell-rep { grid-area: rep; }
   #view-dashboard .lib-row .lib-cell-mastery { grid-area: mastery; justify-self: end; display: flex; }
-  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: wrap; gap: 4px; padding-left: 38px; }
+  #view-dashboard .lib-row .lib-cell-queue { grid-area: queue; display: flex; flex-wrap: nowrap; gap: 2px; padding-left: 34px; }
   #view-dashboard .lib-row .lib-mbar { display: none; }
   #view-dashboard .lib-row .lib-mastery { flex-direction: row; align-items: baseline; gap: 4px; width: auto; line-height: 1.2; }
   #view-dashboard .lib-row .lib-mastery b { min-width: 0; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -367,11 +368,9 @@
      under the 24px minimum target. It grows to 24px, the most it can take
      inside a row without turning the queue line into a stack of buttons; the
      row itself is the target for opening the repertoire. */
-  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 9px; font-size: 13px; }
   /* Drawn as text with its dot, as Lichess prints a study's counts: three
      boxed pills wrapped the queue to a second line. The target stays. */
-  #view-dashboard .lib-row button.kchip { padding: 0 4px; border-color: transparent; background: none; }
-  #view-dashboard .lib-row .lib-cell-queue { flex-wrap: nowrap; gap: 2px; padding-left: 34px; }
+  #view-dashboard .lib-row button.kchip { position: relative; min-height: 24px; padding: 0 4px; font-size: 13px; border-color: transparent; background: none; }
   /* The chip stays a 24px pill; its hit area grows into the queue line's own
      band (the 6px gap above, the row's 8px padding below) and stops there. At
      -10px it reached up over the name's subline, so a tap at the row's middle,
@@ -379,8 +378,8 @@
   #view-dashboard .lib-row button.kchip::after { content: ""; position: absolute; inset: -6px -2px -8px; }
   /* With no queue chips the line holds only the mastery note: it starts at
      the name's left edge instead of hanging off the right. */
-  #view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
-  #view-dashboard .lib-row .lib-cell-queue:not(:has(.kchip)) { display: none; }
+  #view-dashboard .lib-row:not(:has(.kchip, .skeleton-chip)) .lib-cell-mastery { grid-column: 1 / -1; justify-self: start; padding-left: 38px; }
+  #view-dashboard .lib-cell-queue:not(:has(.kchip, .skeleton-chip)) { display: none; }
   #view-dashboard .lib-row .row-menu-btn { flex: none; width: 36px; height: 36px; opacity: 1; }
 
   #view-dashboard .steps.card { padding: 4px 0; background: var(--panel); }

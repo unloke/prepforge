@@ -1987,9 +1987,11 @@ a.btn { display: inline-flex; align-items: center; text-decoration: none; }
    New / Import / Sign in, so the header keeps only its title. While the first
    load runs, the column header stays out over an empty table. */
 .lib-list.is-empty .card-head .search-field,
-.lib-list.is-empty:not(.is-error) .lib-actions,
-.lib-list.is-loading .card-head .seg,
-.lib-list.is-loading .lib-cols { display: none; }
+.lib-list.is-empty:not(.is-error) .lib-actions { display: none; }
+.lib-list.is-loading :is(.card-head h2, .card-head .seg, .lib-cols) { visibility: hidden; }
+.lib-row.is-skeleton .skeleton-stack { gap: 1px; }
+.lib-row.is-skeleton .skeleton-bar { height: 17px; }
+.lib-row.is-skeleton .skeleton-chip { height: 18px; }
 /* Cold-start skeleton: real .lib-row geometry (grid columns, phone layout,
    list-enter stagger) with the content replaced by bars. Nothing is clickable
    and nothing announces content that isn't there yet. */
@@ -4259,8 +4261,7 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   display: block;
   height: 12px;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--surface-3) 0%, var(--panel-soft) 50%, var(--surface-3) 100%); /* taste-skill-ignore: a skeleton shimmer is a state, not decoration */
-  background-size: 200% 100%;
+  background: var(--surface-3);
   animation: skeleton-pulse 1.4s ease-in-out infinite alternate;
 }
 /* A placeholder for a headline-sized element (a repertoire name, a team name):

@@ -59,7 +59,7 @@ it("a repertoire keeps its name whole on a phone", () => {
   // the queue's line on the right.
   expect(css).toMatch(/grid-template-areas:\s*"rep rep" "queue mastery"/);
   // With no queue chips the note starts at the name's edge, not the dot's.
-  expect(rule("#view-dashboard .lib-row:not(:has(.kchip)) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
+  expect(rule("#view-dashboard .lib-row:not(:has(.kchip, .skeleton-chip)) .lib-cell-mastery {")).toMatch(/padding-left:\s*38px/);
 });
 
 it("the phone checklist shows no step number", () => {

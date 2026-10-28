@@ -7,8 +7,8 @@ export function fakeElement(id) {
   const el = {
     id, hidden: false, textContent: "", innerHTML: "", dataset: {}, style: {}, disabled: false,
     classList: { add() {}, remove() {}, toggle() {} },
-    listeners: {},
-    setAttribute() {}, getAttribute() { return null; }, focus() {},
+    listeners: {}, attributes: {},
+    setAttribute(name, value) { el.attributes[name] = String(value); }, getAttribute(name) { return el.attributes[name] ?? null; }, focus() {},
     addEventListener(type, fn) { el.listeners[type] = fn; },
     click() { return el.listeners.click?.({ currentTarget: el, target: el }); },
     querySelector: () => el.child || (el.child = fakeElement(`${id} > *`)),

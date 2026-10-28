@@ -51,6 +51,13 @@
 .train-outlook-lead b { margin-right: 4px; color: var(--accent-text); font-size: 20px; font-weight: 650; line-height: 1.1; }
 .train-outlook-rest { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 .train-outlook-quiet { color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
+.train-skeleton-outlook { width: 154px; height: 32px; }
+.train-skeleton-meta { width: 72px; height: 17px; }
+.train-skeleton-line { display: flex; align-items: center; gap: 10px; min-height: 29px; padding: 6px 8px; box-sizing: border-box; }
+.train-skeleton-kind { width: 62px; flex: none; }
+.train-skeleton-rep { width: 42%; }
+.train-skeleton-pos { width: 54px; flex: none; }
+@media (max-width: 640px) { .train-skeleton-line { min-height: 32px; } }
 /* Title on its own line; the outlook and the session's size share the one
    under it, so the row is two lines of text, not three. */
 .train-row[data-row="smart"] .train-row-text { flex-flow: row wrap; align-items: baseline; column-gap: 10px; }
