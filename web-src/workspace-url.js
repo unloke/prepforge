@@ -128,7 +128,8 @@ export function parseWorkspaceLocation(href) {
 
 export function serializeWorkspaceLocation(loc, currentHref) {
   const url = new URL(String(currentHref || "http://prepforge.local/"), "http://prepforge.local/");
-  return `${url.pathname}${url.search}${formatWorkspaceHash(loc)}`;
+  const settingsArea = loc.view === "settings" ? parseWorkspaceHash(url.hash).settingsArea : undefined;
+  return `${url.pathname}${url.search}${formatWorkspaceHash({ settingsArea, ...loc })}`;
 }
 
 // Views whose URL carries the open repertoire: only the builder shows one.

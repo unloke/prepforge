@@ -19,6 +19,7 @@ describe("workspace URL codec", () => {
       const loc = parseWorkspaceLocation(href);
       expect(loc.settingsArea).toBe(settingsArea);
       expect(serializeWorkspaceLocation(loc, href)).toBe(`/?join=abc#/settings/${settingsArea}`);
+      expect(serializeWorkspaceLocation({ view: "settings" }, href)).toBe(`/?join=abc#/settings/${settingsArea}`);
     }
     expect(formatWorkspaceHash({ view: "settings", settingsArea: "unknown" })).toBe("#/settings");
     expect(formatWorkspaceHash({ view: "analyze", settingsArea: "board" })).toBe("#/analyze");
