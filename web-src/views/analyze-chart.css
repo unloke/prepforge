@@ -1,3 +1,40 @@
+/* PGN input belongs to the lazy Analyze view. */
+.pgn-editor {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.pgn-editor:focus-within { border-color: var(--accent); }
+.pgn-editor #pgn-input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  resize: vertical;
+}
+.pgn-editor #pgn-input:focus-visible { box-shadow: none; }
+.pgn-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 6px 2px; }
+.pgn-error { margin: 0 10px 4px; color: var(--danger); font-size: 13px; }
+.pgn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pgn-action svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.pgn-open { color: var(--accent-strong); font-weight: 600; }
+.pgn-action:hover { color: var(--text); }
+.pgn-action:hover span, .pgn-open:hover { text-decoration: underline; text-underline-offset: 3px; }
+
 /* Analyze — Opus prototype composition. Lazy-loaded with the Analyze view
    (analyze.js), so the eager styles.css stays under its deploy budget without a
    ceiling bump. The eager sheet owns the study grid, the raised .panel and its
