@@ -50,5 +50,5 @@ export async function replayToAnalyze(game, deps) {
   await showAnalysisPly(Math.max(0, ply - 1));
   if (isCurrent()) setStatus(saved
     ? `Loaded saved analysis for ${game.white || "?"} vs ${game.black || "?"}.`
-    : `Loaded ${game.white || "?"} vs ${game.black || "?"}. Press Analyze.`);
+    : `Loaded ${game.white || "?"} vs ${game.black || "?"}. Press Review.`);
 }

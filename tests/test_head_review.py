@@ -99,13 +99,14 @@ def test_equivalent_fen_spellings_with_identical_scores_are_accepted(client):
 
 
 def test_parallel_build_writers_both_commit_on_consecutive_revisions(client, monkeypatch):
-    """Both requests read the same revision, then race to commit. The fence lets
-    one through; the other is rebased (re-run on the newer tree) instead of lost."""
+    """Concurrent requests wait for the lock and both commit consecutive edits."""
+    from contextlib import contextmanager
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier, Lock
     from fastapi.testclient import TestClient
     from api_helpers import csrf_headers
     from prepforge_chess.services.opening_builder import OpeningBuilderService
+    from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
 
     _register(client, "race@example.com")
     headers = csrf_headers(client)
@@ -113,12 +114,16 @@ def test_parallel_build_writers_both_commit_on_consecutive_revisions(client, mon
                           json={"name": "Before", "color": "white"}).json()
     barrier, lock, first_calls = Barrier(2), Lock(), []
     original = OpeningBuilderService.rename_repertoire
+    edit = WorkspaceRepository.repertoire_edit
+    @contextmanager
+    def simultaneous_edit(self, repertoire_id):
+        barrier.wait(timeout=5)
+        with edit(self, repertoire_id):
+            yield
+    monkeypatch.setattr(WorkspaceRepository, "repertoire_edit", simultaneous_edit)
     def simultaneous(self, repertoire_id, name):
         with lock:
-            first = len(first_calls) < 2
             first_calls.append(name)
-        if first:
-            barrier.wait(timeout=5)
         return original(self, repertoire_id, name)
     monkeypatch.setattr(OpeningBuilderService, "rename_repertoire", simultaneous)
     def rename(name):
@@ -129,7 +134,7 @@ def test_parallel_build_writers_both_commit_on_consecutive_revisions(client, mon
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(rename, ["Tab A", "Tab B"]))
     assert [r.status_code for r in results] == [200, 200]
-    assert len(first_calls) == 3  # the loser re-ran once
+    assert len(first_calls) == 2
     loaded = client.get("/api/build/load", params={"repertoire_id": created["repertoire_id"]}).json()
     assert loaded["revision"] == created["revision"] + 2
     assert loaded["name"] == first_calls[-1]
@@ -206,16 +211,20 @@ def test_build_reply_does_not_stamp_a_stale_tree_with_a_later_writer_revision(cl
     from api_helpers import csrf_headers
     from prepforge_chess.api.db import get_engine
     from prepforge_chess.storage.repositories.workspace import WorkspaceRepository
+    from prepforge_chess.api.routers import workspace
 
     _register(client, "reply-race@example.com")
     headers = csrf_headers(client)
     created = client.post("/api/repertoires/create", headers=headers,
                           json={"name": "Before", "color": "white"}).json()
-    save = WorkspaceRepository.save_changed_nodes
-    def writer_interleaves(repo, rep_id, nodes):
-        save(repo, rep_id, nodes)
-        WorkspaceRepository(get_engine()).update_opening_nodes(rep_id, [{"id": nodes[0].id, "comment": "Other tab"}])
-    monkeypatch.setattr(WorkspaceRepository, "save_changed_nodes", writer_interleaves)
+    edit = workspace._rebased
+    def writer_interleaves(repo, meta, apply):
+        result = edit(repo, meta, apply)
+        # The competing transaction can commit after this edit releases its lock,
+        # before the response serializes the tree captured by this request.
+        WorkspaceRepository(get_engine()).update_opening_nodes(meta["id"], [{"id": result[1].id, "comment": "Other tab"}])
+        return result
+    monkeypatch.setattr(workspace, "_rebased", writer_interleaves)
     response = client.post("/api/build/add-move", headers=headers, json={
         "repertoire_id": created["repertoire_id"], "parent_node_id": created["selected_node_id"],
         "move_uci": "e2e4",

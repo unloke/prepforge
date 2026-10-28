@@ -1296,7 +1296,7 @@ export function createScoutView(deps) {
     const drawer = document.getElementById("pgn-drawer");
     if (drawer) drawer.open = true;
     switchView("analyze");
-    setStatus(`Loaded ${username}'s line. Press "Analyze game" to start.`);
+    setStatus(`Loaded ${username}'s line. Press Review to start.`);
   }
 
   async function scoutPickRepertoire(oppColor, { ownColor = false } = {}) {

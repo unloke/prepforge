@@ -874,10 +874,7 @@ class OpeningBuilderService:
             parent.children = [c for c in parent.children if c.id != node_id]
 
         receipt = (*receipt_target, {"removed_node_ids": removed_ids}) if receipt_target else None
-        if removed_ids:
-            self.repository.delete_opening_nodes(repertoire_id, removed_ids, receipt=receipt)
-        elif receipt is not None:
-            self.repository.set_user_setting(*receipt)
+        self.repository.delete_opening_nodes(repertoire_id, removed_ids, receipt=receipt)
         return removed_ids
 
     def rename_repertoire(self, repertoire_id: str, new_name: str) -> Repertoire:

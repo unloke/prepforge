@@ -82,7 +82,7 @@ it('an unsaved game loads its PGN ready for a first analysis', async () => {
   await replayToAnalyze(replayGame, deps);
   expect(deps.recallAnalysis).not.toHaveBeenCalled();
   expect(deps.loadPgnIntoAnalyze).toHaveBeenCalledWith(expect.stringContaining('1. e4 e5 2. Nf3'), { goToEnd: false, quiet: true, sourceSeq: 7 });
-  expect(deps.setStatus).toHaveBeenCalledWith('Loaded Alice vs Bob. Press Analyze.');
+  expect(deps.setStatus).toHaveBeenCalledWith('Loaded Alice vs Bob. Press Review.');
 });
 
 it('a lookup finishing after another source is selected cannot load its game', async () => {
@@ -116,7 +116,7 @@ it('lookup errors reach the existing Games action error handler', async () => {
 });
 
 it("names the button the user actually presses, and stays one line", async () => {
-  // The Analyze panel's button reads "Analyze"; "press Analyze game" named no
+  // The Analyze panel's button reads "Review"; "press Analyze game" named no
   // control and wrapped onto two lines in the phone notice.
   const setStatus = vi.fn();
   const deps = {
@@ -138,5 +138,5 @@ it("names the button the user actually presses, and stays one line", async () =>
   } finally {
     vi.unstubAllGlobals();
   }
-  expect(setStatus).toHaveBeenCalledWith("Loaded W0a vs Anonymous. Press Analyze.");
+  expect(setStatus).toHaveBeenCalledWith("Loaded W0a vs Anonymous. Press Review.");
 });

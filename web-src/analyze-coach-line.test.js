@@ -60,7 +60,7 @@ describe("the Coach line", () => {
     // labels, and Last game is also a row in the phone's Games sheet.
     expect(rule("#analyze-actions .btn > .bi")).toMatch(/display: none/);
     expect(analyze).toMatch(/id="fetch-my-game"[^>]*>.*?<span class="bl">Last game<\/span>/);
-    expect(analyze).toMatch(/id="run-analysis"[^>]*>.*?<span class="bl">Analyze<\/span>/);
+    expect(analyze).toMatch(/id="run-analysis"[^>]*>.*?<span class="bl">Review<\/span>/);
     expect(phoneCss).toMatch(/#fetch-my-game \{ display: none; \}/);
   });
 
