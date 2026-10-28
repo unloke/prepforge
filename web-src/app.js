@@ -302,6 +302,7 @@ let navigatedDuringBoot = false;
 function syncWorkspaceUrl({ push = false } = {}) {
   if (!workspaceUrlReady || typeof window === "undefined") return;
   const loc = workspaceLocationFromState(appState);
+  if (loc.view === "settings") loc.settingsArea = parseWorkspaceLocation(window.location.href).settingsArea;
   const href = serializeWorkspaceLocation(loc, window.location.href);
   const current = window.location.pathname + window.location.search + window.location.hash;
   if (current === href) return;

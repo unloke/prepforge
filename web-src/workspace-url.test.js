@@ -13,6 +13,16 @@ import {
 } from "./workspace-url.js";
 
 describe("workspace URL codec", () => {
+  it("preserves Settings areas when synchronizing a deep link", () => {
+    for (const settingsArea of ["account", "appearance", "board", "engine"]) {
+      const href = `https://app.example/?join=abc#/settings/${settingsArea}`;
+      const loc = parseWorkspaceLocation(href);
+      expect(loc.settingsArea).toBe(settingsArea);
+      expect(serializeWorkspaceLocation(loc, href)).toBe(`/?join=abc#/settings/${settingsArea}`);
+    }
+    expect(formatWorkspaceHash({ view: "settings", settingsArea: "unknown" })).toBe("#/settings");
+    expect(formatWorkspaceHash({ view: "analyze", settingsArea: "board" })).toBe("#/analyze");
+  });
   it("round-trips every workspace view", () => {
     for (const view of WORKSPACE_VIEWS) {
       const hash = formatWorkspaceHash({

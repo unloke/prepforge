@@ -61,7 +61,7 @@ function asAnalysisNode(raw) {
   return isAnalysisNodePath(node) && node !== ANALYSIS_ROOT_PATH ? node : null;
 }
 
-export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, node } = {}) {
+export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, node, settingsArea } = {}) {
   const rawView = String(view || "").toLowerCase();
   // Canonical form: replay + section always serializes to the section alias
   // (#/games or #/scout). Accepting a bare { view: "games"/"scout" } keeps
@@ -75,7 +75,8 @@ export function formatWorkspaceHash({ view, replaySection, repertoireId, ply, no
     v = asView(rawView);
     if (v === "replay") section = asReplaySection(replaySection || "games");
   }
-  const hashView = section || v;
+  const hashView = v === "settings" && /^(account|appearance|board|engine)$/.test(settingsArea)
+    ? `settings/${settingsArea}` : section || v;
   const params = new URLSearchParams();
   if (repertoireId) params.set("rep", String(repertoireId));
   const plyNum = asPly(ply);
@@ -111,6 +112,8 @@ export function parseWorkspaceHash(hash) {
   }
   return {
     view: asView(slug),
+    ...(slug === "settings" && /^(account|appearance|board|engine)$/.test(viewPart.split("/")[1])
+      ? { settingsArea: viewPart.split("/")[1] } : {}),
     replaySection: null,
     repertoireId: rep ? String(rep) : null,
     ply: ply && ply > 0 ? ply : null,
