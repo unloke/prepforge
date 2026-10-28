@@ -15,7 +15,7 @@ describe("training save chip", () => {
     expect(syncChipVariant("blocked", "training").text).toContain("Waiting for sign-in");
   });
 
-  it("leaves the Repertoire chip alone", () => {
-    expect(syncChipVariant("dirty", "repertoire").text).toBe("Unsaved changes");
+  it("names automatic saving while repertoire edits wait to be sent", () => {
+    expect(syncChipVariant("dirty", "repertoire").text).toBe("Saving…");
   });
 });
