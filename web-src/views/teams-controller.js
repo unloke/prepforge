@@ -106,35 +106,55 @@ async function openTeamDetail(teamId) {
   const isCurrent = () => seq === teamDetailSeq && appState.selectedTeamId === teamId && owner === currentOwnerId() && generation === appState.ownerGeneration;
   appState.selectedTeamId = teamId;
   renderTeamsList(); // reflect the selected row
+  const known = appState.teams?.find((team) => team.id === teamId);
+  const canManageKnown = known?.role === "owner" || known?.role === "admin";
   for (const id of ["team-add-member", "team-detail-invite", "team-share-rep", "team-detail-rename", "team-detail-delete"]) {
     const button = document.getElementById(id);
-    if (button) { button.hidden = true; button.onclick = null; }
+    if (button) {
+      button.hidden = id === "team-detail-delete" ? known?.role !== "owner" : id !== "team-share-rep" && !canManageKnown;
+      button.disabled = true;
+      button.onclick = null;
+    }
   }
   const inviteCta = document.getElementById("team-invite-cta");
-  if (inviteCta) inviteCta.hidden = true;
+  if (inviteCta) { inviteCta.hidden = !canManageKnown; inviteCta.disabled = true; }
   syncTeamActions();
   const name = document.getElementById("team-detail-name");
-  if (name) name.innerHTML = html`<span class="skeleton-bar skeleton-line" style="width:34%;vertical-align:middle"></span>`;
+  if (name) name.textContent = known?.name || "Team";
   const role = document.getElementById("team-detail-role");
-  if (role) role.textContent = "";
+  if (role) {
+    role.textContent = known ? teamRoleLabel(known.role) : "";
+    role.className = `team-role-badge r-${known?.role || "member"}`;
+  }
   const shares = document.getElementById("team-shared-repertoires");
   if (shares) shares.innerHTML = sharedRepRowsSkeleton(2);
-  teamsView?.renderTeamTabCounts({ members: 0, repertoires: 0 });
+  teamsView?.renderTeamTabCounts({ members: known?.member_count || 0, repertoires: 0 });
   renderTeamInviteFooter(null);
   const card = document.getElementById("team-detail-card");
   const membersEl = document.getElementById("team-members");
   if (!card || !membersEl) return;
   card.hidden = false;
-  membersEl.innerHTML = memberRowsSkeleton(3);
+  card.setAttribute?.("aria-busy", "true");
+  membersEl.innerHTML = memberRowsSkeleton(known?.member_count ?? 3);
   let detail;
   try {
     detail = await api(`/api/teams/${encodeURIComponent(teamId)}`);
   } catch (error) {
     if (!isCurrent()) return;
-    membersEl.innerHTML = html`<div class="empty-state">${error.message}</div>`;
+    card.setAttribute?.("aria-busy", "false");
+    for (const panel of [membersEl, shares]) {
+      if (!panel) continue;
+      panel.innerHTML = html`<div class="empty-state" role="alert">${error.message} <button type="button" class="btn sm">Retry</button></div>`;
+      panel.querySelector?.("button")?.addEventListener("click", () => openTeamDetail(teamId));
+    }
     return;
   }
   if (!isCurrent()) return;
+  card.setAttribute?.("aria-busy", "false");
+  for (const id of ["team-add-member", "team-detail-invite", "team-share-rep", "team-detail-rename", "team-detail-delete", "team-invite-cta"]) {
+    const button = document.getElementById(id);
+    if (button) button.disabled = false;
+  }
   const myRole = detail.role;
   const canManage = myRole === "owner" || myRole === "admin";
   document.getElementById("team-detail-name").textContent = detail.name;

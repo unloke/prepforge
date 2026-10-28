@@ -655,7 +655,7 @@ function savedCoachQuality(ctx) {
 function setCoachProse(text, tone = "info", state = "instant", quality = null) {
   const el = document.getElementById("coach-prose");
   if (!el) return;
-  clearPeek();
+  clearPeek(el);
   el.innerHTML = moveTextHtml(text || "", analysisTextContext());
   el.dataset.state = state;
   el.dataset.quality = COACH_QUALITY_GROUP[String(quality || "").toLowerCase()] || "";

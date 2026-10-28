@@ -358,11 +358,15 @@ export function reportHtml(report, open = true, keyOpen = false) {
 // keeps that state across re-renders, and the report starts collapsed.
 // Returns the built report (null when nothing was analysed), so the caller can
 // read the same moments the block lists.
-export function renderReportBlock(host, { moves, evalGraph = [], positionEvals = {}, headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {} } = {}) {
+export function renderReportBlock(host, { moves, evalGraph = [], positionEvals = {}, headers = {}, reps = [], names = {}, selfSide = null, onJump = () => {}, onGrade = () => {}, onPeek = () => {} } = {}) {
   const report = buildGameReport({ moves: moves || [], evalGraph, positionEvals, headers, reps, names, selfSide });
   if (!host) return report;
+  host.clearErrorPreview?.();
   host.innerHTML = reportHtml(report, host.dataset.open === "true", host.dataset.key === "true");
-  if (report?.graded) bindErrorChart(host, report, onJump);
+  host.clearErrorPreview = report?.graded ? bindErrorChart(host, report, onJump, (ply) => {
+    const move = ply == null ? null : moves.find((m) => Number(m.ply) === ply);
+    onPeek(move?.fen_after ? { fen: move.fen_after, lastMove: move.uci, classification: move.classification } : null);
+  }) : null;
   host.onclick = (event) => {
     if (event.target.closest?.(".move-ref")) return;
     const toggle = event.target.closest?.("[data-toggle-summary]");

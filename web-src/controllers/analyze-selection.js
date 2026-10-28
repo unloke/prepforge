@@ -14,6 +14,7 @@
 // the single fact every one of those readers is told about.
 
 import { analysisNodeIdFromPath, analysisPathOf } from "../analyze-node-path.js";
+import { clearPeek } from "../line-preview.js";
 
 export function createAnalysisSelection(deps) {
   const {
@@ -131,6 +132,7 @@ export function createAnalysisSelection(deps) {
     const info = await boardInfo(fen);
     if (!selectionIsCurrent(token, node.id, analysis, source)) return;
     appState.analysisBoardFen = fen;
+    clearPeek();
     boards.analysis.setPosition({ fen, legalMoves: info.legal_moves, lastMove: move ? move.uci : null, back });
     // Only an analysed move gets a badge; an unclassified one (a pasted PGN, a game
     // sent from Train) shows none instead of an empty placeholder dot.

@@ -199,6 +199,24 @@ describe("teams detail tabs (ui-prototype-v2)", () => {
     expect(opened).toEqual(["a"]);
   });
 
+  it("does not offer 'choose a team' while the directory is still unknown", async () => {
+    let resolve;
+    const response = new Promise((done) => { resolve = done; });
+    const { view, byId } = makeHarness({ api: () => response });
+    const empty = { hidden: false };
+    const searchField = { hidden: true };
+    byId("teams-search").closest = () => searchField;
+    document.querySelector = (selector) => selector === "#view-teams .team-empty" ? empty : null;
+    const pending = view.loadTeams();
+    expect(empty.hidden).toBe(true);
+    expect(searchField.hidden).toBe(false);
+    expect(byId("teams-search").disabled).toBe(true);
+    resolve({ teams: [] });
+    await pending;
+    expect(empty.hidden).toBe(false);
+    expect(byId("teams-search").disabled).toBe(false);
+  });
+
   it("signed out: the empty card says how to start", async () => {
     const { view, byId } = makeHarness({
       appState: { signedIn: false, authKnown: true, teams: [], selectedTeamId: null },

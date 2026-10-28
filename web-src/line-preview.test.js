@@ -20,7 +20,8 @@ beforeAll(() => {
 // A token as move-text.js writes it: its line in data-mt, its index in data-p.
 // `coach` puts it in the coach card, `engine` in an engine line: the places a token peeks.
 const PEEK = "#coach-prose [data-mt][data-p], #analysis-engine-slot [data-mt] [data-p], #build-branchbar [data-mt][data-p]";
-function token(mt, p, { cls = "move-ref", coach = false, engine = false, focusable = true } = {}) {
+const SCOPE = "#coach-prose, #analysis-engine-slot #engine-window-pvs, #build-branchbar";
+function token(mt, p, { cls = "move-ref", coach = false, engine = false, focusable = true, scope = null } = {}) {
   const el = {
     dataset: { mt, p: String(p) },
     classList: { contains: (c) => c === cls },
@@ -29,6 +30,7 @@ function token(mt, p, { cls = "move-ref", coach = false, engine = false, focusab
   el.matches = (sel) => (sel === "#coach-prose [data-mt][data-p]" ? coach : sel === ":focus-visible" ? focusable : false);
   el.contains = (other) => other === el;
   el.closest = (sel) => {
+    if (sel === SCOPE) return scope;
     if (sel === PEEK) return coach || engine ? el : null;
     if (sel === ".move-ref[data-p]") return cls === "move-ref" ? el : null;
     return sel === "[data-mt]" ? el : null;
@@ -121,6 +123,29 @@ describe("the peek", () => {
     expect(peeks).toEqual(["e7e5"]);
   });
 
+  it.each(["coach", "engine"])("keeps a %s preview across the gap between moves, until the reading area is left", (kind) => {
+    const gap = { closest: () => null };
+    const scope = { contains: (target) => target === gap };
+    const options = { [kind]: true, scope };
+    hover(token(LINE, 0, options));
+    hover(gap);
+    expect(peeks).toEqual(["e2e4"]);
+    hover(token(LINE, 1, options));
+    expect(peeks).toEqual(["e2e4", "e7e5"]);
+    hover(elsewhere);
+    expect(peeks).toEqual(["e2e4", "e7e5", null]);
+  });
+
+  it("transfers keyboard preview to the next move without restoring the board between them", () => {
+    const first = token(LINE, 0, { coach: true });
+    const next = token(LINE, 1, { coach: true });
+    fire("focusin", ev(first));
+    fire("focusout", ev(first, { relatedTarget: next }));
+    expect(peeks).toEqual(["e2e4", "e7e5"]);
+    fire("focusout", ev(next));
+    expect(peeks.at(-1)).toBe(null);
+  });
+
   it("shows on keyboard focus, and not on a mouse click's focus", () => {
     const t = token(LINE, 1, { coach: true });
     fire("focusin", ev(token(LINE, 1, { coach: true, focusable: false })));
@@ -149,5 +174,14 @@ describe("the peek", () => {
     hover(token(LINE, 1, { coach: true }));
     mod.clearPeek();
     expect(peeks.at(-1)).toBe(null);
+  });
+
+  it("a Coach repaint does not interrupt the Engine preview", () => {
+    const engine = token(LINE, 1, { cls: "pv-move", engine: true });
+    hover(engine);
+    mod.clearPeek({ contains: () => false });
+    expect(peeks).toEqual(["e7e5"]);
+    mod.clearPeek({ contains: (t) => t === engine });
+    expect(peeks).toEqual(["e7e5", null]);
   });
 });

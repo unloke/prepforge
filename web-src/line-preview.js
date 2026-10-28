@@ -37,8 +37,10 @@ function act(target) {
 // position back. On touch there is no hover, so a tap peeks and a second tap (or a
 // tap anywhere else) ends it; a reference is then a look, not a jump.
 const PEEK_TOKEN = "#coach-prose [data-mt][data-p], #analysis-engine-slot [data-mt] [data-p], #build-branchbar [data-mt][data-p]";
+const PEEK_SCOPE = "#coach-prose, #analysis-engine-slot #engine-window-pvs, #build-branchbar";
 let peekBoard = () => null;
 let peekToken = null; // the token whose position the board shows, if any
+let peekScope = null;
 let peekPinned = false; // a touch keeps its peek until its own second tap
 
 function showPeek(token) {
@@ -47,14 +49,16 @@ function showPeek(token) {
   if (!board || !pos?.fen) return false;
   board.peek(pos);
   peekToken = token;
+  peekScope = token.closest?.(PEEK_SCOPE);
   return true;
 }
 
 /** End a peek (also when the text that named it is rewritten). */
-export function clearPeek() {
-  if (!peekToken) return;
+export function clearPeek(owner = null) {
+  if (!peekToken || (owner && !owner.contains(peekToken))) return;
   peekBoard()?.peek(null);
   peekToken = null;
+  peekScope = null;
   peekPinned = false;
 }
 
@@ -74,8 +78,9 @@ const isTouch = (event) => event.pointerType === "touch";
 export function initPeeks(board) {
   peekBoard = board;
   const doc = document;
-  // Any element the pointer enters decides: a token peeks, anything else ends a
-  // hover peek. Engine rows repaint under a resting pointer, so leaving is read
+  // A sentence/variation is one reading area: gaps between moves keep the last
+  // preview, and the next move replaces it directly. Leaving that area ends it.
+  // Engine rows repaint under a resting pointer, so leaving is read
   // from where the pointer goes, not from the token it left. A repaint under a
   // pointer that has not moved fires pointerover too; that is not the reader
   // pointing at anything, so it neither starts nor ends a peek (a game step
@@ -87,7 +92,7 @@ export function initPeeks(board) {
     const token = event.target.closest?.(PEEK_TOKEN);
     if (token) {
       if (token !== peekToken) showPeek(token);
-    } else {
+    } else if (!peekScope?.contains(event.target)) {
       clearPeek();
     }
   });
@@ -96,8 +101,11 @@ export function initPeeks(board) {
     if (token && token.matches?.(":focus-visible") && !peekPinned) showPeek(token);
   });
   doc.addEventListener("focusout", (event) => {
-    if (peekToken && event.target.closest?.(PEEK_TOKEN) === peekToken && !peekPinned) clearPeek();
+    if (!peekToken || event.target.closest?.(PEEK_TOKEN) !== peekToken || peekPinned) return;
+    const next = event.relatedTarget?.closest?.(PEEK_TOKEN);
+    if (next) showPeek(next); else clearPeek();
   });
+  doc.addEventListener("pointerleave", () => { if (!peekPinned) clearPeek(); });
   doc.addEventListener("pointerdown", (event) => {
     if (peekPinned && !event.target.closest?.(PEEK_TOKEN)) clearPeek();
   }, true);

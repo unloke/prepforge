@@ -68,9 +68,13 @@ it('History follows cursors, deduplicates games and retains scroll',async()=>{
 it('switching Teams removes old action handlers even when the new detail fails',async()=>{
   const elements=new Map();const el=id=>{if(!elements.has(id))elements.set(id,{get innerHTML() { return this._html ?? ''; }, set innerHTML(value) { this._html = String(value); },querySelectorAll:()=>[]});return elements.get(id);};
   el('team-detail-delete').onclick=vi.fn();const response=deferred();
-  const open=compile('async function openTeamDetail(',{appState:{},currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,teamsView:null,memberRowsSkeleton,sharedRepRowsSkeleton,formatDay:()=> '',renderTeamInviteFooter:()=>{},syncTeamActions:()=>{}},'let teamDetailSeq=0;');
+  const open=compile('async function openTeamDetail(',{appState:{teams:[{id:'B',name:'Knights',role:'admin',member_count:2}]},teamRoleLabel:r=>r,currentOwnerId:()=> 'owner',document:{getElementById:el},renderTeamsList:noop,api:()=>response.promise,teamsView:null,memberRowsSkeleton,sharedRepRowsSkeleton,formatDay:()=> '',renderTeamInviteFooter:()=>{},syncTeamActions:()=>{}},'let teamDetailSeq=0;');
   const pending=open('B');expect(el('team-detail-delete').onclick).toBeNull();expect(el('team-detail-delete').hidden).toBe(true);
+  expect(el('team-detail-name').textContent).toBe('Knights');expect(el('team-detail-role').textContent).toBe('admin');
+  expect(el('team-add-member').hidden).toBe(false);expect(el('team-add-member').disabled).toBe(true);
+  expect((el('team-members').innerHTML.match(/member-skeleton/g)||[])).toHaveLength(2);
   response.reject(Error('offline'));await pending;expect(el('team-detail-delete').onclick).toBeNull();
+  for(const id of ['team-members','team-shared-repertoires']){expect(String(el(id).innerHTML)).toContain('role="alert"');expect(String(el(id).innerHTML)).toContain('Retry');expect(String(el(id).innerHTML)).not.toContain('is-skeleton');}
 });
 import { loadTeamDirectory } from './team-directory.js';
 import { appSource } from "./test-app-source.js";

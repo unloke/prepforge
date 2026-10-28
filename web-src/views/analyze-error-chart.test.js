@@ -50,10 +50,36 @@ function bind() {
   });
   const plot = { getBoundingClientRect: () => ({ left: 60, width: 160 }) };
   const chart = { getBoundingClientRect: () => ({ left: 40, top: 0, width: 220, height: 160 }), querySelector: (s) => ({ output: readout, ".rp-error-cursor": cursor, ".rp-error-plot": plot, ":focus-visible": focused })[s], querySelectorAll: () => markers, addEventListener: (event, handler) => { listeners[event] = handler; } };
-  const jump = vi.fn();
-  bindErrorChart({ querySelector: () => chart }, report, jump);
-  return { chart, jump, readout, cursor, markers };
+  const jump = vi.fn(), peek = vi.fn();
+  const cleanup = bindErrorChart({ querySelector: () => chart }, report, jump, peek);
+  return { chart, jump, peek, cleanup, readout, cursor, markers, listeners };
 }
+
+it("previews along the error axis without jumping, and restores on leave or disposal", () => {
+  const { chart, peek, jump, cleanup } = bind();
+  chart.onpointermove({ pointerType: "mouse", clientX: 100 });
+  chart.onpointermove({ pointerType: "mouse", clientX: 100 });
+  chart.onpointermove({ pointerType: "mouse", clientX: 140 });
+  expect(peek.mock.calls).toEqual([[3], [5]]);
+  expect(jump).not.toHaveBeenCalled();
+  chart.onpointerleave();
+  expect(peek).toHaveBeenLastCalledWith(null);
+  chart.onpointermove({ pointerType: "mouse", clientX: 200 });
+  cleanup();
+  expect(peek.mock.calls).toEqual([[3], [5], [null], [8], [null]]);
+});
+
+it("touch scrolling never previews, and a committed jump cannot restore an old position", () => {
+  const { chart, peek, markers } = bind();
+  chart.onpointermove({ pointerType: "touch", clientX: 100 });
+  expect(peek).not.toHaveBeenCalled();
+  chart.onpointermove({ pointerType: "mouse", clientX: 100 });
+  chart.onclick({ detail: 1, clientX: 140, target: markers[1], stopPropagation() {} });
+  expect(peek).toHaveBeenLastCalledWith(null);
+  const calls = peek.mock.calls.length;
+  chart.onpointerleave();
+  expect(peek).toHaveBeenCalledTimes(calls);
+});
 
 it("scrubs the move axis across the plot and focuses the resolved touch target", () => {
   const { chart, jump, readout, markers } = bind();
