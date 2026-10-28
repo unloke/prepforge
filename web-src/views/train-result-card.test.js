@@ -49,6 +49,12 @@ it("a rehearsal reports lines, first-try score and misses", () => {
   expect(result.title).toBe("Rehearsal complete");
 });
 
+it("a skipped-only rehearsal reports skips without an empty accuracy score", () => {
+  expect(drillResult({ lines: [1] }, { skipped: 1 }).cells).toEqual([[1, "line"], [1, "skipped"]]);
+  expect(drillResult({ lines: [1, 2] }, { correct: 1, skipped: 1 }).cells)
+    .toEqual([[2, "lines"], ["100%", "first try"], [0, "missed"], [1, "skipped"]]);
+});
+
 it("a game reports how it ended and how far it went, and names why when it could not go on", () => {
   const play = { ended: "Resigned", userColor: "black", history: [{ by: "user" }, { by: "opponent" }, { by: "user" }], result: "1-0" };
   expect(playResult(play)).toMatchObject({ title: "Resigned", cells: [["1-0", "result"], [2, "moves"], ["Black", "you played"]], foot: "" });
