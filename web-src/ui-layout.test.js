@@ -82,7 +82,8 @@ describe("workspace chrome layout", () => {
     // yields width so the panel never drops below its floor.
     expect(ruleBody(".study")).toMatch(/--study-panel-min:\s*360px/);
     expect(ruleBody(".study")).toMatch(/calc\(100vw - 60px - 44px - var\(--study-panel-min\)\)/);
-    expect(css).toMatch(/max-width:\s*1100px\)\s*\{\s*\.study\s*\{\s*--board-share:\s*0\.56/);
+    // No 56% step at ≤1100: it left a 160px band under a 498px board at 1000x700.
+    expect(css).not.toMatch(/--board-share:\s*0\.56/);
     // Each media block body, keyed by its query.
     const blocks = [...css.matchAll(/@media ([^{]+?) \{([\s\S]*?)\n\}/g)].map((m) => [m[1], m[2]]);
     // Stacked is ≤860, except a short landscape screen (a phone on its side),
@@ -513,7 +514,7 @@ describe("workspace chrome layout", () => {
     expect(view).toContain('class="tabs" role="tablist"');
     expect(view).toContain('id="team-invite-foot"');
     // Page grid in the eager sheet: the lists beside the team, then one column.
-    expect(css).toMatch(/\.teams \{ grid-template-columns: 300px minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
+    expect(css).toMatch(/\.teams \{ grid-template-columns: var\(--teams-dir, 300px\) minmax\(0, 1fr\); grid-template-rows: auto minmax\(0, 1fr\); min-height: 100%; \}/);
     expect(css).toMatch(/max-width:\s*1020px\)\s*\{\s*\.teams\s*\{[^}]*minmax\(0,\s*1fr\)\s*;/);
     expect(teamsCss).toContain(".team-row.is-selected");
     // The old page intro, stacked-card chrome and generic list rows are gone.

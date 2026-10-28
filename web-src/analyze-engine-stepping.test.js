@@ -156,13 +156,22 @@ describe("Analyze engine stepping", () => {
 
 // The keyboard row under the board: Home/End jump to the ends of the line, the
 // way the board-bar's first/last buttons do (one key hold steps the whole game).
-describe("Analyze keyboard: Home / End", () => {
-  it("routes Home and End to the ends of the line, and to Build's own ends", () => {
-    const i = source.indexOf('if (stepsBoard && (event.key === "Home" || event.key === "End")) {');
+describe("Analyze keyboard: Home / End and ↑ / ↓", () => {
+  it("routes Home and End (and Analyze's ↑ ↓, as on Lichess) to the ends of the line, and to Build's own ends", () => {
+    const i = source.indexOf('const end = { Home: "start", End: "end", ...(inBuild ? {} : { ArrowUp: "start", ArrowDown: "end" }) }[event.key];');
     expect(i).toBeGreaterThan(0);
     const block = source.slice(i, i + 420);
-    expect(block).toMatch(/analysisTreeNav\(event\.key === "Home" \? "start" : "end"\)/);
+    expect(block).toMatch(/if \(stepsBoard && end\)/);
+    expect(block).toMatch(/analysisTreeNav\(end\)/);
     expect(block).toMatch(/buildGoRoot\(\)/);
     expect(block).toMatch(/buildGoToEnd\(\)/);
+  });
+
+  it("opens the keyboard list on ?", async () => {
+    expect(source).toMatch(/if \(event\.key === "\?"\) return void import\("\.\/shortcuts-help\.js"\)/);
+    const { shortcutRows } = await import("./shortcuts-help.js");
+    expect(shortcutRows("analyze").map(([k]) => k)).toContain("↑ ↓ · Home End");
+    expect(shortcutRows("build").map(([k]) => k)).toContain("↑ ↓ · J K");
+    expect(shortcutRows("library").map(([k]) => k)).toEqual(["Ctrl K", "?"]);
   });
 });

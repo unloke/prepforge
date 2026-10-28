@@ -1737,8 +1737,13 @@ textarea:focus-visible {
    ground, and its message read as floating in a small box). With no team yet
    (or signed out) the directory has nothing to list: the placeholder is the
    first-run panel with its own New team, and the shares card sits beside it. */
+/* From 1280px the list column is Lichess's 340-350px side width: at 300px a
+   team name ("Grandmaster preparation squad") was cut at 1440x900. */
+@media (min-width: 1280px) {
+  .teams { --teams-dir: 340px; }
+}
 @media (min-width: 1021px) {
-  .teams { grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
+  .teams { grid-template-columns: var(--teams-dir, 300px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-height: 100%; }
   .teams > .card.dir,
   .teams > .card.incoming { grid-column: 1; align-self: start; }
   .teams > .team-detail,
@@ -1822,12 +1827,8 @@ textarea:focus-visible {
     align-items: baseline;
     margin: 0;
   }
-  #view-dashboard .page-head h1 {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-  }
+  /* The title is the shell's one 26/700 rule (a 22/650 copy here made
+     Library's name smaller than Games', Scout's and Teams'). */
   #view-dashboard .page-head-btn { display: none; }
 }
 
@@ -2376,8 +2377,8 @@ button.kchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1
   /* Board square budget: min(100dvh − chrome, (100vw − rail − 48) × share,
      100vw − rail − padding/gap − panel floor, 820px). With no top bar the
      height budget is generous, so the width share is what sizes the board:
-     62% on wide screens, 60% on laptops, 56% on narrow laptops / split
-     screens. The panel-floor term keeps the side panel ≥ 360px down to the
+     62% on wide screens, 60% on laptops and narrow laptops (a 56% step left
+     a 160px empty band under a 498px board at 1000x700; Lichess draws 528). The panel-floor term keeps the side panel ≥ 360px down to the
      860px stacking breakpoint, so board and feedback share one screen at
      ~980×614. The column wraps exactly around it (max-content). */
   --board-share: 0.62;
@@ -6091,9 +6092,6 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
 @media (max-width: 1279px) {
   .study { --board-share: 0.6; }
 }
-@media (max-width: 1100px) {
-  .study { --board-share: 0.56; }
-}
 
 /* Explorer database toggle: the chosen database is a plate on the segment
    track with full-ink text. It used to add accent text, a 1px ring and an
@@ -6134,6 +6132,18 @@ body.is-resizing-dock { cursor: row-resize; user-select: none; }
   padding: 3px 8px;
   font-size: 14px;
   font-weight: 650;
+}
+/* One score sheet beside the board, as Lichess prints it: a tinted number
+   column and White and Black in two equal columns on a 28px pitch at 15px.
+   Analyze's sheet, Build's main line and a Practice game share it (Analyze's
+   was 13px on 21px rows with both moves hugging the left, Build's 14px/650 on
+   30px). */
+@media (min-width: 761px) {
+  :is(.moves-grid, #builder-tree) .mtree-line.is-main, .train-play-trail { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); column-gap: 0; }
+  :is(.moves-grid, #builder-tree) .mtree-line.is-main > :is(.mtree-num, .mtree-move), .train-play-trail > span { display: flex; align-items: center; justify-self: stretch; min-height: 28px; margin: 0; padding: 0 10px; border-radius: 0; font-size: 15px; font-weight: 500; text-align: left; }
+  :is(.moves-grid, #builder-tree) .mtree-line.is-main > .mtree-num, .train-play-trail > .pt-n { align-self: stretch; justify-content: center; padding: 0 4px; background: var(--surface-3); color: var(--label); font-size: 13px; }
+  #view-train .train-play-trail:not([hidden], :empty) { display: grid; align-content: start; max-height: 50vh; padding: 0; overflow: auto; }
+  .train-play-trail > .pt-m.is-last { background: var(--accent); color: var(--accent-ink); }
 }
 #builder-tree .mtree-line.is-main > .mtree-move.is-w { grid-column: 2; }
 #builder-tree .mtree-line.is-main > .mtree-move.is-b { grid-column: 3; }
