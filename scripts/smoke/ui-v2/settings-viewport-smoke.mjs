@@ -184,6 +184,16 @@ async function runViewport(vp) {
   check(/Stockfish .+ (lite|full) \(WASM\)/.test(sfVersion || ""), `engine version should render from the manifest, got "${sfVersion}"`);
   const isolated = await page.evaluate(() => self.crossOriginIsolated === true);
   check(isolated, "page should be cross-origin isolated (COOP/COEP)");
+  // One status line names the setup (net · workers [· speed]); the manual net and
+  // worker choice wait under Advanced, closed.
+  const setupLine = (await page.locator("#settings-engine-line").textContent().catch(() => "")) || "";
+  check(/^(Full|Lite) · \d workers?( · [\d.]+ [kM]n\/s)?$|^(Measuring|Loading|Checking|Waiting|Downloading|Compiling)/.test(setupLine.trim()),
+    `the engine card should lead with its setup line, got "${setupLine}"`);
+  check(await page.locator("#settings-detect").isVisible(), "Detect should sit beside the setup line");
+  check(!(await page.locator("#settings-net-seg").isVisible()), "the manual net choice should start folded under Advanced");
+  await page.locator("#settings-engine-manual > summary").click();
+  await page.waitForTimeout(200);
+  check(await page.locator("#settings-workers-seg").isVisible(), "Advanced should open the manual worker choice");
 
   // Phone: every Settings control is a thumb target. Switches were 38x26 and
   // the ⓘ buttons 24x24; row buttons 36px and the segmented choices 32px.

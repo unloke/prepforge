@@ -48,6 +48,7 @@ function harness() {
     "settings-stockfish-status": el(),
     "settings-stockfish-version": el({ textContent: "checking…" }),
     "settings-profile-status": el(),
+    "settings-engine-line": el(),
     "settings-profile-progress": el({ firstElementChild: { style: styleMock() } }),
     "settings-detect": el(),
   };
@@ -118,6 +119,7 @@ describe("Settings → Engine Refresh", () => {
     expect(bar.hidden).toBe(false);
     // Getting the net fills the first half of the one setup bar.
     expect(bar.firstElementChild.style.props["--progress"]).toBe("0.125");
+    expect(elements["settings-engine-line"].textContent).toBe("Downloading full engine…");
     expect(elements["settings-profile-status"].textContent).toContain("1 / 4 MB");
     await view.refreshEngineCard();
     const fetches = globalThis.fetch.mock.calls.length;
@@ -126,7 +128,9 @@ describe("Settings → Engine Refresh", () => {
     expect(bar.firstElementChild.style.props["--progress"]).toBe("0.375");
     shared.setup = { ...shared.setup, phase: "compile", fraction: 1, label: "Compiling engine…" };
     for (const fn of shared.listeners) fn(shared.setup);
-    expect(elements["settings-profile-status"].textContent).toBe("Compiling engine…");
+    // The setup line names the phase; the detail under it carries the bytes while they move.
+    expect(elements["settings-engine-line"].textContent).toBe("Compiling engine…");
+    expect(elements["settings-profile-status"].textContent).toBe("");
     expect(globalThis.fetch).toHaveBeenCalledTimes(fetches);
     view.dispose();
     expect(shared.listeners.size).toBe(0);

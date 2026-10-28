@@ -30,10 +30,11 @@ function setup() {
     "settings-net-seg": { querySelectorAll: () => [] },
     "settings-profile-status": { textContent: "", title: "" },
     "settings-profile-progress": { hidden: true, firstElementChild: { style: { setProperty: () => {} } } },
-    "settings-detect": { disabled: false },
+    "settings-detect": { disabled: false, dataset: {} },
     "settings-stockfish-version": { textContent: "" },
   };
   globalThis.location = { hash: "" };
+  globalThis.self ??= { crossOriginIsolated: true };
   globalThis.window = { addEventListener() {} };
   globalThis.document = {
     getElementById: (id) => elements[id] ?? null,
