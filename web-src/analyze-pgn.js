@@ -50,10 +50,12 @@ function stripComments(text) {
       continue;
     }
     if (c === ";" && depth === 0) {
+      result += " ";
       inLineComment = true;
       continue;
     }
     if (c === "{") {
+      if (depth === 0) result += " ";
       depth++;
       continue;
     }
