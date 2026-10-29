@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   normalizeSelection,
   isSelectionEmpty,
@@ -170,5 +170,22 @@ describe("lookupLichessUser", () => {
 
   it("throws when Lichess could not answer", async () => {
     await expect(lookupLichessUser("hikaru", answer(429, null))).rejects.toThrow("429");
+  });
+
+  it("aborts a stalled lookup so the composer can offer another attempt", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn((url, { signal }) => new Promise((resolve, reject) => {
+        signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      }));
+      const lookup = lookupLichessUser("hikaru", fetchImpl);
+      const rejected = expect(lookup).rejects.toMatchObject({ name: "AbortError" });
+      await vi.advanceTimersByTimeAsync(10_000);
+      await rejected;
+      expect(fetchImpl.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

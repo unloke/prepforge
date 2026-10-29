@@ -110,11 +110,19 @@ export function toggleAccount(selection, accountId) {
 // when no open account has that name. Anything else (offline, rate limit)
 // throws, so a typo never becomes a source that silently fetches nothing.
 export async function lookupLichessUser(username, fetchImpl = (...args) => fetch(...args)) {
-  const response = await fetchImpl(lichessProfileUrl(username), { headers: { Accept: "application/json" } });
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`Lichess responded ${response.status}`);
-  const user = await response.json();
-  return user && !user.disabled ? String(user.username || username) : null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetchImpl(lichessProfileUrl(username), {
+      headers: { Accept: "application/json" }, signal: controller.signal,
+    });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error(`Lichess responded ${response.status}`);
+    const user = await response.json();
+    return user && !user.disabled ? String(user.username || username) : null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function addExternal(selection, username) {
